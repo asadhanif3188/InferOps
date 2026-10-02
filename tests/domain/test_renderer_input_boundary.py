@@ -42,6 +42,7 @@ import os
 import random
 import re
 import secrets
+import shutil
 import subprocess
 import sys
 import time
@@ -1388,18 +1389,40 @@ def test_nothing_outside_the_render_package_imports_it() -> None:
 
 def test_nothing_on_a_delivery_path_reaches_the_repository_check() -> None:
     """The exempt drift check is reached from a contributor's shell or the test suite,
-    never from the distribution, another tool, or a deployment file."""
-    names = ("tools.generated_release", "tools/generated_release")
+    never from the distribution, another tool, a script, a chart, a deployment or
+    infrastructure file, a workflow, or the project configuration.
+
+    Every tracked file under those paths is read as text, whatever its suffix, for the
+    package name as a whole word - which ``tools.generated_release``,
+    ``tools/generated_release``, and ``from tools import generated_release`` all hold,
+    and ``test_generated_release`` does not.
+    """
+    if shutil.which("git") is None:
+        pytest.skip("git is not on PATH")
+    roots = ("src", "tools", "scripts", "charts", "deploy", "infra", ".github")
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", *roots, "pyproject.toml"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout.decode("utf-8")
+    name = re.compile(r"(?<![A-Za-z0-9_])generated_release(?![A-Za-z0-9_])")
     offenders = []
-    for root in ("src", "tools", "scripts", "charts", "deploy", "infra"):
-        for path in sorted((REPO_ROOT / root).rglob("*")):
-            if REPOSITORY_CHECK in path.parents or not path.is_file():
-                continue
-            if path.suffix in {".py", ".sh", ".yaml", ".tf"}:
-                text = path.read_text(encoding="utf-8", errors="replace")
-                if any(name in text for name in names):
-                    offenders.append(path.relative_to(REPO_ROOT).as_posix())
+    for relative in filter(None, listed.split("\0")):
+        path = REPO_ROOT / relative
+        if REPOSITORY_CHECK in path.parents or not path.is_file():
+            continue
+        if name.search(path.read_bytes().decode("utf-8", errors="replace")):
+            offenders.append(relative)
     assert offenders == []
+    # The pattern sees each spelling it names, and not the test module's name.
+    for spelling in (
+        "python -m tools.generated_release --check",
+        "tools/generated_release/core.py",
+        "from tools import generated_release",
+    ):
+        assert name.search(spelling), spelling
+    assert not name.search("tests/domain/test_generated_release.py")
 
 
 @pytest.mark.parametrize(

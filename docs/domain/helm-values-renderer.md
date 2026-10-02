@@ -360,12 +360,18 @@ uv run --locked python -m tools.generated_release --list
 inputs derive, and 1 when one is not. It reports each drifted release with the rule it
 breaks; each release field that differs, with what the difference means and both values;
 a unified diff from the committed file to the derived one; and the command that
-regenerates it. `--write` regenerates only the releases it is given by name. It replaces
-the two files through `write_release`, so the result is both files or neither, and it
-refuses a directory that holds anything else, or a staging directory left beside one.
-Regeneration replaces a hand edit without asking, so read the diff first. The default-lane
-test suite runs the same check over every declared release, so a stale or hand-edited
-release fails the build that introduces it.
+regenerates it. When a finding is one regeneration refuses - a stray entry, a left-over
+staging directory, or sources that no longer render - it names what to resolve first
+instead of the command. `--write` regenerates only the releases it is given by name. It
+refuses a release path that is a file or a symbolic link, a directory that holds anything
+the platform did not write, and a staging directory left beside one, and touches nothing.
+Otherwise it removes the two committed files and their directory, then writes both files
+again through `write_release`, which writes both or neither. The old release is therefore
+gone before the new one is written: if that write fails, the command says so, the
+directory is absent rather than half written, and running `--write` again, or restoring
+the directory from Git, brings it back. Regeneration replaces a hand edit without asking,
+so read the diff first. The default-lane test suite runs the same check over every
+declared release, so a stale or hand-edited release fails the build that introduces it.
 
 **The rules**, in the order a finding is reported:
 
@@ -373,7 +379,7 @@ release fails the build that introduces it.
 |---|---|
 | `generated-release-missing` | A declared release directory exists. |
 | `generated-release-file-missing` | A release directory holds both generated files. |
-| `generated-release-unexpected-entry` | A release directory holds the two generated files and nothing else. |
+| `generated-release-unexpected-entry` | A release path is a directory that holds the two generated files and nothing else. |
 | `generated-release-staging-left` | No staging directory from an unfinished write is left beside a release. |
 | `generated-release-sources-refused` | The declared sources of a release still derive a release. |
 | `generated-release-values-unrecorded` | The committed values file's SHA-256 is the digest the committed release records. |
@@ -398,6 +404,10 @@ the declared inputs:
   drifted file.
 - **Values and a release edited to agree** are consistent with each other and not with
   their sources: both files and `output.helmValues.sha256` are reported.
+- **A release path that is a file or a symbolic link**, and a generated file that is a
+  symbolic link, are `generated-release-unexpected-entry`: the platform writes neither, so
+  neither is followed or compared. The symbolic-link cases skip on a host that cannot
+  create a link, as an unprivileged Windows account cannot; the Linux runner runs them.
 - **Sources that no longer render** are `generated-release-sources-refused`, with the
   boundary's or the renderer's refusal. A missing input file is the same rule. Nothing is
   compared, because there is nothing to compare with.

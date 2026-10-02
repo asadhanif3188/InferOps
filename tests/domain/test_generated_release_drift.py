@@ -43,7 +43,13 @@ from pathlib import Path
 import pytest
 
 from inferops.domain.render import RELEASE_FILE_NAME, VALUES_FILE_NAME
+from inferops.domain.workload import (
+    CompatibilityMatrixLoader,
+    get_matrix_loader,
+    set_matrix_loader,
+)
 from tools.generated_release import (
+    BLOCKING_RULES,
     DECLARED_RELEASES,
     FIELD_CAUSES,
     GENERATED_FILES,
@@ -479,6 +485,12 @@ def test_a_missing_file_is_reported_and_the_other_is_still_compared(
 ) -> None:
     release_path(root, name).unlink()
     assert found(verify(REFERENCE, root)) == [("generated-release-file-missing", name)]
+    (other,) = [other for other in GENERATED_FILES if other != name]
+    path = release_path(root, other)
+    path.write_bytes(path.read_bytes() + b"# appended by hand\n")
+    findings = found(verify(REFERENCE, root))
+    assert ("generated-release-file-missing", name) in findings
+    assert ("generated-release-file-drifted", other) in findings
 
 
 def test_a_stray_file_or_directory_is_reported(root: Path) -> None:
@@ -498,6 +510,68 @@ def test_a_staging_directory_left_by_an_unfinished_write_is_reported(
     staging.mkdir()
     assert found(verify(REFERENCE, root)) == [
         ("generated-release-staging-left", staging.name)
+    ]
+
+
+def test_a_file_where_the_release_directory_belongs_is_unexpected(
+    root: Path,
+) -> None:
+    directory = root / REFERENCE.directory
+    shutil.rmtree(directory)
+    directory.write_text("not a release\n", encoding="utf-8")
+    assert found(verify(REFERENCE, root)) == [
+        ("generated-release-unexpected-entry", REFERENCE.directory)
+    ]
+    before = snapshot(root)
+    with pytest.raises(RegenerationRefused):
+        regenerate(REFERENCE, root)
+    assert snapshot(root) == before
+
+
+def symlink_or_skip(link: Path, target: Path, *, directory: bool) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=directory)
+    except (OSError, NotImplementedError) as error:
+        pytest.skip(f"this host cannot create a symbolic link: {error}")
+
+
+def test_a_release_directory_that_is_a_symbolic_link_is_unexpected(
+    root: Path, tmp_path: Path
+) -> None:
+    directory = root / REFERENCE.directory
+    elsewhere = tmp_path / "elsewhere"
+    shutil.move(directory, elsewhere)
+    symlink_or_skip(directory, elsewhere, directory=True)
+    assert found(verify(REFERENCE, root)) == [
+        ("generated-release-unexpected-entry", REFERENCE.directory)
+    ]
+    with pytest.raises(RegenerationRefused):
+        regenerate(REFERENCE, root)
+    assert sorted(p.name for p in elsewhere.iterdir()) == sorted(GENERATED_FILES)
+
+
+def test_a_generated_file_that_is_a_symbolic_link_is_not_compared(
+    root: Path, tmp_path: Path
+) -> None:
+    path = release_path(root, VALUES)
+    target = tmp_path / "values-elsewhere.yaml"
+    shutil.move(path, target)
+    symlink_or_skip(path, target, directory=False)
+    assert found(verify(REFERENCE, root)) == [
+        ("generated-release-unexpected-entry", VALUES),
+        ("generated-release-file-missing", VALUES),
+    ]
+
+
+@pytest.mark.parametrize(
+    "document", [b"- a list\n", b"a scalar\n", b""], ids=["list", "scalar", "empty"]
+)
+def test_a_release_that_parses_to_no_mapping_is_compared_as_text(
+    root: Path, document: bytes
+) -> None:
+    release_path(root, RELEASE).write_bytes(document)
+    assert found(verify(REFERENCE, root)) == [
+        ("generated-release-file-drifted", RELEASE)
     ]
 
 
@@ -533,6 +607,37 @@ def test_a_missing_input_is_a_refusal_not_a_crash(
         ("generated-release-sources-refused", REFERENCE.contract)
     ]
     assert "FileNotFoundError" in findings[0].detail
+    # Named by its path under the root, so the report is the same on every host.
+    assert remove(REFERENCE) in findings[0].detail
+    assert str(root) not in findings[0].detail
+    assert str(root.as_posix()) not in findings[0].detail
+
+
+@pytest.mark.parametrize(
+    "text", ["[]", "{", '"a string"'], ids=["list", "broken", "string"]
+)
+def test_a_malformed_compatibility_matrix_is_a_refusal_not_a_crash(
+    root: Path, text: str
+) -> None:
+    (root / MATRIX_PATH).write_text(text, encoding="utf-8")
+    assert found(verify(REFERENCE, root)) == [
+        ("generated-release-sources-refused", REFERENCE.contract)
+    ]
+
+
+def test_deriving_restores_the_compatibility_matrix_it_replaced(root: Path) -> None:
+    before = get_matrix_loader()
+    marker = CompatibilityMatrixLoader({"marker": True})
+    set_matrix_loader(marker)
+    try:
+        derive(REFERENCE, root)
+        assert get_matrix_loader() is marker
+        (root / MATRIX_PATH).write_text("[]", encoding="utf-8")
+        with pytest.raises(SourcesRefused):
+            derive(REFERENCE, root)
+        assert get_matrix_loader() is marker
+    finally:
+        set_matrix_loader(before)
 
 
 def test_defaults_the_chart_does_not_set_are_a_refusal(root: Path) -> None:
@@ -635,6 +740,24 @@ def test_the_command_reports_the_rule_the_field_the_diff_and_the_fix(
     assert out.rstrip().endswith("1 of 1 declared releases drifted")
 
 
+def test_the_command_does_not_advise_a_regeneration_that_would_be_refused(
+    root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    drift(root)
+    release_path(root, "notes.txt").write_text("x\n", encoding="utf-8")
+    assert main(["--check", "--root", str(root)]) == 1
+    out = capsys.readouterr().out
+    assert "regenerate with:" not in out
+    assert "regeneration refuses this release until each is resolved:" in out
+    assert "move or remove what the platform did not write: notes.txt" in out
+
+
+def test_every_blocking_rule_is_a_rule() -> None:
+    assert {rule.rule_id for rule in RULES} >= BLOCKING_RULES
+    assert "generated-release-file-drifted" not in BLOCKING_RULES
+    assert "generated-release-missing" not in BLOCKING_RULES
+
+
 def test_the_command_prints_the_same_report_in_two_interpreters(root: Path) -> None:
     drift(root)
     outputs = []
@@ -729,6 +852,28 @@ def test_regeneration_refuses_a_left_over_staging_directory(root: Path) -> None:
     with pytest.raises(RegenerationRefused):
         regenerate(REFERENCE, root)
     assert snapshot(root) == before
+
+
+def test_a_failed_write_is_reported_and_running_again_writes_the_release(
+    root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    drift(root)
+
+    def fail(*_: object, **__: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(core_module, "write_release", fail)
+    assert main(["--write", REFERENCE.name, "--root", str(root)]) == 1
+    out = capsys.readouterr().out
+    assert f"FAILED   {REFERENCE.name}: OSError: disk full" in out
+    assert "run --write again" in out
+    # The old release is gone before the new one is written; it is never half written.
+    assert not (root / REFERENCE.directory).exists()
+    monkeypatch.undo()
+    assert main(["--write", REFERENCE.name, "--root", str(root)]) == 0
+    assert verify(REFERENCE, root) == ()
 
 
 def test_regeneration_from_refused_sources_writes_nothing(

@@ -62,11 +62,13 @@ from inferops.domain.workload import (
     CompatibilityMatrixLoader,
     DnsLabel,
     DomainError,
+    get_matrix_loader,
     parse_workload_contract,
     set_matrix_loader,
 )
 
 __all__ = [
+    "BLOCKING_RULES",
     "DECLARED_RELEASES",
     "FIELD_CAUSES",
     "GENERATED_FILES",
@@ -157,7 +159,7 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "generated-release-unexpected-entry",
-        "A release directory holds the two generated files and nothing else.",
+        "A release path is a directory that holds the two generated files and nothing else.",
     ),
     Rule(
         "generated-release-staging-left",
@@ -179,6 +181,17 @@ RULES: Final[tuple[Rule, ...]] = (
         "generated-release-file-drifted",
         "Each committed file is, byte for byte, the file its declared sources derive.",
     ),
+)
+
+#: The rules under which :func:`regenerate` refuses to touch anything: each names
+#: something the platform did not write, or sources that derive nothing. Drift under
+#: any other rule is what regeneration repairs.
+BLOCKING_RULES: Final = frozenset(
+    {
+        "generated-release-unexpected-entry",
+        "generated-release-staging-left",
+        "generated-release-sources-refused",
+    }
 )
 
 #: What a difference in one release field means, for the finding that reports it.
@@ -300,12 +313,23 @@ def _chart_api_defaults(path: Path, revision: str) -> PlatformDefaults:
 def derive(declared: DeclaredRelease, root: Path = REPO_ROOT) -> GeneratedRelease:
     """Both files of ``declared``, derived again from its declared inputs.
 
+    The compatibility matrix is a process-wide setting of the workload domain.
+    This sets it to the matrix under ``root`` for the derivation and restores the
+    one set before, if any, afterwards.
+
     Raises:
         SourcesRefused: a declared input is missing, does not parse, or is refused
-            by the render boundary, the renderer, or the release recorder.
+            by the render boundary, the renderer, or the release recorder. The
+            reason names an input by its path under ``root``, never an absolute one.
     """
     try:
+        previous: CompatibilityMatrixLoader | None = get_matrix_loader()
+    except ValueError:
+        previous = None
+    try:
         matrix = json.loads((root / MATRIX_PATH).read_text(encoding="utf-8"))
+        if not isinstance(matrix, dict):
+            raise ValueError(f"{MATRIX_PATH} is not a JSON object")
         set_matrix_loader(CompatibilityMatrixLoader(matrix))
         contract = parse_workload_contract(_load_yaml(root / declared.contract))
         bindings: list[EnvironmentBinding] = [
@@ -326,10 +350,29 @@ def derive(declared: DeclaredRelease, root: Path = REPO_ROOT) -> GeneratedReleas
                 else DnsLabel(declared.binding_name)
             ),
         )
-    except (DomainError, OSError, ValueError, yaml.YAMLError) as error:
+    except OSError as error:
+        raise SourcesRefused(
+            declared.name, f"{type(error).__name__}: {_named(error, root)}"
+        ) from error
+    except (DomainError, ValueError, yaml.YAMLError, RecursionError) as error:
         raise SourcesRefused(
             declared.name, f"{type(error).__name__}: {error}"
         ) from error
+    finally:
+        if previous is not None:
+            set_matrix_loader(previous)
+
+
+def _named(error: OSError, root: Path) -> str:
+    """An input that could not be read, by its path under ``root`` when it has one."""
+    if error.filename is None:
+        return error.strerror or str(error)
+    path = Path(error.filename)
+    try:
+        shown = path.relative_to(root).as_posix()
+    except ValueError:
+        shown = path.name
+    return f"{error.strerror or 'cannot read'}: {shown}"
 
 
 # --------------------------------------------------------------------------
@@ -439,22 +482,33 @@ def _layout_findings(declared: DeclaredRelease, directory: Path) -> list[Finding
                 "an earlier write did not finish; remove the staging directory",
             )
         )
+    if directory.is_symlink() or (directory.exists() and not directory.is_dir()):
+        findings.append(
+            Finding(
+                "generated-release-unexpected-entry",
+                declared.name,
+                declared.directory,
+                "the declared release path is a symbolic link or a file, not a "
+                "directory the platform wrote",
+            )
+        )
+        return findings
     if not directory.is_dir():
-        occupied = directory.exists() or directory.is_symlink()
-        findings.insert(
-            0,
+        findings.append(
             Finding(
                 "generated-release-missing",
                 declared.name,
                 declared.directory,
-                "the declared release path is not a directory"
-                if occupied
-                else "the declared release directory does not exist",
-            ),
+                "the declared release directory does not exist",
+            )
         )
         return findings
     for entry in sorted(directory.iterdir(), key=lambda path: path.name):
-        if entry.name not in GENERATED_FILES or not entry.is_file():
+        if (
+            entry.name not in GENERATED_FILES
+            or entry.is_symlink()
+            or not entry.is_file()
+        ):
             findings.append(
                 Finding(
                     "generated-release-unexpected-entry",
@@ -464,7 +518,7 @@ def _layout_findings(declared: DeclaredRelease, directory: Path) -> list[Finding
                 )
             )
     for name in GENERATED_FILES:
-        if not (directory / name).is_file():
+        if not (directory / name).is_file() or (directory / name).is_symlink():
             findings.append(
                 Finding(
                     "generated-release-file-missing",
@@ -497,13 +551,13 @@ def verify(declared: DeclaredRelease, root: Path = REPO_ROOT) -> tuple[Finding, 
             )
         )
         return _in_rule_order(findings)
-    if not directory.is_dir():
+    if directory.is_symlink() or not directory.is_dir():
         return _in_rule_order(findings)
 
     present = {
         name: (directory / name).read_bytes()
         for name in GENERATED_FILES
-        if (directory / name).is_file()
+        if (directory / name).is_file() and not (directory / name).is_symlink()
     }
     committed_release: Any = None
     if RELEASE_FILE_NAME in present:
@@ -555,25 +609,25 @@ def regenerate(declared: DeclaredRelease, root: Path = REPO_ROOT) -> bool:
     Returns ``True`` when the files were written, and ``False`` when the committed
     files were already the derived ones and nothing was touched.
 
-    The directory is replaced only when it holds the two generated files and
-    nothing else. The two files are removed, then ``write_release`` writes both or
-    neither. If that write fails, the directory is absent rather than half written,
-    and running this again writes it.
+    The directory is replaced only when it is a real directory that holds the
+    generated files and nothing else. The two files are removed and the directory
+    with them, then ``write_release`` writes both files or neither. So the old
+    release is gone before the new one is written: if that write fails, the
+    directory is absent rather than half written, and running this again writes it.
 
     Raises:
         SourcesRefused: the declared inputs derive no release; nothing is touched.
-        RegenerationRefused: the directory holds something the platform did not
-            write, or a staging directory is left beside it; nothing is touched.
+        RegenerationRefused: a finding under :data:`BLOCKING_RULES` - the path holds
+            something the platform did not write, or a staging directory is left
+            beside it; nothing is touched.
+        OSError: a file could not be removed or written; see ``write_release``.
     """
     derived = derive(declared, root)
     directory = root / declared.directory
-    occupied = not directory.is_dir() and (directory.exists() or directory.is_symlink())
     blocking = [
         finding
         for finding in _layout_findings(declared, directory)
-        if finding.rule_id
-        in {"generated-release-unexpected-entry", "generated-release-staging-left"}
-        or (finding.rule_id == "generated-release-missing" and occupied)
+        if finding.rule_id in BLOCKING_RULES
     ]
     if blocking:
         raise RegenerationRefused(blocking)

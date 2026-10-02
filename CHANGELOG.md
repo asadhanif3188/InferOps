@@ -19,14 +19,20 @@ from `1.0.0`.
   release field that differs and what the difference means, a unified diff from the
   committed file to the derived one, and the command that regenerates the release.
   `--write NAME` is the only regeneration, and it refuses a directory that holds anything
-  the platform did not write. The reference release moved into a directory in the
+  the platform did not write; it removes the old release before writing the new one, so a
+  failed write leaves the directory absent, never half written. The reference release moved into a directory in the
   writer's layout, `tests/domain/fixtures/helm-values/support-assistant-local-kind/`,
   with its bytes unchanged. A new suite plants every kind of drift in a copy - edited
   values, a stale contract or binding digest, provenance edited to name another revision,
   identifier, or digest, values and a release forged to agree, and missing or stray files
   - and the default lane runs the check over every declared release. The render-boundary
   suite exempts this one tool by name from "no tool imports the render package", and
-  holds that nothing on a delivery path reaches it. Measured, not closed: the
+  fails if any tracked file under `src`, `tools`, `scripts`, `charts`, `deploy`, `infra`,
+  or `.github`, or `pyproject.toml`, names the tool. An independent review before merge
+  found the check advising a regeneration it would refuse, a symbolic-link path it would
+  follow, inputs that raised instead of being refused, a test that did not exercise what
+  it was named for, and pages that still said nothing commits a release; all are closed in
+  the same change. Measured, not closed: the
   platform-defaults revision is declared, so a defaults change moves the values and not
   the release identifier, and nothing checks that a revision names a commit. No claim
   moves, and every check is static (`C0`); [the

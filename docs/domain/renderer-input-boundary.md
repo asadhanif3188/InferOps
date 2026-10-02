@@ -294,8 +294,11 @@ The tests assert each property directly:
   tool is exempt by name: [the drift check](helm-values-renderer.md#verifying-a-committed-release)
   in `tools/generated_release`, a repository check that derives the committed generated
   releases again and writes only a declared release directory in this repository. A
-  test holds that the exemption is used, and that nothing under those six directories
-  names the drift check in turn.
+  test holds that the exemption is used. Another reads every tracked file under `src`,
+  `tools`, `scripts`, `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`,
+  whatever its suffix, and fails if any outside the drift check names
+  `generated_release` as a whole word - so no module, script, chart, deployment or
+  infrastructure file, workflow, or project setting reaches the drift check in turn.
 
 ## The renderer interface
 

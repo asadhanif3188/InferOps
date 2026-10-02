@@ -12,6 +12,7 @@ declared release and plants each kind of drift it reports.
 """
 
 from .core import (
+    BLOCKING_RULES,
     DECLARED_RELEASES,
     FIELD_CAUSES,
     GENERATED_FILES,
@@ -31,6 +32,7 @@ from .core import (
 )
 
 __all__ = [
+    "BLOCKING_RULES",
     "DECLARED_RELEASES",
     "FIELD_CAUSES",
     "GENERATED_FILES",

@@ -39,11 +39,14 @@ The change adds no record to the evidence pack and moves no claim.
   `tests/domain/fixtures/helm-values/support-assistant-local-kind/`, in the layout
   `write_release` produces. `.gitattributes` already pinned that tree to LF. The two
   suites that read the golden files point at the new paths.
-- **`tests/domain/test_generated_release_drift.py`** - the new suite, 57 tests.
+- **`tests/domain/test_generated_release_drift.py`** - the new suite: 57 tests in the
+  first commit, 70 after the review fixes below.
 - **`tests/domain/test_renderer_input_boundary.py`** - the test that no tool imports the
   render package now exempts `tools/generated_release` by name and requires the exemption
-  to be used; a new test holds that nothing under `src`, `tools`, `scripts`, `charts`,
-  `deploy`, or `infra` names the drift check in turn.
+  to be used. A new test reads every tracked file under `src`, `tools`, `scripts`,
+  `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, and fails if any
+  outside the drift check names `generated_release` as a whole word. The first commit's
+  version of that test was narrower; see [the review](#what-the-independent-review-found).
 - **Documents** - the [renderer page](../../domain/helm-values-renderer.md), with a new
   section on verifying a committed release and its open rows restated; the [release
   document](../../contracts/rendered-workload-release.md), whose "not applied yet" table
@@ -121,7 +124,8 @@ The change adds no record to the evidence pack and moves no claim.
 
 ## Checks that the new tests are not decorative
 
-Thirteen defects were planted, one at a time, in a copy of the working tree - every
+At the first commit, thirteen defects were planted, one at a time, in a copy of the
+working tree - every
 tracked and new file, copied outside the repository. Each edited file was compiled before
 the suites ran, and the copy's `tools.generated_release` was confirmed to be the one
 imported. Two suites - the new one and the boundary's, 178 tests - ran in full against
@@ -167,6 +171,8 @@ Results are in [Results](#results).
 
 ## Results
 
+At the first commit:
+
 | Command | Result |
 |---|---|
 | `ruff format --check .` | 593 files already formatted |
@@ -182,6 +188,103 @@ Results are in [Results](#results).
 
 Helm was on `PATH` on this host, so the generated-release suite's Helm comparisons ran
 against the moved golden files and passed. The new suite does not run Helm.
+
+## What the independent review found
+
+An independent review of the first commit found no critical or high finding, and the
+items below. Each is closed in the second commit, which also says what the first commit
+claimed and what was true.
+
+- **Three pages still said nothing commits a release.** The root README's contracts row
+  and two sentences of the contracts index said "nothing commits or installs one", which
+  the first commit had corrected in the release document only. They now say that a drift
+  check compares the one committed release, a test's golden release, with its declared
+  sources, and that nothing installs one.
+- **The delivery-path guard was narrower than its wording.** The first commit's test read
+  only `.py`, `.sh`, `.yaml`, and `.tf` files under six directories, and matched only the
+  dotted and slashed module paths. So it missed `from tools import generated_release`, a
+  chart template, a Dockerfile, a workflow, and `pyproject.toml`, while the boundary page,
+  the changelog, and this record said nothing on a delivery path reaches the tool. The
+  test now reads every tracked file under seven directories and `pyproject.toml`, matches
+  `generated_release` as a whole word, and asserts that its pattern sees each spelling it
+  names and not `test_generated_release`.
+- **The check advised a regeneration it would refuse.** `--check` printed "regenerate
+  with" for every drifted release, including a stray entry, a left-over staging directory,
+  and refused sources, for which `--write` refuses. `BLOCKING_RULES` now names those
+  rules; the command prints what to resolve first instead, and `regenerate` refuses under
+  the same set.
+- **The renderer page overstated `--write`.** It said the result is both files or
+  neither. `regenerate` removes the old release before it writes the new one, so a failed
+  write leaves the directory absent. The page now says so, the command reports a failed
+  write instead of a traceback, and a test fails a write, then runs `--write` again.
+- **A test did not exercise what it was named for.** "A missing file is reported and the
+  other is still compared" left the other file intact, so a check that skipped it passed.
+  The test now edits the other file and requires its drift finding.
+- **Inputs that raised instead of being refused.** A compatibility matrix that is valid
+  JSON but not an object raised `AttributeError`, and pathologically nested YAML raised
+  `RecursionError`. Both are now `generated-release-sources-refused`.
+- **A symbolic link was followed.** A release directory that is a link to a directory
+  was compared, and `regenerate` emptied the link's target and then failed. A release
+  path that is a file, a symbolic link, or a generated file that is a link is now
+  `generated-release-unexpected-entry`, and regeneration refuses it. The two
+  symbolic-link tests skip on this host, where an unprivileged Windows account cannot
+  create a link; they run where one can, such as the Linux runner.
+- **Process-wide state.** `derive` replaced the workload domain's compatibility matrix
+  and did not restore it. It now restores the one set before.
+- **Refusal text named absolute paths.** A missing input was reported with the host's
+  full path. It is now named by its path under the repository root.
+- **A stale inventory note.** The note for `tests/domain/test_generated_release.py` said
+  it never establishes that anything was committed. It now says installed or served, and
+  names the drift check's declaration.
+- **Untested branches.** A file where the release directory belongs and a release that
+  parses to a list, a scalar, or nothing now have tests.
+
+Not changed, and recorded as limits: the socket test patches `socket.socket` and
+`socket.create_connection` only, and the import test reads the tool's own imports, not
+what they import. Neither was the target of a planted defect.
+
+### Checks that the fixes are not decorative
+
+Nineteen defects were planted, one at a time, in a fresh copy of the working tree after
+the fixes: the thirteen above, with their anchors moved where the code moved, and six for
+the fixes. Two suites - the drift suite and the boundary's, 191 tests, of which the two
+symbolic-link tests skip on this host - ran against each. The copy passed 189 and skipped
+2 before the first defect and again after the last was removed. Every defect was caught:
+
+| Defect | Of 191 |
+|---|---|
+| A drifted values file is not reported | 11 failed |
+| Field findings are never made | 15 failed |
+| The values digest is never compared | 7 failed |
+| The declared renderer revision is ignored | 1 failed |
+| The CRLF explanation is never given | 1 failed |
+| A stray entry is not reported | 4 failed |
+| A left-over staging directory is not reported | 2 failed |
+| Regeneration removes what the platform did not write | 3 failed |
+| `--check` regenerates every drifted release after reporting it | 3 failed |
+| A drifted file carries no diff | 13 failed |
+| `--write` runs without a release name | 1 failed |
+| Findings are reported in the order they are found | 1 failed |
+| A refused source crashes instead of being reported | 7 failed |
+| A file at the release path is reported as a missing directory | 1 failed |
+| `--check` advises regeneration despite a blocking finding | 1 failed |
+| The compatibility matrix is not restored | 1 failed |
+| A refusal names the absolute path | 4 failed |
+| A failed write is a traceback | 1 failed |
+| A matrix that is not a JSON object is not refused | 3 failed |
+
+### Results after the fixes
+
+| Command | Result |
+|---|---|
+| `ruff format --check .`, `ruff check .` | Clean |
+| `mypy` | No issues in 327 source files |
+| The drift suite | 68 passed, 2 skipped: the symbolic-link tests |
+| `tests/testing/test_test_inventory.py`, `tests/testing/test_document_links.py`, `tests/security` | 2,346 passed |
+| The default lane, `pytest -q` | 17,221 passed, 35 skipped, 14 deselected, in 11 minutes 6 seconds; the two further skips are the symbolic-link tests |
+| `tools.generated_release --check` | `OK`, exit 0 |
+| `tools.evidence_index --gate` | Exit 0, the five values above, unchanged |
+| `git diff --check` | Clean |
 
 ## Privacy and publicability
 
@@ -202,3 +305,5 @@ quotes the committed and the derived file, both repository content.
   searched.
 - **That a generated file holds no secret value.** The bounded property on the renderer
   page is unchanged.
+- **That the symbolic-link handling was run on this host.** Those two tests skip here; the
+  defect sweep therefore did not exercise them either.

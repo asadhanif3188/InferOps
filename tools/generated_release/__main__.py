@@ -34,6 +34,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from .core import (
+    BLOCKING_RULES,
     DECLARED_RELEASES,
     REPO_ROOT,
     RULES,
@@ -61,6 +62,14 @@ def _selected(
             known = ", ".join(declared.name for declared in DECLARED_RELEASES)
             parser.error(f"no declared release is named {name!r}; declared: {known}")
     return selected
+
+
+#: What a contributor does about a finding regeneration will not repair.
+_BLOCKED_BY = {
+    "generated-release-unexpected-entry": "move or remove what the platform did not write",
+    "generated-release-staging-left": "remove the staging directory",
+    "generated-release-sources-refused": "fix the declared sources",
+}
 
 
 def _report(findings: Sequence[Finding]) -> None:
@@ -98,8 +107,14 @@ def _check(selected: Sequence[DeclaredRelease], root: Path) -> int:
             continue
         drifted += 1
         _report(findings)
-        print(f"         regenerate with: {regenerate_command(declared)}")
-        print("         read the diff first: regeneration replaces a hand edit")
+        blocking = [f for f in findings if f.rule_id in BLOCKING_RULES]
+        if blocking:
+            print("         regeneration refuses this release until each is resolved:")
+            for finding in blocking:
+                print(f"           {_BLOCKED_BY[finding.rule_id]}: {finding.subject}")
+        else:
+            print(f"         regenerate with: {regenerate_command(declared)}")
+            print("         read the diff first: regeneration replaces a hand edit")
     if drifted:
         print(f"{drifted} of {len(selected)} declared releases drifted")
         return 1
@@ -121,6 +136,14 @@ def _write(selected: Sequence[DeclaredRelease], root: Path) -> int:
                 print(
                     f"         {finding.rule_id}  {finding.subject}: {finding.detail}"
                 )
+            status = 1
+            continue
+        except OSError as error:
+            print(f"FAILED   {declared.name}: {type(error).__name__}: {error}")
+            print(
+                "         the release directory may be absent; run --write again, "
+                "or restore it from Git"
+            )
             status = 1
             continue
         if written:
