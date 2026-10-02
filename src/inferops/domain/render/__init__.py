@@ -4,8 +4,9 @@ A renderer turns workload intent, platform defaults, and the facts of one
 environment into release output. This package is everything up to that point and
 nothing after it: it decides what a renderer may be given, who owns each value it
 may read, and how those values are gathered into one deterministic context - and
-the one renderer built against it, which returns generated values in memory. It
-writes nothing and reads no file.
+the one renderer built against it, the release that records what it rendered, and
+the writer that puts both in a directory. Only that writer, in ``writing``, touches
+a file; every other module reads no file and writes nothing.
 
 The path through it has three steps, and each takes only what the one before it
 produced:
@@ -31,6 +32,13 @@ classifies, and only the two context values :data:`CONTEXT_FIELD_TRUST` classifi
 as public-safe identities, and refuses a release the release domain's
 single-release rules refuse. The policy and its limit are in ``recording``.
 
+:func:`generate_release` runs the whole path for the Helm values renderer: the
+boundary, the renderer, and :func:`record_release` with the values file's name and
+digest. It returns a :class:`GeneratedRelease` - the values file and the release
+file as exact bytes, each in the canonical YAML form, with their digests - and
+:func:`write_release` writes the two into a directory the caller names, both or
+neither.
+
 :func:`prepare_render` runs the first two steps as one, for a renderer's declared
 :class:`RendererSupport`, and refuses with a :class:`RenderRefused` carrying every
 finding of every step under one canonical vocabulary: a category, a code, and a
@@ -41,7 +49,7 @@ The ownership table and the precedence rule - that no layer overrides another -
 are in ``ownership``; the refusal of an input that supplies a value it does not
 own in ``conflicts``; a renderer's declared support in ``support``; the defaults in
 ``defaults``; the refusal vocabulary in ``errors``; the Helm values renderer in
-``helm_values``.
+``helm_values``; the generated release in ``generation``; the writer in ``writing``.
 
 The published documents are ``docs/domain/renderer-input-boundary.md`` and
 ``docs/domain/helm-values-renderer.md``.
@@ -78,6 +86,15 @@ from .errors import (
     RenderRule,
     RuleOrigin,
     WorkloadNotAcceptedError,
+)
+from .generation import (
+    RELEASE_FILE_NAME,
+    RELEASE_HEADER,
+    VALUES_FILE_NAME,
+    GeneratedRelease,
+    generate_release,
+    release_text,
+    values_text,
 )
 from .helm_values import (
     CHART_NAME,
@@ -125,6 +142,7 @@ from .recording import (
 from .renderer import Renderer, render_with
 from .support import RendererSupport
 from .values_yaml import ValuesFormError, canonical_yaml
+from .writing import STAGING_SUFFIX, staging_directory, write_release
 
 __all__ = [
     "CAPABILITY_UNAVAILABLE",
@@ -144,10 +162,14 @@ __all__ = [
     "OVERRIDES",
     "PROFILE_CONDITIONS",
     "RECORDED_RELEASE_VERSION",
+    "RELEASE_FILE_NAME",
+    "RELEASE_HEADER",
     "RELEASE_PROVENANCE",
     "RENDER_FIELD_OWNERSHIP",
     "RENDER_RULES",
+    "STAGING_SUFFIX",
     "SUPPORTED_PLATFORM_DEFAULTS_VERSIONS",
+    "VALUES_FILE_NAME",
     "VERSION_UNSUPPORTED",
     "ApiDefaults",
     "ChartValueConstraint",
@@ -155,6 +177,7 @@ __all__ = [
     "Disposition",
     "FieldOwnership",
     "GeneratedHelmValues",
+    "GeneratedRelease",
     "HelmValuesRenderer",
     "Layer",
     "PlatformDefaults",
@@ -180,6 +203,7 @@ __all__ = [
     "WorkloadNotAcceptedError",
     "build_render_context",
     "canonical_yaml",
+    "generate_release",
     "manual_value_findings",
     "may_override",
     "owner_of",
@@ -189,6 +213,10 @@ __all__ = [
     "profile_condition_findings",
     "provenance_field",
     "record_release",
+    "release_text",
     "render_with",
+    "staging_directory",
     "validate_for_render",
+    "values_text",
+    "write_release",
 ]

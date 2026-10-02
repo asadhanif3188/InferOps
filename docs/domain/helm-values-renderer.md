@@ -1,24 +1,27 @@
 # Helm values renderer
 
-Status: **implemented in the platform domain** by `V2-S2-001-PR1`. This page says how a
-validated render context becomes the values of the existing `inferops-llm` chart: where
-each value goes, what is refused, the canonical form the values are written in, what a
-hand-written values file may still set, and how the result compares with the V1 real
-release. The renderer returns values **in memory**. Nothing in this repository writes them
-to the file a release is installed with, binds them to a RenderedWorkloadRelease, commits
-them, or installs them. Every check behind this page is static, at evidence level C0.
+Status: **implemented in the platform domain** by `V2-S2-001-PR1`, and **bound to a
+release** by `V2-S2-001-PR2`. This page says how a validated render context becomes the
+values of the existing `inferops-llm` chart: where each value goes, what is refused, the
+canonical form the values are written in, the RenderedWorkloadRelease that names them and
+the two files both are written to, what a hand-written values file may still set, and how
+the result compares with the V1 real release. A caller can now write the values and their
+release to a directory it names. Nothing in this repository calls that from a command or a
+workflow, commits a generated release, or installs one: the values a release is installed
+with are still written by hand. Every check behind this page is static, at evidence level
+C0, and so is every file it generates until a real deployment installs one.
 
 | Property | Value |
 |---|---|
 | Module | [`src/inferops/domain/render/helm_values.py`](../../src/inferops/domain/render/helm_values.py), with the YAML form in [`values_yaml.py`](../../src/inferops/domain/render/values_yaml.py) |
-| Entry points | `HelmValuesRenderer(revision).render(context)`, or `render_with(renderer, ...)` on documents; `manual_value_findings(values)` for a hand-written file |
+| Entry points | `HelmValuesRenderer(revision).render(context)`, or `render_with(renderer, ...)` on documents; `generate_release(renderer, ...)` for the values and their release, and `write_release(generated, directory)` to write both; `manual_value_findings(values)` for a hand-written file |
 | Input | A `RenderContext` from [the renderer input boundary](renderer-input-boundary.md), for a `synchronous-llm` contract |
-| Output | `GeneratedHelmValues`: 25 chart values, as a read-only document and as canonical YAML |
+| Output | `GeneratedHelmValues`: 25 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
 | Chart | `inferops-llm` `0.3.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
 | Refusal | `RenderRefused`, under the boundary's vocabulary; four rules are the renderer's own |
-| Golden output | [`support-assistant-local.values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.values.generated.yaml) |
-| Tests | [`tests/domain/test_helm_values_renderer.py`](../../tests/domain/test_helm_values_renderer.py) |
-| Validation record | [`v2-s2-001-pr1-validation.md`](../proof/domain/v2-s2-001-pr1-validation.md) |
+| Golden output | [`support-assistant-local.values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.values.generated.yaml), and the release naming it, [`support-assistant-local.rendered-workload-release.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.rendered-workload-release.yaml) |
+| Tests | [`tests/domain/test_helm_values_renderer.py`](../../tests/domain/test_helm_values_renderer.py), and for the release and the files, [`tests/domain/test_generated_release.py`](../../tests/domain/test_generated_release.py) |
+| Validation records | [`v2-s2-001-pr1-validation.md`](../proof/domain/v2-s2-001-pr1-validation.md), [`v2-s2-001-pr2-validation.md`](../proof/domain/v2-s2-001-pr2-validation.md) |
 
 ## What it is for
 
@@ -171,8 +174,112 @@ pattern. A test round-trips 29 strings that a plain scalar would misread.
 The same context gives the same bytes: whatever order the bindings arrive in, under two hash
 seeds in two interpreters, and with every clock, random source, and environment read patched
 to fail. The renderer's revision names the commit it runs from and takes no part in the
-values. **How the values file is hashed is not decided here**; binding the values to a
-release, with its digest, is a later change's.
+values. `V2-S2-001-PR1` left open how the values file is hashed; `V2-S2-001-PR2` decided
+it, by its bytes, and bound the values to a release - the next section.
+
+## The generated release
+
+`generate_release` runs the whole path, in [`generation`](../../src/inferops/domain/render/generation.py):
+the boundary for the renderer's support, the renderer, and `record_release` with the
+values file's name and digest. It returns a `GeneratedRelease` - the release, the values,
+and both files' exact bytes - and writes nothing. Each stage runs only once the one before
+it passed, so a refusal leaves nothing to write: `RenderRefused` from the boundary or the
+renderer, with the caller's request context on every finding, or `ReleaseNotRecordedError`
+when the values rendered and the release naming them would be refused - a binding named
+with a credential-shaped part, for one, which no chart value carries and a release does.
+
+**Two files, each in one spelling:**
+
+| File | Holds | Digest |
+|---|---|---|
+| `values.generated.yaml` | The generated values, in the canonical form above | Recorded in the release as `output.helmValues.sha256` |
+| `rendered-workload-release.yaml` | The RenderedWorkloadRelease naming them, in the same canonical form, under a fixed two-line header | Reported as `GeneratedRelease.release_sha256` |
+
+Both digests are the SHA-256 of the file's exact bytes - what `sha256sum` prints. A source
+document is hashed by its value because a person writes it; a generated file is hashed by
+its bytes because the platform writes it in one spelling, so any edit, even one Helm would
+read the same, moves the digest. The reasons are in [the release document](../contracts/rendered-workload-release.md#generated-files-and-their-digests).
+That digest is not `canonical_release`'s, which hashes the release's JSON value to compare
+two releases as documents; a test holds the two apart.
+
+For the reference workload on the `local-kind` binding the release is the committed golden
+file, byte for byte. Its contract and binding digests are computed from the committed
+fixtures; its two revisions are the suite's placeholders, so it is a test render, not the
+record of a render at any commit:
+
+```yaml
+# Generated RenderedWorkloadRelease: what the values beside it were rendered from.
+# Do not edit by hand: render the release again from the sources it names.
+apiVersion: "inferops.io/v1alpha1"
+kind: "RenderedWorkloadRelease"
+metadata:
+  releaseId: "b82be6908264d1ad088aec5a3e57930aeb1df3ea0967cd9e6951df84b5b6f79f"
+  workloadId: "support-assistant"
+  workloadVersion: "0.1.0"
+output:
+  helmValues:
+    path: "values.generated.yaml"
+    sha256: "137a97b9211a7e92ce82f8423063cfba6b828f51ac3a33fc2ab0d714396301d2"
+source:
+  contract:
+    apiVersion: "inferops.io/v1alpha1"
+    sha256: "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d"
+  environmentBinding:
+    apiVersion: "inferops.io/v1alpha1"
+    environment: "local"
+    name: "local-kind"
+    sha256: "1a6c9e9f3448e2a7a072ac653e1b180c9684814b26aff5842ecdb752923c0a7d"
+  platformDefaults:
+    revision: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  renderer:
+    revision: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+```
+
+**What a change moves.** A test makes nine changes one at a time and asserts exactly which
+values and which release fields each moves. A claim-relevant intent - the contract's
+replica count - moves `runtime.replicaCount`, the contract digest, the values digest, and
+the release identifier, and nothing else. A contract or binding change no chart value
+carries - the description, the runbook reference, the GitOps destination - moves the
+source digest and the identifier, and the values not at all. A new renderer or
+platform-defaults revision moves that revision and the identifier, and the values not at
+all. One shape is measured rather than hidden: a platform-defaults change stated under the
+same revision moves the values and their digest and **not** the release identifier,
+because the defaults are named by the revision the caller states and no defaults file is
+read.
+
+**Determinism.** Two generations written to two clean directories are the same bytes, whatever
+order the bindings arrive in, in two interpreters under two hash seeds, and with every
+clock, random source, and environment read patched to fail - the write included. No string
+in either file is credential-shaped, and neither holds a timestamp or a random identifier.
+
+### Writing it
+
+`write_release(generated, directory)` in [`writing`](../../src/inferops/domain/render/writing.py),
+the one module of the render package that touches a file, writes both files or neither:
+
+- `directory` must not exist, and its parent must. An existing directory is refused,
+  even an empty one, so an earlier release is never half-replaced.
+- The files are written into a staging directory beside it, `.<name>.partial`, created
+  exclusively; each file is created exclusively, written as bytes, and flushed; both are
+  read back and compared with what was meant; then the staging directory is renamed to
+  `directory` in one operation.
+- If a step fails, what was staged is removed and the error raised. If that removal fails
+  too, or the process is killed first, the staging directory is left under its own name,
+  the error names it, and the next write to the same directory refuses to start until it
+  is removed. A test removes it and writes again.
+
+It does not flush the parent directory after the rename, so a power loss can undo the
+rename, leaving the staging directory with both complete files; and on POSIX systems a
+rename replaces an *empty* directory created at the target between the check and the
+rename. Where a release directory lives is the caller's choice.
+
+**An exemption, stated.** Every other module under `src/inferops` opens no path, so the
+distribution works from a wheel with no file system, and
+[an architecture test](../../tests/architecture/test_domain_dependency_boundary.py) enforces
+it. `writing` is exempt from that test by name, because writing a caller's files is its
+purpose; the same suite holds that it touches a file only inside a function a caller
+invokes, never on import. The rule otherwise stands - an earlier change left a process
+memory metric unemitted rather than read a path for it, and that reasoning is unchanged.
 
 ## What it refuses
 
@@ -285,6 +392,10 @@ release, but for its environment label. Three tests check it, at two layers:
   relabel that carry the label - plus the three `inferops.io/configuration-checksum`
   annotations derived from the configuration that holds it.
 
+Since `V2-S2-001-PR2` a test runs `helm template` over the values file `write_release`
+wrote - the file on disk, not the text in memory - with the hand-written file, and gets the
+same bytes as the V1 fixture with the contract's environment.
+
 That is compatibility of rendered manifests, at C0. **Nothing was installed.** Whether the
 generated release serves the V1 workload on a cluster is for a later change to show,
 on a cluster.
@@ -293,11 +404,11 @@ on a cluster.
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| The values are written to a file and bound to a RenderedWorkloadRelease, with a digest | Out of this change's scope; how a values file is hashed is undecided | A later change |
-| Committed generated values are verified against their sources | Nothing commits generated values yet | A later change |
+| A command or workflow writes a generated release | `generate_release` and `write_release` are library functions; nothing calls them | A later change |
+| Committed generated values are verified against their sources | Nothing commits generated values yet, and nothing reads a written release directory back | A later change |
 | A secret reference is rendered | No accepted mapping from a contract locator to the chart's secret binding | A decision on that mapping |
 | The `mock-llm` profile is rendered | The renderer declares the synchronous profile only, as the story scopes it | A renderer, or a support change, for the mock profile |
-| The platform defaults are read from a committed file | No defaults file exists; the caller states the revision, as at the boundary | The change that reads the defaults from the repository |
+| The platform defaults are read from a committed file | No defaults file exists; the caller states the revision, as at the boundary. Until then a defaults change stated under the same revision moves the values digest and not the release identifier, and a test measures it | The change that reads the defaults from the repository |
 | The API image is generated | It is a contributor's local build, published to no registry | A published API image |
 | The download URL agrees with the contract's pins | The contract has no field for it; the content hash is the check | A contract field for the source, or a derivation rule |
 | A data classification changes a render | No chart setting or policy engine acts on one | A policy engine |
@@ -307,8 +418,11 @@ on a cluster.
 - **That anything was installed.** The renders were compared as files. No cluster read
   them, and no generated release has served a request.
 - **That a release used generated values.** The values a release is installed with are
-  still written by hand: nothing writes generated values where an install reads them.
+  still written by hand: generated values and their release are written only to a
+  directory a caller names, and nothing installs from one.
   `deployment-values-derive-only-from-a-validated-document` stays planned.
+- **That a written release is still what was written.** The writer reads both files back
+  before it moves them into place; nothing checks a release directory after that.
 - **That the hand-written half is safe.** The check refuses a hand-written value that
   repeats a generated one; it does not judge the others. Nothing runs it on a release's
   values: a test runs it on the committed reference file.
@@ -318,7 +432,7 @@ on a cluster.
 ## Validation
 
 ```sh
-uv run --locked python -m pytest tests/domain/test_helm_values_renderer.py -q
+uv run --locked python -m pytest tests/domain/test_helm_values_renderer.py tests/domain/test_generated_release.py -q
 uv run --locked python -m pytest tests/domain tests/architecture -q
 uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy
 ```

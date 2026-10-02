@@ -5,8 +5,8 @@ Every file under `valid/` must validate and every file under `invalid/` must be
 refused; a failure either way is a defect in the schema, the fixture, or the change
 that broke one of them.
 
-These are **contract examples, not records of a release.** Nothing produced them - the
-one renderer in this repository generates values in memory and records no release - no
+These are **contract examples, not records of a release.** Nothing produced them - they
+were written by hand, with placeholder digests, before anything generated a release - no
 values file sits beside them, and nothing was installed or run with either. None of them is evidence about the workload or the
 environment it names.
 

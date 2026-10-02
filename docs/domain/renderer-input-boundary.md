@@ -5,14 +5,15 @@ Status: **implemented in the platform domain** by `V2-S1-003-PR1`, with its refu
 read, the precedence between those owners, how the values are gathered into one
 deterministic context, and what a render is refused with when any of that fails. **One
 renderer exists**: `V2-S2-001-PR1` added the [Helm values renderer](helm-values-renderer.md),
-which turns a `synchronous-llm` context into the `inferops-llm` chart's values in memory.
-Nothing in this repository writes those values to a file a release is installed with,
-writes a RenderedWorkloadRelease, writes to Git, or reaches a cluster, and building a
-render context is not evidence that anything will. `V2-S1-004-PR1` added `record_release`, the
-one supported path from a context to a RenderedWorkloadRelease: it builds the release in
-memory, from allowlisted fields only, and writes nothing - see
-[Recording a release](#recording-a-release). Every check behind this page is static, at
-evidence level C0.
+which turns a `synchronous-llm` context into the `inferops-llm` chart's values.
+`V2-S1-004-PR1` added `record_release`, the one supported path from a context to a
+RenderedWorkloadRelease: it builds the release in memory, from allowlisted fields only,
+and writes nothing - see [Recording a release](#recording-a-release). `V2-S2-001-PR2`
+added [the generated release](helm-values-renderer.md#the-generated-release), which a
+caller can write to a directory it names. Nothing in this repository writes those values
+to a file a release is installed with, writes to Git, or reaches a cluster, and building
+a render context is not evidence that anything will. Every check behind this page is
+static, at evidence level C0.
 
 | Property | Value |
 |---|---|
@@ -594,9 +595,10 @@ Each is stated so that nobody reads the boundary as more than it is.
 
 ## What this does not establish
 
-- **It writes nothing.** The Helm values renderer derives values from a context in memory;
-  no values file a release is installed with, no release, no Git write, and no cluster
-  change comes out of this package, and no published claim moves:
+- **It writes nothing a release is installed from.** The Helm values renderer derives
+  values from a context, and the package's one writer puts them and their release in a
+  directory a caller names; no values file a release is installed with, no Git write,
+  and no cluster change comes out of this package, and no published claim moves:
   `deployment-values-derive-only-from-a-validated-document` stays planned, because nothing
   installs generated values and no record cites them.
 - **It proves nothing about an environment.** A binding selected into a context is not a

@@ -9,9 +9,11 @@ the one binding that serves a WorkloadContract. **Nothing installs what it selec
 since `V2-S1-003-PR1`, [the renderer input boundary](../domain/renderer-input-boundary.md)
 reads a selected binding's facts into a render context beside the contract's intent, and
 since `V2-S2-001-PR1` [the Helm values renderer](../domain/helm-values-renderer.md) turns
-that context into chart values in memory - the binding's claim name and API replica count
-among them. Nothing in this repository writes those values where a release is installed
-from, and a selection is not evidence that anything will be.
+that context into chart values - the binding's claim name and API replica count among
+them - which since `V2-S2-001-PR2` can be written, with the release naming the binding by
+name and digest, to a directory a caller names. Nothing in this repository writes those
+values where a release is installed from, and a selection is not evidence that anything
+will be.
 
 | Property | Value |
 |---|---|
@@ -320,7 +322,7 @@ are.
 |---|---|---|
 | A binding value shaped like a lowercase credential is refused | A single binding has no semantic layer; see [Secrets](#secrets) | A semantic rule, which is a conditionally compatible change |
 | The selected cluster, namespace, and claim exist | A document check cannot see a cluster | The provider contract's verification, at run time, as today |
-| The values a release is installed with are derived from a contract and the binding selected for it | Since `V2-S2-001-PR1` the Helm values renderer derives chart values from the context, in memory; nothing writes them where an install reads them, and the values a release is installed with are still written by hand | A later change that writes generated values beside a release |
+| The values a release is installed with are derived from a contract and the binding selected for it | Since `V2-S2-001-PR1` the Helm values renderer derives chart values from the context, and since `V2-S2-001-PR2` they are written beside a release to a directory a caller names; nothing writes them where an install reads them, and the values a release is installed with are still written by hand | A later change that installs a release from generated values |
 
 ## Fixtures
 
@@ -402,9 +404,9 @@ files say about each other and nothing about a running system.
 
 - **It deploys nothing.** The platform domain parses a binding, selects one for a
   contract, and reads its facts into a render context, and the Helm values renderer turns
-  that context into chart values in memory; nothing writes those values where a release
-  is installed from. The values file a release is installed with is still written by
-  hand.
+  that context into chart values, which a caller can write with their release to a
+  directory it names; nothing writes those values where a release is installed from. The
+  values file a release is installed with is still written by hand.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about an environment.** A valid binding is a well-formed

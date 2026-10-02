@@ -36,9 +36,11 @@ EnvironmentBinding:
 
 **What is not checked here, and why.** Whether the values digest is the digest of
 the generated values file, and whether that file exists beside the release, need
-the file and the rule for hashing it, and both belong to the story that generates
-it. Whether the renderer and platform-defaults revisions name commits that exist
-needs a repository. Neither is a document this module is given.
+the file, and this module is given documents, not directories. The rule is
+:func:`~inferops.domain.release.canonical.output_digest`, and the render package's
+``generate_release`` applies it when it records a release. Whether the renderer and
+platform-defaults revisions name commits that exist needs a repository. Neither is
+a document this module is given.
 
 Everything is returned at once, sorted, and nothing is raised for a refusal: the
 caller decides whether a refusal stops it. Offline and deterministic, like the

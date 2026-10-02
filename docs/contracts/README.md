@@ -7,11 +7,12 @@ from either, and nothing installs what is rendered from one. The [renderer input
 boundary](../domain/renderer-input-boundary.md) reads a validated contract and the binding
 selected for it into a render context, refuses under one canonical vocabulary inputs that
 are invalid, unbound, unsupported by a renderer, or in conflict over who owns a value, and
-itself renders nothing; the Helm values renderer built on it generates chart values in
-memory. The platform domain
-reads a RenderedWorkloadRelease and checks its provenance, and builds one from a render
-context only through the allowlisted path its [provenance input-trust
-policy](rendered-workload-release.md#provenance-input-trust) defines; nothing writes one.
+itself renders nothing; the Helm values renderer built on it generates chart values. The
+platform domain reads a RenderedWorkloadRelease and checks its provenance, and builds one
+from a render context only through the allowlisted path its [provenance input-trust
+policy](rendered-workload-release.md#provenance-input-trust) defines; since
+`V2-S2-001-PR2` a caller can write a release and the values it names to a directory it
+names, and nothing commits or installs one.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under
@@ -21,8 +22,8 @@ means, how it is versioned, which rules are enforced, and which are not.
 | Contract | Version | Status | Document |
 |---|---|---|---|
 | WorkloadContract | `v1alpha1` | Accepted; parsed by [the workload domain model](../domain/workload-domain-model.md), and no runtime consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
-| EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; the renderer input boundary reads the selected binding into a render context, and the Helm values renderer generates chart values from it in memory | [EnvironmentBinding v1alpha1](environment-binding.md) |
-| RenderedWorkloadRelease | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; a repository document, not a cluster resource; parsed by the platform domain, which defines how a release and its sources are hashed, recomputes the release identifier, refuses credential-shaped values, and compares a release with the contract and binding it names; builds one from a render context only from fields its input-trust policy classifies public-safe identities or derived digests; no renderer records one, and nothing writes one | [RenderedWorkloadRelease v1alpha1](rendered-workload-release.md) |
+| EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; the renderer input boundary reads the selected binding into a render context, and the Helm values renderer generates chart values from it, which a caller can write with their release to a directory it names | [EnvironmentBinding v1alpha1](environment-binding.md) |
+| RenderedWorkloadRelease | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; a repository document, not a cluster resource; parsed by the platform domain, which defines how a release and its sources are hashed, recomputes the release identifier, refuses credential-shaped values, and compares a release with the contract and binding it names; builds one from a render context only from fields its input-trust policy classifies public-safe identities or derived digests; since `V2-S2-001-PR2` the Helm values renderer's generation records one for the values it renders, and a caller can write both to a directory it names; nothing commits or installs one | [RenderedWorkloadRelease v1alpha1](rendered-workload-release.md) |
 
 A published schema is a commitment about what will be accepted. It is not evidence
 that anything accepts it, and it certifies no runtime behaviour.

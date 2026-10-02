@@ -1239,6 +1239,11 @@ PERMITTED_STANDARD_LIBRARY = {
     "typing",
 }
 
+#: The one module that touches a file, and the two modules it may add to the set
+#: above. The suite of the generated release holds what it may name.
+WRITER_MODULE = "writing.py"
+WRITER_STANDARD_LIBRARY = {"os", "pathlib"}
+
 #: Domain packages the package may reach by relative import.
 PERMITTED_RELATIVE = {
     "context",
@@ -1253,22 +1258,27 @@ def test_the_render_package_imports_only_what_a_pure_boundary_needs() -> None:
 
     Every absolute import is one of seven standard-library modules; every relative
     import that leaves the package reaches the workload, environment, or release
-    domain, or the request context. ``tools`` is unreachable. Twelve modules: the
-    Helm values renderer and its YAML form joined the ten of the boundary.
+    domain, or the request context. ``tools`` is unreachable. Fourteen modules: the
+    Helm values renderer and its YAML form joined the ten of the boundary, and the
+    generated release and its writer joined those. The writer alone may also import
+    ``os`` and ``pathlib``, because writing files is what it is for.
     """
-    assert len(module_trees()) == 12
+    assert len(module_trees()) == 14
     for path, tree in module_trees():
+        permitted = PERMITTED_STANDARD_LIBRARY | (
+            WRITER_STANDARD_LIBRARY if path.name == WRITER_MODULE else set()
+        )
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    assert alias.name.split(".")[0] in PERMITTED_STANDARD_LIBRARY, (
+                    assert alias.name.split(".")[0] in permitted, (
                         path.name,
                         alias.name,
                     )
             elif isinstance(node, ast.ImportFrom):
                 if node.level == 0:
                     root = (node.module or "").split(".")[0]
-                    assert root in PERMITTED_STANDARD_LIBRARY, (path.name, root)
+                    assert root in permitted, (path.name, root)
                 elif node.level == 2:
                     root = (node.module or "").split(".")[0]
                     assert root in PERMITTED_RELATIVE, (path.name, root)
@@ -1277,13 +1287,29 @@ def test_the_render_package_imports_only_what_a_pure_boundary_needs() -> None:
 
 
 def test_the_render_package_cannot_import_anything_at_run_time() -> None:
+    """No module names a dynamic import, and none but the writer opens a file."""
     dynamic = {"__import__", "importlib", "builtins", "eval", "exec", "open"}
     for path, tree in module_trees():
         names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
         attributes = {
             node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)
         }
-        assert (names | attributes).isdisjoint(dynamic), path.name
+        forbidden = dynamic - {"open"} if path.name == WRITER_MODULE else dynamic
+        assert (names | attributes).isdisjoint(forbidden), path.name
+
+
+def test_only_the_writer_and_the_package_index_import_the_writer() -> None:
+    """Every other module stays pure: nothing reaches ``os`` through the writer."""
+    importers = set()
+    for path, tree in module_trees():
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.level == 1
+                and node.module == "writing"
+            ):
+                importers.add(path.name)
+    assert importers == {"__init__.py"}
 
 
 RENDER_MODULE = "inferops.domain.render"

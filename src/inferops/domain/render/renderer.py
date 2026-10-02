@@ -95,6 +95,25 @@ def render_with[OutputT](
         binding_name=binding_name,
         context=context,
     )
+    return _render_prepared(renderer, prepared, context=context)
+
+
+def _render_prepared[OutputT](
+    renderer: Renderer[OutputT],
+    prepared: RenderContext,
+    *,
+    context: RequestContext = NO_REQUEST_CONTEXT,
+) -> OutputT:
+    """The renderer's output for a context :func:`~.normalization.prepare_render`
+    returned for its support, with ``context`` attached to its refusal.
+
+    The second half of :func:`render_with`, for a caller that needs the context
+    as well as the output - recording a release reads both.
+
+    Raises:
+        RenderRefused: the renderer's own refusal, with ``context`` attached to
+            each finding that carried no request context.
+    """
     try:
         return renderer.render(prepared)
     except RenderRefused as refused:

@@ -165,10 +165,11 @@ The design boundary, the request and deployment flows, the trust boundaries, and
 what is not defended at each are in
 [the system architecture](docs/architecture/system-architecture.md). The sixteen
 decision records are indexed in [the architecture index](docs/architecture/README.md).
-One component of the design is still unbuilt end to end: release values are derived
-from a validated contract only in memory - since `V2-S2-001-PR1` the Helm values
-renderer generates them - and the values file a release is installed with is still
-written by hand.
+One component of the design is still unbuilt end to end: since `V2-S2-001-PR1` the Helm
+values renderer derives release values from a validated contract, and since
+`V2-S2-001-PR2` they can be written, with the release that records their sources, to a
+directory a caller names - but nothing installs a release from them, and the values file
+a release is installed with is still written by hand.
 
 ## Prerequisites
 
@@ -353,8 +354,9 @@ time.
   confidence `none`, and no platform component computes a cost.
 - **Not defended.** See [the security boundary](#security-boundary).
 - **Deployment rendering is unbuilt end to end.** A validated contract produces Helm
-  values in memory only; no release is installed from them, and the
-  serving-a-described-workload claim is `planned`.
+  values and a release recording their sources, written only to a directory a caller
+  names; no release is installed from them, and the serving-a-described-workload claim
+  is `planned`.
 - **A release adds no evidence.** `v1.0.0` is cut over the frozen evidence pack and
   changes nothing in it. The register on `main` now certifies, at `C0`, only that the
   release exists, on [a record read after it](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md);
@@ -440,7 +442,7 @@ intention reads as a capability:
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Inference API surface | [docs/serving/inference-api-surface.md](docs/serving/inference-api-surface.md) | Decided shape; five endpoints, served in part |
 | InferOps inference API | [docs/serving/inference-api.md](docs/serving/inference-api.md) | Five ASGI routes with explicit mock or real adapter selection; repository tooling carries a loopback-only local HTTP carrier, while the distribution has no server dependency |
-| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; parsed by the platform domain, and no runtime component consumes it. EnvironmentBinding `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which selects the binding serving a contract and reads it beside a validated contract into a render context; nothing renders one. RenderedWorkloadRelease `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which defines its canonical form and source digests, checks its provenance, and builds one only from fields its input-trust policy classifies public or derived; nothing writes one |
+| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; parsed by the platform domain, and no runtime component consumes it. EnvironmentBinding `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which selects the binding serving a contract and reads it beside a validated contract into a render context; nothing renders one. RenderedWorkloadRelease `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which defines its canonical form and source digests, checks its provenance, and builds one only from fields its input-trust policy classifies public or derived; since `V2-S2-001-PR2` one is generated for rendered values and can be written to a directory a caller names, and nothing commits or installs one |
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
 | Workload domain model | [docs/domain/workload-domain-model.md](docs/domain/workload-domain-model.md) | Typed domain objects, parsing, contract-version handling, and the seven-rule semantic validation pipeline implemented; the schema's profile conditions are not among its rules, and only the renderer input boundary applies them |
 | Workload template | [docs/scaffolding/workload-template.md](docs/scaffolding/workload-template.md) | Template, rendering library, and non-overwriting scaffolding command implemented and verified for mock and synchronous profiles; no generated workload is committed |

@@ -6,9 +6,9 @@ rendered from, the revisions of the renderer and of the platform defaults, a
 release identifier derived from those, and the file name and digest of the Helm
 values it produced. This package reads one into typed objects, defines the
 canonical form it is hashed and compared in, computes the digests and the
-identifier a release records, and applies the rules that decide whether a
-well-formed release is a true one. It renders nothing, writes nothing, and reads no
-file.
+identifier a release records - and the digest of a generated file, by its bytes -
+and applies the rules that decide whether a well-formed release is a true one. It
+renders nothing, writes nothing, and reads no file.
 
 Start at :func:`parse_rendered_workload_release` for one document,
 :func:`check_rendered_workload_release` for the rules on one release, and
@@ -33,6 +33,7 @@ from .canonical import (
     canonical_sha256,
     contract_digest,
     derive_release_id,
+    output_digest,
     release_identity,
 )
 from .errors import (
@@ -121,6 +122,7 @@ __all__ = [
     "derive_release_id",
     "is_credential_shaped",
     "is_supported_release_version",
+    "output_digest",
     "parse_release_workload_version",
     "parse_rendered_workload_release",
     "release_identity",

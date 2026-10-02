@@ -156,6 +156,15 @@ def test_the_domain_does_not_import_its_own_development_dependencies() -> None:
     assert not imported & {"jsonschema", "yaml", "pydantic", "attrs"}, sorted(imported)
 
 
+#: The one module under the distribution that touches a file: the writer of a
+#: generated release, which puts bytes another module computed into a directory its
+#: caller names. It does so only when called, and the test after the next holds that.
+RELEASE_WRITER = DISTRIBUTION_ROOT / "domain" / "render" / "writing.py"
+
+#: Attribute names that open or read a path.
+FILE_ACCESS = {"read_text", "read_bytes", "open"}
+
+
 def test_no_module_under_the_distribution_reads_a_file_at_import_time() -> None:
     """A domain object must be constructible without a file system.
 
@@ -163,19 +172,51 @@ def test_no_module_under_the_distribution_reads_a_file_at_import_time() -> None:
     usable from a wheel with no repository around it. The published schema and the
     compatibility matrix are read by ``tools/`` and by the test suites, which are
     both outside the distribution on purpose.
+
+    One module is exempt, by name: the release writer, whose purpose is to write
+    the files of a generated release where a caller asks. Nothing constructs a
+    domain object through it, and the test below holds that it touches a file only
+    when it is called, never when it is imported.
     """
     offenders: list[str] = []
     for path in domain_modules():
+        if path == RELEASE_WRITER:
+            continue
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 if node.func.id == "open":
                     offenders.append(path.relative_to(REPO_ROOT).as_posix())
-            elif isinstance(node, ast.Attribute) and node.attr in {
-                "read_text",
-                "read_bytes",
-                "open",
-            }:
+            elif isinstance(node, ast.Attribute) and node.attr in FILE_ACCESS:
                 offenders.append(path.relative_to(REPO_ROOT).as_posix())
     assert not offenders, sorted(set(offenders))
+
+
+def test_the_release_writer_touches_a_file_only_when_it_is_called() -> None:
+    """The exemption above is for calls, not for importing the writer.
+
+    Every name that opens or reads a path sits inside a function body, so
+    importing the module - and so the package that re-exports it - reads and
+    writes nothing. The writer is the only exempt module, and it does exist.
+    """
+    assert RELEASE_WRITER in domain_modules()
+    tree = ast.parse(RELEASE_WRITER.read_text(encoding="utf-8"))
+    in_functions = {
+        id(node)
+        for function in ast.walk(tree)
+        if isinstance(function, ast.FunctionDef)
+        for node in ast.walk(function)
+    }
+    file_access = [
+        node
+        for node in ast.walk(tree)
+        if (isinstance(node, ast.Attribute) and node.attr in FILE_ACCESS)
+        or (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "open"
+        )
+    ]
+    assert file_access, "the writer no longer touches a file; drop the exemption"
+    assert all(id(node) in in_functions for node in file_access)
