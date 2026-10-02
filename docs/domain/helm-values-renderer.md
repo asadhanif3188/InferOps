@@ -406,7 +406,9 @@ the declared inputs:
   their sources: both files and `output.helmValues.sha256` are reported.
 - **A release path that is a file or a symbolic link**, and a generated file that is a
   symbolic link, are `generated-release-unexpected-entry`: the platform writes neither, so
-  neither is followed or compared. The symbolic-link cases skip on a host that cannot
+  neither is followed or compared. A generated file that is a link is also
+  `generated-release-file-missing`, reported first, because the directory then does not
+  hold that file. The symbolic-link cases skip on a host that cannot
   create a link, as an unprivileged Windows account cannot; the Linux runner runs them.
 - **Sources that no longer render** are `generated-release-sources-refused`, with the
   boundary's or the renderer's refusal. A missing input file is the same rule. Nothing is

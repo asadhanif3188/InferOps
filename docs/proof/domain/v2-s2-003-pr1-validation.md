@@ -246,6 +246,24 @@ Declined, with the reason:
 | The default lane | 17,368 passed, 35 skipped, 14 deselected, in 18 minutes: the first run's 17,354 and the 14 tests the fixes added |
 | `gitleaks` over the files the fixes changed | No finding in any of the 10 files |
 
+### The first CI run, on the Linux runner
+
+The default lane failed on the runner with one test, which this change did not touch:
+`test_a_generated_file_that_is_a_symbolic_link_is_not_compared`, added with the
+generated-release drift check. It skips on this host, which cannot create a symbolic
+link, so the lane above never ran it. The check reports the two findings in the order its
+rule table lists, `generated-release-file-missing` and then
+`generated-release-unexpected-entry`, and the test required the reverse. The failure is
+deterministic wherever a link can be made, so it fails the same way on `main`, which
+holds the same test and the same check.
+
+Fixed in the test, not the check: the test now requires the rule-table order, and the
+renderer page says a generated file that is a link is both findings. The order was
+confirmed on this host by a scratch script, not committed, that reports the values file as
+a link, the branch the runner takes; it printed the order the runner printed. That is a
+calibration, not a run of the test: the test itself runs only where a link can be made,
+such as the runner.
+
 ## Privacy and publicability
 
 The diff was read for private planning text, local paths, credentials, and later story

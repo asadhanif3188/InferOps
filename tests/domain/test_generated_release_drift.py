@@ -558,8 +558,8 @@ def test_a_generated_file_that_is_a_symbolic_link_is_not_compared(
     shutil.move(path, target)
     symlink_or_skip(path, target, directory=False)
     assert found(verify(REFERENCE, root)) == [
-        ("generated-release-unexpected-entry", VALUES),
         ("generated-release-file-missing", VALUES),
+        ("generated-release-unexpected-entry", VALUES),
     ]
 
 

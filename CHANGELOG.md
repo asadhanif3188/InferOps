@@ -385,6 +385,15 @@ from `1.0.0`.
   changed: the new record uses the `repository-only` environment with a note, and names
   the evidence-class mismatch in its limitations.
 
+### Fixed
+
+- **A generated-release drift test expected its two findings in the wrong order.** A
+  generated file that is a symbolic link is reported as `generated-release-file-missing`
+  and then `generated-release-unexpected-entry`, the order the check's rule table lists,
+  and the test required the reverse. The test skips on a host that cannot create a link,
+  so it first ran on the Linux runner, where it failed; the check was right and is
+  unchanged.
+
 ### Security
 
 - **`CVE-2026-84782` in the pinned runtime image is accepted as `EX-07`, until
