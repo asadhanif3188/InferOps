@@ -13,6 +13,7 @@ plants each defect the check refuses.
 """
 
 from .core import (
+    ALWAYS_ANSWERED,
     API_VERSION,
     EVIDENCE_LEVELS,
     FREEZE_FIELDS,
@@ -36,6 +37,7 @@ from .core import (
 )
 
 __all__ = [
+    "ALWAYS_ANSWERED",
     "API_VERSION",
     "EVIDENCE_LEVELS",
     "FREEZE_FIELDS",

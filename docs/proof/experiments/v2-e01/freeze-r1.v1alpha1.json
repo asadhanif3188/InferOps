@@ -10,7 +10,7 @@
     "supersedes": null
   },
   "definition": {
-    "hypothesis": "If the WorkloadContract, the selected EnvironmentBinding, the versioned platform defaults, and the renderer revision are fixed, the render path produces the same complete claim-relevant release input for the V1 synchronous workload on every render. A claim-relevant contract change changes only the output it owns. Invalid and conflicting inputs are refused with a stable category and code. The release input deploys and serves a real completion, and no claim-relevant workload intent is written again by hand after rendering.",
+    "hypothesis": "If the WorkloadContract, the selected EnvironmentBinding, the versioned platform defaults, and the renderer revision are fixed, the render path produces the same complete claim-relevant release input for the V1 synchronous workload on every render. A claim-relevant contract change changes only the output it owns. Invalid and conflicting inputs are refused with a stable category and code. The release input deploys and serves a real completion, and no claim-relevant workload intent is written again by hand after rendering, except the model's download URL and licence reference, which repeat contract pins by hand.",
     "scope": "E01 tests the front of the V2 path: contract, render, and release input, and in E01-D also Git, Argo CD, and one served completion. E01 injects no fault and tests no failure tolerance.",
     "outcomeStates": {
       "PASSED": "Every acceptance criterion of the part held.",
@@ -29,7 +29,7 @@
     "notResultEvidence": "Checks that ran before this record merged are not E01 runs and are not result evidence. These are the repository's test suites, which already exercise double renders, a replica-count mutation, and refusals, and a one-time check during registration that each expected refusal below is the one the published rule table assigns. An E01 part counts only when it runs, after this record merges, as registered here.",
     "limitations": [
       "The platform-defaults revision a release records is asserted. Nothing reconstructs the defaults from it, so the release does not prove which defaults it was rendered from.",
-      "Two hand-written strings repeat contract pins: the model's download URL and its licence reference. E01-AC5 and E01-AC10 do not cover them. The acquisition job's check against the generated model.artifact.sha256 is what refuses other bytes.",
+      "Two hand-written strings repeat contract pins: the model's download URL and its licence reference. E01-AC5 and E01-AC10 name them as the one exception, and nothing checks that they agree with the contract. The acquisition job's check against the generated model.artifact.sha256 is what refuses other bytes.",
       "Nothing blocks a merge that changes a pinned input. The precondition refuses the run until a merged revision classifies the change.",
       "E01-C-4 is refused by the binding parser, which publishes a code and a field and no rule category.",
       "E01-A, E01-B, and E01-C use one contract on one binding."
@@ -847,7 +847,7 @@
           },
           {
             "id": "E01-AC5",
-            "statement": "No claim-relevant workload intent is written by hand after rendering: admit_manual_values admits the hand-written values with no finding; every chart value that a workload-intent context value renders to is in the generated values file; and the generated and hand-written values, merged over the chart's defaults, equal the V1 real values merged the same way, except telemetry.deploymentEnvironment, which is local in V2 and dev in V1 as the V1 synchronous compatibility record states."
+            "statement": "No claim-relevant workload intent is written by hand after rendering, except the model.artifact.sourceUrl and model.license.reference strings, which repeat contract pins (definition.limitations): admit_manual_values admits the hand-written values with no finding; every chart value that a workload-intent context value renders to is in the generated values file; and the generated and hand-written values, merged over the chart's defaults, equal the V1 real values merged the same way, except telemetry.deploymentEnvironment, which is local in V2 and dev in V1 as the V1 synchronous compatibility record states."
           }
         ]
       },
@@ -891,7 +891,7 @@
           },
           {
             "id": "E01-AC10",
-            "statement": "No claim-relevant workload intent is written by hand after rendering: the release is installed from the generated values file and one hand-written values file only, with no parameter override, and admit_manual_values admits that hand-written file beside the generated values with no finding."
+            "statement": "No claim-relevant workload intent is written by hand after rendering, except the model.artifact.sourceUrl and model.license.reference strings, which repeat contract pins (definition.limitations): the release is installed from the generated values file and one hand-written values file only, with no parameter override, and admit_manual_values admits that hand-written file beside the generated values with no finding."
           }
         ]
       }
@@ -959,7 +959,8 @@
           "A step writes outside the run's evidence directory or a temporary directory the run created.",
           "A tracked file changes while the run executes.",
           "The checked-out commit changes while the run executes."
-        ]
+        ],
+        "note": "The parts run in memory and write only their evidence, so the stop conditions are the ones that would make that evidence unreliable. Conditions about a cluster, a caller stream, a fault, or spend have no counterpart here."
       },
       {
         "parts": [
@@ -974,7 +975,8 @@
           "The cleanup path becomes unsafe.",
           "A provider or cluster incident dominates the run.",
           "Where the environment identity names a paid provider: spend exceeds, or is projected to exceed, the authorized budget."
-        ]
+        ],
+        "note": "No condition is about a lost caller stream or an injected fault: E01-D runs no caller workload and injects no fault."
       }
     ],
     "cleanupProcedure": [

@@ -12,11 +12,13 @@ of one field together cover every part of the experiment exactly once. An entry
 answers in one of three ways:
 
 - ``value`` - a value that is not empty and is not a placeholder;
-- ``not-applicable`` - with a ``reason``, for a field the part has no counterpart for;
+- ``not-applicable`` - with a ``reason``, for a field the part has no counterpart for,
+  and never for a field in :data:`ALWAYS_ANSWERED`, which every run has;
 - ``pending`` - only where :data:`PENDING_ALLOWED` names the experiment, the field,
   and the part, and only with the owner it names.
 
-A field that is missing, an entry that is empty, a ``not-applicable`` without a
+Every acceptance criterion has an identifier and a statement. A field that is
+missing, an entry that is empty, a ``not-applicable`` without a
 reason, and a ``pending`` anywhere else are refused. Nothing is inferred: a field
 with no entry is not read as "not applicable".
 
@@ -48,6 +50,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 __all__ = [
+    "ALWAYS_ANSWERED",
     "API_VERSION",
     "EVIDENCE_LEVELS",
     "FREEZE_FIELDS",
@@ -105,6 +108,8 @@ _PLACEHOLDER_WORDS: Final = frozenset(
         "not applicable",
         "-",
         "?",
+        ".",
+        "...",
     }
 )
 _PLACEHOLDER: Final = re.compile(r"^<[^<>]*>$")
@@ -159,11 +164,29 @@ PENDING_ALLOWED: Final[tuple[PendingAllowance, ...]] = (
     PendingAllowance("V2-E01", "environmentIdentity", "E01-D", "V2-S3-004-PR1"),
 )
 
+#: The fields every part of every experiment has, so ``not-applicable`` is refused for
+#: them: a run always has an identity, a revision, a repetition count, criteria, an
+#: evidence path, abort conditions, a cleanup, and an intended level. The other five -
+#: the environment, a caller profile, a topology, a fault, and derived bounds - are
+#: ones an experiment part can lack.
+ALWAYS_ANSWERED: Final = frozenset(
+    {
+        "experimentIdVersion",
+        "gitRevision",
+        "repetitionCount",
+        "acceptanceCriteria",
+        "evidencePaths",
+        "abortConditions",
+        "cleanupProcedure",
+        "intendedEvidenceLevel",
+    }
+)
+
 #: The content digest of every committed freeze record. A record is pinned when it
 #: is added, and the pin is never changed afterwards: a change is a new revision.
 FROZEN_RECORDS: Final[Mapping[str, str]] = {
     "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json": (
-        "b567411159d92218561a157f5b9e5c9dcf64e443ff91c88bd352c32f543e5992"
+        "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9"
     ),
 }
 
@@ -204,6 +227,15 @@ RULES: Final[tuple[Rule, ...]] = (
     Rule(
         "freeze-field-pending-not-allowed",
         "Only an allowed field of an allowed part is pending, and it names its owner.",
+    ),
+    Rule(
+        "freeze-field-always-answered",
+        "A field every run has is never answered not-applicable.",
+    ),
+    Rule(
+        "freeze-criteria-malformed",
+        "Every acceptance criterion has an identifier and a statement, and no identifier "
+        "is used twice in a record.",
     ),
     Rule(
         "freeze-evidence-level-unknown",
@@ -350,6 +382,13 @@ def _entry_findings(
                 f"the level is one of {', '.join(EVIDENCE_LEVELS)}",
             )
     elif status in ("not-applicable", "pending"):
+        if status == "not-applicable" and key in ALWAYS_ANSWERED:
+            yield Finding(
+                "freeze-field-always-answered",
+                name,
+                f"{where}.status",
+                "every run has this field, so it is answered with a value",
+            )
         if _blank(entry.get("reason")) is not None:
             yield Finding(
                 "freeze-field-reason-missing",
@@ -513,8 +552,40 @@ def check_record(document: Any, name: str = "record") -> list[Finding]:
                     f"uncovered {missing}, repeated or unknown {extra}",
                 )
             )
+    findings.extend(_criteria_findings(name, fields.get("acceptanceCriteria")))
     findings.extend(_pinned_input_findings(name, document))
     return _in_rule_order(findings)
+
+
+def _criteria_findings(name: str, entries: Any) -> Iterator[Finding]:
+    """Each criterion an object with an identifier and a statement, no identifier twice."""
+    if not isinstance(entries, list):
+        return
+    seen: set[str] = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, Mapping) or entry.get("status") != "value":
+            continue
+        value = entry.get("value")
+        criteria = value if isinstance(value, list) else [value]
+        for position, criterion in enumerate(criteria):
+            where = f"fields.acceptanceCriteria[{index}].value[{position}]"
+            identifier = criterion.get("id") if isinstance(criterion, Mapping) else None
+            statement = (
+                criterion.get("statement") if isinstance(criterion, Mapping) else None
+            )
+            if _blank(identifier) is not None or _blank(statement) is not None:
+                yield Finding(
+                    "freeze-criteria-malformed", name, where, "an id and a statement"
+                )
+            elif identifier in seen:
+                yield Finding(
+                    "freeze-criteria-malformed",
+                    name,
+                    where,
+                    f"{identifier} is used twice",
+                )
+            else:
+                seen.add(str(identifier))
 
 
 # --------------------------------------------------------------------------

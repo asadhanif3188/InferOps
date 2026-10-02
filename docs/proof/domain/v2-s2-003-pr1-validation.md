@@ -146,7 +146,7 @@ Each is a decision rather than a fact, recorded so a later change can revisit it
 - **The chart checks**, by hand with `helm`: a hand-written file whose `model.alias`
   differs renders other manifests than the V1 values, and a hand-written file without
   `model.alias` lints with exit status 0 and reports `Fail: model.alias is required`.
-- **The freeze check.** Each of the 13 fields is removed in turn; 19 field defects, 6 misplaced pending entries, 6 wrong shapes, and 8 malformed pins are
+- **The freeze check** (first commit). Each of the 13 fields is removed in turn; 19 field defects, 6 misplaced pending entries, 6 wrong shapes, and 8 malformed pins are
   planted; and on a copy of the records directory, an edit, an unpinned record, an absent
   one, a misnamed one, a wrong and a skipped revision, a wrong predecessor, a first
   revision that supersedes something, and an unclassified moved input are each refused,
@@ -185,6 +185,66 @@ All ran from Git Bash on Windows, with Helm `v3.19.0`, the version the CI job pi
 | The default lane | 17,354 passed, 35 skipped, 14 deselected, in 17 minutes. The 35 skips are the ones the lane had before this change |
 | `git diff --check` | Clean |
 | `gitleaks` 8.30.1, the CI pin, with the repository's configuration | No finding in any of the 20 changed files, scanned as files before the commit |
+
+## What the independent review found
+
+An independent review read the first commit against the change's requirements, ran the
+suites and the six E01-C cases' inputs, and recounted the published numbers. It found no
+critical or high finding. It confirmed the E01-C expectations, the E01-B expected change,
+the coverage of the experiment's procedure and criteria, the 67 pins, and the record's
+counts. What it found, and what was done:
+
+1. **`not-applicable` was accepted on any field.** The first commit's check required only
+   a reason, so `acceptanceCriteria` or `abortConditions` answered "not applicable" for
+   every part passed. The records page said `not-applicable` is for a part with no
+   counterpart, which the code did not enforce. Fixed: eight fields every run has are
+   listed in `ALWAYS_ANSWERED`, and `not-applicable` is refused for them under a new rule,
+   `freeze-field-always-answered`.
+2. **Two criteria overstated against the record's own limitation.** E01-AC5 and
+   E01-AC10 said no claim-relevant workload intent is written by hand, while a limitation
+   said the two strings that repeat contract pins are not covered. A criterion that is
+   true only because a separate line carves out part of it is an overclaim. Fixed: both
+   criteria and the hypothesis now name the two strings as the one exception. The record
+   had not merged, so revision 1 was corrected and re-pinned rather than revised; its
+   content digest moved from `b5674111…` to `fcb19502…`.
+3. **Statements of a refusal no code makes.** The records page, the contributor guide,
+   and the record said a run "cannot" or "does not" start in two cases. No runner exists.
+   The records page now lists the refusal as a procedure that nothing enforces, and the
+   contributor guide says so.
+4. **Placeholders are detected only as whole strings.** The page said "a stand-in such as
+   `TBD`", which implied more. It now says "exactly", and that a stand-in inside a longer
+   string is not detected. `.` and `...` were added to the stand-ins.
+5. **Criteria had no structure check.** A new rule, `freeze-criteria-malformed`, requires
+   an `id` and a `statement` for each criterion and refuses an `id` used twice in a record.
+6. **Two abort lists left items out without saying why.** Each now carries a note: the
+   static parts have no cluster, caller stream, fault, or spend, and E01-D runs no caller
+   workload and injects no fault.
+7. **Later experiment identifiers as test data.** Two tests used later experiment
+   identifiers as arbitrary names. They now use `EXP-OTHER`, `exp-a`, and `exp-b`.
+8. **Pinning `uv.lock` makes every dependency update a moved input.** Kept, because the
+   parsers are on the experiment path; the records page now says so.
+
+Declined, with the reason:
+
+- **Refuse a pin whose file is absent.** A merged record would then fail `--check` for
+  ever after a later, legitimate deletion of a pinned file, which is the gate this change
+  chose not to build (decision 7). `--changes` reports an absent input, and the records
+  page now lists this as not enforced.
+- **The commit trailer.** The review read the attribution line as wrong. It is the one
+  this session was instructed to use, and earlier commits carry the same line.
+
+### Results after the fixes
+
+| Check | Result |
+|---|---|
+| `ruff format --check`, `ruff check`, `mypy` | Clean: 601 files formatted, no lint finding, no type error in 332 source files |
+| The two new suites | 121 passed: 25 for compatibility, 96 for the freeze check |
+| `no-skips helm` | The chart suite ran 203 tests with none skipped |
+| `tools.generated_release --check` | The reference release is what its declared sources derive |
+| `tools.experiment_freeze --check` and `--changes` | 1 freeze record, every rule held; every pinned input has its pinned content |
+| `tools.evidence_index --gate` | Exit 0; the same five values |
+| The default lane | 17,368 passed, 35 skipped, 14 deselected, in 18 minutes: the first run's 17,354 and the 14 tests the fixes added |
+| `gitleaks` over the files the fixes changed | No finding in any of the 10 files |
 
 ## Privacy and publicability
 

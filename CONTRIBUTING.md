@@ -439,8 +439,8 @@ uv run --locked python -m tools.experiment_freeze --check
 ```
 
 Before a result-bearing run, list the pinned inputs whose content differs from the
-record's pins. The run does not start while one is listed and no merged revision
-classifies it:
+record's pins. The record's preconditions say the run does not start while one is listed
+and no merged revision classifies it; that is a procedure, and no runner enforces it yet:
 
 ```sh
 uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json

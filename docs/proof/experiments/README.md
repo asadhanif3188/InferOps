@@ -42,10 +42,16 @@ refused. It is never read as "not applicable".
 **How an entry answers.** Every entry names its `parts` and has one `status`:
 
 - `value`, with a `value` that is not empty: not an empty string, list, or object, not
-  `null`, and not a stand-in such as `TBD`, `N/A`, or a whole-string `<...>` placeholder.
-  An intended evidence level is one of `C0` to `C4`.
+  `null`, and not a string that is exactly a stand-in - `TBD`, `TODO`, `N/A`, `unknown`,
+  `pending`, `.`, and the others the check lists - or exactly a `<...>` placeholder. A
+  stand-in inside a longer string is not detected. An intended evidence level is one of
+  `C0` to `C4`, and every acceptance criterion has an `id` and a `statement`, with no `id`
+  used twice in a record.
 - `not-applicable`, with a `reason`, for a part that has no counterpart to the field. E01
-  injects no fault, so its `fault` is not applicable, with the reason.
+  injects no fault, so its `fault` is not applicable, with the reason. Only five fields can
+  lack a counterpart: `environmentIdentity`, `callerProfileRevision`, `topology`, `fault`,
+  and `derivedNumericBounds`. The other eight are ones every run has, and
+  `not-applicable` is refused for them.
 - `pending`, with a `reason` and an `owner`, only where an allowance in
   [`tools/experiment_freeze`](../../../tools/experiment_freeze/core.py) names the
   experiment, the field, and the part. One allowance exists: E01-D's
@@ -103,6 +109,8 @@ runs it, and plants each defect below in a copy.
 | `freeze-field-empty` | A value is not empty, and is not a placeholder. |
 | `freeze-field-reason-missing` | A not-applicable or pending entry states its reason. |
 | `freeze-field-pending-not-allowed` | Only an allowed field of an allowed part is pending, and it names its owner. |
+| `freeze-field-always-answered` | A field every run has is never answered not-applicable. |
+| `freeze-criteria-malformed` | Every acceptance criterion has an identifier and a statement, and no identifier is used twice in a record. |
 | `freeze-evidence-level-unknown` | An intended evidence level is one of the project's evidence levels. |
 | `freeze-pinned-input-malformed` | Every pinned input names one repository path once, with a content digest. |
 | `freeze-record-unregistered` | Every committed freeze record is pinned. |
@@ -124,8 +132,20 @@ Not enforced:
   revision classifies the change, and `--changes` lists what moved.
 - **Nothing runs an experiment.** No test executes a part's procedure, and no test compares
   a record's expected refusals with the code. That comparison is a result-bearing run.
+- **A run's refusal to start.** No runner exists yet. "A part with a pending field cannot
+  run" and "the run refuses to start until a revision classifies the change" are the
+  preconditions a record states for its runs, a procedure the run follows; no code
+  enforces either today.
+- **That a pinned file exists.** A pin is checked for its shape, not against the working
+  tree. A file deleted after a record merged is reported by `--changes`, not refused by
+  `--check`: refusing it would make a merged record fail the build for a later, legitimate
+  change.
 - **Whether the content is right.** The check says every field is answered. It does not
   judge an answer, and it does not check that a revision a record names is a commit.
+
+The E01 record pins `uv.lock` and `pyproject.toml`, because the parsers and their
+dependencies are on the experiment path. So any dependency update is listed by
+`--changes`, and the next E01 run needs a revision that classifies it.
 
 ## The V2-E01 freeze
 

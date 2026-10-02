@@ -30,6 +30,9 @@ from `1.0.0`.
   content digest. `python -m tools.experiment_freeze --check` refuses a missing, empty, or
   placeholder field, a `not-applicable` without a reason, a `pending` anywhere else, and a
   committed record edited after it was pinned; `--changes` lists pinned inputs that moved.
+  An independent review before merge found `not-applicable` accepted on fields every run
+  has, and two criteria that claimed no hand-written intent while a limitation carved out
+  the two repeating strings; both are closed in the same change, before the record merges.
   No E01 part ran, no claim moves, and every check is static (`C0`); [the validation
   record](docs/proof/domain/v2-s2-003-pr1-validation.md) says what was run.
 - **Generated release drift check.** `V2-S2-002-PR1` makes a committed generated release

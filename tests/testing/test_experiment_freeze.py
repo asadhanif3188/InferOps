@@ -39,6 +39,7 @@ from typing import Any
 import pytest
 
 from tools.experiment_freeze import (
+    ALWAYS_ANSWERED,
     FREEZE_FIELDS,
     FROZEN_RECORDS,
     PENDING_ALLOWED,
@@ -97,7 +98,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
-    assert len({rule.rule_id for rule in RULES}) == len(RULES) == 17
+    assert len({rule.rule_id for rule in RULES}) == len(RULES) == 19
     assert len({field.key for field in FREEZE_FIELDS}) == len(FREEZE_FIELDS) == 13
     text = README.read_text(encoding="utf-8")
     for rule in RULES:
@@ -260,7 +261,7 @@ PENDING_DEFECTS: dict[str, tuple[Callable[[dict[str, Any]], None], str]] = {
     ),
     "two parts at once": (_pending_two_parts, "fields.environmentIdentity[1]"),
     "another experiment": (
-        lambda d: d["metadata"].__setitem__("experiment", "V2-E02"),
+        lambda d: d["metadata"].__setitem__("experiment", "EXP-OTHER"),
         "fields.environmentIdentity[1]",
     ),
 }
@@ -277,6 +278,55 @@ def test_pending_is_refused_anywhere_the_allowance_does_not_name(name: str) -> N
         if f.rule_id == "freeze-field-pending-not-allowed"
     ]
     assert any(f.location.startswith(location) for f in found), check_record(document)
+
+
+@pytest.mark.parametrize("key", sorted(ALWAYS_ANSWERED))
+def test_a_field_every_run_has_is_never_not_applicable(key: str) -> None:
+    document = load()
+    document["fields"][key] = [
+        {
+            "parts": ["E01-A", "E01-B", "E01-C", "E01-D"],
+            "status": "not-applicable",
+            "reason": "said not to apply",
+        }
+    ]
+    assert ("freeze-field-always-answered", f"fields.{key}[0].status") in rules(
+        check_record(document)
+    )
+
+
+def test_the_fields_that_may_not_apply_are_the_five_a_part_can_lack() -> None:
+    assert {field.key for field in FREEZE_FIELDS} - ALWAYS_ANSWERED == {
+        "environmentIdentity",
+        "callerProfileRevision",
+        "topology",
+        "fault",
+        "derivedNumericBounds",
+    }
+
+
+def _criteria(document: dict[str, Any]) -> list[Any]:
+    return entry(document, "acceptanceCriteria", "E01-A")["value"]
+
+
+CRITERIA_DEFECTS: dict[str, Callable[[dict[str, Any]], None]] = {
+    "no identifier": lambda d: _criteria(d)[0].pop("id"),
+    "a blank statement": lambda d: _criteria(d)[0].__setitem__("statement", "."),
+    "an identifier used twice": lambda d: _criteria(d)[1].__setitem__(
+        "id", _criteria(d)[0]["id"]
+    ),
+    "an identifier used in another part": lambda d: entry(
+        d, "acceptanceCriteria", "E01-D"
+    )["value"][0].__setitem__("id", "E01-AC1"),
+    "a criterion that is not an object": lambda d: _criteria(d).append("must pass"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(CRITERIA_DEFECTS))
+def test_a_malformed_criterion_is_refused(name: str) -> None:
+    document = load()
+    CRITERIA_DEFECTS[name](document)
+    assert "freeze-criteria-malformed" in {f.rule_id for f in check_record(document)}
 
 
 def test_a_pending_entry_without_a_reason_is_refused() -> None:
@@ -392,8 +442,10 @@ def test_a_crlf_checkout_of_a_record_is_not_an_edit(copy_root: Path) -> None:
 
 def test_a_record_nobody_pinned_is_refused(copy_root: Path) -> None:
     document = load(root=copy_root)
-    document["metadata"]["experiment"] = "V2-E09"
-    _write(copy_root, "docs/proof/experiments/v2-e09/freeze-r1.v1alpha1.json", document)
+    document["metadata"]["experiment"] = "EXP-OTHER"
+    _write(
+        copy_root, "docs/proof/experiments/exp-other/freeze-r1.v1alpha1.json", document
+    )
     assert ("freeze-record-unregistered", "$") in rules(check_repository(copy_root))
 
 
@@ -404,9 +456,9 @@ def test_a_pinned_record_that_is_absent_is_refused(copy_root: Path) -> None:
 
 def test_a_misnamed_record_and_a_wrong_revision_are_refused(copy_root: Path) -> None:
     document = load(root=copy_root)
-    _write(copy_root, "docs/proof/experiments/v2-e09/freeze-r1.json", document)
+    _write(copy_root, "docs/proof/experiments/exp-a/freeze-r1.json", document)
     document["metadata"]["revision"] = 2
-    _write(copy_root, "docs/proof/experiments/v2-e08/freeze-r1.v1alpha1.json", document)
+    _write(copy_root, "docs/proof/experiments/exp-b/freeze-r1.v1alpha1.json", document)
     found = rules(check_repository(copy_root))
     assert ("freeze-revision-sequence", "$") in found
     assert ("freeze-revision-sequence", "metadata.revision") in found
