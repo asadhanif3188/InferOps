@@ -10,6 +10,28 @@ from `1.0.0`.
 
 ### Added
 
+- **V1 synchronous compatibility and the E01 family freeze.** `V2-S2-003-PR1` records,
+  for every chart value the V1 real release or its V2 render sets, where V1 took it and
+  who owns it now: [a record](docs/domain/v1-synchronous-compatibility.md) of 40 values,
+  25 generated (20 owned by the WorkloadContract, 2 by the EnvironmentBinding, 3 by the
+  platform defaults) and 15 hand-written under four classes, none of them contract-owned.
+  A new suite holds every row against the renderer's disposition table, the boundary's
+  ownership table, and the committed files. The generated and hand-written values equal
+  the V1 values except one stated, intended difference: the environment label is the
+  contract's `local`, not V1's `dev`. The chart suite now renders the committed generated
+  release with its hand-written file and requires the V1 manifests, lints the pair under
+  `--strict`, and measures from lint's report that the chart's guards require six values
+  beyond the generated ones, all hand-written; lint alone exits 0 when a guard fails, so
+  its exit status is not the check. Measured, not closed: the download URL and the
+  licence reference repeat the model's repository and revision by hand.
+  The [V2-E01 family freeze](docs/proof/experiments/README.md), revision 1, answers all
+  13 freeze fields for E01-A, E01-B, and E01-C at `C0` and E01-D at `C2`, with E01-D's
+  environment identity pending on the change that will name it, and pins 67 inputs by
+  content digest. `python -m tools.experiment_freeze --check` refuses a missing, empty, or
+  placeholder field, a `not-applicable` without a reason, a `pending` anywhere else, and a
+  committed record edited after it was pinned; `--changes` lists pinned inputs that moved.
+  No E01 part ran, no claim moves, and every check is static (`C0`); [the validation
+  record](docs/proof/domain/v2-s2-003-pr1-validation.md) says what was run.
 - **Generated release drift check.** `V2-S2-002-PR1` makes a committed generated release
   mechanically verifiable against the inputs it is derived from.
   `python -m tools.generated_release --check` derives each declared release again from

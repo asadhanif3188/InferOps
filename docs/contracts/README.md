@@ -49,9 +49,9 @@ before their consumer, and the exception is deliberate rather than a lapse in th
 above. The renderer is the second version's first capability: it reads a binding and
 writes a release, and it is built against both, so their shapes, the binding's boundary
 with the WorkloadContract, and the release's rule for its own identifier have to be fixed
-and tested first. Each document says, in its status line, what reads it and that nothing
-renders one. The renderer's input side now exists as [its own
-boundary](../domain/renderer-input-boundary.md); the renderer does not.
+and tested first. Each document says, in its status line, what reads it. The renderer's input
+side exists as [its own boundary](../domain/renderer-input-boundary.md), and the [Helm values
+renderer](../domain/helm-values-renderer.md) is built on it; nothing installs what it renders.
 
 A **cost record** is the one of those whose shape is now written down. [The cost
 method](../cost/cost-method.md) publishes the fields a record would carry, as part

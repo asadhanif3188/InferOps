@@ -1,0 +1,322 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "V1SynchronousCompatibility",
+  "metadata": {
+    "name": "v1-synchronous-compatibility",
+    "registeredBy": "V2-S2-003-PR1",
+    "evidenceLevel": "C0"
+  },
+  "target": {
+    "description": "The V1 real synchronous release: the inferops-llm chart at the version released in v1.0.0, installed with the V1 real values file over the chart's defaults.",
+    "release": "v1.0.0",
+    "chart": "charts/inferops-llm",
+    "chartVersion": "0.3.0",
+    "chartDefaults": "charts/inferops-llm/values.yaml",
+    "valuesFile": "charts/inferops-llm/ci/real-values.yaml",
+    "committedRender": "charts/inferops-llm/ci/rendered/real.expected.yaml"
+  },
+  "v2": {
+    "description": "The same workload through the V2 render path: the generated values the reference inputs derive, and the hand-written values installed after them, admitted beside them.",
+    "contract": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+    "binding": "contracts/environment/examples/valid/local-kind.yaml",
+    "platformDefaults": "charts/inferops-llm/values.yaml",
+    "generatedRelease": "tests/domain/fixtures/helm-values/support-assistant-local-kind",
+    "handWrittenValues": "tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml"
+  },
+  "sources": {
+    "values-file": "V1 set the value in its real values file.",
+    "chart-default": "V1 set nothing; the chart's default applied."
+  },
+  "owners": {
+    "workload-intent": "The WorkloadContract owns the value. It is claim-relevant workload intent.",
+    "environment-binding": "The selected EnvironmentBinding owns the value.",
+    "platform-defaults": "The platform defaults own the value."
+  },
+  "handWrittenClasses": {
+    "platform-component": "The platform's own API image. It is a contributor's local build that no registry publishes, so no input owns it yet. It is not workload intent: every workload on the platform runs the same API.",
+    "model-acquisition": "Where and how the model cache is filled. The generated model.artifact.sha256 decides which bytes the acquisition accepts, so a different location changes no model identity.",
+    "model-metadata": "Facts about the artifact that no contract field carries: its licence, and the name the runtime serves it under. Callers name the model by the generated model.identifier.",
+    "host-operation": "How the release runs and checks itself on the host: pull policies, the cache mount, start-time verification, and whether its own collector runs."
+  },
+  "rows": [
+    {
+      "chartValue": "api.drainTimeoutMs",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "api.drainTimeoutMs",
+      "owner": "platform-defaults"
+    },
+    {
+      "chartValue": "api.image.digest",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "platform-component"
+    },
+    {
+      "chartValue": "api.image.pullPolicy",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "platform-component"
+    },
+    {
+      "chartValue": "api.image.repository",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "platform-component"
+    },
+    {
+      "chartValue": "api.maxOutputTokens",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "api.maxOutputTokens",
+      "owner": "platform-defaults"
+    },
+    {
+      "chartValue": "api.replicaCount",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "api.replicas",
+      "owner": "environment-binding"
+    },
+    {
+      "chartValue": "api.requestTimeoutMs",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "api.requestTimeoutMs",
+      "owner": "platform-defaults"
+    },
+    {
+      "chartValue": "model.acquisition.enabled",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "model-acquisition"
+    },
+    {
+      "chartValue": "model.acquisition.source",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "model-acquisition"
+    },
+    {
+      "chartValue": "model.alias",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "model-metadata"
+    },
+    {
+      "chartValue": "model.artifact.fileName",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "model.artifact.file",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "model.artifact.repository",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "model.artifact.repository",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "model.artifact.sha256",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "model.artifact.sha256",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "model.artifact.sizeBytes",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "model.artifact.sizeBytes",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "model.artifact.sourceUrl",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "model-acquisition",
+      "restates": [
+        "model.artifact.fileName",
+        "model.artifact.repository",
+        "model.revision"
+      ]
+    },
+    {
+      "chartValue": "model.cache.claimName",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "modelCache.claimName",
+      "owner": "environment-binding"
+    },
+    {
+      "chartValue": "model.cache.mountPath",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "host-operation"
+    },
+    {
+      "chartValue": "model.cache.readOnly",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "host-operation"
+    },
+    {
+      "chartValue": "model.identifier",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "model.ref",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "model.integrity.verifyOnStart",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "host-operation"
+    },
+    {
+      "chartValue": "model.license.reference",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "model-metadata",
+      "restates": [
+        "model.artifact.repository",
+        "model.revision"
+      ]
+    },
+    {
+      "chartValue": "model.license.spdx",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "model-metadata"
+    },
+    {
+      "chartValue": "model.revision",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "model.artifact.revision",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "ownership.costCenter",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "attribution.costCenter",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "ownership.owner",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "workload.owner",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "ownership.tenant",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "attribution.tenant",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "ownership.workloadId",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "workload.id",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "ownership.workloadVersion",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "workload.version",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "profile",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "workload.profile",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "runtime.image.digest",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "runtime.imageReference",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "runtime.image.pullPolicy",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "host-operation"
+    },
+    {
+      "chartValue": "runtime.image.repository",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "runtime.imageReference",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "runtime.replicaCount",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "serving.replicas.minimum",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "runtime.resources.limits.cpu",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "resources.cpu",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "runtime.resources.limits.memory",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "resources.memory",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "security.secretRefs",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "security.secretRefs",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "telemetry.collection.collector.deploy",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "host-operation"
+    },
+    {
+      "chartValue": "telemetry.deploymentEnvironment",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "workload.environment",
+      "owner": "workload-intent",
+      "difference": {
+        "v1": "dev",
+        "v2": "local",
+        "reason": "The V1 values file labels the run dev, the chart's own default. The contract's spec.environment now owns the label, and the reference contract declares local, the environment its bindings serve. The change is intended: the label follows the contract, and no value is written by hand to restore dev."
+      }
+    },
+    {
+      "chartValue": "telemetry.enabled",
+      "v1": "values-file",
+      "v2": "generated",
+      "contextValue": "integrations.telemetry.capabilityRef",
+      "owner": "workload-intent"
+    },
+    {
+      "chartValue": "telemetry.scrapeAnnotations",
+      "v1": "values-file",
+      "v2": "hand-written",
+      "class": "host-operation"
+    }
+  ]
+}

@@ -26,7 +26,7 @@ evidence level C0, and so is every file it generates until a real deployment ins
 | Golden output | The release directory [`support-assistant-local-kind/`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/): [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the release naming it, [`rendered-workload-release.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/rendered-workload-release.yaml) |
 | Drift check | [`tools/generated_release`](../../tools/generated_release/core.py): `python -m tools.generated_release --check`, and `--write NAME` to regenerate |
 | Tests | [`tests/domain/test_helm_values_renderer.py`](../../tests/domain/test_helm_values_renderer.py); for the release and the files, [`tests/domain/test_generated_release.py`](../../tests/domain/test_generated_release.py); for the drift check, [`tests/domain/test_generated_release_drift.py`](../../tests/domain/test_generated_release_drift.py) |
-| Validation records | [`v2-s2-001-pr1-validation.md`](../proof/domain/v2-s2-001-pr1-validation.md), [`v2-s2-001-pr2-validation.md`](../proof/domain/v2-s2-001-pr2-validation.md), [`v2-s2-002-pr1-validation.md`](../proof/domain/v2-s2-002-pr1-validation.md) |
+| Validation records | [`v2-s2-001-pr1-validation.md`](../proof/domain/v2-s2-001-pr1-validation.md), [`v2-s2-001-pr2-validation.md`](../proof/domain/v2-s2-001-pr2-validation.md), [`v2-s2-002-pr1-validation.md`](../proof/domain/v2-s2-002-pr1-validation.md), [`v2-s2-003-pr1-validation.md`](../proof/domain/v2-s2-003-pr1-validation.md) |
 
 ## What it is for
 
@@ -590,6 +590,13 @@ that check.
 That is compatibility of rendered manifests, at C0. **Nothing was installed.** Whether the
 generated release serves the V1 workload on a cluster is for a later change to show,
 on a cluster.
+
+`V2-S2-003-PR1` records, value by value, who owns each value of that comparison now - the
+contract, the binding, the platform defaults, or the hand-written file - in [V1 synchronous
+compatibility](v1-synchronous-compatibility.md), and a test holds that record against the
+code. It also renders the committed generated release with the hand-written file, and lints
+the pair under `--strict`, in the chart suite, which the CI job that installs a pinned Helm
+runs without a skip.
 
 ## Not applied yet
 
