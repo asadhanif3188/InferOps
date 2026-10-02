@@ -1346,12 +1346,28 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
     return False
 
 
-#: The one tool allowed to import the render package, by directory. It is a
-#: repository check, not a delivery path: it derives the committed generated releases
-#: again from their declared inputs, and writes only a declared release directory in
-#: this repository, when a contributor names it. The test below holds that nothing on
-#: a delivery path reaches it in turn.
-REPOSITORY_CHECK = REPO_ROOT / "tools" / "generated_release"
+#: The tools allowed to import the render package, by directory name under
+#: ``tools``. Each is a repository check, not a delivery path, and the second test below
+#: holds that nothing on a delivery path reaches either in turn.
+#:
+#: - ``generated_release`` derives the committed generated releases again from their
+#:   declared inputs, and writes only a declared release directory in this
+#:   repository, when a contributor names it.
+#: - ``experiment_e01`` runs the static parts of the V2-E01 experiment as its freeze
+#:   record registers them, and writes only a new run directory under
+#:   ``docs/proof/experiments/v2-e01/runs/``, when a contributor names a run. Its
+#:   ``--check`` reads committed runs and writes nothing. It reads the platform
+#:   defaults with the generated-release reader, because the freeze record names
+#:   that reader.
+REPOSITORY_CHECKS: tuple[str, ...] = ("experiment_e01", "generated_release")
+
+
+def _repository_check(path: Path) -> str | None:
+    """The repository check ``path`` belongs to, by directory name, or None."""
+    for name in REPOSITORY_CHECKS:
+        if REPO_ROOT / "tools" / name in path.parents:
+            return name
+    return None
 
 
 def test_nothing_outside_the_render_package_imports_it() -> None:
@@ -1359,10 +1375,10 @@ def test_nothing_outside_the_render_package_imports_it() -> None:
 
     Python modules under ``src`` and ``tools`` are read for imports; shell, YAML, and
     Terraform files under ``scripts``, ``charts``, ``deploy``, and ``infra`` for the
-    module path at all. The drift check in :data:`REPOSITORY_CHECK` is exempt by name.
+    module path at all. The tools in :data:`REPOSITORY_CHECKS` are exempt by name.
     """
     offenders = []
-    exempt = []
+    exempt: dict[str, list[str]] = {}
     src = REPO_ROOT / "src"
     for path in sorted(src.rglob("*.py")):
         if PACKAGE_DIR in path.parents:
@@ -1372,12 +1388,13 @@ def test_nothing_outside_the_render_package_imports_it() -> None:
             offenders.append(path.relative_to(REPO_ROOT).as_posix())
     for path in sorted((REPO_ROOT / "tools").rglob("*.py")):
         if imports_render_package(path.read_text(encoding="utf-8"), None):
-            if REPOSITORY_CHECK in path.parents:
-                exempt.append(path.name)
+            check = _repository_check(path)
+            if check is not None:
+                exempt.setdefault(check, []).append(path.name)
             else:
                 offenders.append(path.relative_to(REPO_ROOT).as_posix())
-    # The exemption is used, so it cannot outlive the tool it names.
-    assert exempt == ["core.py"]
+    # Each exemption is used, so none can outlive the tool it names.
+    assert exempt == {name: ["core.py"] for name in REPOSITORY_CHECKS}
     for root in ("scripts", "charts", "deploy", "infra"):
         for path in sorted((REPO_ROOT / root).rglob("*")):
             if path.is_file() and path.suffix in {".py", ".sh", ".yaml", ".tf"}:
@@ -1387,15 +1404,20 @@ def test_nothing_outside_the_render_package_imports_it() -> None:
     assert offenders == []
 
 
-def test_nothing_on_a_delivery_path_reaches_the_repository_check() -> None:
-    """The exempt drift check is reached from a contributor's shell or the test suite,
-    never from the distribution, another tool, a script, a chart, a deployment or
-    infrastructure file, a workflow, or the project configuration.
+def _whole_word(name: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<![A-Za-z0-9_]){name}(?![A-Za-z0-9_])")
 
-    Every tracked file under those paths is read as text, whatever its suffix, for the
-    package name as a whole word - which ``tools.generated_release``,
+
+def test_nothing_on_a_delivery_path_reaches_the_repository_check() -> None:
+    """The exempt repository checks are reached from a contributor's shell or the test
+    suite, never from the distribution, another tool, a script, a chart, a deployment
+    or infrastructure file, a workflow, or the project configuration.
+
+    Every tracked file under those paths is read as text, whatever its suffix, for each
+    check's package name as a whole word - which ``tools.generated_release``,
     ``tools/generated_release``, and ``from tools import generated_release`` all hold,
-    and ``test_generated_release`` does not.
+    and ``test_generated_release`` does not. A file inside a repository check is not on
+    a delivery path, so it is not read: the E01 run names the generated-release reader.
     """
     if shutil.which("git") is None:
         pytest.skip("git is not on PATH")
@@ -1406,23 +1428,28 @@ def test_nothing_on_a_delivery_path_reaches_the_repository_check() -> None:
         capture_output=True,
         check=True,
     ).stdout.decode("utf-8")
-    name = re.compile(r"(?<![A-Za-z0-9_])generated_release(?![A-Za-z0-9_])")
-    offenders = []
+    names = {check: _whole_word(check) for check in REPOSITORY_CHECKS}
+    offenders: list[str] = []
     for relative in filter(None, listed.split("\0")):
         path = REPO_ROOT / relative
-        if REPOSITORY_CHECK in path.parents or not path.is_file():
+        if _repository_check(path) is not None or not path.is_file():
             continue
-        if name.search(path.read_bytes().decode("utf-8", errors="replace")):
-            offenders.append(relative)
+        text = path.read_bytes().decode("utf-8", errors="replace")
+        offenders.extend(
+            f"{relative}: {check}"
+            for check, pattern in names.items()
+            if pattern.search(text)
+        )
     assert offenders == []
-    # The pattern sees each spelling it names, and not the test module's name.
-    for spelling in (
-        "python -m tools.generated_release --check",
-        "tools/generated_release/core.py",
-        "from tools import generated_release",
-    ):
-        assert name.search(spelling), spelling
-    assert not name.search("tests/domain/test_generated_release.py")
+    # The pattern sees each spelling it names, and not a test module's name.
+    for check, pattern in names.items():
+        for spelling in (
+            f"python -m tools.{check} --check",
+            f"tools/{check}/core.py",
+            f"from tools import {check}",
+        ):
+            assert pattern.search(spelling), spelling
+        assert not pattern.search(f"tests/domain/test_{check}.py")
 
 
 @pytest.mark.parametrize(

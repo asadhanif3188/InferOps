@@ -440,14 +440,26 @@ uv run --locked python -m tools.experiment_freeze --check
 
 Before a result-bearing run, list the pinned inputs whose content differs from the
 record's pins. The record's preconditions say the run does not start while one is listed
-and no merged revision classifies it; that is a procedure, and no runner enforces it yet:
+and no merged revision classifies it:
 
 ```sh
 uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json
 ```
 
+For E01-A, E01-B, and E01-C the runner enforces that precondition itself, with the merged
+commit and the clean tree, and writes a run with every part REFUSED when one fails. No
+runner exists for E01-D, so for it the precondition is still a procedure. A run's
+evidence is never edited after it is written; a new run takes a new identifier. Every
+committed run is judged again from its own evidence in the default lane:
+
+```sh
+PYTHONHASHSEED=1 uv run --locked python -m tools.experiment_e01 --run YYYYMMDD-e01-abc-N
+uv run --locked python -m tools.experiment_e01 --check
+```
+
 A change to a pinned input is not refused when it merges. [The records
-page](docs/proof/experiments/README.md) says what is enforced and what is not.
+page](docs/proof/experiments/README.md) says what is enforced and what is not, and how the
+first run was executed at the merged commit with the runner outside the tree.
 
 ### Serving adapters
 

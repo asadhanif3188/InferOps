@@ -33,6 +33,7 @@ import pytest
 
 from tools.evidence_index import (
     CLAIM_RECONCILIATION_PATH,
+    E01_STATIC_PROOF_PATH,
     INDEX_PATH,
     LEDGER_PATHS,
     POST_RELEASE_LEDGER_PATHS,
@@ -60,9 +61,13 @@ RELEASE = LEDGER["release"]
 REGISTER = load_register()
 #: The second post-release ledger, written after this one.
 LATER = load_ledger(CLAIM_RECONCILIATION_PATH)
+#: The third post-release ledger, written after the second.
+E01 = load_ledger(E01_STATIC_PROOF_PATH)
+#: Every post-release ledger written after this one, in the order applied.
+LATER_LEDGERS = [LATER, E01]
 AS_RELEASED = released_register(REGISTER, load_ledgers(POST_RELEASE_LEDGER_PATHS))
-#: The register as this ledger left it, before the later one.
-AFTER_THIS_LEDGER = restore_migrated_register(REGISTER, LATER)
+#: The register as this ledger left it, before the later ones.
+AFTER_THIS_LEDGER = restore_migrated_register(REGISTER, LATER_LEDGERS)
 INDEX = load_index()
 SUMMARY = INDEX["summary"]
 RELEASE_DATA: dict[str, Any] = json.loads(
@@ -172,7 +177,7 @@ def test_the_nonclaim_surface_change_moves_only_the_two_reasons_it_names() -> No
 def test_undoing_and_redoing_the_ledger_gives_the_register_back() -> None:
     assert apply_register_changes(AS_RELEASED, LEDGER) == AFTER_THIS_LEDGER
     assert restore_migrated_register(AFTER_THIS_LEDGER, LEDGER) == AS_RELEASED
-    assert apply_register_changes(AFTER_THIS_LEDGER, LATER) == REGISTER
+    assert apply_register_changes(AFTER_THIS_LEDGER, LATER_LEDGERS) == REGISTER
 
 
 # ----------------------------------------------------------- the released pack
@@ -217,8 +222,8 @@ def test_main_holds_another_pack_and_says_so() -> None:
     released = SUMMARY["releasedPack"]
     assert SUMMARY["evidencePackSha256"] != released["evidencePackSha256"]
     assert SUMMARY["evidenceSetSha256"] != released["evidenceSetSha256"]
-    assert SUMMARY["postReleaseRegisterChanges"] == len(CHANGES) + len(
-        LATER["registerChanges"]
+    assert SUMMARY["postReleaseRegisterChanges"] == len(CHANGES) + sum(
+        len(ledger["registerChanges"]) for ledger in LATER_LEDGERS
     )
     rows = {
         line.split(" | ", 1)[0]: line
@@ -235,17 +240,20 @@ def test_main_holds_another_pack_and_says_so() -> None:
     )
 
 
-def test_the_released_counts_differ_from_main_by_the_one_record_and_claim() -> None:
+def test_the_released_counts_differ_from_main_by_the_two_records_added_since() -> None:
+    """The release's own record, which moved one claim from not claimed, and the E01
+    static run's, which came with a claim of its own. Both are C0, and nothing else
+    moved a count."""
     released = SUMMARY["releasedPack"]
-    assert released["records"] == SUMMARY["records"] - 1
-    assert released["recordsByLevel"]["C0"] == SUMMARY["recordsByLevel"]["C0"] - 1
+    assert released["records"] == SUMMARY["records"] - 2
+    assert released["recordsByLevel"]["C0"] == SUMMARY["recordsByLevel"]["C0"] - 2
+    assert released["claims"] == SUMMARY["claims"] - 1
     certified = SUMMARY["claimsByStatus"]["certified"]
-    assert released["claimsByStatus"]["certified"] == certified - 1
+    assert released["claimsByStatus"]["certified"] == certified - 2
     not_claimed = SUMMARY["claimsByStatus"]["not-claimed"]
     assert released["claimsByStatus"]["not-claimed"] == not_claimed + 1
-    assert released["evidenceFiles"] == SUMMARY["evidenceFiles"] - len(
-        ADDED["evidenceRefs"]
-    )
+    added_files = set(ADDED["evidenceRefs"]) | set(E01_RECORD["evidenceRefs"])
+    assert released["evidenceFiles"] == SUMMARY["evidenceFiles"] - len(added_files)
 
 
 def test_the_undone_register_is_the_tagged_one_byte_for_byte() -> None:
@@ -310,6 +318,11 @@ def _edit_the_reconciled_limitation(register: dict, ledgers: list) -> None:
     claim["limitation"] += " Edited after the change."
 
 
+def _edit_the_added_claim(register: dict, ledgers: list) -> None:
+    (claim,) = [c for c in register["claims"] if c["claimId"] == E01_CLAIM_ID]
+    claim["evidenceRecords"][0]["summary"] += " Edited after the change."
+
+
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
@@ -319,6 +332,7 @@ def _edit_the_reconciled_limitation(register: dict, ledgers: list) -> None:
         (_raise_a_blocker, "raises or closes a blocker"),
         (_state_a_release_later, "only the first post-release ledger"),
         (_edit_the_reconciled_limitation, "c01-rendering-limitation"),
+        (_edit_the_added_claim, "e01-static-claim"),
     ],
     ids=lambda value: value.__name__.strip("_") if callable(value) else "",
 )
@@ -436,10 +450,13 @@ def test_the_limitation_says_what_exists_and_what_still_does_not() -> None:
     assert released.startswith("Deployment rendering does not exist.")
 
 
-def test_the_released_register_cannot_be_rebuilt_without_the_later_ledger() -> None:
-    """Both ledgers touch the index surface's reason, so undoing one alone is refused."""
+def test_the_released_register_cannot_be_rebuilt_without_the_later_ledgers() -> None:
+    """Every post-release ledger touches the index surface's reason, so undoing fewer
+    than all of them is refused at the first one whose value is not what it wrote."""
     with pytest.raises(ValueError, match="r07-surface-reasons"):
         released_register(REGISTER, LEDGER)
+    with pytest.raises(ValueError, match="c02-index-surface-reason"):
+        released_register(REGISTER, [LEDGER, LATER])
 
 
 # ------------------------------------------------------------------ the record
@@ -522,3 +539,107 @@ def test_the_record_names_no_private_path_or_address() -> None:
             r"(?i)(?<![a-z])[a-z]:[\\/]|/users/|scratchpad|planning[\\/]|/tmp/", text
         ), relative
         assert not re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text), relative
+
+
+# ----------------------------------------------------- the E01 static proof ledger
+
+E01_CLAIM_ID = "identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused"
+E01_CHANGES = E01["registerChanges"]
+E01_FINDINGS = {row["findingId"]: row for row in E01["findings"]}
+(E01_ADDED,) = [c for c in E01_CHANGES if c["operation"] == "add-claim"]
+(E01_RECORD,) = E01_ADDED["claim"]["evidenceRecords"]
+E01_RUN = "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1"
+
+
+def test_the_e01_ledger_follows_the_reconciliation_and_states_no_release() -> None:
+    assert POST_RELEASE_LEDGER_PATHS[-1] == E01_STATIC_PROOF_PATH
+    assert E01["contractVersion"] == "inferops.io/v1alpha1"
+    assert E01["priorLedgerRef"] == (
+        CLAIM_RECONCILIATION_PATH.relative_to(REPO_ROOT).as_posix()
+    )
+    for key in ("registerRef", "priorLedgerRef", "reportRef", "indexRef"):
+        assert (REPO_ROOT / E01[key]).is_file(), key
+    for absent in ("release", "freeze", "blockers", "blockerDispositions"):
+        assert absent not in E01, absent
+    assert E01["recordCorrections"] == []
+    assert E01["codeRevisions"] == []
+
+
+def test_it_adds_one_claim_and_changes_one_surface_reason_and_nothing_else() -> None:
+    assert [(change["operation"], change.get("field")) for change in E01_CHANGES] == [
+        ("add-claim", None),
+        ("set-register-field", "nonClaimSurfaces"),
+    ]
+    (surfaces,) = [c for c in E01_CHANGES if c.get("field") == "nonClaimSurfaces"]
+    before = {row["path"]: row for row in surfaces["before"]}
+    after = {row["path"]: row for row in surfaces["after"]}
+    assert before.keys() == after.keys()
+    assert [path for path in before if before[path] != after[path]] == [
+        "docs/proof/v1-evidence-index.md"
+    ]
+    assert "seven ledgers" in after["docs/proof/v1-evidence-index.md"]["reason"]
+
+
+def test_every_e01_finding_is_answered_by_changes_that_exist() -> None:
+    change_ids = {change["changeId"] for change in E01_CHANGES}
+    answered: set[str] = set()
+    for change in E01_CHANGES:
+        assert change["findingId"] in E01_FINDINGS
+        assert len(change["reason"]) > 40
+    for finding in E01_FINDINGS.values():
+        assert set(finding["resolvedBy"]) <= change_ids, finding["findingId"]
+        answered |= set(finding["resolvedBy"])
+    assert answered == change_ids
+
+
+def test_the_added_claim_is_the_one_in_the_register_and_not_in_the_released_one() -> (
+    None
+):
+    claims = [row["claimId"] for row in REGISTER["claims"]]
+    assert claims[E01_ADDED["position"]] == E01_CLAIM_ID
+    assert REGISTER["claims"][E01_ADDED["position"]] == E01_ADDED["claim"]
+    assert E01_CLAIM_ID not in {row["claimId"] for row in AS_RELEASED["claims"]}
+    assert E01_CLAIM_ID not in {row["claimId"] for row in AFTER_THIS_LEDGER["claims"]}
+
+
+def test_the_added_claim_is_certified_on_one_c0_record_of_the_run() -> None:
+    """C0, as the freeze record registers the static parts: the renderer ran as a
+    tool, its release input was inspected, and nothing deployed or served."""
+    claim = E01_ADDED["claim"]
+    assert claim["status"] == "certified"
+    assert claim["notClaimedReason"] is None
+    assert claim["assertsRealBehaviour"] is False
+    assert claim["strategyClaimIds"] == []
+    assert E01_RECORD["evidenceLevel"] == "C0"
+    assert E01_RECORD["execution"]["targetBehaviourExecuted"] is False
+    assert E01_RECORD["execution"]["substitutions"] == []
+    assert E01_RECORD["workload"]["source"] == "none"
+    assert E01_RECORD["environment"]["environmentId"] == "repository-only"
+    assert {row["role"] for row in E01_RECORD["execution"]["executedComponents"]} <= {
+        "tool",
+        "validator",
+    }
+    for name in ("result.md", "run.v1alpha1.json", "refusals.json", "commands.txt"):
+        assert f"{E01_RUN}/{name}" in E01_RECORD["evidenceRefs"], name
+    assert E01["reportRef"] in E01_RECORD["evidenceRefs"]
+    assert all(c["declaredBefore"] for c in E01_RECORD["acceptanceCriteria"])
+
+
+def test_the_record_states_the_outcome_and_revision_the_run_recorded() -> None:
+    manifest = json.loads(read(f"{E01_RUN}/run.v1alpha1.json"))
+    assert set(manifest["outcomes"].values()) == {"PASSED"}
+    outcomes = {
+        c["criterionId"]: c["outcome"] for c in E01_RECORD["acceptanceCriteria"]
+    }
+    assert outcomes == {
+        criterion["id"].lower(): "met" if criterion["holds"] else "not-met"
+        for criterion in manifest["criteria"]
+    }
+    (commit,) = [v for v in E01_RECORD["versions"] if v["kind"] == "commit"]
+    assert commit["value"] == manifest["executingRevision"]
+    assert manifest["executingRevision"] in E01_RECORD["summary"]
+
+
+def test_an_added_claim_already_in_the_register_is_refused() -> None:
+    with pytest.raises(ValueError, match="already exists"):
+        apply_register_changes(REGISTER, E01)

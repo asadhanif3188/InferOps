@@ -1,13 +1,14 @@
-# Experiment freeze records
+# Experiment freeze records and runs
 
 Status: **format and check added by `V2-S2-003-PR1`**, with one record: the V2-E01 family
-freeze, revision 1. A freeze record fixes an experiment family before its first
+freeze, revision 1. **One run added by `V2-S2-003-PR2`**: E01-A, E01-B, and E01-C, executed
+once under that record. A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
-a pass, and no run of a frozen part has executed.
+a pass. A run is evidence, and it is kept whatever its outcome.
 
 | Experiment | Revision | Record | Parts and intended level | State |
 |---|---|---|---|---|
-| V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. No part executed. E01-D's environment identity is pending, so E01-D cannot start |
+| V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. E01-A, E01-B, and E01-C ran once, in [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md), and each PASSED. E01-D has not run: its environment identity is pending, so it cannot start |
 
 ## Why a freeze comes first
 
@@ -130,12 +131,14 @@ Not enforced:
   files. A change to the experiment path does not need a freeze revision to merge. The run
   that follows does: its first precondition is that every pin holds, or that a merged
   revision classifies the change, and `--changes` lists what moved.
-- **Nothing runs an experiment.** No test executes a part's procedure, and no test compares
-  a record's expected refusals with the code. That comparison is a result-bearing run.
-- **A run's refusal to start.** No runner exists yet. "A part with a pending field cannot
-  run" and "the run refuses to start until a revision classifies the change" are the
-  preconditions a record states for its runs, a procedure the run follows; no code
-  enforces either today.
+- **No test runs an experiment.** No test compares a record's expected refusals with
+  today's code: that comparison is a result-bearing run, recorded under `runs/` and never
+  asserted by a suite. The E01 runner below executes the static parts only when a
+  contributor names a run.
+- **A run's refusal to start, for E01-D.** The E01 runner refuses to start E01-A, E01-B, and
+  E01-C when a precondition fails, and it never runs E01-D. No runner for E01-D exists, so
+  "a part with a pending field cannot run" is, for E01-D, a procedure the next run follows
+  and no code enforces.
 - **That a pinned file exists.** A pin is checked for its shape, not against the working
   tree. A file deleted after a record merged is reported by `--changes`, not refused by
   `--check`: refusing it would make a merged record fail the build for a later, legitimate
@@ -171,3 +174,60 @@ contract, the binding, the chart and its defaults, the compatibility matrix, the
 39 source files, the hand-written values, the V1 values, the negative-case contract, the V1
 synchronous compatibility record, the defaults reader, and the dependency lock and project
 metadata.
+
+## The E01 static run
+
+`tools/experiment_e01` runs E01-A, E01-B, and E01-C once, as the freeze record registers
+them, and checks a committed run. It reads every input, edit, and expected refusal from the
+record itself, not from a copy of its own.
+
+```sh
+# Run the static parts once. The run's identifier is its UTC date, the parts, and a sequence.
+PYTHONHASHSEED=1 uv run --locked python -m tools.experiment_e01 --run YYYYMMDD-e01-abc-N
+# Judge every committed run again from its raw evidence. Writes nothing.
+uv run --locked python -m tools.experiment_e01 --check
+```
+
+**Before it runs a part,** the runner checks the record's preconditions and records each
+observation: the executing commit is a full revision reachable from `origin/main`, the
+freeze record is in it, `git status --porcelain --untracked-files=all` prints nothing, and
+every pinned input has its pinned content. If one fails, it writes a run with every part
+REFUSED and runs nothing. It refuses an identifier whose date is not today's UTC date, and an
+evidence directory that already exists. It starts only with `PYTHONHASHSEED=1`; the second
+E01-A render runs in its own process with `PYTHONHASHSEED=2`.
+
+**After the parts,** it records the commit and the status again. A changed commit, or a
+change outside the run's evidence directory, is an abort condition, and the parts are
+ABORTED. It removes its temporary directory and records that it did.
+
+**What a run holds.** One directory under
+[`v2-e01/runs/`](v2-e01/runs/), named by its identifier, with the files the record's
+`evidencePaths` names: `run.v1alpha1.json` (the manifest: identifier, parts, executing
+commit, preconditions, host, runner file digests, observations, abort checks, the SHA-256
+of every file, each criterion's verdict, and each part's outcome), `commands.txt`,
+`render-a/`, `render-b/`, `mutation/`, `refusals.json`, and `result.md`.
+
+**The check.** `--check` recomputes every verdict from the committed bytes: the two
+renders compared, the release fields read from the files, the mutation's differences
+listed again, and every refusal compared with the record's expected one. It fails when a
+file does not have the digest the manifest records, when the manifest names a file that is
+absent or omits one that is present, when a verdict or an outcome differs from the one the
+evidence gives, and when `result.md` is not the page the evidence generates. The
+default-lane suite [`tests/testing/test_experiment_e01.py`](../../../tests/testing/test_experiment_e01.py)
+runs it over the committed run and plants each of these defects in a copy.
+
+**The run.** [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md) executed at
+the merged commit `707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3`, in a detached worktree with no
+change before the run and only the evidence directory after it. E01-A, E01-B, and E01-C each
+PASSED: every criterion from E01-AC1 to E01-AC7 held. The claim
+`identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused`
+in the [claim and evidence register](../../testing/claim-evidence-matrix.v1alpha2.json)
+holds it at C0. The run's [validation record](../domain/v2-s2-003-pr2-validation.md) says
+how it was prepared and what was checked.
+
+**What a run does not do.** The runner is not a pinned input of the freeze record, and the
+run of record executed from a byte copy outside the checked-out tree, so the commit it
+records does not contain the runner. The manifest records the content digest of each runner
+file instead. Nothing compares a committed run with today's code: a later change to the
+renderer leaves the run as it was, and a new run needs a new identifier. Nothing here
+deploys the release input, reconciles it, or serves a completion; that is E01-D.

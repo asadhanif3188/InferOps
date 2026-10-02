@@ -1,0 +1,22 @@
+# stated by the operator: git checkout main && git pull origin main   (origin/main at 707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3)
+# stated by the operator: git -c core.longpaths=true worktree add --detach <worktree> 707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3
+# stated by the operator: copy tools/experiment_e01/__init__.py, __main__.py, core.py from the change's working tree to <runner copy>/experiment_e01/ (byte copies; digests in run.v1alpha1.json runner.files)
+# stated by the operator: cd <worktree>
+# stated by the operator: uv sync --locked
+# stated by the operator: uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json   (UNCHANGED)
+# stated by the operator: git status --porcelain --untracked-files=all   (no line)
+# stated by the operator: set PYTHONPATH=<runner copy>, PYTHONHASHSEED=1, PYTHONDONTWRITEBYTECODE=1
+# stated by the operator: uv run --locked python -m experiment_e01 --run 20261002-e01-abc-1 --root . --prelude <this file>
+PYTHONHASHSEED=1 python -m experiment_e01 --run 20261002-e01-abc-1 --root . --prelude <preparation commands file>
+git rev-parse HEAD
+git merge-base --is-ancestor HEAD origin/main
+git rev-parse origin/main
+git cat-file -e HEAD:docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json
+git status --porcelain --untracked-files=all
+# in process: tools.experiment_freeze.changed_inputs over the freeze record, the check behind python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json
+# in process: E01-A steps 1 to 3, written to docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/render-a
+PYTHONHASHSEED=2 python -m experiment_e01 --render-second docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/render-b --root . --revision 707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3
+# in process: E01-A steps 6 to 9 and E01-B
+# in process: E01-C, each case twice, outputs under a temporary directory
+git rev-parse HEAD
+git status --porcelain --untracked-files=all

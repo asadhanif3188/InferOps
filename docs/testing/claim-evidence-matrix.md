@@ -2,8 +2,8 @@
 
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json).
-It holds 59 claims: 42 certified, 7 planned,
-1 deferred, and 9 not claimed, supported by 65 evidence records. The not-claimed
+It holds 60 claims: 43 certified, 7 planned,
+1 deferred, and 9 not claimed, supported by 66 evidence records. The not-claimed
 group is the point of the document. A register that listed only what worked would
 be an advertisement.
 
@@ -78,6 +78,16 @@ be an advertisement.
 > consumes it yet, so the claim stays planned with no record. It also replaces the evidence
 > index's reason here, which named five ledgers. The evidence index undoes it, with the
 > post-release ledger, to recompute the released pack.
+>
+> **Since `V2-S2-003-PR2` a seventh ledger, the third after the release, has added one
+> claim, certified at `C0` on the one record it adds with it, and moved no existing
+> status.** [The E01 static proof ledger](../proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json)
+> adds `identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused`, which holds the
+> [first run](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/result.md) of the static
+> parts of V2-E01 under their merged freeze record. It is the first ledger to add a claim,
+> with an `add-claim` operation the evidence index undoes like any other change. It also
+> replaces the evidence index's reason here, which named six ledgers. The evidence index
+> undoes it, with the other two post-release ledgers, to recompute the released pack.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -236,15 +246,32 @@ refusal is.
 | `an-invalid-workload-document-is-refused-with-a-published-reason` | certified | `C0` `an-invalid-workload-document-is-refused-with-a-published-reason-c0` — repository-only — [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) | 2 module(s) |
 | `the-workload-contract-and-its-rejection-matrix-are-published` | certified | `C0` `the-workload-contract-and-its-rejection-matrix-are-published-c0` — repository-only — [v1-s0-004-pr1-validation.md](../proof/contracts/v1-s0-004-pr1-validation.md), [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) | 2 module(s) |
 | `the-workload-domain-parses-a-contract-document-into-typed-objects` | certified | `C2` `the-workload-domain-parses-a-contract-document-into-typed-objects-c2` — local-process — [v1-s1-001-pr1-validation.md](../proof/domain/v1-s1-001-pr1-validation.md), [v1-s1-001-pr2-validation.md](../proof/domain/v1-s1-001-pr2-validation.md)<br>`C2` `the-workload-domain-parses-a-contract-document-into-typed-objects-c2-pinned-run` — local-process — [v1-s5-006-pr2-pinned-suite-run.md](../proof/testing/v1-s5-006-pr2-pinned-suite-run.md) | 3 module(s) |
+| `identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused` | certified | `C0` `identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused-c0` — repository-only — [result.md](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/result.md), [run.v1alpha1.json](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/run.v1alpha1.json), [refusals.json](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/refusals.json), [commands.txt](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/commands.txt), [freeze-r1.v1alpha1.json](../proof/experiments/v2-e01/freeze-r1.v1alpha1.json), [v2-s2-003-pr2-validation.md](../proof/domain/v2-s2-003-pr2-validation.md) | 2 module(s) |
 | `deployment-values-derive-only-from-a-validated-document` | planned | none, by rule | 2 module(s) |
 | `the-platform-serves-a-workload-the-contract-describes` | planned | none, by rule | 2 module(s) |
 
 The two planned rows here are the ones to read first, because they are the
 distance between what this project publishes and what it does. A contract is
-published, parsed, and refused with a reason; **nothing deploys from one**. The
-chart's values are written by an operator. Until deployment rendering exists,
-`the-platform-serves-a-workload-the-contract-describes` is an intention, and it
-cites no record on purpose.
+published, parsed, and refused with a reason, and since `V2-S2-001-PR2` it renders the
+chart's values and a release that records their sources. **Nothing deploys from one
+yet**: no supported deployment path consumes the generated files, so
+`the-platform-serves-a-workload-the-contract-describes` is an intention, and it cites
+no record on purpose. (Until `V2-S2-003-PR2` this paragraph said the chart's values are
+written by an operator and that deployment rendering does not exist; both had been out of
+date since `V2-S2-001-PR2`.)
+
+The E01 row is the static half of that distance. One run of the frozen E01 procedure
+rendered the reference contract twice, in two processes, to byte-identical release input,
+moved only the owned values under one contract change, and refused six invalid or
+conflicting inputs as registered. Its record is `C0`, as the freeze record registers the
+static parts, under the same reading as the three `C0` records that run `helm template`,
+under Kubernetes diagnosis, security, and ownership: a generator ran as a tool, and what it
+wrote was inspected. The behaviour
+E01 is about, a release that deploys and serves, did not run; E01-D owns it. The parser's
+row below draws its line differently and is `C2`, because its claim is that `src/` parses,
+and that ran. The E01 claim is about the release input the renderer writes, so its record
+is `C0`, but the renderer is `src/` code that ran, and a reader who weighs the two rows
+should know they sit on either side of that line.
 
 The parser's record is `C2` since the migration, where the two contract rows stay
 `C0`. The line between them is the subject of the claim: the contract rows are about

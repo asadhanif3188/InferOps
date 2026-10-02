@@ -1,0 +1,1377 @@
+"""V2-E01 static parts: run E01-A, E01-B, and E01-C as frozen, and judge a run.
+
+The E01 family freeze record fixes three static parts. E01-A renders the reference
+contract twice and compares the two releases. E01-B changes one claim-relevant
+contract field and compares the result with the first render. E01-C runs six
+invalid or conflicting inputs, each twice, and records each refusal. This module does
+both halves of a run.
+
+**Run.** :func:`execute_run` checks the record's preconditions, executes the three
+parts, and writes their raw evidence into one new directory under :data:`RUNS_DIR`.
+Every input, edit, and expected refusal is read from the freeze record, not from a
+copy in this module. The second E01-A render runs in a second Python process with a
+different ``PYTHONHASHSEED``. A precondition that fails stops the run before any part
+starts, and the parts are recorded as REFUSED.
+
+**Judge.** :func:`judge` computes the verdict of every acceptance criterion from the
+raw evidence a run wrote: the bytes of the rendered files, the recorded refusals, and
+the values the run recorded. :func:`check_run` compares that with the outcome states
+and the result page the run committed, so a committed run is checked again without
+executing it. A difference is a finding.
+
+**What this does not do.** It renders nothing for E01-D, contacts no cluster or
+network, and reads no model. It does not decide whether a moved input is material: a
+moved input refuses the run. The runner is not a pinned input of the freeze record.
+A run records the content digest of every runner file it executed instead.
+"""
+
+from __future__ import annotations
+
+import copy
+import datetime
+import hashlib
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Final
+
+import yaml
+
+from inferops.domain.environment import (
+    EnvironmentBinding,
+    EnvironmentBindingError,
+    parse_environment_binding,
+)
+from inferops.domain.release import GitRevision, binding_digest, contract_digest
+from inferops.domain.render import (
+    HELM_VALUE_DISPOSITIONS,
+    RELEASE_FILE_NAME,
+    RENDER_FIELD_OWNERSHIP,
+    VALUES_FILE_NAME,
+    GeneratedHelmValues,
+    GeneratedRelease,
+    HelmValuesRenderer,
+    PlatformDefaults,
+    RenderRefused,
+    admit_manual_values,
+    generate_release,
+    write_release,
+)
+from inferops.domain.workload import (
+    CompatibilityMatrixLoader,
+    DnsLabel,
+    WorkloadContract,
+    get_matrix_loader,
+    parse_workload_contract,
+    set_matrix_loader,
+)
+from tools.experiment_freeze import changed_inputs, content_digest
+
+# The freeze record names this reader for the platform defaults: "the api block of
+# charts/inferops-llm/values.yaml, read as tools/generated_release reads them". The
+# run calls that reader and does not copy it.
+from tools.generated_release.core import _chart_api_defaults
+
+__all__ = [
+    "API_VERSION",
+    "CHART_DEFAULTS",
+    "CRITERIA",
+    "FREEZE_PATH",
+    "HASH_SEEDS",
+    "KIND",
+    "OUTCOME_STATES",
+    "PARTS",
+    "REPO_ROOT",
+    "RUNS_DIR",
+    "Criterion",
+    "Judgement",
+    "PatchError",
+    "RunFinding",
+    "apply_patch",
+    "check_run",
+    "committed_runs",
+    "deep_merge",
+    "execute_run",
+    "judge",
+    "leaves",
+    "load_freeze",
+    "precondition_findings",
+    "render_second",
+    "result_page",
+    "run_id_problem",
+]
+
+REPO_ROOT: Final = Path(__file__).resolve().parents[2]
+
+#: The freeze record this run executes. Revision 1 is the only one merged.
+FREEZE_PATH: Final = "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json"
+
+#: Where every run's evidence directory is written, by repository path.
+RUNS_DIR: Final = "docs/proof/experiments/v2-e01/runs"
+
+#: The chart values file whose api block holds the platform defaults, and whose
+#: whole content is the chart's defaults for the E01-A merge.
+CHART_DEFAULTS: Final = "charts/inferops-llm/values.yaml"
+
+#: The static parts this module runs. E01-D is never run here.
+PARTS: Final[tuple[str, ...]] = ("E01-A", "E01-B", "E01-C")
+
+#: The outcome states the freeze record defines, in its order.
+OUTCOME_STATES: Final[tuple[str, ...]] = (
+    "PASSED",
+    "FAILED",
+    "INCONCLUSIVE",
+    "REFUSED",
+    "ABORTED",
+)
+
+#: The ``PYTHONHASHSEED`` of the process that writes render-a and of the second
+#: process that writes render-b. They differ, as E01-A step 4 requires.
+HASH_SEEDS: Final[Mapping[str, str]] = {"render-a": "1", "render-b": "2"}
+
+API_VERSION: Final = "inferops.io/v1alpha1"
+KIND: Final = "ExperimentRun"
+
+MANIFEST: Final = "run.v1alpha1.json"
+COMMANDS: Final = "commands.txt"
+REFUSALS: Final = "refusals.json"
+RESULT: Final = "result.md"
+RENDER_A: Final = "render-a"
+RENDER_B: Final = "render-b"
+MUTATION: Final = "mutation"
+RENDERED_FILES: Final[tuple[str, ...]] = (str(VALUES_FILE_NAME), RELEASE_FILE_NAME)
+
+#: A run identifier: the run's UTC date, the parts it executes, and a sequence number.
+_RUN_ID: Final = re.compile(r"^(?P<date>[0-9]{8})-e01-abc-(?P<sequence>[1-9][0-9]*)$")
+
+#: The binding version every committed binding declares, as E01-AC3 names it.
+BINDING_API_VERSION: Final = "inferops.io/v1alpha1"
+
+
+@dataclass(frozen=True)
+class Criterion:
+    """One acceptance criterion of the freeze record, and the part it belongs to."""
+
+    criterion_id: str
+    part: str
+
+
+#: The criteria this module judges, in the freeze record's order.
+CRITERIA: Final[tuple[Criterion, ...]] = (
+    Criterion("E01-AC1", "E01-A"),
+    Criterion("E01-AC2", "E01-A"),
+    Criterion("E01-AC3", "E01-A"),
+    Criterion("E01-AC4", "E01-A"),
+    Criterion("E01-AC5", "E01-A"),
+    Criterion("E01-AC6", "E01-B"),
+    Criterion("E01-AC7", "E01-C"),
+)
+
+
+@dataclass(frozen=True)
+class RunFinding:
+    """One way a committed run disagrees with its own evidence."""
+
+    run: str
+    location: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class Judgement:
+    """The verdict of every criterion and the outcome of every part, for one run.
+
+    A verdict is True when the criterion held, False when it did not, and None when
+    the evidence it needs is absent. ``basis`` gives the evidence each verdict rests
+    on, as short sentences.
+    """
+
+    verdicts: Mapping[str, bool | None]
+    basis: Mapping[str, tuple[str, ...]]
+    outcomes: Mapping[str, str]
+
+
+# --------------------------------------------------------------------------
+# Documents
+# --------------------------------------------------------------------------
+
+
+class PatchError(ValueError):
+    """A JSON Patch operation that cannot be applied to the document."""
+
+
+def _pointer(path: str) -> list[str]:
+    if not path.startswith("/"):
+        raise PatchError(f"{path!r} is not a JSON Pointer")
+    return [part.replace("~1", "/").replace("~0", "~") for part in path[1:].split("/")]
+
+
+def apply_patch(document: Any, operations: Sequence[Mapping[str, Any]]) -> Any:
+    """``document`` with the JSON Patch ``add``, ``remove``, and ``replace`` applied.
+
+    The operations are the three the freeze record uses, with the meaning RFC 6902
+    gives them, applied in order to a copy. The input is not changed.
+
+    Raises:
+        PatchError: an operation is unknown, or its path does not resolve.
+    """
+    patched = copy.deepcopy(document)
+    for operation in operations:
+        op = operation.get("op")
+        parts = _pointer(str(operation.get("path")))
+        parent: Any = patched
+        for part in parts[:-1]:
+            if isinstance(parent, dict) and part in parent:
+                parent = parent[part]
+            elif (
+                isinstance(parent, list) and part.isdigit() and int(part) < len(parent)
+            ):
+                parent = parent[int(part)]
+            else:
+                raise PatchError(f"{operation.get('path')}: {part!r} does not exist")
+        last = parts[-1]
+        if not isinstance(parent, dict):
+            raise PatchError(f"{operation.get('path')}: the target is not an object")
+        if op == "add":
+            parent[last] = copy.deepcopy(operation["value"])
+        elif op in {"remove", "replace"}:
+            if last not in parent:
+                raise PatchError(f"{operation.get('path')}: {last!r} does not exist")
+            if op == "remove":
+                del parent[last]
+            else:
+                parent[last] = copy.deepcopy(operation["value"])
+        else:
+            raise PatchError(f"{op!r} is not an operation this run applies")
+    return patched
+
+
+def leaves(document: Any, prefix: str = "") -> Iterator[tuple[str, Any]]:
+    """Every leaf of a document by dotted path. An empty mapping is a leaf."""
+    if isinstance(document, Mapping) and document:
+        for key, value in document.items():
+            yield from leaves(value, f"{prefix}{key}.")
+    else:
+        yield prefix.rstrip("."), document
+
+
+def deep_merge(base: Mapping[str, Any], *overlays: Mapping[str, Any]) -> dict[str, Any]:
+    """Values files merged the way Helm merges them: mappings by key, the rest replaced."""
+    merged: dict[str, Any] = copy.deepcopy(dict(base))
+    for overlay in overlays:
+        for key, value in overlay.items():
+            current = merged.get(key)
+            if isinstance(current, Mapping) and isinstance(value, Mapping):
+                merged[key] = deep_merge(current, value)
+            else:
+                merged[key] = copy.deepcopy(value)
+    return merged
+
+
+_ABSENT: Final = {"present": False}
+
+
+def _side(found: Mapping[str, Any], path: str) -> dict[str, Any]:
+    return {"present": True, "value": found[path]} if path in found else dict(_ABSENT)
+
+
+def leaf_differences(before: Any, after: Any) -> list[dict[str, Any]]:
+    """Every leaf path whose value differs, or that only one document has, sorted."""
+    left, right = dict(leaves(before)), dict(leaves(after))
+    return [
+        {"path": path, "before": _side(left, path), "after": _side(right, path)}
+        for path in sorted(set(left) | set(right))
+        if (path in left) != (path in right) or left.get(path) != right.get(path)
+    ]
+
+
+def _load_yaml(path: Path) -> Any:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def load_freeze(root: Path = REPO_ROOT) -> dict[str, Any]:
+    """The freeze record this run executes, read from ``root``."""
+    document = json.loads((root / FREEZE_PATH).read_text(encoding="utf-8"))
+    if not isinstance(document, dict):
+        raise ValueError(f"{FREEZE_PATH} is not a JSON object")
+    return document
+
+
+def _part(freeze: Mapping[str, Any], part_id: str) -> Mapping[str, Any]:
+    for part in freeze["parts"]:
+        if part["id"] == part_id:
+            found: Mapping[str, Any] = part
+            return found
+    raise KeyError(part_id)
+
+
+# --------------------------------------------------------------------------
+# Rendering
+# --------------------------------------------------------------------------
+
+
+@contextmanager
+def _matrix(root: Path, path: str) -> Iterator[None]:
+    """The compatibility matrix at ``path`` set for the workload domain, then restored."""
+    try:
+        previous: CompatibilityMatrixLoader | None = get_matrix_loader()
+    except ValueError:
+        previous = None
+    matrix = json.loads((root / path).read_text(encoding="utf-8"))
+    set_matrix_loader(CompatibilityMatrixLoader(matrix))
+    try:
+        yield
+    finally:
+        if previous is not None:
+            set_matrix_loader(previous)
+
+
+def _defaults(root: Path, revision: str) -> PlatformDefaults:
+    return _chart_api_defaults(root / CHART_DEFAULTS, revision)
+
+
+@dataclass(frozen=True)
+class _Rendered:
+    contract: WorkloadContract
+    bindings: tuple[EnvironmentBinding, ...]
+    generated: GeneratedRelease
+
+
+def _render(
+    root: Path,
+    revision: str,
+    contract_document: Any,
+    binding_documents: Sequence[Any],
+    binding_name: str,
+    record: Callable[[str], None] | None = None,
+) -> _Rendered:
+    """Parse the documents and call generate_release, as E01-A steps 1 and 2 say.
+
+    ``record`` is told each step's name before the step runs, so a refusal is
+    attributed to the step that raised it.
+    """
+    note = record or (lambda step: None)
+    note("parse_workload_contract")
+    contract = parse_workload_contract(contract_document)
+    note("parse_environment_binding")
+    bindings = tuple(parse_environment_binding(d) for d in binding_documents)
+    note("generate_release")
+    generated = generate_release(
+        HelmValuesRenderer(GitRevision(revision)),
+        contract,
+        _defaults(root, revision),
+        bindings,
+        binding_name=DnsLabel(binding_name),
+    )
+    return _Rendered(contract, bindings, generated)
+
+
+def _a_inputs(root: Path, freeze: Mapping[str, Any]) -> dict[str, Any]:
+    inputs = _part(freeze, "E01-A")["inputs"]
+    return {
+        "matrix": inputs["compatibilityMatrix"],
+        "contract": _load_yaml(root / inputs["workloadContract"]),
+        "bindings": [_load_yaml(root / path) for path in inputs["environmentBindings"]],
+        "bindingName": inputs["bindingName"],
+        "handWritten": _load_yaml(root / inputs["handWrittenValues"]),
+        "v1Values": _load_yaml(root / inputs["v1Values"]),
+    }
+
+
+def render_second(root: Path, revision: str, out: Path) -> dict[str, Any]:
+    """E01-A step 4: the three steps again, in this process, written to ``out``."""
+    freeze = load_freeze(root)
+    a = _a_inputs(root, freeze)
+    with _matrix(root, a["matrix"]):
+        rendered = _render(
+            root, revision, a["contract"], a["bindings"], a["bindingName"]
+        )
+    write_release(rendered.generated, out)
+    return {
+        "pythonHashSeed": os.environ.get("PYTHONHASHSEED"),
+        "hashRandomization": bool(sys.flags.hash_randomization),
+    }
+
+
+# --------------------------------------------------------------------------
+# Preconditions
+# --------------------------------------------------------------------------
+
+
+def run_id_problem(run_id: str, started: datetime.datetime) -> str | None:
+    """Why ``run_id`` is not a valid identifier for a run started at ``started``."""
+    match = _RUN_ID.match(run_id)
+    if match is None:
+        return "a run identifier is YYYYMMDD-e01-abc-N, with N from 1"
+    if match["date"] != started.astimezone(datetime.UTC).strftime("%Y%m%d"):
+        return "the identifier's date is not the run's UTC date"
+    return None
+
+
+def precondition_findings(
+    *,
+    head: str,
+    merged: bool,
+    freeze_at_head: bool,
+    status: Sequence[str],
+    moved_inputs: Sequence[str],
+    parts: Sequence[str],
+) -> list[str]:
+    """Each freeze precondition the observed state fails, in the record's order.
+
+    Every argument is an observation the caller made: the commit checked out, whether
+    it is reachable from the merged branch, whether the freeze record is in it, the
+    porcelain status lines, the pinned inputs whose content moved, and the parts the
+    run executes.
+    """
+    findings = []
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        findings.append("the executing commit is not a full Git revision")
+    if not merged:
+        findings.append("the executing commit is not merged")
+    if not freeze_at_head:
+        findings.append(f"the executing commit holds no {FREEZE_PATH}")
+    if status:
+        findings.append("the working tree is not clean")
+    if moved_inputs:
+        findings.append(
+            f"{len(moved_inputs)} pinned input(s) differ from their pins, and no "
+            "merged revision classifies them"
+        )
+    if "E01-D" in parts:
+        findings.append("E01-D is refused while its environment identity is pending")
+    return findings
+
+
+# --------------------------------------------------------------------------
+# Running
+# --------------------------------------------------------------------------
+
+
+class _Log:
+    """The commands of one run, in order, as commands.txt records them."""
+
+    def __init__(self) -> None:
+        self.lines: list[str] = []
+
+    def add(self, command: str) -> None:
+        self.lines.append(command)
+
+
+def _git(root: Path, log: _Log, *arguments: str) -> subprocess.CompletedProcess[str]:
+    log.add("git " + " ".join(arguments))
+    return subprocess.run(
+        ["git", *arguments], cwd=root, capture_output=True, text=True, check=False
+    )
+
+
+def _status(root: Path, log: _Log) -> list[str]:
+    result = _git(root, log, "status", "--porcelain", "--untracked-files=all")
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def _tool_version(command: Sequence[str]) -> str:
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
+    except OSError:
+        return "not found"
+    return result.stdout.strip() or "not reported"
+
+
+def _runner_files() -> dict[str, str]:
+    here = Path(__file__).resolve().parent
+    return {
+        path.name: content_digest(path.read_bytes())
+        for path in sorted(here.glob("*.py"))
+    }
+
+
+def _refusal(error: BaseException) -> dict[str, Any]:
+    """A refusal as E01-C step 3 records it."""
+    recorded: dict[str, Any] = {"exception": type(error).__name__}
+    if isinstance(error, RenderRefused):
+        recorded["findings"] = [
+            {
+                "rule": finding.rule_id,
+                "category": finding.category.value,
+                "code": finding.code,
+                "field": finding.field,
+                "reason": finding.reason,
+            }
+            for finding in error.findings
+        ]
+    elif isinstance(error, EnvironmentBindingError):
+        recorded.update(code=error.code, field=error.field, reason=error.reason)
+    else:
+        recorded["message"] = str(error)
+    return recorded
+
+
+def _case_inputs(
+    root: Path, case: Mapping[str, Any], a: Mapping[str, Any]
+) -> dict[str, Any]:
+    """A case's documents: the pinned files with its edits, else the E01-A inputs."""
+    given = case.get("inputs", {})
+
+    def edited(key: str) -> Any:
+        spec = given[key]
+        return apply_patch(_load_yaml(root / spec["file"]), spec.get("edits", []))
+
+    return {
+        "contract": edited("workloadContract")
+        if "workloadContract" in given
+        else a["contract"],
+        "bindings": (
+            [edited("environmentBinding")]
+            if "environmentBinding" in given
+            else a["bindings"]
+        ),
+        "bindingName": given.get("bindingName", a["bindingName"]),
+        "handWritten": (
+            edited("handWrittenValues")
+            if "handWrittenValues" in given
+            else a["handWritten"]
+        ),
+    }
+
+
+def _execute_case(
+    root: Path,
+    revision: str,
+    case: Mapping[str, Any],
+    a: Mapping[str, Any],
+    generated_values: GeneratedHelmValues,
+    out: Path,
+) -> dict[str, Any]:
+    """One execution of one E01-C case: the step it names, and what happened."""
+    inputs = _case_inputs(root, case, a)
+    steps: list[str] = []
+    refusal: dict[str, Any] | None = None
+    try:
+        if case["refusedBy"] == "admit_manual_values":
+            steps.append("admit_manual_values")
+            admit_manual_values(generated_values, inputs["handWritten"])
+        else:
+            rendered = _render(
+                root,
+                revision,
+                inputs["contract"],
+                inputs["bindings"],
+                inputs["bindingName"],
+                steps.append,
+            )
+            steps.append("write_release")
+            write_release(rendered.generated, out)
+    except Exception as error:  # every refusal is recorded, of whatever type
+        refusal = {"step": steps[-1] if steps else None, **_refusal(error)}
+    return {
+        "steps": steps,
+        "refusal": refusal,
+        "outputDirectoryExists": out.exists(),
+    }
+
+
+def _write(path: Path, data: bytes) -> None:
+    with path.open("xb") as handle:
+        handle.write(data)
+
+
+def _json(document: Any) -> bytes:
+    return (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def _run_parts(
+    root: Path,
+    revision: str,
+    evidence: Path,
+    scratch: Path,
+    freeze: Mapping[str, Any],
+    log: _Log,
+    package: str,
+    observations: dict[str, Any],
+    refusals: list[dict[str, Any]],
+) -> None:
+    """Execute E01-A, E01-B, and E01-C, filling ``observations`` and ``refusals``.
+
+    Both are filled as each step completes, so a step that raises leaves every
+    earlier observation recorded.
+    """
+    a = _a_inputs(root, freeze)
+    evidence_rel = evidence.relative_to(root).as_posix()
+
+    # E01-A steps 1 to 3, in this process.
+    log.add(f"# in process: E01-A steps 1 to 3, written to {evidence_rel}/{RENDER_A}")
+    with _matrix(root, a["matrix"]):
+        first = _render(root, revision, a["contract"], a["bindings"], a["bindingName"])
+    write_release(first.generated, evidence / RENDER_A)
+
+    # E01-A step 4, in a second process with another hash seed.
+    child = [
+        "-m",
+        package,
+        "--render-second",
+        f"{evidence_rel}/{RENDER_B}",
+        "--root",
+        ".",
+        "--revision",
+        revision,
+    ]
+    log.add(f"PYTHONHASHSEED={HASH_SEEDS['render-b']} python " + " ".join(child))
+    second = subprocess.run(
+        [sys.executable, *child],
+        cwd=root,
+        env={**os.environ, "PYTHONHASHSEED": HASH_SEEDS["render-b"]},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        reported = json.loads(second.stdout.strip().splitlines()[-1])
+    except (IndexError, ValueError):
+        reported = None
+    observations["E01-A"] = {
+        "renderA": {
+            "pythonHashSeed": os.environ.get("PYTHONHASHSEED"),
+            "hashRandomization": bool(sys.flags.hash_randomization),
+        },
+        "renderB": {"exitStatus": second.returncode, "reported": reported},
+        # Step 6: values computed apart from the release.
+        "contractDigest": str(contract_digest(first.contract)),
+        "binding": {
+            "name": a["bindingName"],
+            "apiVersion": BINDING_API_VERSION,
+            "sha256": str(binding_digest(first.bindings[0])),
+        },
+    }
+
+    # E01-A step 7: the hand-written values admitted beside the render-a values.
+    log.add("# in process: E01-A steps 6 to 9 and E01-B")
+    try:
+        admit_manual_values(first.generated.values, a["handWritten"])
+        admission: dict[str, Any] = {"admitted": True, "refusal": None}
+    except RenderRefused as error:
+        admission = {"admitted": False, "refusal": _refusal(error)}
+    observations["E01-A"]["admission"] = admission
+
+    # E01-A step 8: every chart value a workload-intent context value renders to.
+    owner = {row.name: row.layer.value for row in RENDER_FIELD_OWNERSHIP}
+    targets = sorted(
+        {
+            target
+            for name, disposition in HELM_VALUE_DISPOSITIONS.items()
+            if owner.get(name) == "workload-intent"
+            for target in disposition.targets
+        }
+    )
+    observations["E01-A"]["workloadIntentTargets"] = targets
+
+    # E01-A step 9: both merges, and every value that differs.
+    chart_defaults = _load_yaml(root / CHART_DEFAULTS)
+    generated = yaml.safe_load(
+        (evidence / RENDER_A / str(VALUES_FILE_NAME)).read_bytes()
+    )
+    v2 = deep_merge(chart_defaults, generated, a["handWritten"])
+    v1 = deep_merge(chart_defaults, a["v1Values"])
+    observations["E01-A"]["mergedDifferences"] = [
+        {"path": d["path"], "v2": d["after"], "v1": d["before"]}
+        for d in leaf_differences(v1, v2)
+    ]
+
+    # E01-B: the mutation, applied before parsing, rendered and written.
+    b = _part(freeze, "E01-B")
+    mutated = apply_patch(a["contract"], b["inputs"]["mutation"])
+    with _matrix(root, a["matrix"]):
+        changed = _render(root, revision, mutated, a["bindings"], a["bindingName"])
+    write_release(changed.generated, evidence / MUTATION)
+    observations["E01-B"] = {
+        "mutatedContractDigest": str(contract_digest(changed.contract))
+    }
+
+    # E01-C: each case twice; an output directory must never appear.
+    log.add("# in process: E01-C, each case twice, outputs under a temporary directory")
+    with _matrix(root, a["matrix"]):
+        for case in _part(freeze, "E01-C")["cases"]:
+            attempts = []
+            for attempt in (1, 2):
+                out = scratch / f"{case['id']}-attempt-{attempt}"
+                attempts.append(
+                    {
+                        "attempt": attempt,
+                        **_execute_case(
+                            root, revision, case, a, first.generated.values, out
+                        ),
+                    }
+                )
+            refusals.append({"case": case["id"], "attempts": attempts})
+
+
+def execute_run(
+    root: Path,
+    run_id: str,
+    *,
+    merged_ref: str = "origin/main",
+    prelude: Sequence[str] = (),
+    invocation: str = "",
+    package: str = "tools.experiment_e01",
+) -> tuple[Path, Judgement]:
+    """Run the static parts once and write the evidence directory for ``run_id``.
+
+    ``prelude`` is the commands the operator ran to prepare the checkout, stated by
+    the operator; commands.txt marks them as stated and not executed by the runner.
+    ``invocation`` is the command line that started this run.
+
+    Raises:
+        ValueError: ``run_id`` is not valid for a run started now. Nothing is written.
+        FileExistsError: the evidence directory already exists. Nothing is written.
+    """
+    started = datetime.datetime.now(datetime.UTC)
+    problem = run_id_problem(run_id, started)
+    if problem is not None:
+        raise ValueError(problem)
+    evidence = root / RUNS_DIR / run_id
+    if evidence.exists():
+        raise FileExistsError(f"{RUNS_DIR}/{run_id} already exists")
+    log = _Log()
+    for line in prelude:
+        log.add(f"# stated by the operator: {line}")
+    log.add(invocation)
+
+    freeze = load_freeze(root)
+    head = _git(root, log, "rev-parse", "HEAD").stdout.strip()
+    merged = (
+        _git(root, log, "merge-base", "--is-ancestor", "HEAD", merged_ref).returncode
+        == 0
+    )
+    merged_at = _git(root, log, "rev-parse", merged_ref).stdout.strip()
+    freeze_at_head = (
+        _git(root, log, "cat-file", "-e", f"HEAD:{FREEZE_PATH}").returncode == 0
+    )
+    status_before = _status(root, log)
+    log.add(
+        "# in process: tools.experiment_freeze.changed_inputs over the freeze "
+        f"record, the check behind python -m tools.experiment_freeze --changes "
+        f"{FREEZE_PATH}"
+    )
+    moved = [change.path for change in changed_inputs(freeze, root)]
+    findings = precondition_findings(
+        head=head,
+        merged=merged,
+        freeze_at_head=freeze_at_head,
+        status=status_before,
+        moved_inputs=moved,
+        parts=PARTS,
+    )
+
+    evidence.mkdir(parents=True)
+    observations: dict[str, Any] = {}
+    refusals: list[dict[str, Any]] = []
+    scratch_removed = None
+    error: dict[str, str] | None = None
+    if not findings:
+        scratch = Path(tempfile.mkdtemp(prefix="e01-run-"))
+        try:
+            _run_parts(
+                root,
+                head,
+                evidence,
+                scratch,
+                freeze,
+                log,
+                package,
+                observations,
+                refusals,
+            )
+        except Exception as raised:  # recorded, and judged as missing evidence
+            error = {"exception": type(raised).__name__, "message": str(raised)}
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+            scratch_removed = not scratch.exists()
+        if error is None:
+            _write(evidence / REFUSALS, _json(refusals))
+
+    head_after = _git(root, log, "rev-parse", "HEAD").stdout.strip()
+    status_after = _status(root, log)
+    prefix = f"?? {RUNS_DIR}/{run_id}/"
+    aborts = []
+    if head_after != head:
+        aborts.append("the checked-out commit changed while the run executed")
+    if any(not line.startswith(prefix) for line in status_after):
+        aborts.append("a file outside the run's evidence directory changed")
+    if scratch_removed is False:
+        aborts.append("the run's temporary directory could not be removed")
+
+    _write(evidence / COMMANDS, ("\n".join(log.lines) + "\n").encode("utf-8"))
+    files = {
+        path.relative_to(evidence).as_posix(): _sha256(path.read_bytes())
+        for path in sorted(evidence.rglob("*"))
+        if path.is_file()
+    }
+    manifest: dict[str, Any] = {
+        "apiVersion": API_VERSION,
+        "kind": KIND,
+        "metadata": {
+            "runId": run_id,
+            "experiment": freeze["metadata"]["experiment"],
+            "freezeRecord": FREEZE_PATH,
+            "freezeRevision": freeze["metadata"]["revision"],
+            "freezeContentSha256": content_digest((root / FREEZE_PATH).read_bytes()),
+            "parts": list(PARTS),
+            "startedAt": started.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "finishedAt": datetime.datetime.now(datetime.UTC).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            ),
+        },
+        "executingRevision": head,
+        "preconditions": {
+            "mergedRef": merged_ref,
+            "mergedRefRevision": merged_at,
+            "executingRevisionMerged": merged,
+            "freezeRecordAtRevision": freeze_at_head,
+            "statusBefore": status_before,
+            "movedPinnedInputs": moved,
+            "findings": findings,
+        },
+        "host": {
+            "operatingSystem": platform.system(),
+            "operatingSystemVersion": platform.version(),
+            "python": platform.python_version(),
+            "uv": _tool_version(["uv", "--version"]),
+        },
+        "runner": {"package": package, "files": _runner_files()},
+        "observations": observations,
+        "error": error,
+        "abortChecks": {
+            "revisionAfter": head_after,
+            "statusAfter": status_after,
+            "temporaryDirectoryRemoved": scratch_removed,
+            "conditions": aborts,
+        },
+        "files": files,
+    }
+    judgement = judge(evidence, freeze, manifest)
+    manifest["criteria"] = [
+        {
+            "id": criterion.criterion_id,
+            "holds": judgement.verdicts[criterion.criterion_id],
+        }
+        for criterion in CRITERIA
+    ]
+    manifest["outcomes"] = dict(judgement.outcomes)
+    _write(evidence / MANIFEST, _json(manifest))
+    _write(evidence / RESULT, result_page(manifest, freeze, judgement).encode("utf-8"))
+    return evidence, judgement
+
+
+# --------------------------------------------------------------------------
+# Judging
+# --------------------------------------------------------------------------
+
+
+def _bytes(evidence: Path, directory: str, name: str) -> bytes | None:
+    path = evidence / directory / name
+    return path.read_bytes() if path.is_file() else None
+
+
+def _field(document: Any, dotted: str) -> Any:
+    for part in dotted.split("."):
+        if not isinstance(document, Mapping) or part not in document:
+            return None
+        document = document[part]
+    return document
+
+
+def _judge_a(
+    evidence: Path, manifest: Mapping[str, Any]
+) -> dict[str, tuple[bool | None, list[str]]]:
+    seen = manifest.get("observations", {}).get("E01-A")
+    out: dict[str, tuple[bool | None, list[str]]] = {}
+    files_a = {name: _bytes(evidence, RENDER_A, name) for name in RENDERED_FILES}
+    files_b = {name: _bytes(evidence, RENDER_B, name) for name in RENDERED_FILES}
+    if seen is None or None in files_a.values() or None in files_b.values():
+        for criterion in CRITERIA[:5]:
+            out[criterion.criterion_id] = (None, ["the E01-A evidence is incomplete"])
+        return out
+    release_a = yaml.safe_load(files_a[RELEASE_FILE_NAME] or b"")
+    release_b = yaml.safe_load(files_b[RELEASE_FILE_NAME] or b"")
+
+    basis = []
+    same = True
+    for name in RENDERED_FILES:
+        left, right = files_a[name] or b"", files_b[name] or b""
+        equal = left == right
+        same = same and equal
+        basis.append(
+            f"{name}: {'byte-identical' if equal else 'differs'}; "
+            f"SHA-256 {_sha256(left)} and {_sha256(right)}"
+        )
+    id_a = _field(release_a, "metadata.releaseId")
+    id_b = _field(release_b, "metadata.releaseId")
+    same = same and id_a is not None and id_a == id_b
+    basis.append(f"metadata.releaseId: {id_a} and {id_b}")
+    second = seen.get("renderB", {})
+    seeds = (
+        seen.get("renderA", {}).get("pythonHashSeed"),
+        (second.get("reported") or {}).get("pythonHashSeed"),
+    )
+    second_process = (
+        second.get("exitStatus") == 0
+        and seeds[0] is not None
+        and seeds[1] is not None
+        and seeds[0] != seeds[1]
+    )
+    basis.append(
+        f"render-b written by a second process, exit status {second.get('exitStatus')}, "
+        f"PYTHONHASHSEED {seeds[0]} then {seeds[1]}"
+    )
+    out["E01-AC1"] = (same if second_process else None, basis)
+
+    recorded = _field(release_a, "source.contract.sha256")
+    computed = seen.get("contractDigest")
+    out["E01-AC2"] = (
+        recorded is not None and recorded == computed,
+        [f"source.contract.sha256 {recorded}; contract_digest {computed}"],
+    )
+
+    binding = seen.get("binding", {})
+    pairs = [
+        (
+            "name",
+            _field(release_a, "source.environmentBinding.name"),
+            binding.get("name"),
+        ),
+        (
+            "apiVersion",
+            _field(release_a, "source.environmentBinding.apiVersion"),
+            binding.get("apiVersion"),
+        ),
+        (
+            "sha256",
+            _field(release_a, "source.environmentBinding.sha256"),
+            binding.get("sha256"),
+        ),
+    ]
+    out["E01-AC3"] = (
+        all(left is not None and left == right for _, left, right in pairs),
+        [
+            f"source.environmentBinding.{key} {left}; expected {right}"
+            for key, left, right in pairs
+        ],
+    )
+
+    values_digest = _sha256(files_a[str(VALUES_FILE_NAME)] or b"")
+    revision = manifest.get("executingRevision")
+    checks = [
+        ("output.helmValues.sha256", values_digest),
+        ("source.renderer.revision", revision),
+        ("source.platformDefaults.revision", revision),
+    ]
+    out["E01-AC4"] = (
+        all(_field(release_a, path) == want for path, want in checks),
+        [f"{path} {_field(release_a, path)}; expected {want}" for path, want in checks],
+    )
+
+    admission = seen.get("admission", {})
+    targets = seen.get("workloadIntentTargets") or []
+    generated_leaves = dict(
+        leaves(yaml.safe_load(files_a[str(VALUES_FILE_NAME)] or b""))
+    )
+    missing = [target for target in targets if target not in generated_leaves]
+    differences = seen.get("mergedDifferences")
+    # The one difference E01-AC5 allows, with both values as its statement gives them.
+    expected_difference = [
+        {
+            "path": "telemetry.deploymentEnvironment",
+            "v2": {"present": True, "value": "local"},
+            "v1": {"present": True, "value": "dev"},
+        }
+    ]
+    if admission.get("admitted"):
+        admitted = "admit_manual_values: admitted, no finding"
+    else:
+        admitted = f"admit_manual_values: refused {admission.get('refusal')}"
+    if differences is None:
+        merged = "the merged differences were not recorded"
+    else:
+        merged = "merged values differ at: " + (
+            "; ".join(
+                f"{d['path']} (V2 {json.dumps(d['v2'].get('value'))}, "
+                f"V1 {json.dumps(d['v1'].get('value'))})"
+                for d in differences
+            )
+            or "nothing"
+        )
+    basis5 = [
+        admitted,
+        f"{len(targets)} workload-intent chart values; {len(missing)} absent from "
+        f"render-a/{VALUES_FILE_NAME}" + (f": {', '.join(missing)}" if missing else ""),
+        merged,
+    ]
+    if differences is None or not targets:
+        out["E01-AC5"] = (None, basis5)
+    else:
+        out["E01-AC5"] = (
+            admission.get("admitted") is True
+            and not missing
+            and differences == expected_difference,
+            basis5,
+        )
+    return out
+
+
+def _judge_b(
+    evidence: Path, freeze: Mapping[str, Any], manifest: Mapping[str, Any]
+) -> tuple[bool | None, list[str]]:
+    seen = manifest.get("observations", {}).get("E01-B")
+    paths = {
+        directory: {name: _bytes(evidence, directory, name) for name in RENDERED_FILES}
+        for directory in (RENDER_A, MUTATION)
+    }
+    if seen is None or any(None in files.values() for files in paths.values()):
+        return None, ["the E01-B evidence is incomplete"]
+    expected = _part(freeze, "E01-B")["expectedChange"]
+
+    def parsed(directory: str, name: str) -> Any:
+        return yaml.safe_load(paths[directory][name] or b"")
+
+    values = leaf_differences(
+        parsed(RENDER_A, str(VALUES_FILE_NAME)), parsed(MUTATION, str(VALUES_FILE_NAME))
+    )
+    fields = leaf_differences(
+        parsed(RENDER_A, RELEASE_FILE_NAME), parsed(MUTATION, RELEASE_FILE_NAME)
+    )
+    want_values = [
+        {
+            "path": path,
+            "before": {"present": True, "value": change["from"]},
+            "after": {"present": True, "value": change["to"]},
+        }
+        for path, change in sorted(expected["values"].items())
+    ]
+    recorded = _field(parsed(MUTATION, RELEASE_FILE_NAME), "source.contract.sha256")
+    computed = seen.get("mutatedContractDigest")
+    holds = (
+        values == want_values
+        and sorted(d["path"] for d in fields) == sorted(expected["releaseFields"])
+        and recorded is not None
+        and recorded == computed
+    )
+
+    def shown(side: Mapping[str, Any]) -> str:
+        return json.dumps(side["value"]) if side["present"] else "(absent)"
+
+    basis = [
+        f"values.generated.yaml: {d['path']} {shown(d['before'])} -> {shown(d['after'])}"
+        for d in values
+    ] or ["values.generated.yaml: no leaf differs"]
+    basis += [
+        f"rendered-workload-release.yaml: {d['path']} differs" for d in fields
+    ] or ["rendered-workload-release.yaml: no field differs"]
+    basis.append(f"source.contract.sha256 {recorded}; contract_digest {computed}")
+    return holds, basis
+
+
+def _expected_refusal(case: Mapping[str, Any]) -> dict[str, Any]:
+    expected = case["expected"]
+    if "findings" in expected:
+        return {
+            "step": case["refusedBy"],
+            "exception": expected["exception"],
+            "findings": [
+                {key: f[key] for key in ("rule", "category", "code", "field")}
+                for f in expected["findings"]
+            ],
+        }
+    return {
+        "step": case["refusedBy"],
+        "exception": expected["exception"],
+        "code": expected["code"],
+        "field": expected["field"],
+    }
+
+
+def _compared(refusal: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """The parts of a recorded refusal E01-AC7 compares: no reason text."""
+    if refusal is None:
+        return None
+    shown: dict[str, Any] = {
+        "step": refusal.get("step"),
+        "exception": refusal.get("exception"),
+    }
+    if "findings" in refusal:
+        shown["findings"] = [
+            {key: f.get(key) for key in ("rule", "category", "code", "field")}
+            for f in refusal["findings"]
+        ]
+    else:
+        shown["code"] = refusal.get("code")
+        shown["field"] = refusal.get("field")
+    return shown
+
+
+def _judge_c(
+    evidence: Path, freeze: Mapping[str, Any]
+) -> tuple[bool | None, list[str]]:
+    path = evidence / REFUSALS
+    if not path.is_file():
+        return None, ["refusals.json is absent"]
+    recorded = {
+        entry["case"]: entry for entry in json.loads(path.read_text(encoding="utf-8"))
+    }
+    cases = _part(freeze, "E01-C")["cases"]
+    if sorted(recorded) != sorted(case["id"] for case in cases):
+        return None, ["refusals.json does not hold exactly the registered cases"]
+    holds = True
+    basis = []
+    for case in cases:
+        attempts = recorded[case["id"]]["attempts"]
+        if [a.get("attempt") for a in attempts] != [1, 2]:
+            return None, [f"{case['id']} was not recorded as two attempts"]
+        want = _expected_refusal(case)
+        first, second = attempts
+        matches = [_compared(a.get("refusal")) == want for a in attempts]
+        written = [a.get("outputDirectoryExists") for a in attempts]
+        repeated = first.get("refusal") == second.get("refusal")
+        ok = all(matches) and written == [False, False] and repeated
+        holds = holds and ok
+        got = _compared(first.get("refusal"))
+        if got is None:
+            summary = "not refused"
+        elif "findings" in got:
+            summary = "; ".join(
+                f"{f['rule']} {f['category']} {f['code']} {f['field']}"
+                for f in got["findings"]
+            )
+        else:
+            summary = f"{got['code']} {got['field']}"
+        basis.append(
+            f"{case['id']}: refused by {got and got['step']} with {got and got['exception']}: "
+            f"{summary}; as registered: {'yes' if all(matches) else 'no'}; "
+            f"output directory written: {'yes' if any(written) else 'no'}; "
+            f"second execution the same: {'yes' if repeated else 'no'}"
+        )
+    return holds, basis
+
+
+def judge(
+    evidence: Path, freeze: Mapping[str, Any], manifest: Mapping[str, Any]
+) -> Judgement:
+    """Every criterion's verdict and every part's outcome, from a run's raw evidence."""
+    refused = bool(manifest.get("preconditions", {}).get("findings"))
+    aborted = bool(manifest.get("abortChecks", {}).get("conditions"))
+    results: dict[str, tuple[bool | None, list[str]]] = {}
+    if refused:
+        reason = [
+            "the run did not start: " + "; ".join(manifest["preconditions"]["findings"])
+        ]
+        results = {criterion.criterion_id: (None, reason) for criterion in CRITERIA}
+    else:
+        results.update(_judge_a(evidence, manifest))
+        results["E01-AC6"] = _judge_b(evidence, freeze, manifest)
+        results["E01-AC7"] = _judge_c(evidence, freeze)
+    outcomes = {}
+    for part in PARTS:
+        verdicts = [results[c.criterion_id][0] for c in CRITERIA if c.part == part]
+        if refused:
+            outcomes[part] = "REFUSED"
+        elif aborted:
+            outcomes[part] = "ABORTED"
+        elif any(verdict is None for verdict in verdicts):
+            outcomes[part] = "INCONCLUSIVE"
+        elif all(verdicts):
+            outcomes[part] = "PASSED"
+        else:
+            outcomes[part] = "FAILED"
+    return Judgement(
+        verdicts={key: value[0] for key, value in results.items()},
+        basis={key: tuple(value[1]) for key, value in results.items()},
+        outcomes=outcomes,
+    )
+
+
+# --------------------------------------------------------------------------
+# The result page
+# --------------------------------------------------------------------------
+
+
+def _verdict(value: bool | None) -> str:
+    return {True: "held", False: "did not hold", None: "not answered"}[value]
+
+
+def result_page(
+    manifest: Mapping[str, Any], freeze: Mapping[str, Any], judgement: Judgement
+) -> str:
+    """result.md: each criterion, its verdict, and its evidence, limitations first."""
+    meta = manifest["metadata"]
+    statements = {
+        item["id"]: item["statement"]
+        for entry in freeze["fields"]["acceptanceCriteria"]
+        if entry["status"] == "value"
+        for item in entry["value"]
+    }
+    lines = [
+        f"# V2-E01 run {meta['runId']}: E01-A, E01-B, and E01-C",
+        "",
+        "Generated by the run from its raw evidence. `python -m tools.experiment_e01 "
+        "--check` computes it again from the committed files and fails if they differ.",
+        "",
+        "## Limitations",
+        "",
+        "From the freeze record, unchanged:",
+        "",
+    ]
+    lines += [f"- {item}" for item in freeze["definition"]["limitations"]]
+    lines += [
+        "",
+        "Of this run:",
+        "",
+        "- The runner is not a pinned input of the freeze record. It ran from outside "
+        "the checked-out tree, and the manifest records the content digest of each "
+        "runner file.",
+        "- The run executed on one host, named in the manifest. The evidence is C0: "
+        "nothing was deployed, and no runtime component, cluster, or model executed.",
+        "",
+        "## Run",
+        "",
+        f"- Freeze record: `{meta['freezeRecord']}`, revision {meta['freezeRevision']}, "
+        f"content SHA-256 `{meta['freezeContentSha256']}`.",
+        f"- Executing revision: `{manifest['executingRevision']}`.",
+        f"- Started {meta['startedAt']}, finished {meta['finishedAt']} (UTC).",
+        "- Preconditions: "
+        + (
+            "every one held."
+            if not manifest["preconditions"]["findings"]
+            else "; ".join(manifest["preconditions"]["findings"]) + "."
+        ),
+        "- Abort conditions: "
+        + (
+            "none met."
+            if not manifest["abortChecks"]["conditions"]
+            else "; ".join(manifest["abortChecks"]["conditions"]) + "."
+        ),
+        "",
+        "## Outcome",
+        "",
+        "| Part | Outcome |",
+        "| --- | --- |",
+    ]
+    lines += [f"| {part} | {judgement.outcomes[part]} |" for part in PARTS]
+    lines += ["", "## Criteria", ""]
+    for criterion in CRITERIA:
+        cid = criterion.criterion_id
+        lines += [
+            f"### {cid} ({criterion.part}): {_verdict(judgement.verdicts[cid])}",
+            "",
+            f"> {statements.get(cid, '')}",
+            "",
+        ]
+        lines += [f"- {item}" for item in judgement.basis[cid]]
+        lines.append("")
+    lines += [
+        "## Does not establish",
+        "",
+    ]
+    lines += [f"- {item}" for item in freeze["definition"]["doesNotEstablish"]]
+    lines += [
+        "- That the release input deploys or serves. E01-D owns that, and it did not run.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------
+# Checking a committed run
+# --------------------------------------------------------------------------
+
+
+def committed_runs(root: Path = REPO_ROOT) -> list[Path]:
+    """Every run directory under :data:`RUNS_DIR`, in name order."""
+    base = root / RUNS_DIR
+    if not base.is_dir():
+        return []
+    return sorted(path for path in base.iterdir() if path.is_dir())
+
+
+def check_run(evidence: Path, root: Path = REPO_ROOT) -> list[RunFinding]:
+    """Every way a committed run disagrees with its own raw evidence.
+
+    The run's files have the digests its manifest records; the verdicts and outcomes
+    computed again from those files are the ones it records; and result.md is the
+    page they generate. The freeze record is read from ``root`` and must be the one
+    the run names, by content digest.
+    """
+    name = evidence.name
+    findings: list[RunFinding] = []
+    try:
+        manifest = json.loads((evidence / MANIFEST).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        return [RunFinding(name, MANIFEST, f"cannot be read: {type(error).__name__}")]
+    freeze = load_freeze(root)
+    pinned = manifest["metadata"]["freezeContentSha256"]
+    if content_digest((root / FREEZE_PATH).read_bytes()) != pinned:
+        findings.append(
+            RunFinding(
+                name,
+                "metadata.freezeContentSha256",
+                "is not the freeze record's digest",
+            )
+        )
+    if manifest["metadata"]["runId"] != name:
+        findings.append(
+            RunFinding(name, "metadata.runId", "is not the directory's name")
+        )
+    present = {
+        path.relative_to(evidence).as_posix()
+        for path in evidence.rglob("*")
+        if path.is_file()
+    } - {MANIFEST, RESULT}
+    recorded = manifest.get("files", {})
+    for path in sorted(present | set(recorded)):
+        if path not in recorded:
+            findings.append(RunFinding(name, path, "is not in the manifest"))
+        elif path not in present:
+            findings.append(RunFinding(name, path, "is in the manifest and absent"))
+        elif _sha256((evidence / path).read_bytes()) != recorded[path]:
+            findings.append(
+                RunFinding(name, path, "does not have the recorded SHA-256")
+            )
+    judgement = judge(evidence, freeze, manifest)
+    for criterion in manifest.get("criteria", []):
+        if judgement.verdicts.get(criterion["id"]) != criterion["holds"]:
+            findings.append(
+                RunFinding(
+                    name,
+                    f"criteria[{criterion['id']}]",
+                    "is not the verdict its evidence gives",
+                )
+            )
+    if [c["id"] for c in manifest.get("criteria", [])] != [
+        c.criterion_id for c in CRITERIA
+    ]:
+        findings.append(
+            RunFinding(name, "criteria", "does not list every criterion in order")
+        )
+    if manifest.get("outcomes") != dict(judgement.outcomes):
+        findings.append(
+            RunFinding(name, "outcomes", "are not the outcomes its evidence gives")
+        )
+    page = evidence / RESULT
+    if not page.is_file() or page.read_text(encoding="utf-8") != result_page(
+        manifest, freeze, judgement
+    ):
+        findings.append(
+            RunFinding(name, RESULT, "is not the page its evidence generates")
+        )
+    return findings

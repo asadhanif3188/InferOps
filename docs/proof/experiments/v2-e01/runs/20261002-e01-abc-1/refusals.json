@@ -1,0 +1,278 @@
+[
+  {
+    "case": "E01-C-1",
+    "attempts": [
+      {
+        "attempt": 1,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding",
+          "generate_release"
+        ],
+        "refusal": {
+          "step": "generate_release",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "field-required",
+              "category": "shape-invalid",
+              "code": "contract-invalid",
+              "field": "contract.spec.synchronousLlm",
+              "reason": "the synchronous-llm profile requires its own profile block"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      },
+      {
+        "attempt": 2,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding",
+          "generate_release"
+        ],
+        "refusal": {
+          "step": "generate_release",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "field-required",
+              "category": "shape-invalid",
+              "code": "contract-invalid",
+              "field": "contract.spec.synchronousLlm",
+              "reason": "the synchronous-llm profile requires its own profile block"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      }
+    ]
+  },
+  {
+    "case": "E01-C-2",
+    "attempts": [
+      {
+        "attempt": 1,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding",
+          "generate_release"
+        ],
+        "refusal": {
+          "step": "generate_release",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "replica-range-inverted",
+              "category": "semantic-invalid",
+              "code": "contract-invalid",
+              "field": "contract.spec.scaling",
+              "reason": "minimumReplicas must not exceed maximumReplicas"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      },
+      {
+        "attempt": 2,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding",
+          "generate_release"
+        ],
+        "refusal": {
+          "step": "generate_release",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "replica-range-inverted",
+              "category": "semantic-invalid",
+              "code": "contract-invalid",
+              "field": "contract.spec.scaling",
+              "reason": "minimumReplicas must not exceed maximumReplicas"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      }
+    ]
+  },
+  {
+    "case": "E01-C-3",
+    "attempts": [
+      {
+        "attempt": 1,
+        "steps": [
+          "admit_manual_values"
+        ],
+        "refusal": {
+          "step": "admit_manual_values",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "render-manual-value-generated",
+              "category": "ownership-conflict",
+              "code": "contract-invalid",
+              "field": "manualValues.runtime.replicaCount",
+              "reason": "the renderer generates this value from the contract, the binding, or the platform defaults; a hand-written values file may not set, replace, or remove it"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      },
+      {
+        "attempt": 2,
+        "steps": [
+          "admit_manual_values"
+        ],
+        "refusal": {
+          "step": "admit_manual_values",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "render-manual-value-generated",
+              "category": "ownership-conflict",
+              "code": "contract-invalid",
+              "field": "manualValues.runtime.replicaCount",
+              "reason": "the renderer generates this value from the contract, the binding, or the platform defaults; a hand-written values file may not set, replace, or remove it"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      }
+    ]
+  },
+  {
+    "case": "E01-C-4",
+    "attempts": [
+      {
+        "attempt": 1,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding"
+        ],
+        "refusal": {
+          "step": "parse_environment_binding",
+          "exception": "MalformedEnvironmentBindingError",
+          "code": "contract-invalid",
+          "field": "$.spec",
+          "reason": "this object carries 1 field that this binding version does not define; the fields it defines are environment, destination, modelCache, platform, gitops"
+        },
+        "outputDirectoryExists": false
+      },
+      {
+        "attempt": 2,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding"
+        ],
+        "refusal": {
+          "step": "parse_environment_binding",
+          "exception": "MalformedEnvironmentBindingError",
+          "code": "contract-invalid",
+          "field": "$.spec",
+          "reason": "this object carries 1 field that this binding version does not define; the fields it defines are environment, destination, modelCache, platform, gitops"
+        },
+        "outputDirectoryExists": false
+      }
+    ]
+  },
+  {
+    "case": "E01-C-5",
+    "attempts": [
+      {
+        "attempt": 1,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding",
+          "generate_release"
+        ],
+        "refusal": {
+          "step": "generate_release",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "render-profile-unsupported",
+              "category": "profile-unsupported",
+              "code": "capability-unavailable",
+              "field": "contract.spec.profile",
+              "reason": "the renderer was not built for this profile"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      },
+      {
+        "attempt": 2,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding",
+          "generate_release"
+        ],
+        "refusal": {
+          "step": "generate_release",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "render-profile-unsupported",
+              "category": "profile-unsupported",
+              "code": "capability-unavailable",
+              "field": "contract.spec.profile",
+              "reason": "the renderer was not built for this profile"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      }
+    ]
+  },
+  {
+    "case": "E01-C-6",
+    "attempts": [
+      {
+        "attempt": 1,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding",
+          "generate_release"
+        ],
+        "refusal": {
+          "step": "generate_release",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "render-capability-unsupported",
+              "category": "value-unsupported",
+              "code": "capability-unavailable",
+              "field": "contract.spec.model.runtimeProfile",
+              "reason": "the chart configures one runtime sizing, and not this one"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      },
+      {
+        "attempt": 2,
+        "steps": [
+          "parse_workload_contract",
+          "parse_environment_binding",
+          "generate_release"
+        ],
+        "refusal": {
+          "step": "generate_release",
+          "exception": "RenderRefused",
+          "findings": [
+            {
+              "rule": "render-capability-unsupported",
+              "category": "value-unsupported",
+              "code": "capability-unavailable",
+              "field": "contract.spec.model.runtimeProfile",
+              "reason": "the chart configures one runtime sizing, and not this one"
+            }
+          ]
+        },
+        "outputDirectoryExists": false
+      }
+    ]
+  }
+]

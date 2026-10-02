@@ -1,0 +1,165 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRun",
+  "metadata": {
+    "runId": "20261002-e01-abc-1",
+    "experiment": "V2-E01",
+    "freezeRecord": "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json",
+    "freezeRevision": 1,
+    "freezeContentSha256": "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9",
+    "parts": [
+      "E01-A",
+      "E01-B",
+      "E01-C"
+    ],
+    "startedAt": "2026-10-02T16:24:47Z",
+    "finishedAt": "2026-10-02T16:24:48Z"
+  },
+  "executingRevision": "707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3",
+  "preconditions": {
+    "mergedRef": "origin/main",
+    "mergedRefRevision": "707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3",
+    "executingRevisionMerged": true,
+    "freezeRecordAtRevision": true,
+    "statusBefore": [],
+    "movedPinnedInputs": [],
+    "findings": []
+  },
+  "host": {
+    "operatingSystem": "Windows",
+    "operatingSystemVersion": "10.0.26200",
+    "python": "3.12.12",
+    "uv": "uv 0.9.16 (a63e5b62e 2025-12-06)"
+  },
+  "runner": {
+    "package": "experiment_e01",
+    "files": {
+      "__init__.py": "fe4b82582d3dec0782baf4cee2a695fcefe7463ec03514bf07093b9a665b4ca6",
+      "__main__.py": "071d56ff6fe801a7af4fdd11c5114d09764f3893e49ef31d6f2f743ef528a91d",
+      "core.py": "773f6f2b34e4325d87dae32ca1b27afef8075795b693822609ae7914bb5ac026"
+    }
+  },
+  "observations": {
+    "E01-A": {
+      "renderA": {
+        "pythonHashSeed": "1",
+        "hashRandomization": true
+      },
+      "renderB": {
+        "exitStatus": 0,
+        "reported": {
+          "pythonHashSeed": "2",
+          "hashRandomization": true
+        }
+      },
+      "contractDigest": "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d",
+      "binding": {
+        "name": "local-kind",
+        "apiVersion": "inferops.io/v1alpha1",
+        "sha256": "1a6c9e9f3448e2a7a072ac653e1b180c9684814b26aff5842ecdb752923c0a7d"
+      },
+      "admission": {
+        "admitted": true,
+        "refusal": null
+      },
+      "workloadIntentTargets": [
+        "model.artifact.fileName",
+        "model.artifact.repository",
+        "model.artifact.sha256",
+        "model.artifact.sizeBytes",
+        "model.identifier",
+        "model.revision",
+        "ownership.costCenter",
+        "ownership.owner",
+        "ownership.tenant",
+        "ownership.workloadId",
+        "ownership.workloadVersion",
+        "profile",
+        "runtime.image.digest",
+        "runtime.image.repository",
+        "runtime.replicaCount",
+        "runtime.resources.limits.cpu",
+        "runtime.resources.limits.memory",
+        "security.secretRefs",
+        "telemetry.deploymentEnvironment",
+        "telemetry.enabled"
+      ],
+      "mergedDifferences": [
+        {
+          "path": "telemetry.deploymentEnvironment",
+          "v2": {
+            "present": true,
+            "value": "local"
+          },
+          "v1": {
+            "present": true,
+            "value": "dev"
+          }
+        }
+      ]
+    },
+    "E01-B": {
+      "mutatedContractDigest": "b3b3f6fd82aa817c145e6ace22e09725284d7dba66aa08f03bf53e2ed7d93581"
+    }
+  },
+  "error": null,
+  "abortChecks": {
+    "revisionAfter": "707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3",
+    "statusAfter": [
+      "?? docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/mutation/rendered-workload-release.yaml",
+      "?? docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/mutation/values.generated.yaml",
+      "?? docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/refusals.json",
+      "?? docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/render-a/rendered-workload-release.yaml",
+      "?? docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/render-a/values.generated.yaml",
+      "?? docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/render-b/rendered-workload-release.yaml",
+      "?? docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/render-b/values.generated.yaml"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "conditions": []
+  },
+  "files": {
+    "commands.txt": "6eac6f76e4c1b57fa0b3755d78b26a5564f2a8d176069893ec535f970838bb38",
+    "mutation/rendered-workload-release.yaml": "cbbd53f402193c9264d0c87f2db1fb17238ef7afe4c983d09acea130a2c5f141",
+    "mutation/values.generated.yaml": "04ba20aa5bba3d1cb9ea498d039b48529fce2a3a0b88c4a292a3e2465a22783d",
+    "refusals.json": "6e54df44df3a9b7f6acf626fa2582139a3ea43bea5da145619328644a18a8a15",
+    "render-a/rendered-workload-release.yaml": "ec4cbc1c46f4e8aecffee154c29c88e57d4995d4c426b5a41c6f5327f9a66402",
+    "render-a/values.generated.yaml": "137a97b9211a7e92ce82f8423063cfba6b828f51ac3a33fc2ab0d714396301d2",
+    "render-b/rendered-workload-release.yaml": "ec4cbc1c46f4e8aecffee154c29c88e57d4995d4c426b5a41c6f5327f9a66402",
+    "render-b/values.generated.yaml": "137a97b9211a7e92ce82f8423063cfba6b828f51ac3a33fc2ab0d714396301d2"
+  },
+  "criteria": [
+    {
+      "id": "E01-AC1",
+      "holds": true
+    },
+    {
+      "id": "E01-AC2",
+      "holds": true
+    },
+    {
+      "id": "E01-AC3",
+      "holds": true
+    },
+    {
+      "id": "E01-AC4",
+      "holds": true
+    },
+    {
+      "id": "E01-AC5",
+      "holds": true
+    },
+    {
+      "id": "E01-AC6",
+      "holds": true
+    },
+    {
+      "id": "E01-AC7",
+      "holds": true
+    }
+  ],
+  "outcomes": {
+    "E01-A": "PASSED",
+    "E01-B": "PASSED",
+    "E01-C": "PASSED"
+  }
+}
