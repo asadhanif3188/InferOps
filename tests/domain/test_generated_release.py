@@ -388,6 +388,16 @@ def test_a_release_naming_other_values_cannot_be_held_with_these_bytes() -> None
         )
 
 
+def test_a_generated_release_refuses_bytes_that_could_change_after_the_check() -> None:
+    """A bytearray equal to the canonical bytes passes an equality check and can be
+    edited afterwards, so only immutable bytes are held."""
+    generated = generate()
+    with pytest.raises(TypeError):
+        replace(generated, values_bytes=bytearray(generated.values_bytes))  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        replace(generated, release_bytes=bytearray(generated.release_bytes))  # type: ignore[arg-type]
+
+
 # --------------------------------------------------------------------------
 # 3. Deterministic, into clean directories
 # --------------------------------------------------------------------------
@@ -902,6 +912,27 @@ def test_an_interrupt_mid_write_is_cleaned_up_and_raised(
     with pytest.raises(KeyboardInterrupt):
         write_release(generate(), tmp_path / "release")
     assert list(tmp_path.iterdir()) == []
+
+
+def test_an_interrupt_after_the_move_leaves_the_complete_release_alone(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The release is in place once the rename returns; nothing is discarded, and
+    no note calls a complete release incomplete."""
+    target = tmp_path / "release"
+    real = os.rename
+
+    def moved_then_interrupted(source: Any, destination: Any) -> None:
+        real(source, destination)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(os, "rename", moved_then_interrupted)
+    with pytest.raises(KeyboardInterrupt) as raised:
+        write_release(generate(), target)
+    monkeypatch.undo()
+    assert getattr(raised.value, "__notes__", []) == []
+    assert written(target)[RELEASE_FILE_NAME] == GOLDEN_RELEASE.read_bytes()
+    assert not staging_directory(target).exists()
 
 
 def test_the_writer_imports_the_file_system_and_nothing_that_reads_the_host() -> None:

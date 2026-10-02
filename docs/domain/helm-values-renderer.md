@@ -277,8 +277,9 @@ rename. Where a release directory lives is the caller's choice.
 distribution works from a wheel with no file system, and
 [an architecture test](../../tests/architecture/test_domain_dependency_boundary.py) enforces
 it. `writing` is exempt from that test by name, because writing a caller's files is its
-purpose; the same suite holds that it touches a file only inside a function a caller
-invokes, never on import. The rule otherwise stands - an earlier change left a process
+purpose; the same suite holds that nothing it runs on import - a module-level
+statement, a decorator, a default value - names a file-system operation, so it touches a
+file only inside a function a caller invokes. The rule otherwise stands - an earlier change left a process
 memory metric unemitted rather than read a path for it, and that reasoning is unchanged.
 
 ## What it refuses

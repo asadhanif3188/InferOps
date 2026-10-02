@@ -92,11 +92,12 @@ def values_text(values: GeneratedHelmValues) -> bytes:
 class GeneratedRelease:
     """One generation: the release, the values it names, and both files' bytes.
 
-    It cannot hold files that disagree with its objects. Construction recomputes
-    both files from the release and the values and checks that the release names
-    the values file by :data:`VALUES_FILE_NAME` and by the digest of these bytes,
-    so whatever a caller writes from one of these is a release and the values it
-    names, whoever built it.
+    It cannot hold files that disagree with its objects. Construction requires
+    both files as immutable ``bytes`` - a ``bytearray`` equal to them could be
+    changed afterwards - recomputes both from the release and the values, and
+    checks that the release names the values file by :data:`VALUES_FILE_NAME` and
+    by the digest of these bytes, so whatever a caller writes from one of these is
+    a release and the values it names, whoever built it.
     """
 
     release: RenderedWorkloadRelease
@@ -105,6 +106,11 @@ class GeneratedRelease:
     release_bytes: bytes
 
     def __post_init__(self) -> None:
+        if (
+            type(self.values_bytes) is not bytes
+            or type(self.release_bytes) is not bytes
+        ):
+            raise TypeError("a generated release holds its files as immutable bytes")
         if self.values_bytes != values_text(self.values):
             raise ValueError("the values bytes are not the values' canonical form")
         if self.release_bytes != release_text(self.release):

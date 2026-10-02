@@ -207,6 +207,73 @@ that had failed, and the new one. The skips are the ones earlier records name, s
 symbolic links this host does not permit. This record's tables were filled after that run;
 the record and link suites were run again over it.
 
+## What the independent review found
+
+A reviewer outside the change read the first commit, `c445471`, re-ran the linters, mypy,
+and the nine targeted suites, recounted every figure in this record, probed the writer with
+its own paths and interrupts, swept `src`, `docs`, `contracts`, the README, and the
+changelog for sentences the change made false, and scanned the added lines for private
+material. It found nothing it rated critical or high, two findings it rated medium, and
+four low. Every figure it recounted was correct, the six-of-eleven count of single-test
+catches included.
+
+**Medium - `GeneratedRelease` accepted bytes that could change after its check.** Its
+docstring, and the inventory, said an instance cannot hold files that disagree with its
+objects. A `bytearray` equal to the canonical bytes passed the equality check; the
+reviewer mutated one afterwards and `write_release` wrote the edited release without
+complaint. **What the first commit got wrong** is that claim, which was false for any
+caller passing a `bytearray`. *Fixed in code:* construction now requires both files as
+immutable `bytes` and raises `TypeError` otherwise, and a test passes a `bytearray` for
+each.
+
+**Medium - the exemption's test proved less than three documents said.** The writer's
+docstring, the renderer page, and decision 7 above said the architecture suite holds that
+the writer touches a file only when called, never on import. The test looked only for
+`open`, `read_text`, and `read_bytes`, so a module-level `mkdir`, `rename`, or `fsync`
+was invisible to it, and it treated a function's decorators and default values - which run
+on import - as inside the function. *Fixed in the test:* it now collects exactly what runs
+on import - every module-level statement, class bodies included, and every function's
+decorators and defaults - and refuses any of twenty-two file-system names or `open` there;
+five more cases show it finds a read, a `mkdir`, a default value, a decorator, and a class
+body that touch a file. The three documents now say what the test proves.
+
+**Low.** The release examples' index still gave "no release has been recorded for values a
+renderer produced" as the reason the fixtures carry placeholder digests; it now says they
+were written by hand before anything generated a release, and points at the one generated
+release, a test's golden file. The test that only the package index imports the writer saw
+`from .writing import ...` and not `from . import writing`; it now sees both. And an
+interrupt arriving after the rename had moved a complete release into place made the writer
+try to remove a staging directory that no longer existed, and note on the error that an
+incomplete release was left behind; it now leaves a renamed release alone, and a test
+interrupts at exactly that point.
+
+**Noted, not changed.** The read-back reads through the operating system's cache after the
+flush, so it catches a short or failed write, not corruption on the device; the documents
+claim no more.
+
+Three defects were then planted against the fixes, in a fresh archived copy, with the
+three suites they touch - 351 tests - run against each: the `bytes` check removed, the
+renamed-release guard removed, and a module-level `Path(".").exists()` added to the writer.
+Each was caught by one test, and the copy passed all 351 before and after.
+
+**Run again after the fixes:** `ruff check`, `ruff format --check --no-cache`, `mypy`, the
+targeted suites, the gate, gitleaks over every path changed since `6f784b6`, `git diff
+--check`, and the full default lane, with the results below.
+
+| Command, after the fixes | Result |
+|---|---|
+| `uv run --locked ruff check --no-cache .` | All checks passed |
+| `uv run --locked ruff format --check --no-cache .` | 588 files already formatted |
+| `uv run --locked mypy` | No issues in 323 source files |
+| The nine targeted suites, the command above | 2,420 passed: the 2,413 before, the two new tests in the new suite, now 54, and the five new cases in the architecture suite |
+| `python -B -m tools.evidence_index --gate` | Exit 0; the digests above, unchanged |
+| gitleaks 8.30.1 over every path changed since `6f784b6` | No leaks found in any of the 29 paths |
+| `git diff --check main` | Exit 0, no output |
+| The full default lane, the command above | **17,100 passed, 33 skipped, 14 deselected, none failed**, in 8 min 17 s: the 17,093 before and the same seven new tests |
+
+This record's table was filled after that run; the record and link suites were run again
+over it.
+
 ## Privacy and publicability
 
 The diff was read for private planning material, local paths, and credentials. It names no

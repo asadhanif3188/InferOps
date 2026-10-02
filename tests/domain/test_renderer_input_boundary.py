@@ -1303,10 +1303,12 @@ def test_only_the_writer_and_the_package_index_import_the_writer() -> None:
     importers = set()
     for path, tree in module_trees():
         for node in ast.walk(tree):
-            if (
-                isinstance(node, ast.ImportFrom)
-                and node.level == 1
-                and node.module == "writing"
+            if not isinstance(node, ast.ImportFrom) or node.level != 1:
+                continue
+            # `from .writing import x`, or `from . import writing`.
+            if node.module == "writing" or (
+                node.module is None
+                and any(alias.name == "writing" for alias in node.names)
             ):
                 importers.add(path.name)
     assert importers == {"__init__.py"}

@@ -30,9 +30,11 @@ directory whose name says it is partial.
 **The one exemption from a rule, and its limit.** Nothing else under
 ``src/inferops`` opens a path, so that the distribution stays usable from a wheel
 with no file system around it, and an architecture test enforces that for every
-module but this one, by name. This module touches a file only inside a function a
-caller invokes - importing it reads and writes nothing - and the same test holds
-that. Nothing constructs a domain object through it.
+module but this one, by name. This module touches the file system only inside the
+bodies of functions a caller invokes - importing it reads, writes, creates, moves,
+and removes nothing - and the same suite holds that for every module-level
+statement, decorator, and default value. Nothing constructs a domain object
+through it.
 
 **What it does not promise.** The parent directory is not flushed after the rename,
 so after a power loss the rename may not have survived; the staging directory then
@@ -131,7 +133,10 @@ def write_release(
                 raise OSError(f"{name} did not read back as it was written")
         os.rename(staging, target)
     except BaseException as error:
-        _discard(staging, names, error)
+        # Once the rename has happened the staging directory is gone and the
+        # release is complete in place; there is nothing to discard or report.
+        if staging.is_dir():
+            _discard(staging, names, error)
         raise
     return target
 
