@@ -260,3 +260,29 @@ a release was installed with generated values; that the values file's digest nam
 anything, since none is computed; that a hand-written value the check does not cover is
 safe; that an identifier an author chose is not a secret written to look like one; or
 anything about the mock profile, which the renderer does not take.
+
+## Later correction
+
+Added on 2026-10-02 by `V2-S2-001-PR2`, before that change merged. Nothing above this
+heading was changed; it is this change's record as it was merged.
+
+Two acceptance rows above say more than the checks behind them showed.
+
+- **"Story: generated files contain no secret values"** reads *met for what this change
+  generates*. As worded, the criterion cannot be met by any check here: a secret
+  deliberately written as an otherwise valid name the renderer copies - a workload's name
+  or owner, a tenant, a cost centre - has the shape of a name, and syntax cannot prove it
+  non-secret, which is the input-trust limitation the release document already states for
+  provenance. What holds is a bounded property: no supported secret-bearing field or
+  secret reference reaches a generated file, every string in one comes from an owned field,
+  and a known credential shape is refused. It is stated, with its tests, in [What a
+  generated file can carry](../../domain/helm-values-renderer.md#what-a-generated-file-can-carry).
+- **"Story: manual values do not duplicate claim-relevant contract intent"** reads *met for
+  the committed reference file*, and says nothing runs the check on a release's values. The
+  strongest fact was that one file passed one function. Since `V2-S2-001-PR2` the check is
+  applied at a boundary, `admit_manual_values`, which the V1 comparison renders through, and
+  a test admits every repository file named as a supported hand-written values file;
+  [the renderer page](../../domain/helm-values-renderer.md#hand-written-values) states what
+  is still not controlled.
+
+What was run for both is in [the `V2-S2-001-PR2` record](v2-s2-001-pr2-validation.md).

@@ -8,13 +8,14 @@ a release and its source documents are hashed in, and [seven provenance
 rules](#provenance-rules-the-platform-domain-applies) the domain applies and the schema
 does not. `V2-S1-004-PR1` added the [provenance input-trust
 policy](#provenance-input-trust) and the one supported path that builds a release from
-validated, typed inputs. **Nothing writes a release**: [the renderer input
-boundary](../domain/renderer-input-boundary.md) computes the `source` block a release
-records, `record_release` builds the release in memory and writes nothing, and since
-`V2-S2-001-PR1` [the Helm values renderer](../domain/helm-values-renderer.md) generates
-chart values in memory that no release names yet - no values file has been written, and
-neither fixture describes a
-release that was rendered, installed, or run.
+validated, typed inputs. Since `V2-S2-001-PR1` [the Helm values
+renderer](../domain/helm-values-renderer.md) generates chart values, and since
+`V2-S2-001-PR2` [`generate_release`](../domain/helm-values-renderer.md#the-generated-release)
+records the release that names them - with the values file's digest, by [the rule decided
+below](#generated-files-and-their-digests) - and `write_release` writes both files to a
+directory a caller names. **Nothing commits or installs a release.** The one generated
+release in the repository is a test's golden file, rendered at placeholder revisions, and
+neither fixture here describes a release that was rendered, installed, or run.
 
 | Property | Value |
 |---|---|
@@ -85,7 +86,7 @@ same change as them.
 | `source.environmentBinding.name` | Which binding | The EnvironmentBinding's `metadata.name` |
 | `source.environmentBinding.sha256` | The binding's content | A digest of the EnvironmentBinding document |
 | `source.renderer.revision` | The renderer that rendered it | The full commit the renderer ran from |
-| `source.platformDefaults.revision` | The platform defaults it applied | The full commit the defaults were read at |
+| `source.platformDefaults.revision` | The platform defaults it applied | The full commit its caller states the defaults came from: asserted, not checked against the defaults - see [the renderer's measured limitation](../domain/helm-values-renderer.md#the-generated-release) |
 | `output.helmValues.path` | The generated values file | Its name, in the release's own directory |
 | `output.helmValues.sha256` | The generated values' content | A digest of the values file |
 
@@ -210,10 +211,51 @@ no digest, and:
 The domain parses without loss, so for every committed fixture the digest equals the
 canonical digest of the loaded file, and a test holds that too.
 
-**Not decided here: how the values file is hashed.** `output.helmValues.sha256` has its
-form and no rule yet. The file does not exist until a renderer writes one, and whether its
-digest names its bytes or its value belongs to the story that writes it. Until then a
-values digest in a release is a well-formed claim that nothing checks.
+`V2-S1-002-PR2` left the values file's digest to the change that writes the file. That
+change decided it; the next section is the rule.
+
+## Generated files and their digests
+
+Decided by `V2-S2-001-PR2`, and applied by
+[`inferops.domain.release.canonical.output_digest`](../../src/inferops/domain/release/canonical.py).
+
+**`output.helmValues.sha256` is the SHA-256 of the values file's exact bytes**, as 64
+lowercase hexadecimal characters - what `sha256sum` prints for the file. A generated
+release is written as a file too, and its digest is taken the same way. The two kinds of
+document are hashed differently on purpose:
+
+- **A source document is hashed by its value**, as above, because a person writes it:
+  reformatting a contract changes nothing it says, and must not change its digest.
+- **A generated file is hashed by its bytes**, because the platform writes it, in one
+  canonical spelling - [the canonical YAML form](../domain/helm-values-renderer.md#the-canonical-form),
+  sorted, every string quoted, LF only, under a fixed header. For a file the platform
+  wrote, bytes and value name each other, so hashing the bytes loses nothing. What it adds
+  is that **any** edit moves the digest - a comment, an indent, a line ending - so a
+  generated file edited by hand cannot keep the digest the release records, and the
+  digest can be checked with no YAML reader, which the platform distribution does not
+  carry.
+
+**What a generated file can carry.** The same input-trust policy bounds both generated
+files: they expose no supported secret-bearing field or secret reference, every string in
+them comes from a field the renderer's disposition table or [the provenance
+policy](#provenance-input-trust) owns, and a known credential shape is refused rather than
+written. A secret deliberately written as an otherwise valid public identifier remains the
+[input-trust limitation](#provenance-input-trust); the renderer page's
+[What a generated file can carry](../domain/helm-values-renderer.md#what-a-generated-file-can-carry)
+lists the tests.
+
+What this costs: a checkout that rewrites line endings changes a generated file's bytes
+and so its digest. The one generated release committed today, a test's golden file, is
+pinned to LF by `.gitattributes`, and so must any directory generated releases are
+committed to.
+
+**The release identifier does not cover the values.** The identifier is derived from the
+inputs, so a values digest moves a release's canonical form and its file digest, never its
+identifier - which is what lets two releases with one identifier and two values digests
+show a renderer that is not deterministic. One case produces that shape without one: the
+platform defaults are named by the revision the caller states, and no defaults file is
+read, so a caller that changes a default and states the same revision gets one identifier
+and two values digests. A test measures it.
 
 ## Structure
 
@@ -266,7 +308,8 @@ with another.
   release, lowercase, ending in `.yaml`. It has no directory part, so it cannot point
   outside that directory, at another release's values, or at a file on somebody's
   machine, as [`invalid/values-outside-the-release.yaml`](../../contracts/release/examples/invalid/values-outside-the-release.yaml)
-  demonstrates. Where the release directory itself lives is not decided here.
+  demonstrates. Where the release directory itself lives is not decided here:
+  `write_release` writes to whichever directory its caller names.
 
 ## Time and randomness
 
@@ -356,7 +399,7 @@ The table below classifies every value of the render context.
 | `excluded` | a render setting the contract declares, not an identity; the contract digest covers it | `workload.profile`, `workload.environment`, `model.servingCapability`, `model.runtimeProfile`, `resources.cpu`, `resources.memory`, `resources.accelerator.type`, `resources.accelerator.count`, `serving.replicas.minimum`, `serving.replicas.maximum`, `integrations.telemetry.required`, `integrations.modelAccess.required`, `integrations.evaluation.required`, `security.dataClassification`, `model.artifact.sizeBytes`, `mock.ciOnly`, `mock.determinism` |
 | `excluded` | a reference to another artifact the contract cites, not an identity of this release; the contract digest covers it | `model.ref`, `integrations.telemetry.capabilityRef`, `integrations.modelAccess.capabilityRef`, `integrations.evaluation.capabilityRef`, `evidence.runbookRef`, `evidence.proofRefs`, `runtime.imageReference`, `model.artifact.repository`, `model.artifact.revision`, `model.artifact.file`, `model.artifact.sha256`, `mock.fixtureRef` |
 | `excluded` | sensitive: names the secrets the workload reads; a reference is not a value, and provenance carries neither | `security.secretRefs` |
-| `excluded` | a platform default, not an identity; the platform-defaults revision covers it | `api.requestTimeoutMs`, `api.drainTimeoutMs`, `api.maxOutputTokens` |
+| `excluded` | a platform default, not an identity; the release names it only by the platform-defaults revision its caller states, which nothing yet checks against the defaults | `api.requestTimeoutMs`, `api.drainTimeoutMs`, `api.maxOutputTokens` |
 | `excluded` | a fact of one environment, not an identity; the binding digest covers it, and the binding is recorded by name | `destination.clusterProvider`, `destination.namespace`, `modelCache.class`, `modelCache.claimName`, `api.replicas`, `gitops.destinationPath` |
 
 Members of the contract and the binding that the render context does not hold at all - a
@@ -436,11 +479,13 @@ nothing about a file that bypasses the supported path.
 
 **Still open, and whose it is.** The render boundary hands a binding whose values are
 shaped like a credential to a renderer: provenance refuses its name when a release is
-recorded, and every other binding value is excluded from provenance, but whether
-generated output may carry such a value belongs to the change that generates values. The
-renderer revision, platform-defaults revision, and values digest are still checked for
-nothing beyond their form, as [the rules not applied yet](#rules-that-are-not-applied-yet)
-state.
+recorded, and every other binding value is excluded from provenance. Since
+`V2-S2-001-PR1` the Helm values renderer refuses a credential-shaped string it would write,
+whichever input supplied it; a binding value no renderer writes is still not checked. The
+renderer and platform-defaults revisions are checked for nothing beyond their form, and so
+is a values digest a caller hands `record_release` directly; since `V2-S2-001-PR2`
+`generate_release` computes the values digest from the values file's bytes instead, as
+[the rules not applied yet](#rules-that-are-not-applied-yet) state.
 
 ## Secrets
 
@@ -630,8 +675,8 @@ is.
 
 | Rule | Why it is not applied | What it needs |
 |---|---|---|
-| `output.helmValues.sha256` is the digest of the values file it names | How a values file is hashed is not decided, and no values file exists | The code that writes values, and the rule for hashing them |
-| The values file exists beside the release | A document check cannot see a directory | The renderer's output check |
+| `output.helmValues.sha256` is the digest of the values file it names, for a release read back from a directory | Since `V2-S2-001-PR2` the rule is [decided](#generated-files-and-their-digests), and `generate_release` records the digest of the bytes it hands `write_release`, which reads both files back before it moves them into place. Nothing re-checks a release directory once it is written, or a release built by calling `record_release` directly | The generated-artifact drift check |
+| The values file exists beside the release, for a release read back from a directory | `write_release` writes both files or neither for a running system, though not across a crash, which can leave the directory without both; a document check still cannot see a directory, and nothing reads one back later | The generated-artifact drift check |
 | The renderer and platform-defaults revisions name commits that exist | A document check has no repository | A check against the repository the release is committed in |
 | A lowercase credential with no published prefix is refused | It has the shape of a name, and the heuristic's other branch needs mixed case; see [Secrets](#secrets). Since `V2-S1-004-PR1` this is stated as the policy's [input-trust limitation](#provenance-input-trust), not a pending rule: no rule over syntax can close it | Nothing syntactic: identities are public by policy, and a test asserts the gap on the supported path too |
 | A release committed to the repository matches what its sources derive today | Nothing commits a release | The generated-artifact drift check |
@@ -650,7 +695,7 @@ or run.
 ## Validation
 
 ```sh
-python -m pytest tests/contracts/test_rendered_workload_release_v1alpha1.py tests/domain/test_rendered_workload_release_domain.py tests/domain/test_provenance_input_trust.py -q
+python -m pytest tests/contracts/test_rendered_workload_release_v1alpha1.py tests/domain/test_rendered_workload_release_domain.py tests/domain/test_provenance_input_trust.py tests/domain/test_generated_release.py -q
 ```
 
 A document that is not a committed fixture can be checked from Python, for every
@@ -743,18 +788,15 @@ files say about each other and nothing about a running system.
 
 ## What this contract does not do
 
-- **Nothing writes it.** The render boundary assembles a release's `source` block,
-  `record_release` builds a release in memory and writes no file, and the Helm values
-  renderer generates values in memory that no release is recorded for. The values file a
-  release is installed with is still written by hand, and no release document exists for
-  it.
+- **Nothing commits or installs it.** Since `V2-S2-001-PR2`, `generate_release` records a
+  release for the values the Helm values renderer produced, and `write_release` writes the
+  two files to a directory a caller names. Nothing calls either from a command, a
+  workflow, or a delivery path; no generated release is committed outside a test's golden
+  file; and the values file a release is installed with is still written by hand.
 - **It checks a source digest only when it is given the source.** The platform domain
   confirms the contract and binding digests against documents a caller supplies. Nothing
-  finds those documents for a release, nothing confirms the values digest, and nothing
-  checks that the two revisions exist.
-- **It derives provenance from a render context, never from a render.** The domain
-  computes the digests and the identifier a release records, and `record_release` builds
-  one from a context; no release has been recorded for values a renderer produced.
+  finds those documents for a release, nothing re-checks a written values file against
+  the digest its release records, and nothing checks that the two revisions exist.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about a deployment.** A valid release is a well-formed statement

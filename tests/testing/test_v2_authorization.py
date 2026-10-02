@@ -30,11 +30,11 @@ import pytest
 
 from tools.evidence_index import (
     LEDGER_PATHS,
-    POST_RELEASE_PATH,
+    POST_RELEASE_LEDGER_PATHS,
     RELEASED_DIGESTS,
     content_sha256,
     load_index,
-    load_ledger,
+    load_ledgers,
     released_register,
 )
 from tools.evidence_model import load_register
@@ -51,7 +51,7 @@ PRIOR_DATA: dict[str, Any] = json.loads(
 )
 INDEX = load_index()
 #: This record reads the pack the earlier one read, the one `v1.0.0` was cut over.
-REGISTER = released_register(load_register(), load_ledger(POST_RELEASE_PATH))
+REGISTER = released_register(load_register(), load_ledgers(POST_RELEASE_LEDGER_PATHS))
 CLAIMS = {claim["claimId"]: claim for claim in REGISTER["claims"]}
 
 PRIOR_FINDINGS = {row["findingId"]: row for row in PRIOR_DATA["findings"]}

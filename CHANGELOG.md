@@ -10,6 +10,48 @@ from `1.0.0`.
 
 ### Added
 
+- **Generated release provenance.** `V2-S2-001-PR2` binds the Helm values renderer's
+  output to a RenderedWorkloadRelease. `generate_release` runs the boundary, the renderer,
+  and `record_release` in one path and returns the values and the release that names them
+  as two files' exact bytes - `values.generated.yaml` and `rendered-workload-release.yaml`,
+  both in the canonical YAML form - with their digests, and `write_release` writes both to
+  a directory a caller names, all or nothing: it never writes into an existing directory,
+  stages in `.<name>.partial`, reads both files back, and renames once; a failure removes
+  what was staged, or names it on the error and refuses the next write until it is
+  removed. **Decided here:** a generated file is hashed by its exact bytes, so
+  `output.helmValues.sha256` is what `sha256sum` prints for the values file, while source
+  documents stay hashed by value; `output_digest` in the release domain applies the rule.
+  For the reference workload both files are committed golden files, written byte for
+  byte, in two interpreters under two hash seeds, into clean directories; nine
+  one-at-a-time changes each move exactly their own values and release fields, and one
+  shape is measured rather than hidden - a platform-defaults change stated under the same
+  revision moves the values digest and not the release identifier. The written values
+  still render byte-identically to the V1 real fixture with the contract's environment.
+  Nothing calls either function from a command or a workflow, no generated release is
+  committed outside the test fixtures, nothing installs one, no claim moves, and every
+  check is static (`C0`); [the page](docs/domain/helm-values-renderer.md#the-generated-release)
+  says what is generated and [the validation
+  record](docs/proof/domain/v2-s2-001-pr2-validation.md) what was run.
+
+- **Generated release, corrected before merge.** A pre-merge review of `V2-S2-001-PR2`
+  found four gaps, and weighing the writer's exemption again found a fifth, in its
+  wording; all are closed in the same change. Hand-written values are now
+  admitted beside generated ones only through `admit_manual_values`, which refuses one
+  that sets, replaces, or removes a generated value and pairs the two as
+  `AdmittedHelmValues`; the V1 comparison renders through it, and a test admits every
+  repository file named with the supported suffix, `.manual-values.yaml`, so a new one
+  that repeats contract intent fails the suite. A file named otherwise, or passed to Helm
+  some other way, is not checked. The secret property is stated as what the tests hold -
+  no supported secret-bearing field or secret reference, only owned fields, known
+  credential shapes refused - and not as "no secret values", which syntax cannot show.
+  The platform-defaults gap is named for what it is: the release records the revision its
+  caller asserts. The limitation of `deployment-values-derive-only-from-a-validated-document`
+  no longer says rendering does not exist; it says what exists at `C0` and what does not,
+  through a sixth ledger of register changes, the second after the release. The claim
+  stays planned with no record, the released `v1.0.0` pack recomputes unchanged, and the
+  current pack digest moves. The writer's page and docstring no longer say a crash leaves
+  both files staged.
+
 - **Helm values renderer.** `V2-S2-001-PR1` adds the first renderer behind the render
   boundary. `HelmValuesRenderer` turns a `synchronous-llm` render context into the values
   of the existing `inferops-llm` chart, `0.3.0`, and nothing else: every one of the 44

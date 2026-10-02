@@ -34,10 +34,12 @@ from typing import Any
 import pytest
 
 from tools.evidence_index import (
+    POST_RELEASE_LEDGER_PATHS,
     POST_RELEASE_PATH,
     PUBLICATION_PATH,
     load_index,
     load_ledger,
+    load_ledgers,
     released_register,
 )
 from tools.evidence_model import load_register
@@ -50,12 +52,12 @@ RELEASE: dict[str, Any] = json.loads(RELEASE_PATH.read_text(encoding="utf-8"))
 EVIDENCE = RELEASE["evidence"]
 INDEX = load_index()
 #: The index's summary for the pack the release was cut over: the counts and digests
-#: it recomputes with the post-release ledger undone, over everything else it states.
+#: it recomputes with the post-release ledgers undone, over everything else it states.
 SUMMARY = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
 CURRENT_REGISTER = load_register()
 POST_RELEASE = load_ledger(POST_RELEASE_PATH)
 #: The register as the release holds it.
-REGISTER = released_register(CURRENT_REGISTER, POST_RELEASE)
+REGISTER = released_register(CURRENT_REGISTER, load_ledgers(POST_RELEASE_LEDGER_PATHS))
 PUBLICATION = load_ledger(PUBLICATION_PATH)
 AFTER = RELEASE["afterTheRelease"]
 CASE_STUDY_DATA = json.loads(

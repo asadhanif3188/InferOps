@@ -27,9 +27,11 @@ from typing import Any
 import pytest
 
 from tools.evidence_index import (
+    POST_RELEASE_LEDGER_PATHS,
     POST_RELEASE_PATH,
     load_index,
     load_ledger,
+    load_ledgers,
     released_register,
 )
 from tools.evidence_model import load_register
@@ -44,10 +46,10 @@ DATA: dict[str, Any] = json.loads(DECISION_PATH.read_text(encoding="utf-8"))
 DECISION = DATA["decision"]
 INDEX = load_index()
 #: The decision reads the pack `v1.0.0` was cut over: the counts and digests the index
-#: recomputes with the post-release ledger undone, and the register as released.
+#: recomputes with the post-release ledgers undone, and the register as released.
 SUMMARY = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
 CURRENT_REGISTER = load_register()
-REGISTER = released_register(CURRENT_REGISTER, load_ledger(POST_RELEASE_PATH))
+REGISTER = released_register(CURRENT_REGISTER, load_ledgers(POST_RELEASE_LEDGER_PATHS))
 CLAIMS = {claim["claimId"]: claim for claim in REGISTER["claims"]}
 CASE_STUDY_DATA = json.loads(
     (REPO_ROOT / DATA["caseStudyDataRef"]).read_text(encoding="utf-8")

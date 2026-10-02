@@ -44,12 +44,13 @@ from tools.evidence_index import (
     COMPLETENESS_PATH,
     FINAL_STATES,
     INDEX_PATH,
-    POST_RELEASE_PATH,
+    POST_RELEASE_LEDGER_PATHS,
     PUBLICATION_PATH,
     evidence_set_sha256,
     git_blob_id,
     load_index,
     load_ledger,
+    load_ledgers,
     open_blockers,
     release_gate,
     released_register,
@@ -64,7 +65,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: The register as the `v1.0.0` pack holds it: the current one with the post-release
 #: ledger undone. What this ledger decided is history the released pack carries; the
 #: change after the release is held by `test_evidence_post_release.py`.
-REGISTER = released_register(load_register(), load_ledger(POST_RELEASE_PATH))
+REGISTER = released_register(load_register(), load_ledgers(POST_RELEASE_LEDGER_PATHS))
 NORMALIZATION = load_ledger()
 COMPLETENESS = load_ledger(COMPLETENESS_PATH)
 CLOSURE = load_ledger(CLOSURE_PATH)

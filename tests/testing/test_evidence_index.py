@@ -65,8 +65,8 @@ REGISTER = load_register()
 LEDGER = load_ledger()
 #: Every ledger, in the order applied: `V1-S5-006-PR1`'s normalization,
 #: `V1-S5-006-PR2`'s completeness verification, `V1-S5-013-PR1`'s closure,
-#: `V1-S5-013-PR2`'s publication, and `V1-S5-009-PR1`'s post-release changes.
-#: Undoing the register takes all five.
+#: `V1-S5-013-PR2`'s publication, `V1-S5-009-PR1`'s post-release changes, and
+#: `V2-S2-001-PR2`'s claim reconciliation. Undoing the register takes all six.
 LEDGERS = load_ledgers()
 #: The two ledgers that may move a status, read by their paths rather than their
 #: positions, so a later ledger appended after them cannot take their place below.

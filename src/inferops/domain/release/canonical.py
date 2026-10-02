@@ -43,6 +43,18 @@ the SHA-256 of the canonical JSON of
 ``{"metadata": {"workloadId": ..., "workloadVersion": ...}, "source": ...}``. The
 output is not an input to it, and neither is the identifier itself.
 
+**How a generated file is hashed - decided by the change that writes one.** A
+release records the digest of the values file it names, and the render package
+writes the release itself to a file beside it. Each digest is
+:func:`output_digest`: the SHA-256 of the file's exact bytes. A source document is
+hashed by value because a person writes it, and reformatting it changes nothing it
+says; a generated file is written by the platform in one canonical spelling, so its
+bytes and its value name each other and hashing the bytes loses nothing. What the
+bytes add is that *any* edit moves the digest - a comment, an indent, a line ending
+- so a generated file edited by hand cannot keep the digest of the one generated,
+and the digest is what ``sha256sum`` prints, checkable without a YAML reader, which
+this distribution does not carry.
+
 Offline and deterministic: no file system, network, clock, or randomness. A test
 replaces the clock, the random sources, and the identifier generators with
 functions that fail, and computes every value here under them.
@@ -191,6 +203,18 @@ def canonical_release(release: RenderedWorkloadRelease) -> bytes:
     return canonical_json(release.as_document())
 
 
+def output_digest(data: bytes) -> Sha256Hex:
+    """The digest of a generated file: the SHA-256 of its exact bytes.
+
+    Raises:
+        TypeError: ``data`` is not ``bytes``. Text has no digest until it is
+            encoded, and choosing an encoding here would be a second rule.
+    """
+    if not isinstance(data, bytes):
+        raise TypeError("a generated file is hashed as the bytes written, not as text")
+    return Sha256Hex(hashlib.sha256(data).hexdigest())
+
+
 __all__ = [
     "LARGEST_EXACT_INTEGER",
     "binding_digest",
@@ -199,5 +223,6 @@ __all__ = [
     "canonical_sha256",
     "contract_digest",
     "derive_release_id",
+    "output_digest",
     "release_identity",
 ]

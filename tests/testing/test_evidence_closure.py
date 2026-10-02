@@ -31,10 +31,11 @@ from tools.evidence_index import (
     CLOSURE_PATH,
     COMPLETENESS_PATH,
     INDEX_PATH,
-    POST_RELEASE_PATH,
+    POST_RELEASE_LEDGER_PATHS,
     PUBLICATION_PATH,
     load_index,
     load_ledger,
+    load_ledgers,
     merged_identities,
     open_blockers,
     release_gate,
@@ -50,7 +51,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: The register as the `v1.0.0` pack holds it: the current one with the post-release
 #: ledger undone. What this ledger decided is history the released pack carries; the
 #: change after the release is held by `test_evidence_post_release.py`.
-REGISTER = released_register(load_register(), load_ledger(POST_RELEASE_PATH))
+REGISTER = released_register(load_register(), load_ledgers(POST_RELEASE_LEDGER_PATHS))
 COMPLETENESS = load_ledger(COMPLETENESS_PATH)
 CLOSURE = load_ledger(CLOSURE_PATH)
 PUBLICATION = load_ledger(PUBLICATION_PATH)
@@ -58,7 +59,7 @@ INDEX = load_index()
 REPORT_PATH = REPO_ROOT / CLOSURE["reportRef"]
 
 #: The index's summary as the `v1.0.0` pack stood: the counts and digests the index
-#: recomputes with the post-release ledger undone, over everything else it states.
+#: recomputes with the post-release ledgers undone, over everything else it states.
 AS_RELEASED = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
 REVISION = CLOSURE["runRevision"]["revision"]
 

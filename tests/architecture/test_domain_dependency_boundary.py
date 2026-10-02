@@ -156,6 +156,15 @@ def test_the_domain_does_not_import_its_own_development_dependencies() -> None:
     assert not imported & {"jsonschema", "yaml", "pydantic", "attrs"}, sorted(imported)
 
 
+#: The one module under the distribution that touches a file: the writer of a
+#: generated release, which puts bytes another module computed into a directory its
+#: caller names. It does so only when called, and the test after the next holds that.
+RELEASE_WRITER = DISTRIBUTION_ROOT / "domain" / "render" / "writing.py"
+
+#: Attribute names that open or read a path.
+FILE_ACCESS = {"read_text", "read_bytes", "open"}
+
+
 def test_no_module_under_the_distribution_reads_a_file_at_import_time() -> None:
     """A domain object must be constructible without a file system.
 
@@ -163,19 +172,113 @@ def test_no_module_under_the_distribution_reads_a_file_at_import_time() -> None:
     usable from a wheel with no repository around it. The published schema and the
     compatibility matrix are read by ``tools/`` and by the test suites, which are
     both outside the distribution on purpose.
+
+    One module is exempt, by name: the release writer, whose purpose is to write
+    the files of a generated release where a caller asks. Nothing constructs a
+    domain object through it, and the test below holds that it touches a file only
+    when it is called, never when it is imported.
     """
     offenders: list[str] = []
     for path in domain_modules():
+        if path == RELEASE_WRITER:
+            continue
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 if node.func.id == "open":
                     offenders.append(path.relative_to(REPO_ROOT).as_posix())
-            elif isinstance(node, ast.Attribute) and node.attr in {
-                "read_text",
-                "read_bytes",
-                "open",
-            }:
+            elif isinstance(node, ast.Attribute) and node.attr in FILE_ACCESS:
                 offenders.append(path.relative_to(REPO_ROOT).as_posix())
     assert not offenders, sorted(set(offenders))
+
+
+#: Every name the writer could use to read, write, create, move, remove, or
+#: inspect a path, wider than ``FILE_ACCESS`` because the exemption is wider.
+FILE_SYSTEM = FILE_ACCESS | {
+    "write_text",
+    "write_bytes",
+    "touch",
+    "mkdir",
+    "makedirs",
+    "rename",
+    "replace",
+    "unlink",
+    "remove",
+    "rmdir",
+    "fsync",
+    "exists",
+    "is_dir",
+    "is_file",
+    "is_symlink",
+    "iterdir",
+    "stat",
+    "scandir",
+    "listdir",
+}
+
+
+def _names(node: ast.AST) -> set[str]:
+    names: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Attribute):
+            names.add(child.attr)
+        elif isinstance(child, ast.Name):
+            names.add(child.id)
+    return names
+
+
+def _runs_on_import(tree: ast.Module) -> list[ast.AST]:
+    """Every part of a module that executes when it is imported.
+
+    A function's body runs when it is called; its decorators, default values,
+    and annotations run when the ``def`` does. Everything else at module level -
+    a class body included - runs on import.
+    """
+    parts: list[ast.AST] = []
+    for statement in tree.body:
+        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            arguments = statement.args
+            parts.extend(statement.decorator_list)
+            parts.extend(arguments.defaults)
+            parts.extend(default for default in arguments.kw_defaults if default)
+        else:
+            parts.append(statement)
+    return parts
+
+
+def test_the_release_writer_touches_a_file_only_when_it_is_called() -> None:
+    """The exemption above is for calls, not for importing the writer.
+
+    No statement, decorator, or default value that runs on import names a
+    file-system operation or ``open``, so importing the module - and so the
+    package that re-exports it - reads, writes, creates, moves, and removes
+    nothing. The function bodies do name them; the writer is the only exempt
+    module, and it does exist.
+    """
+    assert RELEASE_WRITER in domain_modules()
+    tree = ast.parse(RELEASE_WRITER.read_text(encoding="utf-8"))
+    on_import: set[str] = set()
+    for part in _runs_on_import(tree):
+        on_import |= _names(part)
+    assert not on_import & (FILE_SYSTEM | {"open"}), sorted(on_import & FILE_SYSTEM)
+    assert _names(tree) & FILE_SYSTEM, "the writer touches no file; drop the exemption"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from pathlib import Path\nTEXT = Path('a').read_text()\n",
+        "import os\nos.mkdir('a')\n",
+        "def f(x=open('a')):\n    return x\n",
+        "import functools\n@functools.lru_cache(maxsize=len(open('a').read()))\n"
+        "def f():\n    return 1\n",
+        "class C:\n    data = open('a').read()\n",
+    ],
+)
+def test_the_import_time_check_finds_a_file_touched_on_import(source: str) -> None:
+    """The check above would see each way a module can touch a file on import."""
+    names: set[str] = set()
+    for part in _runs_on_import(ast.parse(source)):
+        names |= _names(part)
+    assert names & (FILE_SYSTEM | {"open"})

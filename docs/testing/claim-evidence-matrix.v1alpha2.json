@@ -706,7 +706,7 @@
       "status": "planned",
       "notClaimedReason": null,
       "assertsRealBehaviour": false,
-      "limitation": "Deployment rendering does not exist. The chart's values are written by an operator, not derived from a document.",
+      "limitation": "Deterministic deployment-value rendering exists, checked statically at C0: validated, typed inputs render the chart's values, and a RenderedWorkloadRelease binds the generated values file to the digests and revisions of what it was rendered from. No supported deployment or GitOps path consumes the generated files yet, so no executed release shows deployment values derived only from a validated document. The platform-defaults revision a release records is the one its caller states: nothing yet reconstructs the defaults from a committed source bound to that revision, so defaults content changed under the same stated revision changes the values and not the release identifier. A hand-written values file is checked against the generated values only when it is one the repository supports, one named with the .manual-values.yaml suffix; any other values file given to Helm is not checked.",
       "doesNotEstablish": "Anything. It is an intention and cites no record.",
       "evidenceRecords": [],
       "strategyClaimIds": [
@@ -9619,7 +9619,7 @@
     },
     {
       "path": "docs/proof/v1-evidence-index.md",
-      "reason": "A generated projection of this register and the five ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the post-release ledger. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+      "reason": "A generated projection of this register and the six ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
     },
     {
       "path": "docs/testing/evidence-levels.md",

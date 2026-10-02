@@ -6,7 +6,8 @@ The index is generated from
 [the completeness ledger](../../docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json),
 [the closure ledger](../../docs/proof/testing/v1-s5-013-pr1-closure.v1alpha1.json),
 [the publication ledger](../../docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json),
-and [the post-release ledger](../../docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json),
+[the post-release ledger](../../docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json),
+and [the claim reconciliation ledger](../../docs/proof/testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
 and it says nothing they do not. See
 [the index's own page](../../docs/proof/v1-evidence-index.md).
 """
@@ -15,6 +16,7 @@ from __future__ import annotations
 
 from .core import (
     BLOCKER_CLOSURES,
+    CLAIM_RECONCILIATION_PATH,
     CLOSURE_PATH,
     CODE_IDENTITIES,
     CODE_REVISION_RELATIONS,
@@ -27,6 +29,7 @@ from .core import (
     LEDGER_PATH,
     LEDGER_PATHS,
     LEVEL_ORDER,
+    POST_RELEASE_LEDGER_PATHS,
     POST_RELEASE_PATH,
     PUBLICATION_PATH,
     RELEASED_DIGESTS,
@@ -57,6 +60,7 @@ from .core import (
 
 __all__ = [
     "BLOCKER_CLOSURES",
+    "CLAIM_RECONCILIATION_PATH",
     "CLOSURE_PATH",
     "CODE_IDENTITIES",
     "CODE_REVISION_RELATIONS",
@@ -69,6 +73,7 @@ __all__ = [
     "LEDGER_PATH",
     "LEDGER_PATHS",
     "LEVEL_ORDER",
+    "POST_RELEASE_LEDGER_PATHS",
     "POST_RELEASE_PATH",
     "PUBLICATION_PATH",
     "RELEASED_DIGESTS",

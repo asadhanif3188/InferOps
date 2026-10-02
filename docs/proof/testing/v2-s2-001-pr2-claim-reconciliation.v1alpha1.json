@@ -1,0 +1,149 @@
+{
+  "$id": "https://inferops.io/proof/testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Register changes after generated Helm values, V2-S2-001-PR2",
+  "description": "What V2-S2-001-PR2 changed in the register once the platform generated Helm values and the release naming them: every register change with its value before and after, and the findings each answers. It is the second ledger written after v1.0.0 was released, and like the first it is not part of the pack that release was cut over: the evidence index undoes it, with the post-release ledger, to recompute that pack. It promotes no claim, adds no record, raises and closes no blocker, declares no freeze, states no release, and edits no dated record.",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "priorLedgerRef": "docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json",
+  "reportRef": "docs/proof/domain/v2-s2-001-pr2-validation.md",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "registerChanges": [
+    {
+      "changeId": "c01-rendering-limitation",
+      "findingId": "c-f01-the-limitation-says-no-rendering-exists",
+      "operation": "set-claim-field",
+      "claimId": "deployment-values-derive-only-from-a-validated-document",
+      "field": "limitation",
+      "before": "Deployment rendering does not exist. The chart's values are written by an operator, not derived from a document.",
+      "after": "Deterministic deployment-value rendering exists, checked statically at C0: validated, typed inputs render the chart's values, and a RenderedWorkloadRelease binds the generated values file to the digests and revisions of what it was rendered from. No supported deployment or GitOps path consumes the generated files yet, so no executed release shows deployment values derived only from a validated document. The platform-defaults revision a release records is the one its caller states: nothing yet reconstructs the defaults from a committed source bound to that revision, so defaults content changed under the same stated revision changes the values and not the release identifier. A hand-written values file is checked against the generated values only when it is one the repository supports, one named with the .manual-values.yaml suffix; any other values file given to Helm is not checked.",
+      "reason": "The renderer and the generated release exist, so the limitation says what exists, at what level, and what still stands between it and the statement: no deployment path consumes the generated files, the platform defaults are named by an asserted revision, and only supported hand-written values files are checked."
+    },
+    {
+      "changeId": "c02-index-surface-reason",
+      "findingId": "c-f02-the-index-surface-reason-names-five-ledgers",
+      "operation": "set-register-field",
+      "field": "nonClaimSurfaces",
+      "before": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the five ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the post-release ledger. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "after": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the six ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "reason": "The evidence index is projected from this register and six ledgers now, and the released pack is recomputed by undoing both ledgers written after the release."
+    }
+  ],
+  "recordCorrections": [],
+  "findings": [
+    {
+      "findingId": "c-f01-the-limitation-says-no-rendering-exists",
+      "source": "this-change",
+      "observation": "The claim's limitation said deployment rendering does not exist and that the chart's values are written by an operator. Since the Helm values renderer and the generated release, deterministic rendering from validated, typed inputs exists, and a RenderedWorkloadRelease binds the generated values to their sources; both are static, C0. The sentence was left stale by the change that added the renderer, which said so in its record, and was left stale again by this change's first commit.",
+      "resolution": "The limitation is replaced. The claim stays planned, asserts no real behaviour, and cites no record: no supported deployment path consumes the generated files, so the statement is not shown by any executed release.",
+      "resolvedBy": [
+        "c01-rendering-limitation"
+      ],
+      "recordIds": [],
+      "claimIds": [
+        "deployment-values-derive-only-from-a-validated-document"
+      ]
+    },
+    {
+      "findingId": "c-f02-the-index-surface-reason-names-five-ledgers",
+      "source": "this-change",
+      "observation": "The register's reason for the evidence index, a surface that claims nothing, named five ledgers of register changes and said the released pack is recomputed by undoing the post-release ledger. This ledger is a sixth, and it is undone too.",
+      "resolution": "The reason is replaced; the surface claims nothing.",
+      "resolvedBy": [
+        "c02-index-surface-reason"
+      ],
+      "recordIds": [],
+      "claimIds": []
+    }
+  ],
+  "codeRevisions": []
+}

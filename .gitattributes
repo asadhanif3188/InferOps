@@ -49,7 +49,8 @@ docs/proof/v1-evidence-index.v1alpha1.json text eol=lf
 # platform wrote the file.
 deploy/prometheus/*.yaml text eol=lf
 
-# The generated Helm values under this directory are compared byte for byte with
-# what the renderer writes, which is LF on every platform. Pinned so a Windows
-# checkout cannot turn the golden file into a CRLF copy that no render matches.
+# The generated Helm values and the generated release under this directory are
+# compared byte for byte with what the renderer writes, which is LF on every
+# platform, and a generated file's digest is the digest of its bytes. Pinned so a
+# Windows checkout cannot turn a golden file into a CRLF copy that no render matches.
 tests/domain/fixtures/helm-values/** text eol=lf
