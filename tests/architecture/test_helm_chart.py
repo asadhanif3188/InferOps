@@ -41,6 +41,14 @@ against those records, and the startup budget is compared against the largest
 model load this project has actually measured — so a change that made the chart
 internally consistent and externally wrong fails here.
 
+**The V2-generated reference release renders the V1 workload.** The committed
+generated values, with the reference hand-written file installed after them, must
+render the manifests the V1 real values render under the contract's environment
+label, and lint with no guard failing. What the chart's guards still require beyond
+the generated values is read from lint's report and compared with the V1
+synchronous compatibility record. These need `helm` and skip where it is absent; the
+CI job that installs a pinned Helm runs this suite and fails on a skip.
+
 The rendered manifests under `charts/inferops-llm/ci/rendered/` are committed
 output from a real `helm template` run, recorded in the validation record beside
 this change. The properties asserted over them run everywhere. The comparison
@@ -2041,6 +2049,117 @@ def test_the_committed_render_matches_what_helm_produces(profile: str) -> None:
         f"the committed {profile} render is out of date. Regenerate it with the "
         "command in charts/inferops-llm/ci/rendered/README.md"
     )
+
+
+# --------------------------------------------------------------------------
+# The V2-generated reference release, as the chart reads it
+# --------------------------------------------------------------------------
+
+GENERATED_VALUES = (
+    REPO_ROOT
+    / "tests"
+    / "domain"
+    / "fixtures"
+    / "helm-values"
+    / "support-assistant-local-kind"
+    / "values.generated.yaml"
+)
+HAND_WRITTEN_VALUES = (
+    REPO_ROOT
+    / "tests"
+    / "domain"
+    / "fixtures"
+    / "helm-values"
+    / "support-assistant-local.manual-values.yaml"
+)
+COMPATIBILITY_RECORD = (
+    REPO_ROOT / "docs" / "domain" / "v1-synchronous-compatibility.v1alpha1.json"
+)
+#: How the chart's own guards report a value they require, as `helm lint` prints them.
+GUARD_REQUIRES = re.compile(r"Fail: ([A-Za-z0-9_.]+) is required")
+
+
+def _helm(*arguments: str) -> subprocess.CompletedProcess[str]:
+    """`helm` with a fixed argument vector and no shell; skipped where it is absent."""
+    helm = shutil.which("helm")
+    if helm is None:
+        pytest.skip("helm is not on PATH; see CONTRIBUTING.md for the commands")
+    return subprocess.run(
+        [helm, *arguments], capture_output=True, text=True, check=False
+    )
+
+
+def _template(*values: Path, overrides: tuple[str, ...] = ()) -> str:
+    arguments = [
+        "template",
+        "inferops",
+        str(CHART_DIR),
+        "--namespace",
+        "inferops-platform",
+    ]
+    for path in values:
+        arguments.extend(["--values", str(path)])
+    for override in overrides:
+        arguments.extend(["--set", override])
+    result = _helm(*arguments)
+    assert result.returncode == 0, result.stderr
+    return result.stdout.replace("\r\n", "\n")
+
+
+def _lint(*values: Path) -> subprocess.CompletedProcess[str]:
+    arguments = ["lint", str(CHART_DIR), "--strict", "--namespace", "inferops-platform"]
+    for path in values:
+        arguments.extend(["--values", str(path)])
+    return _helm(*arguments)
+
+
+def test_the_generated_release_and_its_hand_written_values_render_the_v1_workload() -> (
+    None
+):
+    """V1 synchronous compatibility, checked with the pinned chart tool.
+
+    The committed generated values, installed with the reference hand-written file
+    after them, render exactly the manifests the V1 real values render once the
+    environment label is the contract's. `tests/domain` checks the same at the
+    values layer and through the render path; this copy is the one the CI job that
+    installs a pinned Helm runs without a skip. The pair also lints under `--strict`
+    with no guard failure, which lint alone would not prove: see the next test.
+    """
+    assert _template(GENERATED_VALUES, HAND_WRITTEN_VALUES) == _template(
+        CI_DIR / "real-values.yaml",
+        overrides=("telemetry.deploymentEnvironment=local",),
+    )
+    lint = _lint(GENERATED_VALUES, HAND_WRITTEN_VALUES)
+    assert lint.returncode == 0, lint.stdout + lint.stderr
+    assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
+
+
+def test_the_chart_asks_nothing_beyond_the_generated_values_that_a_contract_owns() -> (
+    None
+):
+    """What still has to be written by hand, measured from the chart's own guards.
+
+    `helm lint` exits 0 under `--strict` even when a template `fail` guard fires: it
+    reports the failure as `[INFO]`. That is why this reads the report rather than
+    the exit status. Given the generated values alone, the guards require six values.
+    Each is a hand-written row of the compatibility record, and none is a value a
+    WorkloadContract owns.
+    """
+    lint = _lint(GENERATED_VALUES)
+    assert lint.returncode == 0, "lint now fails on a guard; read the exit status too"
+    required = set(GUARD_REQUIRES.findall(lint.stdout + lint.stderr))
+    assert required == {
+        "api.image.digest",
+        "api.image.repository",
+        "model.alias",
+        "model.artifact.sourceUrl",
+        "model.license.reference",
+        "model.license.spdx",
+    }
+    rows = {row["chartValue"]: row for row in _load_json(COMPATIBILITY_RECORD)["rows"]}
+    for path in required:
+        assert rows[path]["v2"] == "hand-written", path
+        assert "owner" not in rows[path], path
 
 
 # --------------------------------------------------------------------------

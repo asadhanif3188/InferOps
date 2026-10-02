@@ -426,6 +426,29 @@ declared directory. The default-lane suite runs the same check, so a stale relea
 the build. [The renderer page](docs/domain/helm-values-renderer.md#verifying-a-committed-release)
 lists the rules and what the check does not cover.
 
+### Experiment freeze records
+
+An experiment family is frozen before its first result-bearing run, in a record under
+[`docs/proof/experiments/`](docs/proof/experiments/README.md). A committed record is never
+edited: its content digest is pinned in `FROZEN_RECORDS` in
+[`tools/experiment_freeze/core.py`](tools/experiment_freeze/core.py), and a change is a new
+revision beside it. After adding or revising a record, check every committed record:
+
+```sh
+uv run --locked python -m tools.experiment_freeze --check
+```
+
+Before a result-bearing run, list the pinned inputs whose content differs from the
+record's pins. The record's preconditions say the run does not start while one is listed
+and no merged revision classifies it; that is a procedure, and no runner enforces it yet:
+
+```sh
+uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json
+```
+
+A change to a pinned input is not refused when it merges. [The records
+page](docs/proof/experiments/README.md) says what is enforced and what is not.
+
 ### Serving adapters
 
 Changes under [`src/inferops/adapters/`](src/inferops/adapters/) or
