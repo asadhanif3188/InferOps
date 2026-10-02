@@ -260,9 +260,11 @@ def admitted_files(directory: Path, manual: Path = MANUAL) -> tuple[Path, Path]:
     return generated, hand_written
 
 
-#: Directories no supported hand-written values file lives in: version control,
-#: tool caches, build output, and local machine state, all of them untracked.
-_NOT_SEARCHED = frozenset(
+#: Top-level directories no supported hand-written values file lives in: version
+#: control, tool caches, build output, and local machine state, all untracked.
+#: Skipped at the repository's root only, so a directory with one of these names
+#: deeper in the tree is still searched.
+_NOT_SEARCHED_AT_ROOT = frozenset(
     {
         ".artifacts",
         ".cache",
@@ -271,13 +273,14 @@ _NOT_SEARCHED = frozenset(
         ".mypy_cache",
         ".pytest_cache",
         ".ruff_cache",
-        ".terraform",
         ".venv",
-        "__pycache__",
         "dist",
-        "node_modules",
     }
 )
+
+#: Directories skipped at any depth: interpreter and tool state that never holds a
+#: file anybody wrote.
+_NOT_SEARCHED_ANYWHERE = frozenset({"__pycache__", ".terraform", "node_modules"})
 
 
 def supported_manual_values_files(root: Path) -> list[Path]:
@@ -288,8 +291,11 @@ def supported_manual_values_files(root: Path) -> list[Path]:
     """
     found: list[Path] = []
     for directory, subdirectories, files in os.walk(root):
+        skipped = _NOT_SEARCHED_ANYWHERE | (
+            _NOT_SEARCHED_AT_ROOT if Path(directory) == root else frozenset()
+        )
         subdirectories[:] = sorted(
-            name for name in subdirectories if name not in _NOT_SEARCHED
+            name for name in subdirectories if name not in skipped
         )
         found.extend(
             Path(directory) / name
@@ -1243,7 +1249,7 @@ def test_a_new_supported_file_that_repeats_contract_intent_fails_the_search(
         # 2. A child beneath a generated scalar.
         (
             {"model": {"revision": {"pinned": "main"}}},
-            ["manualValues.model.revision.pinned"],
+            ["manualValues.model.revision"],
         ),
         # 3. A parent of generated values, replaced by a scalar, a list, or a null.
         ({"runtime": "none"}, ["manualValues.runtime"]),
@@ -1305,6 +1311,32 @@ def test_an_admission_refusal_names_the_path_and_never_the_value() -> None:
     )
 
 
+class _ShiftingMapping(Mapping[str, Any]):
+    """A mapping that answers the first reading of its items one way and later ones
+    another: harmless when checked, overriding a generated value when read again."""
+
+    def __init__(self) -> None:
+        self.reads = 0
+
+    def _current(self) -> dict[str, Any]:
+        self.reads += 1
+        if self.reads == 1:
+            return {"runtime": {"image": {"pullPolicy": "Always"}}}
+        return {"runtime": {"replicaCount": 3}}
+
+    def __getitem__(self, key: str) -> Any:
+        return self._current()[key]
+
+    def __iter__(self) -> Any:
+        return iter(self._current())
+
+    def __len__(self) -> int:
+        return 1
+
+    def items(self) -> Any:
+        return self._current().items()
+
+
 def test_an_admitted_pair_holds_what_was_checked_and_cannot_be_built_around_it() -> (
     None
 ):
@@ -1314,8 +1346,10 @@ def test_an_admitted_pair_holds_what_was_checked_and_cannot_be_built_around_it()
     assert pair.documents()[1] == {"runtime": {"image": {"pullPolicy": "Always"}}}
     with pytest.raises(TypeError):
         pair.manual["runtime"] = {}  # type: ignore[index]
-    with pytest.raises(TypeError):
+    with pytest.raises(RenderRefused):
         AdmittedHelmValues(render(), {"runtime": {"replicaCount": 3}})
+    with pytest.raises(TypeError):
+        AdmittedHelmValues(render(), [("runtime", {})])  # type: ignore[arg-type]
     with pytest.raises(RenderRefused):
         AdmittedHelmValues(
             render(),
@@ -1325,6 +1359,91 @@ def test_an_admitted_pair_holds_what_was_checked_and_cannot_be_built_around_it()
         admit_manual_values(render().as_document(), {})  # type: ignore[arg-type]
     with pytest.raises(TypeError):
         admit_manual_values(render(), [("api", {})])  # type: ignore[arg-type]
+
+
+def test_a_pair_built_from_a_live_view_keeps_the_copy_it_checked() -> None:
+    """The public constructor takes a copy: a proxy is a view, not a copy."""
+    outer: dict[str, Any] = {}
+    pair = AdmittedHelmValues(render(), MappingProxyType(outer))
+    outer["runtime"] = {"replicaCount": 3}
+    assert pair.documents()[1] == {}
+
+    inner: dict[str, Any] = {"image": {"pullPolicy": "Always"}}
+    nested = AdmittedHelmValues(render(), MappingProxyType({"runtime": inner}))
+    inner["replicaCount"] = 3
+    assert nested.documents()[1] == {"runtime": {"image": {"pullPolicy": "Always"}}}
+    assert manual_value_findings(nested.manual) == []
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda manual: AdmittedHelmValues(render(), MappingProxyType(manual)),
+        lambda manual: admit_manual_values(render(), manual),
+    ],
+    ids=["constructor", "admission"],
+)
+def test_a_document_that_changes_between_readings_is_read_once(
+    build: Callable[[Mapping[str, Any]], AdmittedHelmValues],
+) -> None:
+    """Whatever was checked is what the pair holds, so a second reading cannot
+    smuggle in an override."""
+    pair = build(_ShiftingMapping())
+    held = pair.documents()[1]
+    assert held == {"runtime": {"image": {"pullPolicy": "Always"}}}
+    assert manual_value_findings(pair.manual) == []
+
+
+def test_a_key_beneath_a_generated_value_is_not_repeated_in_the_finding() -> None:
+    """A key the file chose could itself be a credential; the finding names the
+    generated value it lands on instead."""
+    leaked = "hf_" + "akeychosenbythefilesauthor"
+    with pytest.raises(RenderRefused) as raised:
+        admit_manual_values(render(), {"model": {"identifier": {leaked: "x"}}})
+    assert [finding.field for finding in raised.value.findings] == [
+        "manualValues.model.identifier"
+    ]
+    assert leaked not in str(raised.value)
+    assert leaked not in json.dumps(
+        [finding.as_dict() for finding in raised.value.findings]
+    )
+
+
+def test_two_keys_beneath_one_generated_value_are_one_finding() -> None:
+    findings = manual_value_findings({"runtime": {"replicaCount": {"a": 1, "b": 2}}})
+    assert [finding.field for finding in findings] == [
+        "manualValues.runtime.replicaCount"
+    ]
+
+
+def test_the_search_agrees_with_git_where_git_is_available() -> None:
+    """Every tracked file with the suffix is one the search finds."""
+    try:
+        listed = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "ls-files", "--", f"*{MANUAL_VALUES_SUFFIX}"],
+            capture_output=True,
+            check=True,
+            timeout=60,
+        ).stdout.decode("utf-8")
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("git is not available to list tracked files")
+    tracked = {REPO_ROOT / line for line in listed.splitlines() if line}
+    assert tracked, "git lists no supported hand-written values file"
+    assert tracked <= set(supported_manual_values_files(REPO_ROOT))
+
+
+def test_a_directory_named_like_a_cache_below_the_root_is_still_searched(
+    tmp_path: Path,
+) -> None:
+    deep = tmp_path / "deploy" / "dist"
+    deep.mkdir(parents=True)
+    (deep / f"x{MANUAL_VALUES_SUFFIX}").write_text("profile: real\n", encoding="utf-8")
+    top = tmp_path / "dist"
+    top.mkdir()
+    (top / f"y{MANUAL_VALUES_SUFFIX}").write_text("profile: real\n", encoding="utf-8")
+    assert unadmitted_manual_values(tmp_path) == [
+        (f"deploy/dist/x{MANUAL_VALUES_SUFFIX}", ["manualValues.profile"])
+    ]
 
 
 @pytest.mark.parametrize("path", sorted(CHART_VALUE_CONSTRAINTS))
@@ -1346,7 +1465,7 @@ def test_setting_any_generated_value_by_hand_is_refused(path: str) -> None:
     [
         ({"model": {"artifact": None}}, ["manualValues.model.artifact"]),
         ({"runtime": {"resources": "none"}}, ["manualValues.runtime.resources"]),
-        ({"profile": {"name": "real"}}, ["manualValues.profile.name"]),
+        ({"profile": {"name": "real"}}, ["manualValues.profile"]),
         ({"profile": {}}, ["manualValues.profile"]),
         ({"security": {"secretRefs": []}}, ["manualValues.security.secretRefs"]),
         ({"runtime": {"resources": {}}}, []),

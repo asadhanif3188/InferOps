@@ -998,8 +998,13 @@ def released_pack(
     """
     released_ledgers = ledgers[: len(RELEASED_LEDGER_PATHS)]
     post_release_ledgers = list(ledgers[len(RELEASED_LEDGER_PATHS) :])
-    if not post_release_ledgers:
-        raise ValueError("no post-release ledger states the release")
+    if len(post_release_ledgers) != len(POST_RELEASE_LEDGER_PATHS):
+        # The index names the undone ledgers by these paths, so it undoes exactly
+        # as many ledgers as there are paths, or it refuses.
+        raise ValueError(
+            f"{len(post_release_ledgers)} post-release ledgers were given, and "
+            f"{len(POST_RELEASE_LEDGER_PATHS)} are named"
+        )
     post_release, *later = post_release_ledgers
     for one in post_release_ledgers:
         if one.get("blockers") or one.get("blockerDispositions"):

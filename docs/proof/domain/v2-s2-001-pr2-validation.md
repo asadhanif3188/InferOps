@@ -304,7 +304,8 @@ itself, so this section names the commit before it; the correction commit's iden
 its hosted run are on the pull request.
 
 A pre-merge review of the first pass against the parent story found four gaps, and asked
-for the writer's exemption to be weighed again. Each is below with why it mattered, what
+for the writer's exemption to be weighed again; weighing it found a fifth error, in the
+writer's wording. Each is below with why it mattered, what
 changed, the tests that hold it, and what was left open on purpose.
 
 ### What the first pass got wrong
@@ -380,8 +381,9 @@ the repository would refuse it.
 [`helm_values`](../../../src/inferops/domain/render/helm_values.py) pairs generated values
 with a hand-written document only when `manual_value_findings` finds nothing, and otherwise
 raises `RenderRefused` with every `render-manual-value-generated` finding, each naming the
-path and never the value, with the request context. The pair, `AdmittedHelmValues`, holds
-the hand-written half read-only and runs the check again when built. `MANUAL_VALUES_SUFFIX`,
+path and never the value, with the request context. The pair, `AdmittedHelmValues`, takes
+a deep, read-only copy of the hand-written half when built, keeps it, and runs the check
+on it. `MANUAL_VALUES_SUFFIX`,
 `.manual-values.yaml`, names a supported hand-written file. Both V1 comparison layers - the
 schema merge and `helm template` - and the written-file `helm template` test now consume the
 admitted pair: Helm is given the admitted document, written out, not the file beside it.
@@ -435,7 +437,7 @@ false, it cites no record, and nothing is promoted. The limitation now reads:
 
 The evidence index learnt to undo every post-release ledger: `POST_RELEASE_LEDGER_PATHS`
 lists them, the released pack undoes both, last first, and refuses a later one that states a
-release, and the summary counts both ledgers' changes. Seven test modules that rebuild the
+release, and the summary counts both ledgers' changes. Eight test modules that rebuild the
 released register now undo both, and a test shows that undoing the first alone is refused.
 The index and the dashboard were regenerated with their own tools; the index page, the
 matrix page, the proof index, and the changelog say so.
@@ -562,6 +564,76 @@ under `tests/domain/` are scanned.
 
 This section's tables were filled after those runs; the record and link suites were run
 again over it.
+
+### What the independent review of the correction found
+
+A reviewer outside the correction read the correction commit, `d28f5a3`, re-ran the linters,
+mypy, the evidence tools, and six targeted suites, rebuilt the released register from both
+post-release ledgers and compared it with the tagged one byte for byte, and recounted the
+figures above. It found one finding it rated high, two medium, and ten low. The released
+digests, the claim's state, the five markers, the 748 tests, and the digest table were
+confirmed. Fixed in the commit after it, except where noted.
+
+**High - an admitted pair could be built around the check, and four places said it
+could not.** `AdmittedHelmValues` checked a `MappingProxyType` the caller passed and kept
+it. A proxy is a view, not a copy: a caller holding the dictionary behind it, or a nested
+object inside it, could add an override after the check, and a mapping that answered a
+second reading differently passed the check and then returned an override. Only the path
+through `admit_manual_values` was safe. **What the correction got wrong** is the sentence,
+in the class's docstring, on the renderer page, in B above, and in the inventory, that a
+pair holds no override "whoever built it". *Fixed in code:* construction now accepts any
+mapping, takes one deep, read-only copy, keeps that copy, and checks it;
+`admit_manual_values` reads the document once and checks the same copy with the caller's
+request context. Three tests reproduce the reviewer's probes - a live view changed after,
+a nested object changed after, and a document that reads differently a second time,
+through both the constructor and the admission - and the four places now say what holds.
+
+**Medium.** The README still said the evidence index is built from five ledgers and
+undoes one. The release document said the platform-defaults revision is "the full commit
+the defaults were read at", and its provenance-trust table, with the code it mirrors, that
+the revision "covers" the three API defaults - both contradicting D. All three now say the
+revision is the caller's assertion and is not checked against the defaults.
+
+**Low, fixed.** A finding for a key placed beneath a generated value repeated that key,
+which could itself be a credential; findings now name the generated value's path, once,
+and a test holds that. The repository search skipped directories named like caches at
+any depth; it now skips those only at the root, and a test shows a `dist` directory below
+it is searched, while another holds that every file Git tracks with the suffix is one the
+search finds. The secret-scanning test read only one of gitleaks' allowlist forms; it now
+reads the legacy table and rule-level allowlists too. The released pack now refuses a set
+of post-release ledgers whose number differs from the paths the index names. "What is not
+controlled" now lists every `--set` form and says the order of an admitted pair decides
+nothing. Single-ledger wording was left in a CLI docstring, comments in six test
+modules, and one inventory entry; "Seven test modules" in C is eight; "four gaps" did not
+count the fifth error that weighing the writer found; the release document's rules table
+said the writer writes both or neither without the crash qualifier; and the allowlist did
+not list the fixed lowercase token the limitation test uses. Each is corrected where it
+was.
+
+**Low, noted and not changed.** The index's released-pack entry now lists its undone
+ledgers as `undoneLedgers`, a list, where it held one path as `undoneLedger`; the index's
+contract version did not change, and nothing reads the field. The defer decision's data
+says the pack on `main` moved "by that ledger alone"; it is dated history pinned by digest
+in the decision that supersedes it, so it is left as written.
+
+Two defects were then planted against the fixes, in a fresh archived copy, with the
+renderer, generated-release, and refusal suites - 514 tests, one skipped because the copy
+has no Git metadata - run against each: the pair keeping the caller's view instead of its
+copy, caught by two tests, and a finding repeating the key beneath a generated value,
+caught by four. The copy passed all 514 before and after.
+
+| Command, after the review's fixes | Result |
+|---|---|
+| `uv run --locked ruff check --no-cache .` | All checks passed |
+| `uv run --locked ruff format --check --no-cache .` | 588 files already formatted |
+| `uv run --locked mypy` | No issues in 323 source files |
+| The targeted suites, as above | 5,944 passed, none skipped, with helm on `PATH` |
+| `python -B -m tools.evidence_index --check`, `--gate`; `python -B -m tools.proof_dashboard --check` | All OK, exit 0; released set `1d40b33f…` and pack `652e9051…` unchanged; current set `08d4868f…`, pack `0c2f2508…` |
+| gitleaks 8.30.1 over every path changed since `6f784b6` | No leaks found in any of the 51 paths |
+| `git diff --check main` | Exit 0, no output |
+| The full default lane | **17,141 passed, 33 skipped, 14 deselected, none failed**, in 18 min 53 s: the 17,134 before and the seven new tests. The run before it, made while the targeted suites and gitleaks ran beside it, had one failure, in `tests/architecture/test_terraform_destroy_guard.py`, which this change does not touch: a wrapper script's output came back empty. That module then passed three times alone, and this run, made with nothing beside it, passed |
+
+This table was filled after that run; the record and link suites were run again over it.
 
 ### Privacy and publicability, again
 

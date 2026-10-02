@@ -67,7 +67,7 @@ PUBLICATION = load_ledger(PUBLICATION_PATH)
 INDEX = load_index()
 SUMMARY = INDEX["summary"]
 #: The index's summary as the `v1.0.0` pack stood: the counts and digests the index
-#: recomputes with the post-release ledger undone, over everything else it states.
+#: recomputes with the post-release ledgers undone, over everything else it states.
 AS_RELEASED = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
 FREEZE = PUBLICATION["freeze"]
 REPORT_PATH = REPO_ROOT / PUBLICATION["reportRef"]

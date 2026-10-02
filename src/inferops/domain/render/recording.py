@@ -193,7 +193,9 @@ _REFERENCE = (
     "release; the contract digest covers it"
 )
 _DEFAULT = (
-    "a platform default, not an identity; the platform-defaults revision covers it"
+    "a platform default, not an identity; the release names it only by the "
+    "platform-defaults revision its caller states, which nothing yet checks "
+    "against the defaults"
 )
 _FACT = (
     "a fact of one environment, not an identity; the binding digest covers it, and "

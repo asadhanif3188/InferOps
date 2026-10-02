@@ -788,10 +788,13 @@ def test_a_credential_shaped_value_is_refused_without_being_quoted() -> None:
 def test_the_golden_files_are_not_exempt_from_secret_scanning() -> None:
     """The repository's scanner reads both golden files: no path exception covers them."""
     config = tomllib.loads(GITLEAKS_CONFIG.read_text(encoding="utf-8"))
+    # Every place gitleaks reads a path exception from: the global allowlists, in
+    # the plural form this file uses and the legacy singular table, and each rule's.
+    allowlists = [*config.get("allowlists", []), config.get("allowlist", {})]
+    for rule in config.get("rules", []):
+        allowlists += [*rule.get("allowlists", []), rule.get("allowlist", {})]
     exempt = [
-        pattern
-        for allowlist in config.get("allowlists", [])
-        for pattern in allowlist.get("paths", [])
+        pattern for allowlist in allowlists for pattern in allowlist.get("paths", [])
     ]
     assert exempt, "the configuration's path exceptions were not found"
     for golden in (GOLDEN_VALUES, GOLDEN_RELEASE):

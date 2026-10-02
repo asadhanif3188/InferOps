@@ -59,7 +59,7 @@ INDEX = load_index()
 REPORT_PATH = REPO_ROOT / CLOSURE["reportRef"]
 
 #: The index's summary as the `v1.0.0` pack stood: the counts and digests the index
-#: recomputes with the post-release ledger undone, over everything else it states.
+#: recomputes with the post-release ledgers undone, over everything else it states.
 AS_RELEASED = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
 REVISION = CLOSURE["runRevision"]["revision"]
 

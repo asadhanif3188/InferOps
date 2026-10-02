@@ -17,7 +17,7 @@ pack cannot be treated as frozen by a script that checks an exit code. Where the
 publication ledger declares the pack frozen, it also prints two pairs of digests, read
 from the committed index, and exits 1 if that index is not what the register and the
 ledgers produce, so a freeze is never reported from a stale digest: the pack `v1.0.0`
-was cut over, which the index recomputes by undoing the post-release ledger, and the
+was cut over, which the index recomputes by undoing the post-release ledgers, and the
 pack this checkout holds now, which no release quotes.
 
 **Every mode reads files.** None contacts a cluster, a runtime, a model, or the

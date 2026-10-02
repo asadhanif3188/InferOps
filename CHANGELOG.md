@@ -34,7 +34,8 @@ from `1.0.0`.
   record](docs/proof/domain/v2-s2-001-pr2-validation.md) what was run.
 
 - **Generated release, corrected before merge.** A pre-merge review of `V2-S2-001-PR2`
-  found four gaps, and they are closed in the same change. Hand-written values are now
+  found four gaps, and weighing the writer's exemption again found a fifth, in its
+  wording; all are closed in the same change. Hand-written values are now
   admitted beside generated ones only through `admit_manual_values`, which refuses one
   that sets, replaces, or removes a generated value and pairs the two as
   `AdmittedHelmValues`; the V1 comparison renders through it, and a test admits every

@@ -415,8 +415,12 @@ each; the committed file gets none.
 values with a hand-written document only when it has no such finding, and refuses with
 every finding at once - each naming the path, never the value, and carrying the caller's
 request context. The pair, `AdmittedHelmValues`, holds the hand-written half read-only and
-runs the check again when it is built, so a pair holds no hand-written value that
-overrides a generated one, whoever built it. The V1 comparison below renders exactly what
+runs the check again when it is built, on a deep, read-only copy it takes and keeps,
+so a pair holds no hand-written value that overrides a generated one, however it was
+built: a live view, a nested object changed later, or a document that answers a second
+reading differently all leave the pair holding what was checked. A refusal names the
+generated value's path - not a key the hand-written file placed beneath it, which could
+itself be a credential - and never the value. The V1 comparison below renders exactly what
 was admitted, not the file beside it.
 
 **Which hand-written files are supported.** A hand-written values file is supported beside
@@ -428,8 +432,10 @@ newly added file that repeats a generated value fails it. Today there is one suc
 the reference workload's.
 
 **What is not controlled.** A values file named any other way, one outside the repository,
-or a `--set` on Helm's command line is not checked by anything here, and the check cannot
-stop one being passed to Helm beside generated values. No supported path installs
+or a value given on Helm's command line - `--set`, `--set-string`, `--set-file`, or
+`--set-json` - is not checked by anything here, and the check cannot stop one being passed
+to Helm beside generated values. For an admitted pair, the order Helm is given the two
+files decides nothing, since neither sets a value the other does. No supported path installs
 generated values yet; the deployment path that does is where such files would have to be
 refused.
 

@@ -52,7 +52,7 @@ RELEASE: dict[str, Any] = json.loads(RELEASE_PATH.read_text(encoding="utf-8"))
 EVIDENCE = RELEASE["evidence"]
 INDEX = load_index()
 #: The index's summary for the pack the release was cut over: the counts and digests
-#: it recomputes with the post-release ledger undone, over everything else it states.
+#: it recomputes with the post-release ledgers undone, over everything else it states.
 SUMMARY = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
 CURRENT_REGISTER = load_register()
 POST_RELEASE = load_ledger(POST_RELEASE_PATH)

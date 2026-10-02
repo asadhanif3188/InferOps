@@ -86,7 +86,7 @@ same change as them.
 | `source.environmentBinding.name` | Which binding | The EnvironmentBinding's `metadata.name` |
 | `source.environmentBinding.sha256` | The binding's content | A digest of the EnvironmentBinding document |
 | `source.renderer.revision` | The renderer that rendered it | The full commit the renderer ran from |
-| `source.platformDefaults.revision` | The platform defaults it applied | The full commit the defaults were read at |
+| `source.platformDefaults.revision` | The platform defaults it applied | The full commit its caller states the defaults came from: asserted, not checked against the defaults - see [the renderer's measured limitation](../domain/helm-values-renderer.md#the-generated-release) |
 | `output.helmValues.path` | The generated values file | Its name, in the release's own directory |
 | `output.helmValues.sha256` | The generated values' content | A digest of the values file |
 
@@ -399,7 +399,7 @@ The table below classifies every value of the render context.
 | `excluded` | a render setting the contract declares, not an identity; the contract digest covers it | `workload.profile`, `workload.environment`, `model.servingCapability`, `model.runtimeProfile`, `resources.cpu`, `resources.memory`, `resources.accelerator.type`, `resources.accelerator.count`, `serving.replicas.minimum`, `serving.replicas.maximum`, `integrations.telemetry.required`, `integrations.modelAccess.required`, `integrations.evaluation.required`, `security.dataClassification`, `model.artifact.sizeBytes`, `mock.ciOnly`, `mock.determinism` |
 | `excluded` | a reference to another artifact the contract cites, not an identity of this release; the contract digest covers it | `model.ref`, `integrations.telemetry.capabilityRef`, `integrations.modelAccess.capabilityRef`, `integrations.evaluation.capabilityRef`, `evidence.runbookRef`, `evidence.proofRefs`, `runtime.imageReference`, `model.artifact.repository`, `model.artifact.revision`, `model.artifact.file`, `model.artifact.sha256`, `mock.fixtureRef` |
 | `excluded` | sensitive: names the secrets the workload reads; a reference is not a value, and provenance carries neither | `security.secretRefs` |
-| `excluded` | a platform default, not an identity; the platform-defaults revision covers it | `api.requestTimeoutMs`, `api.drainTimeoutMs`, `api.maxOutputTokens` |
+| `excluded` | a platform default, not an identity; the release names it only by the platform-defaults revision its caller states, which nothing yet checks against the defaults | `api.requestTimeoutMs`, `api.drainTimeoutMs`, `api.maxOutputTokens` |
 | `excluded` | a fact of one environment, not an identity; the binding digest covers it, and the binding is recorded by name | `destination.clusterProvider`, `destination.namespace`, `modelCache.class`, `modelCache.claimName`, `api.replicas`, `gitops.destinationPath` |
 
 Members of the contract and the binding that the render context does not hold at all - a
@@ -676,7 +676,7 @@ is.
 | Rule | Why it is not applied | What it needs |
 |---|---|---|
 | `output.helmValues.sha256` is the digest of the values file it names, for a release read back from a directory | Since `V2-S2-001-PR2` the rule is [decided](#generated-files-and-their-digests), and `generate_release` records the digest of the bytes it hands `write_release`, which reads both files back before it moves them into place. Nothing re-checks a release directory once it is written, or a release built by calling `record_release` directly | The generated-artifact drift check |
-| The values file exists beside the release, for a release read back from a directory | `write_release` writes both files or neither; a document check still cannot see a directory, and nothing reads one back later | The generated-artifact drift check |
+| The values file exists beside the release, for a release read back from a directory | `write_release` writes both files or neither for a running system, though not across a crash, which can leave the directory without both; a document check still cannot see a directory, and nothing reads one back later | The generated-artifact drift check |
 | The renderer and platform-defaults revisions name commits that exist | A document check has no repository | A check against the repository the release is committed in |
 | A lowercase credential with no published prefix is refused | It has the shape of a name, and the heuristic's other branch needs mixed case; see [Secrets](#secrets). Since `V2-S1-004-PR1` this is stated as the policy's [input-trust limitation](#provenance-input-trust), not a pending rule: no rule over syntax can close it | Nothing syntactic: identities are public by policy, and a test asserts the gap on the supported path too |
 | A release committed to the repository matches what its sources derive today | Nothing commits a release | The generated-artifact drift check |

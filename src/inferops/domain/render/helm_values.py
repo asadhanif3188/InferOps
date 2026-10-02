@@ -736,16 +736,22 @@ def _manual_leaves(
             yield path, isinstance(value, Mapping)
 
 
-def _overrides(path: tuple[str, ...], empty_mapping: bool) -> bool:
-    """Whether a hand-written value at ``path`` sets, replaces, or removes a generated one."""
+def _overridden(path: tuple[str, ...], empty_mapping: bool) -> tuple[str, ...] | None:
+    """The path a hand-written value at ``path`` overrides, if it overrides one.
+
+    Every member of the path returned is a generated value's or one above it, so a
+    finding never names a key the hand-written file chose - one beneath a generated
+    value could itself be a credential.
+    """
     for generated in GENERATED_VALUE_PATHS:
         if path[: len(generated)] == generated:
             # At a generated value, or beneath one, which replaces it with a mapping.
-            return True
+            return generated
+    for generated in GENERATED_VALUE_PATHS:
         if generated[: len(path)] == path and not empty_mapping:
             # Above a generated value: a scalar, a list, or a null replaces the lot.
-            return True
-    return False
+            return path
+    return None
 
 
 def manual_value_findings(
@@ -758,13 +764,20 @@ def manual_value_findings(
     Helm merges values files in order, and whichever comes last wins, so a
     hand-written file installed beside the generated one could replace a value the
     contract owns - or remove it with a null - and nothing would say so. This finds
-    each such value, wherever the file would be placed, and names it by its path.
+    each such value, wherever the file would be placed, and names it by its path: the
+    generated value's own path for anything at or beneath it, so no key the
+    hand-written file chose is repeated, and never the value.
 
     Raises:
         TypeError: ``manual_values`` is not a mapping.
     """
     if not isinstance(manual_values, Mapping):
         raise TypeError("manual values must be a mapping, as a values file is")
+    overridden = {
+        path
+        for leaf, empty_mapping in _manual_leaves(manual_values)
+        if (path := _overridden(leaf, empty_mapping)) is not None
+    }
     return [
         RenderFinding(
             "render-manual-value-generated",
@@ -774,8 +787,7 @@ def manual_value_findings(
             "replace, or remove it",
             context,
         )
-        for path, empty_mapping in sorted(_manual_leaves(manual_values))
-        if _overrides(path, empty_mapping)
+        for path in sorted(overridden)
     ]
 
 
@@ -794,10 +806,13 @@ def _read_only(value: Any) -> Any:
 class AdmittedHelmValues:
     """Generated values and the hand-written values admitted to be installed beside them.
 
-    The one pair the platform treats as a release's Helm input: construction runs
-    :func:`manual_value_findings` again and refuses a hand-written half that sets,
-    replaces, or removes a generated value, so a pair built here holds none, whoever
-    built it. ``manual`` is held read-only, so it cannot be edited after the check.
+    The one pair the platform treats as a release's Helm input. Construction takes
+    a deep, read-only copy of the hand-written half - every object a new read-only
+    mapping, every list a tuple - stores that copy, and runs
+    :func:`manual_value_findings` on it, refusing one that sets, replaces, or removes
+    a generated value. The check and the pair read the same copy, and nothing the
+    caller still holds can change it, so a pair holds no hand-written value that
+    overrides a generated one, however it was built.
     """
 
     generated: GeneratedHelmValues
@@ -806,12 +821,11 @@ class AdmittedHelmValues:
     def __post_init__(self) -> None:
         if not isinstance(self.generated, GeneratedHelmValues):
             raise TypeError("the generated half must be GeneratedHelmValues")
-        if not isinstance(self.manual, MappingProxyType):
-            raise TypeError(
-                "the hand-written half is admitted by admit_manual_values, "
-                "which holds it read-only"
-            )
-        findings = manual_value_findings(self.manual)
+        if not isinstance(self.manual, Mapping):
+            raise TypeError("manual values must be a mapping, as a values file is")
+        snapshot = _read_only(self.manual)
+        object.__setattr__(self, "manual", snapshot)
+        findings = manual_value_findings(snapshot)
         if findings:
             raise RenderRefused(findings)
 
@@ -845,10 +859,14 @@ def admit_manual_values(
     """
     if not isinstance(generated, GeneratedHelmValues):
         raise TypeError("the generated half must be GeneratedHelmValues")
-    findings = manual_value_findings(manual_values, context=context)
+    if not isinstance(manual_values, Mapping):
+        raise TypeError("manual values must be a mapping, as a values file is")
+    # Read the document once; the check and the pair both see this copy.
+    snapshot = _read_only(manual_values)
+    findings = manual_value_findings(snapshot, context=context)
     if findings:
         raise RenderRefused(findings)
-    return AdmittedHelmValues(generated, _read_only(manual_values))
+    return AdmittedHelmValues(generated, snapshot)
 
 
 __all__ = [
