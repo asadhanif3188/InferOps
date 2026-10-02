@@ -55,8 +55,8 @@ from typing import Any
 import pytest
 
 from tools.evidence_index import (
-    POST_RELEASE_PATH,
-    load_ledger,
+    POST_RELEASE_LEDGER_PATHS,
+    load_ledgers,
     open_blockers,
     released_register,
 )
@@ -179,7 +179,9 @@ DOCUMENT = _read(DATA["documentRef"])
 #: The register as the `v1.0.0` pack holds it, which is the pack this page is bound
 #: to: the current one with the post-release ledger undone. The release that ledger
 #: records came after the page was published, and a note on the page says so.
-REGISTER = released_register(_load(DATA["registerRef"]), load_ledger(POST_RELEASE_PATH))
+REGISTER = released_register(
+    _load(DATA["registerRef"]), load_ledgers(POST_RELEASE_LEDGER_PATHS)
+)
 INDEX = _load(DATA["indexRef"])
 #: The index's summary for the same pack: the counts and digests it recomputes with the
 #: post-release ledger undone, over everything else it states.

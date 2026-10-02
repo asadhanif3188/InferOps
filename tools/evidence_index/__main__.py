@@ -137,7 +137,7 @@ def _frozen(decided_in: str) -> int:
     print(f"FROZEN   {decided_in}: the committed index is current")
     print(
         f"RELEASED {released['tag']} at {released['commit']}: the frozen pack it was "
-        "cut over, recomputed by undoing the post-release ledger"
+        "cut over, recomputed by undoing the post-release ledgers"
     )
     print(f"         evidence set   {released['evidenceSetSha256']}")
     print(f"         evidence pack  {released['evidencePackSha256']}")
@@ -155,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m tools.evidence_index",
         description=(
             "Print, check, or regenerate the V1 evidence index from the claim and "
-            "evidence register and its five ledgers, or report the release gate."
+            "evidence register and its six ledgers, or report the release gate."
         ),
     )
     group = parser.add_mutually_exclusive_group()

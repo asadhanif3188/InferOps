@@ -235,6 +235,15 @@ document are hashed differently on purpose:
   digest can be checked with no YAML reader, which the platform distribution does not
   carry.
 
+**What a generated file can carry.** The same input-trust policy bounds both generated
+files: they expose no supported secret-bearing field or secret reference, every string in
+them comes from a field the renderer's disposition table or [the provenance
+policy](#provenance-input-trust) owns, and a known credential shape is refused rather than
+written. A secret deliberately written as an otherwise valid public identifier remains the
+[input-trust limitation](#provenance-input-trust); the renderer page's
+[What a generated file can carry](../domain/helm-values-renderer.md#what-a-generated-file-can-carry)
+lists the tests.
+
 What this costs: a checkout that rewrites line endings changes a generated file's bytes
 and so its digest. The one generated release committed today, a test's golden file, is
 pinned to LF by `.gitattributes`, and so must any directory generated releases are

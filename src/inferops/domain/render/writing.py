@@ -14,8 +14,8 @@ complete and verified, or no directory at all:
    half-replaced and a stray file cannot sit beside a new one.
 2. The files are written into a **staging directory** beside it, named for it -
    ``.<name>.partial`` - created exclusively. Each file is created exclusively,
-   written as bytes, and flushed to the device; then both are read back and compared
-   with what was meant to be written.
+   written as bytes, and its bytes flushed with ``os.fsync``; then both are read back
+   and compared with what was meant to be written.
 3. The staging directory is **renamed** to the output directory, one operation that
    a reader sees happen or not happen.
 
@@ -36,13 +36,19 @@ and removes nothing - and the same suite holds that for every module-level
 statement, decorator, and default value. Nothing constructs a domain object
 through it.
 
-**What it does not promise.** The parent directory is not flushed after the rename,
-so after a power loss the rename may not have survived; the staging directory then
-holds both complete files and the next write names it. Where a release directory
-lives is the caller's choice and nothing here constrains it. On POSIX systems a
-rename replaces an *empty* directory created at the output path after the check
-in step 1 and before step 3; one that holds anything is refused, as is any on
-Windows.
+**What it does not promise.** The all-or-nothing above holds for a running system
+and a process that fails or is killed; it is not crash durability. Each file's bytes
+are flushed with ``os.fsync``, but no directory is: not the staging directory after
+the files are created in it, and not the parent after the rename. So after a power
+loss or an operating-system crash, which names survived is the file system's
+choice - the output directory may be missing, a staging directory left behind may
+hold both files, one, or none, and a file system that does not order its metadata
+writes could even show the output directory without both files. A release read
+after a crash is checked against its digests, not trusted because its directory
+exists. Where a release directory lives is the caller's choice and nothing here
+constrains it. On POSIX systems a rename replaces an *empty* directory created at
+the output path after the check in step 1 and before step 3; one that holds anything
+is refused, as is any on Windows.
 """
 
 from __future__ import annotations

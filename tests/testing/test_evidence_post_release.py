@@ -9,6 +9,12 @@ than one recomputed from `main`; a register, a cited file, or an earlier ledger 
 after the release, so that undoing the post-release ledger no longer gives the pack the
 tag quotes; and a record that reads more into the release than it read.
 
+`V2-S2-001-PR2` then wrote a second post-release ledger, correcting one planned
+claim's limitation once Helm values were generated, and the evidence index undoes both.
+This module holds that one too: it changes that limitation and one surface reason and
+nothing else, states no release, leaves the claim planned with no record, and cannot be
+skipped when the released register is rebuilt.
+
 What it does not establish is that the release is still published as the record read
 it, or that the private reporting setting still reads enabled: those are state on the
 hosting service, and this module reads only files and, where the clone has it, the tag.
@@ -26,8 +32,10 @@ from typing import Any
 import pytest
 
 from tools.evidence_index import (
+    CLAIM_RECONCILIATION_PATH,
     INDEX_PATH,
     LEDGER_PATHS,
+    POST_RELEASE_LEDGER_PATHS,
     POST_RELEASE_PATH,
     PUBLICATION_PATH,
     RELEASED_DIGESTS,
@@ -50,7 +58,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 LEDGER = load_ledger(POST_RELEASE_PATH)
 RELEASE = LEDGER["release"]
 REGISTER = load_register()
-AS_RELEASED = released_register(REGISTER, LEDGER)
+#: The second post-release ledger, written after this one.
+LATER = load_ledger(CLAIM_RECONCILIATION_PATH)
+AS_RELEASED = released_register(REGISTER, load_ledgers(POST_RELEASE_LEDGER_PATHS))
+#: The register as this ledger left it, before the later one.
+AFTER_THIS_LEDGER = restore_migrated_register(REGISTER, LATER)
 INDEX = load_index()
 SUMMARY = INDEX["summary"]
 RELEASE_DATA: dict[str, Any] = json.loads(
@@ -102,9 +114,12 @@ def _git(*arguments: str) -> str | None:
 # ----------------------------------------------------------------- the ledger
 
 
-def test_the_ledger_is_the_last_one_and_follows_the_publication() -> None:
+def test_the_ledger_is_the_first_after_the_release_and_follows_the_publication() -> (
+    None
+):
     assert LEDGER["contractVersion"] == "inferops.io/v1alpha1"
-    assert (*RELEASED_LEDGER_PATHS, POST_RELEASE_PATH) == LEDGER_PATHS
+    assert POST_RELEASE_LEDGER_PATHS[0] == POST_RELEASE_PATH
+    assert (*RELEASED_LEDGER_PATHS, *POST_RELEASE_LEDGER_PATHS) == LEDGER_PATHS
     assert (
         LEDGER["priorLedgerRef"] == PUBLICATION_PATH.relative_to(REPO_ROOT).as_posix()
     )
@@ -155,8 +170,9 @@ def test_the_nonclaim_surface_change_moves_only_the_two_reasons_it_names() -> No
 
 
 def test_undoing_and_redoing_the_ledger_gives_the_register_back() -> None:
-    assert apply_register_changes(AS_RELEASED, LEDGER) == REGISTER
-    assert restore_migrated_register(REGISTER, LEDGER) == AS_RELEASED
+    assert apply_register_changes(AS_RELEASED, LEDGER) == AFTER_THIS_LEDGER
+    assert restore_migrated_register(AFTER_THIS_LEDGER, LEDGER) == AS_RELEASED
+    assert apply_register_changes(AFTER_THIS_LEDGER, LATER) == REGISTER
 
 
 # ----------------------------------------------------------- the released pack
@@ -201,7 +217,9 @@ def test_main_holds_another_pack_and_says_so() -> None:
     released = SUMMARY["releasedPack"]
     assert SUMMARY["evidencePackSha256"] != released["evidencePackSha256"]
     assert SUMMARY["evidenceSetSha256"] != released["evidenceSetSha256"]
-    assert SUMMARY["postReleaseRegisterChanges"] == len(CHANGES)
+    assert SUMMARY["postReleaseRegisterChanges"] == len(CHANGES) + len(
+        LATER["registerChanges"]
+    )
     rows = {
         line.split(" | ", 1)[0]: line
         for line in read("docs/proof/v1-evidence-index.md").splitlines()
@@ -267,7 +285,7 @@ def _edit_another_claim(register: dict, ledgers: list) -> None:
 
 
 def _state_another_digest(register: dict, ledgers: list) -> None:
-    ledgers[-1]["release"]["evidencePackSha256"] = "0" * 64
+    ledgers[len(RELEASED_LEDGER_PATHS)]["release"]["evidencePackSha256"] = "0" * 64
 
 
 def _edit_an_earlier_ledger(register: dict, ledgers: list) -> None:
@@ -283,6 +301,15 @@ def _raise_a_blocker(register: dict, ledgers: list) -> None:
     ledgers[-1]["blockers"] = [{"blockerId": "b-x", "claimId": CLAIM_ID}]
 
 
+def _state_a_release_later(register: dict, ledgers: list) -> None:
+    ledgers[-1]["release"] = copy.deepcopy(RELEASE)
+
+
+def _edit_the_reconciled_limitation(register: dict, ledgers: list) -> None:
+    (claim,) = [c for c in register["claims"] if c["claimId"] == RENDERING_CLAIM_ID]
+    claim["limitation"] += " Edited after the change."
+
+
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
@@ -290,6 +317,8 @@ def _raise_a_blocker(register: dict, ledgers: list) -> None:
         (_state_another_digest, "and v1.0.0 quoted"),
         (_declare_a_freeze, "declares a freeze"),
         (_raise_a_blocker, "raises or closes a blocker"),
+        (_state_a_release_later, "only the first post-release ledger"),
+        (_edit_the_reconciled_limitation, "c01-rendering-limitation"),
     ],
     ids=lambda value: value.__name__.strip("_") if callable(value) else "",
 )
@@ -323,6 +352,94 @@ def test_an_earlier_ledger_edited_after_the_release_is_refused(tmp_path: Path) -
 def test_an_unchanged_register_and_ledgers_build_the_committed_index() -> None:
     produced = build_index()
     assert produced == json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+
+
+# -------------------------------------------------- the claim reconciliation ledger
+
+RENDERING_CLAIM_ID = "deployment-values-derive-only-from-a-validated-document"
+LATER_CHANGES = LATER["registerChanges"]
+LATER_FINDINGS = {row["findingId"]: row for row in LATER["findings"]}
+
+
+def _rendering_claim(register: dict[str, Any]) -> dict[str, Any]:
+    (claim,) = [c for c in register["claims"] if c["claimId"] == RENDERING_CLAIM_ID]
+    return claim
+
+
+def test_the_reconciliation_ledger_follows_this_one_and_states_no_release() -> None:
+    assert LATER["contractVersion"] == "inferops.io/v1alpha1"
+    assert LATER["priorLedgerRef"] == (
+        POST_RELEASE_PATH.relative_to(REPO_ROOT).as_posix()
+    )
+    for key in ("registerRef", "priorLedgerRef", "reportRef", "indexRef"):
+        assert (REPO_ROOT / LATER[key]).is_file(), key
+    for absent in ("release", "freeze", "blockers", "blockerDispositions"):
+        assert absent not in LATER, absent
+    assert LATER["recordCorrections"] == []
+    assert LATER["codeRevisions"] == []
+
+
+def test_it_changes_one_limitation_and_one_surface_reason_and_nothing_else() -> None:
+    assert [
+        (change["operation"], change.get("claimId"), change["field"])
+        for change in LATER_CHANGES
+    ] == [
+        ("set-claim-field", RENDERING_CLAIM_ID, "limitation"),
+        ("set-register-field", None, "nonClaimSurfaces"),
+    ]
+    (surfaces,) = [c for c in LATER_CHANGES if c["field"] == "nonClaimSurfaces"]
+    before = {row["path"]: row for row in surfaces["before"]}
+    after = {row["path"]: row for row in surfaces["after"]}
+    assert before.keys() == after.keys()
+    assert [path for path in before if before[path] != after[path]] == [
+        "docs/proof/v1-evidence-index.md"
+    ]
+    assert "six ledgers" in after["docs/proof/v1-evidence-index.md"]["reason"]
+
+
+def test_every_reconciliation_finding_is_answered_by_changes_that_exist() -> None:
+    change_ids = {change["changeId"] for change in LATER_CHANGES}
+    answered: set[str] = set()
+    for change in LATER_CHANGES:
+        assert change["findingId"] in LATER_FINDINGS
+        assert change["reason"]
+    for finding in LATER_FINDINGS.values():
+        assert set(finding["resolvedBy"]) <= change_ids, finding["findingId"]
+        answered |= set(finding["resolvedBy"])
+    assert answered == change_ids
+
+
+def test_the_rendering_claim_stays_planned_with_no_record_and_no_promotion() -> None:
+    for register in (REGISTER, AS_RELEASED):
+        claim = _rendering_claim(register)
+        assert claim["status"] == "planned"
+        assert claim["assertsRealBehaviour"] is False
+        assert claim["evidenceRecords"] == []
+        assert claim["notClaimedReason"] is None
+
+
+def test_the_limitation_says_what_exists_and_what_still_does_not() -> None:
+    """The current limitation: rendering exists at C0, deployment does not consume it,
+    the defaults revision is asserted, and only supported hand-written files are checked."""
+    current = normalised(_rendering_claim(REGISTER)["limitation"])
+    for phrase in (
+        "Deterministic deployment-value rendering exists, checked statically at C0",
+        "No supported deployment or GitOps path consumes the generated files yet",
+        "nothing yet reconstructs the defaults from a committed source bound to that "
+        "revision",
+        "changes the values and not the release identifier",
+        "any other values file given to Helm is not checked",
+    ):
+        assert phrase in current, phrase
+    assert "Deployment rendering does not exist" not in current
+    released = _rendering_claim(AS_RELEASED)["limitation"]
+    assert released.startswith("Deployment rendering does not exist.")
+
+
+def test_the_released_register_cannot_be_rebuilt_without_the_later_ledger() -> None:
+    """Both ledgers touch the index surface's reason, so undoing one alone is refused."""
+    with pytest.raises(ValueError, match="r07-surface-reasons"):
+        released_register(REGISTER, LEDGER)
 
 
 # ------------------------------------------------------------------ the record

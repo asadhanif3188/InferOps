@@ -14,7 +14,7 @@ C0, and so is every file it generates until a real deployment installs one.
 | Property | Value |
 |---|---|
 | Module | [`src/inferops/domain/render/helm_values.py`](../../src/inferops/domain/render/helm_values.py), with the YAML form in [`values_yaml.py`](../../src/inferops/domain/render/values_yaml.py) |
-| Entry points | `HelmValuesRenderer(revision).render(context)`, or `render_with(renderer, ...)` on documents; `generate_release(renderer, ...)` for the values and their release, and `write_release(generated, directory)` to write both; `manual_value_findings(values)` for a hand-written file |
+| Entry points | `HelmValuesRenderer(revision).render(context)`, or `render_with(renderer, ...)` on documents; `generate_release(renderer, ...)` for the values and their release, and `write_release(generated, directory)` to write both; `admit_manual_values(values, manual)` to pair a hand-written file with them, and `manual_value_findings(manual)` for its findings |
 | Input | A `RenderContext` from [the renderer input boundary](renderer-input-boundary.md), for a `synchronous-llm` contract |
 | Output | `GeneratedHelmValues`: 25 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
 | Chart | `inferops-llm` `0.3.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
@@ -242,15 +242,49 @@ the release identifier, and nothing else. A contract or binding change no chart 
 carries - the description, the runbook reference, the GitOps destination - moves the
 source digest and the identifier, and the values not at all. A new renderer or
 platform-defaults revision moves that revision and the identifier, and the values not at
-all. One shape is measured rather than hidden: a platform-defaults change stated under the
-same revision moves the values and their digest and **not** the release identifier,
-because the defaults are named by the revision the caller states and no defaults file is
-read.
+all. One shape is measured rather than hidden, as a coverage limitation: platform-defaults
+content changed while the caller **falsely retains the same stated revision** moves the
+rendered values and their digest and **not** the release identifier. The caller supplies
+the defaults and, separately, the revision they are said to come from, and nothing reads
+the defaults from a committed source bound to that revision. So a release records the
+**asserted** platform-defaults revision; it does not prove the defaults it was rendered
+from were the ones at that revision. The test that measures this asserts the difference,
+and is not to be turned into an equality: it changes when a later change reconstructs the
+defaults from the revision a release names, and not before.
 
 **Determinism.** Two generations written to two clean directories are the same bytes, whatever
 order the bindings arrive in, in two interpreters under two hash seeds, and with every
 clock, random source, and environment read patched to fail - the write included. No string
 in either file is credential-shaped, and neither holds a timestamp or a random identifier.
+
+### What a generated file can carry
+
+The property claimed for both files is bounded, and it is the one the tests hold:
+
+- **No supported secret-bearing field, and no secret reference, reaches either file.** A
+  contract that declares a secret reference is refused before anything is generated, under
+  `render-capability-unsupported`, and `security.secretRefs` is written empty.
+- **Every string comes from an explicitly owned field.** The values file holds exactly the
+  chart values the disposition table renders, and the release file exactly the fields
+  [the provenance input-trust policy](../contracts/rendered-workload-release.md#provenance-input-trust)
+  classifies; a test compares both files' leaves with the two tables. Markers planted in
+  input content no row renders - the contract's description and annotations, the
+  binding's owner, GitOps path, and namespace - reach neither file.
+- **Known credential shapes are refused, and not quoted.** A string with a part beginning
+  with a published credential prefix is refused by the renderer
+  (`render-value-credential-shaped`) or when the release is recorded
+  (`release-value-credential-shaped`), and neither refusal repeats it.
+- **The golden files are scanned.** No path exception in the repository's secret-scanning
+  configuration covers them, and a test holds that.
+
+**The input-trust limitation stands.** Many rendered values and the release's
+`public-identity` fields are names an author chose - a workload's name, version, owner,
+tenant, and cost centre, a binding's name, a model's identifier - and they are public by
+policy. A secret deliberately written as an otherwise valid value of one of them has that
+value's shape, and syntax cannot prove it non-secret: a test generates a release whose
+binding is named with a lowercase token that has no published credential prefix, and it
+passes. So this page does not claim that a generated file contains no secret value. It
+claims the four properties above.
 
 ### Writing it
 
@@ -268,10 +302,15 @@ the one module of the render package that touches a file, writes both files or n
   the error names it, and the next write to the same directory refuses to start until it
   is removed. A test removes it and writes again.
 
-It does not flush the parent directory after the rename, so a power loss can undo the
-rename, leaving the staging directory with both complete files; and on POSIX systems a
-rename replaces an *empty* directory created at the target between the check and the
-rename. Where a release directory lives is the caller's choice.
+Both files or neither is a promise about a running system and a process that fails or is
+killed, not about a crash. Each file's bytes are flushed, but no directory is - not the
+staging directory, not the parent after the rename - so after a power loss or an
+operating-system crash the output directory may be missing, a leftover staging directory
+may hold both files, one, or none, and a file system that does not order its metadata
+writes could show the output directory without both files. A release read after a crash
+is checked against its digests rather than trusted because its directory exists. On POSIX
+systems a rename replaces an *empty* directory created at the target between the check
+and the rename. Where a release directory lives is the caller's choice.
 
 **An exemption, stated.** Every other module under `src/inferops` opens no path, so the
 distribution works from a wheel with no file system, and
@@ -372,6 +411,28 @@ sibling: `model.artifact.sourceUrl` beside the generated `model.artifact.reposit
 sets each of the 25 generated values in the committed file and gets exactly one finding for
 each; the committed file gets none.
 
+**Where the check is applied.** `admit_manual_values(generated, manual)` pairs generated
+values with a hand-written document only when it has no such finding, and refuses with
+every finding at once - each naming the path, never the value, and carrying the caller's
+request context. The pair, `AdmittedHelmValues`, holds the hand-written half read-only and
+runs the check again when it is built, so a pair holds no hand-written value that
+overrides a generated one, whoever built it. The V1 comparison below renders exactly what
+was admitted, not the file beside it.
+
+**Which hand-written files are supported.** A hand-written values file is supported beside
+generated values only when its name ends in `.manual-values.yaml`, the suffix
+`MANUAL_VALUES_SUFFIX` publishes. A test walks the repository - skipping version control,
+tool caches, build output, and local machine state - finds every file with that suffix,
+and fails, naming the file and the paths, if one is not admitted; a second test shows a
+newly added file that repeats a generated value fails it. Today there is one such file,
+the reference workload's.
+
+**What is not controlled.** A values file named any other way, one outside the repository,
+or a `--set` on Helm's command line is not checked by anything here, and the check cannot
+stop one being passed to Helm beside generated values. No supported path installs
+generated values yet; the deployment path that does is where such files would have to be
+refused.
+
 **What the check cannot see.** The download URL repeats the repository, revision, and file
 the contract pins, and nothing compares them: the acquisition job's content hash, which the
 generated values supply, is what refuses a different file. And a hand-written
@@ -394,8 +455,10 @@ release, but for its environment label. Three tests check it, at two layers:
   annotations derived from the configuration that holds it.
 
 Since `V2-S2-001-PR2` a test runs `helm template` over the values file `write_release`
-wrote - the file on disk, not the text in memory - with the hand-written file, and gets the
-same bytes as the V1 fixture with the contract's environment.
+wrote - the file on disk, not the text in memory - with the hand-written file as
+`admit_manual_values` admitted it, and gets the same bytes as the V1 fixture with the
+contract's environment. Both layers consume the reference hand-written file only through
+that check.
 
 That is compatibility of rendered manifests, at C0. **Nothing was installed.** Whether the
 generated release serves the V1 workload on a cluster is for a later change to show,
@@ -409,7 +472,8 @@ on a cluster.
 | Committed generated values are verified against their sources | Nothing commits generated values yet, and nothing reads a written release directory back | A later change |
 | A secret reference is rendered | No accepted mapping from a contract locator to the chart's secret binding | A decision on that mapping |
 | The `mock-llm` profile is rendered | The renderer declares the synchronous profile only, as the story scopes it | A renderer, or a support change, for the mock profile |
-| The platform defaults are read from a committed file | No defaults file exists; the caller states the revision, as at the boundary. Until then a defaults change stated under the same revision moves the values digest and not the release identifier, and a test measures it | The change that reads the defaults from the repository |
+| The platform defaults are read from a committed file | No defaults file exists; the caller supplies the defaults and states their revision, as at the boundary. Until then defaults content changed under a falsely retained revision moves the values digest and not the release identifier, and a test measures it | A change that reconstructs the defaults from a committed source bound to the revision a release records, before any source verification relies on that revision |
+| A hand-written values file outside the supported suffix is checked | Only files named with `.manual-values.yaml` are found and admitted; nothing installs generated values, so there is no install path to refuse others on | The deployment path that installs generated values |
 | The API image is generated | It is a contributor's local build, published to no registry | A published API image |
 | The download URL agrees with the contract's pins | The contract has no field for it; the content hash is the check | A contract field for the source, or a derivation rule |
 | A data classification changes a render | No chart setting or policy engine acts on one | A policy engine |
@@ -425,8 +489,15 @@ on a cluster.
 - **That a written release is still what was written.** The writer reads both files back
   before it moves them into place; nothing checks a release directory after that.
 - **That the hand-written half is safe.** The check refuses a hand-written value that
-  repeats a generated one; it does not judge the others. Nothing runs it on a release's
-  values: a test runs it on the committed reference file.
+  repeats a generated one; it does not judge the others. It is enforced for every
+  repository file named as a supported hand-written values file, and for any document a
+  caller admits; a values file passed to Helm by another route is not checked.
+- **That a generated file holds no secret value.** What holds is the bounded property in
+  [What a generated file can carry](#what-a-generated-file-can-carry): no supported
+  secret-bearing field or secret reference, only owned fields, known credential shapes
+  refused. A secret disguised as a valid public name is the input-trust limitation.
+- **That the platform defaults came from the revision a release names.** The revision is
+  the caller's assertion, and a test measures what that allows.
 - **Anything beyond the reference inputs' shape.** The golden file and the V1 comparison
   are one contract on two bindings of one environment.
 

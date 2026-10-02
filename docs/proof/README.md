@@ -54,9 +54,10 @@ cited file bound to its content by SHA-256 and to its git blob. It is generated 
 [the normalization ledger](testing/v1-s5-006-pr1-normalization.v1alpha1.json),
 [the completeness ledger](testing/v1-s5-006-pr2-completeness.v1alpha1.json),
 [the closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json),
-[the publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json), and
-[the post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json), and a
-test regenerates it. Where a record here was found to say something its own evidence
+[the publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json),
+[the post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json), and
+[the claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
+and a test regenerates it. Where a record here was found to say something its own evidence
 contradicts, the correction is in a ledger, beside the record, and the record is
 unchanged — the index lists each correction against the file it concerns.
 
@@ -79,8 +80,11 @@ it read the tag, the published release, the candidate's hosted checks, and the p
 reporting setting, and the register certifies on it, at `C0`, that the release exists.
 It is not part of the pack the release was cut over. Adding it moved both digests of
 the pack `main` holds; the gate prints the released pair, recomputed by undoing
-[the post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json), and the
-current pair beside it.
+[the post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json) and the
+ledgers after it, and the current pair beside it. The one since,
+[the claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
+adds no record: it replaces a planned claim's stale limitation once Helm values were
+generated, and moves the current pack again.
 
 ## Records
 

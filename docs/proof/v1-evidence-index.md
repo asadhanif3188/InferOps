@@ -8,7 +8,8 @@ by `python -m tools.evidence_index --write` from
 [the `V1-S5-006-PR2` completeness ledger](testing/v1-s5-006-pr2-completeness.v1alpha1.json),
 [the `V1-S5-013-PR1` closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json),
 [the `V1-S5-013-PR2` publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json),
-and [the `V1-S5-009-PR1` post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json).
+[the `V1-S5-009-PR1` post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json),
+and [the `V2-S2-001-PR2` claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json).
 It states nothing they do not, and
 [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py)
 regenerates it and fails on any difference.
@@ -58,9 +59,13 @@ annotated tag `v1.0.0` points to `718ad2e`, the merge of `V1-S5-008-PR1`, and it
 message quotes the frozen pack's digest. After the release, `V1-S5-009-PR1` moved one
 claim, `a-v1-release-has-been-published`, from not claimed to certified on
 [a record read after the release](releases/v1-s5-009-pr1-v1.0.0-publication.md), through
-the post-release ledger. That moves both digests of the pack `main` holds, and it is
-expected: the released pack is the frozen one, and the index recomputes it, by undoing
-the post-release ledger, rather than copying it. `--gate` prints both pairs.
+the post-release ledger. Later, `V2-S2-001-PR2` replaced the stale limitation of one
+planned claim, `deployment-values-derive-only-from-a-validated-document`, once Helm
+values were generated - the claim stays planned with no record - and this page's reason
+in the register, through a second post-release ledger, the claim reconciliation ledger.
+Each moves the pack `main` holds, and it is expected: the released pack is the frozen
+one, and the index recomputes it, by undoing both post-release ledgers, rather than
+copying it. `--gate` prints both pairs.
 
 How the 38 records that executed their target behaviour identify the repository code
 that ran:
@@ -90,15 +95,16 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after the post-release ledger, which no release quotes | `08d4868fcf4c320961d2937b5369dc9846ca4f0455e2f60375c1decfbdab23df` | `b958a7244cb6aab924615ff099112435d1e3d527ea348b66ec7ae3e8fd1c8532` |
+| **Current:** `main` after both post-release ledgers, which no release quotes | `08d4868fcf4c320961d2937b5369dc9846ca4f0455e2f60375c1decfbdab23df` | `0c2f2508c0dd96fb97540fc2a20110d558f0f88096a8b3ad97857b1b32a6b807` |
 
-The released pair is not read from a ledger. The index undoes the post-release
-ledger's changes, renders the register as it was, and takes both digests over that
-register, the four ledgers before the post-release one, and the files that register
-cites, read from this checkout; the post-release ledger states the pair, and the index
-refuses a result that differs. So a cited file, the register, or an earlier ledger
-edited after the release fails here, and so does a post-release ledger that
-misdescribes what it changed. The undone register is the tagged one byte for byte,
+The released pair is not read from a ledger. The index undoes both post-release
+ledgers' changes, last first, renders the register as it was, and takes both digests
+over that register, the four ledgers before the post-release ones, and the files that
+register cites, read from this checkout; the first post-release ledger states the pair,
+and the index refuses a result that differs, and a later post-release ledger that states
+a release of its own. So a cited file, the register, or an earlier ledger edited after
+the release fails here, and so does a post-release ledger that misdescribes what it
+changed. The undone register is the tagged one byte for byte,
 which a test checks where the clone holds the tag.
 
 ## What one entry holds

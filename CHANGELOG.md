@@ -33,6 +33,24 @@ from `1.0.0`.
   says what is generated and [the validation
   record](docs/proof/domain/v2-s2-001-pr2-validation.md) what was run.
 
+- **Generated release, corrected before merge.** A pre-merge review of `V2-S2-001-PR2`
+  found four gaps, and they are closed in the same change. Hand-written values are now
+  admitted beside generated ones only through `admit_manual_values`, which refuses one
+  that sets, replaces, or removes a generated value and pairs the two as
+  `AdmittedHelmValues`; the V1 comparison renders through it, and a test admits every
+  repository file named with the supported suffix, `.manual-values.yaml`, so a new one
+  that repeats contract intent fails the suite. A file named otherwise, or passed to Helm
+  some other way, is not checked. The secret property is stated as what the tests hold -
+  no supported secret-bearing field or secret reference, only owned fields, known
+  credential shapes refused - and not as "no secret values", which syntax cannot show.
+  The platform-defaults gap is named for what it is: the release records the revision its
+  caller asserts. The limitation of `deployment-values-derive-only-from-a-validated-document`
+  no longer says rendering does not exist; it says what exists at `C0` and what does not,
+  through a sixth ledger of register changes, the second after the release. The claim
+  stays planned with no record, the released `v1.0.0` pack recomputes unchanged, and the
+  current pack digest moves. The writer's page and docstring no longer say a crash leaves
+  both files staged.
+
 - **Helm values renderer.** `V2-S2-001-PR1` adds the first renderer behind the render
   boundary. `HelmValuesRenderer` turns a `synchronous-llm` render context into the values
   of the existing `inferops-llm` chart, `0.3.0`, and nothing else: every one of the 44

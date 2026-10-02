@@ -15,17 +15,21 @@ Seven things are asserted:
    the values written are exactly the chart values the mapping names; the chart
    constraints the renderer checks are the chart schema's, keyword for keyword.
 4. **The chart accepts the output.** The generated values, merged over the chart's
-   defaults with and without the hand-written file, validate against the chart's
-   values schema; with ``helm`` present they render exactly what the V1 real
-   fixture renders once its environment is the contract's.
+   defaults with and without the hand-written file - admitted beside them by
+   ``admit_manual_values``, never loaded around it - validate against the chart's
+   values schema; with ``helm`` present the admitted pair renders exactly what the
+   V1 real fixture renders once its environment is the contract's.
 5. **Every refusal has a case.** Each of the renderer's chart rules refuses
    twenty accepted contracts built for them, through ``render_with``, under exactly
    that rule, without quoting a value and without returning anything; the support
    checks ``render`` repeats are reached by calling it directly, the hand-written
    values rule through ``manual_value_findings``, and one gap is measured instead.
-6. **Hand-written values cannot repeat contract intent.** The committed
-   hand-written file sets no generated value; setting, replacing, or removing one
-   is refused, and a sibling of one is not.
+6. **Hand-written values cannot repeat contract intent.** Every file in the
+   repository named as a supported hand-written values file is admitted beside the
+   generated values, and a new one that is not fails this suite; setting,
+   replacing, or removing a generated value is refused, through the admission and
+   the finding function both, naming the path and never the value, and a sibling
+   of one is not.
 7. **One canonical YAML form.** Every string is quoted and round-trips; what has
    no single spelling is refused.
 """
@@ -45,6 +49,7 @@ import time
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 import jsonschema
@@ -64,8 +69,10 @@ from inferops.domain.render import (
     GENERATED_VALUE_PATHS,
     HELM_VALUE_DISPOSITIONS,
     HELM_VALUES_SUPPORT,
+    MANUAL_VALUES_SUFFIX,
     RENDER_FIELD_OWNERSHIP,
     RENDER_RULES,
+    AdmittedHelmValues,
     ApiDefaults,
     Disposition,
     GeneratedHelmValues,
@@ -75,6 +82,7 @@ from inferops.domain.render import (
     RenderContext,
     RenderRefused,
     ValuesFormError,
+    admit_manual_values,
     build_render_context,
     canonical_yaml,
     manual_value_findings,
@@ -229,6 +237,83 @@ def deep_merge(*documents: Mapping[str, Any]) -> dict[str, Any]:
             else:
                 merged[key] = copy.deepcopy(value)
     return merged
+
+
+def admitted(manual: Path = MANUAL) -> AdmittedHelmValues:
+    """The reference values and a hand-written file, paired by the admission check."""
+    return admit_manual_values(render(), load(manual))
+
+
+def admitted_files(directory: Path, manual: Path = MANUAL) -> tuple[Path, Path]:
+    """The admitted pair written as Helm reads it: generated first, then hand-written.
+
+    Helm is given what was admitted, not the file on disk beside it, so what it
+    renders is what the check passed.
+    """
+    pair = admitted(manual)
+    generated = directory / "values.generated.yaml"
+    generated.write_bytes(pair.generated.to_yaml().encode("utf-8"))
+    hand_written = directory / "admitted.manual-values.yaml"
+    hand_written.write_text(
+        yaml.safe_dump(pair.documents()[1], sort_keys=True), encoding="utf-8"
+    )
+    return generated, hand_written
+
+
+#: Directories no supported hand-written values file lives in: version control,
+#: tool caches, build output, and local machine state, all of them untracked.
+_NOT_SEARCHED = frozenset(
+    {
+        ".artifacts",
+        ".cache",
+        ".git",
+        ".kube",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".terraform",
+        ".venv",
+        "__pycache__",
+        "dist",
+        "node_modules",
+    }
+)
+
+
+def supported_manual_values_files(root: Path) -> list[Path]:
+    """Every file under ``root`` named as a supported hand-written values file.
+
+    Found by the name the platform publishes, ``MANUAL_VALUES_SUFFIX``, rather than
+    listed here, so a new file is checked the moment it exists.
+    """
+    found: list[Path] = []
+    for directory, subdirectories, files in os.walk(root):
+        subdirectories[:] = sorted(
+            name for name in subdirectories if name not in _NOT_SEARCHED
+        )
+        found.extend(
+            Path(directory) / name
+            for name in sorted(files)
+            if name.endswith(MANUAL_VALUES_SUFFIX)
+        )
+    return found
+
+
+def unadmitted_manual_values(root: Path) -> list[tuple[str, list[str]]]:
+    """Each supported hand-written file under ``root`` the admission refuses, with why."""
+    generated = render()
+    refused: list[tuple[str, list[str]]] = []
+    for path in supported_manual_values_files(root):
+        try:
+            admit_manual_values(generated, load(path))
+        except RenderRefused as refusal:
+            refused.append(
+                (
+                    path.relative_to(root).as_posix(),
+                    [finding.field for finding in refusal.findings],
+                )
+            )
+    return refused
 
 
 def leaf_paths(
@@ -648,7 +733,7 @@ def test_the_generated_values_over_the_chart_defaults_satisfy_the_chart_schema()
 
 
 def test_the_installable_values_satisfy_the_chart_schema() -> None:
-    merged = deep_merge(load(CHART_VALUES), render().as_document(), load(MANUAL))
+    merged = deep_merge(load(CHART_VALUES), *admitted().documents())
     assert list(chart_validator().iter_errors(merged)) == []
 
 
@@ -657,12 +742,12 @@ def test_the_installable_values_are_the_v1_real_values_but_for_the_environment()
 ):
     """V1 compatibility at the values layer, without Helm.
 
-    The generated file and the hand-written one merge to exactly what the V1 real
-    fixture merges to, except the environment label: V1's fixture labels the
-    laptop run ``dev``, and the contract declares ``local``.
+    The generated file and the hand-written one, as admitted beside it, merge to
+    exactly what the V1 real fixture merges to, except the environment label: V1's
+    fixture labels the laptop run ``dev``, and the contract declares ``local``.
     """
     defaults_doc = load(CHART_VALUES)
-    generated = deep_merge(defaults_doc, render().as_document(), load(MANUAL))
+    generated = deep_merge(defaults_doc, *admitted().documents())
     v1 = deep_merge(defaults_doc, load(REAL_VALUES))
     differing = dotted(
         {
@@ -701,9 +786,7 @@ def helm_template(*values: Path, overrides: tuple[str, ...] = ()) -> bytes:
 def test_helm_renders_the_generated_values_as_it_renders_v1_with_the_contracts_environment(
     tmp_path: Path,
 ) -> None:
-    generated = tmp_path / "values.generated.yaml"
-    generated.write_bytes(render().to_yaml().encode("utf-8"))
-    assert helm_template(generated, MANUAL) == helm_template(
+    assert helm_template(*admitted_files(tmp_path)) == helm_template(
         REAL_VALUES, overrides=("telemetry.deploymentEnvironment=local",)
     )
 
@@ -711,9 +794,7 @@ def test_helm_renders_the_generated_values_as_it_renders_v1_with_the_contracts_e
 def test_against_the_committed_v1_render_only_the_environment_and_its_checksums_move(
     tmp_path: Path,
 ) -> None:
-    generated = tmp_path / "values.generated.yaml"
-    generated.write_bytes(render().to_yaml().encode("utf-8"))
-    ours = helm_template(generated, MANUAL).decode("utf-8").splitlines()
+    ours = helm_template(*admitted_files(tmp_path)).decode("utf-8").splitlines()
     v1 = REAL_RENDER.read_bytes().replace(b"\r\n", b"\n").decode("utf-8").splitlines()
     assert len(ours) == len(v1)
     moved = [
@@ -1112,6 +1193,138 @@ def test_the_committed_hand_written_file_sets_no_generated_value() -> None:
     manual = load(MANUAL)
     assert manual_value_findings(manual) == []
     assert dotted(leaf_paths(manual)).isdisjoint(set(CHART_VALUE_CONSTRAINTS))
+
+
+def test_every_supported_hand_written_file_in_the_repository_is_admitted() -> None:
+    """Found by name, not listed: a new supported file is checked as soon as it exists."""
+    found = supported_manual_values_files(REPO_ROOT)
+    assert MANUAL in found
+    assert unadmitted_manual_values(REPO_ROOT) == []
+
+
+def test_a_new_supported_file_that_repeats_contract_intent_fails_the_search(
+    tmp_path: Path,
+) -> None:
+    """What a contributor adding such a file would see: this suite fails, naming it."""
+    nested = tmp_path / "deploy" / "values"
+    nested.mkdir(parents=True)
+    (nested / f"another{MANUAL_VALUES_SUFFIX}").write_text(
+        "runtime:\n  replicaCount: 3\n  image:\n    pullPolicy: Always\n",
+        encoding="utf-8",
+    )
+    (nested / f"fine{MANUAL_VALUES_SUFFIX}").write_text(
+        "runtime:\n  image:\n    pullPolicy: Always\n", encoding="utf-8"
+    )
+    (nested / "unsupported.values.yaml").write_text(
+        "runtime:\n  replicaCount: 3\n", encoding="utf-8"
+    )
+    cache = tmp_path / ".venv"
+    cache.mkdir()
+    (cache / f"ignored{MANUAL_VALUES_SUFFIX}").write_text(
+        "profile: real\n", encoding="utf-8"
+    )
+    assert [path.name for path in supported_manual_values_files(tmp_path)] == [
+        f"another{MANUAL_VALUES_SUFFIX}",
+        f"fine{MANUAL_VALUES_SUFFIX}",
+    ]
+    assert unadmitted_manual_values(tmp_path) == [
+        (
+            f"deploy/values/another{MANUAL_VALUES_SUFFIX}",
+            ["manualValues.runtime.replicaCount"],
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("manual", "refused"),
+    [
+        # 1. A generated scalar, set.
+        ({"runtime": {"replicaCount": 3}}, ["manualValues.runtime.replicaCount"]),
+        # 2. A child beneath a generated scalar.
+        (
+            {"model": {"revision": {"pinned": "main"}}},
+            ["manualValues.model.revision.pinned"],
+        ),
+        # 3. A parent of generated values, replaced by a scalar, a list, or a null.
+        ({"runtime": "none"}, ["manualValues.runtime"]),
+        ({"ownership": ["a", "b"]}, ["manualValues.ownership"]),
+        ({"model": {"artifact": None}}, ["manualValues.model.artifact"]),
+        # 4. A generated value removed with a null.
+        ({"telemetry": {"enabled": None}}, ["manualValues.telemetry.enabled"]),
+        # Every finding at once, in path order.
+        (
+            {"profile": "real", "api": {"replicaCount": 2}},
+            ["manualValues.api.replicaCount", "manualValues.profile"],
+        ),
+    ],
+)
+def test_admission_refuses_a_hand_written_file_that_sets_replaces_or_removes_a_generated_value(
+    manual: dict[str, Any], refused: list[str]
+) -> None:
+    request = RequestContext(correlation_id="manual-values-admission")
+    with pytest.raises(RenderRefused) as raised:
+        admit_manual_values(render(), manual, context=request)
+    findings = raised.value.findings
+    assert [finding.field for finding in findings] == refused
+    assert {finding.rule_id for finding in findings} == {
+        "render-manual-value-generated"
+    }
+    assert all(finding.context == request for finding in findings)
+
+
+@pytest.mark.parametrize(
+    "manual",
+    [
+        # 5. A sibling of a generated value.
+        {"runtime": {"image": {"pullPolicy": "Always"}}},
+        {"model": {"artifact": {"sourceUrl": "https://example.invalid/m"}}},
+        # 6. An empty mapping above a generated value merges nothing into it.
+        {"runtime": {}},
+        {"runtime": {"resources": {}}},
+        {},
+    ],
+)
+def test_admission_accepts_a_sibling_and_an_empty_mapping_above_a_generated_value(
+    manual: dict[str, Any],
+) -> None:
+    pair = admit_manual_values(render(), manual)
+    assert pair.documents() == (render().as_document(), manual)
+
+
+def test_an_admission_refusal_names_the_path_and_never_the_value() -> None:
+    """8. The value set at a generated path may be anything, a credential included."""
+    leaked = "hf_" + "leakedvaluefromahandwrittenfile"
+    with pytest.raises(RenderRefused) as raised:
+        admit_manual_values(render(), {"model": {"identifier": leaked}})
+    assert [finding.field for finding in raised.value.findings] == [
+        "manualValues.model.identifier"
+    ]
+    assert leaked not in str(raised.value)
+    assert leaked not in json.dumps(
+        [finding.as_dict() for finding in raised.value.findings]
+    )
+
+
+def test_an_admitted_pair_holds_what_was_checked_and_cannot_be_built_around_it() -> (
+    None
+):
+    manual: dict[str, Any] = {"runtime": {"image": {"pullPolicy": "Always"}}}
+    pair = admit_manual_values(render(), manual)
+    manual["runtime"]["replicaCount"] = 3
+    assert pair.documents()[1] == {"runtime": {"image": {"pullPolicy": "Always"}}}
+    with pytest.raises(TypeError):
+        pair.manual["runtime"] = {}  # type: ignore[index]
+    with pytest.raises(TypeError):
+        AdmittedHelmValues(render(), {"runtime": {"replicaCount": 3}})
+    with pytest.raises(RenderRefused):
+        AdmittedHelmValues(
+            render(),
+            MappingProxyType({"runtime": MappingProxyType({"replicaCount": 3})}),
+        )
+    with pytest.raises(TypeError):
+        admit_manual_values(render().as_document(), {})  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        admit_manual_values(render(), [("api", {})])  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("path", sorted(CHART_VALUE_CONSTRAINTS))

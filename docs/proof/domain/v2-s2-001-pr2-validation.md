@@ -293,3 +293,279 @@ in a release identifier while the defaults are named only by a stated revision; 
 hand-written value the check does not cover is safe; that an identifier an author chose is
 not a secret written to look like one; or anything about the mock profile, which the
 renderer does not take.
+
+## Pre-merge correction, 2026-10-02
+
+Added before merge, by the correction commit that follows `1864c7e` on the same branch and
+pull request. **Nothing above this heading was changed**: the acceptance table, the
+decisions, "Left stale on purpose", and the review section are this change's first pass
+as it was pushed, and this section says where they were wrong. A commit cannot name
+itself, so this section names the commit before it; the correction commit's identifier and
+its hosted run are on the pull request.
+
+A pre-merge review of the first pass against the parent story found four gaps, and asked
+for the writer's exemption to be weighed again. Each is below with why it mattered, what
+changed, the tests that hold it, and what was left open on purpose.
+
+### What the first pass got wrong
+
+- It reported **"generated files contain no secret values" as met** for what the change
+  generates. As worded, the criterion is absolute, and no check here can meet it: the first
+  pass itself recorded that a lowercase token with no published prefix, written as an
+  identity, passes. A criterion met with an exception is not met as written - the same
+  error `V2-S1-004` corrected for provenance.
+- It reported the **manual-values criterion as met for the committed reference file**. That
+  was one file passing one function: no boundary applied the check, the V1 comparison
+  loaded the hand-written file around it, and a new hand-written file would have been
+  checked by nothing.
+- It **left a claim limitation it knew to be false** - "Deployment rendering does not
+  exist" for `deployment-values-derive-only-from-a-validated-document` - because a register
+  edit moves the current evidence digests. That put a digest ahead of a true statement. The
+  pack `main` holds is expected to move when a current statement changes; the pack a
+  release was cut over is the one that must not, and the tooling checks that.
+- It measured the **platform-defaults gap** but named it "a defaults change under the same
+  revision", which reads as a property of the defaults rather than of a caller asserting a
+  revision it did not use, and did not say what a release does and does not prove.
+- The writer's docstring and the renderer page said that after a power loss the staging
+  directory **"holds both complete files"**. Only the files' bytes are flushed; no
+  directory is, so after a crash it may hold both, one, or none.
+
+### A. The secret criterion, bounded
+
+**Why it mattered.** A reader of "met" would take generated files to be proven free of
+secrets. The code cannot prove that for names an author chooses, and the first pass had
+already measured one that passes.
+
+**Correction.** [The renderer page](../../domain/helm-values-renderer.md#what-a-generated-file-can-carry)
+gains "What a generated file can carry", and [the release
+document](../../contracts/rendered-workload-release.md#generated-files-and-their-digests) a
+paragraph, both in the input-trust vocabulary: **generated release artifacts expose no
+supported secret-bearing field or secret reference; every string in them comes from a field
+the renderer's disposition table or the provenance policy owns; a known credential shape
+is refused, and not quoted; an arbitrary secret disguised as an otherwise valid public
+identifier remains the input-trust limitation.** The merged `V2-S2-001-PR1` record keeps its
+row and gains a dated "Later correction". No prefix was added to the credential rule.
+
+**Tests**, in `tests/domain/test_generated_release.py`:
+
+- `test_each_file_holds_exactly_the_fields_its_published_table_names` - both files' leaves
+  equal the disposition table's chart values and the provenance table's fields;
+- `test_input_content_no_row_names_reaches_neither_file` - five markers planted in real
+  inputs, in the contract's description and annotations and the binding's owner, GitOps
+  path, and namespace, reach neither file;
+- `test_a_credential_shaped_value_is_refused_without_being_quoted` - a contract owner
+  beginning `glpat-`, refused under `render-value-credential-shaped`, unquoted;
+- `test_the_golden_files_are_not_exempt_from_secret_scanning` - no path exception in
+  `.gitleaks.toml` covers either golden file;
+- `test_a_secret_written_as_an_ordinary_lowercase_name_passes` - the limitation, measured,
+  and not claimed away;
+- `test_the_pages_claim_the_bounded_secret_property_and_not_the_absolute_one` and
+  `test_the_merged_pr1_record_keeps_its_rows_and_adds_a_dated_correction`.
+
+Already present and unchanged: a declared secret reference is refused with nothing to
+write, a credential-shaped binding name is refused unquoted, `security.secretRefs` is
+written empty, and no string in either file is credential-shaped.
+
+**Left open.** The literal criterion is not met as worded, and cannot be by syntax. Closing
+it needs the criterion restated as the bounded property where it is defined, which is not
+in this repository.
+
+### B. Manual-value ownership, enforced at a boundary
+
+**Why it mattered.** Helm lets the last values file win. Without a boundary, a second
+hand-written file could set a contract-owned value beside the generated one and nothing in
+the repository would refuse it.
+
+**Correction.** `admit_manual_values(generated, manual, *, context)` in
+[`helm_values`](../../../src/inferops/domain/render/helm_values.py) pairs generated values
+with a hand-written document only when `manual_value_findings` finds nothing, and otherwise
+raises `RenderRefused` with every `render-manual-value-generated` finding, each naming the
+path and never the value, with the request context. The pair, `AdmittedHelmValues`, holds
+the hand-written half read-only and runs the check again when built. `MANUAL_VALUES_SUFFIX`,
+`.manual-values.yaml`, names a supported hand-written file. Both V1 comparison layers - the
+schema merge and `helm template` - and the written-file `helm template` test now consume the
+admitted pair: Helm is given the admitted document, written out, not the file beside it.
+No Helm precedence, chart file, or ownership row changed.
+
+**Tests**, in `tests/domain/test_helm_values_renderer.py`:
+
+- `test_every_supported_hand_written_file_in_the_repository_is_admitted` - walks the
+  repository for the suffix rather than reading a list;
+- `test_a_new_supported_file_that_repeats_contract_intent_fails_the_search` - a temporary
+  tree holding such a file, a sibling-only one, one named otherwise, and one under `.venv`:
+  only the first is reported, by path and field;
+- `test_admission_refuses_a_hand_written_file_that_sets_replaces_or_removes_a_generated_value`,
+  with seven cases: a generated scalar set; a child beneath one; a parent replaced by a
+  scalar, a list, and a `null`; a generated value removed with `null`; two at once;
+- `test_admission_accepts_a_sibling_and_an_empty_mapping_above_a_generated_value` - five
+  cases, the empty mapping per the existing rule;
+- `test_an_admission_refusal_names_the_path_and_never_the_value` and
+  `test_an_admitted_pair_holds_what_was_checked_and_cannot_be_built_around_it`.
+
+**Scope enforced.** Every file in the repository whose name ends `.manual-values.yaml`,
+outside version control, tool caches, build output, and local machine state - one today -
+and any document a caller passes to `admit_manual_values`. **Not controlled:** a values file
+named otherwise, one outside the repository, or `--set` on Helm's command line. No supported
+path installs generated values yet; the path that does is where those would have to be
+refused.
+
+### C. The stale claim limitation, corrected
+
+**Why it mattered.** The register, the proof dashboard, and the evidence index all told a
+reader that deployment rendering does not exist, after two changes had built it.
+
+**Correction.** A sixth ledger of register changes, the second after the release,
+[`v2-s2-001-pr2-claim-reconciliation.v1alpha1.json`](../testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
+makes two changes, each with its value before and after and a finding: `c01` replaces the
+claim's limitation, and `c02` replaces the evidence index's reason in the register, which
+named five ledgers. The claim's status stays **planned**, `assertsRealBehaviour` stays
+false, it cites no record, and nothing is promoted. The limitation now reads:
+
+> Deterministic deployment-value rendering exists, checked statically at C0: validated,
+> typed inputs render the chart's values, and a RenderedWorkloadRelease binds the
+> generated values file to the digests and revisions of what it was rendered from. No
+> supported deployment or GitOps path consumes the generated files yet, so no executed
+> release shows deployment values derived only from a validated document. The
+> platform-defaults revision a release records is the one its caller states: nothing yet
+> reconstructs the defaults from a committed source bound to that revision, so defaults
+> content changed under the same stated revision changes the values and not the release
+> identifier. A hand-written values file is checked against the generated values only
+> when it is one the repository supports, one named with the .manual-values.yaml suffix;
+> any other values file given to Helm is not checked.
+
+The evidence index learnt to undo every post-release ledger: `POST_RELEASE_LEDGER_PATHS`
+lists them, the released pack undoes both, last first, and refuses a later one that states a
+release, and the summary counts both ledgers' changes. Seven test modules that rebuild the
+released register now undo both, and a test shows that undoing the first alone is refused.
+The index and the dashboard were regenerated with their own tools; the index page, the
+matrix page, the proof index, and the changelog say so.
+
+**Digests.**
+
+| Pack | Before | After |
+|---|---|---|
+| Released `v1.0.0`, evidence set | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | unchanged |
+| Released `v1.0.0`, evidence pack | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` | unchanged |
+| Current, evidence set | `08d4868fcf4c320961d2937b5369dc9846ca4f0455e2f60375c1decfbdab23df` | unchanged |
+| Current, evidence pack | `b958a7244cb6aab924615ff099112435d1e3d527ea348b66ec7ae3e8fd1c8532` | `0c2f2508c0dd96fb97540fc2a20110d558f0f88096a8b3ad97857b1b32a6b807` |
+
+The current pack moved because it covers the register and every ledger, and both changed;
+the evidence set covers only cited files, and none changed. The released pair is not
+copied: the index recomputes it by undoing both post-release ledgers and refuses a result
+other than the pair written once for the tag. No tag, release, or released file was touched.
+
+**Tests**, in `tests/testing/test_evidence_post_release.py`: the reconciliation ledger
+follows the post-release one and states no release, freeze, or blocker; it changes one
+limitation and one surface reason and nothing else; every finding is answered by changes
+that exist; the claim stays planned with no record in both the current and the released
+register; the limitation says what exists and what does not; the released register cannot
+be rebuilt without it; and the index builder refuses a later ledger stating a release and a
+reconciled limitation edited without a ledger.
+
+### D. The platform-defaults provenance limitation
+
+**Why it mattered.** A release names its platform defaults by a revision, and a reader
+could take that revision as proof of the defaults' content. It is not.
+
+**Correction.** The test is renamed
+`test_defaults_content_changed_under_a_falsely_retained_revision_moves_the_values_digest_and_not_the_release_id`,
+and asserts the values' bytes and digest differ, the recorded revision is the same and is
+the stated one, and the release identifier is the same. Its docstring says not to turn it
+into an equality. The renderer page now says what it means: **a RenderedWorkloadRelease
+records the asserted platform-defaults revision; this change does not prove that the
+defaults it was rendered from were reconstructed from that revision.** The downstream
+requirement is carried where the repository already carries a claim's open conditions: the
+limitation above, which the dashboard and the index show. The register's
+`recordedCoverageGaps` was not used, because it means a claim no test module covers, which
+is not this.
+
+**Left open.** Reconstructing the defaults from a committed source bound to the revision a
+release records. That needs a defaults source this repository does not have, and belongs to
+a later change.
+
+### The writer's exemption, weighed again
+
+Re-read against the architecture rules, the exemption holds and is kept:
+
+- nothing it runs on import touches the file system - module-level statements, class
+  bodies, decorators, and default values are all checked by the architecture suite, which
+  passes;
+- no other domain module gained file access: `helm_values` gained a function and a class
+  that read nothing, and the repository-wide rule still holds every module but `writing`;
+- generation stays pure, and `writing` persists bytes `generate_release` already decided;
+- `write_release` writes to a directory its caller names and does nothing else: no commit,
+  no install, no delivery;
+- both files or neither holds at the level of the directory for a running system and a
+  process that fails or is killed, and the POSIX empty-directory race stays stated.
+
+One sentence was wrong, and is fixed in the docstring and on the renderer page: neither
+directory is flushed, so a crash can leave a staging directory with fewer than both files,
+or, on a file system that does not order its metadata writes, an output directory without
+both. The pages now say a release read after a crash is checked against its digests rather
+than trusted because its directory exists.
+
+### Acceptance after the correction
+
+| Parent-story criterion | After the correction |
+|---|---|
+| Identical inputs produce canonically identical values and provenance | **Met** at C0, for the reference inputs |
+| Generated values remain compatible with V1 synchronous real serving | **Met statically**, C0 only: the written values with the admitted hand-written file render the V1 fixture byte for byte with the contract's environment. Nothing ran on a cluster |
+| Manual values do not duplicate claim-relevant contract intent | **Met for the supported scope**: every repository file named `*.manual-values.yaml`, and any document passed to `admit_manual_values`. Not for values files passed to Helm another way |
+| Generated files contain no secret values | **Not met as worded**: the absolute property cannot be shown by syntax. The bounded property in A **is met**. The criterion needs restating where it is defined |
+| Release IDs and digests are deterministic | **Met** for the reference inputs, with the measured limitation in D: the platform-defaults revision is asserted, not reconstructed |
+
+### Checks that the new tests are not decorative
+
+Six defects were planted in an archived copy of the corrected tree, never in it, with four
+suites - the renderer, the generated release, the post-release ledgers, and the evidence
+index; 619 tests that ran and 129 skipped, because the copy has no Git metadata or release
+tag - run against each:
+
+| Defect | Caught by |
+|---|---|
+| Admission skips the ownership check | 7 tests |
+| An admitted pair is built without re-checking | 1 test |
+| The admitted hand-written half is held by reference | 1 test |
+| Admission drops the request context | 7 tests |
+| A new supported file, `deploy/examples/new.manual-values.yaml`, repeats a generated value | 1 test |
+| The reconciled limitation edited in the register without a ledger | The post-release suite, at collection |
+
+The copy passed all 619 before and after. In this checkout the same four suites run 748
+tests, none skipped.
+
+### Commands, after the correction
+
+| Command | Result |
+|---|---|
+| `uv run --locked ruff check --no-cache .` | All checks passed |
+| `uv run --locked ruff format --check --no-cache .` | 588 files already formatted |
+| `uv run --locked mypy` | No issues in 323 source files |
+| The targeted suites, listed below | 5,937 passed, none skipped, with helm 3.19.0 on `PATH` |
+| `python -B -m tools.evidence_index --check` | OK: the committed index is what the register and the six ledgers produce |
+| `python -B -m tools.evidence_index --gate` | Exit 0. Released: set `1d40b33f…`, pack `652e9051…`, unchanged. Current, after 9 post-release register changes: set `08d4868f…`, unchanged; pack `0c2f2508…` |
+| `python -B -m tools.proof_dashboard --check` | OK: the committed page is what the register produces |
+| gitleaks 8.30.1 over every path changed since `6f784b6` | No leaks found in any of the 49 paths |
+| `git diff --check main` | Exit 0, no output |
+| The full default lane, the command above | **17,134 passed, 33 skipped, 14 deselected, none failed**, in 11 min 57 s; the skips are the ones earlier records name |
+
+The targeted suites: the generated release, the renderer, its refusals and input boundary,
+provenance input trust, the release domain and schema, the architecture dependency boundary,
+the post-release ledgers, the evidence index, the claim and evidence matrix, the proof
+dashboard, the case study, the release, the test inventory, and the documentation links.
+`helm template` ran inside the renderer and generated-release suites, with helm on `PATH`,
+over the written values file and the admitted hand-written file; no cluster was contacted.
+
+gitleaks reads the new ledger and this record's directory under the configuration's
+wholesale `docs/proof/` exception (EX-03), so for those two files the scan is not evidence;
+they were read by eye for credentials and private material, and hold none. The golden files
+under `tests/domain/` are scanned.
+
+This section's tables were filled after those runs; the record and link suites were run
+again over it.
+
+### Privacy and publicability, again
+
+The correction's diff names no private planning document or repository, no local
+filesystem path, no host or account name, and no later story identifier. Its two new
+credential-shaped test values are built by joining a published prefix to an ordinary
+phrase, and the secret-scanning allowlist lists both.

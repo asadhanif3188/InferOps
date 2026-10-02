@@ -19,10 +19,17 @@ Eight things are asserted:
    environment read patched to fail.
 4. **Every change moves exactly what it owns.** A contract, binding, defaults, or
    revision change moves the values and the release fields it should, and nothing
-   else - including the changes that move no chart value.
+   else - including the changes that move no chart value. Defaults content changed
+   under a falsely retained revision is measured: the values digest moves and the
+   release identifier does not.
 5. **Refused means nothing to write.** A refused render or a refused release
    returns nothing, and the request context survives.
-6. **No secret in a generated file.** No string in either file is credential-shaped.
+6. **The bounded secret property.** Each file holds exactly the fields its
+   published table names; content no row names reaches neither; no string is
+   credential-shaped, and one that would be is refused without being quoted; the
+   golden files are not exempt from secret scanning. A secret written as an
+   ordinary lowercase name passes, and the suite says so rather than claiming
+   otherwise.
 7. **All or nothing on disk.** The writer writes both files or neither, never into
    a directory that exists, and leaves a recoverable, named staging directory when
    it cannot clean up.
@@ -42,6 +49,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tomllib
 import uuid
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import replace
@@ -70,8 +78,10 @@ from inferops.domain.release import (
     verify_release_sources,
 )
 from inferops.domain.render import (
+    CHART_VALUE_CONSTRAINTS,
     RELEASE_FILE_NAME,
     RELEASE_HEADER,
+    RELEASE_PROVENANCE,
     STAGING_SUFFIX,
     VALUES_FILE_NAME,
     ApiDefaults,
@@ -80,6 +90,7 @@ from inferops.domain.render import (
     PlatformDefaults,
     ReleaseNotRecordedError,
     RenderRefused,
+    admit_manual_values,
     generate_release,
     release_text,
     staging_directory,
@@ -119,6 +130,7 @@ MANUAL = FIXTURES / "support-assistant-local.manual-values.yaml"
 RENDERER_DOC = REPO_ROOT / "docs" / "domain" / "helm-values-renderer.md"
 RELEASE_DOC = REPO_ROOT / "docs" / "contracts" / "rendered-workload-release.md"
 WRITING_PATH = REPO_ROOT / "src" / "inferops" / "domain" / "render" / "writing.py"
+GITLEAKS_CONFIG = REPO_ROOT / ".gitleaks.toml"
 
 DEFAULTS_REVISION = "b" * 40
 RENDERER_REVISION = "a" * 40
@@ -614,16 +626,30 @@ def test_one_change_moves_exactly_its_values_and_its_release_fields(
     assert after.release_sha256 != before.release_sha256
 
 
-def test_a_defaults_change_under_the_same_revision_moves_the_values_and_not_the_id() -> (
+def test_defaults_content_changed_under_a_falsely_retained_revision_moves_the_values_digest_and_not_the_release_id() -> (
     None
 ):
-    """Measured, not hidden: the platform defaults are named by the revision the
-    caller states, so a caller that changes a default and states the same revision
-    produces two releases with one identifier and two values digests - the shape
-    the release document calls the signature of a non-deterministic renderer."""
+    """A coverage limitation, measured rather than hidden.
+
+    The caller supplies the platform defaults and, separately, the revision they
+    are said to come from, and nothing reconstructs the defaults from that
+    revision. So changing the defaults' content while stating the same revision
+    renders different values, records a different values digest, and records the
+    same release identifier: the release records the asserted revision, and does
+    not prove the defaults were the ones at it. Do not make this assert equality;
+    it changes when the defaults are read from a committed source bound to the
+    revision, and not before.
+    """
     before = generate()
     after = generate(platform_defaults=defaults(max_output_tokens=256))
+    assert after.values_bytes != before.values_bytes
+    assert after.values_sha256 != before.values_sha256
     assert moved(before.release.as_document(), after.release.as_document()) == (_VALUES)
+    assert (
+        after.release.source.platform_defaults.revision
+        == before.release.source.platform_defaults.revision
+        == GitRevision(DEFAULTS_REVISION)
+    )
     assert after.release.metadata.release_id == before.release.metadata.release_id
 
 
@@ -715,6 +741,77 @@ def test_no_string_in_either_file_is_credential_shaped(name: str) -> None:
 
 def test_the_written_values_carry_no_secret_reference() -> None:
     assert generate().values.as_document()["security"]["secretRefs"] == []
+
+
+def test_each_file_holds_exactly_the_fields_its_published_table_names() -> None:
+    """Every string a generated file carries comes from a row the platform publishes:
+    a chart value the renderer's disposition table renders, or a release field the
+    provenance table classifies. Nothing else has a place to land."""
+    generated = generate()
+    assert set(leaves(generated.values.as_document())) == set(CHART_VALUE_CONSTRAINTS)
+    assert set(leaves(generated.release.as_document())) == {
+        row.field for row in RELEASE_PROVENANCE
+    }
+
+
+def test_input_content_no_row_names_reaches_neither_file() -> None:
+    """Free text, annotations, owners and placement no row renders, as real inputs."""
+    document = contract_document()
+    document["metadata"]["description"] = "Free text zqmarkdesc for a reader."
+    document["metadata"]["annotations"] = {"inferops.io/example": "zqmarkannotation"}
+    bound = binding_document()
+    bound["metadata"]["owner"] = "zqmarkbindingowner"
+    bound["spec"]["gitops"]["destinationPath"] = "gitops/zqmarkpath"
+    bound["spec"]["destination"]["namespace"] = "inferops-zqmarknamespace"
+    workload = parse_workload_contract(document)
+    environment = parse_environment_binding(bound)
+    planted = json.dumps([workload.as_document(), environment.as_document()])
+    assert len(set(re.findall(r"zqmark[a-z]+", planted))) == 5
+    generated = generate(workload, bindings=[environment])
+    for file_name, data in generated.files():
+        assert b"zqmark" not in data, file_name
+
+
+def test_a_credential_shaped_value_is_refused_without_being_quoted() -> None:
+    leaked = "glpat-" + "zqleakedtokenvalue"
+    with pytest.raises(RenderRefused) as raised:
+        generate(changed_contract(_set("metadata", "owner", leaked)))
+    assert {finding.rule_id for finding in raised.value.findings} == {
+        "render-value-credential-shaped"
+    }
+    assert leaked not in str(raised.value)
+    assert leaked not in json.dumps(
+        [finding.as_dict() for finding in raised.value.findings]
+    )
+
+
+def test_the_golden_files_are_not_exempt_from_secret_scanning() -> None:
+    """The repository's scanner reads both golden files: no path exception covers them."""
+    config = tomllib.loads(GITLEAKS_CONFIG.read_text(encoding="utf-8"))
+    exempt = [
+        pattern
+        for allowlist in config.get("allowlists", [])
+        for pattern in allowlist.get("paths", [])
+    ]
+    assert exempt, "the configuration's path exceptions were not found"
+    for golden in (GOLDEN_VALUES, GOLDEN_RELEASE):
+        relative = golden.relative_to(REPO_ROOT).as_posix()
+        assert [p for p in exempt if re.search(p, relative)] == [], relative
+
+
+def test_a_secret_written_as_an_ordinary_lowercase_name_passes() -> None:
+    """The input-trust limitation, measured: syntax cannot tell it from a name.
+
+    A lowercase value with no published credential prefix, chosen as a binding's
+    name, is recorded in the release like any name. Nothing here claims that a
+    generated file holds no secret; what is claimed is the bounded property the
+    tests above hold.
+    """
+    disguised = "q7f3k9x2m4p8w6z1"
+    assert not is_credential_shaped(disguised)
+    named = changed_binding(_set("metadata", "name", disguised))
+    generated = generate(bindings=[named])
+    assert disguised.encode("ascii") in generated.release_bytes
 
 
 # --------------------------------------------------------------------------
@@ -993,8 +1090,18 @@ def helm_template(*values: Path, overrides: tuple[str, ...] = ()) -> bytes:
 def test_helm_renders_the_written_values_as_it_renders_v1_with_the_contracts_environment(
     tmp_path: Path,
 ) -> None:
-    out = write_release(generate(), tmp_path / "release")
-    assert helm_template(out / str(VALUES_FILE_NAME), MANUAL) == helm_template(
+    """The written values file, beside the hand-written file as admitted next to it."""
+    generated = generate()
+    out = write_release(generated, tmp_path / "release")
+    pair = admit_manual_values(generated.values, load(MANUAL))
+    assert (out / str(VALUES_FILE_NAME)).read_bytes() == (
+        pair.generated.to_yaml().encode("ascii")
+    )
+    hand_written = tmp_path / "admitted.manual-values.yaml"
+    hand_written.write_text(
+        yaml.safe_dump(pair.documents()[1], sort_keys=True), encoding="utf-8"
+    )
+    assert helm_template(out / str(VALUES_FILE_NAME), hand_written) == helm_template(
         REAL_VALUES, overrides=("telemetry.deploymentEnvironment=local",)
     )
 
@@ -1028,3 +1135,51 @@ def test_the_release_document_states_the_decided_values_digest_rule() -> None:
     text = " ".join(RELEASE_DOC.read_text(encoding="utf-8").split())
     assert "SHA-256 of the values file's exact bytes" in text
     assert "Not decided here: how the values file is hashed" not in text
+
+
+PR1_RECORD = REPO_ROOT / "docs" / "proof" / "domain" / "v2-s2-001-pr1-validation.md"
+
+
+def test_the_pages_claim_the_bounded_secret_property_and_not_the_absolute_one() -> None:
+    """The criterion as worded cannot be shown; the pages say what is shown instead."""
+    renderer_page = " ".join(RENDERER_DOC.read_text(encoding="utf-8").split())
+    assert "### What a generated file can carry" in RENDERER_DOC.read_text(
+        encoding="utf-8"
+    )
+    for phrase in (
+        "No supported secret-bearing field, and no secret reference, reaches either file.",
+        "Every string comes from an explicitly owned field.",
+        "Known credential shapes are refused, and not quoted.",
+        "The input-trust limitation stands.",
+        "this page does not claim that a generated file contains no secret value",
+    ):
+        assert phrase in renderer_page, phrase
+    release_page = " ".join(RELEASE_DOC.read_text(encoding="utf-8").split())
+    assert "expose no supported secret-bearing field or secret reference" in (
+        release_page
+    )
+
+
+def test_the_pages_state_the_platform_defaults_limitation_as_measured() -> None:
+    text = " ".join(RENDERER_DOC.read_text(encoding="utf-8").split())
+    assert "falsely retains the same stated revision" in text
+    assert "a release records the **asserted** platform-defaults revision" in text
+
+
+def test_the_merged_pr1_record_keeps_its_rows_and_adds_a_dated_correction() -> None:
+    """The correction is additive: the original rows stay, then a dated note."""
+    text = PR1_RECORD.read_text(encoding="utf-8")
+    originals = (
+        "| Story: generated files contain no secret values | Met for what this change "
+        "generates, in memory: no secret reference is rendered, and a credential-shaped "
+        "string is refused. No file is written by the code yet |",
+        "| Story: manual values do not duplicate claim-relevant contract intent | Met for "
+        "the committed reference file, which a test checks:",
+    )
+    addendum = text.index("\n## Later correction\n")
+    for original in originals:
+        assert text.count(original) == 1, original
+        assert text.index(original) < addendum
+    note = text[addendum:]
+    assert "Added on 2026-10-02 by `V2-S2-001-PR2`" in note
+    assert "v2-s2-001-pr2-validation.md" in note

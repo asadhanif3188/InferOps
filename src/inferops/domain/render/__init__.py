@@ -25,6 +25,8 @@ produced:
    :class:`GeneratedHelmValues` for the ``inferops-llm`` chart, in the canonical YAML
    form ``values_yaml`` writes, and :func:`manual_value_findings` refuses a
    hand-written values file that sets a value it generates.
+   :func:`admit_manual_values` applies that check to pair the two as
+   :class:`AdmittedHelmValues`.
 
 :func:`record_release` is the one supported path from a context to a
 RenderedWorkloadRelease. It reads only the fields :data:`RELEASE_PROVENANCE`
@@ -103,11 +105,14 @@ from .helm_values import (
     GENERATED_VALUE_PATHS,
     HELM_VALUE_DISPOSITIONS,
     HELM_VALUES_SUPPORT,
+    MANUAL_VALUES_SUFFIX,
+    AdmittedHelmValues,
     ChartValueConstraint,
     Disposition,
     GeneratedHelmValues,
     HelmValuesRenderer,
     ValueDisposition,
+    admit_manual_values,
     manual_value_findings,
 )
 from .normalization import (
@@ -155,6 +160,7 @@ __all__ = [
     "GENERATED_VALUE_PATHS",
     "HELM_VALUES_SUPPORT",
     "HELM_VALUE_DISPOSITIONS",
+    "MANUAL_VALUES_SUFFIX",
     "MILLISECONDS_CEILING",
     "MILLISECONDS_FLOOR",
     "OUTPUT_TOKENS_CEILING",
@@ -171,6 +177,7 @@ __all__ = [
     "SUPPORTED_PLATFORM_DEFAULTS_VERSIONS",
     "VALUES_FILE_NAME",
     "VERSION_UNSUPPORTED",
+    "AdmittedHelmValues",
     "ApiDefaults",
     "ChartValueConstraint",
     "ContextFieldTrust",
@@ -201,6 +208,7 @@ __all__ = [
     "ValueDisposition",
     "ValuesFormError",
     "WorkloadNotAcceptedError",
+    "admit_manual_values",
     "build_render_context",
     "canonical_yaml",
     "generate_release",

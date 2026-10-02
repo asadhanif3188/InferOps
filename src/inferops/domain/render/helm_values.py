@@ -59,6 +59,13 @@ them, a hand-written file for what no input owns - the API image a contributor b
 the model's alias, licence, and download URL. :func:`manual_value_findings` refuses a
 hand-written file that sets, replaces, or removes a value the renderer generates, so a
 value the contract owns cannot be written a second time by hand.
+:func:`admit_manual_values` is where that check is applied: it pairs generated values
+with a hand-written document only when there is no such finding, and
+:class:`AdmittedHelmValues` is the pair. The repository supports a hand-written file
+beside generated values only when it is named with :data:`MANUAL_VALUES_SUFFIX`, and a
+test admits every such file. A values file passed to Helm by any other route - a file
+named otherwise, or one outside the repository - is not checked, and nothing here can
+stop it.
 
 **Pure.** Rendering reads no clock, file, environment variable, or network, and writes
 nothing; equal contexts give equal values and the same canonical YAML. The renderer's
@@ -369,6 +376,13 @@ CHART_VALUE_CONSTRAINTS: Final[Mapping[str, ChartValueConstraint]] = MappingProx
 GENERATED_VALUE_PATHS: Final[frozenset[tuple[str, ...]]] = frozenset(
     tuple(path.split(".")) for path in CHART_VALUE_CONSTRAINTS
 )
+
+#: How a hand-written values file the repository supports installing beside
+#: generated values is named. A test finds every file in the repository with this
+#: suffix and refuses the build if one is not admitted by
+#: :func:`admit_manual_values`; a values file named otherwise is not checked here,
+#: and is not supported beside generated values.
+MANUAL_VALUES_SUFFIX: Final = ".manual-values.yaml"
 
 #: Every character a written string may hold, as the canonical YAML form requires.
 _PRINTABLE: Final = re.compile(r"[\x20-\x7e]*", re.ASCII)
@@ -765,6 +779,78 @@ def manual_value_findings(
     ]
 
 
+def _read_only(value: Any) -> Any:
+    """A parsed values document with every object read-only and every list a tuple."""
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {key: _read_only(member) for key, member in value.items()}
+        )
+    if isinstance(value, (list, tuple)):
+        return tuple(_read_only(member) for member in value)
+    return value
+
+
+@dataclass(frozen=True, slots=True)
+class AdmittedHelmValues:
+    """Generated values and the hand-written values admitted to be installed beside them.
+
+    The one pair the platform treats as a release's Helm input: construction runs
+    :func:`manual_value_findings` again and refuses a hand-written half that sets,
+    replaces, or removes a generated value, so a pair built here holds none, whoever
+    built it. ``manual`` is held read-only, so it cannot be edited after the check.
+    """
+
+    generated: GeneratedHelmValues
+    manual: Mapping[str, Any] = field(hash=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.generated, GeneratedHelmValues):
+            raise TypeError("the generated half must be GeneratedHelmValues")
+        if not isinstance(self.manual, MappingProxyType):
+            raise TypeError(
+                "the hand-written half is admitted by admit_manual_values, "
+                "which holds it read-only"
+            )
+        findings = manual_value_findings(self.manual)
+        if findings:
+            raise RenderRefused(findings)
+
+    def documents(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Both values documents, in the order Helm is given them: generated first.
+
+        Neither sets a value the other does, so the order decides nothing.
+        """
+        manual: dict[str, Any] = _thawed(self.manual)
+        return self.generated.as_document(), manual
+
+
+def admit_manual_values(
+    generated: GeneratedHelmValues,
+    manual_values: Mapping[str, Any],
+    *,
+    context: RequestContext = NO_REQUEST_CONTEXT,
+) -> AdmittedHelmValues:
+    """Pair generated values with a hand-written values document, or refuse to.
+
+    This is the check a hand-written file passes before it is installed beside
+    generated values: every value it sets, replaces, or removes that the renderer
+    generates is a finding, named by its path and never by its value, with
+    ``context`` attached. It checks ownership and nothing else - a hand-written
+    value no input owns is the file author's, and it is not judged here.
+
+    Raises:
+        RenderRefused: every ``render-manual-value-generated`` finding at once.
+        TypeError: ``generated`` is not :class:`GeneratedHelmValues`, or
+            ``manual_values`` is not a mapping.
+    """
+    if not isinstance(generated, GeneratedHelmValues):
+        raise TypeError("the generated half must be GeneratedHelmValues")
+    findings = manual_value_findings(manual_values, context=context)
+    if findings:
+        raise RenderRefused(findings)
+    return AdmittedHelmValues(generated, _read_only(manual_values))
+
+
 __all__ = [
     "CHART_NAME",
     "CHART_PROFILE",
@@ -775,12 +861,15 @@ __all__ = [
     "GENERATED_VALUE_PATHS",
     "HELM_VALUES_SUPPORT",
     "HELM_VALUE_DISPOSITIONS",
+    "MANUAL_VALUES_SUFFIX",
     "PLATFORM_TELEMETRY",
     "VALUES_HEADER",
+    "AdmittedHelmValues",
     "ChartValueConstraint",
     "Disposition",
     "GeneratedHelmValues",
     "HelmValuesRenderer",
     "ValueDisposition",
+    "admit_manual_values",
     "manual_value_findings",
 ]
