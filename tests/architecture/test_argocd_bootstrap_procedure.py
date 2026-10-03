@@ -11,20 +11,28 @@ appends its arguments to a log, so "did a mutation run?" is read from a file.
 No cluster is contacted, no network is used, and nothing outside the sandbox is
 written.
 
-The assertion in every refusal case is the same: **no mutating `kubectl` call
-is in the log.** A guard that prints a refusal and then applies the manifest
-fails these tests.
+The assertion in a refusal case is that **no mutating `kubectl` call is in the
+log**, where a mutating call is any call that is not one of the reads the
+procedure is known to make. A guard that prints a refusal and then applies the
+manifest fails these tests. One refusal is different by design: the removal
+checks for a custom resource a second time after it deletes the four workloads,
+and the test for it asserts that nothing else was deleted.
 
 What this module does not establish:
 
 * That the procedure installs Argo CD. The stubs answer what a test tells them
   to answer. A run on a cluster is the evidence for that.
-* The path from a verified manifest to a finished install. A test cannot hold
-  bytes with the pinned SHA-256, because the manifest is not committed. The
-  refusals up to and including the digest check are executed here; the apply,
-  the rollout wait, and the image check after an apply are not. `verify`
-  executes the same object and image checks.
-* A removal wait that reaches its time limit. The stubs answer at once.
+* That the real `sha256sum` accepts the real manifest. A test cannot hold bytes
+  with the pinned SHA-256, because the manifest is not committed. The tests of
+  the path after the digest check replace `sha256sum` with a stub that reports
+  the pin. The first version of this module had no such tests, and said so; the
+  namespace creation, the apply, and their order ran only on a cluster.
+* A wait that reaches its time limit. The stubs let a pod or the namespace stay
+  for a few polls and then go. No test waits 300 seconds.
+* A query that fails inside the residue check. The stub fails a named query
+  every time, and the same queries must answer earlier in the removal.
+* The real `curl`. The stub is a shell script. It did not reproduce the path
+  defect that the first run on Windows exposed.
 """
 
 from __future__ import annotations
@@ -33,6 +41,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -82,16 +91,18 @@ PINNED_STATUSES = "\n".join(
 KUBE_CONTEXT = "kind-inferops-dev"
 CONTROL_PLANE = "inferops-dev-control-plane"
 
-# kubectl subcommands that change a cluster. A refusal must run none of them.
-MUTATING_VERBS = (
-    "annotate",
-    "apply",
-    "create",
-    "delete",
-    "label",
-    "patch",
-    "replace",
-    "scale",
+# The kubectl calls that change nothing, as the first words after the pinned
+# flags. Every other call counts as a mutation. The first version of this module
+# listed eight mutating verbs instead, so a refusal path that ran `rollout
+# restart`, `exec`, `set`, or `config use-context` would have shown no mutation.
+READ_CALLS = (
+    ("get",),
+    ("describe",),
+    ("version",),
+    ("rollout", "status"),
+    ("config", "get-contexts"),
+    ("config", "view"),
+    ("config", "current-context"),
 )
 
 
@@ -110,14 +121,16 @@ def version_json(minor: str) -> str:
 #
 # The kubectl stub logs the call, then fails it when the test named it in
 # STUB_FAIL_ON, then answers from the environment. After a `delete namespace`
-# call is in the log, the namespace and the cluster-scoped objects are gone, so
-# the removal's own residue check can pass.
+# call is in the log, the cluster-scoped objects are gone, and the namespace is
+# gone after STUB_RESIDUE_POLLS more reads of it. Pods are reported for the
+# first STUB_PODS_POLLS reads. `create -f -` logs what it was given on stdin.
 
 _KUBECTL_STUB = """#!/usr/bin/env bash
-removed=0
-if grep -q ' delete namespace ' "${INFEROPS_STUB_LOG}" 2>/dev/null; then removed=1; fi
-stopped=0
-if grep -q ' delete statefulset ' "${INFEROPS_STUB_LOG}" 2>/dev/null; then stopped=1; fi
+# Each branch reads the log only when its answer depends on an earlier call. A
+# stub that read it on every call made this suite several times slower on Windows.
+# The current call is already in the log when a branch counts, so a count of
+# reads includes this one.
+logged() { grep -q "$1" "${INFEROPS_STUB_LOG}" 2>/dev/null; }
 printf 'kubectl %s\\n' "$*" >>"${INFEROPS_STUB_LOG}"
 if [ -n "${STUB_FAIL_ON:-}" ]; then
   case "$*" in
@@ -132,18 +145,47 @@ case "$*" in
   *"config view --minify"*) printf 'kind: Config\\ncurrent-context: %s\\n' "${STUB_CONTEXT}" ;;
   *"config current-context"*) printf '%s\\n' "${STUB_CONTEXT}" ;;
   *"get namespace argocd"*)
-    [ "${removed}" -eq 1 ] || printf '%s' "${STUB_NAMESPACE:-}"
+    if ! logged ' delete namespace '; then
+      printf '%s' "${STUB_NAMESPACE:-}"
+    else
+      reads="$(sed -n '/ delete namespace /,$p' "${INFEROPS_STUB_LOG}" | grep -c 'get namespace argocd' || true)"
+      [ "${reads}" -gt "${STUB_RESIDUE_POLLS:-0}" ] || printf '%s' "${STUB_NAMESPACE:-}"
+    fi
     ;;
   *"get customresourcedefinition/"*)
-    [ "${removed}" -eq 1 ] || printf '%s' "${STUB_CLUSTER_OBJECTS:-}"
+    if logged ' delete namespace '; then
+      :
+    elif logged ' apply '; then
+      printf '%s' "${STUB_CLUSTER_OBJECTS_AFTER_APPLY:-${STUB_CLUSTER_OBJECTS:-}}"
+    else
+      printf '%s' "${STUB_CLUSTER_OBJECTS:-}"
+    fi
+    ;;
+  *"create -f -"*)
+    sed 's/^/kubectl-stdin /' >>"${INFEROPS_STUB_LOG}"
+    printf 'namespace/argocd created\\n'
+    ;;
+  *"apply --server-side"*)
+    i=0
+    while [ "${i}" -lt "${STUB_APPLIED_COUNT:-34}" ]; do
+      printf 'object/%s serverside-applied\\n' "${i}"
+      i=$((i + 1))
+    done
     ;;
   *"get applications.argoproj.io --all-namespaces"*)
     printf '%s' "${STUB_APPLICATIONS:-}"
-    [ "${stopped}" -eq 0 ] || printf '%s' "${STUB_APPLICATIONS_AFTER_STOP:-}"
+    if [ -n "${STUB_APPLICATIONS_AFTER_STOP:-}" ] && logged ' delete statefulset '; then
+      printf '%s' "${STUB_APPLICATIONS_AFTER_STOP}"
+    fi
     ;;
   *"get appprojects.argoproj.io --all-namespaces"*) printf '%s' "${STUB_PROJECTS:-}" ;;
-  *"get applicationsets.argoproj.io --all-namespaces"*) ;;
-  *"get pods -n argocd -o name"*) printf '%s' "${STUB_PODS:-}" ;;
+  *"get applicationsets.argoproj.io --all-namespaces"*) printf '%s' "${STUB_APPLICATION_SETS:-}" ;;
+  *"get pods -n argocd -o name"*)
+    if [ "${STUB_PODS_POLLS:-0}" -gt 0 ]; then
+      reads="$(grep -c 'get pods -n argocd -o name' "${INFEROPS_STUB_LOG}" || true)"
+      [ "${reads}" -gt "${STUB_PODS_POLLS}" ] || printf 'pod/argocd-redis-0\\n'
+    fi
+    ;;
   *"get pods -n argocd -o jsonpath"*) printf '%s\\n' "${STUB_STATUSES:-}" ;;
   *"get serviceaccount/"*)
     i=0
@@ -197,6 +239,30 @@ printf 'kind: ConfigMap\\n' >"${target}"
 exit 0
 """
 
+# Stands in for `sha256sum` in the tests that need the path after the digest
+# check. It reports the pin for the manifest, until the read numbered
+# STUB_SHA_FLIP_AT, and another digest for any other file. It is installed only
+# when a test asks for it; every other test runs the real tool.
+_SHA256SUM_STUB = (
+    """#!/usr/bin/env bash
+case "$1" in
+  *core-install.yaml)
+    printf 'sha256sum-manifest\\n' >>"${INFEROPS_STUB_LOG}"
+    reads="$(grep -c '^sha256sum-manifest$' "${INFEROPS_STUB_LOG}")"
+    if [ -n "${STUB_SHA_FLIP_AT:-}" ] && [ "${reads}" -ge "${STUB_SHA_FLIP_AT}" ]; then
+      digest="@OTHER@"
+    else
+      digest="@PIN@"
+    fi
+    ;;
+  *) digest="@SCRIPT@" ;;
+esac
+printf '%s *%s\\n' "${digest}" "$1"
+""".replace("@PIN@", PIN)
+    .replace("@OTHER@", "0" * 64)
+    .replace("@SCRIPT@", "a" * 64)
+)
+
 _STUBS = {
     "kubectl": _KUBECTL_STUB,
     "kind": _KIND_STUB,
@@ -239,7 +305,27 @@ class Run:
 
     @property
     def mutations(self) -> list[str]:
-        return self.kubectl_calls(*MUTATING_VERBS)
+        """Every logged kubectl call that is not a known read."""
+        found = []
+        for line in self.calls:
+            words = line.split()
+            if words[0] != "kubectl":
+                continue
+            rest = words[1:]
+            while rest and rest[0] in ("--kubeconfig", "--context"):
+                rest = rest[2:]
+            if not any(tuple(rest[: len(read)]) == read for read in READ_CALLS):
+                found.append(line)
+        return found
+
+    @property
+    def stdin(self) -> str:
+        """What `kubectl create -f -` was given."""
+        return "\n".join(
+            line.removeprefix("kubectl-stdin ")
+            for line in self.calls
+            if line.startswith("kubectl-stdin ")
+        )
 
     def index_of(self, *fragments: str) -> int:
         for index, line in enumerate(self.calls):
@@ -277,11 +363,23 @@ def run_script(
     cluster_name: str | None = "inferops-dev",
     api_node: str = CONTROL_PLANE,
     minor: str = "34",
+    pinned_manifest: bool = False,
     **stub: str,
 ) -> Run:
-    """Execute the committed script inside the sandbox and report what it ran."""
+    """Execute the committed script inside the sandbox and report what it ran.
+
+    `pinned_manifest` puts the `sha256sum` stub on PATH and a file named
+    `core-install.yaml` in the sandbox, so the path after the digest check runs.
+    """
     log = sandbox / "calls.log"
     log.write_text("", encoding="utf-8")
+    if pinned_manifest:
+        fake = sandbox / "bin" / "sha256sum"
+        fake.write_text(_SHA256SUM_STUB, encoding="utf-8", newline="\n")
+        fake.chmod(0o755)
+        (sandbox / "core-install.yaml").write_text(
+            "kind: ConfigMap\n", encoding="utf-8", newline="\n"
+        )
 
     assert BASH is not None
     # The stub directory and the shell's own toolbox, and nothing else. A real
@@ -386,7 +484,10 @@ def test_removal_deletes_only_named_objects_in_one_namespace(sandbox: Path) -> N
         "delete namespace argocd",
     }
     for line in run.kubectl_calls("delete"):
-        assert any(fragment in line for fragment in expected), line
+        # The whole of the call up to its first flag after the name. A fragment
+        # match accepted `-n argocd-other`, because `-n argocd` is inside it.
+        named = line[line.index(" delete ") + 1 :].split(" --ignore-not-found")[0]
+        assert named in expected, line
         assert "--all" not in line and " -A" not in line, line
         assert "inferops-release" not in line and "inferops-smoke" not in line, line
         assert f"--context {KUBE_CONTEXT}" in line and "--kubeconfig" in line, line
@@ -409,7 +510,7 @@ def test_no_selected_provider_refuses_before_any_call(
     run = run_script(sandbox, *operation, provider=None, namespace=MARKED)
     assert run.refused, run.output
     assert "no-provider-selected" in run.output
-    assert not run.kubectl_calls("get", *MUTATING_VERBS), run.calls
+    assert not [call for call in run.calls if call.startswith("kubectl ")], run.calls
 
 
 @needs_bash
@@ -516,20 +617,64 @@ def test_install_refuses_a_cluster_scoped_object_without_a_marked_namespace(
 
 
 @needs_bash
-@pytest.mark.parametrize(
-    "namespace",
-    (f"Active|bootstrap|{'0' * 64}", "Active|bootstrap|"),
-    ids=("another-pin", "no-pin"),
-)
-def test_install_refuses_an_installation_with_another_pin(
-    sandbox: Path, namespace: str
-) -> None:
+def test_install_refuses_an_installation_with_another_pin(sandbox: Path) -> None:
     run = run_script(
-        sandbox, "install", namespace=namespace, cluster_objects=CLUSTER_OBJECTS
+        sandbox,
+        "install",
+        namespace=f"Active|bootstrap|{'0' * 64}",
+        cluster_objects=CLUSTER_OBJECTS,
     )
     assert run.refused, run.output
     assert "refusing: installed-pin-differs" in run.output
     assert not run.mutations, run.calls
+
+
+@needs_bash
+@pytest.mark.parametrize(
+    "operation",
+    (("install",), ("verify",), ("remove", "--confirm")),
+    ids=lambda a: a[0],
+)
+@pytest.mark.parametrize(
+    "pin",
+    ("", "not-a-digest", "0" * 63, "0" * 65, "G" * 64),
+    ids=("none", "a-word", "short", "long", "not-hex"),
+)
+def test_a_label_without_a_recorded_digest_is_not_the_marker(
+    sandbox: Path, operation: tuple[str, ...], pin: str
+) -> None:
+    """The procedure writes the label and the SHA-256 in one request.
+
+    A namespace that carries the label alone was labelled by somebody else. The
+    first version of the removal accepted it and warned. It would have deleted
+    that namespace, and three definitions, a cluster role, and its binding.
+    """
+    run = run_script(
+        sandbox,
+        *operation,
+        namespace=f"Active|bootstrap|{pin}",
+        cluster_objects=CLUSTER_OBJECTS,
+        statuses=PINNED_STATUSES,
+    )
+    assert run.refused, run.output
+    assert "refusing: foreign-argocd-present" in run.output
+    assert "does not record a manifest SHA-256" in run.output
+    assert not run.mutations, run.calls
+
+
+@needs_bash
+def test_removal_accepts_an_installation_with_an_older_pin(sandbox: Path) -> None:
+    """Removal is how an installation with another pin is replaced."""
+    run = run_script(
+        sandbox,
+        "remove",
+        "--confirm",
+        namespace=f"Active|bootstrap|{'0' * 64}",
+        cluster_objects=CLUSTER_OBJECTS,
+    )
+    assert run.returncode == 0, run.output
+    assert "not the pinned one" in run.output
+    assert len(run.kubectl_calls("delete")) == 10
 
 
 @needs_bash
@@ -651,12 +796,13 @@ def test_removal_refuses_a_namespace_that_is_being_deleted(sandbox: Path) -> Non
     "stub",
     (
         {"applications": "application.argoproj.io/workload\n"},
+        {"application_sets": "applicationset.argoproj.io/fleet\n"},
         {"projects": "appproject.argoproj.io/default\n"},
     ),
-    ids=("an-application", "a-project"),
+    ids=("an-application", "an-application-set", "a-project"),
 )
 def test_removal_refuses_while_a_custom_resource_exists(
-    sandbox: Path, stub: dict[str, str]
+    sandbox: Path, stub: dict[str, Any]
 ) -> None:
     run = run_script(
         sandbox,
@@ -733,6 +879,209 @@ def test_removal_does_not_query_a_definition_that_does_not_exist(
     assert run.returncode == 0, run.output
     assert not any("--all-namespaces" in line for line in run.calls), run.calls
     run.index_of("delete namespace argocd")
+
+
+@needs_bash
+def test_removal_deletes_no_definition_while_a_pod_remains(sandbox: Path) -> None:
+    """The controllers stop before a definition goes (ADR 0017 D11).
+
+    The stub reports a pod for the first two reads. The removal must ask again
+    and must not reach a definition until the answer is empty.
+    """
+    run = run_script(
+        sandbox,
+        "remove",
+        "--confirm",
+        namespace=MARKED,
+        cluster_objects=CLUSTER_OBJECTS,
+        pods_polls="2",
+    )
+    assert run.returncode == 0, run.output
+    polls = [
+        i for i, line in enumerate(run.calls) if "get pods -n argocd -o name" in line
+    ]
+    assert len(polls) == 3, polls
+    assert polls[-1] < run.index_of("delete customresourcedefinition")
+    assert polls[-1] < run.index_of("delete clusterrole ")
+    assert polls[-1] < run.index_of("delete namespace argocd")
+
+
+@needs_bash
+def test_removal_stops_when_it_cannot_ask_whether_a_pod_remains(sandbox: Path) -> None:
+    """An unanswered pod query is not "no pod remains"."""
+    run = run_script(
+        sandbox,
+        "remove",
+        "--confirm",
+        namespace=MARKED,
+        cluster_objects=CLUSTER_OBJECTS,
+        fail_on="get pods -n argocd -o name",
+    )
+    assert run.refused, run.output
+    assert "not an empty result" in run.output
+    deleted = " ".join(run.kubectl_calls("delete"))
+    for kind in ("customresourcedefinition", "clusterrole", "namespace"):
+        assert f"delete {kind}" not in deleted, deleted
+
+
+@needs_bash
+def test_removal_waits_until_the_namespace_is_gone(sandbox: Path) -> None:
+    """The removal reports success only after it sees nothing left.
+
+    The stub keeps the namespace for two reads after its deletion. With the
+    residue check removed, this test fails on the count of reads.
+    """
+    run = run_script(
+        sandbox,
+        "remove",
+        "--confirm",
+        namespace=MARKED,
+        cluster_objects=CLUSTER_OBJECTS,
+        residue_polls="2",
+    )
+    assert run.returncode == 0, run.output
+    deleted_at = run.index_of("delete namespace argocd")
+    reads_after = [
+        line for line in run.calls[deleted_at + 1 :] if "get namespace argocd" in line
+    ]
+    assert len(reads_after) == 3, reads_after
+    assert "no Argo CD definition" in run.output
+
+
+@needs_bash
+def test_every_deletion_is_bounded(sandbox: Path) -> None:
+    """A deletion that waits on a finalizer must not wait without a limit."""
+    run = run_script(
+        sandbox,
+        "remove",
+        "--confirm",
+        namespace=MARKED,
+        cluster_objects=CLUSTER_OBJECTS,
+    )
+    for line in run.kubectl_calls("delete"):
+        assert "--timeout=300s" in line, line
+
+
+# --------------------------------------------------------------------------
+# install: the path after the digest check, with `sha256sum` replaced
+# --------------------------------------------------------------------------
+
+
+@needs_bash
+def test_install_creates_the_marked_namespace_and_then_applies(sandbox: Path) -> None:
+    """The mutations of a first install, their order, and what each is given."""
+    run = run_script(
+        sandbox,
+        "install",
+        "--manifest",
+        "core-install.yaml",
+        pinned_manifest=True,
+        cluster_objects_after_apply=CLUSTER_OBJECTS,
+        statuses=PINNED_STATUSES,
+    )
+    assert run.returncode == 0, run.output
+    assert len(run.mutations) == 2, run.mutations
+    create, apply = run.mutations
+    assert create.endswith(" create -f -"), create
+    assert run.stdin == (
+        '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"argocd",'
+        '"labels":{"inferops.io/lifecycle":"bootstrap"},'
+        f'"annotations":{{"inferops.io/argocd-manifest-sha256":"{PIN}"}}}}}}'
+    )
+    for fragment in (
+        f"--context {KUBE_CONTEXT}",
+        " apply --server-side --force-conflicts",
+        "--field-manager=inferops-argocd-bootstrap",
+        "-n argocd",
+        "core-install.yaml",
+    ):
+        assert fragment in apply, (fragment, apply)
+    assert run.index_of(" create -f -") < run.index_of(" apply --server-side")
+    assert run.index_of(" apply --server-side") < run.index_of("rollout status")
+    assert "Argo CD v3.5.3 is installed in 'argocd'" in run.output
+
+
+@needs_bash
+def test_a_second_install_applies_again_and_creates_no_namespace(sandbox: Path) -> None:
+    run = run_script(
+        sandbox,
+        "install",
+        "--manifest",
+        "core-install.yaml",
+        pinned_manifest=True,
+        namespace=MARKED,
+        cluster_objects=CLUSTER_OBJECTS,
+        statuses=PINNED_STATUSES,
+    )
+    assert run.returncode == 0, run.output
+    assert len(run.mutations) == 1, run.mutations
+    assert " apply --server-side" in run.mutations[0]
+    assert run.stdin == ""
+
+
+@needs_bash
+def test_install_fails_when_the_apply_reports_another_object_count(
+    sandbox: Path,
+) -> None:
+    run = run_script(
+        sandbox,
+        "install",
+        "--manifest",
+        "core-install.yaml",
+        pinned_manifest=True,
+        cluster_objects_after_apply=CLUSTER_OBJECTS,
+        statuses=PINNED_STATUSES,
+        applied_count="33",
+    )
+    assert run.refused, run.output
+    assert "the apply reported 33 objects, and the manifest declares 34" in run.output
+    assert (
+        "Remove it with: scripts/environment/argocd-bootstrap.sh remove --confirm"
+        in (run.output)
+    )
+
+
+@needs_bash
+def test_install_withholds_success_when_a_container_is_not_at_its_pin(
+    sandbox: Path,
+) -> None:
+    """The image rule, on the install path it was written for."""
+    run = run_script(
+        sandbox,
+        "install",
+        "--manifest",
+        "core-install.yaml",
+        pinned_manifest=True,
+        cluster_objects_after_apply=CLUSTER_OBJECTS,
+        statuses=PINNED_STATUSES.replace(REDIS_DIGEST, OTHER_DIGEST),
+    )
+    assert run.refused, run.output
+    assert "container 'redis' runs" in run.output
+    assert "does not report success" in run.output
+    assert "is installed in 'argocd'" not in run.output
+
+
+@needs_bash
+def test_install_applies_nothing_when_the_manifest_changes_after_the_check(
+    sandbox: Path,
+) -> None:
+    """The file is hashed again just before the apply.
+
+    Its path is predictable, and the namespace is created between the two
+    hashes. The stub reports the pin on the first read and another digest on
+    the second.
+    """
+    run = run_script(
+        sandbox,
+        "install",
+        "--manifest",
+        "core-install.yaml",
+        pinned_manifest=True,
+        sha_flip_at="2",
+    )
+    assert run.refused, run.output
+    assert "changed after they were verified" in run.output
+    assert not run.kubectl_calls("apply"), run.calls
 
 
 # --------------------------------------------------------------------------
@@ -847,7 +1196,7 @@ def test_verification_fails_when_a_container_does_not_run_its_pin(
     ),
 )
 def test_verification_fails_on_an_installation_that_is_not_the_recorded_one(
-    sandbox: Path, stub: dict[str, str], message: str
+    sandbox: Path, stub: dict[str, Any], message: str
 ) -> None:
     run = run_script(sandbox, "verify", statuses=PINNED_STATUSES, **stub)
     assert run.refused, run.output
@@ -869,6 +1218,9 @@ def test_verification_fails_on_an_installation_that_is_not_the_recorded_one(
         ("install", "--confirm"),
         ("install", "--force"),
         ("install", "--manifest"),
+        ("install", "--manifest", ""),
+        ("install", "--manifest", "a.yaml", "--manifest", "b.yaml"),
+        ("verify", "--manifest", ""),
         ("verify", "--confirm"),
         ("verify", "--manifest", "x.yaml"),
         ("remove", "--confirm", "--manifest", "x.yaml"),

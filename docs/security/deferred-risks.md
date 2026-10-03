@@ -39,7 +39,7 @@ controller holds every verb on every resource, and its pinned inputs are
 identified and not authenticated. Until that date this paragraph said that the
 surface was decided and not installed, and that the change which first installed
 it owed the entries before it ran. That change wrote `DR-13` and `DR-14` before
-its first install. No test enforces that order; the record of the run states it.
+its first install. Nothing checks that order; the record of the run states it.
 The title sentence above says "V1"; these two entries are V2's.
 
 ## The register
@@ -374,9 +374,10 @@ destroy an object. It does not stop a controller that holds a wider grant. No
 Application is committed, and a test holds that absence, so the controller
 reconciles nothing today. A namespace-scoped installation, or a project that
 limits destinations and kinds, would narrow the grant. Neither is decided, and
-ADR 0017 carries this as R1. The four network policies the manifest declares are
-not enforced by the network plugin the local providers run (`DR-04`), so they do
-not narrow what the controller's pods reach either.
+ADR 0017 carries this as R1. The manifest declares four network policies. The
+network plugin the local providers run was measured not to enforce the release's
+policy (`DR-04`), so these four are expected to be inert as well. That is an
+inference: no run tested them.
 
 **What would have to be true.** A decision that narrows the grant: an AppProject
 that restricts destinations and kinds, committed with the first Application and

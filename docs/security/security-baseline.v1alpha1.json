@@ -1534,7 +1534,7 @@
       "v1Status": "enforced-on-the-host",
       "owner": "environment",
       "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
-      "whatItDoesNotVerify": "Who made the bytes. No signature, attestation, or provenance statement is verified, so a compromised release that was pinned passes. It does not verify the images the manifest names: the manifest names each by tag."
+      "whatItDoesNotVerify": "Who made the bytes. No signature, attestation, or provenance statement is verified, so a compromised release that was pinned passes. It does not verify the images the manifest names: the manifest names each by tag. The runs on a cluster verified the pinned bytes only; the refusal of other bytes was executed against stub tools."
     },
     {
       "controlId": "argocd-containers-run-their-pinned-digest-at-install",
@@ -1554,11 +1554,11 @@
       "v1Status": "enforced-on-the-host",
       "owner": "environment",
       "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
-      "whatItDoesNotVerify": "Anything after the moment of the check. Four containers set imagePullPolicy Always and name their image by tag, so a pod that restarts later resolves the tag again and nothing reads it. It compares the identity the container runtime reports and does not hash an image layer. Nothing scanned either image for a known vulnerability."
+      "whatItDoesNotVerify": "Anything after the moment of the check. Four containers set imagePullPolicy Always and name their image by tag, so a pod that restarts later resolves the tag again and nothing reads it. It compares the identity the container runtime reports and does not hash an image layer. Nothing scanned either image for a known vulnerability. The runs on a cluster executed the passing comparison only; the refusal of another identity was executed against stub tools."
     },
     {
       "controlId": "refuse-an-argocd-installation-this-project-did-not-create",
-      "statement": "The bootstrap, its verification, and its removal refuse a namespace named argocd that does not carry the bootstrap marker, and the bootstrap refuses when no such namespace exists while an Argo CD definition, cluster role, or cluster role binding does.",
+      "statement": "The bootstrap, its verification, and its removal refuse a namespace named argocd that does not carry the bootstrap label together with a recorded manifest SHA-256, and the bootstrap refuses when no such namespace exists while an Argo CD definition, cluster role, or cluster role binding does.",
       "boundaryId": "B2",
       "threats": [
         "T-25"
@@ -1574,7 +1574,7 @@
       "v1Status": "enforced-on-the-host",
       "owner": "environment",
       "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
-      "whatItDoesNotVerify": "That the marker was set by this procedure. It is a label, and a person who can label a namespace can set it. It does not detect an Argo CD installed in a namespace with another name when that installation holds no cluster-scoped object under the names this procedure reads."
+      "whatItDoesNotVerify": "That the marker was set by this procedure. It is a label and an annotation, and a person who can change a namespace can set both. Every case the statement names was executed against stub tools only; the one refusal a run on a cluster produced was a removal with no namespace. When a marked namespace exists, the install does not check whose the five cluster-scoped objects are, and server-side apply takes over one that another party replaced. It does not detect an Argo CD installed in a namespace with another name when that installation holds no cluster-scoped object under the names this procedure reads."
     },
     {
       "controlId": "refuse-argocd-removal-while-a-custom-resource-exists",
@@ -1803,7 +1803,7 @@
       "threats": [
         "T-24"
       ],
-      "whyDeferred": "The grant is the upstream default of the pinned core manifest, which is applied unmodified. The ownership inventory says who may create and destroy an object, and it does not stop a controller that holds a wider grant. No Application is committed, and a test holds that absence, so the controller reconciles nothing today. A namespace-scoped installation, or a project that limits destinations and kinds, would narrow the grant. Neither is decided, and ADR 0017 carries this as R1. The four network policies the manifest declares are not enforced by the network plugin the local providers run, so they do not narrow what the controller's pods reach either.",
+      "whyDeferred": "The grant is the upstream default of the pinned core manifest, which is applied unmodified. The ownership inventory says who may create and destroy an object, and it does not stop a controller that holds a wider grant. No Application is committed, and a test holds that absence, so the controller reconciles nothing today. A namespace-scoped installation, or a project that limits destinations and kinds, would narrow the grant. Neither is decided, and ADR 0017 carries this as R1. The manifest declares four network policies. The network plugin the local providers run was measured not to enforce the release's policy (DR-04), so these four are expected to be inert as well. That is an inference: no run tested them.",
       "whatWouldHaveToBeTrue": "A decision that narrows the grant: an AppProject that restricts destinations and kinds, committed with the first Application and held by a test, or an installation whose roles are namespace-scoped. A network plugin that enforces the manifest's policies.",
       "notClaimed": "No least-privilege property is claimed for Argo CD. No isolation between the controller and the objects Terraform, Helm, or the bootstrap owns is claimed.",
       "blocksProductionUse": true
@@ -2071,7 +2071,7 @@
     },
     {
       "limitationId": "threats-are-not-exhaustive",
-      "statement": "Twenty-two threats were enumerated because each is a failure somebody would plausibly reach. A threat nobody thought of is a threat nobody modelled, and no methodology here guarantees coverage."
+      "statement": "Twenty-five threats were enumerated because each is a failure somebody would plausibly reach. A threat nobody thought of is a threat nobody modelled, and no methodology here guarantees coverage."
     },
     {
       "limitationId": "no-likelihood-or-severity-score",

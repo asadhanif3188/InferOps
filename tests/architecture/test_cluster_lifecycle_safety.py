@@ -436,21 +436,31 @@ INVOKES_DELETE = re.compile(
 )
 
 
-# The deletions the Argo CD bootstrap removal makes outside a namespace: three
-# definitions, one cluster role, one cluster role binding, and the namespace
-# `argocd` itself (ADR 0017 D11). A cluster-scoped object has no namespace to be
-# scoped to, so each shape is written out here, exactly, with the variable that
-# names its object. `test_the_bootstrap_deletions_name_only_recorded_objects`
-# holds each variable to a constant, and `tests/architecture/test_argocd_bootstrap.py`
-# holds each constant to the committed record. A deletion of one of these kinds
-# in any other shape is refused.
+# The deletions the Argo CD bootstrap removal makes (ADR 0017 D11): four
+# workloads in the namespace `argocd`, three definitions, one cluster role, one
+# cluster role binding, and the namespace itself. Each shape is written out
+# here, exactly, with the variable that names its object, and a deletion matches
+# only when the whole command is one of them followed by its time limit.
+# `test_the_bootstrap_deletions_name_only_recorded_objects` holds each variable
+# to a constant, and `tests/architecture/test_argocd_bootstrap.py` holds each
+# constant to the committed record.
+#
+# The first version of this rule wrote out the four shapes that have no
+# namespace and accepted any named deletion in `argocd` through the general
+# rule. `delete secret "${victim}" -n "${INFEROPS_ARGOCD_NAMESPACE}"` passed it,
+# and so did a known shape with a flag added after it.
 BOOTSTRAP_SCRIPT = "argocd-bootstrap.sh"
-BOOTSTRAP_NAMESPACE_SCOPE = '-n "${INFEROPS_ARGOCD_NAMESPACE}"'
-BOOTSTRAP_CLUSTER_SCOPED_DELETIONS = (
-    'delete customresourcedefinition "${definition}" --ignore-not-found',
-    'delete clusterrolebinding "${INFEROPS_ARGOCD_CLUSTER_ROLE_BINDING}" --ignore-not-found',
-    'delete clusterrole "${INFEROPS_ARGOCD_CLUSTER_ROLE}" --ignore-not-found',
-    'delete namespace "${INFEROPS_ARGOCD_NAMESPACE}" --ignore-not-found',
+BOOTSTRAP_DELETION_SUFFIX = ' --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s"'
+BOOTSTRAP_DELETIONS = tuple(
+    f"inferops::target_kubectl delete {target}{BOOTSTRAP_DELETION_SUFFIX}"
+    for target in (
+        'statefulset "${workload}" -n "${INFEROPS_ARGOCD_NAMESPACE}"',
+        'deployment "${workload}" -n "${INFEROPS_ARGOCD_NAMESPACE}"',
+        'customresourcedefinition "${definition}"',
+        'clusterrolebinding "${INFEROPS_ARGOCD_CLUSTER_ROLE_BINDING}"',
+        'clusterrole "${INFEROPS_ARGOCD_CLUSTER_ROLE}"',
+        'namespace "${INFEROPS_ARGOCD_NAMESPACE}"',
+    )
 )
 
 # The loops whose variable a bootstrap deletion names, and the one constant each
@@ -484,7 +494,7 @@ def deletion_is_scoped(line: str) -> bool:
     """
     if 'delete namespace "${INFEROPS_NAMESPACE}"' in line:
         return True
-    if any(shape in line for shape in BOOTSTRAP_CLUSTER_SCOPED_DELETIONS):
+    if line.strip() in BOOTSTRAP_DELETIONS:
         return True
     # Two namespaces, because this project owns two: the smoke namespace every
     # cluster-lifecycle script works in, and the release namespace the
@@ -493,12 +503,11 @@ def deletion_is_scoped(line: str) -> bool:
     # what the rule is about is that a deletion names a namespace at all, not
     # which of this project's two it names.
     #
-    # A third since ADR 0017: `argocd`, which the bootstrap owns and which does
-    # not carry the prefix. It is held to the same rule -- a namespace and a name.
+    # The namespace `argocd` is not a third. The bootstrap owns it, and its
+    # deletions are the exact commands matched above and no others.
     scoped = (
         '-n "${INFEROPS_NAMESPACE}"' in line
         or '-n "${INFEROPS_RELEASE_NAMESPACE}"' in line
-        or BOOTSTRAP_NAMESPACE_SCOPE in line
     )
     selected = '-l "${INFEROPS_PART_OF_SELECTOR}"' in line or (
         DELETE_NAMES_A_RESOURCE.search(line) is not None
@@ -516,20 +525,22 @@ def test_every_object_deletion_is_scoped() -> None:
 
 
 def test_only_the_bootstrap_deletes_outside_the_project_namespaces() -> None:
-    """The shapes written out for the Argo CD removal are that script's alone.
+    """The commands written out for the Argo CD removal are that script's alone.
 
-    They exist so that one procedure can delete five cluster-scoped objects and
-    its own namespace. Another script using one would be deleting an object the
-    ownership inventory gives to the bootstrap.
+    They exist so that one procedure can delete its own installation. Another
+    script using one would be deleting an object the ownership inventory gives
+    to the bootstrap. Every deletion the bootstrap makes is one of them.
     """
     found = set()
     for name, number, line in deletion_lines():
-        uses = [shape for shape in BOOTSTRAP_CLUSTER_SCOPED_DELETIONS if shape in line]
-        if uses or BOOTSTRAP_NAMESPACE_SCOPE in line:
+        if line.strip() in BOOTSTRAP_DELETIONS:
             assert name == BOOTSTRAP_SCRIPT, f"{name}:{number}: {line.strip()}"
-        found.update(uses)
-    assert found == set(BOOTSTRAP_CLUSTER_SCOPED_DELETIONS), (
-        "a shape this module allows is one the bootstrap no longer uses; drop it"
+            found.add(line.strip())
+        else:
+            assert name != BOOTSTRAP_SCRIPT, f"{name}:{number}: {line.strip()}"
+            assert "INFEROPS_ARGOCD" not in line, f"{name}:{number}: {line.strip()}"
+    assert found == set(BOOTSTRAP_DELETIONS), (
+        "a command this module allows is one the bootstrap no longer uses; drop it"
     )
 
 
@@ -549,9 +560,11 @@ def test_the_bootstrap_deletions_name_only_recorded_objects() -> None:
             assert loop in {f"for {variable} in {source}; do" for source in sources}, (
                 loop
             )
-        assert not re.search(rf"(?<![\w]){variable}=", body), (
-            f"{variable} is assigned outside a loop over a constant"
-        )
+        assert not re.search(
+            rf"(?<![\w]){variable}=|\bread\b[^\n]*\b{variable}\b"
+            rf"|printf\s+-v\s+{variable}\b",
+            body,
+        ), f"{variable} is set outside a loop over a constant"
     for constant in (
         "INFEROPS_ARGOCD_NAMESPACE",
         "INFEROPS_ARGOCD_CLUSTER_ROLE",
@@ -682,6 +695,12 @@ def rules_reject(line: str) -> bool:
         'inferops::target_kubectl delete namespace "${INFEROPS_RELEASE_NAMESPACE}"',
         'inferops::target_kubectl delete deployment --all -n "${INFEROPS_ARGOCD_NAMESPACE}"',
         'inferops::target_kubectl delete deployment -n "${INFEROPS_ARGOCD_NAMESPACE}"',
+        # A named deletion in `argocd` that is not one of the removal's own, and
+        # a known command with something added to it. The first version of the
+        # rule accepted all three.
+        'inferops::target_kubectl delete secret "${victim}" -n "${INFEROPS_ARGOCD_NAMESPACE}"',
+        'inferops::target_kubectl delete deployment argocd-redis -n "${INFEROPS_ARGOCD_NAMESPACE}"',
+        'inferops::target_kubectl delete namespace "${INFEROPS_ARGOCD_NAMESPACE}" --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s" --force',
     ),
 )
 def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:

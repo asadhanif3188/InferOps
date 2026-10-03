@@ -22,7 +22,9 @@
 #          D11 decides. Deletes by the kinds and names listed here, so it needs
 #          no download.
 #
-# Every refusal comes before the first mutation:
+# Every refusal below comes before the first mutation, with one exception that
+# ADR 0017 D11 decides: the removal checks for a custom resource a second time
+# after it deletes the four workloads, and before it deletes a definition.
 #
 #   target-not-selected-or-not-verified  inferops::resolve_target
 #   kubernetes-minor-not-tested          install
@@ -108,12 +110,15 @@ operation="$1"
 shift
 
 manifest_argument=""
+manifest_given=0
 confirmed=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --manifest)
-      [ "$#" -ge 2 ] || inferops::fail "--manifest needs a path. ${USAGE}"
+      [ "$#" -ge 2 ] && [ -n "$2" ] || inferops::fail "--manifest needs a path. ${USAGE}"
+      [ "${manifest_given}" -eq 0 ] || inferops::fail "--manifest was given twice. ${USAGE}"
+      manifest_given=1
       manifest_argument="$2"
       shift 2
       ;;
@@ -242,7 +247,7 @@ argocd::read_cluster_objects() {
 #
 # Reads namespace_* and cluster_objects, which the caller has just read.
 argocd::refuse_foreign_installation() {
-  local operation="$1"
+  local operation="$1" namespace_pin_is_a_digest
   if [ -z "${namespace_phase}" ]; then
     case "${operation}" in
       install)
@@ -252,12 +257,23 @@ argocd::refuse_foreign_installation() {
         return 0
         ;;
       *)
-        inferops::fail "refusing: foreign-argocd-present: no namespace '${INFEROPS_ARGOCD_NAMESPACE}' exists, so no marker says that this procedure installed anything here. Nothing was changed."
+        inferops::fail "refusing: foreign-argocd-present: no namespace '${INFEROPS_ARGOCD_NAMESPACE}' exists, so no marker says that this procedure installed anything here. If a removal already finished, nothing is left to remove. Nothing was changed."
         ;;
     esac
   fi
   if [ "${namespace_marker}" != "${INFEROPS_ARGOCD_MARKER_VALUE}" ]; then
     inferops::fail "refusing: foreign-argocd-present: the namespace '${INFEROPS_ARGOCD_NAMESPACE}' exists and does not carry ${INFEROPS_ARGOCD_MARKER_LABEL}=${INFEROPS_ARGOCD_MARKER_VALUE}. This procedure did not create it, and it does not adopt it. Nothing was changed."
+  fi
+  # The procedure writes the label and the annotation in one request, so an
+  # installation of its own always holds both. A label alone is not the marker.
+  # Any SHA-256 is accepted here: the removal of an installation with an older
+  # pin is the documented way to replace it.
+  case "${namespace_pin}" in
+    *[!0-9a-f]* | '') namespace_pin_is_a_digest=0 ;;
+    *) namespace_pin_is_a_digest=1 ;;
+  esac
+  if [ "${namespace_pin_is_a_digest}" -eq 0 ] || [ "${#namespace_pin}" -ne 64 ]; then
+    inferops::fail "refusing: foreign-argocd-present: the namespace '${INFEROPS_ARGOCD_NAMESPACE}' carries the label and does not record a manifest SHA-256 in ${INFEROPS_ARGOCD_PIN_ANNOTATION}. This procedure writes both in one request, so it did not create this namespace. Nothing was changed."
   fi
   if [ "${namespace_phase}" != "Active" ]; then
     inferops::fail "refusing: the namespace '${INFEROPS_ARGOCD_NAMESPACE}' is in phase '${namespace_phase:-unknown}', not 'Active'. A deletion is in progress. Wait until the namespace is gone, then run this procedure again. Nothing was changed."
@@ -488,8 +504,15 @@ install() {
   manifest_native="$(inferops::native_path "${manifest_file}")"
   # Server-side apply, because a definition in this manifest exceeds the size
   # limit of the annotation that client-side apply writes. --force-conflicts
-  # takes over a field another manager holds; the refusals above are why no
-  # foreign object reaches this line.
+  # takes over a field another manager holds. When no marked namespace exists,
+  # the refusals above keep a foreign cluster-scoped object from this line.
+  # When one exists they do not: the five cluster-scoped objects carry no
+  # marker, so one that another party replaced since is taken over here.
+  #
+  # The file is hashed again first. Its path is predictable, and the namespace
+  # was created since the first hash.
+  [ "$(sha256sum "${manifest_file}" | awk '{ print $1 }')" = "${INFEROPS_ARGOCD_MANIFEST_SHA256}" ] ||
+    inferops::fail "refusing: manifest-digest-mismatch: the manifest bytes changed after they were verified. Nothing was applied. A namespace that this run created was left in place."
   applied="$(inferops::target_kubectl apply --server-side --force-conflicts \
     --field-manager="${INFEROPS_ARGOCD_FIELD_MANAGER}" \
     -n "${INFEROPS_ARGOCD_NAMESPACE}" -f "${manifest_native}")"
@@ -540,8 +563,9 @@ verify() {
   inferops::section "Images"
   argocd::assert_pinned_images
 
-  inferops::section "Objects the manifest does not declare"
-  # Names only. No Secret value is read.
+  inferops::section "Secrets, Leases, and ConfigMaps in the namespace, by name"
+  # Names only. No Secret value is read. The list holds the seven objects of
+  # these kinds that the manifest declares, and whatever was created at run time.
   inferops::target_kubectl get secrets,leases,configmaps \
     -n "${INFEROPS_ARGOCD_NAMESPACE}" -o name
 

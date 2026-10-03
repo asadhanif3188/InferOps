@@ -22,7 +22,8 @@ decisions are accepted; two are explicitly not made.
 >
 > What is enforced is enforced over committed files, over five YAML manifests and
 > two committed chart renders, and by eight shell functions. Four of the eight are
-> the Argo CD bootstrap's, and they read the local cluster that bootstrap acts on.
+> the Argo CD bootstrap's. One of the four reads a manifest file, and three read
+> the local cluster that bootstrap acts on.
 > Every one of the others reads a file or a contributor's host; the release installed from those renders
 > was read by none of them. That is narrow and real. The distance between it and a
 > defended system is

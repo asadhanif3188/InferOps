@@ -18,7 +18,7 @@
     ],
     "applyMechanism": "kubectl apply --server-side --force-conflicts, with the verified manifest file, unmodified, into the namespace argocd",
     "fieldManager": "inferops-argocd-bootstrap",
-    "manifestSource": "Downloaded from the pinned source URL into the ignored directory .artifacts/argocd-bootstrap/, or read from a file the operator names with --manifest. Either is used only when its SHA-256 is the pinned value.",
+    "manifestSource": "Downloaded from the pinned source URL into the ignored directory .artifacts/argocd-bootstrap/, or read from a file the operator names with --manifest. Either is used only when its SHA-256 is the pinned value. The file is hashed a second time immediately before the apply.",
     "imageDigestMechanism": "compare-reported-image-identity",
     "imageDigestMechanismStatement": "The manifest is applied unmodified and names each image by tag. After the rollout, the procedure reads the image identity that each container status reports, init containers included, and compares it with the pinned digest. A container that the record does not list, or that reports no identity, fails the check. ADR 0017 D5 is kept: the applied bytes are the verified bytes.",
     "boundedWaits": {
@@ -27,14 +27,31 @@
       "verifyRolloutSeconds": 120
     },
     "executedTestRef": "tests/architecture/test_argocd_bootstrap_procedure.py",
-    "idempotence": "A second install on an installation that carries the marker and records the pinned SHA-256 applies the same bytes again with the same field manager. It does not create or relabel the namespace."
+    "idempotence": "A second install on an installation that carries the marker and records the pinned SHA-256 applies the same bytes again with the same field manager. It does not create or relabel the namespace.",
+    "marker": "The label and the annotation together. The procedure writes both in one request, so it refuses a namespace that carries the label and records no SHA-256."
   },
   "runs": [
     {
       "provider": "docker-desktop",
       "date": "2026-10-03",
       "serverVersion": "v1.34.3",
-      "result": "passed",
+      "result": "failed at the download, three times, and changed nothing in the cluster",
+      "evidenceLevel": "C2",
+      "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md"
+    },
+    {
+      "provider": "docker-desktop",
+      "date": "2026-10-03",
+      "serverVersion": "v1.34.3",
+      "result": "passed, with the procedure as the first commit of the implementing change stored it",
+      "evidenceLevel": "C2",
+      "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md"
+    },
+    {
+      "provider": "docker-desktop",
+      "date": "2026-10-03",
+      "serverVersion": "v1.34.3",
+      "result": "passed, with the procedure as the independent review left it",
       "evidenceLevel": "C2",
       "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md"
     }
@@ -64,7 +81,7 @@
       "committedCopy": false,
       "mustBeAppliedUnmodified": true,
       "applied": true,
-      "appliedStatement": "Applied on the docker-desktop provider on 2026-10-03, three times: a first install, a second install on the same installation, and an install after a removal. Not applied on kind."
+      "appliedStatement": "Applied on the docker-desktop provider on 2026-10-03, six times in two passing runs: in each run a first install, a second install on the same installation, and an install after a removal. Not applied on kind."
     },
     "images": [
       {
@@ -265,7 +282,7 @@
       "resourceId": "argocd-controller-installation",
       "createdBy": "the secret-init init container of the argocd-redis Deployment, through the argocd-redis Role",
       "howKnown": "observed",
-      "basis": "The run on docker-desktop listed the Secrets in the namespace by name after the install, and argocd-redis was one of them. Its value was not read."
+      "basis": "The runs on docker-desktop listed the Secrets in the namespace by name after the install, and argocd-redis was one of them. That the object exists is observed. What creates it is still read from the Role and the manifest, and was not observed. Its value was not read."
     },
     {
       "apiVersion": "coordination.k8s.io/v1",
@@ -405,7 +422,7 @@
         "bootstrap",
         "removal"
       ],
-      "condition": "A namespace named argocd exists without the bootstrap lifecycle marker. Or no marked namespace exists while an Argo CD CustomResourceDefinition, or a ClusterRole or ClusterRoleBinding named argocd-application-controller, does. Removal also refuses when no namespace named argocd exists."
+      "condition": "A namespace named argocd exists without the bootstrap lifecycle marker, or with the marker label and no recorded manifest SHA-256. Or no marked namespace exists while an Argo CD CustomResourceDefinition, or a ClusterRole or ClusterRoleBinding named argocd-application-controller, does. Removal also refuses when no namespace named argocd exists."
     },
     {
       "refusalId": "installed-pin-differs",
@@ -423,7 +440,7 @@
     }
   ],
   "removal": {
-    "statement": "Removal deletes what the bootstrap owner created, and nothing else. It is not part of any other teardown operation. It deletes by the kinds and names this record lists, so it needs no download. It was executed twice on the docker-desktop provider on 2026-10-03, with no Application present, and both times no listed object remained. The refusal for an existing Application was executed against stubs only.",
+    "statement": "Removal deletes what the bootstrap owner created, and nothing else. It is not part of any other teardown operation. It deletes by the kinds and names this record lists, so it needs no download. It was executed four times on the docker-desktop provider on 2026-10-03, in two runs, with no Application present, and each time no listed object remained. The refusal for an existing Application was executed against stubs only.",
     "steps": [
       "Select and verify the target cluster, as for every mutation.",
       "Refuse unless a namespace named argocd exists and carries the bootstrap lifecycle marker.",
@@ -514,11 +531,11 @@
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_bootstrap_procedure.py::test_a_cluster_that_is_not_the_selected_one_refuses",
       "owedBy": null,
-      "limit": "The test executes the procedure against stub tools, for each of the three operations, and reads the calls it made: no mutation ran, and the installation was not read before the target was verified. Three more tests refuse no provider, an unsupported provider, and a kind target with no cluster name. A static test holds the one call to inferops::resolve_target ahead of the first cluster read. The guard's own limits are the provider contract's: a cluster the operator deliberately gave the selected provider's shape passes it."
+      "limit": "The test executes the procedure against stub tools, for each of the three operations, and reads the calls it made: no mutation ran, and the installation was not read before the target was verified. Three more tests refuse no provider, an unsupported provider, and a kind target with no cluster name; the runs repeated those three with the real tools, and each was refused before any cluster was contacted. No run refused a wrong cluster. A static test holds the one call to inferops::resolve_target ahead of the first cluster read. The guard's own limits are the provider contract's: a cluster the operator deliberately gave the selected provider's shape passes it."
     },
     {
       "ruleId": "the-manifest-is-verified-before-it-is-used",
-      "statement": "The bootstrap computes the SHA-256 of the manifest bytes, downloaded or supplied, and refuses before its first mutation when it is not the pinned value. The removal reads no manifest.",
+      "statement": "The bootstrap computes the SHA-256 of the manifest bytes, downloaded or supplied, and refuses before its first mutation when it is not the pinned value. It computes it again immediately before the apply. The removal reads no manifest.",
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_bootstrap_procedure.py::test_install_refuses_manifest_bytes_that_are_not_the_pin",
       "owedBy": null,
@@ -530,7 +547,7 @@
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_bootstrap_procedure.py::test_verification_fails_when_a_container_does_not_run_its_pin",
       "owedBy": null,
-      "limit": "The test executes the verify operation against stub tools with five wrong container reports. The same function runs after the apply in the install operation; no stub test reaches that call, because a test cannot hold bytes with the pinned SHA-256, and the run on docker-desktop executed it. The unmodified manifest names each image by tag, and four containers set imagePullPolicy Always. A pod that restarts later resolves the tag again and can run other bytes. The rule covers the moment of the check and nothing after it."
+      "limit": "The test executes the verify operation against stub tools with five wrong container reports. A second test executes the install operation with a wrong report, with sha256sum also replaced by a stub, because a test cannot hold bytes with the pinned SHA-256. The runs on docker-desktop executed the passing comparison only. The check keys on the container name: a pod that reports no container status yet is not seen when another pod reports the same name, and a failed pod left in the namespace fails the check. The unmodified manifest names each image by tag, and four containers set imagePullPolicy Always. A pod that restarts later resolves the tag again and can run other bytes. The rule covers the moment of the check and nothing after it."
     },
     {
       "ruleId": "a-foreign-argocd-installation-is-refused",
@@ -538,7 +555,7 @@
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_bootstrap_procedure.py::test_install_refuses_a_namespace_it_did_not_create",
       "owedBy": null,
-      "limit": "The test executes the procedure against stub tools. Further tests refuse each of the five cluster-scoped objects when no marked namespace exists, and refuse the removal of an unmarked or absent namespace. No run met a foreign installation in a cluster. The lifecycle marker is a label on the namespace. A person who can label a namespace can set it. The five cluster-scoped objects carry no marker."
+      "limit": "The test executes the procedure against stub tools. Further tests refuse each of the five cluster-scoped objects when no marked namespace exists, refuse a namespace that carries the label and records no SHA-256, and refuse the removal of an unmarked or absent namespace. No run met a foreign installation in a cluster; the one refusal of this kind that a run produced was a removal with no namespace. The marker is a label and an annotation on the namespace. A person who can change a namespace can set both. The five cluster-scoped objects carry no marker: when a marked namespace exists, the install does not check whose they are, and server-side apply with --force-conflicts takes over one that another party replaced."
     },
     {
       "ruleId": "removal-is-scoped-and-refuses-while-an-application-exists",
@@ -546,7 +563,7 @@
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_bootstrap_procedure.py::test_removal_refuses_while_a_custom_resource_exists",
       "owedBy": null,
-      "limit": "The test executes the removal against stub tools. A second test holds the order of the ten deletions, and a third holds each deletion to a named object. A static suite refuses a deletion in any other shape. The run on docker-desktop removed the installation twice with no Application present. No Application has existed in a cluster, so the refusal was never executed against one. The record lists four gaps in the order."
+      "limit": "The test executes the removal against stub tools, once for each of the three kinds. Further tests hold the order of the ten deletions, hold each deletion to a named object, hold the wait for the pods and the wait for the namespace, and refuse an unanswered pod query. A static suite refuses a deletion that is not one of the six exact commands. The runs on docker-desktop removed the installation four times with no Application present. No Application has existed in a cluster, so the refusal was never executed against one. No test reaches a time limit, and no call sets a request timeout, so an API server that stops answering holds a read. The record lists four gaps in the order."
     },
     {
       "ruleId": "security-baseline-rows-precede-the-first-install",

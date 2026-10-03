@@ -240,7 +240,7 @@
         },
         {
           "itemId": "the-argocd-manifest-and-images-are-compared-with-their-pins",
-          "statement": "The Argo CD bootstrap verifies the SHA-256 of the install manifest before its first mutation, and reports success only when every container, init containers included, reports the pinned digest of its image. On the docker-desktop provider a run did both.",
+          "statement": "The Argo CD bootstrap verifies the SHA-256 of the install manifest before its first mutation, and reports success only when every container, init containers included, reports the pinned digest of its image. On the docker-desktop provider two runs did both, for the pinned bytes. The refusal of other bytes and of another digest is executed against stub tools only.",
           "controlIds": [
             "verify-the-argocd-manifest-digest-before-apply",
             "argocd-containers-run-their-pinned-digest-at-install"
@@ -660,7 +660,7 @@
               "ref": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md"
             }
           ],
-          "evidenceLabel": "local-static"
+          "evidenceLabel": "mock"
         }
       ],
       "notImplemented": [

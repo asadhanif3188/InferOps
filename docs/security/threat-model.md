@@ -23,7 +23,8 @@ below have no control at all.
 > not one.
 >
 > What is really enforced is enforced over committed files, over five YAML
-> manifests, over the chart's two committed renders, and by four shell functions.
+> manifests, over the chart's two committed renders, and by eight shell functions.
+> Four of the eight are guards of the Argo CD bootstrap, added on 2026-10-03.
 > A release installed from those renders was read by none of them. That is a narrow
 > and real thing, and the
 > distance between it and a defended system is

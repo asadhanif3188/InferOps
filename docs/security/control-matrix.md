@@ -192,18 +192,23 @@ exception would be recorded against a specific finding.
 
 The last four are guards of the Argo CD bootstrap, added on 2026-10-03 with
 [the procedure](../environment/argocd-bootstrap.md). Each refuses before the first
-mutation, except the image check, which runs after the apply and withholds the
-success report. What each establishes is narrow:
+mutation, with two exceptions. The image check runs after the apply and withholds
+the success report. The custom-resource refusal runs twice in a removal, and its
+second run follows the deletion of the four workloads and precedes the deletion
+of a definition. What each establishes is narrow:
 
 - The manifest check compares a SHA-256. It identifies bytes and does not
   authenticate them. No signature was verified.
 - The image check compares the identity the container runtime reports with the
   pinned digest, at that moment. A pod that restarts later resolves its image
   tag again, and nothing reads it. `DR-13` carries both.
-- The foreign-installation refusal reads a label on the namespace. A person who
-  can label a namespace can set it.
+- The foreign-installation refusal reads a label and an annotation on the
+  namespace. A person who can change a namespace can set both. It was executed
+  against stubs, and no run met a foreign installation. When a marked namespace
+  exists, the install does not check whose the five cluster-scoped objects are.
 - The custom-resource refusal was executed against stubs. No Application has
   existed in a cluster, so no run refused one.
+- On a cluster, the runs executed the passing side of the first two only.
 
 ## The vulnerability-scan severity policy
 

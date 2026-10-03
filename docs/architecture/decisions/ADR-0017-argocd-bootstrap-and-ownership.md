@@ -37,8 +37,9 @@
 > [The record of that run](../../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) says what was observed.
 >
 > The procedure was not executed on `kind`. No Application exists, so Argo CD
-> reconciles nothing. The amendments are marked in D3, D5, D6, D8, D11, and D12,
-> in the consequences, the evidence, and the risks.
+> reconciles nothing. The amendments are marked in the status table, in D3, D5,
+> D6, D8, D11, and D12, and in the consequences, the compatibility impact, the
+> security considerations, the evidence, and the risks.
 
 ## Decision status
 
@@ -46,8 +47,8 @@
 |---|---|---|---|
 | D1 | Argo CD is the V2 GitOps controller, and it reads this repository | **Accepted** as a selection | Review alone. No alternative was executed |
 | D2 | The installation has one owner, the bootstrap. Argo CD does not manage its own installation | **Accepted** | The ownership inventory, and a test that no Argo CD custom resource is committed |
-| D3 | The bootstrap consumes an existing cluster that is explicitly selected and verified | **Accepted** as a rule. **Amended 2026-10-03:** the procedure calls the guard before its first read of the cluster | ADR 0011 and its guard exist. Tests execute the procedure against stubs and find no mutation on an unselected or unverified target. On `docker-desktop` a run refused three unselected targets |
-| D4 | The release is `v3.5.3`, pinned by tag and commit | **Accepted** as a pin | The record, checked for form. Compatibility with a cluster is documented upstream and not observed here |
+| D3 | The bootstrap consumes an existing cluster that is explicitly selected and verified | **Accepted** as a rule. **Amended 2026-10-03:** the procedure calls the guard before its first read of the cluster | ADR 0011 and its guard exist. Tests execute the procedure against stubs and find no mutation on an unselected or unverified target. A run repeated three of those refusals with the real tools: no provider, an unsupported provider, and `kind` with no cluster name. Each was refused before any cluster was contacted. No run refused a wrong cluster |
+| D4 | The release is `v3.5.3`, pinned by tag and commit | **Accepted** as a pin | The record, checked for form. Compatibility with a cluster is documented upstream and not observed here. **Amended 2026-10-03:** observed on `docker-desktop` at server `v1.34.3`, and not on `kind` |
 | D5 | The install manifest is `core-install.yaml`, pinned by commit and SHA-256, applied unmodified, and not copied into this repository | **Accepted** as a pin of the bytes. The choice of the core profile is **proposed** | The record, checked for form. The SHA-256 was computed once from two downloads. No run reconciled an Application with this profile; see R6 |
 | D6 | When the bootstrap reports success, every Argo CD container runs the pinned digest of its image | **Accepted** as a rule for that moment. The mechanism was **proposed**. **Amended 2026-10-03:** the mechanism is the first of the two, and it is **accepted** for `docker-desktop` | The digests are recorded. The procedure compares the image identity each container reports with the pin, and a run did so. Nothing holds the digest after a restart |
 | D7 | The namespace is `argocd`, and the bootstrap owns it | **Accepted** | The inventory, and a test on the name |
@@ -417,9 +418,15 @@ after a removal succeeded.
 The run did not try the refusals in a cluster, except one: a removal with no
 namespace was refused. The refusal for an existing Application, the second
 check, and the refusal of an unmarked namespace are executed against stubs. The
-implementation adds two refusals that this section did not list: it refuses a
-namespace that is being deleted, and it refuses to continue on a query that did
+implementation adds three refusals that this section did not list: it refuses a
+namespace that is being deleted, it refuses a namespace that carries the label
+and records no manifest SHA-256, and it refuses to continue on a query that did
 not answer.
+
+One gap is added to the four above. When a marked namespace exists, the
+install does not check whose the five cluster-scoped objects are, because they
+carry no marker (R11). Server-side apply with `--force-conflicts` then takes
+over one that another party replaced.
 
 Four gaps are known and recorded with the steps. The checks and the deletions are
 not atomic. An object with a finalizer that appears after the controllers stop
