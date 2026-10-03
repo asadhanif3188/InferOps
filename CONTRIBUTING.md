@@ -474,6 +474,12 @@ revision 2 from the merged checkout. A run that is committed also needs a regist
 record, added through a new ledger of register changes, and a validation record that
 states what executed before it and every attempt.
 
+Publish an independent review of a run before you change the register for it. A ledger
+whose changes bear on a run must reference the review artifact of that run in
+`resultReviews`, with its content digest, and `tools.evidence_index` does not build the
+index without it. Merge the review first, in a change of its own: the check reads one
+repository state and cannot see which of two files was committed first.
+
 ### Serving adapters
 
 Changes under [`src/inferops/adapters/`](src/inferops/adapters/) or

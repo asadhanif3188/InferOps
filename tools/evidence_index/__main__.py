@@ -20,6 +20,11 @@ ledgers produce, so a freeze is never reported from a stale digest: the pack `v1
 was cut over, which the index recomputes by undoing the post-release ledgers, and the
 pack this checkout holds now, which no release quotes.
 
+Every mode builds the index, except ``--gate`` where a blocker stands or the
+publication ledger declares no freeze. The index is not built when a ledger whose
+changes bear on an experiment run references no matching review artifact: a mode that
+builds the index then prints ``MISMATCH`` and exits 1.
+
 **Every mode reads files.** None contacts a cluster, a runtime, a model, or the
 network. See docs/proof/v1-evidence-index.md.
 """
@@ -155,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m tools.evidence_index",
         description=(
             "Print, check, or regenerate the V1 evidence index from the claim and "
-            "evidence register and its eight ledgers, or report the release gate."
+            "evidence register and its nine ledgers, or report the release gate."
         ),
     )
     group = parser.add_mutually_exclusive_group()

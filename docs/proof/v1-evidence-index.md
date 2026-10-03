@@ -11,7 +11,8 @@ by `python -m tools.evidence_index --write` from
 [the `V1-S5-009-PR1` post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json),
 [the `V2-S2-001-PR2` claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
 [the `V2-S2-003-PR2` E01 static proof ledger](testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json),
-and [the `V2-S2-004-PR2` corrected E01 static proof ledger](testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json).
+[the `V2-S2-004-PR2` corrected E01 static proof ledger](testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json),
+and [the `V2-S2-005-PR2` E01 claim correction ledger](testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json).
 It states nothing they do not, and
 [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py)
 regenerates it and fails on any difference.
@@ -76,10 +77,30 @@ certified at `C0` on the record of the second run of those parts, the first unde
 revision 2. Through the same fourth post-release ledger, the corrected E01 static proof
 ledger, it appended a dated audit limitation to the first run's claim, wrote one
 correction beside the first run's result page, and replaced this page's reason again.
+Then `V2-S2-005-PR2` narrowed that second claim's statement, through a fifth
+post-release ledger, the E01 claim correction ledger: the statement gained the words
+`of eight characters or more`, which its frozen criterion carries, after
+[an independent review](experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.md) found the
+statement broader than the criterion. The ledger appended a dated correction to the
+claim's limitation and replaced this page's reason again. It added no claim and no
+record, and it moved no status and no level.
 Each moves the pack
 `main` holds, and it is expected: the released pack is the frozen one, and the index
-recomputes it, by undoing all four post-release ledgers, rather than copying it.
+recomputes it, by undoing all five post-release ledgers, rather than copying it.
 `--gate` prints both pairs.
+
+**The result review gate.** Since `V2-S2-005-PR2` the index is not built when a ledger
+whose changes bear on an experiment run references no independent-review artifact of
+that run. The ledger names the artifact and its SHA-256 in `resultReviews`. The index
+refuses an artifact that is absent, that has other content, that reviews another run,
+that gives digests the run's files do not have, or that does not name the freeze record
+the run's manifest names with its digest.
+`summary.resultReviews` lists each reference the gate checked. It also lists the two
+ledgers that registered an E01 run before the gate existed; they name no review, and
+no record establishes a review before either. The gate reads one repository state. It
+does not show that a review was committed before the register change, that a review
+took place, or what a review concluded, and it does not bind a review to a change. [The experiments page](experiments/README.md#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
+lists the refusals and the limits.
 
 How the 38 records that executed their target behaviour identify the repository code
 that ran:
@@ -109,9 +130,9 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after the four post-release ledgers, which no release quotes | `0271ae271c6391f6472b21d14c4ced96632d7db166917d2ecb6f8f216d60db6e` | `cc8e66ecc08f5d4e3856d2a23d2c7e37e0892249d28e5dd3b3e4ee14c3bbb7b9` |
+| **Current:** `main` after the five post-release ledgers, which no release quotes | `0271ae271c6391f6472b21d14c4ced96632d7db166917d2ecb6f8f216d60db6e` | `222bc533921a5586899ace107b3149ed5fe980ffcfc9040c85c01aaf64aa6393` |
 
-The released pair is not read from a ledger. The index undoes the four post-release
+The released pair is not read from a ledger. The index undoes the five post-release
 ledgers' changes, last first, renders the register as it was, and takes both digests
 over that register, the four ledgers before the post-release ones, and the files that
 register cites, read from this checkout; the first post-release ledger states the pair,
