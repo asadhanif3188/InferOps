@@ -83,17 +83,21 @@ history since the migration is the nine of them together. The first four are the
 ones the `v1.0.0` pack covers; the five after them are the post-release ledgers.
 
 **The result review gate.** A register change bears on an experiment run when the
-record it adds, or the claim or record it changes, cites a file under that run's
-directory. A ledger with such a change must name, in ``resultReviews``, one
-independent-review artifact for each run: its path and its content digest.
-``review_gate`` refuses a ledger that names none, an artifact that is absent, an
-artifact whose content is not the digest the ledger states, an artifact that reviews
-another run, and an artifact whose file digests or freeze digest are not those of the
-committed run. The gate reads one repository state. It shows that the review artifact
-is in the state the index is built from. It does not show that the review was
-committed before the register change, that a review took place, who did it, or what
-it concluded. The two ledgers in ``PRE_GATE_LEDGER_PATHS`` were written before the
-gate existed and name no review; the gate lists them and does not call them compliant.
+claim or record it adds, or the claim or record it changes, names a file under that
+run's directory, in any field, before or after the change. A ledger with such a
+change must name, in ``resultReviews``, one review artifact for each run: its path
+and its content digest. ``review_gate`` refuses a ledger that names none, an artifact
+that is absent, an artifact whose content is not the digest the ledger states, an
+artifact that reviews another run, an artifact whose file digests are not those of
+the committed run, and an artifact that does not name the freeze record the run's
+manifest names with the digest that record has. The gate reads one repository state.
+It shows that the review artifact is in the state the index is built from. It does
+not show that the review was committed before the register change, that a review
+took place, who did it, that it was independent, or what it concluded, and it does
+not bind a review to a change: one artifact of a run satisfies every ledger that
+bears on that run. The two ledgers in ``PRE_GATE_LEDGER_PATHS`` were written before
+the gate existed and name no review; the gate lists them and does not call them
+compliant.
 
 **Two digests.** `evidenceSetSha256` covers every file a record cites and nothing else,
 so a change to the register's wording or to a ledger does not move it.
@@ -291,9 +295,10 @@ LEDGER_PATHS: Final = (*RELEASED_LEDGER_PATHS, *POST_RELEASE_LEDGER_PATHS)
 
 #: The ledgers that registered an experiment run before the result review gate
 #: existed. Each names no review, and the gate does not ask one of them. This is a
-#: record of what happened, not an allowance: no review preceded either register
-#: change. A test holds the tuple to these two, so a later ledger cannot join it
-#: without that test changing.
+#: record of what happened, not an allowance: no record establishes a review before
+#: either register change. A test holds the tuple to these two and each ledger to its
+#: content, so a later ledger cannot join it, and neither can gain a change, without
+#: that test changing.
 PRE_GATE_LEDGER_PATHS: Final = (E01_STATIC_PROOF_PATH, E01_CORRECTED_PROOF_PATH)
 
 #: The kind of the only artifact the result review gate accepts.
@@ -386,6 +391,10 @@ _AUTHORISATION_HEADING: Final = re.compile(r"(?mi)^#+ .*authori[sz]")
 #: A cited file under an experiment run directory: the experiment's directory, and
 #: the run's identifier.
 _RUN_FILE: Final = re.compile(r"^(docs/proof/experiments/[^/]+)/runs/([^/]+)/")
+#: The file of a run directory that names the freeze record the run executed under.
+_RUN_MANIFEST: Final = "run.v1alpha1.json"
+#: The members of one ``resultReviews`` row, and no other.
+_REVIEW_ROW_KEYS: Final = ("runPath", "reviewRef", "reviewSha256")
 
 
 # ------------------------------------------------------------------- reading
@@ -1207,46 +1216,86 @@ def released_pack(
 # ------------------------------------------------------------ the review gate
 
 
-def _run_paths(records: Iterable[Mapping[str, Any]]) -> set[str]:
-    found = set()
-    for record in records:
-        for ref in record.get("evidenceRefs", []):
-            match = _RUN_FILE.match(ref)
-            if match:
-                found.add(f"{match.group(1)}/runs/{match.group(2)}")
-    return found
+def _run_paths(value: Any) -> set[str]:
+    """Every run directory a JSON value names, in any string at any depth.
+
+    A string names a run when it starts with a run directory in the repository's
+    normal form. The register rules, not this gate, refuse a path in another form.
+    """
+    if isinstance(value, str):
+        match = _RUN_FILE.match(value)
+        return {f"{match.group(1)}/runs/{match.group(2)}"} if match else set()
+    if isinstance(value, Mapping):
+        return {run for item in value.values() for run in _run_paths(item)}
+    if isinstance(value, list):
+        return {run for item in value for run in _run_paths(item)}
+    return set()
 
 
 def result_runs(register: Mapping[str, Any], ledger: Mapping[str, Any]) -> list[str]:
     """The experiment runs a ledger's register changes bear on, as run directories.
 
-    A change bears on a run when the record it adds, the record it changes, or a
-    record of the claim it changes cites a file under that run's directory. A changed
-    claim or record is read from ``register``, the register after every ledger. A
-    change to a register field bears on no run.
+    A change bears on a run when the claim or record it adds, the record it changes,
+    or a record of the claim it changes names a file under that run's directory, in
+    any field. A changed claim or record is read from ``register``, the register
+    after every ledger, and the values before and after the change are read too, so
+    a change that removes the citation still bears on the run. A change to a
+    register field bears on no run. An operation this function does not know raises:
+    the gate cannot say what such a change bears on.
     """
     runs: set[str] = set()
     for change in ledger["registerChanges"]:
-        operation = change["operation"]
+        operation = change.get("operation")
         if operation == "add-claim":
-            runs |= _run_paths(change["claim"]["evidenceRecords"])
+            runs |= _run_paths(change["claim"])
         elif operation == "add-record":
-            runs |= _run_paths([change["record"]])
-        elif operation == "set-record-field":
+            runs |= _run_paths(change["record"])
+        elif operation in ("set-record-field", "set-claim-field"):
             claim = _claim(register, change["claimId"])
-            runs |= _run_paths([_record(claim, change["recordId"])])
-        elif operation == "set-claim-field":
-            runs |= _run_paths(_claim(register, change["claimId"])["evidenceRecords"])
+            if operation == "set-record-field":
+                runs |= _run_paths(_record(claim, change["recordId"]))
+            else:
+                runs |= _run_paths(claim["evidenceRecords"])
+            runs |= _run_paths(change.get("before")) | _run_paths(change.get("after"))
+        elif operation != "set-register-field":
+            raise ValueError(
+                f"{change.get('changeId')}: the review gate does not know the "
+                f"operation {operation!r}"
+            )
     return sorted(runs)
 
 
+def _review_rows(ledger_name: str, stated: Any) -> list[dict[str, str]]:
+    """A ledger's ``resultReviews``, refused unless every row has the three strings."""
+    if not isinstance(stated, list):
+        raise ValueError(f"{ledger_name}: resultReviews is not a list")
+    for row in stated:
+        if (
+            not isinstance(row, dict)
+            or set(row) != set(_REVIEW_ROW_KEYS)
+            or not all(isinstance(row[key], str) for key in _REVIEW_ROW_KEYS)
+        ):
+            raise ValueError(
+                f"{ledger_name}: a resultReviews row is not exactly the strings "
+                f"{', '.join(_REVIEW_ROW_KEYS)}"
+            )
+    return stated
+
+
+def _plain(path: str) -> bool:
+    """A repository path with no backslash and no empty, ``.``, or ``..`` segment."""
+    return "\\" not in path and all(
+        part not in ("", ".", "..") for part in path.split("/")
+    )
+
+
 def _checked_review(
-    ledger_name: str, row: Mapping[str, Any], repo_root: Path
+    ledger_name: str, row: Mapping[str, str], repo_root: Path
 ) -> dict[str, Any]:
     """One referenced review artifact, held to the committed run it names."""
     run_path, ref = row["runPath"], row["reviewRef"]
     experiment, run_id = run_path.rsplit("/runs/", 1)
-    if not ref.startswith(f"{experiment}/reviews/") or ".." in ref.split("/"):
+    if not ref.startswith(f"{experiment}/reviews/") or not _plain(ref):
         raise ValueError(
             f"{ledger_name}: the review artifact {ref} is not under {experiment}/reviews"
         )
@@ -1259,7 +1308,10 @@ def _checked_review(
             f"{ledger_name}: the review artifact {ref} has the content digest "
             f"{digest}, and the ledger states {row['reviewSha256']}"
         )
-    review = json.loads(artifact.read_text(encoding="utf-8"))
+    try:
+        review = json.loads(artifact.read_text(encoding="utf-8"))
+    except ValueError:
+        review = None
     if not isinstance(review, dict) or review.get("kind") != RESULT_REVIEW_KIND:
         raise ValueError(
             f"{ledger_name}: the review artifact {ref} is not an {RESULT_REVIEW_KIND}"
@@ -1289,15 +1341,27 @@ def _checked_review(
             f"{ledger_name}: the review artifact {ref} does not describe the files "
             f"of {run_path} as they are: {differing or 'the run holds no file'}"
         )
+    # The freeze record is the one the run's own manifest names, in the same
+    # experiment's directory. The manifest's digest is among the files above.
     freeze = subject.get("freeze")
     freeze = freeze if isinstance(freeze, dict) else {}
-    freeze_path = repo_root / str(freeze.get("path", ""))
-    if not freeze_path.is_file() or content_sha256(freeze_path) != freeze.get(
-        "contentSha256"
+    freeze_ref = freeze.get("path")
+    try:
+        manifest = json.loads((run_dir / _RUN_MANIFEST).read_text(encoding="utf-8"))
+        named = manifest["metadata"]["freezeRecord"]
+    except (OSError, ValueError, KeyError, TypeError):
+        named = None
+    if (
+        not isinstance(freeze_ref, str)
+        or freeze_ref != named
+        or not freeze_ref.startswith(f"{experiment}/")
+        or not _plain(freeze_ref)
+        or not (repo_root / freeze_ref).is_file()
+        or content_sha256(repo_root / freeze_ref) != freeze.get("contentSha256")
     ):
         raise ValueError(
             f"{ledger_name}: the review artifact {ref} names a freeze record that "
-            "is not the committed one"
+            "is not the committed one the run's manifest names"
         )
     return {
         "ledger": ledger_name,
@@ -1313,21 +1377,24 @@ def review_gate(
     repo_root: Path = REPO_ROOT,
     ledger_paths: Sequence[Path] = LEDGER_PATHS,
 ) -> dict[str, Any]:
-    """Every result-bearing ledger held to a review of the run it bears on.
+    """Every result-bearing ledger held to a review artifact of the run it bears on.
 
     For each ledger, ``result_runs`` gives the experiment runs its changes bear on.
     The ledger must name one review artifact for each of them in ``resultReviews``,
     and no other. Each artifact is read under ``repo_root`` and must be present, have
-    the content digest the ledger states, review that run, and give the digests the
-    run's files and its freeze record have now. Anything else raises.
+    the content digest the ledger states, review that run, give the digests the
+    run's files have now, and name the freeze record the run's manifest names, with
+    the digest that record has now. Anything else raises ``ValueError``.
 
     The ledgers in ``PRE_GATE_LEDGER_PATHS`` are listed with the runs they bear on
     and are not checked: they registered a run before this gate existed, and no
-    review preceded them. One of them that states a review raises, because a review
-    written since did not precede it.
+    record establishes a review before either. One of them that states a review
+    raises, because a review written since did not precede it.
 
     The gate reads one repository state. It cannot show that the artifact was
-    committed before the ledger, and it does not read what the review concluded.
+    committed before the ledger. It does not read what the review concluded, and it
+    does not bind a review to a change: one review artifact of a run satisfies every
+    ledger that bears on that run, including a change the review did not read.
     """
     if len(ledgers) != len(ledger_paths):
         raise ValueError(
@@ -1338,7 +1405,7 @@ def review_gate(
     for path, ledger in zip(ledger_paths, ledgers, strict=True):
         name = path.relative_to(REPO_ROOT).as_posix()
         runs = result_runs(register, ledger)
-        stated = ledger.get("resultReviews", [])
+        stated = _review_rows(name, ledger.get("resultReviews", []))
         if path in PRE_GATE_LEDGER_PATHS:
             if stated:
                 raise ValueError(
@@ -1346,7 +1413,7 @@ def review_gate(
                 )
             before_the_gate.append({"ledger": name, "runPaths": runs})
             continue
-        by_run: dict[str, Mapping[str, Any]] = {}
+        by_run: dict[str, Mapping[str, str]] = {}
         for row in stated:
             if row["runPath"] in by_run:
                 raise ValueError(
@@ -1406,8 +1473,8 @@ def build_index(
             "closed each, the release gate the closure ledger's open blockers "
             "decide, the freeze the publication ledger declares over it, and the "
             "pack v1.0.0 was cut over, recomputed by undoing the post-release "
-            "ledgers, and the independent-review artifact each result-bearing "
-            "ledger references. Generated by python -m tools.evidence_index --write from the "
+            "ledgers, and the review artifact each result-bearing ledger written "
+            "since the review gate references. Generated by python -m tools.evidence_index --write from the "
             "register, the normalization ledger, the completeness ledger, the "
             "closure ledger, the publication ledger, the post-release ledger, the "
             "claim reconciliation ledger, the E01 static proof ledger, the "
@@ -1472,10 +1539,11 @@ def build_index(
                 "summary.resultReviews.reviewed names, for each ledger whose "
                 "changes bear on an experiment run, the review artifact the ledger "
                 "references and its SHA-256. The index refuses an artifact that is "
-                "absent, has other content, reviews another run, or gives digests "
-                "the run's files and freeze record do not have. "
-                "registeredBeforeTheGate names the ledgers that registered a run "
-                "before the gate existed; no review preceded them."
+                "absent, has other content, reviews another run, gives digests the "
+                "run's files do not have, or does not name the freeze record the "
+                "run's manifest names with its digest. registeredBeforeTheGate "
+                "names the ledgers that registered a run before the gate existed; "
+                "no record establishes a review before either."
             ),
         },
         "packSources": sources,

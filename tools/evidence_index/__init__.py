@@ -12,8 +12,8 @@ The index is generated from
 [the corrected E01 static proof ledger](../../docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json),
 and [the E01 claim correction ledger](../../docs/proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json),
 and it says nothing they do not. A ledger whose changes bear on an experiment run
-must reference an independent-review artifact of that run, and the index is not built
-without one. See
+must reference a review artifact of that run, and the index is not built without one.
+The check does not show that the review was independent, or that it came first. See
 [the index's own page](../../docs/proof/v1-evidence-index.md).
 """
 

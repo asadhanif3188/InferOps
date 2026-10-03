@@ -20,9 +20,10 @@ ledgers produce, so a freeze is never reported from a stale digest: the pack `v1
 was cut over, which the index recomputes by undoing the post-release ledgers, and the
 pack this checkout holds now, which no release quotes.
 
-Every mode but ``--gate`` over an open gate builds the index, and the index is not
-built when a ledger whose changes bear on an experiment run references no matching
-independent-review artifact: the mode prints ``MISMATCH`` and exits 1.
+Every mode builds the index, except ``--gate`` where a blocker stands or the
+publication ledger declares no freeze. The index is not built when a ledger whose
+changes bear on an experiment run references no matching review artifact: a mode that
+builds the index then prints ``MISMATCH`` and exits 1.
 
 **Every mode reads files.** None contacts a cluster, a runtime, a model, or the
 network. See docs/proof/v1-evidence-index.md.

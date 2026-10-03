@@ -93,13 +93,14 @@ recomputes it, by undoing all five post-release ledgers, rather than copying it.
 whose changes bear on an experiment run references no independent-review artifact of
 that run. The ledger names the artifact and its SHA-256 in `resultReviews`. The index
 refuses an artifact that is absent, that has other content, that reviews another run,
-or that gives digests the run's files and freeze record do not have.
+that gives digests the run's files do not have, or that does not name the freeze record
+the run's manifest names with its digest.
 `summary.resultReviews` lists each reference the gate checked. It also lists the two
 ledgers that registered an E01 run before the gate existed; they name no review, and
-no review preceded them. The gate reads one repository state. It does not show that a
-review was committed before the register change, that a review took place, or what a
-review concluded. [The experiments page](experiments/README.md#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
-states every refusal and every limit.
+no record establishes a review before either. The gate reads one repository state. It
+does not show that a review was committed before the register change, that a review
+took place, or what a review concluded, and it does not bind a review to a change. [The experiments page](experiments/README.md#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
+lists the refusals and the limits.
 
 How the 38 records that executed their target behaviour identify the repository code
 that ran:

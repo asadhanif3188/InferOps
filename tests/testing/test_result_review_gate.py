@@ -18,8 +18,10 @@ no longer describes the run's files or its freeze record.
 
 What this module does not establish: that a review took place, who did it, or what it
 concluded, and that a review artifact was committed before the ledger that references
-it. The gate reads one repository state. One test reads Git history for the one
-correction this change made, and it skips in a clone that lacks the commit.
+it. The gate reads one repository state, and it does not bind a review to a change:
+one artifact of a run satisfies every ledger that bears on that run. One test reads
+Git history for the one correction this change made, and it skips in a clone that
+lacks the commit.
 
 Every check reads files from this repository and, in that one test, its Git history.
 No network, no cluster, no model, no clock, no randomness.
@@ -54,6 +56,10 @@ from tools.evidence_index import (
     result_runs,
     review_gate,
 )
+from tools.evidence_index import (
+    __main__ as cli,
+)
+from tools.evidence_index import core as index_core
 from tools.evidence_model import REGISTER_PATH, load_register
 
 pytestmark = pytest.mark.docs
@@ -79,6 +85,8 @@ CLAIM_ID = (
 FIRST_CLAIM_ID = (
     "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal"
 )
+#: A claim whose one record names no file of any run.
+RELEASE_CLAIM_ID = "a-v1-release-has-been-published"
 FIRST_RUN = "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1"
 SECOND_RUN = "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1"
 FREEZE_R2 = "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json"
@@ -301,6 +309,8 @@ def test_the_review_was_on_main_before_the_correction_was_written() -> None:
     """
     if _git("cat-file", "-e", f"{REVIEW_MERGE}^{{commit}}") is None:
         pytest.skip("the clone does not hold the merge that published the review")
+    # The merge is in this change's own history, not merely an object in the clone.
+    assert _git("merge-base", "--is-ancestor", REVIEW_MERGE, "HEAD") is not None
     then = _git("rev-parse", f"{REVIEW_MERGE}:{REVIEW_REF}")
     now = _git("hash-object", "--", REVIEW_REF)
     assert then is not None and now is not None
@@ -335,8 +345,14 @@ def test_the_gate_passes_the_committed_ledgers_and_the_index_states_its_result()
 
 
 def test_the_two_earlier_e01_ledgers_are_listed_as_registered_before_the_gate() -> None:
-    """Listed, not excused: neither names a review, and none preceded either."""
+    """Listed, not excused: neither names a review, and no record establishes one
+    before either. The gate does not check these two ledgers, whatever they hold, so
+    each is held here to the content it had when the gate was added."""
     assert PRE_GATE_LEDGER_PATHS == (E01_STATIC_PROOF_PATH, E01_CORRECTED_PROOF_PATH)
+    assert [content_sha256(path) for path in PRE_GATE_LEDGER_PATHS] == [
+        "6de763ea73fd1d2fc79b08f4bebb9e5ca6c427e3b2655efe309e63c48edc5c46",
+        "b76013231571bfd52bf76eb2480688b78e3f328aed5a9d5f864142ca6a439259",
+    ]
     assert review_gate(REGISTER, LEDGERS)["registeredBeforeTheGate"] == [
         {
             "ledger": E01_STATIC_PROOF_PATH.relative_to(REPO_ROOT).as_posix(),
@@ -578,8 +594,23 @@ def _later_ledger(change: dict[str, Any]) -> dict[str, Any]:
             "recordId": f"{FIRST_CLAIM_ID}-c0",
             "field": "summary",
         },
+        {
+            "changeId": "x-cites-the-run-in-another-field",
+            "operation": "add-record",
+            "claimId": CLAIM_ID,
+            "record": {"versionsRecordedIn": f"{FIRST_RUN}/run.v1alpha1.json"},
+        },
+        {
+            "changeId": "x-removes-the-citation",
+            "operation": "set-record-field",
+            "claimId": RELEASE_CLAIM_ID,
+            "recordId": f"{RELEASE_CLAIM_ID}-c0",
+            "field": "evidenceRefs",
+            "before": [f"{FIRST_RUN}/result.md"],
+            "after": [],
+        },
     ],
-    ids=lambda change: change["operation"],
+    ids=lambda change: change["changeId"],
 )
 def test_a_later_result_bearing_ledger_with_no_review_is_refused(
     change: dict[str, Any],
@@ -606,6 +637,169 @@ def test_a_later_ledger_that_bears_on_no_run_needs_no_review() -> None:
     assert gate == review_gate(REGISTER, LEDGERS)
 
 
+def test_a_register_change_of_an_unknown_operation_is_refused() -> None:
+    """The register tools apply any other operation as a claim-field change, so an
+    operation the gate ignored would change a claim and need no review."""
+
+    def rename(ledger: dict[str, Any]) -> None:
+        del ledger["resultReviews"]
+        for change in ledger["registerChanges"]:
+            if change["operation"] == "set-claim-field":
+                change["operation"] = "amend-claim-field"
+
+    ledgers = _ledgers(rename)
+    with pytest.raises(ValueError, match="does not know the operation"):
+        review_gate(REGISTER, ledgers)
+    with pytest.raises(ValueError, match="does not know the operation"):
+        build_index(REGISTER, ledgers)
+
+
+def _no_run_path(row: dict[str, Any]) -> None:
+    del row["runPath"]
+
+
+def _no_digest(row: dict[str, Any]) -> None:
+    del row["reviewSha256"]
+
+
+def _an_extra_member(row: dict[str, Any]) -> None:
+    row["reviewedBy"] = "someone"
+
+
+def _a_number(row: dict[str, Any]) -> None:
+    row["reviewRef"] = 1
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [_no_run_path, _no_digest, _an_extra_member, _a_number],
+    ids=lambda mutate: mutate.__name__.strip("_"),
+)
+def test_a_malformed_review_row_is_refused_and_not_a_traceback(
+    mutate: Callable[[dict[str, Any]], None],
+) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        mutate(ledger["resultReviews"][0])
+
+    with pytest.raises(ValueError, match="a resultReviews row is not exactly"):
+        review_gate(REGISTER, _ledgers(edit))
+
+
+@pytest.mark.parametrize("stated", [None, {}, "a review", [REVIEW_REF]])
+def test_review_references_that_are_not_a_list_of_rows_are_refused(
+    stated: Any,
+) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        ledger["resultReviews"] = stated
+
+    with pytest.raises(ValueError, match="resultReviews"):
+        review_gate(REGISTER, _ledgers(edit))
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "docs/proof/experiments/v2-e01/reviews/../freeze-r2.v1alpha1.json",
+        "docs/proof/experiments/v2-e01/reviews/..\\freeze-r2.v1alpha1.json",
+        "docs/proof/experiments/v2-e01/reviews/./" + REVIEW_REF.rsplit("/", 1)[1],
+    ],
+    ids=["parent", "backslash", "dot"],
+)
+def test_a_reference_that_is_not_a_plain_path_is_refused(
+    tmp_path: Path, reference: str
+) -> None:
+    def elsewhere(ledger: dict[str, Any]) -> None:
+        ledger["resultReviews"][0]["reviewRef"] = reference
+
+    with pytest.raises(ValueError, match="is not under"):
+        review_gate(REGISTER, _ledgers(elsewhere), _tree(tmp_path))
+
+
+@pytest.mark.parametrize("member", ["runId", "runPath"])
+def test_a_review_whose_run_identifier_or_path_alone_differs_is_refused(
+    tmp_path: Path, member: str
+) -> None:
+    root = _tree(tmp_path)
+
+    def other(review: dict[str, Any]) -> None:
+        review["subject"][member] = review["subject"][member].replace(
+            "20261003", "20261002"
+        )
+
+    digest = _rewrite_review(root, other)
+
+    def restate(ledger: dict[str, Any]) -> None:
+        ledger["resultReviews"][0]["reviewSha256"] = digest
+
+    with pytest.raises(ValueError, match="reviews the run"):
+        review_gate(REGISTER, _ledgers(restate), root)
+
+
+def test_an_artifact_that_is_not_json_is_refused(tmp_path: Path) -> None:
+    root = _tree(tmp_path)
+    (root / REVIEW_REF).write_text("not a review\n", encoding="utf-8")
+    digest = content_sha256(root / REVIEW_REF)
+
+    def restate(ledger: dict[str, Any]) -> None:
+        ledger["resultReviews"][0]["reviewSha256"] = digest
+
+    with pytest.raises(ValueError, match="is not an ExperimentResultReview"):
+        review_gate(REGISTER, _ledgers(restate), root)
+
+
+@pytest.mark.parametrize(
+    "named",
+    [
+        "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json",
+        f"{SECOND_RUN}/result.md",
+        "README.md",
+        "../outside.json",
+    ],
+    ids=["another-revision", "a-run-file", "another-file", "outside-the-root"],
+)
+def test_a_review_that_names_a_file_other_than_the_runs_freeze_record_is_refused(
+    tmp_path: Path, named: str
+) -> None:
+    """The file exists and the artifact gives its true digest. It is not the freeze
+    record the run's manifest names, so the review did not read the run's freeze."""
+    root = _tree(tmp_path / "root")
+    target = root / named
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not target.exists():
+        target.write_text("{}\n", encoding="utf-8")
+
+    def other_freeze(review: dict[str, Any]) -> None:
+        review["subject"]["freeze"]["path"] = named
+        review["subject"]["freeze"]["contentSha256"] = content_sha256(target)
+
+    digest = _rewrite_review(root, other_freeze)
+
+    def restate(ledger: dict[str, Any]) -> None:
+        ledger["resultReviews"][0]["reviewSha256"] = digest
+
+    with pytest.raises(ValueError, match="names a freeze record"):
+        review_gate(REGISTER, _ledgers(restate), root)
+
+
+@pytest.mark.parametrize("mode", [["--check"], ["--print"], []])
+def test_the_command_reports_a_refusal_as_a_mismatch_and_exits_1(
+    mode: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The command, not only the library: no index, no traceback, exit 1."""
+
+    def drop(ledger: dict[str, Any]) -> None:
+        del ledger["resultReviews"]
+
+    ledgers = _ledgers(drop)
+    monkeypatch.setattr(index_core, "load_ledgers", lambda *_: ledgers)
+    assert cli.main(mode) == 1
+    printed = capsys.readouterr().out
+    assert printed.startswith("MISMATCH ")
+    assert "references no independent review" in printed
+
+
 def test_ledgers_that_do_not_match_their_paths_are_refused() -> None:
     with pytest.raises(ValueError, match="ledgers were given"):
         review_gate(REGISTER, LEDGERS[:-1])
@@ -622,6 +816,7 @@ def test_the_pages_state_the_correction_as_later_and_the_gates_limits() -> None:
         "It does not show that a review was committed before the register change",
         "No record establishes that an independent review preceded the register "
         "change for either E01 run",
+        "It does not bind a review to a change.",
     ):
         assert phrase in experiments, phrase
     validation = normalised(read(LEDGER["reportRef"]))

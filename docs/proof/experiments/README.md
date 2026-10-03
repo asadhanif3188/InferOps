@@ -440,8 +440,8 @@ the limit E01-AC5 carries. The ledger also appends a dated correction to the cla
 limitation. The claim's status, its evidence level, and its record are unchanged.
 The correction is additive and later. The ledger that added the claim is not edited and
 still holds the earlier wording, and the ninth ledger records that wording as the value
-before the change. The earlier wording was on `main` from the merge of `V2-S2-004-PR2`
-until this correction merged.
+before the change. The earlier wording is on `main` from the merge of `V2-S2-004-PR2`
+until this correction merges.
 
 **The order.** Git history gives this sequence, by commit:
 
@@ -453,12 +453,14 @@ until this correction merged.
 No record establishes that an independent review preceded the register change for either E01 run.
 The correction does not repair that order, and no later change can.
 
-**The gate.** A register change *bears on* a run when the record it adds, or the claim or
-record it changes, cites a file under that run's directory. A ledger with such a change
+**The gate.** A register change *bears on* a run when the claim or record it adds, or the
+claim or record it changes, names a file under that run's directory, in any field, before
+or after the change. A ledger with such a change
 must name one review artifact for each run in `resultReviews`: the run's path, the
 artifact's path, and the artifact's content digest.
 [`tools/evidence_index`](../../../tools/evidence_index/core.py) checks every ledger when
-it builds the index, so `--check`, `--write`, and `--gate` exit 1 on a refusal, and the
+it builds the index, so `--check` and `--write` print `MISMATCH` and exit 1 on a refusal,
+as does `--gate` where it reports a freeze, and the
 default-lane suite [`tests/testing/test_result_review_gate.py`](../../../tests/testing/test_result_review_gate.py)
 plants each refusal in a copy.
 
@@ -467,11 +469,14 @@ plants each refusal in a copy.
 | A ledger that bears on a run and names no review of it | The review reference is omitted |
 | A reference whose artifact is absent | The review is not in the repository state the index is built from |
 | An artifact whose content digest is not the one the ledger states | The artifact changed after the ledger named it, or the ledger names other content |
-| An artifact that is not an `ExperimentResultReview`, or is outside the experiment's `reviews/` directory | It is not a result review of this experiment |
+| A `resultReviews` row that is not exactly the three strings, or references that are not a list | The reference cannot be read |
+| A register change with an operation the gate does not know | The gate cannot say what the change bears on |
+| An artifact that is not JSON, is not an `ExperimentResultReview`, or is not a plain path under the experiment's `reviews/` directory | It is not a result review of this experiment |
 | An artifact whose `subject` names another run | The review is about another result |
 | An artifact whose file digests are not those of the run's files, or that omits or adds a file | The review is stale: the run is not what the review read |
-| An artifact whose freeze digest is not that of the committed freeze record | The review read another freeze record |
+| An artifact that does not name the freeze record the run's manifest names, or that gives another digest for it | The review read another freeze record |
 | Two references for one run, or a reference for a run no change bears on | The reference is ambiguous or unrelated |
+| A review stated by a ledger written before the gate | A review written since did not precede that ledger |
 
 The ninth ledger bears on the second run. It references
 [the published review record](v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json),
@@ -488,15 +493,24 @@ and the gate accepts that reference. The review record is unchanged since it mer
 - **It does not judge the review.** It does not show that a review took place, who did
   it, whether it was independent, or what it concluded. A review record that reports a
   defect satisfies the gate.
+- **It does not bind a review to a change.** One review artifact of a run satisfies
+  every later ledger that bears on that run, including a change the review did not read.
+  The gate does not read the register state the review recorded.
 - **It does not cover the two earlier ledgers.** The ledgers that added the two E01
   claims were written before the gate. Each names no review, and the tool lists them in
   `PRE_GATE_LEDGER_PATHS` and in the index, under `registeredBeforeTheGate`. That list
-  records what happened. It does not say that either ledger complied.
-- **It sees a run only by a cited path.** A record that states a run's result and cites
-  no file under the run's directory does not bear on the run, as the gate reads it.
+  records what happened. It does not say that either ledger complied. The gate does not
+  check these two ledgers, whatever they hold; a test holds each to its content.
+- **It sees a run only by a named path.** A record that states a run's result and names
+  no file under the run's directory does not bear on the run, as the gate reads it. The
+  gate matches a path in the repository's normal form; the register's own rules, which
+  the default lane runs, refuse a path in another form. The gate follows a symbolic
+  link, and a path in another letter case resolves on a host whose file system ignores
+  case.
 - **It can be changed with the ledger.** A change that edits the gate, or the list of
   earlier ledgers, together with a ledger passes the check. A test holds that list to
   its two entries, so such an edit shows in review as a changed test.
 
 E01-D has not run. Its register change is to reference a review of the E01-D run: the
-review record of the static run names another run, and the gate refuses it for E01-D.
+review record of the static run names another run, and the gate would refuse it for a
+record that names a file under another run directory.
