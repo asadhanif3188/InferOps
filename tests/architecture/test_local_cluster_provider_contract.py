@@ -111,6 +111,7 @@ PLATFORM_WORKFLOWS = (
     "model-seed-image.sh",
     "target-detect.sh",
     "clean-clone.sh",
+    "argocd-bootstrap.sh",
 )
 
 # The platform workflows that mutate a target, as distinct from target-detect.sh,
@@ -133,6 +134,7 @@ MUTATING_PLATFORM_WORKFLOWS = (
     "api-image.sh",
     "model-seed-image.sh",
     "clean-clone.sh",
+    "argocd-bootstrap.sh",
 )
 KIND_HELPER = (
     "preflight.sh",

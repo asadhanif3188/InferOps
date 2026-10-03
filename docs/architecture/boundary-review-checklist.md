@@ -9,7 +9,8 @@ beside it, `test_terraform_prerequisites.py` and `test_helm_chart.py` for each t
 against its half of the ownership split, `test_local_cluster_provider_contract.py`
 for the provider boundary, `test_decision_authority.py` for decision ownership
 and sign-off authority, and, since 2026-10-03, `test_argocd_bootstrap.py` for the
-Argo CD bootstrap rows, which are decided and not built.
+Argo CD bootstrap rows and the procedure that creates them, with
+`test_argocd_bootstrap_procedure.py` executing that procedure against stubs.
 
 Use it when a change touches components, ownership, deployment, telemetry, trust
 boundaries, or scope. A change that touches none of those does not need it.

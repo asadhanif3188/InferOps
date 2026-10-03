@@ -35,7 +35,7 @@ caller names, and nothing installs a release from them.
 | [System architecture](system-architecture.md) | Context, components, inference request flow, deployment flow, telemetry and evidence flow, trust boundaries |
 | [Resource ownership](resource-ownership.md) | Which tool owns which resource, with lifecycle and handoff rules |
 | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) | The authoritative form of that inventory, validated by `tests/architecture/` |
-| [The Argo CD bootstrap record](../environment/argocd-bootstrap.md) | The pinned Argo CD release, manifest and images, the objects of the installation and the row that owns each, the refusals, and the scoped removal. Decided by ADR 0017 and not implemented |
+| [The Argo CD bootstrap record](../environment/argocd-bootstrap.md) | The pinned Argo CD release, manifest and images, the objects of the installation and the row that owns each, the refusals, the scoped removal, and the procedure that implements them. Decided by ADR 0017. Executed on the `docker-desktop` provider and not on `kind` |
 | [Project boundaries](project-boundaries.md) | Where this project stops, and what belongs to gateway or deeper serving work instead |
 | [Boundary review checklist](boundary-review-checklist.md) | The questions a reviewer applies to all of the above |
 | [Workload domain model](../domain/workload-domain-model.md) | The first component built under these boundaries, and the dependency rule it is held to |
@@ -284,6 +284,14 @@ and a test holds the four bootstrap rows apart from what Terraform and Helm own.
 hold only as an absence: Argo CD reconciles nothing another owner holds because
 no Application is committed. It records that the upstream controller holds every
 verb on every resource, and does not narrow that.
+
+That paragraph describes 0017 as it was accepted. The same day, a procedure
+implemented it and ran on the `docker-desktop` provider: three installs and two
+removals, recorded in [the run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md). The record amends 0017 in
+place, with the date. The apply mechanism and the image-digest mechanism are
+accepted for that provider, the four bootstrap rows are `implemented`, and the
+choice of the core profile stays proposed, because no Application was
+reconciled. The procedure was not executed on `kind`.
 
 ## Conventions
 

@@ -480,6 +480,21 @@ can commit to without deciding who does it.
 > `v1.0.0`. There have been seven since 2026-09-30; the note under `D11` says which
 > one was added, and where the current count is kept.
 
+> **Note, 2026-10-03: six controls for the Argo CD bootstrap.** The second bullet of
+> this section counts thirty-eight controls. That is the text `v1.0.0` released, and
+> the count was true then. `V2-S3-001-PR2` implemented the Argo CD bootstrap that
+> [ADR 0017](ADR-0017-argocd-bootstrap-and-ownership.md) decided, and added six
+> controls, three threats, and two deferred risks to
+> [the baseline data](../../security/security-baseline.v1alpha1.json) before its first
+> install. The count is now:
+> **Forty-four controls exist, and thirty-four of them are enforced by something.**
+> Eleven act over committed documents, fifteen over manifests, eight on the host,
+> three by review alone, two are specified for components that do not exist, and
+> five are deferred outright.
+> [The control matrix](../../security/control-matrix.md) carries the current count,
+> and a test recomputes it there. Fourteen deferred risks are recorded, and twelve of
+> them block production use. The decision is unchanged.
+
 ## Compatibility impact
 
 None to any published contract. This record adds no field to the workload contract,

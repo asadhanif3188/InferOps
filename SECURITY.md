@@ -56,9 +56,9 @@ enough to be worth stating here rather than left for a reader to infer:
 
 | Document | What it is |
 |---|---|
-| [Threat model](docs/security/threat-model.md) | The assets, actors, boundaries, and twenty-two abuse cases this project models |
+| [Threat model](docs/security/threat-model.md) | The assets, actors, boundaries, and twenty-five abuse cases this project models |
 | [Control matrix](docs/security/control-matrix.md) | Every control, what verifies it, and who owns that verification |
-| [Deferred risks and exceptions](docs/security/deferred-risks.md) | Twelve risks V1 carries rather than reduces, and seven weaknesses it accepts |
+| [Deferred risks and exceptions](docs/security/deferred-risks.md) | Fourteen risks V1 carries rather than reduces, and seven weaknesses it accepts |
 | [ADR 0008](docs/architecture/decisions/ADR-0008-v1-security-baseline.md) | The decision behind all three |
 
 **None of it establishes that a running system is defended.** Nothing in this

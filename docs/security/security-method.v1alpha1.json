@@ -37,7 +37,7 @@
       "implemented": [
         {
           "itemId": "the-baseline-derives-every-control-status",
-          "statement": "Eleven assets, six actors, six trust boundaries and twenty-two threats are committed as data, and every control's status is derived from the verification it names rather than asserted.",
+          "statement": "Twelve assets, six actors, six trust boundaries and twenty-five threats are committed as data, and every control's status is derived from the verification it names rather than asserted.",
           "controlIds": [
             "derive-a-control-status-from-its-verification",
             "no-security-claim-without-a-named-verification"
@@ -237,6 +237,34 @@
             }
           ],
           "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "the-argocd-manifest-and-images-are-compared-with-their-pins",
+          "statement": "The Argo CD bootstrap verifies the SHA-256 of the install manifest before its first mutation, and reports success only when every container, init containers included, reports the pinned digest of its image. On the docker-desktop provider a run did both.",
+          "controlIds": [
+            "verify-the-argocd-manifest-digest-before-apply",
+            "argocd-containers-run-their-pinned-digest-at-install"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "scripts/environment/argocd-bootstrap.sh"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_argocd_bootstrap_procedure.py::test_install_refuses_manifest_bytes_that_are_not_the_pin"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_argocd_bootstrap_procedure.py::test_verification_fails_when_a_container_does_not_run_its_pin"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md"
+            }
+          ],
+          "evidenceLabel": "local-real-cpu"
         }
       ],
       "notImplemented": [
@@ -287,6 +315,17 @@
           "claimIds": [],
           "gapIds": [],
           "notClaimed": "No availability or reproducibility-over-time property is claimed for an external artifact."
+        },
+        {
+          "itemId": "the-argocd-pins-are-not-authenticated-and-do-not-hold-after-a-restart",
+          "statement": "No signature is verified for the Argo CD release, the manifest names each image by tag, and nothing reads a container's image after the bootstrap's check, so a pod that restarts later can run other bytes. Neither image was scanned.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-13"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No provenance or authenticity property is claimed for the Argo CD release, and no statement is made about the image a container runs after the check."
         }
       ]
     },
@@ -589,6 +628,39 @@
             }
           ],
           "evidenceLabel": "local-real-cpu"
+        },
+        {
+          "itemId": "the-argocd-bootstrap-refuses-what-it-did-not-install",
+          "statement": "The Argo CD bootstrap and its removal refuse an installation that does not carry the bootstrap marker, the removal refuses while an Application, ApplicationSet, or AppProject object exists, and no tracked file declares such an object. The two refusals are executed against stub tools; no run met either condition in a cluster.",
+          "controlIds": [
+            "refuse-an-argocd-installation-this-project-did-not-create",
+            "refuse-argocd-removal-while-a-custom-resource-exists",
+            "no-argocd-custom-resource-is-committed"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "scripts/environment/argocd-bootstrap.sh"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_argocd_bootstrap_procedure.py::test_install_refuses_a_namespace_it_did_not_create"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_argocd_bootstrap_procedure.py::test_removal_refuses_while_a_custom_resource_exists"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_argocd_bootstrap.py::test_no_argocd_custom_resource_is_committed"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
         }
       ],
       "notImplemented": [
@@ -604,6 +676,19 @@
           ],
           "gapIds": [],
           "notClaimed": "No workload this platform deployed may be described as constrained."
+        },
+        {
+          "itemId": "the-argocd-controller-grant-is-not-narrowed",
+          "statement": "The Argo CD application controller holds every verb on every resource, which is the upstream default of the unmodified manifest, and nothing limits the namespaces or kinds it may change.",
+          "controlIds": [
+            "narrow-the-argocd-controller-grant"
+          ],
+          "registerRefs": [
+            "DR-14"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No least-privilege property is claimed for Argo CD, and no isolation between the controller and an object another owner holds."
         }
       ]
     },
@@ -909,8 +994,8 @@
       ],
       "notImplemented": [
         {
-          "itemId": "twelve-risks-are-carried",
-          "statement": "Twelve risks are carried rather than reduced, and ten of them block production use.",
+          "itemId": "fourteen-risks-are-carried",
+          "statement": "Fourteen risks are carried rather than reduced, and twelve of them block production use.",
           "controlIds": [],
           "registerRefs": [
             "DR-01",
@@ -924,7 +1009,9 @@
             "DR-09",
             "DR-10",
             "DR-11",
-            "DR-12"
+            "DR-12",
+            "DR-13",
+            "DR-14"
           ],
           "claimIds": [],
           "gapIds": [],
@@ -998,6 +1085,10 @@
     {
       "correctionId": "real-runtime-records-exist",
       "statement": "DR-12, ADR 0006, the redaction rules, and the API instrumentation document said no record had been produced against a real runtime. Three committed files, from two runs, quote records the API wrote with the real adapter. What stays true is narrower: no suite reads one for content."
+    },
+    {
+      "correctionId": "argocd-bootstrap-rows-added",
+      "statement": "This method described twelve risks, thirty-eight controls, and twenty-two threats until 2026-10-03. The change that implemented the Argo CD bootstrap added six controls, three threats, two risks, and one asset to the baseline, and this method carries them in topics 2, 5, and 9. They belong to a V2 installation procedure, and the method's title still says V1."
     }
   ],
   "limitations": [

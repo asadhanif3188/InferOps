@@ -182,7 +182,9 @@ provider supplied it.
 adds a fourth owner of cluster objects to the inventory: `argocd-bootstrap`, with
 the `bootstrap` lifecycle, for the Argo CD installation. Terraform and Helm keep
 what this decision gave them, and no existing row moves. The new owner's rows are
-`planned`: no bootstrap procedure exists, and nothing is installed.
+`planned`: no bootstrap procedure exists, and nothing is installed. (Later on
+2026-10-03 a procedure was added and executed on the `docker-desktop` provider,
+and the rows moved to `implemented`. ADR 0017 records it.)
 
 ### The overlap this decision found
 

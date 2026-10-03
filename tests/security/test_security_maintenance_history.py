@@ -82,6 +82,11 @@ POST_RELEASE_NOTES = (
         "V2-S1-004-PR2",
         "6ddd84884221a62914a2b5086c79949299f51e14a7de0444e58a809c72129373",
     ),
+    (
+        "> **Note, 2026-10-03: six controls for the Argo CD bootstrap.**",
+        "V2-S3-001-PR2",
+        "67a485152bc48a614e639421ca963ddaf6053f9a79f6bd4c059592b52b56dbb6",
+    ),
 )
 D11_NOTE = POST_RELEASE_NOTES[1][0]
 CONSEQUENCES_NOTE = POST_RELEASE_NOTES[2][0]

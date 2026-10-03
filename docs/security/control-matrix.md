@@ -3,8 +3,8 @@
 Status: **accepted**, in
 [ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). It lists
 every V1 security control, the boundary it acts at, what verifies it, who owns that
-verification, and which record it rests on. Twenty-nine of thirty-eight controls are
-enforced by something. The other nine are the reason
+verification, and which record it rests on. Thirty-four of forty-four controls are
+enforced by something. The other ten are the reason
 [the deferred-risk register](deferred-risks.md) exists.
 
 The authoritative form is
@@ -57,7 +57,7 @@ verify** — the field that stops a narrow check being read as a broad one.
 
 ## What is enforced over committed documents
 
-Ten controls. A test in this repository reads the artifact and fails if the property
+Eleven controls. A test in this repository reads the artifact and fails if the property
 stops holding. Four of them were already enforced by suites that existed before this
 baseline; naming them here puts them in the matrix rather than leaving them
 remembered.
@@ -82,6 +82,16 @@ hand, recorded in [the V1-S4-001-PR1 record](../proof/testing/v1-s4-001-pr1-vali
 and on every change since as the `secret-scan` gate — and neither of those is what this
 control reads. A configuration file is not a result. (This paragraph said until
 2026-09-22 that no scanner had been run.)
+
+The eleventh, `no-argocd-custom-resource-is-committed`, arrived with the Argo CD
+bootstrap on 2026-10-03. It is an absence and not a restriction: no tracked file
+declares an Application, an ApplicationSet, an AppProject, or a cluster
+registration, so the controller has nothing to reconcile. It reads files and no
+cluster, and it does not limit what a later Application may target.
+
+| Control | Boundary | Verified by | Owner | Evidence |
+|---|---|---|---|---|
+| `no-argocd-custom-resource-is-committed` | B2 | `test_no_argocd_custom_resource_is_committed` | environment | [environment](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) |
 
 ## What is enforced over the manifests
 
@@ -154,6 +164,10 @@ access control: it identifies nobody and limits nothing once something is inside
 | `scope-every-kubectl-call-to-the-project-kubeconfig` | B2 | `inferops::kubectl` in [`lib.sh`](../../scripts/environment/lib.sh) | environment | [environment](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
 | `scan-the-pinned-runtime-image-for-known-vulnerabilities` | B1 | `inferops::security::assert_runtime_image_has_no_blocking_vulnerabilities` in [`scripts/security/lib.sh`](../../scripts/security/lib.sh) | security | [security](../proof/security/v1-s2-006-pr1-validation.md) |
 | `scan-python-dependencies-for-known-vulnerabilities` | B1 | `inferops::security::assert_dependencies_have_no_blocking_vulnerabilities` in [`scripts/security/lib.sh`](../../scripts/security/lib.sh) | security | [security](../proof/security/v1-s2-006-pr1-validation.md) |
+| `verify-the-argocd-manifest-digest-before-apply` | B1 | `argocd::obtain_manifest` in [`argocd-bootstrap.sh`](../../scripts/environment/argocd-bootstrap.sh) | environment | [environment](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) |
+| `argocd-containers-run-their-pinned-digest-at-install` | B1 | `argocd::assert_pinned_images` in [`argocd-bootstrap.sh`](../../scripts/environment/argocd-bootstrap.sh) | environment | [environment](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) |
+| `refuse-an-argocd-installation-this-project-did-not-create` | B2 | `argocd::refuse_foreign_installation` in [`argocd-bootstrap.sh`](../../scripts/environment/argocd-bootstrap.sh) | environment | [environment](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) |
+| `refuse-argocd-removal-while-a-custom-resource-exists` | B2 | `argocd::refuse_custom_resources` in [`argocd-bootstrap.sh`](../../scripts/environment/argocd-bootstrap.sh) | environment | [environment](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) |
 
 The first two confirm that every node the reachable API server reports is a
 container the cluster tool labelled for this project's cluster. A context name is a
@@ -162,7 +176,7 @@ records its bypass in the open: a second cluster deliberately given this project
 name satisfies every check, and nothing running on a contributor's machine could
 defend against the contributor who owns it.
 
-The last two are scanners, not cluster guards, and what they establish is narrower
+The third and fourth are scanners, not cluster guards, and what they establish is narrower
 than it may read. Each runs Trivy once, on the machine of whoever invokes it, and
 refuses to report success when a finding at or above the committed blocking
 severity turns up with no recorded exception. Both also run as the
@@ -175,6 +189,21 @@ promoted into a record, so a result is current only as of the run that produced 
 and that ADR 0005 D6 left the service undecided; ADR 0012 decided it on 2026-09-12.) [The severity policy
 below](#the-vulnerability-scan-severity-policy) states the threshold and how an
 exception would be recorded against a specific finding.
+
+The last four are guards of the Argo CD bootstrap, added on 2026-10-03 with
+[the procedure](../environment/argocd-bootstrap.md). Each refuses before the first
+mutation, except the image check, which runs after the apply and withholds the
+success report. What each establishes is narrow:
+
+- The manifest check compares a SHA-256. It identifies bytes and does not
+  authenticate them. No signature was verified.
+- The image check compares the identity the container runtime reports with the
+  pinned digest, at that moment. A pod that restarts later resolves its image
+  tag again, and nothing reads it. `DR-13` carries both.
+- The foreign-installation refusal reads a label on the namespace. A person who
+  can label a namespace can set it.
+- The custom-resource refusal was executed against stubs. No Application has
+  existed in a cluster, so no run refused one.
 
 ## The vulnerability-scan severity policy
 
@@ -258,7 +287,7 @@ now an observation rather than a caution.
 
 ## What is deferred outright
 
-Four controls. V1 takes no action, and each has a register entry stating why, what
+Five controls. No action is taken, and each has a register entry stating why, what
 would have to be true, and what may not be claimed while it stands.
 
 | Control | Boundary | Owner | Register entry |
@@ -267,6 +296,7 @@ would have to be true, and what may not be claimed while it stands.
 | `limit-what-one-caller-may-consume` | B5 | platform | [DR-02](deferred-risks.md) |
 | `verify-artifact-provenance` | B1 | serving | [DR-08](deferred-risks.md) |
 | `pin-every-dependency-with-a-committed-lockfile` | B1 | environment | [DR-07](deferred-risks.md) |
+| `narrow-the-argocd-controller-grant` | B2 | environment | [DR-14](deferred-risks.md) |
 
 ## Owners
 

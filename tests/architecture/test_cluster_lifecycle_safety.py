@@ -78,6 +78,7 @@ ENTRY_POINTS = (
     "telemetry-collection-verify.sh",
     "target-detect.sh",
     "clean-clone.sh",
+    "argocd-bootstrap.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
@@ -435,6 +436,31 @@ INVOKES_DELETE = re.compile(
 )
 
 
+# The deletions the Argo CD bootstrap removal makes outside a namespace: three
+# definitions, one cluster role, one cluster role binding, and the namespace
+# `argocd` itself (ADR 0017 D11). A cluster-scoped object has no namespace to be
+# scoped to, so each shape is written out here, exactly, with the variable that
+# names its object. `test_the_bootstrap_deletions_name_only_recorded_objects`
+# holds each variable to a constant, and `tests/architecture/test_argocd_bootstrap.py`
+# holds each constant to the committed record. A deletion of one of these kinds
+# in any other shape is refused.
+BOOTSTRAP_SCRIPT = "argocd-bootstrap.sh"
+BOOTSTRAP_NAMESPACE_SCOPE = '-n "${INFEROPS_ARGOCD_NAMESPACE}"'
+BOOTSTRAP_CLUSTER_SCOPED_DELETIONS = (
+    'delete customresourcedefinition "${definition}" --ignore-not-found',
+    'delete clusterrolebinding "${INFEROPS_ARGOCD_CLUSTER_ROLE_BINDING}" --ignore-not-found',
+    'delete clusterrole "${INFEROPS_ARGOCD_CLUSTER_ROLE}" --ignore-not-found',
+    'delete namespace "${INFEROPS_ARGOCD_NAMESPACE}" --ignore-not-found',
+)
+
+# The loops whose variable a bootstrap deletion names, and the one constant each
+# may iterate.
+BOOTSTRAP_LOOP_SOURCES = {
+    "definition": ("${INFEROPS_ARGOCD_DEFINITIONS}",),
+    "workload": ("${INFEROPS_ARGOCD_STATEFULSETS}", "${INFEROPS_ARGOCD_DEPLOYMENTS}"),
+}
+
+
 def deletion_lines() -> list[tuple[str, int, str]]:
     """Every kubectl deletion in the environment scripts, as a logical line."""
     return [row for row in all_code_lines() if INVOKES_DELETE.search(row[2])]
@@ -458,15 +484,21 @@ def deletion_is_scoped(line: str) -> bool:
     """
     if 'delete namespace "${INFEROPS_NAMESPACE}"' in line:
         return True
+    if any(shape in line for shape in BOOTSTRAP_CLUSTER_SCOPED_DELETIONS):
+        return True
     # Two namespaces, because this project owns two: the smoke namespace every
     # cluster-lifecycle script works in, and the release namespace the
     # certification workflows install into. Both are Terraform's or these
     # scripts' own and both carry the `inferops-` prefix ADR 0001 (D5) requires;
     # what the rule is about is that a deletion names a namespace at all, not
     # which of this project's two it names.
+    #
+    # A third since ADR 0017: `argocd`, which the bootstrap owns and which does
+    # not carry the prefix. It is held to the same rule -- a namespace and a name.
     scoped = (
         '-n "${INFEROPS_NAMESPACE}"' in line
         or '-n "${INFEROPS_RELEASE_NAMESPACE}"' in line
+        or BOOTSTRAP_NAMESPACE_SCOPE in line
     )
     selected = '-l "${INFEROPS_PART_OF_SELECTOR}"' in line or (
         DELETE_NAMES_A_RESOURCE.search(line) is not None
@@ -481,6 +513,56 @@ def test_every_object_deletion_is_scoped() -> None:
         if not deletion_is_scoped(line)
     ]
     assert not offenders, offenders
+
+
+def test_only_the_bootstrap_deletes_outside_the_project_namespaces() -> None:
+    """The shapes written out for the Argo CD removal are that script's alone.
+
+    They exist so that one procedure can delete five cluster-scoped objects and
+    its own namespace. Another script using one would be deleting an object the
+    ownership inventory gives to the bootstrap.
+    """
+    found = set()
+    for name, number, line in deletion_lines():
+        uses = [shape for shape in BOOTSTRAP_CLUSTER_SCOPED_DELETIONS if shape in line]
+        if uses or BOOTSTRAP_NAMESPACE_SCOPE in line:
+            assert name == BOOTSTRAP_SCRIPT, f"{name}:{number}: {line.strip()}"
+        found.update(uses)
+    assert found == set(BOOTSTRAP_CLUSTER_SCOPED_DELETIONS), (
+        "a shape this module allows is one the bootstrap no longer uses; drop it"
+    )
+
+
+def test_the_bootstrap_deletions_name_only_recorded_objects() -> None:
+    """A deletion by variable names what the variable holds, so hold the variable.
+
+    Every loop variable a deletion names iterates a readonly constant, and
+    nothing assigns it another way. Every namespace and role variable is a
+    readonly constant of the script.
+    """
+    body = script_text(BOOTSTRAP_SCRIPT)
+    lines = [line for _, line in code_lines(BOOTSTRAP_SCRIPT)]
+    for variable, sources in BOOTSTRAP_LOOP_SOURCES.items():
+        loops = [line for line in lines if line.startswith(f"for {variable} in ")]
+        assert loops, f"no loop sets ${{{variable}}}"
+        for loop in loops:
+            assert loop in {f"for {variable} in {source}; do" for source in sources}, (
+                loop
+            )
+        assert not re.search(rf"(?<![\w]){variable}=", body), (
+            f"{variable} is assigned outside a loop over a constant"
+        )
+    for constant in (
+        "INFEROPS_ARGOCD_NAMESPACE",
+        "INFEROPS_ARGOCD_CLUSTER_ROLE",
+        "INFEROPS_ARGOCD_CLUSTER_ROLE_BINDING",
+        "INFEROPS_ARGOCD_DEFINITIONS",
+        "INFEROPS_ARGOCD_STATEFULSETS",
+        "INFEROPS_ARGOCD_DEPLOYMENTS",
+    ):
+        assert re.search(
+            rf'^readonly {constant}="[a-z0-9. -]+"$', body, flags=re.MULTILINE
+        ), f"{constant} is not a readonly literal"
 
 
 def test_no_deletion_takes_every_object_of_a_kind() -> None:
@@ -589,6 +671,17 @@ def rules_reject(line: str) -> bool:
         # a namespace-less mutating call, and one naming no target.
         'inferops::target_helm upgrade "${R}" "${C}" --wait',
         'helm upgrade "${R}" "${C}" --namespace "${N}"',
+        # The Argo CD removal's shapes (ADR 0017 D11) are exact. A cluster-scoped
+        # deletion that names nothing, takes everything, or names its object
+        # through any other variable is refused, and so is the deletion of a
+        # namespace another owner holds.
+        "inferops::target_kubectl delete customresourcedefinition --all",
+        'inferops::target_kubectl delete customresourcedefinition "${anything}"',
+        'inferops::target_kubectl delete clusterrole "${ROLE}" --ignore-not-found',
+        "inferops::target_kubectl delete clusterrole cluster-admin",
+        'inferops::target_kubectl delete namespace "${INFEROPS_RELEASE_NAMESPACE}"',
+        'inferops::target_kubectl delete deployment --all -n "${INFEROPS_ARGOCD_NAMESPACE}"',
+        'inferops::target_kubectl delete deployment -n "${INFEROPS_ARGOCD_NAMESPACE}"',
     ),
 )
 def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:
@@ -626,6 +719,15 @@ def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:
         # is a bare or unscoped call.
         'inferops::target_helm install "${R}" "${C}" --namespace "${N}" --wait',
         'inferops::target_kubectl create namespace "${INFEROPS_RELEASE_NAMESPACE}"',
+        # Every deletion the Argo CD removal makes, and its read across
+        # namespaces for an Application, which changes nothing.
+        'inferops::target_kubectl delete statefulset "${workload}" -n "${INFEROPS_ARGOCD_NAMESPACE}" --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s"',
+        'inferops::target_kubectl delete deployment "${workload}" -n "${INFEROPS_ARGOCD_NAMESPACE}" --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s"',
+        'inferops::target_kubectl delete customresourcedefinition "${definition}" --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s"',
+        'inferops::target_kubectl delete clusterrolebinding "${INFEROPS_ARGOCD_CLUSTER_ROLE_BINDING}" --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s"',
+        'inferops::target_kubectl delete clusterrole "${INFEROPS_ARGOCD_CLUSTER_ROLE}" --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s"',
+        'inferops::target_kubectl delete namespace "${INFEROPS_ARGOCD_NAMESPACE}" --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s"',
+        'inferops::target_kubectl get "${definition}" --all-namespaces -o name',
     ),
 )
 def test_the_rules_accept_what_the_scripts_legitimately_do(sample: str) -> None:

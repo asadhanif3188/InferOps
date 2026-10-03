@@ -10,6 +10,27 @@ from `1.0.0`.
 
 ### Added
 
+- **A procedure that installs, verifies, and removes the pinned Argo CD, executed on
+  one provider. No Application exists.** `V2-S3-001-PR2` adds
+  [`scripts/environment/argocd-bootstrap.sh`](scripts/environment/argocd-bootstrap.sh),
+  which implements [ADR 0017](docs/architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md).
+  It takes the provider from the operator, with no default, and verifies the cluster
+  before it reads it. `install` verifies the manifest's SHA-256, creates the namespace
+  `argocd` with a marker, applies the manifest unmodified with server-side apply, waits
+  a bounded time, and reports success only when every container reports the pinned
+  digest of its image. `remove --confirm` deletes the installation in the decided
+  order and refuses while an Application exists. Six refusals come before the first
+  mutation. On 2026-10-03 the procedure ran on the `docker-desktop` provider: three
+  installs and two removals passed, after a first attempt failed at the download on
+  Windows and changed nothing. [The run record](docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md)
+  keeps both attempts. **It was not executed on `kind`.** The run created no
+  Application, so Argo CD reconciled nothing, and no request was sent. The image
+  check covers the moment it runs: a pod that restarts later resolves its tag again.
+  The security baseline gains six controls, three threats, and two deferred risks,
+  written before the first install; the controller still holds every verb on every
+  resource. The four bootstrap rows of the ownership inventory move to `implemented`.
+  ADR 0017 D8 and the mechanism of D6 move from proposed to accepted for that
+  provider. A new default-lane suite executes the procedure against recording stubs.
 - **A decision on how Argo CD is installed and owned, with its inputs pinned. Nothing is
   installed.** `V2-S3-001-PR1` adds [ADR 0017](docs/architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md).
   It selects Argo CD as the V2 GitOps controller and gives its installation one owner, a

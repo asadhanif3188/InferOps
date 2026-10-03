@@ -1,29 +1,35 @@
-"""Deterministic checks over the Argo CD bootstrap record.
+"""Deterministic checks over the Argo CD bootstrap record and its procedure.
 
 Every check here reads files from this repository and nothing else. No network,
 no cluster, no container engine, no clock, no randomness.
 
 ADR 0017 decided how V2 installs Argo CD and who owns that installation, and
-pinned the inputs. It installed nothing. This suite holds four things:
+pinned the inputs. `scripts/environment/argocd-bootstrap.sh` implements the
+decision. This suite holds five things:
 
 * the record's pins have the form of immutable identifiers and agree with one
   another;
 * every object the pinned manifest declares maps to a row of the ownership
   inventory that the bootstrap owner holds, and no such object is also Terraform's
   or Helm's;
+* the procedure restates the record's pins, names, and refusals exactly, applies
+  the manifest unmodified, and is the only build file that names the controller;
 * nothing committed gives Argo CD an object to reconcile, and no serving
   component refers to Argo CD;
 * every rule the record states names a test that exists, or says that nothing
-  enforces it yet.
+  enforces it.
 
-It also pins what is not built, so that the change which builds it has to move
-the record in the same commit: the bootstrap rows are `planned`, the record says
-`decided-not-implemented`, and no bootstrap script exists.
+Until the procedure existed this suite pinned its absence: the record said
+`decided-not-implemented`, the bootstrap rows were `planned`, and a build file
+that named Argo CD failed. Those pins moved in the change that added the
+procedure, as they were written to.
 
 What it establishes about whether Argo CD installs, reconciles, or can be
-removed: nothing. The pins were read from upstream once, and no test here
-contacts upstream, so it does not establish that the pinned bytes are still
-served either.
+removed: nothing. It reads the procedure as text.
+`tests/architecture/test_argocd_bootstrap_procedure.py` executes the procedure
+against stubs, and the record of a run on a provider is the evidence that it
+installs. The pins were read from upstream once, and no test here contacts
+upstream, so it does not establish that the pinned bytes are still served.
 """
 
 from __future__ import annotations
@@ -63,6 +69,10 @@ OWNERSHIP_PATH = (
 )
 OWNERSHIP_DOCUMENT_PATH = REPO_ROOT / "docs" / "architecture" / "resource-ownership.md"
 LIB_PATH = REPO_ROOT / "scripts" / "environment" / "lib.sh"
+PROCEDURE_REL = "scripts/environment/argocd-bootstrap.sh"
+PROCEDURE_PATH = REPO_ROOT / PROCEDURE_REL
+PROCEDURE_MODULE_REL = "tests/architecture/test_argocd_bootstrap_procedure.py"
+BASELINE_PATH = REPO_ROOT / "docs" / "security" / "security-baseline.v1alpha1.json"
 TERRAFORM_DIR = REPO_ROOT / "infra" / "terraform"
 TERRAFORM_ENVIRONMENT_VARIABLES = (
     TERRAFORM_DIR / "environments" / "local" / "variables.tf"
@@ -138,6 +148,31 @@ BUILD_ROOTS = (
 
 #: The directories a request is served from.
 SERVING_ROOTS = ("src", "charts", "deploy")
+
+#: The build files that may name the controller: the procedure, and nothing else.
+#: A second file is a second thing that addresses Argo CD, and this suite reads
+#: only the first.
+ALLOWED_REFERENCES = [PROCEDURE_REL]
+
+#: The modules a rule may name as its enforcement: this one, which reads files,
+#: and the one that executes the procedure against stubs.
+ENFORCING_MODULES = {
+    THIS_MODULE_REL: THIS_MODULE,
+    PROCEDURE_MODULE_REL: REPO_ROOT / PROCEDURE_MODULE_REL,
+}
+
+#: How a manifest kind is written as a kubectl resource in the procedure.
+RESOURCE_OF_KIND = {
+    "ServiceAccount": "serviceaccount",
+    "Role": "role",
+    "RoleBinding": "rolebinding",
+    "ConfigMap": "configmap",
+    "Secret": "secret",
+    "Service": "service",
+    "Deployment": "deployment",
+    "StatefulSet": "statefulset",
+    "NetworkPolicy": "networkpolicy",
+}
 
 NUMBER_WORDS = (
     "zero",
@@ -225,6 +260,48 @@ def shell_constant(name: str) -> str:
     return matched.group(1)
 
 
+def procedure_text() -> str:
+    return text_of(PROCEDURE_PATH)
+
+
+def procedure_constant(name: str) -> str:
+    matched = re.search(
+        rf'^readonly {name}="([^"]*)"$', procedure_text(), flags=re.MULTILINE
+    )
+    assert matched, f"{name} is not a readonly constant of the procedure"
+    return matched.group(1)
+
+
+def procedure_commands() -> list[str]:
+    """Every command of the procedure, as one logical line each.
+
+    Comments are dropped and continuation lines are joined, so a rule about a
+    command reads the whole command. A comment that quotes a command is not a
+    command.
+    """
+    commands: list[str] = []
+    pending: list[str] = []
+    for raw in procedure_text().splitlines():
+        stripped = raw.strip()
+        if not pending and (not stripped or stripped.startswith("#")):
+            continue
+        pending.append(stripped.removesuffix("\\").strip())
+        if stripped.endswith("\\"):
+            continue
+        commands.append(" ".join(pending))
+        pending = []
+    return commands
+
+
+def objects_of(kinds: frozenset[str] | None = None) -> list[tuple[str, str]]:
+    return [
+        (entry["kind"], name)
+        for entry in RECORD["manifestObjects"]
+        for name in entry["names"]
+        if kinds is None or entry["kind"] in kinds
+    ]
+
+
 def terraform_default(variable: str) -> str:
     matched = re.search(
         rf'variable "{variable}" \{{.*?default\s*=\s*"([^"]+)"',
@@ -279,42 +356,74 @@ def test_the_record_says_what_it_does_not_establish() -> None:
 
 
 # --------------------------------------------------------------------------
-# What is not built, pinned so that building it moves the record
+# What is built, and the one file that builds it
 # --------------------------------------------------------------------------
 
 
-def test_the_record_says_the_bootstrap_is_not_implemented() -> None:
-    """A pin, not a rule.
+def test_the_record_says_the_bootstrap_is_implemented_by_one_procedure() -> None:
+    """The record names the procedure, and no other build file names Argo CD.
 
-    The change that implements the bootstrap must change this value, and with it
-    the rules below that say nothing enforces them. A record that still said
-    `decided-not-implemented` beside a working procedure would be describing the
-    past.
-
-    The first version of this check read only file names under
-    `scripts/environment/`. A procedure under another name, a function added to
-    `lib.sh`, or a tool under `tools/` passed it. It now reads every tracked file
-    under the build directories, by path and by content. A procedure that never
-    names the controller still passes.
+    Until the procedure existed this test pinned `decided-not-implemented` and
+    failed when any build file named the controller. It now pins the other
+    side: the state is `implemented`, the procedure the record names is
+    committed, and that file is the only one under the build directories that
+    refers to Argo CD by path or by content. A second such file is a second
+    procedure, a client, or a dependency, and this suite would not be reading
+    it.
     """
-    assert RECORD["implementationState"] == "decided-not-implemented"
+    assert RECORD["implementationState"] == "implemented"
+    procedure = RECORD["procedure"]
+    assert procedure["path"] == PROCEDURE_REL
+    assert PROCEDURE_PATH.is_file(), PROCEDURE_REL
+    assert procedure["operations"] == ["install", "verify", "remove"]
+    assert (REPO_ROOT / procedure["executedTestRef"]).is_file()
+    assert procedure["executedTestRef"] == PROCEDURE_MODULE_REL
+
     manifest = PINS["installManifest"]
     assert manifest["mustBeAppliedUnmodified"] is True
-    assert manifest["applied"] is False, "nothing has applied the manifest"
-    named = references_to_argocd(BUILD_ROOTS)
-    assert not named, (
-        f"{named} refers to Argo CD. The record still says the bootstrap is not "
-        "implemented; move implementationState, the rules it owes, and the "
-        "security baseline rows the record says must come first."
-    )
+    assert manifest["applied"] is True
+    assert references_to_argocd(BUILD_ROOTS) == ALLOWED_REFERENCES
+
+
+def test_every_run_the_record_cites_is_a_committed_record() -> None:
+    """`applied` is a statement about a cluster, so it cites the run.
+
+    One provider's run certifies no other provider. The record lists each run
+    with its provider, and a provider with no run is listed as not executed.
+    """
+    runs = RECORD["runs"]
+    assert runs, "the record says the manifest was applied and cites no run"
+    for run in runs:
+        assert set(run) == {
+            "provider",
+            "date",
+            "serverVersion",
+            "result",
+            "evidenceLevel",
+            "evidenceRef",
+        }, run
+        assert run["evidenceRef"].startswith("docs/proof/"), run["evidenceRef"]
+        assert (REPO_ROOT / run["evidenceRef"]).is_file(), run["evidenceRef"]
+    executed = {run["provider"] for run in runs}
+    supported = set(shell_constant("INFEROPS_SUPPORTED_PROVIDERS").split())
+    assert executed <= supported, sorted(executed - supported)
+    assert set(RECORD["providersNotExecuted"]) == supported - executed
 
 
 @pytest.mark.parametrize("row", BOOTSTRAP_ROWS, ids=lambda row: row["resourceId"])
-def test_every_bootstrap_row_is_planned_and_cites_nothing(row: dict) -> None:
-    """No cluster holds these objects, so no row may say one does."""
-    assert row["v1Status"] == "planned", row["resourceId"]
-    assert row["evidenceRef"] is None, row["resourceId"]
+def test_every_bootstrap_row_is_implemented_and_cites_a_run(row: dict) -> None:
+    """A row is `implemented` because a run created and removed its objects.
+
+    ADR 0017 set that condition. The row cites the record of the run, and it
+    names the procedure as what creates and destroys it.
+    """
+    assert row["v1Status"] == "implemented", row["resourceId"]
     assert row["lifecycle"] == "bootstrap", row["resourceId"]
+    assert row["createdBy"] == PROCEDURE_REL, row["resourceId"]
+    assert row["destroyedBy"] == PROCEDURE_REL, row["resourceId"]
+    assert row["evidenceRef"] in {run["evidenceRef"] for run in RECORD["runs"]}, row[
+        "resourceId"
+    ]
 
 
 def test_the_two_input_rows_have_the_owners_the_decision_gives_them() -> None:
@@ -325,7 +434,10 @@ def test_the_two_input_rows_have_the_owners_the_decision_gives_them() -> None:
 
     upstream = RESOURCE_BY_ID["argocd-upstream-release"]
     assert upstream["owner"] == "external-publisher"
-    assert upstream["v1Status"] == "planned"
+    # A run downloaded the manifest and pulled both images, so the row is no
+    # longer `planned`.
+    assert upstream["v1Status"] == "implemented"
+    assert upstream["evidenceRef"] in {run["evidenceRef"] for run in RECORD["runs"]}
     assert BOOTSTRAP_OWNER in upstream["referencedBy"]
 
 
@@ -600,9 +712,11 @@ def test_no_serving_component_refers_to_argocd() -> None:
     """
     assert tracked_files(SERVING_ROOTS), "no serving file was read"
     assert not references_to_argocd(SERVING_ROOTS)
-    # The same reading over every build directory: a client, a script, or a
-    # workflow that addressed the controller would be the first dependency.
-    assert not references_to_argocd(BUILD_ROOTS)
+    # The same reading over every build directory. One file may name the
+    # controller: the procedure that installs it. A client, a second script, or
+    # a workflow that addressed the controller would be the first dependency.
+    assert references_to_argocd(BUILD_ROOTS) == ALLOWED_REFERENCES
+    assert PROCEDURE_REL.split("/", 1)[0] not in SERVING_ROOTS
 
 
 @pytest.mark.parametrize(
@@ -670,9 +784,11 @@ def test_every_rule_says_what_enforces_it(rule: dict) -> None:
         # A rule held only by an absence says so in its enforcement, and no rule
         # that cites the absence test may call itself plainly tested.
         assert (function == ABSENCE_TEST) == (rule["enforcement"] == "tested-absence")
-        assert module == THIS_MODULE_REL, rule["enforcedBy"]
+        assert module in ENFORCING_MODULES, rule["enforcedBy"]
         assert re.search(
-            rf"^def {re.escape(function)}\(", text_of(THIS_MODULE), flags=re.MULTILINE
+            rf"^def {re.escape(function)}\(",
+            text_of(ENFORCING_MODULES[module]),
+            flags=re.MULTILINE,
         ), f"rule '{rule['ruleId']}' names a test that does not exist"
         assert rule["owedBy"] is None, rule["ruleId"]
     elif rule["enforcement"] == "not-implemented":
@@ -684,12 +800,40 @@ def test_every_rule_says_what_enforces_it(rule: dict) -> None:
         assert rule["enforcedBy"] is None and rule["owedBy"] is None, rule["ruleId"]
 
 
-def test_no_rule_about_a_procedure_claims_a_test_while_none_exists() -> None:
-    """While nothing is implemented, a rule about running the bootstrap is owed."""
-    assert RECORD["implementationState"] == "decided-not-implemented"
+def test_no_rule_is_still_owed_by_the_change_that_implemented_the_bootstrap() -> None:
+    """The procedure exists, so nothing may still be owed by the change that added it.
+
+    Six rules were `not-implemented` and owed by that change. Each now names a
+    test. A rule that a later change owes names that change, and not this one.
+    """
+    assert RECORD["implementationState"] == "implemented"
     for rule in RULES:
         if rule["enforcement"] == "not-implemented":
-            assert "implements the bootstrap" in rule["owedBy"], rule["ruleId"]
+            assert "implements the bootstrap" not in rule["owedBy"], rule["ruleId"]
+
+
+def test_a_rule_about_running_the_procedure_names_an_executed_test() -> None:
+    """Reading a script is not running it.
+
+    A rule about what the procedure refuses is enforced by a test that executes
+    the procedure. This holds each such rule to the module that does.
+    """
+    executed = {
+        "bootstrap-acts-only-on-a-selected-and-verified-cluster",
+        "the-manifest-is-verified-before-it-is-used",
+        "images-run-at-their-pinned-digests",
+        "a-foreign-argocd-installation-is-refused",
+        "removal-is-scoped-and-refuses-while-an-application-exists",
+    }
+    by_id = {rule["ruleId"]: rule for rule in RULES}
+    assert executed <= set(by_id), sorted(executed - set(by_id))
+    for rule_id in sorted(executed):
+        rule = by_id[rule_id]
+        assert rule["enforcement"] == "tested", rule_id
+        assert rule["enforcedBy"].startswith(f"{PROCEDURE_MODULE_REL}::"), rule_id
+        assert "stub" in rule["limit"], (
+            f"rule '{rule_id}' is executed against stubs and its limit does not say so"
+        )
 
 
 @pytest.mark.parametrize("refusal", REFUSALS, ids=lambda refusal: refusal["refusalId"])
@@ -744,6 +888,234 @@ def test_removal_refuses_before_it_deletes() -> None:
     # The check is repeated between stopping the controllers and deleting the
     # definitions.
     assert any(controllers < index < definitions for index in custom), steps
+
+
+# --------------------------------------------------------------------------
+# The procedure restates the record, and does only what the record decides
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("constant", "expected"),
+    (
+        ("INFEROPS_ARGOCD_VERSION", PINS["release"]["version"]),
+        ("INFEROPS_ARGOCD_MANIFEST_URL", PINS["installManifest"]["sourceUrl"]),
+        ("INFEROPS_ARGOCD_MANIFEST_SHA256", PINS["installManifest"]["sha256"]),
+        (
+            "INFEROPS_ARGOCD_MANIFEST_OBJECT_COUNT",
+            str(PINS["installManifest"]["objectCount"]),
+        ),
+        (
+            "INFEROPS_ARGOCD_TESTED_MINORS",
+            " ".join(PINS["testedKubernetesMinors"]["minors"]),
+        ),
+        ("INFEROPS_ARGOCD_NAMESPACE", RECORD["namespace"]["name"]),
+        (
+            "INFEROPS_ARGOCD_MARKER_LABEL",
+            RECORD["namespace"]["lifecycleMarker"]["label"],
+        ),
+        (
+            "INFEROPS_ARGOCD_MARKER_VALUE",
+            RECORD["namespace"]["lifecycleMarker"]["value"],
+        ),
+        ("INFEROPS_ARGOCD_PIN_ANNOTATION", RECORD["namespace"]["appliedPinAnnotation"]),
+        ("INFEROPS_ARGOCD_FIELD_MANAGER", RECORD["procedure"]["fieldManager"]),
+    ),
+    ids=lambda value: value if str(value).startswith("INFEROPS_") else "",
+)
+def test_the_procedure_restates_a_pin_exactly(constant: str, expected: str) -> None:
+    """A pin retyped in a script is a pin that can drift from the record."""
+    assert procedure_constant(constant) == expected
+
+
+def test_the_procedure_names_the_objects_the_record_lists() -> None:
+    """Removal deletes by these names, so each name is the record's."""
+    names = {
+        kind: sorted(name for entry_kind, name in objects_of() if entry_kind == kind)
+        for kind in {kind for kind, _ in objects_of()}
+    }
+    assert (
+        procedure_constant("INFEROPS_ARGOCD_DEFINITIONS").split()
+        == names["CustomResourceDefinition"]
+    )
+    assert [procedure_constant("INFEROPS_ARGOCD_CLUSTER_ROLE")] == names["ClusterRole"]
+    assert [procedure_constant("INFEROPS_ARGOCD_CLUSTER_ROLE_BINDING")] == (
+        names["ClusterRoleBinding"]
+    )
+    assert (
+        procedure_constant("INFEROPS_ARGOCD_STATEFULSETS").split()
+        == names["StatefulSet"]
+    )
+    assert (
+        procedure_constant("INFEROPS_ARGOCD_DEPLOYMENTS").split() == names["Deployment"]
+    )
+
+    namespaced = sorted(
+        f"{RESOURCE_OF_KIND[kind]}/{name}"
+        for kind, name in objects_of()
+        if kind not in CLUSTER_SCOPED_KINDS
+    )
+    listed = procedure_constant("INFEROPS_ARGOCD_NAMESPACED_OBJECTS").split()
+    assert sorted(listed) == namespaced
+    assert len(listed) == len(set(listed)) == 29
+    assert len(listed) + 5 == PINS["installManifest"]["objectCount"]
+
+
+def test_the_procedure_checks_every_container_against_its_pinned_image() -> None:
+    """Each container the record lists, init containers included, has one pin."""
+    by_id = {image["imageId"]: image for image in PINS["images"]}
+    assert set(by_id) == {"argocd", "redis"}
+    assert (
+        procedure_constant("INFEROPS_ARGOCD_IMAGE_DIGEST") == by_id["argocd"]["digest"]
+    )
+    assert (
+        procedure_constant("INFEROPS_ARGOCD_REDIS_IMAGE_DIGEST")
+        == by_id["redis"]["digest"]
+    )
+    for image_id, constant in (
+        ("argocd", "INFEROPS_ARGOCD_CONTAINERS"),
+        ("redis", "INFEROPS_ARGOCD_REDIS_CONTAINERS"),
+    ):
+        recorded = sorted(
+            workload_and_container.split("/", 1)[1]
+            for workload_and_container in by_id[image_id]["containers"]
+        )
+        assert sorted(procedure_constant(constant).split()) == recorded, image_id
+    # The procedure keys the check on the container name alone, so a name that
+    # two images share would be checked against one of them.
+    containers = [
+        entry.split("/", 1)[1]
+        for image in PINS["images"]
+        for entry in image["containers"]
+    ]
+    assert len(containers) == len(set(containers)) == 6
+
+
+def test_the_procedure_states_every_refusal_the_record_lists() -> None:
+    """Every refusal has its identifier in the message an operator reads."""
+    body = procedure_text()
+    for refusal in REFUSALS:
+        identifier = refusal["refusalId"]
+        if identifier == "target-not-selected-or-not-verified":
+            # The provider contract's guard states this one, with its own
+            # identifiers. The procedure calls the guard.
+            assert "inferops::resolve_target" in procedure_commands()
+            continue
+        assert f'"refusing: {identifier}: ' in body, identifier
+    stated = set(re.findall(r'"refusing: ([a-z0-9-]+): ', body))
+    assert stated <= {refusal["refusalId"] for refusal in REFUSALS}, sorted(stated)
+
+
+def test_the_procedure_verifies_the_target_before_it_reads_the_cluster() -> None:
+    """One call, at the top level, before any function that reaches the cluster."""
+    commands = procedure_commands()
+    resolved = commands.index("inferops::resolve_target")
+    first_reach = next(
+        index for index, command in enumerate(commands) if "target_kubectl" in command
+    )
+    assert resolved < first_reach
+    assert commands.count("inferops::resolve_target") == 1
+    assert not [
+        command for command in commands if re.search(r"(?<![:_\w])kubectl\s", command)
+    ]
+
+
+def test_the_procedure_applies_the_manifest_unmodified() -> None:
+    """ADR 0017 D5: one digest identifies what was applied.
+
+    The procedure applies the verified file and nothing derived from it. One
+    command applies anything, it reads the verified file, and no command edits,
+    templates, or patches an object.
+    """
+    commands = procedure_commands()
+    applies = [command for command in commands if "target_kubectl apply" in command]
+    assert len(applies) == 1, applies
+    assert "--server-side" in applies[0] and "--force-conflicts" in applies[0]
+    assert '--field-manager="${INFEROPS_ARGOCD_FIELD_MANAGER}"' in applies[0]
+    assert '-n "${INFEROPS_ARGOCD_NAMESPACE}"' in applies[0]
+    assert '-f "${manifest_native}"' in applies[0]
+
+    for verb in ("patch", "edit", "replace", "set image", "annotate", "label", "scale"):
+        assert not [c for c in commands if f"target_kubectl {verb}" in c], verb
+    for tool in ("kustomize", "yq ", "envsubst", "helm "):
+        assert not [c for c in commands if tool in c], tool
+    # The file is hashed, moved into place, and handed to kubectl. Nothing
+    # writes into it.
+    for command in commands:
+        if "manifest_file" not in command and "manifest_native" not in command:
+            continue
+        assert not re.search(r">>?\s*\"\$\{manifest_(file|native)\}\"", command), (
+            command
+        )
+        assert "sed " not in command or "sha256sum" in command, command
+
+    creates = [command for command in commands if "target_kubectl create" in command]
+    assert len(creates) == 1 and creates[0].endswith("create -f -"), creates
+
+
+def test_the_procedure_reads_no_secret_value_and_enters_no_container() -> None:
+    """The installation holds one Secret the manifest declares and one it makes.
+
+    The procedure reads their names. It never prints one, and it runs nothing
+    inside a pod.
+    """
+    commands = procedure_commands()
+    for command in commands:
+        assert not re.search(
+            r"target_kubectl (exec|cp|logs|attach|port-forward)\b", command
+        ), command
+        if re.search(r"target_kubectl (get|describe)\b.*\bsecrets?\b", command):
+            assert "-o name" in command, command
+    described = [c for c in commands if "target_kubectl describe" in c]
+    assert all("describe pods" in command for command in described), described
+
+
+def test_the_procedure_creates_no_argocd_custom_resource() -> None:
+    """It installs the controller. It gives the controller nothing to reconcile."""
+    body = procedure_text()
+    assert not ARGOCD_CUSTOM_RESOURCE.search(body)
+    for kind in ("Application", "ApplicationSet", "AppProject"):
+        assert not re.search(rf'"kind":\s*"{kind}"', body), kind
+
+
+def test_the_security_baseline_holds_rows_for_the_installation() -> None:
+    """`security-baseline-rows-precede-the-first-install`, as far as a file shows it.
+
+    The baseline holds a control for each guard of the procedure, a threat for
+    the installation, and a deferred risk for the cluster-wide grant and for the
+    unauthenticated pins. This establishes that the rows exist. It cannot
+    establish that they were written before the first install; the record of
+    the run states that order.
+    """
+    baseline = load(BASELINE_PATH)
+    guards = {
+        control["verification"]["symbol"]
+        for control in baseline["controls"]
+        if control["verification"]["ref"] == PROCEDURE_REL
+    }
+    assert guards == {
+        "argocd::obtain_manifest",
+        "argocd::assert_pinned_images",
+        "argocd::refuse_foreign_installation",
+        "argocd::refuse_custom_resources",
+    }
+    for guard in guards:
+        assert f"{guard}() {{" in procedure_text(), guard
+
+    threats = [
+        threat
+        for threat in baseline["threats"]
+        if threat["assetId"] == "gitops-controller-installation"
+    ]
+    assert len(threats) == 3
+    risks = {threat["deferredRiskRef"] for threat in threats} - {None}
+    statements = " ".join(
+        risk["statement"]
+        for risk in baseline["deferredRisks"]
+        if risk["riskId"] in risks
+    )
+    assert "every verb on every resource" in statements
+    assert "not authenticated" in statements
 
 
 # --------------------------------------------------------------------------
