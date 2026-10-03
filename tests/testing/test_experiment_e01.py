@@ -6,6 +6,9 @@ registers them, and judges a run from its raw evidence. This suite:
 - checks every committed run against its own evidence: each file has the digest the
   manifest records, and the verdicts, outcomes, and result page computed again from
   the files are the ones the run recorded;
+- holds the second committed run to the execution identity freeze revision 2
+  requires: the record's registered digest, the runner and the package imported from
+  the checkout, and every loaded module file a pinned input with its pinned content;
 - plants each kind of defect in a copy of the committed run - a changed render, a
   changed refusal, an edited outcome, an edited page, a missing or extra file - and
   requires the check to find it;
@@ -91,8 +94,14 @@ def _manifest(run: Path) -> dict[str, Any]:
 # --------------------------------------------------------------------------
 
 
-def test_there_is_one_committed_run_of_the_static_parts() -> None:
-    assert [run.name for run in RUNS] == ["20261002-e01-abc-1"]
+def test_there_are_two_committed_runs_of_the_static_parts() -> None:
+    """Every run stays recorded under its own identifier. The first ran under
+    revision 1 and the second under revision 2; neither replaces the other."""
+    assert [run.name for run in RUNS] == [
+        "20261002-e01-abc-1",
+        "20261003-e01-abc-1",
+    ]
+    assert [_manifest(run)["metadata"]["freezeRevision"] for run in RUNS] == [1, 2]
 
 
 @pytest.mark.parametrize("run", RUNS, ids=lambda run: run.name)
@@ -135,6 +144,70 @@ def test_a_committed_run_records_no_local_path(run: Path) -> None:
                 text,
             ), path.name
             assert not re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text), path.name
+
+
+def test_the_second_run_records_the_execution_identity_revision_two_requires() -> None:
+    """Read from the committed manifest and from freeze revision 2, which never
+    changes: the run named that record by its registered digest, imported the runner
+    and the package from its checkout in both processes, and loaded no repository
+    module file that is not a pinned input with its pinned content."""
+    manifest = _manifest(RUNS[1])
+    r2 = load_freeze(REPO_ROOT, 2)
+    registry = json.loads((REPO_ROOT / REGISTRY_PATH).read_text(encoding="utf-8"))
+    (registered,) = [
+        row["contentSha256"]
+        for row in registry["records"]
+        if row["path"] == FREEZE_RECORDS[2]
+    ]
+    assert manifest["metadata"]["freezeRecord"] == FREEZE_RECORDS[2]
+    assert manifest["metadata"]["freezeContentSha256"] == registered
+    seen = manifest["preconditions"]
+    assert seen["findings"] == []
+    assert seen["statusBefore"] == []
+    assert seen["inventoryChanges"] == []
+    assert seen["executingRevisionMerged"] is True
+    assert seen["mergedRefRevision"] == manifest["executingRevision"]
+    assert seen["runnerInCheckout"] is True
+    assert seen["freezeRecordRegistered"] is True
+    identity = manifest["executionIdentity"]
+    assert identity["runnerFile"] == "tools/experiment_e01/core.py"
+    assert identity["inferopsPackage"] == "src/inferops"
+    assert identity["loadedOutsideFrozenInputs"] == []
+    assert manifest["runner"]["package"] == "tools.experiment_e01"
+    pinned = {pin["path"]: pin["sha256"] for pin in r2["pinnedInputs"]}
+    for process in ("loadedModules", "loadedModulesSecondProcess"):
+        loaded = identity[process]
+        assert "tools/experiment_e01/core.py" in loaded, process
+        assert "src/inferops/domain/render/helm_values.py" in loaded, process
+        assert {path: pinned.get(path) for path in loaded} == loaded, process
+    for name, digest in manifest["runner"]["files"].items():
+        assert pinned[f"tools/experiment_e01/{name}"] == digest, name
+    second = manifest["observations"]["E01-A"]["renderB"]["reported"]
+    assert second["runnerInCheckout"] is True
+    assert second["inferopsPackage"] == "src/inferops"
+    assert manifest["abortChecks"]["conditions"] == []
+    assert manifest["error"] is None
+
+
+def test_an_edited_identity_in_a_copy_of_the_second_run_is_found(
+    tmp_path: Path,
+) -> None:
+    """The committed second run, copied beside its freeze record: clean as copied,
+    and refused once a loaded module's digest is not its pin."""
+    for relative in (FREEZE_RECORDS[2],):
+        (tmp_path / relative).parent.mkdir(parents=True)
+        shutil.copyfile(REPO_ROOT / relative, tmp_path / relative)
+    target = tmp_path / RUNS_DIR / RUNS[1].name
+    shutil.copytree(RUNS[1], target)
+    assert check_run(target, tmp_path) == []
+    manifest = _manifest(target)
+    manifest["executionIdentity"]["loadedModules"]["tools/experiment_e01/core.py"] = (
+        "0" * 64
+    )
+    (target / MANIFEST).write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    assert check_run(target, tmp_path) != []
 
 
 # --------------------------------------------------------------------------

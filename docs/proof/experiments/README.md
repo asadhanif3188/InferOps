@@ -4,14 +4,15 @@ Status: **format and check added by `V2-S2-003-PR1`**, with one record: the V2-E
 freeze, revision 1. **One run added by `V2-S2-003-PR2`**: E01-A, E01-B, and E01-C, executed
 once under that record. **Revision 2 added by `V2-S2-004-PR1`**: it restores the governing
 no-duplication criterion and freezes the whole executable path, runner and analysis
-included. No run has executed under revision 2. A freeze record fixes an experiment family before its first
+included. **One run added by `V2-S2-004-PR2`**: E01-A, E01-B, and E01-C, executed once
+under revision 2 from the merged checkout. A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
 
 | Experiment | Revision | Record | Parts and intended level | State |
 |---|---|---|---|---|
 | V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Superseded by revision 2 on 2026-10-03, and kept unchanged. E01-A, E01-B, and E01-C ran once under it, in [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md), and each PASSED under its criteria. That run carries an [audit limitation](#audit-of-the-first-run-2026-10-03) |
-| V2-E01, contract-to-deployment determinism | 2 | [`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. No run yet. E01-D's environment identity is still pending, so E01-D cannot start |
+| V2-E01, contract-to-deployment determinism | 2 | [`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. E01-A, E01-B, and E01-C ran once under it, in [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md), and each PASSED under its criteria. E01-D's environment identity is still pending, so E01-D cannot start |
 
 ## Why a freeze comes first
 
@@ -189,7 +190,8 @@ Not enforced:
   shows in review as a changed test; nothing else refuses it.
 - **That a scope is complete when it merges.** `--check` reads the record, not the tree, so
   it does not compare the scope with the files. `--changes` does, and the run refuses to
-  start on any difference. At registration, revision 2's `--changes` reported none.
+  start on any difference. At registration, revision 2's `--changes` reported none, and the
+  run under it recorded none.
 - **The rule against previews.** Revision 2 forbids a full execution of the parts outside
   `--run`, in any repository. No code can see a run in a throwaway repository, so this is a
   procedure the record states and nothing enforces.
@@ -309,7 +311,7 @@ included, is what refuses that. The
 default-lane suite [`tests/testing/test_experiment_e01.py`](../../../tests/testing/test_experiment_e01.py)
 runs it over the committed run and plants each of these defects in a copy.
 
-**The run.** [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md) executed at
+**The first run.** [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md) executed at
 the merged commit `707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3`, in a detached worktree with no
 change before the run and only the evidence directory after it. E01-A, E01-B, and E01-C each
 PASSED: every criterion from E01-AC1 to E01-AC7 held. The claim
@@ -318,8 +320,31 @@ in the [claim and evidence register](../../testing/claim-evidence-matrix.v1alpha
 holds it at C0. The run's [validation record](../domain/v2-s2-003-pr2-validation.md) says
 how it was prepared and what was checked.
 
-**What a run does not do.** The runner is not a pinned input of the freeze record, and the
-run of record executed from a byte copy outside the checked-out tree, so the commit it
+**The second run.** [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md) executed at the merged commit
+`a5b6a5db2011a68a3f27acdeaa8186c226bfedb4`, the merge of the change that registered revision
+2, with no change before the run and only the evidence directory after it. It is the
+first run under revision 2. The manifest records that the record had its registered
+digest, that no material file differed, that the runner was the checkout's
+`tools/experiment_e01/core.py` and the package the checkout's `src/inferops`, in both
+processes, and that each process loaded 47 repository module files, every one a pinned
+input with its pinned content. E01-A, E01-B, and E01-C each PASSED: every criterion from
+E01-AC1 to E01-AC7 held, E01-AC5 without revision 1's exception and E01-AC7 over seven
+cases. The claim
+`the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal`
+holds it at C0. The run's [validation record](../domain/v2-s2-004-pr2-validation.md) says
+what was checked before it, what executed before it, and every attempt. The run answers
+revision 2 only: it is not evidence that the first run's execution boundary was valid.
+
+| Run | Freeze revision | Executing revision | E01-A | E01-B | E01-C |
+|---|---|---|---|---|---|
+| [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md) | 1 | `707e29f4` | PASSED | PASSED | PASSED |
+| [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md) | 2 | `a5b6a5db` | PASSED | PASSED | PASSED |
+
+Every run stays in this table with its outcome state, whatever it is. No run under either
+revision was REFUSED, ABORTED, INCONCLUSIVE, or FAILED.
+
+**What the first run does not do.** The runner is not a pinned input of freeze revision 1, and the
+first run executed from a byte copy outside the checked-out tree, so the commit it
 records does not contain the runner. The manifest records the content digest of each runner
 file instead. Those digests are of the runner as `V2-S2-003-PR2` first committed it: its
 independent review then changed the runner, so the files committed beside the run are not
@@ -354,3 +379,8 @@ audit adds this limitation; it does not reinterpret the run under revision 2:
 
 Revision 2's `history` records the same. A new run under revision 2 answers revision 2's
 criteria; it is not evidence that the first run's boundary was valid.
+
+Since `V2-S2-004-PR2` the register carries the audit too: the first run's claim has the
+limitation appended, dated, after the text it already had, and [a ledger](../testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json)
+holds one correction beside the first run's result page. The claim's statement, status,
+and record are unchanged.

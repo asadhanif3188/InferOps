@@ -18,6 +18,7 @@ consistent, and quoted from the files it rests on.
 
 from __future__ import annotations
 
+import copy
 import functools
 import json
 import re
@@ -396,7 +397,7 @@ def test_the_index_page_states_the_counts_the_index_produces() -> None:
         f" more has a substitution recorded as immaterial",
     ):
         assert phrase in page, phrase
-    words = {9: "Nine", 11: "Eleven"}
+    words = {9: "Nine", 11: "Eleven", 12: "Twelve"}
     assert f"{words[len(corrected)]} of them carry a correction" in page
 
 
@@ -601,9 +602,11 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
     and only on a record it adds itself, because the release it states did not exist
     when the pack was frozen. No ledger moves any record's level.
 
-    One ledger adds a claim rather than moving one: the E01 static proof ledger adds a
-    claim certified only on the records it brings with it, every one at `C0`, and moves
-    no claim the migration left.
+    Two ledgers add a claim rather than moving one: each E01 static proof ledger adds
+    a claim certified only on the records it brings with it, every one at `C0`, and
+    moves no claim the migration left. A later ledger may set a field of an added
+    claim, as it may of any other, and never its status: the claim the register holds
+    is the claim as added with exactly those changes applied.
     """
     migrated = restore_migrated_register(REGISTER, LEDGERS)
     before = {claim["claimId"]: claim for claim in migrated["claims"]}
@@ -624,10 +627,19 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         for change in ledger["registerChanges"]
         if change["operation"] == "add-claim"
     }
+    field_changes: dict[str, list[dict[str, Any]]] = {}
+    for ledger in LEDGERS:
+        for change in ledger["registerChanges"]:
+            if change["operation"] == "set-claim-field":
+                field_changes.setdefault(change["claimId"], []).append(change)
     rank = {row["statusId"]: row["rank"] for row in REGISTER["claimStatuses"]}
     for claim in REGISTER["claims"]:
         if claim["claimId"] not in before:
-            assert claim == added_claims[claim["claimId"]], claim["claimId"]
+            expected = copy.deepcopy(added_claims[claim["claimId"]])
+            for change in field_changes.get(claim["claimId"], []):
+                assert expected[change["field"]] == change["before"]
+                expected[change["field"]] = change["after"]
+            assert claim == expected, claim["claimId"]
             assert claim["status"] == "certified", claim["claimId"]
             assert {r["evidenceLevel"] for r in claim["evidenceRecords"]} == {"C0"}
             continue

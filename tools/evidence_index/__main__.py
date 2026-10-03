@@ -155,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m tools.evidence_index",
         description=(
             "Print, check, or regenerate the V1 evidence index from the claim and "
-            "evidence register and its seven ledgers, or report the release gate."
+            "evidence register and its eight ledgers, or report the release gate."
         ),
     )
     group = parser.add_mutually_exclusive_group()
