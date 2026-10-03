@@ -22,6 +22,16 @@ the context's values once, and says what the renderer does with it:
   release records elsewhere, documentation references, the mock profile's block, and
   environment facts that are install arguments rather than values. Twelve values.
 
+**Two chart values are derived.** :data:`DERIVED_HELM_VALUES` writes the model's
+download location and its licence reference from three of the contract's model pins -
+the repository, the revision, and the file - under the one model source the platform
+supports, the Hugging Face Hub, addressed as ``docs/serving/model-source.v1.json`` and
+the V1 acquisition preflight address it. A pin change moves both strings with no
+hand-written edit, and no hand-written file may carry either. The licence's SPDX
+identifier is not derived: no pin determines it, and it stays hand-written. The rule
+names one host and one layout; a model published anywhere else has no supported
+location, and nothing here guesses one.
+
 **What it refuses, and why.** A context reaches the renderer only after the boundary
 accepted it, so every refusal here is about the chart, not the input:
 
@@ -56,9 +66,10 @@ environment scripts accept. That is the V1 release's own split, and it is kept.
 
 **Hand-written values.** A release is installed with the generated values and, beside
 them, a hand-written file for what no input owns - the API image a contributor built,
-the model's alias, licence, and download URL. :func:`manual_value_findings` refuses a
-hand-written file that sets, replaces, or removes a value the renderer generates, so a
-value the contract owns cannot be written a second time by hand.
+the model's alias, and its licence identifier. :func:`manual_value_findings` refuses a
+hand-written file that sets, replaces, or removes a value the renderer generates,
+derived values included, so a value the contract owns cannot be written a second time
+by hand, and a stale or contradicting copy of one cannot be installed.
 :func:`admit_manual_values` is where that check is applied: it pairs generated values
 with a hand-written document only when there is no such finding, and
 :class:`AdmittedHelmValues` is the pair. The repository supports a hand-written file
@@ -291,6 +302,82 @@ HELM_VALUE_DISPOSITIONS: Final[Mapping[str, ValueDisposition]] = MappingProxyTyp
 )
 
 
+#: The one model source the renderer supports, and the only host a derived model
+#: reference names.
+MODEL_SOURCE_HOST: Final = "huggingface.co"
+
+
+@dataclass(frozen=True, slots=True)
+class DerivedValue:
+    """One chart value written from context values by a fixed rule, not copied from one.
+
+    ``sources`` are the context values the rule reads. ``template`` is a
+    :meth:`str.format` pattern over each source's last member: ``{repository}``,
+    ``{revision}``, and ``{file}``.
+    """
+
+    sources: tuple[str, ...]
+    template: str
+    reason: str
+
+    def apply(self, values: Mapping[str, Any]) -> str:
+        """The derived string, from the source values given by context-value name."""
+        return self.template.format(
+            **{name.rpartition(".")[2]: str(values[name]) for name in self.sources}
+        )
+
+
+_PIN_RULE = (
+    "the model source record's rule, which the V1 acquisition preflight already holds "
+    "that record to"
+)
+
+#: Every chart value the renderer derives, with its rule. Each source is a context
+#: value the disposition table renders, so a derived value moves exactly when a pin
+#: it is derived from moves.
+DERIVED_HELM_VALUES: Final[Mapping[str, DerivedValue]] = MappingProxyType(
+    {
+        "model.artifact.sourceUrl": DerivedValue(
+            sources=(
+                "model.artifact.repository",
+                "model.artifact.revision",
+                "model.artifact.file",
+            ),
+            template=(
+                f"https://{MODEL_SOURCE_HOST}/{{repository}}/resolve/{{revision}}/"
+                "{file}?download=true"
+            ),
+            reason=f"where the acquisition job downloads the pinned file; {_PIN_RULE}",
+        ),
+        "model.license.reference": DerivedValue(
+            sources=("model.artifact.repository", "model.artifact.revision"),
+            template=(
+                f"https://{MODEL_SOURCE_HOST}/{{repository}}/blob/{{revision}}/LICENSE"
+            ),
+            reason=f"the licence file at the pinned revision; {_PIN_RULE}",
+        ),
+    }
+)
+
+
+def model_source_url(repository: str, revision: str, file: str) -> str:
+    """The download location :data:`DERIVED_HELM_VALUES` derives from three pins."""
+    return DERIVED_HELM_VALUES["model.artifact.sourceUrl"].apply(
+        {
+            "model.artifact.repository": repository,
+            "model.artifact.revision": revision,
+            "model.artifact.file": file,
+        }
+    )
+
+
+def model_licence_reference(repository: str, revision: str) -> str:
+    """The licence reference :data:`DERIVED_HELM_VALUES` derives from two pins."""
+    return DERIVED_HELM_VALUES["model.license.reference"].apply(
+        {"model.artifact.repository": repository, "model.artifact.revision": revision}
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ChartValueConstraint:
     """The chart schema's constraint on one value the renderer writes.
@@ -325,6 +412,7 @@ def _integer(minimum: int, maximum: int | None = None) -> ChartValueConstraint:
 
 _DNS_SAFE_OR_EMPTY = "^$|^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
 _SHA256 = "^$|^sha256:[0-9a-f]{64}$"
+_HTTPS_URL = "^$|^https://[A-Za-z0-9._~:/?#@!*+,=%-]+$"
 
 #: Every value the renderer writes, with the constraint the chart's values schema
 #: applies to it, copied from the schema and held to it by a test.
@@ -343,10 +431,12 @@ CHART_VALUE_CONSTRAINTS: Final[Mapping[str, ChartValueConstraint]] = MappingProx
         ),
         "model.artifact.sha256": _string(_SHA256),
         "model.artifact.sizeBytes": _integer(0),
+        "model.artifact.sourceUrl": _string(_HTTPS_URL, max_length=2048),
         "model.cache.claimName": _string(
             "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$", max_length=253
         ),
         "model.identifier": _string(_DNS_SAFE_OR_EMPTY, max_length=63),
+        "model.license.reference": _string(_HTTPS_URL, max_length=2048),
         "model.revision": _string("^$|^[0-9a-f]{40}$"),
         "ownership.costCenter": _string(max_length=63),
         "ownership.owner": _string(_DNS_SAFE_OR_EMPTY, max_length=63),
@@ -462,11 +552,16 @@ def _below(value: str, floor: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class _Leaf:
-    """One chart value the renderer would write, and the context value it came from."""
+    """One chart value the renderer would write, and the context value it came from.
+
+    A derived value comes from several context values: ``source`` is the first, which a
+    finding names, and ``derived_from`` holds all of them.
+    """
 
     path: str
     value: Any
     source: RenderField
+    derived_from: tuple[RenderField, ...] = ()
 
 
 def _present(context: RenderContext, name: str) -> RenderField | None:
@@ -585,46 +680,68 @@ def _leaves(context: RenderContext) -> Iterator[_Leaf]:
             values = (_thawed(entry.value),)
         for path, value in zip(row.targets, values, strict=True):
             yield _Leaf(path, value, entry)
+    for path, derived in DERIVED_HELM_VALUES.items():
+        entries = tuple(context.entry(name) for name in derived.sources)
+        value = derived.apply(
+            {
+                name: entry.value
+                for name, entry in zip(derived.sources, entries, strict=True)
+            }
+        )
+        yield _Leaf(path, value, entries[0], entries)
 
 
 def _value_findings(
     leaves: tuple[_Leaf, ...], request: RequestContext
 ) -> list[RenderFinding]:
+    """Every value the chart cannot carry. A derived value is judged only when none of
+    the values it is derived from has a finding: a refused pin is reported once, at
+    the pin, and not again through every string built from it."""
     findings: list[RenderFinding] = []
-    for leaf in leaves:
-        resource = leaf.path.rpartition(".")[2]
-        if not _satisfies(CHART_VALUE_CONSTRAINTS[leaf.path], leaf.value):
-            findings.append(
-                RenderFinding(
-                    "render-value-unsupported",
-                    _field(leaf.source),
-                    f"the chart's {leaf.path} accepts no form of this value",
-                    request,
-                )
+    for leaf in (leaf for leaf in leaves if not leaf.derived_from):
+        findings.extend(_leaf_findings(leaf, request))
+    flagged = {finding.field for finding in findings}
+    for leaf in (leaf for leaf in leaves if leaf.derived_from):
+        if not any(_field(entry) in flagged for entry in leaf.derived_from):
+            findings.extend(_leaf_findings(leaf, request))
+    return findings
+
+
+def _leaf_findings(leaf: _Leaf, request: RequestContext) -> list[RenderFinding]:
+    findings: list[RenderFinding] = []
+    resource = leaf.path.rpartition(".")[2]
+    if not _satisfies(CHART_VALUE_CONSTRAINTS[leaf.path], leaf.value):
+        findings.append(
+            RenderFinding(
+                "render-value-unsupported",
+                _field(leaf.source),
+                f"the chart's {leaf.path} accepts no form of this value",
+                request,
             )
-        elif leaf.path.startswith("runtime.resources.limits.") and _below(
-            leaf.value, CHART_RUNTIME_REQUESTS[resource]
-        ):
-            findings.append(
-                RenderFinding(
-                    "render-value-unsupported",
-                    _field(leaf.source),
-                    f"this limit is below the chart's runtime {resource} request, "
-                    "and Kubernetes refuses a request above its limit",
-                    request,
-                )
+        )
+    elif leaf.path.startswith("runtime.resources.limits.") and _below(
+        leaf.value, CHART_RUNTIME_REQUESTS[resource]
+    ):
+        findings.append(
+            RenderFinding(
+                "render-value-unsupported",
+                _field(leaf.source),
+                f"this limit is below the chart's runtime {resource} request, "
+                "and Kubernetes refuses a request above its limit",
+                request,
             )
-        if isinstance(leaf.value, str) and is_credential_shaped(leaf.value):
-            findings.append(
-                RenderFinding(
-                    "render-value-credential-shaped",
-                    _field(leaf.source),
-                    "a part of this value begins with the published prefix of a "
-                    "credential format; generated values are written to Git and "
-                    "never carry one",
-                    request,
-                )
+        )
+    if isinstance(leaf.value, str) and is_credential_shaped(leaf.value):
+        findings.append(
+            RenderFinding(
+                "render-value-credential-shaped",
+                _field(leaf.source),
+                "a part of this value begins with the published prefix of a "
+                "credential format; generated values are written to Git and "
+                "never carry one",
+                request,
             )
+        )
     return findings
 
 
@@ -876,18 +993,23 @@ __all__ = [
     "CHART_RUNTIME_REQUESTS",
     "CHART_VALUE_CONSTRAINTS",
     "CHART_VERSION",
+    "DERIVED_HELM_VALUES",
     "GENERATED_VALUE_PATHS",
     "HELM_VALUES_SUPPORT",
     "HELM_VALUE_DISPOSITIONS",
     "MANUAL_VALUES_SUFFIX",
+    "MODEL_SOURCE_HOST",
     "PLATFORM_TELEMETRY",
     "VALUES_HEADER",
     "AdmittedHelmValues",
     "ChartValueConstraint",
+    "DerivedValue",
     "Disposition",
     "GeneratedHelmValues",
     "HelmValuesRenderer",
     "ValueDisposition",
     "admit_manual_values",
     "manual_value_findings",
+    "model_licence_reference",
+    "model_source_url",
 ]

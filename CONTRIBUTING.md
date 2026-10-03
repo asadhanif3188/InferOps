@@ -430,24 +430,31 @@ lists the rules and what the check does not cover.
 
 An experiment family is frozen before its first result-bearing run, in a record under
 [`docs/proof/experiments/`](docs/proof/experiments/README.md). A committed record is never
-edited: its content digest is pinned in `FROZEN_RECORDS` in
-[`tools/experiment_freeze/core.py`](tools/experiment_freeze/core.py), and a change is a new
-revision beside it. After adding or revising a record, check every committed record:
+edited: its content digest is pinned in the registry,
+[`docs/proof/experiments/registry.v1alpha1.json`](docs/proof/experiments/registry.v1alpha1.json),
+and a change is a new revision beside it. A new record declares its material scope - the
+import closure of the run's entry modules and the data files it reads - and pins every file
+in it. Register the record last, after every file it pins is final: a later edit to a
+pinned file moves its pin. After adding or revising a record, check every committed record:
 
 ```sh
 uv run --locked python -m tools.experiment_freeze --check
 ```
 
-Before a result-bearing run, list the pinned inputs whose content differs from the
-record's pins. The record's preconditions say the run does not start while one is listed
-and no merged revision classifies it:
+Before a result-bearing run, list every material file that differs from the record:
+a pinned input that changed or is absent, a file in the scope that is not pinned, and a
+pinned file the scope no longer names. The record's preconditions say the run does not
+start while one is listed and no merged revision classifies it:
 
 ```sh
-uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json
+uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json
 ```
 
 For E01-A, E01-B, and E01-C the runner enforces that precondition itself, with the merged
-commit and the clean tree, and writes a run with every part REFUSED when one fails. No
+commit and the clean tree, and writes a run with every part REFUSED when one fails. Under
+revision 2 it also refuses to run unless the runner and the `inferops` package it imported
+are the checkout's own: run it from the merged checkout, never from a copy outside it, and
+do not run the parts anywhere else first - a preview is not exempt. No
 runner exists for E01-D, so for it the precondition is still a procedure. Do not edit a
 run's evidence after it is written; a new run takes a new identifier. Nothing refuses an
 edit by itself: `--check` finds one that leaves the files disagreeing with the manifest,
@@ -459,9 +466,10 @@ PYTHONHASHSEED=1 uv run --locked python -m tools.experiment_e01 --run YYYYMMDD-e
 uv run --locked python -m tools.experiment_e01 --check
 ```
 
-A change to a pinned input is not refused when it merges. [The records
-page](docs/proof/experiments/README.md) says what is enforced and what is not, and how the
-first run was executed at the merged commit with the runner outside the tree.
+A change to a material file is not refused when it merges. [The records
+page](docs/proof/experiments/README.md) says what is enforced and what is not, how the
+first run was executed at the merged commit with the runner outside the tree, and the
+audit limitation that run now carries.
 
 ### Serving adapters
 

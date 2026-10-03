@@ -11,9 +11,11 @@ record pinned and unchanged since it was pinned, and every revision following th
 before it. Exit status is 0 when every record holds every rule and 1 when one does
 not, so the command is usable as a gate.
 
-``--changes`` lists every pinned input of one record whose content differs from its
-pin. Exit status is 0 when none differs and 1 when one does. It says nothing about
-whether a change is material: a merged revision of the record decides that.
+``--changes`` lists every material file of one record that differs from it: a pinned
+input whose content moved or that is absent, and, for a record with a material scope,
+a file in the scope it does not pin or a pinned file the scope no longer names. Exit
+status is 0 when none differs and 1 when one does. It says nothing about whether a
+change is material: a merged revision of the record decides that.
 
 **Both modes read files only.** Neither writes a file, runs an experiment, or
 contacts a cluster, a registry, or a network. See docs/proof/experiments/README.md.
@@ -55,19 +57,25 @@ def _changes(root: Path, record: str) -> int:
             f"REFUSED: {record} cannot be read as a freeze record: {type(error).__name__}"
         )
         return 2
-    changes = changed_inputs(document, root)
+    try:
+        changes = changed_inputs(document, root)
+    except ValueError as error:
+        print(f"REFUSED: {record}: {error}")
+        return 2
     for change in changes:
+        pinned = change.pinned if change.pinned is not None else "(not pinned)"
         actual = change.actual if change.actual is not None else "(absent)"
-        print(f"CHANGED  {change.path}")
-        print(f"         pinned {change.pinned}")
+        print(f"{change.kind.upper():<8} {change.path}")
+        print(f"         pinned {pinned}")
         print(f"         now    {actual}")
     if changes:
         print(
-            f"{len(changes)} pinned input(s) differ from {record}. A run refuses to start "
-            "until a merged revision classifies each one."
+            f"{len(changes)} material file(s) differ from {record}. A run refuses to "
+            "start until a merged revision classifies each one."
         )
         return 1
-    print(f"UNCHANGED: every pinned input of {record} has its pinned content")
+    scope = "its material scope" if "materialScope" in document else "its pins"
+    print(f"UNCHANGED: every material file of {record} matches {scope}")
     return 0
 
 

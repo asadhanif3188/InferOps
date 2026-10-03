@@ -14,10 +14,11 @@ migration that did not happen:
 - a row's V1 source is where V1 took the value, and its V2 owner is the owner the
   renderer's disposition table and the boundary's ownership table give it;
 - no value the contract owns is written by hand: the hand-written file is admitted
-  beside the generated values, and every contract-owned chart value is generated;
+  beside the generated values, and every contract-owned chart value is generated,
+  the two derived from the model pins included;
 - the two releases merge to the same values except the differences the record
   states, with both values;
-- which hand-written strings restate a contract pin is measured, not assumed.
+- no hand-written string restates a contract pin: that is measured, not assumed.
 
 Every check here reads committed files and runs the render path in memory. Nothing is
 installed, so a pass is C0: it says the V2 release input describes the V1 workload,
@@ -39,7 +40,10 @@ import pytest
 import yaml
 
 from inferops.domain.render import admit_manual_values
-from inferops.domain.render.helm_values import HELM_VALUE_DISPOSITIONS
+from inferops.domain.render.helm_values import (
+    DERIVED_HELM_VALUES,
+    HELM_VALUE_DISPOSITIONS,
+)
 from inferops.domain.render.ownership import RENDER_FIELD_OWNERSHIP
 from tools.generated_release import DECLARED_RELEASES, derive
 
@@ -91,6 +95,24 @@ def deep_merge(base: Mapping[str, Any], *overlays: Mapping[str, Any]) -> dict[st
 
 OWNER_OF = {row.name: row.layer.value for row in RENDER_FIELD_OWNERSHIP}
 TARGETS_OF = {name: d.targets for name, d in HELM_VALUE_DISPOSITIONS.items()}
+DERIVED_FROM = {path: d.sources for path, d in DERIVED_HELM_VALUES.items()}
+
+
+def contract_owned_targets() -> set[str]:
+    """Every chart value the contract owns: rendered from a contract value, or derived
+    from contract values only."""
+    rendered = {
+        target
+        for name, targets in TARGETS_OF.items()
+        if OWNER_OF.get(name) == "workload-intent"
+        for target in targets
+    }
+    derived = {
+        path
+        for path, sources in DERIVED_FROM.items()
+        if all(OWNER_OF.get(source) == "workload-intent" for source in sources)
+    }
+    return rendered | derived
 
 
 class Files:
@@ -164,14 +186,29 @@ def record_problems(record: Mapping[str, Any], files: Files = FILES) -> list[str
         if row["v2"] == "generated":
             if not generated:
                 problems.append(f"{path}: row says generated, and it is not")
-            context_value = row.get("contextValue")
-            if path not in TARGETS_OF.get(context_value, ()):
-                problems.append(f"{path}: {context_value} does not render to it")
-            elif row.get("owner") != OWNER_OF[context_value]:
-                problems.append(
-                    f"{path}: {context_value} is owned by {OWNER_OF[context_value]}, "
-                    f"not {row.get('owner')}"
-                )
+            if "derivedFrom" in row or path in DERIVED_FROM:
+                sources = tuple(row.get("derivedFrom", ()))
+                if DERIVED_FROM.get(path) != sources or "contextValue" in row:
+                    problems.append(
+                        f"{path}: derived from {list(DERIVED_FROM.get(path, ()))}, "
+                        f"and the row says {list(sources)}"
+                    )
+                else:
+                    owners = {OWNER_OF[source] for source in sources}
+                    if owners != {row.get("owner")}:
+                        problems.append(
+                            f"{path}: its sources are owned by {sorted(owners)}, "
+                            f"not {row.get('owner')}"
+                        )
+            else:
+                context_value = row.get("contextValue")
+                if path not in TARGETS_OF.get(context_value, ()):
+                    problems.append(f"{path}: {context_value} does not render to it")
+                elif row.get("owner") != OWNER_OF[context_value]:
+                    problems.append(
+                        f"{path}: {context_value} is owned by "
+                        f"{OWNER_OF[context_value]}, not {row.get('owner')}"
+                    )
             if "class" in row or "restates" in row:
                 problems.append(f"{path}: a generated row has a hand-written class")
         elif row["v2"] == "hand-written":
@@ -179,7 +216,7 @@ def record_problems(record: Mapping[str, Any], files: Files = FILES) -> list[str
                 problems.append(f"{path}: row says hand-written, and it is not")
             if row.get("class") not in classes:
                 problems.append(f"{path}: hand-written under no published class")
-            if "contextValue" in row or "owner" in row:
+            if "contextValue" in row or "owner" in row or "derivedFrom" in row:
                 problems.append(f"{path}: a hand-written row names an owner")
             measured = _restated_pins(
                 files.hand_written_leaves.get(path), files.generated_leaves, rows
@@ -263,24 +300,29 @@ def test_every_value_either_release_sets_has_exactly_one_row() -> None:
 
 
 def test_the_record_measures_the_migration_it_publishes() -> None:
-    """The counts the page states, from the record: 40 values, 25 of them generated."""
+    """The counts the page states, from the record: 40 values, 27 of them generated,
+    2 of those derived."""
     rows = load_record()["rows"]
     generated = [row for row in rows if row["v2"] == "generated"]
     assert len(rows) == 40
-    assert len(generated) == 25
-    assert len(FILES.generated_leaves) == 25
+    assert len(generated) == 27
+    assert len(FILES.generated_leaves) == 27
+    assert sorted(row["chartValue"] for row in generated if "derivedFrom" in row) == [
+        "model.artifact.sourceUrl",
+        "model.license.reference",
+    ]
     by_owner = {
         owner: sum(1 for row in generated if row["owner"] == owner)
         for owner in ("workload-intent", "environment-binding", "platform-defaults")
     }
     assert by_owner == {
-        "workload-intent": 20,
+        "workload-intent": 22,
         "environment-binding": 2,
         "platform-defaults": 3,
     }
     from_values_file = [row for row in generated if row["v1"] == "values-file"]
-    assert len(from_values_file) == 17
-    assert len([row for row in rows if row["v2"] == "hand-written"]) == 15
+    assert len(from_values_file) == 19
+    assert len([row for row in rows if row["v2"] == "hand-written"]) == 13
 
 
 # --------------------------------------------------------------------------
@@ -299,13 +341,8 @@ def test_the_hand_written_file_is_admitted_beside_the_generated_values() -> None
 def test_every_contract_owned_chart_value_is_generated_and_none_is_hand_written() -> (
     None
 ):
-    contract_targets = {
-        target
-        for name, targets in TARGETS_OF.items()
-        if OWNER_OF.get(name) == "workload-intent"
-        for target in targets
-    }
-    assert len(contract_targets) == 20
+    contract_targets = contract_owned_targets()
+    assert len(contract_targets) == 22
     assert contract_targets <= set(FILES.generated_leaves)
     for target in contract_targets:
         for path in FILES.hand_written_leaves:
@@ -317,7 +354,7 @@ def test_every_contract_owned_chart_value_is_generated_and_none_is_hand_written(
 
 
 def test_v1_wrote_contract_intent_by_hand_that_v2_generates() -> None:
-    """The migration itself: 16 contract-owned values V1's file set by hand, and 4
+    """The migration itself: 18 contract-owned values V1's file set by hand, and 4
     more V1 left to the chart's defaults, are now generated from the contract."""
     rows = load_record()["rows"]
     moved = [
@@ -330,7 +367,7 @@ def test_v1_wrote_contract_intent_by_hand_that_v2_generates() -> None:
         for row in rows
         if row.get("owner") == "workload-intent" and row["v1"] == "chart-default"
     ]
-    assert len(moved) == 16
+    assert len(moved) == 18
     assert sorted(defaulted) == [
         "runtime.replicaCount",
         "runtime.resources.limits.cpu",
@@ -340,38 +377,34 @@ def test_v1_wrote_contract_intent_by_hand_that_v2_generates() -> None:
 
 
 def test_the_generated_digest_decides_which_bytes_the_acquisition_accepts() -> None:
-    """Why a hand-written download location changes no model identity: the committed
-    V1 render's acquisition compares what it fetched with the digest the generated
-    values now set, and the location appears nowhere else in that check."""
+    """The committed V1 render's acquisition compares what it fetched with the digest
+    the generated values set, and the download location, now generated too, appears
+    only in the download command."""
     render = (REPO_ROOT / load_record()["target"]["committedRender"]).read_text(
         encoding="utf-8"
     )
     digest = FILES.generated_leaves["model.artifact.sha256"].removeprefix("sha256:")
     assert f"want_sha='{digest}'" in render
-    url = FILES.hand_written_leaves["model.artifact.sourceUrl"]
+    url = FILES.generated_leaves["model.artifact.sourceUrl"]
     lines = [line for line in render.splitlines() if url in line]
     assert len(lines) == 1 and "wget" in lines[0]
 
 
-def test_two_hand_written_strings_restate_contract_pins_and_the_record_says_so() -> (
-    None
-):
-    """Measured, not closed: the download URL and the licence reference repeat the
-    model's repository and revision, and the URL its file name too. Nothing checks
-    that they agree with the contract; the acquisition's digest check is what refuses
-    other bytes."""
+def test_no_hand_written_string_restates_a_contract_pin() -> None:
+    """Closed, and measured: the two strings that used to repeat the model's
+    repository, revision, and file are generated now. No row restates a pin, and the
+    record check measures every hand-written string against every contract-owned
+    generated value."""
     rows = {row["chartValue"]: row for row in load_record()["rows"]}
-    restating = {
-        path: row["restates"] for path, row in rows.items() if "restates" in row
-    }
-    assert restating == {
-        "model.artifact.sourceUrl": [
-            "model.artifact.fileName",
-            "model.artifact.repository",
-            "model.revision",
-        ],
-        "model.license.reference": ["model.artifact.repository", "model.revision"],
-    }
+    assert [path for path, row in rows.items() if "restates" in row] == []
+    for path, row in rows.items():
+        if row["v2"] == "hand-written":
+            assert (
+                _restated_pins(
+                    FILES.hand_written_leaves.get(path), FILES.generated_leaves, rows
+                )
+                == []
+            ), path
 
 
 # --------------------------------------------------------------------------
@@ -439,9 +472,21 @@ MUTATIONS: dict[str, tuple[Callable[[dict[str, Any]], None], str]] = {
         lambda r: _row(r, "model.alias").__setitem__("class", "convenience"),
         "model.alias: hand-written under no published class",
     ),
-    "a restated pin left out": (
-        lambda r: _row(r, "model.license.reference").pop("restates"),
-        "model.license.reference: restates",
+    "a derived value called hand-written": (
+        lambda r: _row(r, "model.license.reference").update(
+            {"v2": "hand-written", "class": "model-metadata"}
+        ),
+        "model.license.reference: row says hand-written, and it is not",
+    ),
+    "a derived value with the wrong sources": (
+        lambda r: _row(r, "model.artifact.sourceUrl").__setitem__(
+            "derivedFrom", ["model.artifact.repository"]
+        ),
+        "model.artifact.sourceUrl: derived from",
+    ),
+    "a restated pin left unsaid": (
+        lambda r: _row(r, "model.alias").__setitem__("restates", ["model.revision"]),
+        "model.alias: restates",
     ),
     "the difference left out": (
         lambda r: _row(r, "telemetry.deploymentEnvironment").pop("difference"),
@@ -471,6 +516,27 @@ def test_a_record_that_misstates_the_migration_is_caught(name: str) -> None:
     assert any(problem.startswith(expected) for problem in problems), problems
 
 
+def test_a_hand_written_copy_of_a_derived_value_is_caught_by_the_record_check() -> None:
+    """The F1 regression at the record layer: the old hand-written download URL,
+    restored beside the generated one, is both generated and hand-written."""
+    files = Files(load_record())
+    files.hand_written = deep_merge(
+        files.hand_written,
+        {
+            "model": {
+                "artifact": {
+                    "sourceUrl": FILES.generated_leaves["model.artifact.sourceUrl"]
+                }
+            }
+        },
+    )
+    files.hand_written_leaves = dict(leaves(files.hand_written))
+    assert (
+        "model.artifact.sourceUrl: both generated and hand-written"
+        in record_problems(load_record(), files)
+    )
+
+
 def test_a_hand_written_contract_value_is_caught_by_the_record_check() -> None:
     """If the hand-written file set a contract-owned value again, the record could
     not describe the releases: the value would be both generated and hand-written."""
@@ -495,6 +561,8 @@ def _note(row: Mapping[str, Any]) -> str:
         return f"V1 `{d['v1']}`, V2 `{d['v2']}`: intended"
     if "restates" in row:
         return "Repeats " + ", ".join(f"`{p}`" for p in row["restates"])
+    if "derivedFrom" in row:
+        return "Derived from " + ", ".join(f"`{p}`" for p in row["derivedFrom"])
     return ""
 
 
@@ -504,11 +572,12 @@ def published_rows_table(record: Mapping[str, Any]) -> str:
         "|---|---|---|---|---|",
     ]
     for row in record["rows"]:
-        who = (
-            f"`{row['owner']}` (`{row['contextValue']}`)"
-            if row["v2"] == "generated"
-            else f"`{row['class']}`"
-        )
+        if row["v2"] != "generated":
+            who = f"`{row['class']}`"
+        elif "derivedFrom" in row:
+            who = f"`{row['owner']}` (derived)"
+        else:
+            who = f"`{row['owner']}` (`{row['contextValue']}`)"
         lines.append(
             f"| `{row['chartValue']}` | `{row['v1']}` | `{row['v2']}` | {who} | {_note(row)} |"
         )

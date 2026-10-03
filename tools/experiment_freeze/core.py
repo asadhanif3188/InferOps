@@ -22,45 +22,68 @@ missing, an entry that is empty, a ``not-applicable`` without a
 reason, and a ``pending`` anywhere else are refused. Nothing is inferred: a field
 with no entry is not read as "not applicable".
 
-**A merged record is never edited.** :data:`FROZEN_RECORDS` pins the content digest of
-every committed record. A record whose content differs from its pin is refused, and
-so is a record nobody pinned. A change is a new revision: ``freeze-r<N+1>`` names the
-revision it supersedes by path and content digest, and classifies every pinned input
-whose digest moved since that revision as material or not, with a reason.
+**A merged record is never edited.** The freeze registry, :data:`REGISTRY_PATH`, pins
+the content digest of every committed record. A record whose content differs from its
+pin is refused, and so is a record nobody pinned. A change is a new revision:
+``freeze-r<N+1>`` names the revision it supersedes by path and content digest, and
+classifies every pinned input whose digest moved since that revision, or that it pins
+for the first time or no longer pins, as material or not, with a reason.
+
+**The registry is data, not code.** Until 2026-10-03 the pins were a constant in this
+module. A record that pins this module then could not be registered: adding its pin
+changes this module, which moves the record's pin of it. The registry file breaks that
+cycle. A record does not pin the registry, and states why; a run records the
+registry's digest beside the record's. No record names the commit that merges it: a
+run records the merged commit it executes.
+
+**Every material file is in scope.** A record registered with a material scope,
+``materialScope``, says which files the experiment path is: the static import closure
+of its entry modules within the named package roots, plus named data files and
+patterns. :func:`material_files` computes that set from a tree, and
+:func:`changed_inputs` lists a file in it that is not pinned as added, a pinned file
+that is absent or out of scope, and a pinned file whose content moved. A record
+without a scope lists only changes to the files it pins; :data:`UNSCOPED_RECORDS`
+names the one record registered before scopes existed.
 
 **The content digest** of a file is the SHA-256 of its bytes with every CRLF replaced
 by LF: the bytes Git stores for a text file under this repository's attributes. A
 Windows checkout and a Linux one give the same digest.
 
 **What this does not do.** It does not run an experiment, and it does not stop a
-change to a pinned input from merging. :func:`changed_inputs` lists every pinned
-input whose content differs from its pin, so the run that follows a freeze can refuse
-to start until a merged revision classifies the change. Nothing here reads Git
-history, and nothing checks that a revision a record names is a commit.
+change to a material file from merging. :func:`changed_inputs` lists every change, so
+the run that follows a freeze can refuse to start until a merged revision classifies
+it. The import closure is static: it follows ``import`` statements, not a module name
+built at run time, so a run also records every module file it loaded. Nothing here
+reads Git history, and nothing checks that a revision a record names is a commit.
 """
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import re
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from types import MappingProxyType
 from typing import Any, Final
 
 __all__ = [
     "ALWAYS_ANSWERED",
     "API_VERSION",
+    "CHANGE_KINDS",
     "EVIDENCE_LEVELS",
     "FREEZE_FIELDS",
     "FROZEN_RECORDS",
     "KIND",
     "PENDING_ALLOWED",
     "RECORDS_DIR",
+    "REGISTRY_PATH",
     "REPO_ROOT",
     "RULES",
     "STATUSES",
+    "UNSCOPED_RECORDS",
     "Finding",
     "FreezeField",
     "InputChange",
@@ -70,6 +93,9 @@ __all__ = [
     "check_record",
     "check_repository",
     "content_digest",
+    "import_closure",
+    "load_registry",
+    "material_files",
     "record_paths",
 ]
 
@@ -182,13 +208,17 @@ ALWAYS_ANSWERED: Final = frozenset(
     }
 )
 
-#: The content digest of every committed freeze record. A record is pinned when it
-#: is added, and the pin is never changed afterwards: a change is a new revision.
-FROZEN_RECORDS: Final[Mapping[str, str]] = {
-    "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json": (
-        "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9"
-    ),
-}
+#: The freeze registry: the content digest of every committed freeze record. A record
+#: is pinned when it is added, and its pin is never changed afterwards: a change is a
+#: new revision.
+REGISTRY_PATH: Final = "docs/proof/experiments/registry.v1alpha1.json"
+REGISTRY_KIND: Final = "ExperimentFreezeRegistry"
+
+#: The records registered before material scopes existed. Each is checked against the
+#: files it pins and nothing else. A record added later declares a scope.
+UNSCOPED_RECORDS: Final = frozenset(
+    {"docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json"}
+)
 
 
 @dataclass(frozen=True)
@@ -245,6 +275,21 @@ RULES: Final[tuple[Rule, ...]] = (
         "freeze-pinned-input-malformed",
         "Every pinned input names one repository path once, with a content digest.",
     ),
+    Rule(
+        "freeze-scope-missing",
+        "Every record declares a material scope, except a record registered before "
+        "scopes existed.",
+    ),
+    Rule(
+        "freeze-scope-malformed",
+        "A material scope names its entry modules, the package roots they resolve in, "
+        "and its data paths, and every exclusion names a path and a reason.",
+    ),
+    Rule(
+        "freeze-registry-unreadable",
+        "The freeze registry is a JSON object that pins records by path and content "
+        "digest, each path once.",
+    ),
     Rule("freeze-record-unregistered", "Every committed freeze record is pinned."),
     Rule("freeze-record-missing", "Every pinned freeze record is committed."),
     Rule("freeze-record-edited", "A committed freeze record is what was pinned."),
@@ -259,8 +304,8 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "freeze-input-change-unclassified",
-        "A revision classifies every pinned input that changed since the revision it "
-        "supersedes.",
+        "A revision classifies every pinned input that changed, appeared, or "
+        "disappeared since the revision it supersedes.",
     ),
 )
 
@@ -275,13 +320,21 @@ class Finding:
     detail: str
 
 
+#: What a change to a material file is. ``changed``: pinned, present, other content.
+#: ``absent``: pinned and missing. ``added``: in the material scope and not pinned.
+#: ``unscoped``: pinned, present, and no longer in the material scope.
+CHANGE_KINDS: Final = ("changed", "absent", "added", "unscoped")
+
+
 @dataclass(frozen=True)
 class InputChange:
-    """A pinned input whose content differs from its pin. ``actual`` is None when absent."""
+    """A material file that differs from the record. ``pinned`` is None for an added
+    file; ``actual`` is None for an absent one."""
 
     path: str
-    pinned: str
+    pinned: str | None
     actual: str | None
+    kind: str = "changed"
 
 
 def content_digest(data: bytes) -> str:
@@ -469,6 +522,69 @@ def _pinned_input_findings(name: str, record: Mapping[str, Any]) -> Iterator[Fin
             )
 
 
+def _scope_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
+    scope = document.get("materialScope")
+    if scope is None:
+        if name not in UNSCOPED_RECORDS:
+            yield Finding(
+                "freeze-scope-missing",
+                name,
+                "materialScope",
+                "a record registered after 2026-10-02 declares its material scope",
+            )
+        return
+    problem = _scope_problem(scope)
+    if problem is not None:
+        yield Finding("freeze-scope-malformed", name, "materialScope", problem)
+
+
+def _relative(path: object) -> bool:
+    """A relative POSIX repository path: no root, no drive, no parent, no backslash."""
+    return (
+        isinstance(path, str)
+        and bool(path)
+        and not PurePosixPath(path).is_absolute()
+        and not PureWindowsPath(path).drive
+        and not PureWindowsPath(path).root
+        and ".." not in PurePosixPath(path).parts
+        and "\\" not in path
+    )
+
+
+def _scope_problem(scope: Any) -> str | None:
+    """Why ``scope`` is not a material scope, or None when it is one."""
+    if not isinstance(scope, Mapping):
+        return "an object"
+    entries = scope.get("entryModules")
+    roots = scope.get("packageRoots")
+    paths = scope.get("paths")
+    exclusions = scope.get("exclusions", [])
+    if not isinstance(entries, list) or not entries:
+        return "entryModules lists at least one module"
+    if not isinstance(roots, Mapping) or not roots:
+        return "packageRoots maps each top-level package to its directory"
+    for module in entries:
+        if not isinstance(module, str) or module.split(".")[0] not in roots:
+            return f"entry module {module!r} is in no package root"
+    for package, directory in roots.items():
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(package)) or not (
+            directory == "." or _relative(directory)
+        ):
+            return f"package root {package!r} names a relative directory"
+    if not isinstance(paths, list) or not all(_relative(p) for p in paths):
+        return "paths lists relative POSIX paths or patterns"
+    if not isinstance(exclusions, list):
+        return "exclusions is a list"
+    for exclusion in exclusions:
+        if (
+            not isinstance(exclusion, Mapping)
+            or not _relative(exclusion.get("path"))
+            or _blank(exclusion.get("reason")) is not None
+        ):
+            return "every exclusion names a path and a reason"
+    return None
+
+
 def check_record(document: Any, name: str = "record") -> list[Finding]:
     """Every way one record's content breaks a rule. Empty when it holds them all.
 
@@ -554,6 +670,7 @@ def check_record(document: Any, name: str = "record") -> list[Finding]:
             )
     findings.extend(_criteria_findings(name, fields.get("acceptanceCriteria")))
     findings.extend(_pinned_input_findings(name, document))
+    findings.extend(_scope_findings(name, document))
     return _in_rule_order(findings)
 
 
@@ -603,6 +720,54 @@ def record_paths(root: Path = REPO_ROOT) -> list[str]:
         for path in base.rglob("freeze-r*.json")
         if path.is_file()
     )
+
+
+def load_registry(root: Path = REPO_ROOT) -> dict[str, str]:
+    """The registry's pins, by record path.
+
+    Raises:
+        ValueError: the registry is absent, unreadable, or not a registry.
+    """
+    try:
+        document = json.loads((root / REGISTRY_PATH).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(
+            f"{REGISTRY_PATH} cannot be read: {type(error).__name__}"
+        ) from None
+    records = document.get("records") if isinstance(document, Mapping) else None
+    if (
+        not isinstance(document, Mapping)
+        or document.get("apiVersion") != API_VERSION
+        or document.get("kind") != REGISTRY_KIND
+        or not isinstance(records, list)
+    ):
+        raise ValueError(f"{REGISTRY_PATH} is not an {REGISTRY_KIND}")
+    pins: dict[str, str] = {}
+    for item in records:
+        path = item.get("path") if isinstance(item, Mapping) else None
+        digest = item.get("contentSha256") if isinstance(item, Mapping) else None
+        if (
+            not _relative(path)
+            or not isinstance(digest, str)
+            or not _SHA256.match(digest)
+            or path in pins
+        ):
+            raise ValueError(
+                f"{REGISTRY_PATH} pins each record once, by path and digest"
+            )
+        pins[str(path)] = digest
+    return pins
+
+
+def _registry_or_empty(root: Path) -> Mapping[str, str]:
+    try:
+        return MappingProxyType(load_registry(root))
+    except ValueError:
+        return MappingProxyType({})
+
+
+#: The registry's pins in this checkout, read when the module is imported.
+FROZEN_RECORDS: Final[Mapping[str, str]] = _registry_or_empty(REPO_ROOT)
 
 
 def _load(root: Path, path: str) -> tuple[bytes, Any]:
@@ -679,7 +844,14 @@ def check_repository(root: Path = REPO_ROOT) -> list[Finding]:
     """Every way the committed freeze records break a rule. Empty when none does."""
     findings: list[Finding] = []
     committed = record_paths(root)
-    for path in sorted(set(FROZEN_RECORDS) - set(committed)):
+    try:
+        registry: Mapping[str, str] = load_registry(root)
+    except ValueError as error:
+        findings.append(
+            Finding("freeze-registry-unreadable", REGISTRY_PATH, "$", str(error))
+        )
+        registry = {}
+    for path in sorted(set(registry) - set(committed)):
         findings.append(
             Finding("freeze-record-missing", path, "$", "the pinned record is absent")
         )
@@ -687,14 +859,14 @@ def check_repository(root: Path = REPO_ROOT) -> list[Finding]:
     for path in committed:
         data, document = _load(root, path)
         findings.extend(check_record(document, path))
-        pinned = FROZEN_RECORDS.get(path)
+        pinned = registry.get(path)
         if pinned is None:
             findings.append(
                 Finding(
                     "freeze-record-unregistered",
                     path,
                     "$",
-                    "add its content digest to FROZEN_RECORDS",
+                    f"add its content digest to {REGISTRY_PATH}",
                 )
             )
         elif content_digest(data) != pinned:
@@ -757,20 +929,148 @@ def check_repository(root: Path = REPO_ROOT) -> list[Finding]:
     return _in_rule_order(findings)
 
 
+# --------------------------------------------------------------------------
+# The material scope
+# --------------------------------------------------------------------------
+
+
+def _exact(base: Path, parts: Sequence[str]) -> Path | None:
+    """``base`` joined with ``parts`` when every part exists with exactly that case.
+
+    A case-insensitive file system would resolve a name in the wrong case, and Linux
+    would not; checking each name against its directory's listing gives one answer on
+    both.
+    """
+    current = base
+    for part in parts:
+        if not current.is_dir() or part not in {p.name for p in current.iterdir()}:
+            return None
+        current = current / part
+    return current
+
+
+def _module_file(name: str, roots: Mapping[str, str], root: Path) -> Path | None:
+    """The file a module name loads from, within the package roots, or None."""
+    parts = name.split(".")
+    if parts[0] not in roots or not all(parts):
+        return None
+    base = root / roots[parts[0]]
+    package = _exact(base, [*parts, "__init__.py"])
+    if package is not None and package.is_file():
+        return package
+    module = _exact(base, [*parts[:-1], f"{parts[-1]}.py"])
+    return module if module is not None and module.is_file() else None
+
+
+def _imported_names(tree: ast.AST, package: str) -> Iterator[str]:
+    """Every module name an ``import`` statement in ``tree`` may load.
+
+    Every statement counts, wherever it is: inside a function, or under
+    ``TYPE_CHECKING``. Over-counting pins a file that did not run; under-counting
+    would leave one unpinned.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            yield from (alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                anchor = package.split(".")
+                anchor = anchor[: len(anchor) - (node.level - 1)]
+                base = ".".join([*anchor, *([node.module] if node.module else [])])
+            else:
+                base = node.module or ""
+            if not base:
+                continue
+            yield base
+            yield from (f"{base}.{a.name}" for a in node.names if a.name != "*")
+
+
+def import_closure(
+    entry_modules: Iterable[str], package_roots: Mapping[str, str], root: Path
+) -> set[str]:
+    """Every file, by repository path, that importing the entry modules may load.
+
+    Static: a module is followed through its ``import`` statements and through the
+    packages that contain it, within ``package_roots`` only. A name that resolves to no
+    file under a root - a third-party package, the standard library, a name imported
+    from a module rather than a module - is not followed.
+    """
+    files: set[str] = set()
+    seen: set[str] = set()
+    queue = list(entry_modules)
+    while queue:
+        name = queue.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        path = _module_file(name, package_roots, root)
+        if path is None:
+            continue
+        files.add(path.relative_to(root).as_posix())
+        parts = name.split(".")
+        queue.extend(".".join(parts[:i]) for i in range(1, len(parts)))
+        package = name if path.name == "__init__.py" else ".".join(parts[:-1])
+        tree = ast.parse(path.read_bytes(), filename=path.name)
+        queue.extend(_imported_names(tree, package))
+    return files
+
+
+def _matches(root: Path, pattern: str) -> set[str]:
+    return {
+        path.relative_to(root).as_posix()
+        for path in root.glob(pattern)
+        if path.is_file() and "__pycache__" not in path.parts
+    }
+
+
+def material_files(scope: Mapping[str, Any], root: Path = REPO_ROOT) -> set[str]:
+    """Every file a material scope names in the tree at ``root``, by repository path.
+
+    The import closure of the entry modules, plus every file a data path or pattern
+    matches, less the exclusions.
+
+    Raises:
+        ValueError: ``scope`` is not a material scope.
+    """
+    problem = _scope_problem(scope)
+    if problem is not None:
+        raise ValueError(f"not a material scope: {problem}")
+    files = import_closure(scope["entryModules"], scope["packageRoots"], root)
+    for pattern in scope["paths"]:
+        files |= _matches(root, pattern)
+    excluded = {item["path"] for item in scope.get("exclusions", [])}
+    return files - excluded
+
+
 def changed_inputs(
     document: Mapping[str, Any], root: Path = REPO_ROOT
 ) -> list[InputChange]:
-    """Every pinned input of ``document`` whose content differs from its pin.
+    """Every material file of ``document`` that differs from the record, by path.
 
-    A file that is absent is reported with ``actual`` None. This reads files and
-    writes none, and says nothing about whether a change is material.
+    A pinned file whose content moved is ``changed``, and one that is missing is
+    ``absent``. For a record with a material scope, a file in the scope that the record
+    does not pin is ``added``, and a pinned file the scope no longer names is
+    ``unscoped``. This reads files and writes none, and says nothing about whether a
+    change is material.
+
+    Raises:
+        ValueError: the record's material scope is malformed.
     """
+    pinned = _pinned(document)
+    scope = document.get("materialScope")
+    scoped = None if scope is None else material_files(scope, root)
     changes = []
-    for path, pinned in sorted(_pinned(document).items()):
+    for path in sorted(set(pinned) | (scoped or set())):
         target = root / path
         actual = content_digest(target.read_bytes()) if target.is_file() else None
-        if actual != pinned:
-            changes.append(InputChange(path, pinned, actual))
+        if path not in pinned:
+            changes.append(InputChange(path, None, actual, "added"))
+        elif actual is None:
+            changes.append(InputChange(path, pinned[path], None, "absent"))
+        elif actual != pinned[path]:
+            changes.append(InputChange(path, pinned[path], actual, "changed"))
+        elif scoped is not None and path not in scoped:
+            changes.append(InputChange(path, pinned[path], actual, "unscoped"))
     return changes
 
 

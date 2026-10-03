@@ -1,0 +1,17 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentFreezeRegistry",
+  "description": "The content digest of every committed experiment freeze record: the SHA-256 of its bytes with every CRLF replaced by LF. A record is pinned when it is added, and its pin is never changed. A record does not pin this file: this file pins it.",
+  "records": [
+    {
+      "path": "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json",
+      "contentSha256": "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9",
+      "registeredBy": "V2-S2-003-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json",
+      "contentSha256": "198f60b5133338e445b1c0fef9f9171ad3e58fe3bde66ac1e7a8d1d674730ac8",
+      "registeredBy": "V2-S2-004-PR1"
+    }
+  ]
+}

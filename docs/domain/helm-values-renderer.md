@@ -20,7 +20,7 @@ evidence level C0, and so is every file it generates until a real deployment ins
 | Module | [`src/inferops/domain/render/helm_values.py`](../../src/inferops/domain/render/helm_values.py), with the YAML form in [`values_yaml.py`](../../src/inferops/domain/render/values_yaml.py) |
 | Entry points | `HelmValuesRenderer(revision).render(context)`, or `render_with(renderer, ...)` on documents; `generate_release(renderer, ...)` for the values and their release, and `write_release(generated, directory)` to write both; `admit_manual_values(values, manual)` to pair a hand-written file with them, and `manual_value_findings(manual)` for its findings |
 | Input | A `RenderContext` from [the renderer input boundary](renderer-input-boundary.md), for a `synchronous-llm` contract |
-| Output | `GeneratedHelmValues`: 25 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
+| Output | `GeneratedHelmValues`: 27 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
 | Chart | `inferops-llm` `0.3.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
 | Refusal | `RenderRefused`, under the boundary's vocabulary; four rules are the renderer's own |
 | Golden output | The release directory [`support-assistant-local-kind/`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/): [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the release naming it, [`rendered-workload-release.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/rendered-workload-release.yaml) |
@@ -63,9 +63,12 @@ model:
     repository: "Qwen/Qwen3-1.7B-GGUF"
     sha256: "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
     sizeBytes: 1834426016
+    sourceUrl: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true"
   cache:
     claimName: "inferops-model-cache"
   identifier: "qwen3-1-7b-q8-0"
+  license:
+    reference: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/blob/90862c4b9d2787eaed51d12237eafdfe7c5f6077/LICENSE"
   revision: "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
 ownership:
   costCenter: "demo-cost-center"
@@ -105,6 +108,7 @@ gains a value this table does not name:
 - **`not-rendered`** - not written, and no chart setting depends on it. 12 values.
 
 A test compares this table with the code, row for row.
+
 
 <!-- The table below is generated from HELM_VALUE_DISPOSITIONS. -->
 
@@ -154,6 +158,26 @@ A test compares this table with the code, row for row.
 | `modelCache.claimName` | `rendered` | `model.cache.claimName` | The existing claim the runtime mounts |
 | `api.replicas` | `rendered` | `api.replicaCount` | The chart value of the same meaning |
 | `gitops.destinationPath` | `not-rendered` | - | Where a release is written, not something a release reads |
+
+**Two more chart values are derived** (`DERIVED_HELM_VALUES`, added by `V2-S2-004-PR1`).
+They are not copies of one context value: the renderer writes each from the contract's model
+pins by one rule, for the one model source the platform supports, the Hugging Face Hub.
+
+| Chart value | Read from | Rule |
+|---|---|---|
+| `model.artifact.sourceUrl` | `model.artifact.repository`, `model.artifact.revision`, `model.artifact.file` | `https://huggingface.co/<repository>/resolve/<revision>/<file>?download=true` |
+| `model.license.reference` | `model.artifact.repository`, `model.artifact.revision` | `https://huggingface.co/<repository>/blob/<revision>/LICENSE` |
+
+The rule is the one the V1 [model source record](../serving/model-source.v1.json) follows
+and the V1 acquisition preflight enforces. A pin change moves both strings, and no
+hand-written file may carry either. The licence's SPDX identifier is not derived: no pin
+determines it. A model on another host has no supported location, and the rule guesses
+none. A derived string is checked against the chart's constraint and the credential-shape
+rule like any written value, but only when none of the pins it is built from is already
+refused, so a refused pin is reported once, at the pin. Until 2026-10-03 both strings were
+hand-written copies; the first Sprint 2 collective review found that duplication, and the
+[V2-S2-004-PR1 validation record](../proof/domain/v2-s2-004-pr1-validation.md) records the
+correction.
 
 ## The canonical form
 
@@ -224,7 +248,7 @@ metadata:
 output:
   helmValues:
     path: "values.generated.yaml"
-    sha256: "137a97b9211a7e92ce82f8423063cfba6b828f51ac3a33fc2ab0d714396301d2"
+    sha256: "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce"
 source:
   contract:
     apiVersion: "inferops.io/v1alpha1"
@@ -462,7 +486,7 @@ and never quotes a value. Every finding is reported at once, in the boundary's o
 | `render-profile-unsupported`, `render-contract-version-unsupported`, `render-binding-version-unsupported` | as published | as published | A context outside the renderer's support. `render_with` refuses it before calling the renderer; `render` refuses it again for a context built without that check |
 
 **The chart is narrower than the contract.** `CHART_VALUE_CONSTRAINTS` copies the chart
-schema's constraint for each of the 25 values written, and a test reads the schema and fails
+schema's constraint for each of the 27 values written, and a test reads the schema and fails
 if one keyword differs. The contract accepts more than the chart in these places, and each
 is refused here rather than by Helm. A test refuses an example of each through
 `render_with`, except the last row's, which no accepted input reaches today:
@@ -516,7 +540,7 @@ Each is a decision rather than a fact, recorded so a later change can revisit it
 ## Hand-written values
 
 A release needs values no input owns: the API image a contributor built and loaded, the
-model's alias, licence, and download URL, and how the release runs on a host - how the claim
+model's alias and licence identifier, and how the release runs on a host - how the claim
 is filled and verified, whether its collector runs. Those stay in a hand-written file,
 installed after the generated one. The reference workload's is
 [`support-assistant-local.manual-values.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml),
@@ -533,9 +557,11 @@ with a `null` - and nothing would say so. `manual_value_findings` refuses, with
   empty mapping at a generated value itself.
 
 An empty mapping above a generated value merges nothing and is accepted, and so is a
-sibling: `model.artifact.sourceUrl` beside the generated `model.artifact.repository`. A test
-sets each of the 25 generated values in the committed file and gets exactly one finding for
-each; the committed file gets none.
+sibling: `model.license.spdx` beside the generated `model.license.reference`. A test
+sets each of the 27 generated values in the committed file and gets exactly one finding for
+each; the committed file gets none. A hand-written copy of a derived value is refused
+whether it agrees with the contract or not: a second copy of contract intent is the defect,
+and a copy that agrees today is stale after the next pin change.
 
 **Where the check is applied.** `admit_manual_values(generated, manual)` pairs generated
 values with a hand-written document only when it has no such finding, and refuses with
@@ -565,11 +591,9 @@ files decides nothing, since neither sets a value the other does. No supported p
 generated values yet; the deployment path that does is where such files would have to be
 refused.
 
-**What the check cannot see.** The download URL repeats the repository, revision, and file
-the contract pins, and nothing compares them: the acquisition job's content hash, which the
-generated values supply, is what refuses a different file. And a hand-written
-`runtime.resources.requests` above the generated limit is not refused here; Kubernetes
-refuses it at install.
+**What the check cannot see.** A hand-written `runtime.resources.requests` above the
+generated limit is not refused here; Kubernetes refuses it at install. Whether the derived
+licence reference resolves is not checked: nothing fetches it.
 
 ## Compared with the V1 real release
 
@@ -614,7 +638,7 @@ runs without a skip.
 | The platform defaults are read from a committed file | No defaults file exists; the caller supplies the defaults and states their revision, as at the boundary. Until then defaults content changed under a falsely retained revision moves the values digest and not the release identifier, and a test measures it | A change that reconstructs the defaults from a committed source bound to the revision a release records, before any source verification relies on that revision. The drift check reads the reference release's defaults from the chart's `api` block, so a change to them is reported as drift, and the declared revision does not move |
 | A hand-written values file outside the supported suffix is checked | Only files named with `.manual-values.yaml` are found and admitted; nothing installs generated values, so there is no install path to refuse others on | The deployment path that installs generated values |
 | The API image is generated | It is a contributor's local build, published to no registry | A published API image |
-| The download URL agrees with the contract's pins | The contract has no field for it; the content hash is the check | A contract field for the source, or a derivation rule |
+| A model source other than the Hugging Face Hub is rendered | The derivation rule names one host and one layout, the ones the V1 model source record uses | An accepted rule for another source |
 | A data classification changes a render | No chart setting or policy engine acts on one | A policy engine |
 
 ## What this does not establish
