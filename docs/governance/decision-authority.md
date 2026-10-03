@@ -52,7 +52,7 @@ the load-bearing half of this record. They are in the data and summarised under
 
 ## Every V1 decision, and who owns it
 
-Sixteen records. All of them are owned by `repository-maintainer`, and none is
+Seventeen records. All of them are owned by `repository-maintainer`, and none is
 unassigned. The `basis` column is the part worth reading.
 
 | Decision | Basis | Assigned |
@@ -73,19 +73,22 @@ unassigned. The `basis` column is the part worth reading.
 | [ADR 0014](../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md) | `assigned-retrospectively` | 2026-09-21 |
 | [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | `assigned-at-acceptance` | 2026-09-21 |
 | [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md) | `assigned-at-acceptance` | 2026-09-23 |
+| [ADR 0017](../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md) | `assigned-at-acceptance` | 2026-10-03 |
 
 | `basis` | What it means |
 |---|---|
 | `assigned-retrospectively` | The record was accepted before this ownership model existed. The role takes accountability for it going forward. **Nobody re-read the historical evidence as part of the assignment**, and the assignment is not a review of it |
 | `assigned-at-acceptance` | The record was accepted under this model, and its owner was named when it was accepted |
 
-Fourteen of the sixteen carry the first basis. That is the honest shape of a
+Fourteen of the seventeen carry the first basis. That is the honest shape of a
 governance gap closed after the fact, and writing it into the data is what stops a
-later reader taking fourteen fresh owner rows as fourteen fresh reviews. The two that
+later reader taking fourteen fresh owner rows as fourteen fresh reviews. The three that
 do not are [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md),
-which established this model, and
+which established this model,
 [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md), the
-first record accepted under it.
+first record accepted under it, and
+[ADR 0017](../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md), the
+first record of a V2 decision. (This paragraph said sixteen and two until 2026-10-03.)
 
 ## How this changes when a second maintainer arrives
 

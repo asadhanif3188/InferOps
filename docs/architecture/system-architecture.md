@@ -427,6 +427,50 @@ measured to have about 23 GB free on the volume where the container engine keeps
 virtual disk. Reclaiming it is `terraform destroy`, and that must be documented where
 an operator will find it rather than discovered as a disk-full error.
 
+### A GitOps controller, decided and not built
+
+Added on 2026-10-03. The flow above is the one that exists: an operator runs
+`helm install` through an environment script.
+[ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md) decides the first
+step of a second path, in which Argo CD reconciles the cluster to desired state
+kept in this repository. It decides the installation of the controller and
+nothing after it.
+
+```text
+   [ operator ]                                    outside InferOps
+       provide an existing cluster                         (ADR 0011)
+                |
+   [ contributor host ]
+       select the provider, verify the cluster
+                |
+   -------------|------------------------------------------------------
+   [ argocd-bootstrap ]              decided by ADR 0017, NOT BUILT
+       verify the pinned manifest's SHA-256
+       namespace argocd  ->  three definitions, one cluster role and
+       its binding  ->  the controllers
+                |
+                |  The bootstrap owns these objects. Terraform, Helm,
+                |  and Argo CD itself do not create or destroy them.
+                v
+   - - - - - - -|- - - - - - - - - - - - - - - - - - - - - - - - - - -
+   [ argo cd ]                                         NOT DECIDED
+       an Application, and what it reconciles
+```
+
+Three statements bound this diagram:
+
+- **No box in it exists.** No bootstrap procedure is committed, and no cluster
+  holds Argo CD.
+- **Argo CD is not on the request path in section 3.** A request goes to the
+  InferOps API and from there to the serving runtime. No serving component refers
+  to Argo CD, and a test reads the source for a reference. No run has measured a
+  request with Argo CD absent or stopped.
+- **The Terraform and Helm bands above do not move.** What Argo CD reconciles, and
+  what becomes of the Helm band when it does, are not decided.
+
+The pins, the objects, the refusals, and the removal are in
+[the Argo CD bootstrap record](../environment/argocd-bootstrap.md).
+
 ## 5. Telemetry and evidence flow
 
 These are two different things that get confused because both are called "output".
@@ -856,6 +900,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | How a cost figure is produced, and what it may be called | [ADR 0014](decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md), and [the cost method](../cost/cost-method.md) |
 | What a running release reports about itself | [The inference operations dashboard](../telemetry/inference-operations-dashboard.md) |
 | Reproducing all of it from a clean clone | [The clean-clone workflow](../environment/clean-clone.md) |
+| How the GitOps controller is installed and owned, decided and not built | [ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md), and [the Argo CD bootstrap record](../environment/argocd-bootstrap.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |

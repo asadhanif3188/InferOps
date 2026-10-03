@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/architecture/resource-ownership.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "V1 resource ownership inventory, v1alpha1",
-  "description": "Which tool, person, or controller owns the lifecycle of each resource the V1 architecture names, and what happens to that resource under each teardown operation. Ownership means the right to create and destroy. Referencing a resource is not owning it, and no resource in this file has more than one owner. Most rows are now implemented and cite the run that moved them; the v1Status field says which is which, and a row may only cite evidence when it is implemented.",
+  "description": "Which tool, person, or controller owns the lifecycle of each resource the V1 architecture names, and what happens to that resource under each teardown operation. Ownership means the right to create and destroy. Referencing a resource is not owning it, and no resource in this file has more than one owner. Most rows are now implemented and cite the run that moved them; the v1Status field says which is which, and a row may only cite evidence when it is implemented. Rows added on 2026-10-03 by ADR 0017 describe the Argo CD bootstrap that V2 decided; for those rows v1Status records whether the row is built, and it does not place the row in V1 scope.",
   "decisionRef": "docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md",
   "documentRef": "docs/architecture/resource-ownership.md",
   "lifecycles": {
@@ -12,6 +12,7 @@
     "host": "Belongs to the contributor's own machine. Created and removed by the environment scripts or by the contributor.",
     "operator-provided": "Provided by the operator outside InferOps, with a supported provider's own tooling. InferOps selects, verifies and consumes it, and nothing on its platform path creates, enables, resets, reconfigures, or deletes it (ADR 0011).",
     "prerequisite": "Provisioned before a workload release and outliving it. Terraform's half of the cluster.",
+    "bootstrap": "Installed once in a cluster by the Argo CD bootstrap procedure, before any GitOps reconciliation, and outliving every release. Terraform, Helm and Argo CD itself neither create nor destroy it (ADR 0017).",
     "release": "Part of one Helm release. Created by install or upgrade, removed by uninstall.",
     "derived": "Never declared by any tool. A Kubernetes controller creates it from an owned object and garbage-collects it.",
     "undecided": "No owner has been selected. Every resource carrying this lifecycle must be deferred out of V1."
@@ -65,6 +66,13 @@
       "lifecycle": "prerequisite",
       "createdBy": "terraform apply",
       "destroyedBy": "terraform destroy"
+    },
+    {
+      "ownerId": "argocd-bootstrap",
+      "name": "The Argo CD bootstrap procedure, run by an operator against a selected and verified cluster",
+      "lifecycle": "bootstrap",
+      "createdBy": "the Argo CD bootstrap procedure",
+      "destroyedBy": "the Argo CD bootstrap removal procedure"
     },
     {
       "ownerId": "helm",
@@ -235,6 +243,28 @@
       "evidenceRef": "docs/proof/testing/v1-s4-009-pr2-validation.md"
     },
     {
+      "resourceId": "argocd-bootstrap-inputs",
+      "name": "The Argo CD bootstrap inputs record",
+      "kind": "repository artifact",
+      "owner": "repository",
+      "lifecycle": "repository",
+      "v1Status": "implemented",
+      "createdBy": "a merged pull request",
+      "destroyedBy": "a merged pull request",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy",
+        "cluster teardown"
+      ],
+      "referencedBy": [
+        "argocd-bootstrap"
+      ],
+      "handoff": "Added to this inventory on 2026-10-03 by ADR 0017. The record pins the Argo CD release by tag and commit, the install manifest by commit and SHA-256, and the two images by digest. It also names the namespace, every object the manifest declares with the row that holds it, the refusals, and the scoped removal. `implemented` means that the record exists and that a test holds it to this inventory. It does not mean that Argo CD is installed: no procedure reads the record, and no cluster was contacted to write it.",
+      "evidenceRef": "docs/proof/architecture/v2-s3-001-pr1-validation.md"
+    },
+    {
       "resourceId": "workload-contract-document",
       "name": "A workload contract instance authored by an owning team",
       "kind": "document",
@@ -320,6 +350,28 @@
       ],
       "handoff": "Pinned by repository revision and per-file content hash. The hash is verified before the file is mounted, because the transport does not establish who served the bytes. The file never enters this repository.",
       "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md"
+    },
+    {
+      "resourceId": "argocd-upstream-release",
+      "name": "The Argo CD install manifest and the images it names, at their pinned upstream identities",
+      "kind": "upstream manifest and container images",
+      "owner": "external-publisher",
+      "lifecycle": "external",
+      "v1Status": "planned",
+      "createdBy": "the publisher, upstream",
+      "destroyedBy": "the publisher, upstream",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy",
+        "cluster teardown"
+      ],
+      "referencedBy": [
+        "argocd-bootstrap"
+      ],
+      "handoff": "Added to this inventory on 2026-10-03 by ADR 0017. The manifest is pinned by commit and SHA-256, and each image by digest. The manifest is not copied into this repository. This project can verify the bytes it receives and cannot keep them available: a manifest or an image that upstream withdraws is an availability failure that this design does not prevent. `planned`, because nothing has downloaded these artifacts into a cluster.",
+      "evidenceRef": null
     },
     {
       "resourceId": "container-engine",
@@ -550,6 +602,82 @@
       ],
       "referencedBy": [],
       "handoff": "Not in V1. It is named here so that if it is ever added it lands on the prerequisite side of the boundary rather than inside a chart, which is where a quota is usually put by accident.",
+      "evidenceRef": null
+    },
+    {
+      "resourceId": "argocd-namespace",
+      "name": "The Argo CD namespace",
+      "kind": "v1/Namespace",
+      "owner": "argocd-bootstrap",
+      "lifecycle": "bootstrap",
+      "v1Status": "planned",
+      "createdBy": "the Argo CD bootstrap procedure",
+      "destroyedBy": "the Argo CD bootstrap removal procedure",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy"
+      ],
+      "referencedBy": [],
+      "handoff": "The namespace `argocd`. The bootstrap procedure creates it and labels it `inferops.io/lifecycle=bootstrap`; the pinned manifest declares no Namespace. Terraform owns the platform namespace and does not own this one. The two are told apart by name. The name does not begin with `inferops-`, so a scoped sweep of the project's namespaces does not match it. `planned`: no procedure exists and no cluster holds it.",
+      "evidenceRef": null
+    },
+    {
+      "resourceId": "argocd-custom-resource-definitions",
+      "name": "The Argo CD custom resource definitions",
+      "kind": "apiextensions.k8s.io/v1 CustomResourceDefinition",
+      "owner": "argocd-bootstrap",
+      "lifecycle": "bootstrap",
+      "v1Status": "planned",
+      "createdBy": "the Argo CD bootstrap procedure",
+      "destroyedBy": "the Argo CD bootstrap removal procedure",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy"
+      ],
+      "referencedBy": [],
+      "handoff": "Three cluster-scoped definitions: `applications.argoproj.io`, `applicationsets.argoproj.io` and `appprojects.argoproj.io`. The bootstrap procedure creates them from the pinned manifest. Deleting one deletes every object of its kind, so the removal procedure refuses while an Application or an ApplicationSet object exists. No chart and no Terraform file declares a CustomResourceDefinition. `planned`.",
+      "evidenceRef": null
+    },
+    {
+      "resourceId": "argocd-cluster-rbac",
+      "name": "The Argo CD cluster-wide role and its binding",
+      "kind": "rbac.authorization.k8s.io/v1 ClusterRole and ClusterRoleBinding",
+      "owner": "argocd-bootstrap",
+      "lifecycle": "bootstrap",
+      "v1Status": "planned",
+      "createdBy": "the Argo CD bootstrap procedure",
+      "destroyedBy": "the Argo CD bootstrap removal procedure",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy"
+      ],
+      "referencedBy": [],
+      "handoff": "One ClusterRole and one ClusterRoleBinding, both named `argocd-application-controller`. The role grants every verb on every resource and on every non-resource URL, and the binding gives it to the application controller's service account. It is the upstream default and ADR 0017 does not narrow it. The consequence is that the controller is able to change objects that another owner holds. No committed check stops it from doing so once an Application exists. `planned`.",
+      "evidenceRef": null
+    },
+    {
+      "resourceId": "argocd-controller-installation",
+      "name": "The Argo CD controllers and their supporting objects",
+      "kind": "platform service (StatefulSet, Deployment, Service, ConfigMap, Secret, ServiceAccount, Role, RoleBinding, NetworkPolicy)",
+      "owner": "argocd-bootstrap",
+      "lifecycle": "bootstrap",
+      "v1Status": "planned",
+      "createdBy": "the Argo CD bootstrap procedure",
+      "destroyedBy": "the Argo CD bootstrap removal procedure",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy"
+      ],
+      "referencedBy": [],
+      "handoff": "The twenty-nine namespaced objects the pinned manifest declares, all in the namespace `argocd`: the application controller, the repository server, Redis, and the ApplicationSet controller, with their services, configuration, service accounts, roles and network policies. One more Secret, `argocd-redis`, is expected at run time from an init container. A Helm release owns objects of the same kinds, in the platform namespace; the two sets are told apart by namespace. Nothing here is on the inference request path. The manifest sets no resource request and no limit on any container. `planned`.",
       "evidenceRef": null
     },
     {

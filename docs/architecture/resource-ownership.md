@@ -32,6 +32,18 @@ different lifecycles and different evidence and one row had to average them. How
 a cluster is selected and identified is in
 [the provider contract](../environment/local-cluster-provider-contract.md).
 
+**A fifth layer was decided on 2026-10-03, and it is not built.**
+[ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md) selects how V2
+installs Argo CD, its GitOps controller, and gives that installation one owner:
+`argocd-bootstrap`, with the `bootstrap` lifecycle. The inventory gains that owner
+and six rows. Four of them are the objects the bootstrap creates in a cluster, and
+all four are `planned`: no bootstrap procedure exists, and no cluster holds
+Argo CD. The pins and the rules are in
+[the Argo CD bootstrap record](../environment/argocd-bootstrap.md). This change
+moves no existing row. Terraform keeps the prerequisites and Helm keeps the
+release. Which objects Argo CD reconciles is not decided here, because no
+Application exists.
+
 **Three procedures now install and uninstall the same release in the same
 namespace**, and the distinction is what each is for rather than what each
 touches. `helm-lifecycle.sh` answers "does the chart install, upgrade, roll back,
@@ -139,6 +151,7 @@ Three corollaries, because each is a mistake this inventory is built to prevent:
 | `contributor-host` | The contributor's machine, engine, and environment scripts | `host` | The environment scripts, or a host prerequisite | The environment scripts, or the contributor |
 | `cluster-operator` | The operator who provides the local cluster, with a supported provider's own tooling | `operator-provided` | The `kind` CLI, or enabling Kubernetes in Docker Desktop | Cluster teardown, by the operator. Nothing on the platform path does it |
 | `terraform` | The platform prerequisite layer | `prerequisite` | `terraform apply` | `terraform destroy` |
+| `argocd-bootstrap` | The Argo CD bootstrap procedure, run by an operator against a selected and verified cluster. Decided by ADR 0017 and not implemented | `bootstrap` | The bootstrap procedure | The bootstrap removal procedure |
 | `helm` | The workload release layer | `release` | `helm install` or `helm upgrade` | `helm uninstall` |
 | `kubernetes-control-plane` | Kubernetes controllers | `derived` | Reconciliation | Garbage collection |
 | `undecided` | Not selected | `undecided` | Nothing | Nothing |
@@ -181,6 +194,36 @@ crossed by accident rather than by argument:
 | `namespace-metadata` | Object metadata | Yes | Namespace-level metadata is Terraform's; per-object metadata inside a release is Helm's |
 | `model-cache-volume-claim` | `v1/PersistentVolumeClaim` | Yes | Terraform provisions it empty; a Helm-owned job fills it; the serving deployment mounts it read-only, at a revision-scoped subdirectory rather than at its root |
 | `platform-resource-quota` | `v1/ResourceQuota` | Yes | **Deferred out of V1.** Named so that if it is ever added it lands on the prerequisite side rather than inside a chart |
+
+### The Argo CD bootstrap
+
+Added on 2026-10-03 by
+[ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md). Every row is
+`planned`. The field is still named `v1Status`; for these rows it records whether
+the row is built, and it does not place the row in V1 scope.
+
+> **The bootstrap owns the Argo CD installation. Terraform, Helm, and Argo CD
+> itself do not create it and do not destroy it.**
+
+| `resourceId` | Kind | Told apart from another owner by | Note |
+|---|---|---|---|
+| `argocd-namespace` | `v1/Namespace` | Name. Terraform owns the platform namespace; this one is `argocd` | The pinned manifest declares no Namespace, so the bootstrap creates it and labels it `inferops.io/lifecycle=bootstrap`. The name does not begin with `inferops-` |
+| `argocd-custom-resource-definitions` | `apiextensions.k8s.io/v1 CustomResourceDefinition` | Kind. No other owner declares one | Three definitions. Deleting one deletes every object of its kind, so removal refuses while an Application or an ApplicationSet object exists |
+| `argocd-cluster-rbac` | `rbac.authorization.k8s.io/v1 ClusterRole` and `ClusterRoleBinding` | Kind. No other owner declares one | One of each. The role grants every verb on every resource. It is the upstream default and is not narrowed |
+| `argocd-controller-installation` | `platform service` | Namespace. A Helm release owns the same kinds in the platform namespace | Twenty-nine namespaced objects in `argocd`, and one Secret an init container is expected to create. No container declares a resource request or a limit |
+
+Three limits apply to this table:
+
+- **Nothing here is built.** A row moves to `implemented` when a record of a run
+  shows the bootstrap creating and removing the objects on a named provider.
+- **The role in `argocd-cluster-rbac` reaches every object in the cluster.** The
+  inventory says who may create and destroy an object. It does not stop a
+  controller that holds a wider grant. No Application exists, so Argo CD
+  reconciles nothing today; the change that adds the first Application owes the
+  restriction on what it may target.
+- **The ApplicationSet controller is installed and unused.** The pinned manifest
+  includes it and is applied unmodified. InferOps commits no ApplicationSet
+  object.
 
 ### The release
 
@@ -227,10 +270,12 @@ inside one.
 | `continuous-integration-workflow` | `repository` | The committed default-lane workflow and the gate matrix compared against it in both directions. The only committed artifact here that runs anything; it installs nothing and no job in it has reached a cluster. Added 2026-09-21, having acted since 2026-09-13 with no row |
 | `inference-operations-dashboard` | `repository` | The dashboard's panels, queries and empty-state texts as a committed record, and the Grafana JSON generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-13. `implemented` means the definition exists and is checked against the query policy and synthetic scenarios; one throwaway Grafana imported it once for the V1-S4-002-PR2 validation, and nothing here runs one |
 | `inference-alert-definitions` | `repository` | The six V1 alerts -- expression, window, threshold source, owner, severity, caller impact, action, runbook -- as a committed record, and the Prometheus rule file per profile generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-17. `implemented` means the definition exists and is checked against the query policy and eight committed scenarios; no Prometheus in a cluster has loaded it, nothing routes an alert, and nobody has ever been told about one |
+| `argocd-bootstrap-inputs` | `repository` | The pinned Argo CD release, install manifest and images, the namespace, the object-to-row map, the refusals, and the scoped removal, as a committed record. `implemented` means that the record exists and is checked against this inventory. It does not mean that Argo CD is installed. Added 2026-10-03 |
 | `workload-contract-document` | `workload-owner` | The platform reads it and never writes it back |
 | `workload-secret-material` | `workload-owner` | Referenced by name. This project never creates, rotates, or reads it |
 | `serving-runtime-container-image` | `external-publisher` | Pinned by digest. Availability is not this project's to guarantee |
 | `model-artifact-upstream` | `external-publisher` | Pinned by revision and per-file hash, verified before use |
+| `argocd-upstream-release` | `external-publisher` | The Argo CD install manifest, pinned by commit and SHA-256, and the two images it names, pinned by digest. Not copied into this repository. Availability is not this project's to keep. Still `planned`: nothing has downloaded it into a cluster. Added 2026-10-03 |
 | `container-engine` | `contributor-host` | No step changes host-wide engine settings |
 | `kind-cluster` | `cluster-operator` | An existing `kind` cluster. Terraform and Helm act inside it and neither may create or delete it; since ADR 0011 nothing on the platform path may either. `implemented`, on `kind` evidence only |
 | `docker-desktop-cluster` | `cluster-operator` | Docker Desktop's cluster. A release has now been installed and certified through it under the provider contract, and the guard binds each node to a container on this engine and to the API server port the verified kubeconfig dials. `implemented`, along with the whole release layer, by `V1-S3-011-PR2`'s reconciliation — the operator still owns its lifecycle, and nothing here creates, enables, resets, or deletes it |
@@ -271,6 +316,17 @@ Five operations, ordered by how much they touch. Each subsumes the one before it
                               Nothing on InferOps's platform path does
                               this (ADR 0011), and neither tool may.
 ```
+
+**The Argo CD bootstrap removal is not one of the five.** The five are ordered
+because each one removes what the one before it removes. The bootstrap removal
+does not fit that order: it deletes the namespace `argocd` and five
+cluster-scoped objects, and it does not touch the platform namespace. A
+`terraform destroy` does the opposite. The four bootstrap rows therefore survive
+every operation above except cluster teardown, and their `destroyedBy` names a
+procedure that is not in the list. The test that refuses a row which survives
+its own destruction compares against the list, so it cannot fail for these rows.
+The removal steps and their refusals are in
+[the Argo CD bootstrap record](../environment/argocd-bootstrap.md#removal).
 
 The inventory records, per resource, which of these it survives. Two tests read
 those records: one refuses a row that claims to survive the operation that destroys
@@ -338,6 +394,16 @@ both belong to `cluster-operator` and neither survives the operation that remove
 it, that no tool or script owns one, and that each provider's row cites only
 evidence made on its own provider.
 
+Checked by `tests/architecture/test_argocd_bootstrap.py`, for the bootstrap rows
+only: that every object the pinned manifest declares maps to a row the
+`argocd-bootstrap` owner holds, and every such row is named by the record; that
+the namespace is not the platform namespace, not the smoke namespace, and not
+under the `inferops-` prefix; that neither committed chart render and no
+Terraform file declares a cluster-scoped kind the bootstrap owns or names the
+namespace `argocd`; that no Argo CD custom resource is committed; and that every
+bootstrap row is `planned` and cites no evidence. The last check is a pin: the
+change that implements the bootstrap must move it.
+
 Checked by `tests/architecture/test_helm_chart.py`, for the release layer only:
 that the committed chart renders every row the release table gives it or declares
 the row deferred, that it renders no Terraform-owned object and no `Namespace`,
@@ -359,6 +425,11 @@ that the claim name is the one the chart mounts and the claim is large enough fo
 the artifact this project pins, that the provider pin is exact and identical in
 every place it is written, and that the provider names its kubeconfig and context
 rather than inheriting them.
+
+**What the bootstrap suite does not check: anything in a cluster.** It reads a
+record that was written from one download of an upstream file. It does not
+establish that the manifest applies, that the namespace boundary holds at run
+time, or that a removal leaves nothing behind.
 
 **What the two suites still do not check: that either configuration does what it
 says when it runs.** They read files, and a file is not a cluster. That gap is
