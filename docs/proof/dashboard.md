@@ -16,7 +16,7 @@ which is asked of a Prometheus and shows nothing when nothing is running. This
 page reads committed files, says the same thing on every machine, and does not
 change when a cluster does.
 
-**Certified: 42 of 59 claims.** The remaining 17 are the rows worth
+**Certified: 43 of 60 claims.** The remaining 17 are the rows worth
 reading, and they are listed in full under [what V1 does not
 claim](#what-v1-does-not-claim) rather than summarised away. Every number on
 this page is counted from the register at render time; there is no field
@@ -25,7 +25,7 @@ anywhere in this tool that a count could be typed into.
 > [!IMPORTANT]
 > **A claim's status and an evidence level are different things.** The status
 > says whether this project publishes a property at all. A level belongs to
-> one evidence record — 65 of them sit behind these claims — and
+> one evidence record — 66 of them sit behind these claims — and
 > says only how that record was obtained. The levels `C0` to `C4` are
 > [InferOps Evidence Levels](../testing/evidence-levels.md): **project-defined,
 > and not an ISO, NIST, regulatory, or industry certification standard.** Nobody
@@ -77,7 +77,7 @@ provider certifies that provider alone.
 | [Cost method](#cost-method) | 2 | 0 | 0 | 1 | `C0` | none named |
 | [Security boundary](#security-boundary) | 3 | 1 | 0 | 2 | `C0` | `docker-desktop` |
 | [Multi-replica serving](#multi-replica-serving) | 0 | 0 | 0 | 1 | — | `docker-desktop` |
-| [Contracts, scaffolding, and the safe quick start](#contracts-scaffolding-and-the-safe-quick-start) | 5 | 3 | 0 | 0 | `C2` | none named |
+| [Contracts, scaffolding, and the safe quick start](#contracts-scaffolding-and-the-safe-quick-start) | 6 | 3 | 0 | 0 | `C2` | none named |
 | [Release and production use](#release-and-production-use) | 1 | 0 | 0 | 1 | `C0` | none named |
 | [Ownership, tests, continuous integration, and evidence](#ownership-tests-continuous-integration-and-evidence) | 5 | 0 | 0 | 2 | `C0` | none named |
 
@@ -88,7 +88,7 @@ between a promise, a decision, and a measured absence.
 
 | Status | Claims | May be published as a capability | What it means |
 |---|---|---|---|
-| `certified` | 42 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
+| `certified` | 43 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
 | `planned` | 7 | no | V1 intends it and nothing has proven it. It may be published only as an intention, and it may cite no evidence record. |
 | `deferred` | 1 | no | Out of V1 scope by an accepted decision. It may not be published as a capability at all, and it may cite no evidence record. |
 | `not-claimed` | 9 | no | A reader would reasonably expect it and V1 states that it does not have it. It may cite the record that measured the absence, because an absence somebody measured is worth more than one nobody mentions. |
@@ -105,7 +105,7 @@ record at that level.
 
 | Evidence level | Records | Certified claims holding one | Defined as |
 |---|---|---|---|
-| `C0` | 27 | 23 | [Static Evidence](../testing/evidence-levels.md#c0--static-evidence) |
+| `C0` | 28 | 24 | [Static Evidence](../testing/evidence-levels.md#c0--static-evidence) |
 | `C1` | 8 | 5 | [Substituted Execution Evidence](../testing/evidence-levels.md#c1--substituted-execution-evidence) |
 | `C2` | 30 | 20 | [Runtime Evidence](../testing/evidence-levels.md#c2--runtime-evidence) |
 | `C3` | 0 | 0 | [Representative Evidence](../testing/evidence-levels.md#c3--representative-evidence) |
@@ -132,7 +132,7 @@ interchangeable, so the environment is counted per record.
 | `local-kubernetes` | `kind` | `cpu` | 1 |
 | `local-kubernetes` | `unrecorded` | `cpu` | 3 |
 | `local-process` | `not-applicable` | `cpu` | 10 |
-| `repository-only` | `not-applicable` | `not-applicable` | 25 |
+| `repository-only` | `not-applicable` | `not-applicable` | 26 |
 
 ### Which provider the real results came from
 
@@ -163,7 +163,7 @@ Until `V1-S5-012-PR2` the register stored one level per claim, under
 meanings ADR 0016 supersedes. Every claim still carries that value as
 history, and the levels on its records are the result of reading each
 record against the current definitions. 43 claims carried a level;
-11 claims now hold records at a level other than the one they
+12 claims now hold records at a level other than the one they
 carried, or hold a level where they carried none. They are listed here.
 [The migration report](testing/v1-s5-012-pr2-migration-report.md) says why each one it moved did;
 a claim that gained a record after the migration, through a later ledger, is
@@ -186,6 +186,7 @@ every status the migration changed, with the measurement that required it.
 | A real Prometheus parsed and evaluated all 30 panel expressions in nine states and refused none, and a real Grafana imported the generated JSON and rendered all 29 panels. | `certified` | `C2` | `C0`, `C2` |
 | The NetworkPolicy objects the chart renders restrict traffic in the clusters this project runs on. | `not-claimed` | none | `C1` |
 | InferOps has published a versioned V1 release. | `certified` | none | `C0` |
+| The committed evidence of the first run of the frozen E01 static parts holds two renders of the V1 synchronous reference contract on its local binding, written by two processes, that are byte-identical and record their sources; a render after a replica-range change that differs only in the values and release fields that change owns; and, for each of six registered invalid or conflicting inputs, two identical refusals that match the registered one and no output directory. | `certified` | none | `C0` |
 
 ## The capabilities
 
@@ -343,7 +344,7 @@ absence is not one status.
 
 *What does the mock path prove, and what does it never prove?*
 
-**Tally:** 5 `certified`, 3 `planned`.
+**Tally:** 6 `certified`, 3 `planned`.
 
 | Claim | Status | Evidence records | Limitation |
 |---|---|---|---|
@@ -353,6 +354,7 @@ absence is not one status.
 | The scaffolding command renders a workload project for the mock and synchronous profiles and refuses to overwrite a file that already exists. | `certified` | `C2` · `local-process`, `cpu` · workload `operator-issued` · substituted `scaffold-file-write-path` (stub) · [`scaffolding/v1-s1-006-pr2-validation.md`](scaffolding/v1-s1-006-pr2-validation.md), [`scaffolding/v1-s1-006-independent-walkthrough.md`](scaffolding/v1-s1-006-independent-walkthrough.md) | The walkthrough was executed on one Windows host by an independent Codex reviewer rather than a human second engineer, and the record says so. The synchronous profile was generated and validated, never deployed. The walkthrough never scaffolded into an occupied destination: the refusal to overwrite rests on the suite in the change-validation record cited beside it, which states that it certifies no claim in the test matrix and moves no layer. |
 | The published developer quick start was followed on a clean checkout and its mock workflow completed, and the authorization-gated real-runtime smoke it points at has been executed and recorded separately. | `certified` | `C1` · `local-process`, `cpu` · workload `operator-issued` · substituted `llama-cpp-adapter` (mock, claim-material), `llama-cpp-server` (mock, claim-material), `qwen3-1-7b-q8-0` (mock, claim-material) · [`quickstart/v1-s1-009-pr1-validation.md`](quickstart/v1-s1-009-pr1-validation.md), [`scaffolding/v1-s1-006-independent-walkthrough.md`](scaffolding/v1-s1-006-independent-walkthrough.md)<br>`C2` · `local-kubernetes`, provider not named by its record, `cpu` · workload `operator-issued` · [`serving/v1-s1-real-runtime-closure.md`](serving/v1-s1-real-runtime-closure.md) | One Windows host, one executor, mock adapter throughout. The API was driven in process through ASGI and no network socket was opened. In the quick start's own record the real-runtime lane is seven skips, because the runtime settings were absent, and a skipped session is not a smoke run; the execution is the third record cited, which is a separate authorized run on a capable host. |
 | The mock serving path declares its own kind and refuses a model identity that is not mock-labelled, so a mock result cannot be mistaken for a real one. | `planned` | none, and a `planned` claim may hold none | The behaviour is implemented and exercised by the adapter and mock-integration layers. The claim and test matrix has not promoted it, and no evidence record binds it. |
+| The committed evidence of the first run of the frozen E01 static parts holds two renders of the V1 synchronous reference contract on its local binding, written by two processes, that are byte-identical and record their sources; a render after a replica-range change that differs only in the values and release fields that change owns; and, for each of six registered invalid or conflicting inputs, two identical refusals that match the registered one and no output directory. | `certified` | `C0` · `repository-only` · [`experiments/v2-e01/runs/20261002-e01-abc-1/result.md`](experiments/v2-e01/runs/20261002-e01-abc-1/result.md), [`experiments/v2-e01/runs/20261002-e01-abc-1/run.v1alpha1.json`](experiments/v2-e01/runs/20261002-e01-abc-1/run.v1alpha1.json), [`experiments/v2-e01/runs/20261002-e01-abc-1/refusals.json`](experiments/v2-e01/runs/20261002-e01-abc-1/refusals.json), [`experiments/v2-e01/runs/20261002-e01-abc-1/commands.txt`](experiments/v2-e01/runs/20261002-e01-abc-1/commands.txt), [`experiments/v2-e01/freeze-r1.v1alpha1.json`](experiments/v2-e01/freeze-r1.v1alpha1.json), [`domain/v2-s2-003-pr2-validation.md`](domain/v2-s2-003-pr2-validation.md) | Static, C0, about the committed evidence of one run on one host at one revision, for one contract on one binding. The renderer that produced it is product code and ran; a claim about the renderer itself would be C2 and is not made. Nothing was deployed, reconciled, or served. One of the six refusals, E01-C-4, comes from the binding parser and carries a code and a field but no rule category. The platform-defaults revision a release records is asserted, not reconstructed, and the two hand-written strings that repeat contract pins are not checked against the contract. |
 | Deployment values are derived only from a document that has passed validation. | `planned` | none, and a `planned` claim may hold none | Deterministic deployment-value rendering exists, checked statically at C0: validated, typed inputs render the chart's values, and a RenderedWorkloadRelease binds the generated values file to the digests and revisions of what it was rendered from. No supported deployment or GitOps path consumes the generated files yet, so no executed release shows deployment values derived only from a validated document. The platform-defaults revision a release records is the one its caller states: nothing yet reconstructs the defaults from a committed source bound to that revision, so defaults content changed under the same stated revision changes the values and not the release identifier. A hand-written values file is checked against the generated values only when it is one the repository supports, one named with the .manual-values.yaml suffix; any other values file given to Helm is not checked. |
 | A workload described by a `WorkloadContract` document is served by the platform that document configures. | `planned` | none, and a `planned` claim may hold none | Every real run so far deployed the runtime from a feasibility manifest or from the Helm chart, not from a generated `WorkloadContract`. The mock layers show the API maps the call; they cannot show a document drove the deployment. |
 
@@ -457,7 +459,7 @@ weaker form of the capability.
 - The capability grouping is a reading. Which claims belong under *model
   integrity* rather than *real serving* is a judgement made in
   `tools/proof_dashboard/core.py`, and no check decides it.
-- **Every one of the 59 claims is shown as a row.** Each
+- **Every one of the 60 claims is shown as a row.** Each
   is named by exactly one capability group, so nothing on this page is
   counted in a total and absent from every table. That is a property of the
   grouping today, not a rule: a claim added to the register and named by no

@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -48,6 +49,7 @@ from inferops.domain.workload import (
     get_matrix_loader,
     set_matrix_loader,
 )
+from tools.experiment_e01 import RUNS_DIR, committed_runs
 from tools.generated_release import (
     BLOCKING_RULES,
     DECLARED_RELEASES,
@@ -184,9 +186,19 @@ def test_declared_releases_have_distinct_names_and_directories() -> None:
     assert len(set(directories)) == len(directories)
 
 
+#: The directories of an E01 run that hold renders, as the freeze record names them.
+RUN_RENDERS = frozenset({"render-a", "render-b", "mutation"})
+
+
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is not on PATH")
 def test_every_committed_generated_file_is_in_a_declared_release_directory() -> None:
-    """A release nobody declared would never be compared, so none may exist."""
+    """A release nobody declared would never be compared, so none may exist.
+
+    The one other place a generated file may be committed is an E01 run's evidence,
+    and only as a file the run's manifest records. Those renders are bound to the
+    commit that ran them, so this check does not derive them again from today's
+    sources; ``python -m tools.experiment_e01 --check`` holds each to its own bytes.
+    """
     result = subprocess.run(
         ["git", "ls-files", "--", *(f"*{name}" for name in GENERATED_FILES)],
         cwd=REPO_ROOT,
@@ -195,12 +207,21 @@ def test_every_committed_generated_file_is_in_a_declared_release_directory() -> 
         check=True,
     )
     committed = sorted(result.stdout.splitlines())
-    declared = sorted(
+    declared = [
         f"{release.directory}/{name}"
         for release in DECLARED_RELEASES
         for name in GENERATED_FILES
-    )
-    assert committed == declared
+    ]
+    run_evidence = [
+        f"{RUNS_DIR}/{run.name}/{relative}"
+        for run in committed_runs(REPO_ROOT)
+        for relative in json.loads(
+            (run / "run.v1alpha1.json").read_text(encoding="utf-8")
+        )["files"]
+        if relative.split("/")[0] in RUN_RENDERS
+        and relative.rsplit("/", 1)[-1] in GENERATED_FILES
+    ]
+    assert committed == sorted([*declared, *run_evidence])
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is not on PATH")

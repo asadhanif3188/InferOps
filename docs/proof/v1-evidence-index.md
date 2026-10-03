@@ -9,7 +9,8 @@ by `python -m tools.evidence_index --write` from
 [the `V1-S5-013-PR1` closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json),
 [the `V1-S5-013-PR2` publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json),
 [the `V1-S5-009-PR1` post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json),
-and [the `V2-S2-001-PR2` claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json).
+[the `V2-S2-001-PR2` claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
+and [the `V2-S2-003-PR2` E01 static proof ledger](testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json).
 It states nothing they do not, and
 [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py)
 regenerates it and fails on any difference.
@@ -63,9 +64,14 @@ the post-release ledger. Later, `V2-S2-001-PR2` replaced the stale limitation of
 planned claim, `deployment-values-derive-only-from-a-validated-document`, once Helm
 values were generated - the claim stays planned with no record - and this page's reason
 in the register, through a second post-release ledger, the claim reconciliation ledger.
-Each moves the pack `main` holds, and it is expected: the released pack is the frozen
-one, and the index recomputes it, by undoing both post-release ledgers, rather than
-copying it. `--gate` prints both pairs.
+Then `V2-S2-003-PR2` added one claim,
+`the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal`,
+certified at `C0` on the record of the first run of the static parts of V2-E01, and
+replaced this page's reason in the register again, through a third post-release ledger,
+the E01 static proof ledger. It is the first ledger to add a claim. Each moves the pack
+`main` holds, and it is expected: the released pack is the frozen one, and the index
+recomputes it, by undoing all three post-release ledgers, rather than copying it.
+`--gate` prints both pairs.
 
 How the 38 records that executed their target behaviour identify the repository code
 that ran:
@@ -95,9 +101,9 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after both post-release ledgers, which no release quotes | `08d4868fcf4c320961d2937b5369dc9846ca4f0455e2f60375c1decfbdab23df` | `0c2f2508c0dd96fb97540fc2a20110d558f0f88096a8b3ad97857b1b32a6b807` |
+| **Current:** `main` after the three post-release ledgers, which no release quotes | `0a03ee7936796b2cd50b99f081031bbb609d646d89bd03b31be903b2fa0be47c` | `4f42e4a1ee1bff175f4caf6c4a4d32f739126bd2ed3b95ffafb33d60a241a3b9` |
 
-The released pair is not read from a ledger. The index undoes both post-release
+The released pair is not read from a ledger. The index undoes the three post-release
 ledgers' changes, last first, renders the register as it was, and takes both digests
 over that register, the four ledgers before the post-release ones, and the files that
 register cites, read from this checkout; the first post-release ledger states the pair,
@@ -109,7 +115,7 @@ which a test checks where the clone holds the tag.
 
 ## What one entry holds
 
-For each of the **65 evidence records** in the register:
+For each of the **66 evidence records** in the register:
 
 | Field | What it says | Where it comes from |
 |---|---|---|
@@ -145,12 +151,13 @@ version.
 
 ## What the index shows today
 
-- **65 evidence records** under 59 claims: 27 at `C0`, 8 at `C1`, 30 at `C2`, and none
-  at `C3` or `C4`. Every one of the **42 certified claims** holds at least one record,
+- **66 evidence records** under 60 claims: 28 at `C0`, 8 at `C1`, 30 at `C2`, and none
+  at `C3` or `C4`. Every one of the **43 certified claims** holds at least one record,
   and every record states its limitations and what it does not establish. The pack
-  `v1.0.0` was cut over held 64 records and 41 certified claims; the difference is the
-  release's own record, at `C0`, added after it.
-- **87 distinct committed files** are cited, all under `docs/proof/`, each hashed and
+  `v1.0.0` was cut over held 64 records and 41 certified claims; the difference is two
+  records at `C0`, each added after it with a claim certified after it: the release's
+  own record, and the record of the first E01 static run.
+- **93 distinct committed files** are cited, all under `docs/proof/`, each hashed and
   each named by its git blob. Eleven of them carry a correction recorded beside them
   rather than inside them.
 - **38 records executed their target behaviour, and 20 of them name the repository

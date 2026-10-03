@@ -437,8 +437,11 @@ drift in a committed release; it is not closed.
 - **That either revision names a commit**, or that the platform defaults are the ones at
   the declared revision. Nothing reads Git history, and nothing reconstructs the defaults.
 - **A release nobody declared.** A test lists every tracked file named like a generated
-  file and fails unless each is in a declared directory. A file Git does not track is not
-  checked.
+  file and fails unless each is in a declared directory, or is a render an E01 run's
+  manifest records under its `render-a`, `render-b`, or `mutation` directory. Those
+  renders are bound to the commit that ran them, so this check does not derive them again;
+  `python -m tools.experiment_e01 --check` holds each to its own bytes. A file Git does not
+  track is not checked.
 - **Helm.** The check compares files. The generated-release suite renders the values with
   Helm when Helm is on `PATH`.
 - **Anything at runtime.** A pass is `C0`: the committed files agree with their committed

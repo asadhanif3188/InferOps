@@ -1,0 +1,337 @@
+{
+  "$id": "https://inferops.io/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Register changes after the E01 static run, V2-S2-003-PR2",
+  "description": "What V2-S2-003-PR2 changed in the register once the static parts of V2-E01 had run under their merged freeze record: every register change with its value before and after, and the findings each answers. It is the third ledger written after v1.0.0 was released, and like the two before it, it is not part of the pack that release was cut over: the evidence index undoes it, with the other post-release ledgers, to recompute that pack. It adds one claim, certified at C0 on the one record it adds with it, and moves no existing claim's status or record. It raises and closes no blocker, declares no freeze, states no release, and edits no dated record.",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "priorLedgerRef": "docs/proof/testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json",
+  "reportRef": "docs/proof/domain/v2-s2-003-pr2-validation.md",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "registerChanges": [
+    {
+      "changeId": "e01-static-claim",
+      "findingId": "e-f01-no-claim-records-the-e01-static-run",
+      "operation": "add-claim",
+      "position": 59,
+      "claim": {
+        "claimId": "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal",
+        "area": "contracts-and-domain",
+        "statement": "The committed evidence of the first run of the frozen E01 static parts holds two renders of the V1 synchronous reference contract on its local binding, written by two processes, that are byte-identical and record their sources; a render after a replica-range change that differs only in the values and release fields that change owns; and, for each of six registered invalid or conflicting inputs, two identical refusals that match the registered one and no output directory.",
+        "status": "certified",
+        "notClaimedReason": null,
+        "assertsRealBehaviour": false,
+        "limitation": "Static, C0, about the committed evidence of one run on one host at one revision, for one contract on one binding. The renderer that produced it is product code and ran; a claim about the renderer itself would be C2 and is not made. Nothing was deployed, reconciled, or served. One of the six refusals, E01-C-4, comes from the binding parser and carries a code and a field but no rule category. The platform-defaults revision a release records is asserted, not reconstructed, and the two hand-written strings that repeat contract pins are not checked against the contract.",
+        "doesNotEstablish": "That the release input deploys or serves, which E01-D owns and has not run; that the renderer gives the same result at another revision, or for another workload shape, contract, or binding; that any invalid input beyond the six registered cases is refused; reliability under failure; or production readiness.",
+        "evidenceRecords": [
+          {
+            "recordId": "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal-c0",
+            "claimId": "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal",
+            "migrationState": "migrated",
+            "evidenceLevel": "C0",
+            "summary": "On 2026-10-02 the static parts of V2-E01 ran once, as freeze revision 1 registers them, at the merged revision 707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3 with every pinned input unchanged and nothing uncommitted before the run; E01-A, E01-B, and E01-C each PASSED, and python -m tools.experiment_e01 --check judges the committed run again from its renders, its refusals, and the observations its manifest records.",
+            "execution": {
+              "targetBehaviourExecuted": false,
+              "executedComponents": [
+                {
+                  "componentId": "experiment-e01-runner",
+                  "role": "tool",
+                  "note": "tools/experiment_e01, run from a byte copy outside the checked-out tree, which parsed the pinned inputs and called the render package's generate_release, write_release, and admit_manual_values in process; the run manifest records each runner file's digest."
+                },
+                {
+                  "componentId": "inferops-render-package",
+                  "role": "tool",
+                  "note": "src/inferops/domain/render at the executing revision, the product code that wrote the renders and raised the refusals this record inspects; it is a tool here because the claim is about the committed evidence it produced, not about the renderer at any other revision."
+                },
+                {
+                  "componentId": "experiment-e01-check",
+                  "role": "validator",
+                  "note": "python -m tools.experiment_e01 --check, deriving every verdict again from the committed renders, the recorded refusals, and the observations the manifest records, and comparing it with the recorded outcomes, file digests, and result page; it does not recompute the contract, binding, or mutated-contract digests, the admission, or the V1 merge."
+                }
+              ],
+              "substitutions": []
+            },
+            "workload": {
+              "source": "none",
+              "description": "No workload was issued. The inputs were the pinned contract, binding, chart defaults, hand-written values, and V1 values, read as files, with the edits the freeze record registers."
+            },
+            "environment": {
+              "environmentId": "repository-only",
+              "provider": "not-applicable",
+              "hardwareClass": "not-applicable",
+              "note": "One Windows host, version 10.0.26200, Python 3.12.12 under uv 0.9.16 (a63e5b62e 2025-12-06), in a detached worktree at the executing revision with no change before the run and only the run's evidence directory after it, on 2026-10-02; no cluster, network, runtime, or model was contacted."
+            },
+            "versions": [
+              {
+                "component": "inferops repository",
+                "kind": "commit",
+                "value": "707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3"
+              }
+            ],
+            "versionsRecordedIn": "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/run.v1alpha1.json",
+            "procedure": {
+              "commands": [
+                "PYTHONHASHSEED=1 python -m experiment_e01 --run 20261002-e01-abc-1 --root . --prelude <preparation commands file>",
+                "python -m tools.experiment_e01 --check"
+              ],
+              "scriptRefs": [
+                "tools/experiment_e01/core.py",
+                "tools/experiment_e01/__main__.py"
+              ]
+            },
+            "acceptanceCriteria": [
+              {
+                "criterionId": "e01-ac1",
+                "statement": "The two renders are canonically identical: both files are byte-identical, the SHA-256 of each file is equal, and metadata.releaseId is equal.",
+                "declaredBefore": true,
+                "outcome": "met"
+              },
+              {
+                "criterionId": "e01-ac2",
+                "statement": "The release records the source contract digest, and it equals contract_digest of the parsed contract.",
+                "declaredBefore": true,
+                "outcome": "met"
+              },
+              {
+                "criterionId": "e01-ac3",
+                "statement": "The release records the EnvironmentBinding's name, apiVersion, and digest, and they equal local-kind, inferops.io/v1alpha1, and binding_digest of the parsed binding.",
+                "declaredBefore": true,
+                "outcome": "met"
+              },
+              {
+                "criterionId": "e01-ac4",
+                "statement": "The release records the generated values digest, and it equals the SHA-256 of the bytes of the values file beside it. The renderer and platform-defaults revisions it records equal the executing commit.",
+                "declaredBefore": true,
+                "outcome": "met"
+              },
+              {
+                "criterionId": "e01-ac5",
+                "statement": "No claim-relevant workload intent is written by hand after rendering, except the model.artifact.sourceUrl and model.license.reference strings, which repeat contract pins (definition.limitations): admit_manual_values admits the hand-written values with no finding; every chart value that a workload-intent context value renders to is in the generated values file; and the generated and hand-written values, merged over the chart's defaults, equal the V1 real values merged the same way, except telemetry.deploymentEnvironment, which is local in V2 and dev in V1 as the V1 synchronous compatibility record states.",
+                "declaredBefore": true,
+                "outcome": "met"
+              },
+              {
+                "criterionId": "e01-ac6",
+                "statement": "The mutation changes only the expected semantic output: in values.generated.yaml, only runtime.replicaCount, from 1 to 2; in rendered-workload-release.yaml, only metadata.releaseId, output.helmValues.sha256, and source.contract.sha256; and source.contract.sha256 equals contract_digest of the mutated contract.",
+                "declaredBefore": true,
+                "outcome": "met"
+              },
+              {
+                "criterionId": "e01-ac7",
+                "statement": "Every negative case is refused at its registered step with its expected refusal: for a RenderRefused, exactly the registered findings, in order, each with its rule, category, code, and field; for E01-C-4, the registered exception type, code, and field. No case writes an output directory, and each case's second execution gives the same refusal as its first.",
+                "declaredBefore": true,
+                "outcome": "met"
+              }
+            ],
+            "results": [
+              {
+                "resultId": "e01-ac1",
+                "statement": "render-a and render-b, written by two processes with PYTHONHASHSEED 1 and 2, are byte-identical in both files, and both releases carry the same metadata.releaseId.",
+                "criterionId": "e01-ac1"
+              },
+              {
+                "resultId": "e01-ac2",
+                "statement": "The render-a release records the source contract digest, and it equals contract_digest of the parsed contract.",
+                "criterionId": "e01-ac2"
+              },
+              {
+                "resultId": "e01-ac3",
+                "statement": "The render-a release records the binding as local-kind, inferops.io/v1alpha1, with the digest binding_digest gives for the parsed binding.",
+                "criterionId": "e01-ac3"
+              },
+              {
+                "resultId": "e01-ac4",
+                "statement": "The render-a release records the SHA-256 of the values file beside it, and the executing revision as both its renderer and its platform-defaults revision.",
+                "criterionId": "e01-ac4"
+              },
+              {
+                "resultId": "e01-ac5",
+                "statement": "admit_manual_values admitted the hand-written values with no finding, all 20 workload-intent chart values are in the generated file, and the two merged value sets differ only at telemetry.deploymentEnvironment, local in V2 and dev in V1.",
+                "criterionId": "e01-ac5"
+              },
+              {
+                "resultId": "e01-ac6",
+                "statement": "Setting the replica range to two moved runtime.replicaCount from 1 to 2 and no other value, and moved only metadata.releaseId, output.helmValues.sha256, and source.contract.sha256 in the release, the last equal to contract_digest of the mutated contract.",
+                "criterionId": "e01-ac6"
+              },
+              {
+                "resultId": "e01-ac7",
+                "statement": "Each of the six negative cases was refused at its registered step with exactly its registered refusal, five with a rule, a category, and a code and E01-C-4 by the binding parser with a code and a field, left its output directory absent, and was refused the same way when run a second time.",
+                "criterionId": "e01-ac7"
+              }
+            ],
+            "evidenceRefs": [
+              "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/result.md",
+              "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/run.v1alpha1.json",
+              "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/refusals.json",
+              "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/commands.txt",
+              "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json",
+              "docs/proof/domain/v2-s2-003-pr2-validation.md"
+            ],
+            "limitations": [
+              "One run on one Windows host at one revision, with one contract on one binding.",
+              "The renderer ran as a tool and its release input was inspected; the release input was not deployed, reconciled, or served.",
+              "The platform-defaults revision a release records is asserted, not reconstructed, and the download URL and licence reference that repeat contract pins are not checked against the contract.",
+              "The runner is not a pinned input of the freeze record. It ran from a byte copy outside the checked-out tree, and the run records each runner file's content digest instead.",
+              "Before the run, the runner executed the three parts in temporary repositories built from the pinned inputs: its test suite, which also runs on every default lane, and one development preview, which showed every part PASSED. Neither ran at the merged commit, and neither is result evidence.",
+              "The renderer that produced the evidence is product code in src/, and it executed. The record is C0 because the claim is about the committed evidence and the freeze record registers C0 for these parts; a claim that the renderer renders deterministically at any revision would, by the register's parser row, be C2, and is not made.",
+              "The --check judge derives verdicts from the committed renders and refusals and from observations the run recorded; the contract, binding, and mutated-contract digests, the admission, and the V1 merge are the run's observations, not recomputed."
+            ],
+            "doesNotEstablish": [
+              "That the release input deploys through Git and Argo CD or serves a completion: E01-D owns that and has not run.",
+              "That another workload shape, contract, or binding renders deterministically.",
+              "That the renderer gives the same result at any revision other than the one that ran.",
+              "That any invalid input beyond the six registered cases is refused.",
+              "Reliability under failure, or production readiness."
+            ]
+          }
+        ],
+        "strategyClaimIds": [],
+        "implementationRefs": [
+          "src/inferops/domain/render",
+          "tools/experiment_e01"
+        ],
+        "automatedTestRefs": [
+          "tests/testing/test_experiment_e01.py",
+          "tests/testing/test_experiment_freeze.py"
+        ],
+        "recordedCoverageGaps": [],
+        "ciGateIds": [
+          "default-lane-tests"
+        ],
+        "readmeRefs": [
+          "docs/proof/experiments/README.md"
+        ]
+      },
+      "reason": "The static parts of V2-E01 ran under the merged freeze record and every criterion held. The register states what the run's committed evidence shows, at C0. The claim is appended to the register, so no existing pointer into it moves, and it is listed beside the planned deployment claim it does not satisfy only in the published tables. The claim's status was decided by the maintainer for this change."
+    },
+    {
+      "changeId": "e01-index-surface-reason",
+      "findingId": "e-f02-the-index-surface-reason-names-six-ledgers",
+      "operation": "set-register-field",
+      "field": "nonClaimSurfaces",
+      "before": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the six ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "after": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the seven ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "reason": "The evidence index is projected from this register and seven ledgers now, and the released pack is recomputed by undoing all three ledgers written after the release."
+    }
+  ],
+  "recordCorrections": [],
+  "findings": [
+    {
+      "findingId": "e-f01-no-claim-records-the-e01-static-run",
+      "source": "this-change",
+      "observation": "E01-A, E01-B, and E01-C ran once under freeze revision 1 and each PASSED. No claim in the register stated what a static render of the reference contract shows, and the one claim about deployment values is planned and can hold no record: no supported deployment path consumes the generated files, so the run does not show it.",
+      "resolution": "A new claim states the run's result at C0 and holds its record. The planned deployment claim is unchanged; E01-D, which deploys and serves, is the run that could show it.",
+      "resolvedBy": [
+        "e01-static-claim"
+      ],
+      "recordIds": [
+        "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal-c0"
+      ],
+      "claimIds": [
+        "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal"
+      ]
+    },
+    {
+      "findingId": "e-f02-the-index-surface-reason-names-six-ledgers",
+      "source": "this-change",
+      "observation": "The register's reason for the evidence index, a surface that claims nothing, named six ledgers of register changes. This ledger is a seventh, and the released pack is recomputed by undoing it too.",
+      "resolution": "The reason is replaced; the surface claims nothing.",
+      "resolvedBy": [
+        "e01-index-surface-reason"
+      ],
+      "recordIds": [],
+      "claimIds": []
+    }
+  ],
+  "codeRevisions": []
+}

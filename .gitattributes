@@ -54,3 +54,10 @@ deploy/prometheus/*.yaml text eol=lf
 # platform, and a generated file's digest is the digest of its bytes. Pinned so a
 # Windows checkout cannot turn a golden file into a CRLF copy that no render matches.
 tests/domain/fixtures/helm-values/** text eol=lf
+
+# An E01 run's evidence is checked again from its bytes: each rendered file is
+# compared with the other render and with the digest the release beside it records,
+# and the run's manifest records the SHA-256 of every file it wrote, as written, LF
+# on every platform. Pinned so a Windows checkout cannot turn the evidence into CRLF
+# copies whose digests no longer match the run that wrote them.
+docs/proof/experiments/v2-e01/runs/** text eol=lf

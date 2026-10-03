@@ -2,8 +2,8 @@
 
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json).
-It holds 59 claims: 42 certified, 7 planned,
-1 deferred, and 9 not claimed, supported by 65 evidence records. The not-claimed
+It holds 60 claims: 43 certified, 7 planned,
+1 deferred, and 9 not claimed, supported by 66 evidence records. The not-claimed
 group is the point of the document. A register that listed only what worked would
 be an advertisement.
 
@@ -78,6 +78,16 @@ be an advertisement.
 > consumes it yet, so the claim stays planned with no record. It also replaces the evidence
 > index's reason here, which named five ledgers. The evidence index undoes it, with the
 > post-release ledger, to recompute the released pack.
+>
+> **Since `V2-S2-003-PR2` a seventh ledger, the third after the release, has added one
+> claim, certified at `C0` on the one record it adds with it, and moved no existing
+> status.** [The E01 static proof ledger](../proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json)
+> adds `the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal`, which holds the
+> [first run](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/result.md) of the static
+> parts of V2-E01 under their merged freeze record. It is the first ledger to add a claim,
+> with an `add-claim` operation the evidence index undoes like any other change. It also
+> replaces the evidence index's reason here, which named six ledgers. The evidence index
+> undoes it, with the other two post-release ledgers, to recompute the released pack.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -236,15 +246,32 @@ refusal is.
 | `an-invalid-workload-document-is-refused-with-a-published-reason` | certified | `C0` `an-invalid-workload-document-is-refused-with-a-published-reason-c0` — repository-only — [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) | 2 module(s) |
 | `the-workload-contract-and-its-rejection-matrix-are-published` | certified | `C0` `the-workload-contract-and-its-rejection-matrix-are-published-c0` — repository-only — [v1-s0-004-pr1-validation.md](../proof/contracts/v1-s0-004-pr1-validation.md), [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) | 2 module(s) |
 | `the-workload-domain-parses-a-contract-document-into-typed-objects` | certified | `C2` `the-workload-domain-parses-a-contract-document-into-typed-objects-c2` — local-process — [v1-s1-001-pr1-validation.md](../proof/domain/v1-s1-001-pr1-validation.md), [v1-s1-001-pr2-validation.md](../proof/domain/v1-s1-001-pr2-validation.md)<br>`C2` `the-workload-domain-parses-a-contract-document-into-typed-objects-c2-pinned-run` — local-process — [v1-s5-006-pr2-pinned-suite-run.md](../proof/testing/v1-s5-006-pr2-pinned-suite-run.md) | 3 module(s) |
+| `the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal` | certified | `C0` `the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal-c0` — repository-only — [result.md](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/result.md), [run.v1alpha1.json](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/run.v1alpha1.json), [refusals.json](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/refusals.json), [commands.txt](../proof/experiments/v2-e01/runs/20261002-e01-abc-1/commands.txt), [freeze-r1.v1alpha1.json](../proof/experiments/v2-e01/freeze-r1.v1alpha1.json), [v2-s2-003-pr2-validation.md](../proof/domain/v2-s2-003-pr2-validation.md) | 2 module(s) |
 | `deployment-values-derive-only-from-a-validated-document` | planned | none, by rule | 2 module(s) |
 | `the-platform-serves-a-workload-the-contract-describes` | planned | none, by rule | 2 module(s) |
 
 The two planned rows here are the ones to read first, because they are the
 distance between what this project publishes and what it does. A contract is
-published, parsed, and refused with a reason; **nothing deploys from one**. The
-chart's values are written by an operator. Until deployment rendering exists,
-`the-platform-serves-a-workload-the-contract-describes` is an intention, and it
-cites no record on purpose.
+published, parsed, and refused with a reason, and since `V2-S2-001-PR2` it renders the
+chart's values and a release that records their sources. **Nothing deploys from one
+yet**: no supported deployment path consumes the generated files, so
+`the-platform-serves-a-workload-the-contract-describes` is an intention, and it cites
+no record on purpose. (Until `V2-S2-003-PR2` this paragraph said the chart's values are
+written by an operator and that deployment rendering does not exist; both had been out of
+date since `V2-S2-001-PR2`.)
+
+The E01 row is the static half of that distance. One run of the frozen E01 procedure
+rendered the reference contract twice, in two processes, to byte-identical release input,
+moved only the owned values under one contract change, and refused six invalid or
+conflicting inputs as registered. The claim is about that run's committed evidence: the
+renders and refusals as recorded, which `python -m tools.experiment_e01 --check` reads
+again. That is a claim about committed documents a repository tool reads, the same line
+the two contract rows sit on, so its record is `C0`, which is also the level the freeze
+record registers for these parts. The renderer that wrote the evidence is product code in
+`src/`, and it ran: a claim that the renderer renders deterministically, at any revision,
+would be about `src/` doing what it says, as the parser row above is, and would be `C2`.
+This register makes no such claim. The behaviour E01 is finally about, a release that
+deploys and serves, did not run; E01-D owns it.
 
 The parser's record is `C2` since the migration, where the two contract rows stay
 `C0`. The line between them is the subject of the claim: the contract rows are about
@@ -572,7 +599,7 @@ compare against and the exclusion list cannot quietly grow.
 | [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) | Interim conduct expectations, with a formal policy deferred. |
 | [LICENSE](../../LICENSE) | The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does. |
 | [docs/proof/dashboard.md](../proof/dashboard.md) | A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them. |
-| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the six ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
+| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the seven ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
 | [docs/case-study/v1-engineering-case-study.md](../case-study/v1-engineering-case-study.md) | The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it. |
 | [docs/testing/evidence-levels.md](evidence-levels.md) | The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it. |
 

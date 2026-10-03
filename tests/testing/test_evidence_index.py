@@ -426,10 +426,17 @@ def test_the_ledger_restores_the_migration_and_reapplies_to_the_register() -> No
         for change in ledger["registerChanges"]
         if change["operation"] == "add-record"
     ]
+    added_with_a_claim = [
+        record
+        for ledger in LEDGERS
+        for change in ledger["registerChanges"]
+        if change["operation"] == "add-claim"
+        for record in change["claim"]["evidenceRecords"]
+    ]
     restored_records = sum(
         len(claim["evidenceRecords"]) for claim in migrated["claims"]
     )
-    assert restored_records == len(RECORDS) - len(added)
+    assert restored_records == len(RECORDS) - len(added) - len(added_with_a_claim)
 
 
 def test_a_misdescribed_change_is_refused_rather_than_restored() -> None:
@@ -540,26 +547,37 @@ def _strings(value: Any) -> list[str]:
     return []
 
 
-@pytest.mark.parametrize(
-    "change",
-    [
-        change
-        for ledger in LEDGERS
-        for change in ledger["registerChanges"]
+#: Every record a ledger added, alone or inside a claim it added, with its change.
+ADDED_RECORDS = [
+    (change["changeId"], record)
+    for ledger in LEDGERS
+    for change in ledger["registerChanges"]
+    if change["operation"] in {"add-record", "add-claim"}
+    for record in (
+        [change["record"]]
         if change["operation"] == "add-record"
+        else change["claim"]["evidenceRecords"]
+    )
+]
+
+
+@pytest.mark.parametrize(
+    ("change_id", "record"),
+    ADDED_RECORDS,
+    ids=[
+        f"{change_id}-{record['recordId'][:24]}" for change_id, record in ADDED_RECORDS
     ],
-    ids=lambda change: change["changeId"],
 )
 def test_every_date_time_and_identifier_in_an_added_record_is_in_a_file_it_cites(
-    change: dict[str, Any],
+    change_id: str, record: dict[str, Any]
 ) -> None:
     """An added record's notes may not carry a fact from a file it does not cite.
 
     The first commit of this change added a record whose environment note quoted step
     times from a ledger the record did not cite; an independent review found it, and
-    nothing here checked free text until then.
+    nothing here checked free text until then. A record that arrives inside an added
+    claim is held to the same rule.
     """
-    record = change["record"]
     cited = normalised("\n".join(read(path) for path in record["evidenceRefs"]))
     tokens = {
         token for text in _strings(record) for token in _GROUNDED_TOKENS.findall(text)
@@ -567,6 +585,10 @@ def test_every_date_time_and_identifier_in_an_added_record_is_in_a_file_it_cites
     assert tokens, record["recordId"]
     missing = sorted(token for token in tokens if token not in cited)
     assert not missing, (record["recordId"], missing)
+
+
+#: The two changes that add to the register rather than set a field.
+ADDITIONS = frozenset({"add-record", "add-claim"})
 
 
 def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
@@ -578,6 +600,10 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
     one claim upwards, `a-v1-release-has-been-published` from not claimed to certified,
     and only on a record it adds itself, because the release it states did not exist
     when the pack was frozen. No ledger moves any record's level.
+
+    One ledger adds a claim rather than moving one: the E01 static proof ledger adds a
+    claim certified only on the records it brings with it, every one at `C0`, and moves
+    no claim the migration left.
     """
     migrated = restore_migrated_register(REGISTER, LEDGERS)
     before = {claim["claimId"]: claim for claim in migrated["claims"]}
@@ -592,8 +618,19 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         for change in POST_RELEASE["registerChanges"]
         if change["operation"] == "add-record"
     }
+    added_claims = {
+        change["claim"]["claimId"]: change["claim"]
+        for ledger in LEDGERS
+        for change in ledger["registerChanges"]
+        if change["operation"] == "add-claim"
+    }
     rank = {row["statusId"]: row["rank"] for row in REGISTER["claimStatuses"]}
     for claim in REGISTER["claims"]:
+        if claim["claimId"] not in before:
+            assert claim == added_claims[claim["claimId"]], claim["claimId"]
+            assert claim["status"] == "certified", claim["claimId"]
+            assert {r["evidenceLevel"] for r in claim["evidenceRecords"]} == {"C0"}
+            continue
         was = before[claim["claimId"]]["status"]
         if claim["claimId"] in decided:
             row = decided[claim["claimId"]]
@@ -617,20 +654,20 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         change["field"]
         for ledger in LEDGERS
         for change in ledger["registerChanges"]
-        if change["operation"] != "add-record"
+        if change["operation"] not in ADDITIONS
     }
     assert not touched & {"evidenceLevel", "assertsRealBehaviour", "claimId"}
     moved = {
         change["claimId"]
         for ledger in LEDGERS
         for change in ledger["registerChanges"]
-        if change["operation"] != "add-record" and change["field"] == "status"
+        if change["operation"] not in ADDITIONS and change["field"] == "status"
     }
     assert moved == {*decided, RELEASE_CLAIM}
     assert [
         change["claimId"]
         for change in POST_RELEASE["registerChanges"]
-        if change["operation"] != "add-record" and change["field"] == "status"
+        if change["operation"] not in ADDITIONS and change["field"] == "status"
     ] == [RELEASE_CLAIM]
     for ledger in LEDGERS:
         if ledger["$id"] in (CLOSURE["$id"], POST_RELEASE["$id"]):
@@ -638,7 +675,7 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         assert not [
             change
             for change in ledger["registerChanges"]
-            if change["operation"] != "add-record" and change["field"] == "status"
+            if change["operation"] not in ADDITIONS and change["field"] == "status"
         ]
 
 

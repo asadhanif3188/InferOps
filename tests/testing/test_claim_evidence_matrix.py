@@ -40,6 +40,7 @@ from typing import Any
 
 import pytest
 
+from tools.evidence_index import load_ledgers
 from tools.evidence_model import check_claim, check_register
 
 pytestmark = pytest.mark.docs
@@ -115,7 +116,16 @@ REQUIRED_CLAIM_FIELDS = (
     "recordedCoverageGaps",
     "ciGateIds",
     "readmeRefs",
-    "legacyClassification",
+)
+
+#: Claims a ledger added after the migration, with an ``add-claim`` change. They have
+#: no ``v1alpha1`` row, so they carry no classification from one; every other claim
+#: carries the one the migration read from its row.
+ADDED_CLAIM_IDS = frozenset(
+    change["claim"]["claimId"]
+    for ledger in load_ledgers()
+    for change in ledger["registerChanges"]
+    if change["operation"] == "add-claim"
 )
 
 #: The vocabulary the cost method reserves for the ``actual`` basis, which V1
@@ -331,9 +341,16 @@ def test_no_claim_identifier_appears_twice() -> None:
 def test_every_row_names_a_known_area_status_and_carried_classification(
     row: dict,
 ) -> None:
-    """The carried v1alpha1 classification is history, and it stays readable."""
+    """The carried v1alpha1 classification is history, and it stays readable.
+
+    A claim a ledger added after the migration had no v1alpha1 row, so it carries no
+    classification at all rather than an invented one.
+    """
     assert row["area"] in AREA_IDS, row["area"]
     assert row["status"] in STATUS_BY_ID, row["status"]
+    if row["claimId"] in ADDED_CLAIM_IDS:
+        assert "legacyClassification" not in row, row["claimId"]
+        return
     carried = row["legacyClassification"]
     assert carried["evidenceLabel"] in CLASS_BY_ID, carried["evidenceLabel"]
     assert carried["environment"] in STRATEGY_ENVIRONMENTS, carried["environment"]

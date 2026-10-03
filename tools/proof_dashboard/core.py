@@ -263,6 +263,7 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
             "a-workload-scaffold-is-generated-without-overwriting-anything",
             "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout",
             "the-mock-serving-path-identifies-itself-as-a-mock",
+            "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal",
             "deployment-values-derive-only-from-a-validated-document",
             "the-platform-serves-a-workload-the-contract-describes",
         ),

@@ -56,9 +56,15 @@ register changes in the same before-and-after form, and the findings each answer
 is a later post-release ledger: it states no release, raises and closes no blocker,
 and declares no freeze.
 
-The six ledgers are applied in order, and undone in reverse, so the register's
-history since the migration is the six of them together. The first four are the ones
-the `v1.0.0` pack covers; the two after them are the post-release ledgers.
+**The E01 static proof ledger** is
+`docs/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json`, the record of what
+`V2-S2-003-PR2` added once the static parts of E01 had run: one claim, with its one
+record, added by an ``add-claim`` change, and one surface reason replaced. It is the
+third post-release ledger, and the first to add a claim.
+
+The seven ledgers are applied in order, and undone in reverse, so the register's
+history since the migration is the seven of them together. The first four are the
+ones the `v1.0.0` pack covers; the three after them are the post-release ledgers.
 
 **Two digests.** `evidenceSetSha256` covers every file a record cites and nothing else,
 so a change to the register's wording or to a ledger does not move it.
@@ -109,6 +115,7 @@ __all__ = [
     "CODE_REVISION_RELATIONS",
     "COMPLETENESS_PATH",
     "DISPOSITIONS",
+    "E01_STATIC_PROOF_PATH",
     "FINAL_STATES",
     "FREEZE_DECISIONS",
     "INDEX_CONTRACT_VERSION",
@@ -196,6 +203,15 @@ CLAIM_RECONCILIATION_PATH: Final = (
     / "v2-s2-001-pr2-claim-reconciliation.v1alpha1.json"
 )
 
+#: What V2-S2-003-PR2 added to the register once the static parts of E01 had run.
+E01_STATIC_PROOF_PATH: Final = (
+    REPO_ROOT
+    / "docs"
+    / "proof"
+    / "testing"
+    / "v2-s2-003-pr2-e01-static-proof.v1alpha1.json"
+)
+
 #: The ledgers the v1.0.0 evidence pack covers, in the order applied.
 RELEASED_LEDGER_PATHS: Final = (
     LEDGER_PATH,
@@ -207,7 +223,11 @@ RELEASED_LEDGER_PATHS: Final = (
 #: The ledgers written after v1.0.0 was released, in the order applied. The first
 #: states the release and the pack it was cut over; the pack is recomputed by
 #: undoing all of them.
-POST_RELEASE_LEDGER_PATHS: Final = (POST_RELEASE_PATH, CLAIM_RECONCILIATION_PATH)
+POST_RELEASE_LEDGER_PATHS: Final = (
+    POST_RELEASE_PATH,
+    CLAIM_RECONCILIATION_PATH,
+    E01_STATIC_PROOF_PATH,
+)
 
 #: Every ledger of register changes since the migration, in the order applied.
 LEDGER_PATHS: Final = (*RELEASED_LEDGER_PATHS, *POST_RELEASE_LEDGER_PATHS)
@@ -444,10 +464,19 @@ def restore_migrated_register(
     Every change the ledgers name is undone, last first. Each undo first checks
     that the register holds exactly the value the ledger says it wrote, so a
     ledger that misdescribes a change raises rather than restoring something
-    that never existed. Given one ledger, only its changes are undone.
+    that never existed. Given one ledger, only its changes are undone. An added
+    claim is removed from the position it was added at, and only when the claim
+    there is exactly the claim the ledger added, records and all.
     """
     restored = copy.deepcopy(dict(register))
     for change in reversed(_changes(ledger)):
+        if change["operation"] == "add-claim":
+            claims = restored["claims"]
+            position = change["position"]
+            if position >= len(claims) or claims[position] != change["claim"]:
+                raise ValueError(f"{change['changeId']}: the added claim differs")
+            del claims[position]
+            continue
         if change["operation"] == "add-record":
             claim = _claim(restored, change["claimId"])
             held = _record(claim, change["record"]["recordId"])
@@ -473,6 +502,16 @@ def apply_register_changes(
     """The ledgers' changes applied, in order, to the migration's register."""
     changed = copy.deepcopy(dict(migrated))
     for change in _changes(ledger):
+        if change["operation"] == "add-claim":
+            claim_id = change["claim"]["claimId"]
+            if any(row["claimId"] == claim_id for row in changed["claims"]):
+                raise ValueError(f"{change['changeId']}: {claim_id} already exists")
+            if not 0 <= change["position"] <= len(changed["claims"]):
+                raise ValueError(
+                    f"{change['changeId']}: the position is outside the claims"
+                )
+            changed["claims"].insert(change["position"], copy.deepcopy(change["claim"]))
+            continue
         if change["operation"] == "add-record":
             claim = _claim(changed, change["claimId"])
             claim["evidenceRecords"].insert(
@@ -1098,7 +1137,7 @@ def build_index(
     ledgers: Sequence[Mapping[str, Any]] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
-    """The evidence index the register and the six ledgers produce today.
+    """The evidence index the register and the seven ledgers produce today.
 
     The pack sources are read from the committed files, not from the arguments: the
     pack digest binds what is on disk, which is what a release ships. The released
@@ -1130,8 +1169,9 @@ def build_index(
             "pack v1.0.0 was cut over, recomputed by undoing the post-release "
             "ledgers. Generated by python -m tools.evidence_index --write from the "
             "register, the normalization ledger, the completeness ledger, the "
-            "closure ledger, the publication ledger, the post-release ledger, and "
-            "the claim reconciliation ledger; it states nothing they do not."
+            "closure ledger, the publication ledger, the post-release ledger, the "
+            "claim reconciliation ledger, and the E01 static proof ledger; it states "
+            "nothing they do not."
         ),
         "generatedBy": "python -m tools.evidence_index --write",
         "registerRef": REGISTER_PATH.relative_to(REPO_ROOT).as_posix(),
@@ -1144,6 +1184,7 @@ def build_index(
         "claimReconciliationRef": CLAIM_RECONCILIATION_PATH.relative_to(
             REPO_ROOT
         ).as_posix(),
+        "e01StaticProofRef": E01_STATIC_PROOF_PATH.relative_to(REPO_ROOT).as_posix(),
         "documentRef": "docs/proof/v1-evidence-index.md",
         "specificationRef": "docs/testing/evidence-levels.md",
         "hashing": {
