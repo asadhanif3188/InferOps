@@ -3,12 +3,13 @@
 Status: **accepted review convention**, in
 [ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md), effective for
 changes merged after it. It is the human half of the architecture boundary. The
-mechanical half is five suites, not the one this line used to name:
+mechanical half is six suites, not the one this line used to name:
 `tests/architecture/test_resource_ownership.py` for the inventory and the document
 beside it, `test_terraform_prerequisites.py` and `test_helm_chart.py` for each tool
 against its half of the ownership split, `test_local_cluster_provider_contract.py`
-for the provider boundary, and `test_decision_authority.py` for decision ownership
-and sign-off authority.
+for the provider boundary, `test_decision_authority.py` for decision ownership
+and sign-off authority, and, since 2026-10-03, `test_argocd_bootstrap.py` for the
+Argo CD bootstrap rows, which are decided and not built.
 
 Use it when a change touches components, ownership, deployment, telemetry, trust
 boundaries, or scope. A change that touches none of those does not need it.

@@ -4,7 +4,10 @@
         charts/inferops-llm/ci/rendered/real.expected.yaml
 
 The ownership inventory gives every cluster object exactly one owner, and the
-two tools that create objects are Helm and Terraform. The architecture suites
+two tools that create objects today are Helm and Terraform. ADR 0017 decided a
+third owner of cluster objects, a controller bootstrap. It is not built, this gate
+does not read its rows, and the architecture suite for that record holds them
+apart from the other two. The architecture suites
 already hold each tool to its half of that inventory. This is the same boundary
 as a command: it reads a render and a Terraform configuration together and
 refuses the pair when they reach across it, so a gate can apply it to whatever

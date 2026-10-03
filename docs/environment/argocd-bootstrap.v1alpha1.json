@@ -1,0 +1,543 @@
+{
+  "$id": "https://inferops.io/environment/argocd-bootstrap.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Argo CD bootstrap inputs and ownership, v1alpha1",
+  "description": "The inputs and the ownership rules for the Argo CD installation that V2 uses as its GitOps controller: the pinned release, install manifest and images, the namespace, each object the manifest declares and the ownership row that holds it, the privileges the installation needs and grants, the refusals, and the scoped removal. This record is a decision and a set of pins. No bootstrap procedure exists, no cluster was contacted, and Argo CD is not installed anywhere by this repository. Every rule states whether a test enforces it or which change owes it.",
+  "decisionRef": "docs/architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md",
+  "documentRef": "docs/environment/argocd-bootstrap.md",
+  "ownershipRef": "docs/architecture/resource-ownership.v1alpha1.json",
+  "providerContractRef": "docs/environment/local-cluster-provider-contract.v1alpha1.json",
+  "bootstrapOwnerId": "argocd-bootstrap",
+  "implementationState": "decided-not-implemented",
+  "pinnedInputs": {
+    "observedOn": "2026-10-03",
+    "howObserved": "The install manifest was downloaded twice over HTTPS, once by the tag and once by the commit the tag names. Both downloads have the SHA-256 recorded here. Each image digest is the Docker-Content-Digest header that the image's registry returned for the tag the manifest names. No signature, attestation, or provenance document was verified.",
+    "release": {
+      "project": "argoproj/argo-cd",
+      "repository": "https://github.com/argoproj/argo-cd",
+      "version": "v3.5.3",
+      "tagCommit": "c9c369efcc5b2a0bd720803f8d14a1c3eaddf579",
+      "publishedAt": "2026-09-14T07:58:59Z",
+      "prerelease": false,
+      "license": "Apache-2.0"
+    },
+    "installManifest": {
+      "profile": "core-install",
+      "repositoryPath": "manifests/core-install.yaml",
+      "sourceUrl": "https://raw.githubusercontent.com/argoproj/argo-cd/c9c369efcc5b2a0bd720803f8d14a1c3eaddf579/manifests/core-install.yaml",
+      "sha256": "1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448",
+      "sizeBytes": 1882880,
+      "objectCount": 34,
+      "committedCopy": false,
+      "mustBeAppliedUnmodified": true,
+      "applied": false
+    },
+    "images": [
+      {
+        "imageId": "argocd",
+        "manifestReference": "quay.io/argoproj/argocd:v3.5.3",
+        "digest": "sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa",
+        "pinnedReference": "quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa",
+        "digestMediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+        "containers": [
+          "argocd-application-controller/argocd-application-controller",
+          "argocd-applicationset-controller/argocd-applicationset-controller",
+          "argocd-redis/secret-init",
+          "argocd-repo-server/argocd-repo-server",
+          "argocd-repo-server/copyutil"
+        ]
+      },
+      {
+        "imageId": "redis",
+        "manifestReference": "public.ecr.aws/docker/library/redis:8.2.3-alpine",
+        "digest": "sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba",
+        "pinnedReference": "public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba",
+        "digestMediaType": "application/vnd.oci.image.index.v1+json",
+        "containers": [
+          "argocd-redis/redis"
+        ]
+      }
+    ],
+    "testedKubernetesMinors": {
+      "minors": [
+        "1.33",
+        "1.34",
+        "1.35",
+        "1.36"
+      ],
+      "source": "docs/operator-manual/tested-kubernetes-versions.md in the upstream repository at the pinned commit, the row for Argo CD 3.5",
+      "howKnown": "documented",
+      "minorTheProvidersLastReported": "1.34"
+    }
+  },
+  "namespace": {
+    "name": "argocd",
+    "resourceId": "argocd-namespace",
+    "lifecycleMarker": {
+      "label": "inferops.io/lifecycle",
+      "value": "bootstrap"
+    },
+    "appliedPinAnnotation": "inferops.io/argocd-manifest-sha256",
+    "whyThisName": "The manifest declares no Namespace and writes no namespace on its namespaced objects. Its one ClusterRoleBinding names a ServiceAccount in the namespace argocd. An unmodified manifest therefore binds the application controller only when it is applied into that namespace.",
+    "mustNotStartWith": "inferops-",
+    "mustNotBe": [
+      "inferops-release",
+      "inferops-smoke",
+      "default",
+      "kube-system"
+    ]
+  },
+  "manifestObjects": [
+    {
+      "apiVersion": "apiextensions.k8s.io/v1",
+      "kind": "CustomResourceDefinition",
+      "scope": "cluster",
+      "names": [
+        "applications.argoproj.io",
+        "applicationsets.argoproj.io",
+        "appprojects.argoproj.io"
+      ],
+      "resourceId": "argocd-custom-resource-definitions"
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "scope": "namespace",
+      "names": [
+        "argocd-application-controller",
+        "argocd-applicationset-controller",
+        "argocd-redis",
+        "argocd-repo-server"
+      ],
+      "resourceId": "argocd-controller-installation"
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "Role",
+      "scope": "namespace",
+      "names": [
+        "argocd-application-controller",
+        "argocd-applicationset-controller",
+        "argocd-redis"
+      ],
+      "resourceId": "argocd-controller-installation"
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "ClusterRole",
+      "scope": "cluster",
+      "names": [
+        "argocd-application-controller"
+      ],
+      "resourceId": "argocd-cluster-rbac"
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "RoleBinding",
+      "scope": "namespace",
+      "names": [
+        "argocd-application-controller",
+        "argocd-applicationset-controller",
+        "argocd-redis"
+      ],
+      "resourceId": "argocd-controller-installation"
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "ClusterRoleBinding",
+      "scope": "cluster",
+      "names": [
+        "argocd-application-controller"
+      ],
+      "resourceId": "argocd-cluster-rbac"
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "scope": "namespace",
+      "names": [
+        "argocd-cm",
+        "argocd-cmd-params-cm",
+        "argocd-gpg-keys-cm",
+        "argocd-rbac-cm",
+        "argocd-ssh-known-hosts-cm",
+        "argocd-tls-certs-cm"
+      ],
+      "resourceId": "argocd-controller-installation"
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "scope": "namespace",
+      "names": [
+        "argocd-secret"
+      ],
+      "resourceId": "argocd-controller-installation"
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "scope": "namespace",
+      "names": [
+        "argocd-applicationset-controller",
+        "argocd-metrics",
+        "argocd-redis",
+        "argocd-repo-server"
+      ],
+      "resourceId": "argocd-controller-installation"
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "scope": "namespace",
+      "names": [
+        "argocd-applicationset-controller",
+        "argocd-redis",
+        "argocd-repo-server"
+      ],
+      "resourceId": "argocd-controller-installation"
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "StatefulSet",
+      "scope": "namespace",
+      "names": [
+        "argocd-application-controller"
+      ],
+      "resourceId": "argocd-controller-installation"
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "scope": "namespace",
+      "names": [
+        "argocd-application-controller-network-policy",
+        "argocd-applicationset-controller-network-policy",
+        "argocd-redis-network-policy",
+        "argocd-repo-server-network-policy"
+      ],
+      "resourceId": "argocd-controller-installation"
+    }
+  ],
+  "runtimeCreatedObjects": [
+    {
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "scope": "namespace",
+      "names": [
+        "argocd-redis"
+      ],
+      "resourceId": "argocd-controller-installation",
+      "createdBy": "the secret-init init container of the argocd-redis Deployment, through the argocd-redis Role",
+      "howKnown": "inferred",
+      "basis": "The argocd-redis Role grants create on secrets and get on the secret named argocd-redis. No run observed the object."
+    },
+    {
+      "apiVersion": "coordination.k8s.io/v1",
+      "kind": "Lease",
+      "scope": "namespace",
+      "names": [
+        "58ac56fa.applicationsets.argoproj.io"
+      ],
+      "resourceId": "argocd-controller-installation",
+      "createdBy": "the ApplicationSet controller, for leader election, through the argocd-applicationset-controller Role",
+      "howKnown": "inferred",
+      "basis": "The argocd-applicationset-controller Role grants create on leases and names this lease. No run observed the object."
+    }
+  ],
+  "runtimeCreatedObjectsAreComplete": false,
+  "componentsNotInstalled": [
+    {
+      "component": "argocd-server",
+      "consequence": "No Argo CD API, no web interface, and no login credential exists. Reconciliation state is read from the Application objects with kubectl."
+    },
+    {
+      "component": "argocd-dex-server",
+      "consequence": "No single sign-on connector exists."
+    },
+    {
+      "component": "argocd-notifications-controller",
+      "consequence": "Argo CD sends no notification."
+    }
+  ],
+  "componentsInstalledAndUnused": [
+    {
+      "component": "argocd-applicationset-controller",
+      "reason": "The core-install manifest includes it, and the manifest is applied unmodified so that one SHA-256 identifies what was applied. InferOps creates no ApplicationSet object, so the controller has nothing to reconcile."
+    }
+  ],
+  "sharedKindBoundaries": [
+    {
+      "kind": "Namespace",
+      "otherOwner": "terraform",
+      "boundary": "name",
+      "statement": "Terraform owns the platform namespace. The bootstrap owner owns the namespace argocd. The two names differ, and neither owner creates, labels, or deletes the other's namespace."
+    },
+    {
+      "kind": "namespaced objects",
+      "otherOwner": "helm",
+      "boundary": "namespace",
+      "statement": "Every namespaced object the bootstrap owner creates is in the namespace argocd. A Helm release installs into the platform namespace and never into argocd. The boundary does not cover an object of an argoproj.io kind: an Application or an AppProject would also be in argocd, and the bootstrap owner does not own it. Who owns such an object is not decided."
+    }
+  ],
+  "requiredPrivileges": {
+    "bootstrapOperator": {
+      "statement": "The credential the bootstrap procedure acts through must be able to create a Namespace, three CustomResourceDefinitions, one ClusterRole and one ClusterRoleBinding, and the namespaced objects the manifest declares. Kubernetes refuses to create a ClusterRole that grants more than its creator holds, and this ClusterRole grants every verb on every resource. The credential therefore needs cluster-admin, or an equivalent grant.",
+      "clusterScopedKinds": [
+        "Namespace",
+        "CustomResourceDefinition",
+        "ClusterRole",
+        "ClusterRoleBinding"
+      ],
+      "howKnown": "inferred",
+      "basis": "Read from the manifest and from the Kubernetes rule against privilege escalation. No apply was attempted."
+    },
+    "grantedToArgoCd": [
+      {
+        "kind": "ClusterRole",
+        "name": "argocd-application-controller",
+        "boundTo": "ServiceAccount argocd-application-controller in argocd",
+        "rules": [
+          {
+            "apiGroups": [
+              "*"
+            ],
+            "resources": [
+              "*"
+            ],
+            "verbs": [
+              "*"
+            ]
+          },
+          {
+            "nonResourceURLs": [
+              "*"
+            ],
+            "verbs": [
+              "*"
+            ]
+          }
+        ],
+        "consequence": "The application controller can read and change every object in the cluster, including the objects Terraform owns and the bootstrap owner's own objects. The grant is the upstream default and is not narrowed by this record."
+      },
+      {
+        "kind": "Role",
+        "name": "argocd-application-controller",
+        "boundTo": "ServiceAccount argocd-application-controller in argocd",
+        "scope": "the namespace argocd"
+      },
+      {
+        "kind": "Role",
+        "name": "argocd-applicationset-controller",
+        "boundTo": "ServiceAccount argocd-applicationset-controller in argocd",
+        "scope": "the namespace argocd"
+      },
+      {
+        "kind": "Role",
+        "name": "argocd-redis",
+        "boundTo": "ServiceAccount argocd-redis in argocd",
+        "scope": "the namespace argocd"
+      }
+    ]
+  },
+  "refusals": [
+    {
+      "refusalId": "target-not-selected-or-not-verified",
+      "appliesTo": [
+        "bootstrap",
+        "removal"
+      ],
+      "condition": "No provider is selected, or the selected cluster does not pass the provider's identity checks."
+    },
+    {
+      "refusalId": "manifest-digest-mismatch",
+      "appliesTo": [
+        "bootstrap"
+      ],
+      "condition": "The SHA-256 of the manifest bytes is not the pinned SHA-256."
+    },
+    {
+      "refusalId": "kubernetes-minor-not-tested",
+      "appliesTo": [
+        "bootstrap"
+      ],
+      "condition": "The minor version the selected cluster's server reports is not one of the pinned tested minors."
+    },
+    {
+      "refusalId": "foreign-argocd-present",
+      "appliesTo": [
+        "bootstrap",
+        "removal"
+      ],
+      "condition": "A namespace named argocd exists without the bootstrap lifecycle marker. Or no marked namespace exists while an Argo CD CustomResourceDefinition, or a ClusterRole or ClusterRoleBinding named argocd-application-controller, does. Removal also refuses when no namespace named argocd exists."
+    },
+    {
+      "refusalId": "installed-pin-differs",
+      "appliesTo": [
+        "bootstrap"
+      ],
+      "condition": "A marked namespace records a manifest SHA-256 that is not the pinned SHA-256. An upgrade in place is not decided."
+    },
+    {
+      "refusalId": "argocd-custom-resources-present",
+      "appliesTo": [
+        "removal"
+      ],
+      "condition": "An Application, ApplicationSet, or AppProject object exists in any namespace."
+    }
+  ],
+  "removal": {
+    "statement": "Removal deletes what the bootstrap owner created, and nothing else. It is not part of any other teardown operation. It deletes by the kinds and names this record lists, so it needs no download. It was not executed, and its order is a design.",
+    "steps": [
+      "Select and verify the target cluster, as for every mutation.",
+      "Refuse unless a namespace named argocd exists and carries the bootstrap lifecycle marker.",
+      "Refuse when an Application, ApplicationSet, or AppProject object exists.",
+      "Delete the StatefulSet and the three Deployments in the namespace argocd, and wait until no Argo CD pod remains.",
+      "Refuse again when an Application, ApplicationSet, or AppProject object exists.",
+      "Delete the three CustomResourceDefinitions, the ClusterRole, and the ClusterRoleBinding, by the names this record lists.",
+      "Delete the namespace argocd, which removes the remaining namespaced objects.",
+      "Confirm that no Argo CD CustomResourceDefinition, ClusterRole, ClusterRoleBinding, or namespace remains."
+    ],
+    "doesNotTouch": [
+      "the cluster",
+      "the platform namespace, its metadata, and the model cache claim",
+      "a Helm release or any object in the platform namespace",
+      "the project kubeconfig",
+      "images that the node's container runtime pulled"
+    ],
+    "whyCustomResourcesBlockRemoval": "Deleting a CustomResourceDefinition deletes every object of that kind. An Application that carries a resource finalizer deletes the workload objects it manages when it is deleted while the controller runs. Removal of the controller must not remove a workload. The controllers are stopped before the definitions are deleted, and the check is repeated between the two, because an object created after the first check would otherwise be deleted with its definition.",
+    "knownGaps": [
+      "The two checks and the deletions are not atomic. An object created after the second check is deleted with its definition.",
+      "An object that carries a finalizer and is created after the controllers stop keeps its definition and the namespace in a terminating state. No recovery is decided.",
+      "A second Argo CD in another namespace uses the same definitions. Removal does not detect it when it holds no Application.",
+      "When a person deletes the namespace argocd by hand, the bootstrap and the removal both refuse. The recovery is manual and is not decided."
+    ]
+  },
+  "outOfScope": [
+    "a workload Application, an AppProject, or a desired-state directory",
+    "an app-of-apps Application",
+    "an ApplicationSet object",
+    "a second cluster or a cluster registered with Argo CD",
+    "a service mesh",
+    "Argo Rollouts",
+    "the Argo CD API server, web interface, single sign-on, and notifications",
+    "a high-availability Argo CD installation"
+  ],
+  "rules": [
+    {
+      "ruleId": "bootstrap-owns-nothing-another-tool-owns",
+      "statement": "Every kind that the bootstrap owner shares with Terraform or with Helm has a declared boundary, and no cluster-scoped kind is shared.",
+      "enforcement": "tested",
+      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_the_bootstrap_owner_shares_no_object_with_terraform_or_helm",
+      "owedBy": null,
+      "limit": "The test compares kinds in the ownership inventory with the boundaries this record declares. It compares kinds and not objects. A second test, test_the_namespace_is_not_one_another_owner_holds, compares the namespace name with the Terraform default and the two namespace constants. Both read files and no cluster."
+    },
+    {
+      "ruleId": "no-other-tool-declares-a-bootstrap-object",
+      "statement": "Neither the committed chart render nor the Terraform configuration declares a cluster-scoped kind that the bootstrap owner owns, and neither targets the namespace argocd.",
+      "enforcement": "tested",
+      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_no_other_tool_declares_a_bootstrap_owned_object",
+      "owedBy": null,
+      "limit": "The test reads the two committed renders and the Terraform files as text. It does not read a values file or a namespace flag that a caller supplies at install time, or a template branch that the committed renders do not take. A Terraform kubernetes_manifest resource hides its kind from the test."
+    },
+    {
+      "ruleId": "argocd-does-not-manage-its-own-installation",
+      "statement": "Argo CD does not create, upgrade, or remove its own installation, and it reconciles no object that the bootstrap owner or Terraform owns.",
+      "enforcement": "tested-absence",
+      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_no_argocd_custom_resource_is_committed",
+      "owedBy": null,
+      "limit": "The test establishes an absence: no Application, ApplicationSet, or AppProject is in a tracked file, so Argo CD has nothing to reconcile. A manifest that a template assembles from parts is not matched. It does not restrict what a future Application may target. The change that adds the first argo cd application owes that restriction and must replace this test."
+    },
+    {
+      "ruleId": "no-application-set-and-no-second-cluster",
+      "statement": "InferOps commits no ApplicationSet object, no app-of-apps Application, and no Argo CD cluster registration.",
+      "enforcement": "tested-absence",
+      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_no_argocd_custom_resource_is_committed",
+      "owedBy": null,
+      "limit": "The same absence test. It reads every tracked file except this suite, for an Argo CD custom resource and for a cluster registration secret. A manifest that a template assembles from parts is not matched. It reads no cluster."
+    },
+    {
+      "ruleId": "argocd-is-not-on-the-inference-request-path",
+      "statement": "No InferOps component that serves a request addresses Argo CD.",
+      "enforcement": "tested",
+      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_no_serving_component_refers_to_argocd",
+      "owedBy": null,
+      "limit": "The test reads every tracked file under the build directories for a reference to Argo CD. It does not establish that a request is served while Argo CD is absent or stopped; no run has measured that. Not being on the request path is not the same as being unable to affect serving: once an Application exists, a running controller can change, restart, or delete serving objects, and its containers compete for the node without a request or a limit."
+    },
+    {
+      "ruleId": "the-pins-are-immutable-identifiers",
+      "statement": "The manifest is addressed by commit and SHA-256, and each image by digest. No pin is a branch, a tag alone, or a floating version.",
+      "enforcement": "tested",
+      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_the_pins_are_immutable_identifiers",
+      "owedBy": null,
+      "limit": "The test checks the form of each pin and that the pins agree with one another. It contacts no network, so it does not establish that upstream still serves these bytes."
+    },
+    {
+      "ruleId": "bootstrap-acts-only-on-a-selected-and-verified-cluster",
+      "statement": "The bootstrap and the removal run the selected provider's identity checks before their first mutation, and neither creates, enables, resets, reconfigures, or deletes a cluster.",
+      "enforcement": "not-implemented",
+      "enforcedBy": null,
+      "owedBy": "the change that implements the bootstrap procedure",
+      "limit": "No bootstrap procedure exists. The existing guard is inferops::resolve_target in scripts/environment/lib.sh."
+    },
+    {
+      "ruleId": "the-manifest-is-verified-before-it-is-used",
+      "statement": "The bootstrap and the removal compute the SHA-256 of the manifest bytes and refuse when it is not the pinned value.",
+      "enforcement": "not-implemented",
+      "enforcedBy": null,
+      "owedBy": "the change that implements the bootstrap procedure",
+      "limit": "No procedure reads the manifest. The digest in this record was computed once, on the observation date."
+    },
+    {
+      "ruleId": "images-run-at-their-pinned-digests",
+      "statement": "The bootstrap does not report success unless every Argo CD container, init containers included, runs the pinned digest of its image at that moment.",
+      "enforcement": "not-implemented",
+      "enforcedBy": null,
+      "owedBy": "the change that implements the bootstrap procedure",
+      "limit": "The unmodified manifest names each image by tag, and four containers set imagePullPolicy Always. A pod that restarts later resolves the tag again and can run other bytes. The rule covers the moment of the check and nothing after it."
+    },
+    {
+      "ruleId": "a-foreign-argocd-installation-is-refused",
+      "statement": "The bootstrap and the removal refuse an Argo CD installation that this bootstrap did not create, and never adopt one.",
+      "enforcement": "not-implemented",
+      "enforcedBy": null,
+      "owedBy": "the change that implements the bootstrap procedure",
+      "limit": "The lifecycle marker is a label on the namespace. A person who can label a namespace can set it. The five cluster-scoped objects carry no marker."
+    },
+    {
+      "ruleId": "removal-is-scoped-and-refuses-while-an-application-exists",
+      "statement": "Removal deletes only the objects of the bootstrap owner, and refuses while an Application, ApplicationSet, or AppProject object exists.",
+      "enforcement": "not-implemented",
+      "enforcedBy": null,
+      "owedBy": "the change that implements the bootstrap procedure",
+      "limit": "No removal procedure exists. The record lists four gaps in the order it decides."
+    },
+    {
+      "ruleId": "security-baseline-rows-precede-the-first-install",
+      "statement": "The security baseline gains its threat, control, and risk rows for Argo CD in the change that first installs it, before that change runs.",
+      "enforcement": "not-implemented",
+      "enforcedBy": null,
+      "owedBy": "the change that implements the bootstrap procedure",
+      "limit": "The baseline has no row for Argo CD today. The deferred-risk register points at this record."
+    },
+    {
+      "ruleId": "gitops-state-is-not-caller-health",
+      "statement": "No InferOps record derives a caller outcome from the sync state or the health state that Argo CD reports.",
+      "enforcement": "review",
+      "enforcedBy": null,
+      "owedBy": null,
+      "limit": "Nothing records Argo CD state yet. Review alone holds this rule."
+    }
+  ],
+  "doesNotEstablish": [
+    "that Argo CD is installed, runs, or reconciles anything",
+    "that the pinned manifest applies to either supported provider's cluster",
+    "that upstream still serves the pinned bytes, or that a pinned image is free of known vulnerabilities",
+    "that the pinned release or images are authentic; no signature was verified",
+    "that a request is served while Argo CD is absent or stopped",
+    "that the removal leaves no residue, or that its order avoids a stuck deletion",
+    "that a container runs the pinned image after a later restart",
+    "that the core profile reconciles an Application; by inference from upstream source, no AppProject exists after a core installation",
+    "that the host has the capacity to run Argo CD beside a release"
+  ]
+}
