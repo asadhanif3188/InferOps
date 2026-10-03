@@ -32,6 +32,14 @@ change. It is never removed because the register had become an uncomfortable thi
 publish. No test can enforce that, and the rule is marked `review` in
 [the control matrix](control-matrix.md) rather than dressed up as something stronger.
 
+**One surface is decided and not installed, and has no entry here.**
+[ADR 0017](../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md)
+decides how V2 installs Argo CD. It records two open risks, R1 and R2: the
+controller holds every verb on every resource, and its pinned inputs are
+identified and not authenticated. Nothing is installed, so this register, which
+describes what exists, gains no entry. The change that first installs Argo CD
+owes the entries before it runs. No test enforces that.
+
 ## The register
 
 | ID | Risk | Boundary | Blocks production use |

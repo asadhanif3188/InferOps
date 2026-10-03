@@ -639,7 +639,7 @@
         "terraform destroy"
       ],
       "referencedBy": [],
-      "handoff": "Three cluster-scoped definitions: `applications.argoproj.io`, `applicationsets.argoproj.io` and `appprojects.argoproj.io`. The bootstrap procedure creates them from the pinned manifest. Deleting one deletes every object of its kind, so the removal procedure refuses while an Application or an ApplicationSet object exists. No chart and no Terraform file declares a CustomResourceDefinition. `planned`.",
+      "handoff": "Three cluster-scoped definitions: `applications.argoproj.io`, `applicationsets.argoproj.io` and `appprojects.argoproj.io`. The bootstrap procedure creates them from the pinned manifest. Deleting one deletes every object of its kind, so the removal procedure refuses while an Application, ApplicationSet, or AppProject object exists, and deletes the definitions only after the controllers have stopped. No chart and no Terraform file declares a CustomResourceDefinition. `planned`.",
       "evidenceRef": null
     },
     {
@@ -664,7 +664,7 @@
     {
       "resourceId": "argocd-controller-installation",
       "name": "The Argo CD controllers and their supporting objects",
-      "kind": "platform service (StatefulSet, Deployment, Service, ConfigMap, Secret, ServiceAccount, Role, RoleBinding, NetworkPolicy)",
+      "kind": "platform service (StatefulSet, Deployment, Service, ConfigMap, Secret, ServiceAccount, Role, RoleBinding, NetworkPolicy, Lease)",
       "owner": "argocd-bootstrap",
       "lifecycle": "bootstrap",
       "v1Status": "planned",
@@ -677,7 +677,7 @@
         "terraform destroy"
       ],
       "referencedBy": [],
-      "handoff": "The twenty-nine namespaced objects the pinned manifest declares, all in the namespace `argocd`: the application controller, the repository server, Redis, and the ApplicationSet controller, with their services, configuration, service accounts, roles and network policies. One more Secret, `argocd-redis`, is expected at run time from an init container. A Helm release owns objects of the same kinds, in the platform namespace; the two sets are told apart by namespace. Nothing here is on the inference request path. The manifest sets no resource request and no limit on any container. `planned`.",
+      "handoff": "The twenty-nine namespaced objects the pinned manifest declares, all in the namespace `argocd`: the application controller, the repository server, Redis, and the ApplicationSet controller, with their services, configuration, service accounts, roles and network policies. At least two more objects are expected at run time and were not observed: a Secret, `argocd-redis`, from an init container, and a leader-election Lease. An Application or an AppProject would also be in this namespace and is not part of this row; who owns one is not decided. A Helm release owns objects of the same kinds, in the platform namespace; the two sets are told apart by namespace. Nothing here is on the inference request path. The manifest sets no resource request and no limit on any container. `planned`.",
       "evidenceRef": null
     },
     {

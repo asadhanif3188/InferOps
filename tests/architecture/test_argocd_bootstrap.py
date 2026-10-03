@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -87,19 +88,38 @@ FIRST_TABLE_COLUMN = re.compile(
 #: A Kubernetes kind inside the inventory's free-text `kind` field.
 KIND_WORD = re.compile(r"\b[A-Z][A-Za-z]+\b")
 
-#: Any spelling of the controller's name that a file could address it by.
-ARGOCD_REFERENCE = re.compile(r"argocd|argoproj|argo[- ]cd", flags=re.IGNORECASE)
+#: Any spelling of the controller's name that a file could address it by:
+#: `argocd`, `argo-cd`, `argo_cd`, `ARGO_CD`, `argo.cd`, `Argo CD`, `argoproj`. The
+#: first version of this pattern missed the underscore, which is the spelling a
+#: Python module or an environment variable would use.
+ARGOCD_REFERENCE = re.compile(r"argoproj|argo[-_. ]?cd", flags=re.IGNORECASE)
 
-#: An Argo CD custom resource, as a manifest or a template would declare it.
+#: An Argo CD custom resource, or a cluster registration, as a manifest declares
+#: it. A cluster is registered with a Secret, not with a custom resource, so the
+#: label that marks one is matched too. A manifest that a template assembles from
+#: parts is not matched, and the record says so.
 ARGOCD_CUSTOM_RESOURCE = re.compile(
-    r"argoproj\.io/v1alpha1|^\s*kind:\s*(Application|ApplicationSet|AppProject)\s*$",
+    r"argoproj\.io/v1alpha1"
+    r"|argocd\.argoproj\.io/secret-type"
+    r"|^\s*kind:\s*[\"']?(Application|ApplicationSet|AppProject)\b",
     flags=re.MULTILINE,
 )
 
 CLUSTER_SCOPED_KINDS = frozenset(
     {"CustomResourceDefinition", "ClusterRole", "ClusterRoleBinding"}
 )
-ENFORCEMENTS = frozenset({"tested", "not-implemented", "review"})
+ENFORCEMENTS = frozenset({"tested", "tested-absence", "not-implemented", "review"})
+
+#: How the document writes each enforcement in its rules table.
+ENFORCEMENT_LABELS = {
+    "tested": "tested",
+    "tested-absence": "tested, as an absence",
+    "not-implemented": "not implemented",
+    "review": "review",
+}
+
+#: The one test that establishes an absence, and the rules that may cite it.
+ABSENCE_TEST = "test_no_argocd_custom_resource_is_committed"
 PROCEDURES = frozenset({"bootstrap", "removal"})
 
 #: The directories whose files a cluster, a release, or a serving process is
@@ -118,8 +138,6 @@ BUILD_ROOTS = (
 
 #: The directories a request is served from.
 SERVING_ROOTS = ("src", "charts", "deploy")
-
-SKIPPED_DIRECTORIES = frozenset({".terraform", "__pycache__", ".venv", "node_modules"})
 
 NUMBER_WORDS = (
     "zero",
@@ -155,20 +173,36 @@ RULES = RECORD["rules"]
 REFUSALS = RECORD["refusals"]
 
 
-def committed_files(roots: tuple[str, ...]) -> list[Path]:
-    """Every file under the named top-level directories, as the tree holds it."""
+def tracked_files(roots: tuple[str, ...] | None = None) -> list[Path]:
+    """Every file Git tracks, or those under the named top-level directories.
+
+    Read from the index, not from the working tree, so an ignored or untracked
+    file is not counted and a file in a directory nobody listed is.
+    """
+    listed = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8")
     found: list[Path] = []
-    for root in roots:
-        base = REPO_ROOT / root
-        if not base.is_dir():
+    for relative in sorted(filter(None, listed.split("\0"))):
+        if roots is not None and relative.split("/", 1)[0] not in roots:
             continue
-        for path in sorted(base.rglob("*")):
-            if not path.is_file():
-                continue
-            if SKIPPED_DIRECTORIES & set(path.relative_to(REPO_ROOT).parts):
-                continue
+        path = REPO_ROOT / relative
+        if path.is_file():
             found.append(path)
     return found
+
+
+def references_to_argocd(roots: tuple[str, ...]) -> list[str]:
+    """Tracked files under the roots that name the controller, in path or content."""
+    return [
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in tracked_files(roots)
+        if ARGOCD_REFERENCE.search(path.relative_to(REPO_ROOT).as_posix())
+        or ARGOCD_REFERENCE.search(text_of(path))
+    ]
 
 
 def text_of(path: Path) -> str:
@@ -253,19 +287,25 @@ def test_the_record_says_the_bootstrap_is_not_implemented() -> None:
     """A pin, not a rule.
 
     The change that implements the bootstrap must change this value, and with it
-    the five rules below that say nothing enforces them. A record that still said
-    `decided-not-implemented` beside a working script would be describing the
+    the rules below that say nothing enforces them. A record that still said
+    `decided-not-implemented` beside a working procedure would be describing the
     past.
+
+    The first version of this check read only file names under
+    `scripts/environment/`. A procedure under another name, a function added to
+    `lib.sh`, or a tool under `tools/` passed it. It now reads every tracked file
+    under the build directories, by path and by content. A procedure that never
+    names the controller still passes.
     """
     assert RECORD["implementationState"] == "decided-not-implemented"
-    scripts = sorted(
-        path.name
-        for path in (REPO_ROOT / "scripts" / "environment").glob("*")
-        if ARGOCD_REFERENCE.search(path.name)
-    )
-    assert not scripts, (
-        f"{scripts} exists. The record still says the bootstrap is not "
-        "implemented; move implementationState and the rules it owes."
+    manifest = PINS["installManifest"]
+    assert manifest["mustBeAppliedUnmodified"] is True
+    assert manifest["applied"] is False, "nothing has applied the manifest"
+    named = references_to_argocd(BUILD_ROOTS)
+    assert not named, (
+        f"{named} refers to Argo CD. The record still says the bootstrap is not "
+        "implemented; move implementationState, the rules it owes, and the "
+        "security baseline rows the record says must come first."
     )
 
 
@@ -346,6 +386,9 @@ def test_the_pinned_release_lists_a_tested_kubernetes_minor() -> None:
         assert re.match(r"^1\.\d+$", minor), minor
     # Upstream's statement, read from a page. No provider ran this release.
     assert tested["howKnown"] == "documented"
+    # The decision rests on one minor being in the list: the one both supported
+    # providers last reported (ADR 0011 R3).
+    assert tested["minorTheProvidersLastReported"] in tested["minors"]
 
 
 def test_the_manifest_is_not_copied_into_the_repository() -> None:
@@ -355,7 +398,7 @@ def test_the_manifest_is_not_copied_into_the_repository() -> None:
     name = Path(manifest["repositoryPath"]).name
     copies = [
         path.relative_to(REPO_ROOT).as_posix()
-        for path in committed_files((*BUILD_ROOTS, "docs", "tests"))
+        for path in tracked_files()
         if path.name == name
     ]
     assert not copies, copies
@@ -514,10 +557,7 @@ def test_no_other_tool_declares_a_bootstrap_owned_object() -> None:
             resource_type
         )
 
-    for path in committed_files(("charts", "infra")):
-        assert not ARGOCD_REFERENCE.search(text_of(path)), (
-            f"{path.relative_to(REPO_ROOT).as_posix()} refers to Argo CD"
-        )
+    assert not references_to_argocd(("charts", "infra"))
 
 
 def test_no_argocd_custom_resource_is_committed() -> None:
@@ -530,10 +570,16 @@ def test_no_argocd_custom_resource_is_committed() -> None:
     It restricts nothing about what an Application may target. The change that
     adds the first Application must replace this test with a check of that
     Application's destination and of the kinds it may manage.
+
+    It reads every tracked file except this module. The first version read eight
+    named directories, so a manifest under `docs/`, `tests/`, or a new top-level
+    directory passed it, and it could not see a cluster registration at all.
     """
+    files = [path for path in tracked_files() if path != THIS_MODULE]
+    assert len(files) > 100, "the tracked tree was not read"
     offenders = [
         path.relative_to(REPO_ROOT).as_posix()
-        for path in committed_files(BUILD_ROOTS)
+        for path in files
         if ARGOCD_CUSTOM_RESOURCE.search(text_of(path))
     ]
     assert not offenders, offenders
@@ -548,16 +594,46 @@ def test_no_serving_component_refers_to_argocd() -> None:
     A reference would be the first sign of a dependency: an address, an API
     group, a status read. This refuses one in the package, the chart, and the
     deployment files. It does not establish that a request is served while
-    Argo CD is absent or stopped; no run has measured that.
+    Argo CD is absent or stopped; no run has measured that. It also says nothing
+    about what a running controller can do to serving objects once an Application
+    exists.
     """
-    files = committed_files(SERVING_ROOTS)
-    assert files, "no serving file was read"
-    offenders = [
-        path.relative_to(REPO_ROOT).as_posix()
-        for path in files
-        if ARGOCD_REFERENCE.search(text_of(path))
-    ]
-    assert not offenders, offenders
+    assert tracked_files(SERVING_ROOTS), "no serving file was read"
+    assert not references_to_argocd(SERVING_ROOTS)
+    # The same reading over every build directory: a client, a script, or a
+    # workflow that addressed the controller would be the first dependency.
+    assert not references_to_argocd(BUILD_ROOTS)
+
+
+@pytest.mark.parametrize(
+    "spelling",
+    ("argocd", "ArgoCD", "argo-cd", "argo_cd", "ARGO_CD_URL", "argo.cd", "Argo CD"),
+)
+def test_the_reference_pattern_matches_every_spelling(spelling: str) -> None:
+    """A tripwire nobody tripped is not known to work. Trip it."""
+    assert ARGOCD_REFERENCE.search(spelling), spelling
+    # The domain's own sentence about what it is not coupled to stays legal.
+    assert not ARGOCD_REFERENCE.search("an Argo application is: a")
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    (
+        "apiVersion: argoproj.io/v1alpha1\nkind: Application\n",
+        "kind: Application\n",
+        'kind: "ApplicationSet"\n',
+        "  kind: AppProject # the default project\n",
+        '{"apiVersion": "argoproj.io/v1alpha1"}',
+        "    argocd.argoproj.io/secret-type: cluster\n",
+    ),
+)
+def test_the_custom_resource_pattern_matches_what_it_is_for(manifest: str) -> None:
+    assert ARGOCD_CUSTOM_RESOURCE.search(manifest), manifest
+
+
+def test_the_custom_resource_pattern_does_not_match_a_template() -> None:
+    """The gap the record admits, pinned so that nobody reads the test as wider."""
+    assert not ARGOCD_CUSTOM_RESOURCE.search('kind: {{ printf "Appli%s" "cation" }}\n')
 
 
 # --------------------------------------------------------------------------
@@ -589,8 +665,11 @@ def test_every_rule_says_what_enforces_it(rule: dict) -> None:
     assert rule["enforcement"] in ENFORCEMENTS, rule["enforcement"]
     assert rule["statement"].strip() and rule["limit"].strip(), rule["ruleId"]
 
-    if rule["enforcement"] == "tested":
+    if rule["enforcement"] in ("tested", "tested-absence"):
         module, _, function = rule["enforcedBy"].partition("::")
+        # A rule held only by an absence says so in its enforcement, and no rule
+        # that cites the absence test may call itself plainly tested.
+        assert (function == ABSENCE_TEST) == (rule["enforcement"] == "tested-absence")
         assert module == THIS_MODULE_REL, rule["enforcedBy"]
         assert re.search(
             rf"^def {re.escape(function)}\(", text_of(THIS_MODULE), flags=re.MULTILINE
@@ -621,27 +700,50 @@ def test_every_refusal_names_the_procedure_it_applies_to(refusal: dict) -> None:
     assert refusal["condition"].strip(), refusal["refusalId"]
 
 
-def test_removal_refuses_while_an_application_exists() -> None:
-    """Deleting a definition deletes every object of its kind, workloads included."""
+def test_removal_refuses_before_it_deletes() -> None:
+    """Every refusal comes before the first deletion, and the definitions go last.
+
+    Deleting a definition deletes every object of its kind, workloads included.
+    The first version of the steps deleted the manifest's objects, definitions
+    first, and only then checked that the namespace was the bootstrap's own.
+    """
     by_id = {refusal["refusalId"]: refusal for refusal in REFUSALS}
-    assert "removal" in by_id["applications-present"]["appliesTo"]
-    assert "removal" in by_id["foreign-argocd-present"]["appliesTo"]
-    assert "bootstrap" in by_id["foreign-argocd-present"]["appliesTo"]
+    assert by_id["argocd-custom-resources-present"]["appliesTo"] == ["removal"]
+    for kind in ("Application", "ApplicationSet", "AppProject"):
+        assert kind in by_id["argocd-custom-resources-present"]["condition"], kind
+    assert set(by_id["foreign-argocd-present"]["appliesTo"]) == PROCEDURES
+    # Removal deletes by the names the record lists, so it needs no download and
+    # does not depend on upstream still serving the manifest.
+    assert by_id["manifest-digest-mismatch"]["appliesTo"] == ["bootstrap"]
 
     removal = RECORD["removal"]
-    assert removal["steps"] and removal["doesNotTouch"]
-    refuse_step = next(
-        index
-        for index, step in enumerate(removal["steps"])
-        if "Application" in step and step.startswith("Refuse")
-    )
-    delete_step = next(
-        index
-        for index, step in enumerate(removal["steps"])
-        if step.startswith("Delete")
-    )
-    assert refuse_step < delete_step, "removal deletes before it refuses"
+    steps = removal["steps"]
+    assert steps and removal["doesNotTouch"] and removal["knownGaps"]
     assert "the cluster" in removal["doesNotTouch"]
+
+    first_delete = next(i for i, step in enumerate(steps) if step.startswith("Delete"))
+    marker = next(i for i, step in enumerate(steps) if "lifecycle marker" in step)
+    custom = [
+        i
+        for i, step in enumerate(steps)
+        if step.startswith("Refuse") and "Application" in step
+    ]
+    assert steps[marker].startswith("Refuse") and marker < first_delete
+    assert custom and custom[0] < first_delete, "removal deletes before it refuses"
+
+    controllers = next(i for i, step in enumerate(steps) if "StatefulSet" in step)
+    definitions = next(
+        i
+        for i, step in enumerate(steps)
+        if step.startswith("Delete") and "CustomResourceDefinition" in step
+    )
+    namespace = next(
+        i for i, step in enumerate(steps) if step.startswith("Delete the namespace")
+    )
+    assert controllers < definitions < namespace, steps
+    # The check is repeated between stopping the controllers and deleting the
+    # definitions.
+    assert any(controllers < index < definitions for index in custom), steps
 
 
 # --------------------------------------------------------------------------
@@ -671,6 +773,7 @@ def test_the_document_states_the_enforcement_split_the_data_produces(
     counts = Counter(rule["enforcement"] for rule in RULES)
     sentence = (
         f"{NUMBER_WORDS[counts['tested']].capitalize()} rules are tested, "
+        f"{NUMBER_WORDS[counts['tested-absence']]} are tested only as an absence, "
         f"{NUMBER_WORDS[counts['not-implemented']]} are not implemented, and "
         f"{NUMBER_WORDS[counts['review']]} is held by review."
     )
@@ -679,8 +782,20 @@ def test_the_document_states_the_enforcement_split_the_data_produces(
         row = next(
             line for line in document.splitlines() if f"| `{rule['ruleId']}` |" in line
         )
-        expected = rule["enforcement"].replace("-", " ")
-        assert f"| {expected}" in row, (rule["ruleId"], row)
+        expected = ENFORCEMENT_LABELS[rule["enforcement"]]
+        assert f"| {expected} |" in row, (rule["ruleId"], row)
+
+
+def test_the_document_publishes_the_removal_steps_in_the_record_order(
+    document: str,
+) -> None:
+    """The steps are an order, and an order retyped in prose can be reordered."""
+    flattened = " ".join(document.split())
+    position = -1
+    for number, step in enumerate(RECORD["removal"]["steps"], start=1):
+        found = flattened.find(f"{number}. {step.replace('argocd', '`argocd`')}")
+        assert found > position, (number, step)
+        position = found
 
 
 def test_the_document_publishes_the_object_table_the_data_holds(document: str) -> None:

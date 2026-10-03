@@ -208,9 +208,9 @@ the row is built, and it does not place the row in V1 scope.
 | `resourceId` | Kind | Told apart from another owner by | Note |
 |---|---|---|---|
 | `argocd-namespace` | `v1/Namespace` | Name. Terraform owns the platform namespace; this one is `argocd` | The pinned manifest declares no Namespace, so the bootstrap creates it and labels it `inferops.io/lifecycle=bootstrap`. The name does not begin with `inferops-` |
-| `argocd-custom-resource-definitions` | `apiextensions.k8s.io/v1 CustomResourceDefinition` | Kind. No other owner declares one | Three definitions. Deleting one deletes every object of its kind, so removal refuses while an Application or an ApplicationSet object exists |
+| `argocd-custom-resource-definitions` | `apiextensions.k8s.io/v1 CustomResourceDefinition` | Kind. No other owner declares one | Three definitions. Deleting one deletes every object of its kind, so removal refuses while an Application, ApplicationSet, or AppProject object exists, and deletes the definitions only after the controllers have stopped |
 | `argocd-cluster-rbac` | `rbac.authorization.k8s.io/v1 ClusterRole` and `ClusterRoleBinding` | Kind. No other owner declares one | One of each. The role grants every verb on every resource. It is the upstream default and is not narrowed |
-| `argocd-controller-installation` | `platform service` | Namespace. A Helm release owns the same kinds in the platform namespace | Twenty-nine namespaced objects in `argocd`, and one Secret an init container is expected to create. No container declares a resource request or a limit |
+| `argocd-controller-installation` | `platform service` | Namespace. A Helm release owns the same kinds in the platform namespace | Twenty-nine namespaced objects in `argocd`, and at least two more that are expected at run time and were not observed: a Secret and a leader-election Lease. No container declares a resource request or a limit. An Application or an AppProject would also be in `argocd` and is not part of this row; who owns one is not decided |
 
 Three limits apply to this table:
 
@@ -400,8 +400,10 @@ only: that every object the pinned manifest declares maps to a row the
 the namespace is not the platform namespace, not the smoke namespace, and not
 under the `inferops-` prefix; that neither committed chart render and no
 Terraform file declares a cluster-scoped kind the bootstrap owns or names the
-namespace `argocd`; that no Argo CD custom resource is committed; and that every
-bootstrap row is `planned` and cites no evidence. The last check is a pin: the
+namespace `argocd`; that no tracked file declares an Argo CD custom resource or a
+cluster registration; that removal refuses before it deletes, and deletes the
+definitions after the controllers; and that every bootstrap row is `planned` and
+cites no evidence. The last check is a pin: the
 change that implements the bootstrap must move it.
 
 Checked by `tests/architecture/test_helm_chart.py`, for the release layer only:

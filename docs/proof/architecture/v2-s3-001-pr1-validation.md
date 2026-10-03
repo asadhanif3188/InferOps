@@ -33,14 +33,17 @@ The change did read from the network, and only read. That is described under
 ## What changed
 
 - **[ADR 0017](../../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md)**
-  — a new decision record, accepted in part. Thirteen decisions: eleven accepted,
-  most of them as a rule or a pin; one, the image digests, accepted as a rule with
-  its mechanism proposed; and one, the apply mechanism, proposed.
+  — a new decision record, accepted in part. Thirteen decisions: ten accepted,
+  most of them as a rule or a pin; two accepted with a part proposed, the manifest
+  pin with its choice of profile and the image digests with their mechanism; and
+  one, the apply mechanism, proposed. The first commit counted eleven accepted;
+  see [the review](#what-the-independent-review-found).
 - **[`argocd-bootstrap.v1alpha1.json`](../../environment/argocd-bootstrap.v1alpha1.json)**
   and [its document](../../environment/argocd-bootstrap.md) — the pinned release,
   manifest and images; the namespace; the manifest's 34 objects with the ownership
-  row that holds each; the privileges; five refusals; the removal steps; and twelve
-  rules, each with what enforces it.
+  row that holds each; the privileges; six refusals; eight removal steps with four
+  known gaps; and thirteen rules, each with what enforces it. The first commit had
+  five refusals, six steps, and twelve rules.
 - **The ownership inventory**, in
   [data](../../architecture/resource-ownership.v1alpha1.json) and in
   [prose](../../architecture/resource-ownership.md) — one owner, `argocd-bootstrap`;
@@ -50,15 +53,19 @@ The change did read from the network, and only read. That is described under
   `implemented` in the sense that the record exists and is checked. The inventory
   had 39 rows and has 45. No existing row, owner, lifecycle, or operation changed.
 - **`tests/architecture/test_argocd_bootstrap.py`** — the new suite: 62 tests in
-  the first commit.
+  the first commit, 80 after the review fixes below.
 - **Documents** — [the system architecture](../../architecture/system-architecture.md),
   with the decided path drawn and marked as not built;
   [the architecture index](../../architecture/README.md) and
   [the decision-authority register](../../governance/decision-authority.md), with
   the seventeenth record; the root README's two counts of decision records; the
-  test inventory, with the new module; and the changelog.
+  test inventory, with the new module; and the changelog. After the review:
+  a dated amendment note in ADR 0004 D3, the boundary review checklist's count of
+  suites, one paragraph in the deferred-risk register that points at ADR 0017, and
+  one docstring in `tools/ci_gates/ownership_overlap.py`.
 
-No script, chart, Terraform file, workflow, contract, or source file changed.
+No script, chart, Terraform file, workflow, contract, or package source file
+changed. The one file under `tools/` changed in a docstring only.
 
 ## What was read from upstream
 
@@ -71,7 +78,8 @@ any remote.
 | The commit the tag names | The GitHub API, `git/ref/tags/v3.5.3` | `c9c369efcc5b2a0bd720803f8d14a1c3eaddf579`, a commit, not a tag object |
 | `manifests/core-install.yaml`, by the tag | `raw.githubusercontent.com` | 1,882,880 bytes, SHA-256 `1a87025d…5c448` |
 | The same file, by the commit | `raw.githubusercontent.com` | The same SHA-256 |
-| The tested Kubernetes versions page, by the tag | `raw.githubusercontent.com` | Argo CD 3.5: v1.36, v1.35, v1.34, v1.33 |
+| The tested Kubernetes versions page, by the tag and then by the commit | `raw.githubusercontent.com` | Argo CD 3.5: v1.36, v1.35, v1.34, v1.33, in both reads |
+| `server/server.go`, `docs/operator-manual/core.md`, and `docs/getting_started.md`, by the commit, after the review | `raw.githubusercontent.com` | The API server creates the `default` project. Upstream's core command is a server-side apply with `--force-conflicts`. Upstream names the ApplicationSet definition as exceeding the annotation limit |
 | The licence file, by the commit | `raw.githubusercontent.com` | Apache License 2.0 |
 | The digest of `quay.io/argoproj/argocd:v3.5.3` | The registry's manifest endpoint, a `HEAD` request | `sha256:dd3f47d5…4bfa`, a manifest list |
 | The digest of `public.ecr.aws/docker/library/redis:8.2.3-alpine` | The registry's manifest endpoint, a `HEAD` request with an anonymous token | `sha256:08ad0b1d…79ba`, an image index |
@@ -100,7 +108,7 @@ Three limits on this section:
 | InferOps consumes an existing, explicitly selected and verified cluster | Reached as a rule: ADR 0017 D3 puts the bootstrap and the removal under ADR 0011. **Pending** as behaviour: nothing calls the guard for a bootstrap |
 | Terraform, the bootstrap, and Argo CD do not own the same resources | Reached for Terraform, Helm, and the bootstrap: the inventory and two tests. Reached for Argo CD only as an absence: no Application is committed. The restriction on what an Application may target is **pending** |
 | Argo CD is not a synchronous request-path dependency | Reached as a rule and a static check: no file under `src`, `charts`, or `deploy` refers to Argo CD. **Not measured:** no run served a request with Argo CD absent |
-| Cleanup is scoped and documented | Reached as a documented rule: six steps, four refusals that apply to removal, and a list of what removal does not touch. **Pending** as behaviour: no removal procedure exists |
+| Cleanup is scoped and documented | Reached as a documented rule: eight steps, three refusals that apply to removal, four known gaps, and a list of what removal does not touch. **Pending** as behaviour: no removal procedure exists, and no run tried the order |
 | The ownership and architecture documents are amended | Reached |
 | The record states that the cluster already exists and is selected and verified before mutation | Reached, in ADR 0017 D3 and in the record's refusals |
 | No workload Application is created | Reached, and held by a test |
@@ -111,7 +119,7 @@ Three limits on this section:
 | Check | Result |
 |---|---|
 | `ruff format --check`, `ruff check`, `mypy` | Clean: 618 files formatted, no lint finding, no type error in 339 source files |
-| `tests/architecture/test_argocd_bootstrap.py` | 62 passed at the first commit |
+| `tests/architecture/test_argocd_bootstrap.py` | 62 passed at the first commit, and 80 after the review's fixes |
 | `tools.ci_gates.ownership_overlap` over both committed renders and `infra/terraform` | Exit 0: 32 rendered objects and 2 Terraform resources share no kind and cross no owner. The gate reads Helm's and Terraform's rows only, so the new rows do not change its answer |
 | `tools.evidence_index --check` | Exit 0: the index is what the register and ledgers produce |
 | `tools.evidence_index --gate` | Exit 0, with the five values above unchanged |
@@ -120,10 +128,51 @@ Three limits on this section:
 | `tools.experiment_freeze --check` | Exit 0: 2 freeze records, every rule held |
 | `terraform fmt -check -recursive infra/terraform` | Exit 0. No Terraform file changed |
 | The default lane, `pytest -q -rs`, at the first commit | 17,978 passed, none failed, 35 skipped, 14 deselected, in 22 minutes 4 seconds, with every file of the change staged. The 35 skips are the ones the lane had before this change: host symlink privileges, POSIX signals on Windows, an absent collector image, and fixtures a test does not apply to. The 14 deselected tests are the lanes that need a cluster or a runtime |
+| The same gates and the default lane, after the review's fixes | Every gate above gave the same result, and the five evidence values were unchanged. 17,996 passed, none failed, 35 skipped, 14 deselected, in 11 minutes 41 seconds, with every file of the change staged |
 | `git diff --check` | Clean |
 | Tag `v1.0.0` | Tag object `17c9bbd7…`, commit `718ad2e0…`, as before |
 | `gitleaks` | Not run: it is not installed on this host. The hosted CI job runs it over the full history |
 | Hosted CI | Not read: the hosted checks of this change's pull request cannot be read from this host |
+
+## What the independent review found
+
+Two independent reviews read the first commit's tree before this record was
+finished. Each fetched the upstream files again. Both reproduced every pin, the
+object list by kind and name, the cluster role's rules, and the image references.
+Neither found private text. Together they found the defects below, and the second
+commit corrects them. The first commit is kept as it was.
+
+| Found | What the first commit said | Corrected to |
+|---|---|---|
+| Removal deleted cluster-scoped objects before it checked ownership | Step 4 deleted "the objects the verified manifest declares, in the namespace argocd", and step 5 checked the marker. Five of those objects are not in a namespace, and the ADR said the marker refusal came "before any deletion" | The marker refusal is step 2. A test orders every removal refusal before the first deletion |
+| Removal deleted the definitions while the controllers ran | The manifest lists the definitions first. An Application created between the check and the delete would be deleted with its definition while the controller could still act on its finalizer | The controllers are stopped first, the check is repeated, and the definitions are deleted after. Four gaps that remain are listed with the steps |
+| The removal refusal omitted AppProject | `applications-present` named Application and ApplicationSet | `argocd-custom-resources-present` names all three kinds |
+| Removal depended on upstream | It refused on a manifest digest mismatch, so a withdrawn manifest would make the installation unremovable by the procedure | Removal deletes by the kinds and names the record lists and needs no download |
+| The foreign-installation refusal was narrower than its rule | It read the namespace and the definitions. A cluster role of the same name, a different installed pin, and a hand-deleted namespace were not covered | The refusal also reads the cluster role and binding by name, a new refusal `installed-pin-differs` reads an annotation the bootstrap writes, and the remaining gaps are stated |
+| D6 and D5 contradicted each other | D5 was accepted as "applied unmodified". D6 offered a mechanism that rewrites the manifest, and its other mechanism does not hold after a restart, because four containers pull by tag on every start | D6 is a rule for the moment the bootstrap reports success. The ADR states that the rewrite would amend D5, and that the pin does not hold after a restart |
+| The choice of the core profile was marked accepted | It depends on runtime behaviour. By inference from upstream source, a core installation holds no project, so it may not reconcile an Application as installed | D5 is accepted as a pin of the bytes, and the choice of profile is proposed. R6 cites the source |
+| The namespace boundary had an unstated exception | "Told apart by namespace" covered every namespaced object in `argocd`. An Application or an AppProject would be there too, and the bootstrap does not own it | The boundary excludes `argoproj.io` kinds, and R5 carries the open question |
+| The reason for server-side apply named the wrong definition | "the `Application` definition is larger than the annotation" | Upstream names the ApplicationSet definition. The ADR also records the `--force-conflicts` flag upstream pairs with it |
+| Two absence rules were labelled `tested` | The machine-readable enforcement did not distinguish a rule held by an absence | A fourth value, `tested-absence`, and the page counts it separately: four tested, two tested only as an absence |
+| The absence test read eight directories | A manifest under `docs/`, `tests/`, or a new top-level directory passed. A cluster registration, which is a Secret, could not be matched at all. The limit said "the committed tree" | It reads every tracked file except the suite, and matches the registration label. The limit names what a template can still hide |
+| The reference pattern missed the underscore | `argo_cd` and `ARGO_CD_URL` did not match, and `src/` is Python | The pattern matches seven spellings, and a test trips it with each |
+| The not-implemented pin read file names in one directory | A procedure under another name, in `lib.sh`, or under `tools/` passed it, while the page said the test forces the record to move | It reads every tracked file under the build directories by path and content. It caught one of this change's own edits, a docstring under `tools/` that named the controller |
+| The tested-minor check did not check the minor | It checked that the list was sorted | It checks that the minor both providers last reported is in the list |
+| "Not on the request path" read as "cannot affect serving" | D10 said only that a stopped controller does not stop serving | D10, the rule's limit, and the architecture page say that a running controller can change, restart, or delete serving objects, and that its pods share the node |
+| The obligation to add security rows was prose only | The ADR said the installing change "must add the rows" | A thirteenth rule, marked not implemented, and a paragraph in the deferred-risk register |
+| A field read as an observation | `"appliedUnmodified": true`, when nothing was applied | `mustBeAppliedUnmodified`, with `"applied": false`, and a test pins both |
+| The test inventory overstated the suite | It said the index and the ownership document publish "the same pins, identifiers, and counts". The suite checks them for a link only, and checks no count in the ADR's prose | The row says what is checked and that prose counts are not |
+| "The first record of a V2 decision" | False: the record that opened V2 is earlier | "The first decision record that decides a V2 design", and the register's heading no longer says "V1 decision" |
+| ADR 0004 was amended and not annotated | ADR 0017 said it amends D3, and D3 carried no note | A dated amendment note in D3's row and body |
+| Wrong counts and stale sentences | The index paragraph said "four `planned` rows" of six rows, five of them planned. The checklist said "five suites". The sweep was described as selecting in `inferops-` namespaces, and the implemented one runs in one namespace. One run-time object was listed where the same inference gives at least two | Each corrected in place |
+| The comparison tables left out facts | The Flux row did not say its controller holds a cluster-wide grant too. The `namespace-install` row did not say that profile adds the API server | Both stated. The ADR also says the comparison was written after the choice |
+| A placeholder was staged | The lane row held a token while the lane was still running | Replaced with the lane's result before the first commit |
+
+Two findings were not corrected, and stay as stated limits. A test that compares
+the recorded cluster role with itself cannot detect a wrong record, because the
+manifest is not committed. And a chart template branch that the committed renders
+do not take, or a Terraform `kubernetes_manifest` resource, hides a kind from the
+ownership test; the rule's limit now says so.
 
 ## Gates that do not apply, and work not executed
 
@@ -157,6 +206,10 @@ identifier that is not merged is this change's own.
   exists.** Today no Application exists. The upstream controller holds every verb
   on every resource.
 - **That a request is served while Argo CD is absent or stopped.**
-- **That removal leaves no residue**, or that any of the five refusals refuses.
+- **That removal leaves no residue**, that its order avoids a stuck deletion, or
+  that any of the six refusals refuses.
+- **That a container runs the pinned image after a later restart.**
+- **That the core profile reconciles an Application.** By inference from upstream
+  source, a core installation holds no project.
 - **That the reference host has the capacity** to run Argo CD beside a release.
 - **Any evidence level above `C0`**, or any change to a claim.

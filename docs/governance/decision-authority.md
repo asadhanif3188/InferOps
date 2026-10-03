@@ -50,7 +50,7 @@ Each one also declares what exercising it does **not** establish, and those list
 the load-bearing half of this record. They are in the data and summarised under
 [what this does not do](#what-this-does-not-do).
 
-## Every V1 decision, and who owns it
+## Every decision record, and who owns it
 
 Seventeen records. All of them are owned by `repository-maintainer`, and none is
 unassigned. The `basis` column is the part worth reading.
@@ -88,7 +88,8 @@ which established this model,
 [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md), the
 first record accepted under it, and
 [ADR 0017](../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md), the
-first record of a V2 decision. (This paragraph said sixteen and two until 2026-10-03.)
+first decision record that decides a V2 design. (This paragraph said sixteen and two
+until 2026-10-03, and the heading above said "V1 decision".)
 
 ## How this changes when a second maintainer arrives
 

@@ -18,14 +18,16 @@ from `1.0.0`.
   and commit, the `core-install.yaml` manifest by commit and SHA-256, and two images by
   digest. The record also names the namespace `argocd`, each of the manifest's 34 objects
   with the ownership row that holds it, the privileges the installation needs and grants,
-  five refusals, and a scoped removal. The ownership inventory gains one owner, one
+  six refusals, and a scoped removal whose order no run has tried. The ownership inventory gains one owner, one
   lifecycle, and six rows, and no existing row moves; the four rows for cluster objects
   are `planned`. The bootstrap consumes an existing cluster that is selected and verified
   under ADR 0011. **No bootstrap procedure exists, no cluster was contacted, and no
   Application is committed.** The pins were read from upstream once and no signature was
   verified. The upstream controller holds every verb on every resource, and the decision
-  records that without narrowing it. Five of the record's twelve rules are enforced by
-  nothing yet and say so. A new default-lane suite holds the record to the inventory, the
+  records that without narrowing it. Six of the record's thirteen rules are enforced by
+  nothing yet and say so, and two more hold only as an absence. The choice of the core
+  profile, the apply mechanism, and the image-digest mechanism are proposed, not
+  accepted. A new default-lane suite holds the record to the inventory, the
   Terraform defaults, and the committed renders. [The validation
   record](docs/proof/architecture/v2-s3-001-pr1-validation.md) says what was checked.
 - **A register change that bears on an experiment run must reference a review artifact

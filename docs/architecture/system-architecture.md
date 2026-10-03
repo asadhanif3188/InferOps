@@ -464,7 +464,9 @@ Three statements bound this diagram:
 - **Argo CD is not on the request path in section 3.** A request goes to the
   InferOps API and from there to the serving runtime. No serving component refers
   to Argo CD, and a test reads the source for a reference. No run has measured a
-  request with Argo CD absent or stopped.
+  request with Argo CD absent or stopped. That is not a statement that Argo CD
+  cannot affect serving: once an Application exists, a running controller can
+  change, restart, or delete serving objects, and its pods share the node.
 - **The Terraform and Helm bands above do not move.** What Argo CD reconciles, and
   what becomes of the Helm band when it does, are not decided.
 

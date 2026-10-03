@@ -36,13 +36,13 @@
 | D2 | The installation has one owner, the bootstrap. Argo CD does not manage its own installation | **Accepted** | The ownership inventory, and a test that no Argo CD custom resource is committed |
 | D3 | The bootstrap consumes an existing cluster that is explicitly selected and verified | **Accepted** as a rule | ADR 0011 and its guard exist. No bootstrap procedure calls the guard, because none exists |
 | D4 | The release is `v3.5.3`, pinned by tag and commit | **Accepted** as a pin | The record, checked for form. Compatibility with a cluster is documented upstream and not observed here |
-| D5 | The install manifest is `core-install.yaml`, pinned by commit and SHA-256, applied unmodified, and not copied into this repository | **Accepted** as a pin | The record, checked for form. The SHA-256 was computed once from two downloads |
-| D6 | Every Argo CD container runs the pinned digest of its image | **Accepted** as a rule. The mechanism is **proposed** | The digests are recorded. Nothing checks a running container |
+| D5 | The install manifest is `core-install.yaml`, pinned by commit and SHA-256, applied unmodified, and not copied into this repository | **Accepted** as a pin of the bytes. The choice of the core profile is **proposed** | The record, checked for form. The SHA-256 was computed once from two downloads. No run reconciled an Application with this profile; see R6 |
+| D6 | When the bootstrap reports success, every Argo CD container runs the pinned digest of its image | **Accepted** as a rule for that moment. The mechanism is **proposed** | The digests are recorded. Nothing checks a running container, and nothing holds the digest after a restart |
 | D7 | The namespace is `argocd`, and the bootstrap owns it | **Accepted** | The inventory, and a test on the name |
 | D8 | The bootstrap is a repository procedure that applies the verified manifest with server-side apply | **Proposed** | Nothing. The mechanism depends on runtime behaviour and was not executed |
 | D9 | Terraform, Helm, and the bootstrap own disjoint objects, and Argo CD reconciles nothing the bootstrap or Terraform owns | **Accepted** for the three tools. **Accepted** as a rule for Argo CD | The inventory and two tests, for the tools. An absence test, for Argo CD |
 | D10 | Argo CD is not on the inference request path | **Accepted** as a rule | A test that no serving component refers to Argo CD. No run measured a request with Argo CD absent |
-| D11 | Removal is scoped to the bootstrap's objects, refuses while an Application exists, and refuses an installation it did not create | **Accepted** as a rule | Nothing. No removal procedure exists |
+| D11 | Removal is scoped to the bootstrap's objects, refuses while an Argo CD custom resource exists, and refuses an installation it did not create | **Accepted** as a rule. Its order is a design that no run tried | Nothing. No removal procedure exists |
 | D12 | The privileges the installation needs and grants are recorded, and the cluster-wide grant is not narrowed | **Accepted** as a recorded risk | The record. See R1 |
 | D13 | App-of-apps, ApplicationSet objects, a second cluster, a service mesh, Argo Rollouts, and a high-availability installation are out of scope | **Accepted** as scope | The same absence test as D2 |
 
@@ -89,10 +89,14 @@ V2 uses Argo CD. Desired state is kept in this repository, and no second
 repository is introduced. This record selects the controller and decides its
 installation. It does not decide the desired-state layout or the Application.
 
+The comparison below was written after the choice. The first V2 experiment
+already named Argo CD before this record existed, and this record states the
+reasons instead of discovering them.
+
 | Alternative | Assessment |
 |---|---|
 | **Argo CD** | **Selected.** One `Application` object carries the desired revision, the observed revision, the sync state, and the last operation. A record of a reconciliation needs those four facts, and one object is easier to read than several |
-| Flux | Not selected. It spreads the same facts across a source object and a release or kustomization object. No defect was found in it; it was not executed, and neither was Argo CD |
+| Flux | Not selected. It spreads the same facts across a source object and a release or kustomization object. No defect was found in it; it was not executed, and neither was Argo CD. Its default controller also holds a cluster-wide grant, so R1 does not separate the two |
 | No controller: an operator runs `helm upgrade` from a checkout | Not selected. Nothing then detects or corrects a change made directly in the cluster |
 | A second repository for desired state | Not selected. A change to the renderer and the desired state it produces could not be reviewed as one change |
 
@@ -174,7 +178,7 @@ image the same way, by identity and not by copy.
 |---|---|
 | **`core-install.yaml`** | **Selected.** It installs the application controller, the repository server, and Redis. It installs no API server, no web interface, and no single sign-on, so no login credential exists and no Service is added for a person to reach |
 | `install.yaml` | Not selected. It adds the API server, the web interface, Dex, and the notifications controller. Nothing in V2 needs them, and each one is an exposed surface |
-| `namespace-install.yaml` | Not selected, and worth revisiting. It grants no cluster-wide role. It also ships no definitions, and the controller could then act in the platform namespace only through a Role created inside a namespace that Terraform owns. See R1 |
+| `namespace-install.yaml` | Not selected. It grants no cluster-wide role, which is why R1 names it. It is not a smaller core: it is the full profile without cluster-wide access, so it adds the API server, Dex, and the notifications controller. It ships no definitions, and the controller could then act in the platform namespace only through a Role created inside a namespace that Terraform owns |
 | The high-availability manifests | Not selected. V2 runs one small cluster, and the multi-replica profile was refused there on capacity |
 
 Two consequences follow from applying the file unmodified:
@@ -183,9 +187,17 @@ Two consequences follow from applying the file unmodified:
   InferOps commits no ApplicationSet object, so it has nothing to reconcile.
 - **No container declares a resource request or a limit.** See R4.
 
+**The pin is accepted. The choice of the core profile is proposed.** The bytes are
+identified, and that needs no run. Whether this profile reconciles an Application
+is runtime behaviour, and no run tried it. Upstream source at the pinned commit
+creates the `default` project in the API server, which this profile does not
+install. By that inference, a core installation holds no project until something
+creates one. See R6.
+
 ## D6 — Images run at their pinned digests
 
-**Accepted as a rule. The mechanism is proposed.**
+**Accepted as a rule for the moment the bootstrap reports success. The mechanism
+is proposed.**
 
 | Image | Reference in the manifest | Pinned digest |
 |---|---|---|
@@ -194,14 +206,26 @@ Two consequences follow from applying the file unmodified:
 
 The manifest names each image by tag. A tag can be moved upstream, so the
 manifest's SHA-256 does not identify the image bytes. The rule is that the
-bootstrap does not report success unless every Argo CD container runs the pinned
-digest.
+bootstrap does not report success unless every Argo CD container, init
+containers included, runs the pinned digest at that moment.
 
-How that is done is not decided. Two mechanisms are possible: rewrite each image
-reference to its digest before the apply, which changes the applied bytes; or
-apply the file unmodified and compare each running container's image identity
-with the pin. The change that implements the bootstrap chooses one and executes
-it.
+**The rule does not hold after that moment.** Four of the six containers set
+`imagePullPolicy: Always` and name their image by tag. A pod that restarts later
+resolves the tag again and can run other bytes. One init container sets
+`IfNotPresent` and one sets no policy, so a node that already holds an image
+under that tag uses it without asking the registry.
+
+How the check is done is not decided, and the two mechanisms are not equal:
+
+- **Apply the file unmodified and compare each running container's image identity
+  with the pin.** This keeps D5. It covers the moment of the check only.
+- **Replace each image reference with its digest before the apply.** This holds
+  after a restart. It changes the applied bytes, so it amends D5: the SHA-256
+  would be verified on the downloaded bytes, and the applied bytes would differ
+  from them by the substitution.
+
+The change that implements the bootstrap chooses one and executes it. If it
+chooses the second, it amends D5 in the same change.
 
 ## D7 — The namespace
 
@@ -214,9 +238,10 @@ when it is applied there.
 
 The bootstrap creates the namespace and labels it
 `inferops.io/lifecycle=bootstrap`. The name does not begin with `inferops-`, and
-every upstream object carries `app.kubernetes.io/part-of: argocd`. The accepted
-scoped sweep selects `app.kubernetes.io/part-of=inferops` in `inferops-`
-namespaces, so it matches nothing here. That is read from the selector and the
+every upstream object carries `app.kubernetes.io/part-of: argocd`. The implemented
+scoped sweep selects `app.kubernetes.io/part-of=inferops` in the one namespace
+`inferops-smoke`, and the accepted wording for a wider sweep names `inferops-`
+namespaces. Neither matches anything here. That is read from the selector and the
 manifest; no sweep was run.
 
 Terraform also owns a Namespace. The two are told apart by name: Terraform owns
@@ -231,10 +256,13 @@ cluster, obtains the manifest, verifies its SHA-256, creates the namespace, and
 applies the manifest with server-side apply through the project-scoped
 kubeconfig.
 
-Server-side apply is proposed because the `Application` definition is larger
-than the annotation that client-side apply writes. That is upstream's documented
-guidance and was not tried here. This decision stays proposed until
-a run executes it on a supported provider.
+Server-side apply is proposed because upstream documents that some of the
+definitions, the `ApplicationSet` one among them, exceed the 262,144-byte limit
+on the annotation that client-side apply writes. That is upstream's guidance and
+was not tried here. Upstream pairs it with `--force-conflicts`, which takes over
+a field another manager holds. That flag is why the refusal of a foreign
+installation in D11 also covers the cluster role and its binding by name. This
+decision stays proposed until a run executes it on a supported provider.
 
 ## D9 — Disjoint ownership
 
@@ -245,13 +273,18 @@ Argo CD.**
 |---|---|---|
 | `terraform` | The platform namespace, its metadata, the model cache claim | — |
 | `helm` | The objects of one release, in the platform namespace | Namespace |
-| `argocd-bootstrap` | The namespace `argocd`, three definitions, one cluster role and its binding, and the namespaced objects of the installation | Name, for the Namespace. Kind, for the cluster-scoped objects. Namespace, for the rest |
+| `argocd-bootstrap` | The namespace `argocd`, three definitions, one cluster role and its binding, and the namespaced objects of the installation | Name, for the Namespace. Kind, for the cluster-scoped objects. Namespace, for the rest, except an object of an `argoproj.io` kind |
 
 Three checks hold this for the tools. Every object the pinned manifest declares
 maps to a row that `argocd-bootstrap` owns. The namespace is not the platform
 namespace, not the smoke namespace, and not under the `inferops-` prefix. Neither
 committed chart render and no Terraform file declares a definition, a cluster
 role, or a cluster role binding, or names the namespace `argocd`.
+
+**The namespace boundary has one exception, and it is open.** An Application or
+an AppProject must also be in `argocd`, because the pinned manifest does not let
+the controller read one elsewhere. The bootstrap does not own such an object.
+Who does is not decided, and R5 carries it.
 
 For Argo CD the rule is: **Argo CD reconciles no object that the bootstrap or
 Terraform owns.** Today that holds because no Application exists, and a test
@@ -269,35 +302,65 @@ for a reconciliation. Argo CD acts when desired state changes or when the cluste
 drifts from it. A stopped controller stops reconciliation and does not stop
 serving.
 
-A test reads the package source, the chart, and the deployment files and refuses
-a reference to Argo CD. **No run has measured a request with Argo CD absent or
+A test reads every tracked file under the build directories and refuses a
+reference to Argo CD. **No run has measured a request with Argo CD absent or
 stopped**, and this record does not claim one.
+
+**Not being on the request path is not the same as being unable to affect
+serving.** Once an Application exists, a running controller can change, restart,
+or delete serving objects: it reverts a manual change, it rolls out a new
+revision, and it holds the grant in R1. Its four pods also compete for the node
+with the serving runtime, without a request or a limit (R4). This record bounds
+neither.
 
 A related rule is held by review alone: no InferOps record derives a caller
 outcome from the sync state or the health state that Argo CD reports.
 
 ## D11 — Removal
 
-**Accepted as a rule. Not implemented.**
+**Accepted as a rule. Not implemented, and its order is a design that no run
+tried.**
 
-Removal is the reverse of the bootstrap. It deletes the objects the verified
-manifest declares, then the namespace `argocd`, and confirms that no definition,
-cluster role, cluster role binding, or namespace remains.
+Removal deletes what the bootstrap created and nothing else. It deletes by the
+kinds and names the record lists, so it needs no download and does not depend on
+upstream still serving the manifest.
 
-It verifies the target first, as D3 requires. It then refuses in three more
-cases, before any deletion:
+Every refusal comes before the first deletion:
 
-- **An Application or an ApplicationSet object exists.** Deleting a definition
-  deletes every object of its kind. An Application that carries a resource
-  finalizer deletes the workload it manages when it is deleted. Removing the
-  controller must not remove a workload.
-- **The namespace `argocd` does not carry the bootstrap's marker.** An Argo CD
-  that somebody else installed in a shared local cluster is refused and never
-  adopted. The bootstrap refuses it for the same reason.
-- **The manifest's SHA-256 is not the pinned value.**
+- **The target is not selected or not verified** (D3).
+- **No namespace `argocd` carries the bootstrap's marker.** An Argo CD that
+  somebody else installed in a shared local cluster is refused and never adopted.
+  The bootstrap refuses it for the same reason, and also when a definition, or a
+  cluster role or binding named `argocd-application-controller`, exists while no
+  marked namespace does.
+- **An Application, ApplicationSet, or AppProject object exists.** Deleting a
+  definition deletes every object of its kind. An Application that carries a
+  resource finalizer deletes the workload it manages when it is deleted while the
+  controller runs. Removing the controller must not remove a workload.
+
+The order of the deletions matters, and the first draft of this record had it
+wrong. The manifest lists the definitions first, so deleting "the objects the
+manifest declares" deletes them while the controllers still run. The decided
+order is:
+
+1. stop the controllers, and wait until no Argo CD pod remains;
+2. check again that no Argo CD custom resource exists;
+3. delete the three definitions, the cluster role, and its binding;
+4. delete the namespace `argocd`, which removes the rest;
+5. confirm that none of them remains.
+
+The bootstrap also refuses a marked namespace that records a different manifest
+SHA-256. An upgrade in place is not decided.
 
 Removal does not touch the cluster, the platform namespace, a release, or the
 project kubeconfig. Images that the node pulled stay in the node's image store.
+
+Four gaps are known and recorded with the steps. The checks and the deletions are
+not atomic. An object with a finalizer that appears after the controllers stop
+keeps its definition and the namespace terminating. A second Argo CD in another
+namespace shares the definitions and is not detected when it holds no
+Application. And when a person deletes the namespace by hand, the bootstrap and
+the removal both refuse, and the recovery is manual.
 
 Removal is not one of the five teardown operations in the ownership inventory.
 Those are ordered by what they remove, and removal does not fit the order: it and
@@ -375,7 +438,10 @@ yet live.
 - **The security baseline is not restated here.** No control, threat, or risk row
   is added, because the baseline describes what exists, and no installation
   exists. The change that first installs Argo CD must add the rows before it
-  runs.
+  runs. Nothing enforces that obligation: it is the rule
+  `security-baseline-rows-precede-the-first-install` in the record, marked not
+  implemented, and [the deferred-risk register](../../security/deferred-risks.md)
+  points at R1 and R2 below.
 
 ## Evidence
 
@@ -397,11 +463,13 @@ installs, reconciles, or can be removed: **nothing**. That needs a cluster.
 | ID | Item | Status | Impact |
 |---|---|---|---|
 | R1 | The application controller holds every verb on every resource | Open | The inventory says who may create and destroy an object. It does not stop a controller that holds a wider grant. A namespace-scoped installation, or a project that limits destinations and kinds, would narrow it. Neither is decided |
-| R2 | The pinned bytes are identified and not authenticated | Open | A compromised upstream release would be pinned as faithfully as a sound one |
-| R3 | Upstream may withdraw the manifest or an image | Accepted | The bootstrap then fails closed at the digest check or the pull. Nothing is copied here to prevent it |
-| R4 | No Argo CD container declares a resource request or a limit | Open | The reference host refused the multi-replica profile on capacity. Whether it runs four more pods beside a release is not known |
-| R5 | What becomes of the `helm` rows when Argo CD applies the chart | Open | Argo CD renders a chart and applies the result; it does not run `helm install`. The rows' `createdBy` and `destroyedBy`, and the chart's `pre-install` hook, are then described by the wrong tool. The change that adds the first Application owes the answer |
-| R6 | The `default` project is not created by any manifest object | Open | Whether one exists after a core installation was not observed. An Application names a project |
+| R2 | The pinned bytes are identified and not authenticated, and the image pin does not hold after a restart | Open | A compromised upstream release would be pinned as faithfully as a sound one. Under the unmodified manifest, a restarted pod resolves its image tag again (D6) |
+| R3 | Upstream may withdraw the manifest or an image | Accepted | The bootstrap then fails closed at the digest check or the pull. Nothing is copied here to prevent it. Removal does not need the manifest: it deletes by the names the record lists |
+| R4 | No Argo CD container declares a resource request or a limit | Open | The reference host refused the multi-replica profile on capacity. Whether it runs four more pods beside a release is not known, and neither is their effect on the latency of the serving runtime they share a node with |
+| R5 | What becomes of the `helm` rows when Argo CD applies the chart | Open | Argo CD renders a chart and applies the result; it does not run `helm install`. The rows' `createdBy` and `destroyedBy`, and the chart's `pre-install` hook, are then described by the wrong tool. An Application and its project would also be objects in `argocd` that the bootstrap does not own. The change that adds the first Application owes both answers |
+| R6 | A core installation probably holds no project | Open | Inferred, not observed: upstream source at the pinned commit creates the `default` project in the API server (`initializeDefaultProject` in `server/server.go`), and the core profile installs no API server. An Application names a project, so the first Application needs a committed AppProject and an owner for it. This is why the choice of profile in D5 is proposed |
 | R7 | The bootstrap's marker is a label | Accepted | A person who can label a namespace can set it. It prevents an accident and not an impersonation, as `EX-02` and `EX-06` already record for the cluster guard |
 | R8 | The tested Kubernetes list is upstream's statement | Accepted | No supported provider has run this release |
 | R9 | Server-side apply was not tried | Open | D8 stays proposed until a run |
+| R10 | The removal order was not tried, and four gaps in it are known | Open | D11 lists them. A stuck deletion has no decided recovery |
+| R11 | The marker is on the namespace only | Accepted | The five cluster-scoped objects carry upstream labels and no marker. The refusal reads their names |
