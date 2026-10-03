@@ -1,0 +1,271 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentResultReview",
+  "metadata": {
+    "reviewId": "20261003-e01-abc-1-review-1",
+    "experiment": "V2-E01",
+    "publishedBy": "V2-S2-005-PR1",
+    "page": "docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.md",
+    "hashing": "SHA-256 of the file's bytes with every CRLF replaced by LF, as the freeze records and the evidence index compute it."
+  },
+  "subject": {
+    "runId": "20261003-e01-abc-1",
+    "runPath": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1",
+    "parts": ["E01-A", "E01-B", "E01-C"],
+    "executingRevision": "a5b6a5db2011a68a3f27acdeaa8186c226bfedb4",
+    "freeze": {
+      "path": "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json",
+      "revision": 2,
+      "contentSha256": "198f60b5133338e445b1c0fef9f9171ad3e58fe3bde66ac1e7a8d1d674730ac8"
+    },
+    "registry": {
+      "path": "docs/proof/experiments/registry.v1alpha1.json",
+      "contentSha256": "6c357892fff0f34c754f6d6a73388d402e89dd1527089178c20e96534f6411f2"
+    },
+    "files": {
+      "commands.txt": "a1f51c39cdaa299e07ac841262f79adcd85f3f5d0cca989f5f97d07ad53651e6",
+      "mutation/rendered-workload-release.yaml": "7ac0e9bc47eac43c0a52477ebcf53adbb7d4f8dfac967614e8b2db4681fcc47d",
+      "mutation/values.generated.yaml": "f52f41af8604c1e6fed84cab629e26b56e34312d36b92029086591280af65414",
+      "refusals.json": "097575c1a41fadfbda60c8b49a91e2ad755755d1df65042ce45bf6613584fa82",
+      "render-a/rendered-workload-release.yaml": "b167029878678709047c954b0a466108245e5226a73aa7013de95dab6de4b580",
+      "render-a/values.generated.yaml": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce",
+      "render-b/rendered-workload-release.yaml": "b167029878678709047c954b0a466108245e5226a73aa7013de95dab6de4b580",
+      "render-b/values.generated.yaml": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce",
+      "result.md": "70ddb4b00939003a75a2c4427a273f6b2f7b2c1eda7eb29a27099198afaa168d",
+      "run.v1alpha1.json": "ae2e005b5f68bc3ed017c9c3e4c2c0508390306a784c2860b6c59ed5dafb5461"
+    },
+    "outcomes": {
+      "E01-A": "PASSED",
+      "E01-B": "PASSED",
+      "E01-C": "PASSED"
+    }
+  },
+  "review": {
+    "reviewedRevision": "3f08f4393167a0c49e63f4f1d968250d54f48017",
+    "reviewedRevisionIs": "The merge of pull request 114 on main. It holds the run, the second-run claim, the eighth ledger, the evidence index, and the dashboard.",
+    "treeStateBefore": "git status --porcelain --untracked-files=all printed no line",
+    "treeStateAfter": "git status --porcelain --untracked-files=all printed no line",
+    "startedAt": "2026-10-03T06:49:45Z",
+    "finishedAt": "2026-10-03T06:55:26Z",
+    "timeSource": "The reviewer's report. No repository file proves these times.",
+    "reviewer": {
+      "kind": "automated",
+      "description": "One automated reviewing session, given a written brief. The session took no part in producing the run, the register change, or this record, and it received the brief and nothing else from the session that started it.",
+      "independenceLimits": [
+        "The reviewer is a separate session of the same automated assistant that the commits of the run, of the register change, and of this change name as co-author. It is not another tool or another model.",
+        "The maintainer asked for the review. The assistant session that prepared this change wrote the brief and started the reviewing session.",
+        "The brief named the files to read and twelve items to answer. It named no expected finding. The brief is not committed, so the repository does not prove what it said.",
+        "The reviewer is not a person, and nobody outside the project took part.",
+        "No second reviewer repeated the review."
+      ]
+    },
+    "access": "read-only",
+    "notExecuted": [
+      "tools.experiment_e01 --run",
+      "the test suites"
+    ],
+    "registerAtReviewedRevision": {
+      "register": {
+        "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+        "contentSha256": "6ce9dc3333a515116ce8088d386348f62f5cdbf58f5ee1e617d67f4d4d921261"
+      },
+      "ledger": {
+        "path": "docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json",
+        "contentSha256": "b76013231571bfd52bf76eb2480688b78e3f328aed5a9d5f864142ca6a439259"
+      },
+      "index": {
+        "path": "docs/proof/v1-evidence-index.v1alpha1.json",
+        "contentSha256": "a69efe57264b3520f828d8b59c24e9c64cf6ddc71719e673a43b4968cec68e71"
+      },
+      "claimId": "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal",
+      "claimStatus": "certified",
+      "evidenceLevel": "C0"
+    }
+  },
+  "conclusions": {
+    "frozenRun": {
+      "verdict": "no-defect-found",
+      "statement": "The review found no defect in the ten files of the run, the manifest digests, the freeze and registry identity, the executing revision and its 74 pins, the runner and loaded-module identity, the seven criterion verdicts, or the three PASSED outcome states."
+    },
+    "registerStatementCorrectness": {
+      "verdict": "claim-material-defect-found",
+      "statement": "One clause of the second-run claim's statement omits the qualifier that E01-AC5 carries. Without the qualifier the clause is false. With the qualifier the clause is true.",
+      "finding": "F1"
+    },
+    "historicalSequencingCompliance": {
+      "verdict": "not-established",
+      "statement": "The register change for this run was committed before the review that the run's validation record documents. This review also follows that register change. No record establishes a review before the register change.",
+      "finding": "F3"
+    },
+    "rerunJustified": false,
+    "rerunReason": "F1 is a defect in one sentence of the register. It is not a defect in the run. The review found nothing against the run's verdict on E01-AC5, and it repeated the eight-character search. A new run would answer the same frozen criteria. It could change neither the order of review and registration nor the sentence."
+  },
+  "claimMaterialFinding": {
+    "finding": "F1",
+    "criterion": "E01-AC5",
+    "criterionClause": "no hand-written string contains one of those generated values of eight characters or more",
+    "claimClause": "no hand-written string that contains a generated workload-intent value",
+    "omittedQualifier": "of eight characters or more",
+    "sameClauseAt": [
+      "docs/testing/claim-evidence-matrix.v1alpha2.json, the claim's statement",
+      "docs/testing/claim-evidence-matrix.md, the paragraph on the second E01 row",
+      "docs/proof/dashboard.md, both copies of the claim's statement"
+    ],
+    "sameClauseAlsoAt": {
+      "foundBy": "The author of this record, after the review. The review did not list these two copies.",
+      "paths": [
+        "docs/proof/v1-evidence-index.v1alpha1.json, the claim's statement",
+        "docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json, the added claim's statement"
+      ]
+    },
+    "qualifierPresentAt": [
+      "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json, E01-AC5",
+      "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/result.md",
+      "the claim's evidence record, its acceptance criterion and its result for E01-AC5",
+      "docs/proof/domain/v2-s2-004-pr2-validation.md"
+    ],
+    "handWrittenValues": "tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml",
+    "generatedValues": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/render-a/values.generated.yaml",
+    "literalMatches": [
+      {
+        "handWrittenPath": "api.image.repository",
+        "handWrittenValue": "localhost/inferops-api",
+        "generatedPath": "telemetry.deploymentEnvironment",
+        "generatedValue": "local"
+      },
+      {
+        "handWrittenPath": "api.image.digest",
+        "handWrittenValue": "sha256:7961c9f9ce773095461498774bc2f25053bcba6d01c40d8448da65e217091e50",
+        "generatedPath": "runtime.resources.limits.cpu",
+        "generatedValue": "6"
+      },
+      {
+        "handWrittenPath": "model.integrity.verifyOnStart",
+        "handWrittenValue": "sha256",
+        "generatedPath": "runtime.resources.limits.cpu",
+        "generatedValue": "6"
+      }
+    ],
+    "literalMatchesScope": "Generated values that are strings, which is what the frozen analysis compares and what the reviewer searched.",
+    "nonStringCase": {
+      "foundBy": "The second review of this change, after the reviewer's report. The reviewer did not list it.",
+      "generatedPath": "runtime.replicaCount",
+      "generatedValue": 1,
+      "handWrittenPaths": ["api.image.digest", "model.alias"],
+      "note": "The digit 1 occurs in both hand-written strings. It is one more instance of F1, not another defect."
+    },
+    "matchesAtEightCharactersOrMore": [],
+    "correctionOwner": "V2-S2-005-PR2",
+    "correctedHere": false
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "claim-material",
+      "summary": "The second-run claim's statement says the evidence holds no hand-written string that contains a generated workload-intent value. E01-AC5 limits that to generated values of eight characters or more. The statement omits the limit, and three shorter string matches exist.",
+      "disposition": "open",
+      "owner": "V2-S2-005-PR2"
+    },
+    {
+      "id": "F2",
+      "severity": "non-material",
+      "summary": "The opening sentence of the V2-S2-004-PR2 validation record describes the page as what was checked before the change was committed. The same page reports a review of the first commit and a lane after the review's fixes.",
+      "disposition": "recorded-not-corrected",
+      "owner": null
+    },
+    {
+      "id": "F3",
+      "severity": "observation",
+      "summary": "The second-run claim, its certified status, its ledger, and the regenerated index first appear in commit c24fda4. The validation record says its review read c24fda4. By the repository's own account, the review followed the register change.",
+      "disposition": "recorded-as-the-sequencing-deviation",
+      "owner": null
+    },
+    {
+      "id": "F4",
+      "severity": "observation",
+      "summary": "The module docstring of tools/experiment_e01/core.py says E01-C runs six cases. Freeze revision 2 registers seven, and the code reads the cases from the freeze record.",
+      "disposition": "recorded-not-corrected",
+      "owner": null
+    },
+    {
+      "id": "F5",
+      "severity": "observation",
+      "summary": "E01-A step 10 of freeze revision 2 says 'from the previous step'. The previous step lists the merged differences. The runner searches the workload-intent values of step 8, as E01-AC5 states. The result is 'none' on either reading.",
+      "disposition": "recorded-not-corrected",
+      "owner": null
+    },
+    {
+      "id": "F6",
+      "severity": "observation",
+      "summary": "The register record's limitation that the contract, binding, and mutated-contract digests, the admission, the restated-value search, and the V1 merge are the run's observations is accurate. The result page does not carry that limitation.",
+      "disposition": "recorded-not-corrected",
+      "owner": null
+    },
+    {
+      "id": "F7",
+      "severity": "observation",
+      "summary": "The loaded-module digests are digests of source files on disk at the end of the run. They are not digests of the bytecode that executed. No limitation in the result page, the register, or the validation record says so. The review found no evidence that a stale bytecode cache was used.",
+      "disposition": "recorded-not-corrected",
+      "owner": null
+    },
+    {
+      "id": "F8",
+      "severity": "observation",
+      "summary": "Git cannot prove the run's start and finish times, the host facts, the operator-stated commands, the clean status before the run, or that no preview executed. The validation record discloses these as operator statements.",
+      "disposition": "no-action",
+      "owner": null
+    },
+    {
+      "id": "F9",
+      "severity": "observation",
+      "summary": "The repetition rule of freeze revision 2 permits a new run after an INCONCLUSIVE, REFUSED, or ABORTED run. It does not say in terms that a run under revision 2 may follow a PASSED run under revision 1. The second run answers a superseding revision, and its outcome does not differ.",
+      "disposition": "recorded-not-corrected",
+      "owner": null
+    },
+    {
+      "id": "F10",
+      "severity": "observation",
+      "summary": "The record is C0 with targetBehaviourExecuted false, and its limitation says the renderer executed. The level is consistent with the evidence-level definition only under the claim's own framing: the claim is about committed evidence. The record discloses the tension. C0 is the lowest level, so the level is not overstated.",
+      "disposition": "no-action",
+      "owner": null
+    },
+    {
+      "id": "F11",
+      "severity": "non-material",
+      "summary": "The first run's audit limitation is present in the register claim, in freeze revision 2, and on the experiments page. The three agree in substance and differ in detail: only the freeze record and the page give the count of previews and the INCONCLUSIVE result of the two later ones.",
+      "disposition": "recorded-not-corrected",
+      "owner": null
+    },
+    {
+      "id": "F12",
+      "severity": "observation",
+      "summary": "Favourable. Every digest, pin, blob, and tree comparison the review made matched.",
+      "disposition": "no-action",
+      "owner": null
+    },
+    {
+      "id": "F13",
+      "severity": "observation",
+      "summary": "Favourable. The review recomputed the contract digest, the mutated-contract digest, and the binding digest from the blobs at the executing revision. All three equal the manifest and the releases.",
+      "disposition": "no-action",
+      "owner": null
+    }
+  ],
+  "notVerified": [
+    "The run's recorded start and finish times, and the host facts.",
+    "The operator-stated preparation commands, the clean status before the run, and that no preview or second start occurred.",
+    "That the executed bytecode corresponded to the digested source files.",
+    "The admission by admit_manual_values, and the derivation of the 22 workload-intent targets. Both are read from the manifest.",
+    "The seven refusals as behaviour. They are read from refusals.json. No case was executed again.",
+    "That the review documented for V2-S2-004-PR2 occurred, when, or by whom. Only the committed text about it was read.",
+    "GitHub merge signatures, hosted CI results, and the lane figures in the validation record."
+  ],
+  "doesNotEstablish": [
+    "That a review preceded the register change for this run. No record establishes one, and this review read a revision that already held the claim.",
+    "That the second-run claim's statement is correct. The review found one clause that is not.",
+    "That the release input deploys or serves. E01-D did not run.",
+    "That the first run's execution boundary was valid.",
+    "Any evidence level above C0.",
+    "That the project's result review is done by a person, or by anyone outside the project."
+  ]
+}

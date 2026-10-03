@@ -10,6 +10,21 @@ from `1.0.0`.
 
 ### Added
 
+- **An independent review of the second V2-E01 static run, published before any
+  correction.** `V2-S2-005-PR1` publishes [the report](docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.md)
+  of one independent review of run `20261003-e01-abc-1`, and its machine-readable record.
+  The review read the merge of pull request 114 on 2026-10-03, read-only, and started no
+  run. It found no defect in the frozen run, its raw files, its analysis, or its three
+  PASSED outcome states. It found one claim-material defect in the register's wording: the
+  second-run claim says the evidence holds no hand-written string that contains a generated
+  workload-intent value, and E01-AC5 limits that to generated values of eight characters
+  or more. Three hand-written strings contain a shorter generated string value. **The claim is not corrected
+  by this change:** the register, every ledger, the evidence index, and the dashboard are
+  unchanged, and `V2-S2-005-PR2` owns the correction. The report also records that no
+  record establishes an independent review before the register change for either E01 run,
+  and that this review does not repair that order. A new default-lane suite holds the
+  record to the run's files and repeats the measurement behind the finding. [The
+  validation record](docs/proof/domain/v2-s2-005-pr1-validation.md) says what was checked.
 - **The second run of the V2-E01 static parts, under freeze revision 2.** `V2-S2-004-PR2`
   executed E01-A, E01-B, and E01-C once, at the merged commit `a5b6a5d`, from the merged
   checkout: the runner and the `inferops` package were the checkout's own, the record had
