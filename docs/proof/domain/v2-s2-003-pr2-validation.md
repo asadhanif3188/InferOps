@@ -258,6 +258,13 @@ package-location variable reused the name of the runner's own package parameter,
 second render was started as the wrong module and E01-AC1 went unanswered in the
 end-to-end test.
 
+**What the Linux lane caught after the review commit.** The pull request's default lane
+printed 1 failed, 17,494 passed, 55 skipped, 14 deselected. The redaction asked the host's
+own path type whether a value was absolute, and a POSIX path type does not read a Windows
+drive path as absolute, so on Linux the test's drive-path example was recorded as given.
+The run of record is unaffected: it ran on Windows, and its `commands.txt` withholds the
+value. The check now also withholds any value with a drive, on every host.
+
 **Not changed, and why.**
 
 - The judge still requires only that some workload-intent values were listed, not that

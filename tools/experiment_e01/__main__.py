@@ -28,7 +28,7 @@ import json
 import os
 import sys
 from collections.abc import Sequence
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from .core import (
     HASH_SEEDS,
@@ -59,7 +59,12 @@ _WITHHELD = {"--prelude": "<preparation commands file>", "--root": "<repository 
 
 
 def _host_path(value: str) -> bool:
-    return Path(value).is_absolute() or value.startswith(("/", "\\"))
+    # A drive path is withheld on every host: POSIX does not read C:/... as absolute.
+    return (
+        Path(value).is_absolute()
+        or bool(PureWindowsPath(value).drive)
+        or value.startswith(("/", "\\"))
+    )
 
 
 def _shown(argv: Sequence[str]) -> str:

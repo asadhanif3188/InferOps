@@ -135,8 +135,8 @@
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
     "postReleaseRegisterChanges": 11,
-    "evidenceSetSha256": "9079a82d400a271e64f2ad233ead83abe9bbaf8e55268e7435b66d2790358a99",
-    "evidencePackSha256": "b53b1dbbc362de17e912526bb500ede816f4b4d56a738f84c5d7fc0955c6fa78",
+    "evidenceSetSha256": "0a03ee7936796b2cd50b99f081031bbb609d646d89bd03b31be903b2fa0be47c",
+    "evidencePackSha256": "4f42e4a1ee1bff175f4caf6c4a4d32f739126bd2ed3b95ffafb33d60a241a3b9",
     "releasedPack": {
       "tag": "v1.0.0",
       "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
@@ -10832,8 +10832,8 @@
         },
         {
           "path": "docs/proof/domain/v2-s2-003-pr2-validation.md",
-          "sha256": "64f7993ee724881c5176e3ff80a159f581ee88af7bc3c77ee254ca08a0c79ab8",
-          "gitBlob": "cc42260b7a1c793bd25e5f02c417b9fcd9053e54",
+          "sha256": "b8b305bb6a8276f70f298d3cb26850b4cf34210dfc28a90be350dda1ee5bb865",
+          "gitBlob": "aa98b78bd08440f21c3252689fbef9f5274b4ab5",
           "recordedDate": {
             "label": "Date",
             "value": "2026-10-02"
