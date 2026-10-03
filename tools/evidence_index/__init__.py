@@ -8,7 +8,8 @@ The index is generated from
 [the publication ledger](../../docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json),
 [the post-release ledger](../../docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json),
 [the claim reconciliation ledger](../../docs/proof/testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
-and [the E01 static proof ledger](../../docs/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json),
+[the E01 static proof ledger](../../docs/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json),
+and [the corrected E01 static proof ledger](../../docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json),
 and it says nothing they do not. See
 [the index's own page](../../docs/proof/v1-evidence-index.md).
 """
@@ -23,6 +24,7 @@ from .core import (
     CODE_REVISION_RELATIONS,
     COMPLETENESS_PATH,
     DISPOSITIONS,
+    E01_CORRECTED_PROOF_PATH,
     E01_STATIC_PROOF_PATH,
     FINAL_STATES,
     FREEZE_DECISIONS,
@@ -68,6 +70,7 @@ __all__ = [
     "CODE_REVISION_RELATIONS",
     "COMPLETENESS_PATH",
     "DISPOSITIONS",
+    "E01_CORRECTED_PROOF_PATH",
     "E01_STATIC_PROOF_PATH",
     "FINAL_STATES",
     "FREEZE_DECISIONS",

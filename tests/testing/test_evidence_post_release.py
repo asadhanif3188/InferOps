@@ -15,6 +15,12 @@ This module holds that one too: it changes that limitation and one surface reaso
 nothing else, states no release, leaves the claim planned with no record, and cannot be
 skipped when the released register is rebuilt.
 
+`V2-S2-003-PR2` and `V2-S2-004-PR2` wrote a third and a fourth, one for each run of the
+static parts of V2-E01. Each adds one claim, certified at `C0` on the one record it
+brings, and replaces one surface reason. The fourth also appends a dated audit
+limitation to the first run's claim and writes one correction beside the first run's
+result page; it moves no status and edits no dated record.
+
 What it does not establish is that the release is still published as the record read
 it, or that the private reporting setting still reads enabled: those are state on the
 hosting service, and this module reads only files and, where the clone has it, the tag.
@@ -33,6 +39,7 @@ import pytest
 
 from tools.evidence_index import (
     CLAIM_RECONCILIATION_PATH,
+    E01_CORRECTED_PROOF_PATH,
     E01_STATIC_PROOF_PATH,
     INDEX_PATH,
     LEDGER_PATHS,
@@ -63,8 +70,10 @@ REGISTER = load_register()
 LATER = load_ledger(CLAIM_RECONCILIATION_PATH)
 #: The third post-release ledger, written after the second.
 E01 = load_ledger(E01_STATIC_PROOF_PATH)
+#: The fourth post-release ledger, written after the third.
+CORRECTED = load_ledger(E01_CORRECTED_PROOF_PATH)
 #: Every post-release ledger written after this one, in the order applied.
-LATER_LEDGERS = [LATER, E01]
+LATER_LEDGERS = [LATER, E01, CORRECTED]
 AS_RELEASED = released_register(REGISTER, load_ledgers(POST_RELEASE_LEDGER_PATHS))
 #: The register as this ledger left it, before the later ones.
 AFTER_THIS_LEDGER = restore_migrated_register(REGISTER, LATER_LEDGERS)
@@ -240,19 +249,25 @@ def test_main_holds_another_pack_and_says_so() -> None:
     )
 
 
-def test_the_released_counts_differ_from_main_by_the_two_records_added_since() -> None:
-    """The release's own record, which moved one claim from not claimed, and the E01
-    static run's, which came with a claim of its own. Both are C0, and nothing else
-    moved a count."""
+def test_the_released_counts_differ_from_main_by_the_three_records_added_since() -> (
+    None
+):
+    """The release's own record, which moved one claim from not claimed, and the two
+    E01 static runs', each of which came with a claim of its own. All three are C0,
+    and nothing else moved a count."""
     released = SUMMARY["releasedPack"]
-    assert released["records"] == SUMMARY["records"] - 2
-    assert released["recordsByLevel"]["C0"] == SUMMARY["recordsByLevel"]["C0"] - 2
-    assert released["claims"] == SUMMARY["claims"] - 1
+    assert released["records"] == SUMMARY["records"] - 3
+    assert released["recordsByLevel"]["C0"] == SUMMARY["recordsByLevel"]["C0"] - 3
+    assert released["claims"] == SUMMARY["claims"] - 2
     certified = SUMMARY["claimsByStatus"]["certified"]
-    assert released["claimsByStatus"]["certified"] == certified - 2
+    assert released["claimsByStatus"]["certified"] == certified - 3
     not_claimed = SUMMARY["claimsByStatus"]["not-claimed"]
     assert released["claimsByStatus"]["not-claimed"] == not_claimed + 1
-    added_files = set(ADDED["evidenceRefs"]) | set(E01_RECORD["evidenceRefs"])
+    added_files = (
+        set(ADDED["evidenceRefs"])
+        | set(E01_RECORD["evidenceRefs"])
+        | set(CORRECTED_RECORD["evidenceRefs"])
+    )
     assert released["evidenceFiles"] == SUMMARY["evidenceFiles"] - len(added_files)
 
 
@@ -323,6 +338,16 @@ def _edit_the_added_claim(register: dict, ledgers: list) -> None:
     claim["evidenceRecords"][0]["summary"] += " Edited after the change."
 
 
+def _edit_the_corrected_claim(register: dict, ledgers: list) -> None:
+    (claim,) = [c for c in register["claims"] if c["claimId"] == CORRECTED_CLAIM_ID]
+    claim["evidenceRecords"][0]["summary"] += " Edited after the change."
+
+
+def _edit_the_audit_limitation(register: dict, ledgers: list) -> None:
+    (claim,) = [c for c in register["claims"] if c["claimId"] == E01_CLAIM_ID]
+    claim["limitation"] += " Edited after the change."
+
+
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
@@ -333,6 +358,8 @@ def _edit_the_added_claim(register: dict, ledgers: list) -> None:
         (_state_a_release_later, "only the first post-release ledger"),
         (_edit_the_reconciled_limitation, "c01-rendering-limitation"),
         (_edit_the_added_claim, "e01-static-claim"),
+        (_edit_the_corrected_claim, "k01-corrected-run-claim"),
+        (_edit_the_audit_limitation, "k02-first-run-audit-limitation"),
     ],
     ids=lambda value: value.__name__.strip("_") if callable(value) else "",
 )
@@ -457,6 +484,8 @@ def test_the_released_register_cannot_be_rebuilt_without_the_later_ledgers() -> 
         released_register(REGISTER, LEDGER)
     with pytest.raises(ValueError, match="c02-index-surface-reason"):
         released_register(REGISTER, [LEDGER, LATER])
+    with pytest.raises(ValueError, match="e01-index-surface-reason"):
+        released_register(REGISTER, [LEDGER, LATER, E01])
 
 
 # ------------------------------------------------------------------ the record
@@ -551,12 +580,16 @@ E01_FINDINGS = {row["findingId"]: row for row in E01["findings"]}
 (E01_ADDED,) = [c for c in E01_CHANGES if c["operation"] == "add-claim"]
 (E01_RECORD,) = E01_ADDED["claim"]["evidenceRecords"]
 E01_RUN = "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1"
+#: The register as the E01 ledger left it, before the corrected one.
+AFTER_THE_E01_LEDGER = restore_migrated_register(REGISTER, CORRECTED)
 #: The register as the reconciliation ledger left it, before the E01 ledger.
-AFTER_THIS_LEDGER_AND_RECONCILIATION = restore_migrated_register(REGISTER, E01)
+AFTER_THIS_LEDGER_AND_RECONCILIATION = restore_migrated_register(
+    REGISTER, [E01, CORRECTED]
+)
 
 
 def test_the_e01_ledger_follows_the_reconciliation_and_states_no_release() -> None:
-    assert POST_RELEASE_LEDGER_PATHS[-1] == E01_STATIC_PROOF_PATH
+    assert POST_RELEASE_LEDGER_PATHS[2] == E01_STATIC_PROOF_PATH
     assert E01["contractVersion"] == "inferops.io/v1alpha1"
     assert E01["priorLedgerRef"] == (
         CLAIM_RECONCILIATION_PATH.relative_to(REPO_ROOT).as_posix()
@@ -601,7 +634,13 @@ def test_the_added_claim_is_the_one_in_the_register_and_not_in_the_released_one(
 ):
     claims = [row["claimId"] for row in REGISTER["claims"]]
     assert claims[E01_ADDED["position"]] == E01_CLAIM_ID
-    assert REGISTER["claims"][E01_ADDED["position"]] == E01_ADDED["claim"]
+    # As the E01 ledger left it. The corrected ledger appended a dated audit
+    # limitation since, and changed nothing else of the claim.
+    assert AFTER_THE_E01_LEDGER["claims"][E01_ADDED["position"]] == (E01_ADDED["claim"])
+    held = REGISTER["claims"][E01_ADDED["position"]]
+    assert [key for key in held if held[key] != E01_ADDED["claim"][key]] == [
+        "limitation"
+    ]
     assert E01_CLAIM_ID not in {row["claimId"] for row in AS_RELEASED["claims"]}
     assert E01_CLAIM_ID not in {row["claimId"] for row in AFTER_THIS_LEDGER["claims"]}
 
@@ -655,3 +694,195 @@ def test_an_added_claim_outside_the_claims_is_refused(position: int) -> None:
     ledger["registerChanges"][0]["position"] = position
     with pytest.raises(ValueError, match="outside the claims"):
         apply_register_changes(AFTER_THIS_LEDGER_AND_RECONCILIATION, ledger)
+
+
+# ------------------------------------------- the corrected E01 static proof ledger
+
+CORRECTED_CLAIM_ID = (
+    "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-"
+    "and-every-registered-refusal"
+)
+CORRECTED_CHANGES = CORRECTED["registerChanges"]
+CORRECTED_FINDINGS = {row["findingId"]: row for row in CORRECTED["findings"]}
+(CORRECTED_ADDED,) = [c for c in CORRECTED_CHANGES if c["operation"] == "add-claim"]
+(CORRECTED_RECORD,) = CORRECTED_ADDED["claim"]["evidenceRecords"]
+(AUDIT_CHANGE,) = [c for c in CORRECTED_CHANGES if c.get("field") == "limitation"]
+(AUDIT_CORRECTION,) = CORRECTED["recordCorrections"]
+CORRECTED_RUN = "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1"
+FREEZE_R2 = "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json"
+
+
+def test_the_corrected_ledger_follows_the_e01_ledger_and_states_no_release() -> None:
+    assert POST_RELEASE_LEDGER_PATHS[3] == E01_CORRECTED_PROOF_PATH
+    assert CORRECTED["contractVersion"] == "inferops.io/v1alpha1"
+    assert CORRECTED["priorLedgerRef"] == (
+        E01_STATIC_PROOF_PATH.relative_to(REPO_ROOT).as_posix()
+    )
+    for key in ("registerRef", "priorLedgerRef", "reportRef", "indexRef"):
+        assert (REPO_ROOT / CORRECTED[key]).is_file(), key
+    for absent in ("release", "freeze", "blockers", "blockerDispositions"):
+        assert absent not in CORRECTED, absent
+    assert CORRECTED["codeRevisions"] == []
+
+
+def test_it_adds_one_claim_appends_one_limitation_and_changes_one_reason() -> None:
+    assert [
+        (change["operation"], change.get("field")) for change in CORRECTED_CHANGES
+    ] == [
+        ("add-claim", None),
+        ("set-claim-field", "limitation"),
+        ("set-register-field", "nonClaimSurfaces"),
+    ]
+    (surfaces,) = [c for c in CORRECTED_CHANGES if c.get("field") == "nonClaimSurfaces"]
+    before = {row["path"]: row for row in surfaces["before"]}
+    after = {row["path"]: row for row in surfaces["after"]}
+    assert before.keys() == after.keys()
+    assert [path for path in before if before[path] != after[path]] == [
+        "docs/proof/v1-evidence-index.md"
+    ]
+    assert "eight ledgers" in after["docs/proof/v1-evidence-index.md"]["reason"]
+
+
+def test_every_corrected_finding_is_answered_by_changes_that_exist() -> None:
+    change_ids = {change["changeId"] for change in CORRECTED_CHANGES}
+    answered: set[str] = set()
+    for change in CORRECTED_CHANGES:
+        assert change["findingId"] in CORRECTED_FINDINGS
+        assert len(change["reason"]) > 40
+    for finding in CORRECTED_FINDINGS.values():
+        assert set(finding["resolvedBy"]) <= change_ids, finding["findingId"]
+        answered |= set(finding["resolvedBy"])
+    assert answered == change_ids
+    assert AUDIT_CORRECTION["findingId"] in CORRECTED_FINDINGS
+
+
+def test_the_second_claim_is_appended_and_is_not_in_any_earlier_register() -> None:
+    claims = [row["claimId"] for row in REGISTER["claims"]]
+    assert CORRECTED_ADDED["position"] == len(claims) - 1
+    assert claims[-1] == CORRECTED_CLAIM_ID
+    assert REGISTER["claims"][-1] == CORRECTED_ADDED["claim"]
+    for earlier in (AS_RELEASED, AFTER_THIS_LEDGER, AFTER_THE_E01_LEDGER):
+        assert CORRECTED_CLAIM_ID not in {row["claimId"] for row in earlier["claims"]}
+
+
+def test_the_second_claim_is_certified_on_one_c0_record_of_the_second_run() -> None:
+    """C0, as freeze revision 2 registers the static parts: the renderer ran as a
+    tool, its release input was inspected, and nothing deployed or served."""
+    claim = CORRECTED_ADDED["claim"]
+    assert claim["status"] == "certified"
+    assert claim["notClaimedReason"] is None
+    assert claim["assertsRealBehaviour"] is False
+    assert claim["strategyClaimIds"] == []
+    assert "legacyClassification" not in claim
+    assert CORRECTED_RECORD["evidenceLevel"] == "C0"
+    assert CORRECTED_RECORD["execution"]["targetBehaviourExecuted"] is False
+    assert CORRECTED_RECORD["execution"]["substitutions"] == []
+    assert CORRECTED_RECORD["workload"]["source"] == "none"
+    assert CORRECTED_RECORD["environment"]["environmentId"] == "repository-only"
+    roles = {row["role"] for row in CORRECTED_RECORD["execution"]["executedComponents"]}
+    assert roles <= {"tool", "validator"}
+    for name in ("result.md", "run.v1alpha1.json", "refusals.json", "commands.txt"):
+        assert f"{CORRECTED_RUN}/{name}" in CORRECTED_RECORD["evidenceRefs"], name
+    assert FREEZE_R2 in CORRECTED_RECORD["evidenceRefs"]
+    assert CORRECTED["reportRef"] in CORRECTED_RECORD["evidenceRefs"]
+    # It cites nothing of the first run: the two runs are separate evidence.
+    assert not [ref for ref in CORRECTED_RECORD["evidenceRefs"] if E01_RUN in ref]
+    assert all(c["declaredBefore"] for c in CORRECTED_RECORD["acceptanceCriteria"])
+
+
+def test_the_second_record_states_what_the_second_run_recorded() -> None:
+    manifest = json.loads(read(f"{CORRECTED_RUN}/run.v1alpha1.json"))
+    freeze = json.loads(read(FREEZE_R2))
+    assert manifest["metadata"]["freezeRecord"] == FREEZE_R2
+    assert set(manifest["outcomes"].values()) == {"PASSED"}
+    outcomes = {
+        c["criterionId"]: c["outcome"] for c in CORRECTED_RECORD["acceptanceCriteria"]
+    }
+    assert outcomes == {
+        criterion["id"].lower(): "met" if criterion["holds"] else "not-met"
+        for criterion in manifest["criteria"]
+    }
+    # Every criterion is quoted from the freeze record the run names, word for word.
+    frozen = {
+        criterion["id"].lower(): criterion["statement"]
+        for entry in freeze["fields"]["acceptanceCriteria"]
+        for criterion in entry["value"]
+    }
+    for criterion in CORRECTED_RECORD["acceptanceCriteria"]:
+        assert criterion["statement"] == frozen[criterion["criterionId"]]
+    (commit,) = [v for v in CORRECTED_RECORD["versions"] if v["kind"] == "commit"]
+    assert commit["value"] == manifest["executingRevision"]
+    assert manifest["executingRevision"] in CORRECTED_RECORD["summary"]
+    assert manifest["metadata"]["runId"] in CORRECTED_RECORD["procedure"]["commands"][0]
+
+
+def test_the_second_claim_does_not_validate_the_first_runs_boundary() -> None:
+    claim = CORRECTED_ADDED["claim"]
+    assert "20261002-e01-abc-1" in claim["limitation"]
+    assert "not evidence that the first run" in claim["limitation"]
+    assert (
+        "the first run's execution was governed by its freeze"
+        in (claim["doesNotEstablish"])
+    )
+    assert any(
+        "first run's execution was governed by its freeze" in line
+        for line in CORRECTED_RECORD["doesNotEstablish"]
+    )
+
+
+def test_the_audit_limitation_is_appended_and_moves_nothing_else() -> None:
+    """The first run's claim keeps every word it had, its status, and its record."""
+    assert AUDIT_CHANGE["claimId"] == E01_CLAIM_ID
+    assert AUDIT_CHANGE["before"] == E01_ADDED["claim"]["limitation"]
+    assert AUDIT_CHANGE["after"].startswith(AUDIT_CHANGE["before"] + " Audit, ")
+    appended = AUDIT_CHANGE["after"][len(AUDIT_CHANGE["before"]) :]
+    assert "2026-10-03" in appended
+    assert "not evidence that its execution was governed by its freeze" in appended
+    (claim,) = [row for row in REGISTER["claims"] if row["claimId"] == E01_CLAIM_ID]
+    assert claim["limitation"] == AUDIT_CHANGE["after"]
+    assert claim["status"] == "certified"
+    assert claim["evidenceRecords"] == E01_ADDED["claim"]["evidenceRecords"]
+
+
+def test_the_correction_is_beside_the_first_runs_page_and_cited_by_its_record() -> None:
+    assert AUDIT_CORRECTION["path"] == f"{E01_RUN}/result.md"
+    assert AUDIT_CORRECTION["path"] in E01_RECORD["evidenceRefs"]
+    assert AUDIT_CORRECTION["correction"].startswith("Dated 2026-10-03.")
+    assert {basis["kind"] for basis in AUDIT_CORRECTION["basis"]} == {"file"}
+    entries = {entry["recordId"]: entry for entry in INDEX["records"]}
+    (listed,) = [
+        file
+        for file in entries[E01_RECORD["recordId"]]["evidence"]
+        if file["path"] == AUDIT_CORRECTION["path"]
+    ]
+    assert listed["corrections"] == [AUDIT_CORRECTION["correctionId"]]
+
+
+def test_the_first_runs_files_are_the_ones_the_second_run_found() -> None:
+    """Reads the revision the second run executed; a clone without it skips.
+
+    Every file of the first run, and freeze revision 1, has the content it had at
+    that revision: this change added beside them and edited none of them.
+    """
+    revision = json.loads(read(f"{CORRECTED_RUN}/run.v1alpha1.json"))[
+        "executingRevision"
+    ]
+    if _git("cat-file", "-e", f"{revision}^{{commit}}") is None:
+        pytest.skip("the clone does not hold the revision the second run executed")
+    paths = sorted(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in (REPO_ROOT / E01_RUN).rglob("*")
+        if path.is_file()
+    )
+    paths.append("docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json")
+    assert len(paths) == 11
+    for relative in paths:
+        now = _git("hash-object", "--", relative)
+        then = _git("rev-parse", f"{revision}:{relative}")
+        assert now is not None and then is not None, relative
+        assert now.strip() == then.strip(), relative
+
+
+def test_an_added_second_claim_already_in_the_register_is_refused() -> None:
+    with pytest.raises(ValueError, match="already exists"):
+        apply_register_changes(REGISTER, CORRECTED)

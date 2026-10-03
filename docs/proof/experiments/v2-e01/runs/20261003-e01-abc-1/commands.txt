@@ -1,0 +1,21 @@
+# stated by the operator: git checkout main && git pull origin main   (fast-forward to a5b6a5db2011a68a3f27acdeaa8186c226bfedb4, the merge of pull request 113)
+# stated by the operator: git checkout -b test/v2-s2-004-e01-corrected-static-proof   (HEAD stays a5b6a5db2011a68a3f27acdeaa8186c226bfedb4)
+# stated by the operator: git status --porcelain --untracked-files=all   (no line)
+# stated by the operator: uv run --locked python -B -m tools.experiment_freeze --check   (PASSED: 2 freeze record(s), every rule held)
+# stated by the operator: uv run --locked python -B -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json   (UNCHANGED)
+# stated by the operator: set PYTHONHASHSEED=1, PYTHONDONTWRITEBYTECODE=1
+# stated by the operator: uv run --locked python -m tools.experiment_e01 --run 20261003-e01-abc-1 --prelude <this file>
+PYTHONHASHSEED=1 python -m tools.experiment_e01 --run 20261003-e01-abc-1 --prelude <preparation commands file>
+git rev-parse HEAD
+git merge-base --is-ancestor HEAD origin/main
+git rev-parse origin/main
+git cat-file -e HEAD:docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json
+git status --porcelain --untracked-files=all
+# in process: tools.experiment_freeze.changed_inputs over the freeze record, the check behind python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json
+# in process: tools.experiment_freeze.check_repository, the check behind python -m tools.experiment_freeze --check
+# in process: E01-A steps 1 to 3, written to docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/render-a
+PYTHONHASHSEED=2 python -m tools.experiment_e01 --render-second docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/render-b --root . --revision a5b6a5db2011a68a3f27acdeaa8186c226bfedb4
+# in process: E01-A steps 6 to 9 and E01-B
+# in process: E01-C, each case twice, outputs under a temporary directory
+git rev-parse HEAD
+git status --porcelain --untracked-files=all

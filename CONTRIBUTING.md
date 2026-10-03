@@ -468,8 +468,11 @@ uv run --locked python -m tools.experiment_e01 --check
 
 A change to a material file is not refused when it merges. [The records
 page](docs/proof/experiments/README.md) says what is enforced and what is not, how the
-first run was executed at the merged commit with the runner outside the tree, and the
-audit limitation that run now carries.
+first run was executed at the merged commit with the runner outside the tree, the
+audit limitation that run now carries, and how the second run was executed under
+revision 2 from the merged checkout. A run that is committed also needs a register
+record, added through a new ledger of register changes, and a validation record that
+states what executed before it and every attempt.
 
 ### Serving adapters
 

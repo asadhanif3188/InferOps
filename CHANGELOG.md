@@ -10,6 +10,22 @@ from `1.0.0`.
 
 ### Added
 
+- **The second run of the V2-E01 static parts, under freeze revision 2.** `V2-S2-004-PR2`
+  executed E01-A, E01-B, and E01-C once, at the merged commit `a5b6a5d`, from the merged
+  checkout: the runner and the `inferops` package were the checkout's own, the record had
+  its registered digest, and no material file was changed, absent, added, or out of scope.
+  The run, [`20261003-e01-abc-1`](docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/result.md),
+  records every repository module file both processes loaded, each a pinned input. Each
+  part PASSED: the seven criteria held, E01-AC5 without revision 1's exception and E01-AC7
+  over seven cases. The register gains a second E01 claim, certified at `C0` on that run's
+  record, through an eighth ledger of register changes; the claim is about the committed
+  evidence, and it is not evidence that the first run's execution boundary was valid. The
+  first run, its files, and its claim's status are unchanged: its claim gains the dated
+  audit limitation, and one correction is recorded beside its result page. Nothing was
+  deployed or served, and E01-D did not run. The register now holds 61 claims, 44
+  certified, and 67 evidence records; the released `v1.0.0` pack is unchanged. [The
+  validation record](docs/proof/domain/v2-s2-004-pr2-validation.md) says what was checked
+  and every attempt.
 - **The model's download URL and licence reference are derived, and the E01 freeze covers
   its whole executable path.** `V2-S2-004-PR1` closes two findings of the first Sprint 2
   collective review. First, the renderer now writes `model.artifact.sourceUrl` and

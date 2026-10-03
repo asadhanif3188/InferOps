@@ -1,0 +1,42 @@
+# Generated Helm values for the inferops-llm chart, version 0.3.0.
+# Do not edit by hand: change the WorkloadContract, the EnvironmentBinding, or
+# the platform defaults they were rendered from, and render them again.
+api:
+  drainTimeoutMs: 15000
+  maxOutputTokens: 128
+  replicaCount: 1
+  requestTimeoutMs: 120000
+model:
+  artifact:
+    fileName: "Qwen3-1.7B-Q8_0.gguf"
+    repository: "Qwen/Qwen3-1.7B-GGUF"
+    sha256: "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+    sizeBytes: 1834426016
+    sourceUrl: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true"
+  cache:
+    claimName: "inferops-model-cache"
+  identifier: "qwen3-1-7b-q8-0"
+  license:
+    reference: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/blob/90862c4b9d2787eaed51d12237eafdfe7c5f6077/LICENSE"
+  revision: "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+ownership:
+  costCenter: "demo-cost-center"
+  owner: "team-platform-demo"
+  tenant: "demo"
+  workloadId: "support-assistant"
+  workloadVersion: "0.1.0"
+profile: "real"
+runtime:
+  image:
+    digest: "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+    repository: "ghcr.io/ggml-org/llama.cpp"
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "6"
+      memory: "3Gi"
+security:
+  secretRefs: []
+telemetry:
+  deploymentEnvironment: "local"
+  enabled: true
