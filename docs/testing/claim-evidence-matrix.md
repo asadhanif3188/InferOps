@@ -273,7 +273,7 @@ no record on purpose. (Until `V2-S2-003-PR2` this paragraph said the chart's val
 written by an operator and that deployment rendering does not exist; both had been out of
 date since `V2-S2-001-PR2`.)
 
-The E01 row is the static half of that distance. One run of the frozen E01 procedure
+The first E01 row is the static half of that distance. The first run of the frozen E01 procedure
 rendered the reference contract twice, in two processes, to byte-identical release input,
 moved only the owned values under one contract change, and refused six invalid or
 conflicting inputs as registered. The claim is about that run's committed evidence: the

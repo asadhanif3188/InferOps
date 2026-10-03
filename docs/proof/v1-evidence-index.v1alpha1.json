@@ -28,8 +28,8 @@
   "packSources": [
     {
       "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
-      "sha256": "3e91c86afbaf0bef476791ce0b163debfc59b92e3afe9e9d810ca9104abd3187",
-      "gitBlob": "528d51a011c6d377aa8b5beed16baf163bf20514"
+      "sha256": "6ce9dc3333a515116ce8088d386348f62f5cdbf58f5ee1e617d67f4d4d921261",
+      "gitBlob": "b7d6c0d71f4286ef1497b400929bddceb1f78d7a"
     },
     {
       "path": "docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
@@ -68,8 +68,8 @@
     },
     {
       "path": "docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json",
-      "sha256": "e5a4f938c4296daaa26a31dfc95ed5e74050d2f2d665d2f905d09b3e6ad6cc74",
-      "gitBlob": "0a3e384af7e1873573399077c06fea99c382272d"
+      "sha256": "b76013231571bfd52bf76eb2480688b78e3f328aed5a9d5f864142ca6a439259",
+      "gitBlob": "80070677eb1c4840344a6351b1cce4b8ed9919f5"
     }
   ],
   "summary": {
@@ -141,8 +141,8 @@
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
     "postReleaseRegisterChanges": 14,
-    "evidenceSetSha256": "58459aeb8822faed2e93b6761bd617195fe5bd5c85f9c7c633695d25dd08d534",
-    "evidencePackSha256": "e460857dd585ef193589dd693bedc0e14efb5c4557874de79e766a56126168c2",
+    "evidenceSetSha256": "0271ae271c6391f6472b21d14c4ced96632d7db166917d2ecb6f8f216d60db6e",
+    "evidencePackSha256": "cc8e66ecc08f5d4e3856d2a23d2c7e37e0892249d28e5dd3b3e4ee14c3bbb7b9",
     "releasedPack": {
       "tag": "v1.0.0",
       "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
@@ -10882,7 +10882,7 @@
       "evidenceLevel": "C0",
       "migrationState": "migrated",
       "registerPointer": "/claims/60/evidenceRecords/0",
-      "registerEntrySha256": "971f114de3a1bb324593ee3f54d2d799197a2b952ea0628f61e5b9ebf42d073b",
+      "registerEntrySha256": "2ae7048af6c254772566304ee870fb969882c040df11daeac9c90acab038aa03",
       "summary": "On 2026-10-03 the static parts of V2-E01 ran once, as freeze revision 2 registers them, at the merged revision a5b6a5db2011a68a3f27acdeaa8186c226bfedb4 with the record registered and unedited, no material file changed, absent, added, or out of scope, and nothing uncommitted before the run; the runner and the inferops package were imported from that checkout; E01-A, E01-B, and E01-C each PASSED, and python -m tools.experiment_e01 --check judges the committed run again from its renders, its refusals, and the observations its manifest records.",
       "execution": {
         "targetBehaviourExecuted": false,
@@ -11070,8 +11070,8 @@
         },
         {
           "path": "docs/proof/domain/v2-s2-004-pr2-validation.md",
-          "sha256": "005e7b215b3c215b127ccb1a6f3661bdeb04310befdb41eab901487ffbeab4c2",
-          "gitBlob": "7b254b2e5b1cd76ba319d4beb3cd05ea4901fbd6",
+          "sha256": "dc3950ce0c208c2d0e41be92709ef06e04ce6bf8f6a48d414d6c6fb98d25eedd",
+          "gitBlob": "92ee63c3686df9ee22fa87ed95598bf16a6147a5",
           "recordedDate": {
             "label": "Date",
             "value": "2026-10-03"

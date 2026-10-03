@@ -9822,7 +9822,7 @@
             "environmentId": "repository-only",
             "provider": "not-applicable",
             "hardwareClass": "not-applicable",
-            "note": "One Windows host, version 10.0.26200, Python 3.12.12 under uv 0.9.16 (a63e5b62e 2025-12-06), in a checkout at the executing revision with no change before the run and only the run's evidence directory after it, on 2026-10-03; no cluster, network, runtime, or model was contacted."
+            "note": "One Windows host, version 10.0.26200, Python 3.12.12 under uv 0.9.16 (a63e5b62e 2025-12-06), in a checkout at the executing revision with no change before the run and only the run's evidence directory after it, on 2026-10-03; the parts contacted no cluster, network, runtime, or model."
           },
           "versions": [
             {

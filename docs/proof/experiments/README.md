@@ -340,8 +340,10 @@ revision 2 only: it is not evidence that the first run's execution boundary was 
 | [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md) | 1 | `707e29f4` | PASSED | PASSED | PASSED |
 | [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md) | 2 | `a5b6a5db` | PASSED | PASSED | PASSED |
 
-Every run stays in this table with its outcome state, whatever it is. No run under either
-revision was REFUSED, ABORTED, INCONCLUSIVE, or FAILED.
+Every committed run stays in this table with its outcome state, whatever it is. No committed
+run under either revision was REFUSED, ABORTED, INCONCLUSIVE, or FAILED. The previews
+[the audit](#audit-of-the-first-run-2026-10-03) describes are not runs of record; two of
+them reported E01-A INCONCLUSIVE.
 
 **What the first run does not do.** The runner is not a pinned input of freeze revision 1, and the
 first run executed from a byte copy outside the checked-out tree, so the commit it

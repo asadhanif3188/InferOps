@@ -63,7 +63,7 @@
               "environmentId": "repository-only",
               "provider": "not-applicable",
               "hardwareClass": "not-applicable",
-              "note": "One Windows host, version 10.0.26200, Python 3.12.12 under uv 0.9.16 (a63e5b62e 2025-12-06), in a checkout at the executing revision with no change before the run and only the run's evidence directory after it, on 2026-10-03; no cluster, network, runtime, or model was contacted."
+              "note": "One Windows host, version 10.0.26200, Python 3.12.12 under uv 0.9.16 (a63e5b62e 2025-12-06), in a checkout at the executing revision with no change before the run and only the run's evidence directory after it, on 2026-10-03; the parts contacted no cluster, network, runtime, or model."
             },
             "versions": [
               {
@@ -331,7 +331,7 @@
       "path": "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/result.md",
       "sha256": "14b13cd0b98670cc1ee77f244ac33749d181ef7b8420a490b41a45d24943556d",
       "says": "- Preconditions: every one held.",
-      "correction": "Dated 2026-10-03. The preconditions the run checked were the ones freeze revision 1 stated, and each held as recorded. The audit of the first Sprint 2 collective review found that they did not govern the run's execution boundary: the runner the run executed was not in the commit the run records and was not a pinned input of revision 1, so revision 1's change check could not report it, and the location of the imported inferops package was observed by hand and not recorded by the run. Full executions of the parts in throwaway repositories, one before the run and two after it, were not registered beforehand, and their raw evidence is not available. The run is not evidence that its execution was governed by its freeze. The page, the run's other files, their digests, and the revision 1 outcomes are unchanged, and the run is still judged by revision 1.",
+      "correction": "Dated 2026-10-03. The preconditions the run checked were the ones freeze revision 1 stated, and each held as recorded. The audit of the first Sprint 2 collective review found that they did not govern the run's execution boundary: the runner the run executed was not in the commit the run records and was not a pinned input of revision 1, so revision 1's change check could not report it, and the location of the imported inferops package was observed by hand and not recorded by the run. Full executions of the parts in throwaway repositories, one before the run and two after it, were not registered beforehand, and their raw evidence is not available. The run is not evidence that its execution was governed by its freeze. The page, the run's other files, their digests, and the revision 1 outcomes are unchanged, and the run is still judged by revision 1. The runner digests the run recorded are of the runner before its independent review changed it, so the runner files committed beside the run are not the ones that ran.",
       "basis": [
         {
           "kind": "file",
@@ -342,6 +342,11 @@
           "kind": "file",
           "path": "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json",
           "quote": "Their raw evidence directories were deleted with their throwaway repositories and are not available."
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/experiments/README.md",
+          "quote": "so the files committed beside the run are not the ones that ran"
         },
         {
           "kind": "file",

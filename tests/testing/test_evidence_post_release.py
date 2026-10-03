@@ -713,7 +713,7 @@ FREEZE_R2 = "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json"
 
 
 def test_the_corrected_ledger_follows_the_e01_ledger_and_states_no_release() -> None:
-    assert POST_RELEASE_LEDGER_PATHS[-1] == E01_CORRECTED_PROOF_PATH
+    assert POST_RELEASE_LEDGER_PATHS[3] == E01_CORRECTED_PROOF_PATH
     assert CORRECTED["contractVersion"] == "inferops.io/v1alpha1"
     assert CORRECTED["priorLedgerRef"] == (
         E01_STATIC_PROOF_PATH.relative_to(REPO_ROOT).as_posix()

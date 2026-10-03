@@ -9,8 +9,10 @@ about the one run it executed and the checks run over the repository afterwards.
 
 The change executed E01-A, E01-B, and E01-C once, as
 [freeze revision 2](../experiments/v2-e01/freeze-r2.v1alpha1.json) registers them. Those
-parts are static: they render, write files, and refuse in memory. No cluster, runtime,
-registry, or model was contacted, and nothing was installed, provisioned, or published.
+parts are static: they render, write files, and refuse in memory. The parts contacted no
+cluster, runtime, registry, or model, and nothing was provisioned or published. `uv run
+--locked` compares the environment with the lock before it starts Python; the run did not
+record whether that step changed the environment.
 The evidence is `C0` under [the evidence levels](../../testing/evidence-levels.md). E01-D
 did not run.
 
@@ -82,7 +84,7 @@ records:
 | Run identifier | `20261003-e01-abc-1` |
 | Freeze record | `docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json`, revision 2, content SHA-256 `198f60b5133338e445b1c0fef9f9171ad3e58fe3bde66ac1e7a8d1d674730ac8`, the digest the registry pins |
 | Registry | `docs/proof/experiments/registry.v1alpha1.json`, content SHA-256 `6c357892fff0f34c754f6d6a73388d402e89dd1527089178c20e96534f6411f2` |
-| Executing revision | `a5b6a5db2011a68a3f27acdeaa8186c226bfedb4`, reachable from `origin/main`, which was at the same revision |
+| Executing revision | `a5b6a5db2011a68a3f27acdeaa8186c226bfedb4`, reachable from `origin/main` as the clone held it after the pull, at the same revision |
 | Status before | No line |
 | Material files that differ | None |
 | Runner | `tools/experiment_e01/core.py`, in the checked-out tree; package `tools.experiment_e01` |
@@ -118,7 +120,10 @@ written before this summary.
 
 1. **The raw evidence is complete.** The run directory holds the files revision 2 names:
    the manifest, `commands.txt`, `render-a/`, `render-b/`, `mutation/`, `refusals.json`,
-   and `result.md`. Each file has the SHA-256 the manifest records.
+   and `result.md`. The manifest records the SHA-256 of eight of the ten files, and each has
+   it. The other two are the manifest itself and `result.md`: `--check` generates the page
+   again from the manifest and the files and compares it, and the evidence index binds both
+   by SHA-256.
 2. **The analysis is the frozen one.** `python -m tools.experiment_e01 --check` judged the
    run by revision 2's analysis and the first run by revision 1's, and printed
    `PASSED: 2 run(s), each agrees with its own evidence`. The analysis is
@@ -192,8 +197,10 @@ maintainer made for the first run's claim.
 
 - Freeze revision 1, freeze revision 2, and the registry.
 - The first run's directory. Each of its ten files, and freeze revision 1, has the Git
-  blob it had at the executing revision; a test compares them where the clone holds that
-  revision.
+  blob it had at the executing revision. A test compares them where the clone holds that
+  revision, and skips where it does not, as a shallow clone would. In every clone, the
+  evidence index binds the first run's cited files by SHA-256, and `--check` holds the
+  rest to the digests its manifest records.
 - Every pinned input of revision 2, the runner and the freeze checker among them.
 - The released `v1.0.0` pack, the release notes, the tag, and every accepted decision.
 
@@ -232,6 +239,7 @@ All ran from Git Bash on Windows.
 | `tools.proof_dashboard --check` | The dashboard is what the register produces |
 | `tools.ci_gates no-skips helm` | The chart suite ran 203 tests with none skipped, with Helm `v3.19.0` |
 | The default lane, `pytest -q -rs` | 17,670 passed, none failed, 35 skipped, 14 deselected, in 10 minutes 33 seconds. The 35 skips are the ones the lane had before this change: host symlink privileges, POSIX signals on Windows, an absent collector image, and fixtures a test does not apply to. The 14 deselected tests are the lanes that need a cluster or a runtime |
+| The same gates and the default lane, after the review's fixes | Every gate above gave the same result. 17,670 passed, none failed, 35 skipped, 14 deselected, in 9 minutes 39 seconds |
 | `git diff --check` | Clean |
 | `gitleaks` | Not run: it is not installed on this host. The hosted CI job runs it over the full history |
 
@@ -241,8 +249,25 @@ lane above ran after that.
 
 ## What the independent review found
 
-The independent review runs after the first commit of this change. Its findings, and what
-the first commit got wrong, are recorded here by the commit that follows it.
+An independent review read the first commit, `c24fda4`, against the run's raw files and
+the freeze record. It found no defect in the run, the ledger, or the frozen files, and it
+confirmed the counts and digests above. It found these, and each is what the first commit
+got wrong:
+
+| Finding | What the first commit said | Correction |
+|---|---|---|
+| This page claimed more file digests than the manifest holds | "Each file has the SHA-256 the manifest records", over a list that included the manifest and `result.md` | The manifest records eight of the ten files. The page now says which two it does not, and what holds them |
+| The records page said no run was INCONCLUSIVE, beside its own account of previews that were | "No run under either revision was REFUSED, ABORTED, INCONCLUSIVE, or FAILED" | The sentence is about committed runs, and it points to the previews in the audit |
+| The test inventory's description of the post-release suite was out of date | "the one record and the one claim", and one later ledger | Three records, two claims, and three later ledgers. The first phrase was already out of date before this change |
+| The register page still introduced "the E01 row" and "one run" | Singular, above a paragraph that says there are two | "The first E01 row" |
+| A new test pinned the eighth ledger as the last one | The last position in the list of post-release ledgers | Its own position, so the next ledger does not fail it for a wrong reason |
+| The test that the first run's files are unchanged skips in a shallow clone, and two texts did not say so | No caveat in the inventory or on this page | Both say it, and this page says what holds those files in every clone |
+| Two statements went beyond what the run records | "nothing was installed", and "no network was contacted" in the register record | Both are now about the parts. This page says what `uv run --locked` does before Python starts |
+| The audit texts in the register omitted one disclosure the records page carries | No mention that the committed runner files are not the ones the first run executed | The correction beside the first run's result page states it, with its basis |
+
+The review could not verify the operator-stated commands in `commands.txt`, the statement
+that no preview executed, or this page's lane figures. The first two are statements of the
+operator, and this page marks them so.
 
 ## Gates that do not apply
 
