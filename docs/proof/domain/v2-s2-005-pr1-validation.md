@@ -13,7 +13,8 @@ model, and nothing was provisioned or published. It adds no evidence record and 
 ## Why this change exists
 
 The second collective review of Sprint 2 closed its two earlier findings and returned
-*blocked* on one more: the independent review documented for `V2-S2-004-PR2` read a commit
+*blocked* on one more, as reported to the author; no file in this repository records that
+review. The finding: the independent review documented for `V2-S2-004-PR2` read a commit
 that already held the register change, so the order "review, then register" is not
 established for the second E01 run.
 
@@ -22,11 +23,12 @@ review found the run without defect and found one claim-material defect in the r
 wording. The attempt stopped before it edited a file. The work was then divided in two:
 
 1. **This change** publishes the review, with its finding, and corrects nothing.
-2. **`V2-S2-005-PR2`** starts after this change merges. It owns the additive correction of
-   the claim.
+2. **`V2-S2-005-PR2`** is to start after this change merges. It owns the additive
+   correction of the claim.
 
-Git history then shows the review record on `main` before the correction. It does not
-show a review before the original register change, and this change does not say it does.
+If this change merges before the correction, Git history will show the review record on
+`main` before the correction. It will not show a review before the original register
+change, and this change does not say it does.
 
 ## Eligibility, checked before the change
 
@@ -75,7 +77,8 @@ shorter than eight characters, and none of eight or more:
 
 ## The review
 
-The review ran once, on 2026-10-03 from 06:49:45Z to 06:55:26Z, read-only, at `3f08f439`.
+The review ran once, read-only, at `3f08f439`, on 2026-10-03 from 06:49:45Z to 06:55:26Z as
+the reviewer reported.
 Its report was held outside the repository until this change. This change did not run it
 again: `main` had not moved, and no reviewed file had changed. A second review, briefed
 after the finding was known, would not have been independent of it.
@@ -98,7 +101,7 @@ evidence index and in the eighth ledger; and the disposition of each finding.
   the page and the machine-readable record. The record's kind is `ExperimentResultReview`.
   No schema or tool reads that kind yet; the suite below is its only check.
 - **A new suite.** [`tests/testing/test_experiment_review.py`](../../../tests/testing/test_experiment_review.py),
-  41 tests in the default lane. It holds the record to the run's ten files, the manifest,
+  58 tests in the default lane. It holds the record to the run's ten files, the manifest,
   the freeze record, and the registry, and it repeats the search behind the finding. It
   does not read the register.
 - **The documents.** The experiments page gains a section on the review. The proof index,
@@ -108,7 +111,7 @@ evidence index and in the eighth ledger; and the disposition of each finding.
 
 ## What was not touched
 
-`git diff --stat 3f08f439` lists only the files above. In particular, each of these has
+`git diff --stat 3f08f439` lists only the files above and this record. In particular, each of these has
 the Git blob it had at `3f08f439`:
 
 - **The register:** `docs/testing/claim-evidence-matrix.v1alpha2.json` and
@@ -157,8 +160,9 @@ All ran from Git Bash on Windows.
 | `tools.evidence_index --check` | The index is what the register and ledgers produce. The index was not written |
 | `tools.evidence_index --gate` | Exit 0; released `v1.0.0` set `1d40b33f…` and pack `652e9051…`; current set `0271ae27…` and pack `cc8e66ec…`. All four equal the values before the change |
 | `tools.proof_dashboard --check` | The dashboard is what the register produces. The dashboard was not written |
-| `tests/testing/test_experiment_review.py` | 41 passed |
+| `tests/testing/test_experiment_review.py` | 41 passed at the first commit, and 58 after the review's fixes |
 | The default lane, `pytest -q -rs` | 17,724 passed, none failed, 35 skipped, 14 deselected, in 12 minutes 14 seconds. The 35 skips are the ones the lane had before this change: host symlink privileges, POSIX signals on Windows, an absent collector image, and fixtures a test does not apply to. The 14 deselected tests are the lanes that need a cluster or a runtime |
+| The same gates and the default lane, after the review's fixes | Every gate above gave the same result. 17,741 passed, none failed, 35 skipped, 14 deselected, in 10 minutes 24 seconds |
 | `git diff --check` | Clean |
 | `git diff --quiet 3f08f439` over the register, the ledgers, the index, the dashboard, both freeze records, the registry, both run directories, the release records, the accepted decisions, `charts/`, `infra/`, `src/`, and `tools/` | Exit 0: no difference |
 | `gitleaks` | Not run: it is not installed on this host. The hosted CI job runs it over the full history |
@@ -166,6 +170,42 @@ All ran from Git Bash on Windows.
 
 The checks ran with `uv run --locked --offline --no-sync`, so `uv` did not change the
 environment.
+
+## What the independent review found
+
+A second reviewing session read the first commit of this change, `b20a815`, against the
+files and Git, read-only. It is a session of the same automated assistant, given a brief
+and nothing else; it is not a person and not anyone outside the project. It found no
+change to the register, a ledger, the index, the dashboard, a freeze record, the registry,
+or a run directory, and it confirmed every digest, commit, timestamp, line number, and
+count it could check. It found these, and each is what the first commit got wrong:
+
+| Finding | What the first commit said | Correction |
+|---|---|---|
+| The run's E01-AC5 verdict was stated as a fact | "E01-AC5, as frozen, held", and "the run's verdict on E01-AC5 is right" | The review confirmed E01-AC5 only in part. The page and the record now say the review found nothing against the verdict, and repeated the eight-character search |
+| A prediction was stated as a fact | "A new run would write the same evidence" | A new run would record other times. The texts now say a new run would answer the same frozen criteria |
+| "Three matches" was true for string values only | Three matches under a literal reading of the claim | The replica count is the integer `1`, and the digit occurs in two hand-written strings, one of them not in the table. The page and the record name the case and say who found it. The texts say "string value" |
+| The reviewer's relation to the author was not stated | "One automated reviewing session, started by the maintainer" | The reviewer is a separate session of the same automated assistant that co-authored the run's change and this one, and the session that prepared this change started it. The page and the record say so |
+| A negative was asserted | "That a review preceded the register change for this run. It did not." | "No record establishes one." |
+| Future events were in the present tense | "`V2-S2-005-PR2` narrows the claim", "Git history then shows" | "is to narrow", "will show, if this change merges before the correction" |
+| Reported times read as proven | The review's times without a source, on this page and in the first commit's message | "as the reviewer reported". The commit message of `b20a815` is not rewritten; it still gives the times without that qualifier |
+| Statements about things outside the repository had no marker | The experiment procedure, the second collective review, and the brief | Each now says that no file in this repository records it |
+| "That review preceded the merge" was unhedged | A statement about the review `V2-S2-004-PR2` documents | "By the same account" |
+| "Sound" is an evaluative word with no definition | "Is the frozen run sound?", and the record's key `frozenRunSoundness` | "Did the review find a defect in the frozen run?", and `frozenRun` |
+| The record and the page disagreed on one list | Five items in the record's `doesNotEstablish`, six on the page | Six in both, and a test compares the counts |
+| This page's list of changed files omitted itself | "lists only the files above" | "the files above and this record" |
+| Two sentences in other documents read wrongly | A misplaced "and" in the proof index, and a sentence in the test inventory placed before an older one | Both moved |
+| One test checked less than its name said | The three digests of the register, the ledger, and the index were checked for form only | The ledger's digest and its copy of the clause are now compared with the file. The register's and the index's are still form-checked only, because both files change when the clause is corrected; the suite and the inventory say so |
+| Cheap checks were missing | The first run's digests on the page, and each finding's severity on the page, had no test | Both have one. The suite has 58 tests, not 41 |
+
+The second review could not verify, from the repository: that the first review took
+place, its times, its commands, and its brief; the second collective review; the lane
+figures and the mypy count on this page; and that each check before the change ran before
+any file was written. Each is a statement of the author or of the reviewer, and this page
+or the review page marks it so.
+
+One incident: a search command of the second review crashed and left a dump file in the
+repository root. The reviewing session deleted it. It was never tracked.
 
 ## Gates that do not apply
 

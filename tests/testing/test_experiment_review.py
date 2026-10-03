@@ -15,7 +15,10 @@ What this suite establishes is that the record describes the committed run and t
 its finding can be reproduced from committed files. It does not establish that the
 review took place, when, or that it was independent: those are statements of the
 record. It does not read the register, so it neither requires nor forbids a
-correction of the clause.
+correction of the clause. For the same reason, the digests the record gives for the
+register and the evidence index at the reviewed revision are checked for their form
+only: both files change when the clause is corrected. The ledger is not edited after
+it merges, so its digest and its copy of the clause are compared with the file.
 
 Every check reads files from this repository and nothing else. No network, no
 cluster, no model, no clock, no randomness.
@@ -202,7 +205,7 @@ def test_the_review_records_the_register_it_read_and_does_not_claim_the_order() 
         assert re.fullmatch(r"[0-9a-f]{64}", read[name]["contentSha256"])
     conclusions = RECORD["conclusions"]
     assert conclusions["historicalSequencingCompliance"]["verdict"] == "not-established"
-    assert conclusions["frozenRunSoundness"]["verdict"] == "no-defect-found"
+    assert conclusions["frozenRun"]["verdict"] == "no-defect-found"
     assert (
         conclusions["registerStatementCorrectness"]["verdict"]
         == "claim-material-defect-found"
@@ -291,3 +294,69 @@ def test_the_page_says_the_claim_is_not_corrected_and_the_order_is_not_establish
     assert "The review-before-register order is not established" in flat
     assert "This review does not repair that order." in flat
     assert MATERIAL["correctionOwner"] in flat
+
+
+def test_the_ledger_the_review_read_is_unchanged_and_holds_the_claim_clause() -> None:
+    read = REVIEW["registerAtReviewedRevision"]
+    ledger_path = REPO_ROOT / read["ledger"]["path"]
+    assert content_sha256(ledger_path) == read["ledger"]["contentSha256"]
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    added = [
+        change["claim"]
+        for change in ledger["registerChanges"]
+        if change.get("operation") == "add-claim"
+    ]
+    assert [claim["claimId"] for claim in added] == [read["claimId"]]
+    assert MATERIAL["claimClause"] in added[0]["statement"]
+    assert QUALIFIER not in added[0]["statement"]
+    assert added[0]["status"] == read["claimStatus"]
+
+
+def test_the_integer_case_the_record_adds_is_in_the_files() -> None:
+    case = MATERIAL["nonStringCase"]
+    generated = yaml.safe_load(
+        (REPO_ROOT / MATERIAL["generatedValues"]).read_text(encoding="utf-8")
+    )
+    hand_written = yaml.safe_load(
+        (REPO_ROOT / MATERIAL["handWrittenValues"]).read_text(encoding="utf-8")
+    )
+    value = at(generated, case["generatedPath"])
+    assert value == case["generatedValue"] and not isinstance(value, str)
+    holding = sorted(
+        path
+        for path, text in leaves(hand_written)
+        if isinstance(text, str) and str(value) in text
+    )
+    assert holding == sorted(case["handWrittenPaths"])
+
+
+@pytest.mark.parametrize("finding", FINDINGS, ids=lambda finding: finding["id"])
+def test_the_page_gives_every_finding_the_severity_the_record_gives(
+    finding: dict[str, Any],
+) -> None:
+    row = re.search(rf"^\| {finding['id']} \| ([^|]+) \|", PAGE, flags=re.MULTILINE)
+    assert row is not None
+    assert row.group(1).startswith(finding["severity"])
+
+
+def test_the_page_carries_the_digests_of_the_first_run_and_its_freeze_record() -> None:
+    first_freeze = RUN_DIR.parents[1] / "freeze-r1.v1alpha1.json"
+    assert content_sha256(first_freeze) in PAGE
+    first_run = RUN_DIR.parent / "20261002-e01-abc-1"
+    files = [path for path in first_run.rglob("*") if path.is_file()]
+    assert len(files) == len(SUBJECT["files"])
+    for path in files:
+        assert content_sha256(path) in PAGE
+
+
+def test_the_record_and_the_page_state_the_same_boundaries() -> None:
+    flat = " ".join(PAGE.split())
+    assert len(RECORD["doesNotEstablish"]) == len(
+        re.findall(
+            r"^- \*\*",
+            PAGE.split("## What this record does not establish")[1],
+            flags=re.MULTILINE,
+        )
+    )
+    for limit in REVIEW["reviewer"]["independenceLimits"]:
+        assert limit.split(". ")[0].rstrip(".") in flat

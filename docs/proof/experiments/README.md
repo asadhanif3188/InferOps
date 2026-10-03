@@ -405,7 +405,7 @@ started no run. A review record is not evidence of the run, and no register clai
   The second-run claim's statement says the evidence holds "no hand-written string that
   contains a generated workload-intent value". E01-AC5 limits that to generated values
   "of eight characters or more". Without the limit the clause is false: three hand-written
-  strings contain a shorter generated value, `local` or `6`. With the limit the clause is
+  strings contain a shorter generated string value, `local` or `6`. With the limit the clause is
   true. **The claim is not corrected yet.** The register, the ledgers, the evidence index,
   and the dashboard still carry the broader clause. `V2-S2-005-PR2` owns the correction.
 - **The order of review and registration.** The review that the second run's validation
@@ -415,9 +415,9 @@ started no run. A review record is not evidence of the run, and no register clai
   order. The same holds for the first run: its documented review read the commit that
   added its claim.
 - **No rerun.** The finding is in one sentence of the register, not in the run. A new run
-  would write the same evidence.
+  would answer the same frozen criteria and could not change the sentence.
 
 The report lists thirteen findings, what the review could not verify, and the limits of its
-independence: the reviewer is an automated session that the maintainer started, not a
-person outside the project. No check requires a review record before a register change;
+independence: the reviewer is a separate session of the automated assistant that
+co-authored the run's change, not a person and not anyone outside the project. No check requires a review record before a register change;
 nothing enforces that order.

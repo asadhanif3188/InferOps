@@ -18,7 +18,7 @@ from `1.0.0`.
   PASSED outcome states. It found one claim-material defect in the register's wording: the
   second-run claim says the evidence holds no hand-written string that contains a generated
   workload-intent value, and E01-AC5 limits that to generated values of eight characters
-  or more. Three hand-written strings contain a shorter one. **The claim is not corrected
+  or more. Three hand-written strings contain a shorter generated string value. **The claim is not corrected
   by this change:** the register, every ledger, the evidence index, and the dashboard are
   unchanged, and `V2-S2-005-PR2` owns the correction. The report also records that no
   record establishes an independent review before the register change for either E01 run,

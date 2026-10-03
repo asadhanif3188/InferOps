@@ -50,10 +50,12 @@
     "timeSource": "The reviewer's report. No repository file proves these times.",
     "reviewer": {
       "kind": "automated",
-      "description": "One automated reviewing session, started by the maintainer of this change with a written brief. The session took no part in producing the run, the register change, or this record.",
+      "description": "One automated reviewing session, given a written brief. The session took no part in producing the run, the register change, or this record, and it received the brief and nothing else from the session that started it.",
       "independenceLimits": [
-        "The reviewer is not a person outside the project. The maintainer who commissioned the run commissioned the review.",
-        "The brief named the files to read and twelve items to answer. It named no expected finding.",
+        "The reviewer is a separate session of the same automated assistant that the commits of the run, of the register change, and of this change name as co-author. It is not another tool or another model.",
+        "The maintainer asked for the review. The assistant session that prepared this change wrote the brief and started the reviewing session.",
+        "The brief named the files to read and twelve items to answer. It named no expected finding. The brief is not committed, so the repository does not prove what it said.",
+        "The reviewer is not a person, and nobody outside the project took part.",
         "No second reviewer repeated the review."
       ]
     },
@@ -81,7 +83,7 @@
     }
   },
   "conclusions": {
-    "frozenRunSoundness": {
+    "frozenRun": {
       "verdict": "no-defect-found",
       "statement": "The review found no defect in the ten files of the run, the manifest digests, the freeze and registry identity, the executing revision and its 74 pins, the runner and loaded-module identity, the seven criterion verdicts, or the three PASSED outcome states."
     },
@@ -96,7 +98,7 @@
       "finding": "F3"
     },
     "rerunJustified": false,
-    "rerunReason": "F1 is a defect in one sentence of the register. It is not a defect in the run. E01-AC5, as frozen, held. A new run would write the same evidence and could not change the sentence."
+    "rerunReason": "F1 is a defect in one sentence of the register. It is not a defect in the run. The review found nothing against the run's verdict on E01-AC5, and it repeated the eight-character search. A new run would answer the same frozen criteria. It could change neither the order of review and registration nor the sentence."
   },
   "claimMaterialFinding": {
     "finding": "F1",
@@ -144,6 +146,14 @@
         "generatedValue": "6"
       }
     ],
+    "literalMatchesScope": "Generated values that are strings, which is what the frozen analysis compares and what the reviewer searched.",
+    "nonStringCase": {
+      "foundBy": "The second review of this change, after the reviewer's report. The reviewer did not list it.",
+      "generatedPath": "runtime.replicaCount",
+      "generatedValue": 1,
+      "handWrittenPaths": ["api.image.digest", "model.alias"],
+      "note": "The digit 1 occurs in both hand-written strings. It is one more instance of F1, not another defect."
+    },
     "matchesAtEightCharactersOrMore": [],
     "correctionOwner": "V2-S2-005-PR2",
     "correctedHere": false
@@ -152,7 +162,7 @@
     {
       "id": "F1",
       "severity": "claim-material",
-      "summary": "The second-run claim's statement says the evidence holds no hand-written string that contains a generated workload-intent value. E01-AC5 limits that to generated values of eight characters or more. The statement omits the limit, and three shorter matches exist.",
+      "summary": "The second-run claim's statement says the evidence holds no hand-written string that contains a generated workload-intent value. E01-AC5 limits that to generated values of eight characters or more. The statement omits the limit, and three shorter string matches exist.",
       "disposition": "open",
       "owner": "V2-S2-005-PR2"
     },
@@ -251,10 +261,11 @@
     "GitHub merge signatures, hosted CI results, and the lane figures in the validation record."
   ],
   "doesNotEstablish": [
-    "That a review preceded the register change for this run. It did not: this review read a revision that already held the claim.",
+    "That a review preceded the register change for this run. No record establishes one, and this review read a revision that already held the claim.",
     "That the second-run claim's statement is correct. The review found one clause that is not.",
     "That the release input deploys or serves. E01-D did not run.",
     "That the first run's execution boundary was valid.",
-    "Any evidence level above C0."
+    "Any evidence level above C0.",
+    "That the project's result review is done by a person, or by anyone outside the project."
   ]
 }
