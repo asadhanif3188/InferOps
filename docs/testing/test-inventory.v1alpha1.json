@@ -1045,6 +1045,14 @@
       "note": "Deliberately no claim: a review record is not evidence of the run, and no register row cites it. It establishes that the record describes the committed run and that its claim-material finding can be measured again from committed files. It does not establish that the review took place, when, by whom, or that it was independent: those are statements of the record. It does not read the register, so it neither requires nor forbids a correction of the clause the finding names, and the digests the record gives for the register and the evidence index are checked for their form only. It reads committed files only and starts no run."
     },
     {
+      "module": "tests/testing/test_result_review_gate.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The correction of the second E01 claim and the result review gate: that the ninth ledger is the fifth after the release, follows the fourth, and changes one statement, one limitation, and one surface reason; that the statement gains only the qualifier of eight characters or more, which is the frozen criterion's own, and that the corrected clause is true of the run's committed values where the earlier one was not; that the dated correction is appended after every earlier word; that the claim's status, level, and record did not move and no claim was added; that the ledger that added the claim still has the content the review read; that no current surface states the clause without its qualifier; that the ledger references the published review record by path and digest and the index states the gate's result; and that the gate refuses a result-bearing ledger with no review reference, an absent artifact, an artifact with other content, an artifact about another run, an artifact that no longer describes the run's files or its freeze record, an artifact of another kind or location, a duplicate or unrelated reference, a review stated by a ledger written before the gate, and a later ledger of any operation that bears on a run.",
+      "claims": [],
+      "note": "Deliberately no claim: the gate is a repository check, and no register row says a review precedes a register change. It establishes that a result-bearing ledger references a review artifact that is present and matches the committed run. It does not establish that a review took place, who did it, what it concluded, or that the artifact was committed before the ledger: the gate reads one repository state. One test reads Git history for the one correction this change made and skips in a clone without the commit. It reads committed files only and starts no run."
+    },
+    {
       "module": "tests/architecture/test_kubernetes_certification.py",
       "layer": "architecture-inventory",
       "marker": "architecture",

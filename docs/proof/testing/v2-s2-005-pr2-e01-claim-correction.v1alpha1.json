@@ -1,0 +1,169 @@
+{
+  "$id": "https://inferops.io/proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Register changes after the independent review of the second E01 static run, V2-S2-005-PR2",
+  "description": "What V2-S2-005-PR2 changed in the register after an independent review of the second run of the V2-E01 static parts found one clause of that run's claim broader than the frozen criterion E01-AC5: every register change with its value before and after, the finding each answers, and the review artifact the changes rest on. It is the fifth ledger written after v1.0.0 was released, and like the four before it, it is not part of the pack that release was cut over: the evidence index undoes it, with the other post-release ledgers, to recompute that pack. It narrows one statement, appends a dated correction to the same claim's limitation, and replaces one surface reason. It adds no claim and no record, moves no status and no evidence level, raises and closes no blocker, declares no freeze, states no release, and edits no dated record and no earlier ledger. The earlier wording stays in the ledger that added the claim, and here as the value before the change.",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "priorLedgerRef": "docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json",
+  "reportRef": "docs/proof/domain/v2-s2-005-pr2-validation.md",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "resultReviews": [
+    {
+      "runPath": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1",
+      "reviewRef": "docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json",
+      "reviewSha256": "b8fd1f281f56301504cf91267121a1e9b1aab70e0755a6e14c86c9ab84cf8464"
+    }
+  ],
+  "registerChanges": [
+    {
+      "changeId": "q01-second-run-statement-qualifier",
+      "findingId": "q-f01-the-second-run-statement-omits-the-e01-ac5-qualifier",
+      "operation": "set-claim-field",
+      "claimId": "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal",
+      "field": "statement",
+      "before": "The committed evidence of the second run of the frozen E01 static parts, the first under freeze revision 2, records that the runner and the inferops package were imported from the merged checkout it executed and that every repository module file it loaded was a pinned input, and holds two renders of the V1 synchronous reference contract on its local binding, written by two processes, that are byte-identical and record their sources; no hand-written string that contains a generated workload-intent value; a render after a replica-range change that differs only in the values and release fields that change owns; and, for each of seven registered invalid or conflicting inputs, two identical refusals that match the registered one and no output directory.",
+      "after": "The committed evidence of the second run of the frozen E01 static parts, the first under freeze revision 2, records that the runner and the inferops package were imported from the merged checkout it executed and that every repository module file it loaded was a pinned input, and holds two renders of the V1 synchronous reference contract on its local binding, written by two processes, that are byte-identical and record their sources; no hand-written string that contains a generated workload-intent value of eight characters or more; a render after a replica-range change that differs only in the values and release fields that change owns; and, for each of seven registered invalid or conflicting inputs, two identical refusals that match the registered one and no output directory.",
+      "reason": "E01-AC5 in freeze revision 2 says 'no hand-written string contains one of those generated values of eight characters or more'. The statement omitted 'of eight characters or more', so it said more than the criterion the run answered. The qualifier is added and no other word of the statement changes. The statement is narrower than it was, and the claim's status, level, and record are unchanged."
+    },
+    {
+      "changeId": "q02-second-run-correction-note",
+      "findingId": "q-f01-the-second-run-statement-omits-the-e01-ac5-qualifier",
+      "operation": "set-claim-field",
+      "claimId": "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal",
+      "field": "limitation",
+      "before": "Static, C0, about the committed evidence of one run on one host at one revision, for one contract on one binding. The renderer that produced it is product code and ran; a claim about the renderer itself would be C2 and is not made. Nothing was deployed, reconciled, or served. The run answers freeze revision 2 only: it is not evidence that the first run, 20261002-e01-abc-1, executed under a valid execution boundary. One of the seven refusals, E01-C-4, comes from the binding parser and carries a code and a field but no rule category. The platform-defaults revision a release records is asserted, not reconstructed. The download URL and licence reference are derived from the contract's pins, and nothing fetches either. The import closure the freeze pins is static, and the interpreter, the standard library, and third-party packages are not pinned by content.",
+      "after": "Static, C0, about the committed evidence of one run on one host at one revision, for one contract on one binding. The renderer that produced it is product code and ran; a claim about the renderer itself would be C2 and is not made. Nothing was deployed, reconciled, or served. The run answers freeze revision 2 only: it is not evidence that the first run, 20261002-e01-abc-1, executed under a valid execution boundary. One of the seven refusals, E01-C-4, comes from the binding parser and carries a code and a field but no rule category. The platform-defaults revision a release records is asserted, not reconstructed. The download URL and licence reference are derived from the contract's pins, and nothing fetches either. The import closure the freeze pins is static, and the interpreter, the standard library, and third-party packages are not pinned by content. Correction, 2026-10-03: until V2-S2-005-PR2 the statement of this claim gave its clause about hand-written strings without the words 'of eight characters or more' that E01-AC5 carries. That wording was broader than the criterion, and it was false: three hand-written strings contain a generated string value shorter than eight characters. An independent review of the run found the defect, and its record is docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json. The statement now carries the qualifier. The run, its files, its outcomes, this claim's status, and its record are unchanged. The review read a revision that already held this claim, so no record establishes that a review preceded the register change that added it.",
+      "reason": "The limitation travels with the claim wherever it is shown. The dated correction sentences are appended to it, and the text the claim had is kept word for word in front of them. They state what the earlier wording said, why it was wrong, which review found it, and that no review preceded the register change that added the claim."
+    },
+    {
+      "changeId": "q03-index-surface-reason",
+      "findingId": "q-f02-the-index-surface-reason-names-eight-ledgers",
+      "operation": "set-register-field",
+      "field": "nonClaimSurfaces",
+      "before": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the eight ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "after": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the nine ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "reason": "The evidence index is projected from this register and nine ledgers now, and the released pack is recomputed by undoing all five ledgers written after the release."
+    }
+  ],
+  "recordCorrections": [],
+  "findings": [
+    {
+      "findingId": "q-f01-the-second-run-statement-omits-the-e01-ac5-qualifier",
+      "source": "independent-review-20261003-e01-abc-1-review-1",
+      "observation": "The independent review of run 20261003-e01-abc-1, finding F1: the second-run claim's statement says the committed evidence holds 'no hand-written string that contains a generated workload-intent value'. E01-AC5 limits that to generated values 'of eight characters or more'. Without the limit the clause is false: the hand-written values contain the generated string values 'local' and '6', and the digit of the generated replica count. With the limit the clause is true, and the run's evidence record and result page already carry it. The run is not at fault, and the review found no defect in it.",
+      "resolution": "The statement gains the qualifier, and a dated correction is appended to the claim's limitation. The ledger that added the claim is not edited and still holds the earlier wording. The run, the freeze records, the claim's status, and its record are unchanged, and no part of E01 ran again.",
+      "resolvedBy": [
+        "q01-second-run-statement-qualifier",
+        "q02-second-run-correction-note"
+      ],
+      "recordIds": [
+        "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal-c0"
+      ],
+      "claimIds": [
+        "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal"
+      ]
+    },
+    {
+      "findingId": "q-f02-the-index-surface-reason-names-eight-ledgers",
+      "source": "this-change",
+      "observation": "The register's reason for the evidence index, a surface that claims nothing, named eight ledgers of register changes. This ledger is a ninth, and the released pack is recomputed by undoing it too.",
+      "resolution": "The reason is replaced; the surface claims nothing.",
+      "resolvedBy": [
+        "q03-index-surface-reason"
+      ],
+      "recordIds": [],
+      "claimIds": []
+    }
+  ],
+  "codeRevisions": []
+}

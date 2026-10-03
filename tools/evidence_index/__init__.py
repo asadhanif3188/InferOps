@@ -9,8 +9,11 @@ The index is generated from
 [the post-release ledger](../../docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json),
 [the claim reconciliation ledger](../../docs/proof/testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
 [the E01 static proof ledger](../../docs/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json),
-and [the corrected E01 static proof ledger](../../docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json),
-and it says nothing they do not. See
+[the corrected E01 static proof ledger](../../docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json),
+and [the E01 claim correction ledger](../../docs/proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json),
+and it says nothing they do not. A ledger whose changes bear on an experiment run
+must reference an independent-review artifact of that run, and the index is not built
+without one. See
 [the index's own page](../../docs/proof/v1-evidence-index.md).
 """
 
@@ -24,6 +27,7 @@ from .core import (
     CODE_REVISION_RELATIONS,
     COMPLETENESS_PATH,
     DISPOSITIONS,
+    E01_CLAIM_CORRECTION_PATH,
     E01_CORRECTED_PROOF_PATH,
     E01_STATIC_PROOF_PATH,
     FINAL_STATES,
@@ -35,9 +39,11 @@ from .core import (
     LEVEL_ORDER,
     POST_RELEASE_LEDGER_PATHS,
     POST_RELEASE_PATH,
+    PRE_GATE_LEDGER_PATHS,
     PUBLICATION_PATH,
     RELEASED_DIGESTS,
     RELEASED_LEDGER_PATHS,
+    RESULT_REVIEW_KIND,
     TEXT_SUFFIXES,
     apply_register_changes,
     build_index,
@@ -59,6 +65,8 @@ from .core import (
     render_index,
     render_register,
     restore_migrated_register,
+    result_runs,
+    review_gate,
     states_authorisation,
 )
 
@@ -70,6 +78,7 @@ __all__ = [
     "CODE_REVISION_RELATIONS",
     "COMPLETENESS_PATH",
     "DISPOSITIONS",
+    "E01_CLAIM_CORRECTION_PATH",
     "E01_CORRECTED_PROOF_PATH",
     "E01_STATIC_PROOF_PATH",
     "FINAL_STATES",
@@ -81,9 +90,11 @@ __all__ = [
     "LEVEL_ORDER",
     "POST_RELEASE_LEDGER_PATHS",
     "POST_RELEASE_PATH",
+    "PRE_GATE_LEDGER_PATHS",
     "PUBLICATION_PATH",
     "RELEASED_DIGESTS",
     "RELEASED_LEDGER_PATHS",
+    "RESULT_REVIEW_KIND",
     "TEXT_SUFFIXES",
     "apply_register_changes",
     "build_index",
@@ -105,5 +116,7 @@ __all__ = [
     "render_index",
     "render_register",
     "restore_migrated_register",
+    "result_runs",
+    "review_gate",
     "states_authorisation",
 ]

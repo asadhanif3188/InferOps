@@ -100,6 +100,22 @@ be an advertisement.
 > writes one correction beside the first run's result page, which is unchanged. It also
 > replaces the evidence index's reason here, which named seven ledgers. The evidence index
 > undoes it, with the other three post-release ledgers, to recompute the released pack.
+>
+> **Since `V2-S2-005-PR2` a ninth ledger, the fifth after the release, has narrowed one
+> statement, and has added no claim and no record.** [The E01 claim correction ledger](../proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json)
+> adds the words `of eight characters or more` to the statement of
+> `the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal`.
+> The frozen criterion E01-AC5 carries those words, and
+> [an independent review](../proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.md)
+> found that the statement omitted them. The ledger appends a dated correction to that
+> claim's limitation. It moves no status and no evidence level. The ledger that added the
+> claim is not edited and still holds the earlier wording. This ledger is the first to
+> name the review artifact its changes rest on: since this change the evidence index is
+> not built when a ledger bears on an experiment run and references no matching review
+> artifact. That check does not show that a review preceded a register change. The
+> ledger also replaces the evidence index's reason here, which named eight ledgers. The
+> evidence index undoes it, with the other four post-release ledgers, to recompute the
+> released pack.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -294,9 +310,11 @@ limitation, and its files are unchanged. The second run executed under freeze re
 2, which pins the runner, the analysis, and the freeze checker, from the merged checkout.
 It recorded where it imported the runner and the package from, and every repository
 module file it loaded. It refused seven inputs, the seventh a hand-written download URL,
-and it found no hand-written string that contains a generated workload-intent value. The
-second row is `C0` for the reason the first is. It does not validate the first run's
-boundary.
+and it found no hand-written string that contains a generated workload-intent value of
+eight characters or more. The second row is `C0` for the reason the first is. It does not
+validate the first run's boundary. (Until `V2-S2-005-PR2` this paragraph and the second
+row's statement gave that clause without its last five words. Shorter generated values,
+`local` and `6`, do occur in hand-written strings, and E01-AC5 does not count them.)
 
 The parser's record is `C2` since the migration, where the two contract rows stay
 `C0`. The line between them is the subject of the claim: the contract rows are about
@@ -624,7 +642,7 @@ compare against and the exclusion list cannot quietly grow.
 | [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) | Interim conduct expectations, with a formal policy deferred. |
 | [LICENSE](../../LICENSE) | The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does. |
 | [docs/proof/dashboard.md](../proof/dashboard.md) | A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them. |
-| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the eight ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
+| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the nine ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
 | [docs/case-study/v1-engineering-case-study.md](../case-study/v1-engineering-case-study.md) | The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it. |
 | [docs/testing/evidence-levels.md](evidence-levels.md) | The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it. |
 

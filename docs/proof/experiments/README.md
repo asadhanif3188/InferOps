@@ -7,7 +7,9 @@ no-duplication criterion and freezes the whole executable path, runner and analy
 included. **One run added by `V2-S2-004-PR2`**: E01-A, E01-B, and E01-C, executed once
 under revision 2 from the merged checkout. **One independent review published by
 `V2-S2-005-PR1`**: a review of that second run, with one finding about the wording of its
-register claim, which is [not yet corrected](#independent-review-of-the-second-run-2026-10-03).
+register claim. **One correction and one gate added by `V2-S2-005-PR2`**: the claim's
+statement is [narrowed to the frozen criterion](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03),
+and a register change that bears on a run now needs a review artifact of that run.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -406,8 +408,9 @@ started no run. A review record is not evidence of the run, and no register clai
   contains a generated workload-intent value". E01-AC5 limits that to generated values
   "of eight characters or more". Without the limit the clause is false: three hand-written
   strings contain a shorter generated string value, `local` or `6`. With the limit the clause is
-  true. **The claim is not corrected yet.** The register, the ledgers, the evidence index,
-  and the dashboard still carry the broader clause. `V2-S2-005-PR2` owns the correction.
+  true. When the review was published, the register, the ledgers, the evidence index,
+  and the dashboard carried the broader clause. `V2-S2-005-PR2`
+  [corrected the claim later](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03).
 - **The order of review and registration.** The review that the second run's validation
   record documents read commit `c24fda4`, which already held the register change. This
   review also read a revision that held it. So no record establishes that an independent
@@ -419,5 +422,81 @@ started no run. A review record is not evidence of the run, and no register clai
 
 The report lists thirteen findings, what the review could not verify, and the limits of its
 independence: the reviewer is a separate session of the automated assistant that
-co-authored the run's change, not a person and not anyone outside the project. No check requires a review record before a register change;
-nothing enforces that order.
+co-authored the run's change, not a person and not anyone outside the project. When the
+review was published, no check required a review record before a register change.
+Since `V2-S2-005-PR2` [a gate](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
+requires one.
+
+## Correction of the second-run claim, and the review gate, 2026-10-03
+
+`V2-S2-005-PR2` started from `4023487e`, the merge of the change that published the
+review. It corrected one statement and added one gate. No part of E01 ran again, and
+both runs and both freeze records are unchanged.
+
+**The correction.** [A ninth ledger of register changes](../testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json)
+narrows the second-run claim's statement. The clause now reads "no hand-written string
+that contains a generated workload-intent value of eight characters or more", which is
+the limit E01-AC5 carries. The ledger also appends a dated correction to the claim's
+limitation. The claim's status, its evidence level, and its record are unchanged.
+The correction is additive and later. The ledger that added the claim is not edited and
+still holds the earlier wording, and the ninth ledger records that wording as the value
+before the change. The earlier wording was on `main` from the merge of `V2-S2-004-PR2`
+until this correction merged.
+
+**The order.** Git history gives this sequence, by commit:
+
+1. `c24fda4` added the second run, its claim, and its ledger. The review that the run's
+   validation record documents read that commit.
+2. `4023487e` merged the published review, which read a revision that held the claim.
+3. This change corrected the statement.
+
+No record establishes that an independent review preceded the register change for either E01 run.
+The correction does not repair that order, and no later change can.
+
+**The gate.** A register change *bears on* a run when the record it adds, or the claim or
+record it changes, cites a file under that run's directory. A ledger with such a change
+must name one review artifact for each run in `resultReviews`: the run's path, the
+artifact's path, and the artifact's content digest.
+[`tools/evidence_index`](../../../tools/evidence_index/core.py) checks every ledger when
+it builds the index, so `--check`, `--write`, and `--gate` exit 1 on a refusal, and the
+default-lane suite [`tests/testing/test_result_review_gate.py`](../../../tests/testing/test_result_review_gate.py)
+plants each refusal in a copy.
+
+| Refused | Reason |
+|---|---|
+| A ledger that bears on a run and names no review of it | The review reference is omitted |
+| A reference whose artifact is absent | The review is not in the repository state the index is built from |
+| An artifact whose content digest is not the one the ledger states | The artifact changed after the ledger named it, or the ledger names other content |
+| An artifact that is not an `ExperimentResultReview`, or is outside the experiment's `reviews/` directory | It is not a result review of this experiment |
+| An artifact whose `subject` names another run | The review is about another result |
+| An artifact whose file digests are not those of the run's files, or that omits or adds a file | The review is stale: the run is not what the review read |
+| An artifact whose freeze digest is not that of the committed freeze record | The review read another freeze record |
+| Two references for one run, or a reference for a run no change bears on | The reference is ambiguous or unrelated |
+
+The ninth ledger bears on the second run. It references
+[the published review record](v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json),
+and the gate accepts that reference. The review record is unchanged since it merged.
+
+**What the gate does not do.**
+
+- **It does not prove an order in time.** The gate reads one repository state.
+  It does not show that a review was committed before the register change: a review
+  artifact and a ledger can arrive in one commit. For this correction only, a test reads
+  Git history and finds the review record, with its present content, at `4023487e`, where
+  the ninth ledger does not exist. That test skips in a clone without that commit, and a
+  skip is not a pass.
+- **It does not judge the review.** It does not show that a review took place, who did
+  it, whether it was independent, or what it concluded. A review record that reports a
+  defect satisfies the gate.
+- **It does not cover the two earlier ledgers.** The ledgers that added the two E01
+  claims were written before the gate. Each names no review, and the tool lists them in
+  `PRE_GATE_LEDGER_PATHS` and in the index, under `registeredBeforeTheGate`. That list
+  records what happened. It does not say that either ledger complied.
+- **It sees a run only by a cited path.** A record that states a run's result and cites
+  no file under the run's directory does not bear on the run, as the gate reads it.
+- **It can be changed with the ledger.** A change that edits the gate, or the list of
+  earlier ledgers, together with a ledger passes the check. A test holds that list to
+  its two entries, so such an edit shows in review as a changed test.
+
+E01-D has not run. Its register change is to reference a review of the E01-D run: the
+review record of the static run names another run, and the gate refuses it for E01-D.

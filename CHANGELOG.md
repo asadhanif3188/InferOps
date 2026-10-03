@@ -10,6 +10,17 @@ from `1.0.0`.
 
 ### Added
 
+- **A review artifact is required before a register change that bears on an experiment
+  run.** `V2-S2-005-PR2` adds a gate to `tools.evidence_index`. A ledger whose changes
+  bear on a run must reference an independent-review artifact of that run, with its
+  content digest. The index is not built when the reference is omitted, when the artifact
+  is absent or has other content, when it reviews another run, or when its digests are not
+  those of the run's files and freeze record. The gate reads one repository state: it
+  does not show that a review was committed before the register change, that a review
+  took place, or what it concluded. The two ledgers that added the E01 claims predate the
+  gate and are listed as such; no review preceded either. A new default-lane suite plants
+  each refusal. [The experiments page](docs/proof/experiments/README.md#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
+  states the refusals and the limits.
 - **An independent review of the second V2-E01 static run, published before any
   correction.** `V2-S2-005-PR1` publishes [the report](docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.md)
   of one independent review of run `20261003-e01-abc-1`, and its machine-readable record.
@@ -465,6 +476,19 @@ from `1.0.0`.
 
 ### Fixed
 
+- **The second E01 claim said more than its frozen criterion.** Its statement said the
+  run's evidence holds no hand-written string that contains a generated workload-intent
+  value. E01-AC5 limits that to generated values of eight characters or more, and three
+  hand-written strings contain a shorter one. `V2-S2-005-PR2` adds the qualifier through a
+  ninth ledger of register changes, the fifth after `v1.0.0`, and appends a dated
+  correction to the claim's limitation. The correction is additive and later: the ledger
+  that added the claim is not edited, and the earlier wording was on `main` until this
+  change. The claim stays certified at `C0` on the same record. Neither run, neither
+  freeze record, and no outcome changed, and no part of E01 ran again. The register still
+  holds 61 claims, 44 certified, and 67 evidence records, and the released `v1.0.0` pack
+  is unchanged. No record establishes that an independent review preceded the register
+  change for either E01 run. [The validation record](docs/proof/domain/v2-s2-005-pr2-validation.md)
+  says what was checked.
 - **A generated-release drift test expected its two findings in the wrong order.** A
   generated file that is a symbolic link is reported as `generated-release-file-missing`
   and then `generated-release-unexpected-entry`, the order the check's rule table lists,
