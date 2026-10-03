@@ -5,7 +5,8 @@ package checks that every committed record answers every field the freeze proced
 requires, that no committed record differs from the content pinned when it was added,
 and that a later revision names the one it supersedes and classifies every pinned
 input that moved. It also lists the pinned inputs whose content differs from a
-record's pins, for the run that must refuse to start until a revision classifies them.
+record's pins - and, for a record with a material scope, every file in that scope it
+does not pin - for the run that must refuse to start until a revision classifies them.
 
 See docs/proof/experiments/README.md, which describes the record, and
 tests/testing/test_experiment_freeze.py, which checks every committed record and
@@ -15,15 +16,18 @@ plants each defect the check refuses.
 from .core import (
     ALWAYS_ANSWERED,
     API_VERSION,
+    CHANGE_KINDS,
     EVIDENCE_LEVELS,
     FREEZE_FIELDS,
     FROZEN_RECORDS,
     KIND,
     PENDING_ALLOWED,
     RECORDS_DIR,
+    REGISTRY_PATH,
     REPO_ROOT,
     RULES,
     STATUSES,
+    UNSCOPED_RECORDS,
     Finding,
     FreezeField,
     InputChange,
@@ -33,21 +37,27 @@ from .core import (
     check_record,
     check_repository,
     content_digest,
+    import_closure,
+    load_registry,
+    material_files,
     record_paths,
 )
 
 __all__ = [
     "ALWAYS_ANSWERED",
     "API_VERSION",
+    "CHANGE_KINDS",
     "EVIDENCE_LEVELS",
     "FREEZE_FIELDS",
     "FROZEN_RECORDS",
     "KIND",
     "PENDING_ALLOWED",
     "RECORDS_DIR",
+    "REGISTRY_PATH",
     "REPO_ROOT",
     "RULES",
     "STATUSES",
+    "UNSCOPED_RECORDS",
     "Finding",
     "FreezeField",
     "InputChange",
@@ -57,5 +67,8 @@ __all__ = [
     "check_record",
     "check_repository",
     "content_digest",
+    "import_closure",
+    "load_registry",
+    "material_files",
     "record_paths",
 ]

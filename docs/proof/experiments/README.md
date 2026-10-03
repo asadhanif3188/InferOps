@@ -2,13 +2,16 @@
 
 Status: **format and check added by `V2-S2-003-PR1`**, with one record: the V2-E01 family
 freeze, revision 1. **One run added by `V2-S2-003-PR2`**: E01-A, E01-B, and E01-C, executed
-once under that record. A freeze record fixes an experiment family before its first
+once under that record. **Revision 2 added by `V2-S2-004-PR1`**: it restores the governing
+no-duplication criterion and freezes the whole executable path, runner and analysis
+included. No run has executed under revision 2. A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
 
 | Experiment | Revision | Record | Parts and intended level | State |
 |---|---|---|---|---|
-| V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. E01-A, E01-B, and E01-C ran once, in [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md), and each PASSED. E01-D has not run: its environment identity is pending, so it cannot start |
+| V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Superseded by revision 2 on 2026-10-03, and kept unchanged. E01-A, E01-B, and E01-C ran once under it, in [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md), and each PASSED under its criteria. That run carries an [audit limitation](#audit-of-the-first-run-2026-10-03) |
+| V2-E01, contract-to-deployment determinism | 2 | [`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. No run yet. E01-D's environment identity is still pending, so E01-D cannot start |
 
 ## Why a freeze comes first
 
@@ -71,16 +74,49 @@ repository's attributes. A Windows checkout and a Linux one give the same digest
 records the merged commit it executes, and checks the pins at that commit before it starts.
 
 ```sh
-# List every pinned input whose content differs from its pin. Exit 1 if any does.
-uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json
+# List every material file that differs from the record. Exit 1 if any does.
+uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json
 ```
+
+**The material scope** (from revision 2). A pin list can only say whether the files it
+names changed. It cannot see a file nobody listed - the gap the first E01 run fell through:
+its runner was not pinned, so the change check reported nothing. So a record now declares
+`materialScope`: the entry modules of the run, the package roots they resolve in, and the
+data files and patterns the parts read. The experiment path is the **static import
+closure** of the entry modules within those roots - every product module, the runner, the
+analysis, the freeze checker, and every local helper they import - plus the data files.
+`--changes` computes that set from the tree and lists four kinds of difference:
+
+| Kind | Meaning |
+|---|---|
+| `changed` | Pinned, present, with other content |
+| `absent` | Pinned and missing |
+| `added` | In the scope and not pinned: a new file, or a new local helper an import now reaches |
+| `unscoped` | Pinned, present, and no longer in the scope |
+
+The closure follows `import` statements, wherever they are, and matches each module name
+against its directory's listing, so a name in the wrong case resolves to nothing on Windows
+as on Linux. It does not see a module loaded by a name built at run time, so a run also
+records every module file it and its second process loaded from the record's package
+directories - `src/inferops/` and `tools/` - and aborts when one is not a pinned input with
+its pinned content, or when the second process imported the runner or the package from
+outside the checkout. Third-party packages, including those in a `.venv/` inside the
+checkout, are outside those directories: `uv.lock` pins them by version, not by content.
+`--check` recomputes these conditions from what a revision-2 run recorded. `exclusions` may remove a file from
+the scope, each with a reason, inside the frozen record; revision 2 excludes nothing.
+Revision 1 has no scope and is checked against its own pins, as it was registered.
 
 ## Revisions
 
-`FROZEN_RECORDS` in [`tools/experiment_freeze`](../../../tools/experiment_freeze/core.py)
-pins the content digest of every committed record. A record whose content differs from its
-pin is refused, and so is a record nobody pinned. To change what a record fixes, add
-`freeze-r<N+1>.v1alpha1.json` beside it:
+The registry, [`registry.v1alpha1.json`](registry.v1alpha1.json), pins the content digest of
+every committed record. A record whose content differs from its pin is refused, and so is
+a record nobody pinned. Until 2026-10-03 the pins were a constant, `FROZEN_RECORDS`, in the
+checker's own code. A record that pins the checker - as revision 2 does, because the run
+calls it - could then never be registered: adding the record's pin changes the checker,
+which moves the record's pin of it. The registry is data, so the cycle is gone. A record
+does not pin the registry, and says so; a run records the registry's digest beside the
+record's. No record names the commit that merges it: the run records the commit it
+executes. To change what a record fixes, add `freeze-r<N+1>.v1alpha1.json` beside it:
 
 - `metadata.supersedes` names the previous revision's path and content digest;
 - `inputChanges` classifies every pinned input whose digest moved since that revision, added
@@ -114,12 +150,15 @@ runs it, and plants each defect below in a copy.
 | `freeze-criteria-malformed` | Every acceptance criterion has an identifier and a statement, and no identifier is used twice in a record. |
 | `freeze-evidence-level-unknown` | An intended evidence level is one of the project's evidence levels. |
 | `freeze-pinned-input-malformed` | Every pinned input names one repository path once, with a content digest. |
+| `freeze-scope-missing` | Every record declares a material scope, except a record registered before scopes existed. |
+| `freeze-scope-malformed` | A material scope names its entry modules, the package roots they resolve in, and its data paths, and every exclusion names a path and a reason. |
+| `freeze-registry-unreadable` | The freeze registry is a JSON object that pins records by path and content digest, each path once. |
 | `freeze-record-unregistered` | Every committed freeze record is pinned. |
 | `freeze-record-missing` | Every pinned freeze record is committed. |
 | `freeze-record-edited` | A committed freeze record is what was pinned. |
 | `freeze-revision-sequence` | An experiment's revisions are numbered from 1 without a gap, as their files are. |
 | `freeze-revision-supersedes` | Revision 1 supersedes nothing; a later revision names the one before it and its content digest. |
-| `freeze-input-change-unclassified` | A revision classifies every pinned input that changed since the revision it supersedes. |
+| `freeze-input-change-unclassified` | A revision classifies every pinned input that changed, appeared, or disappeared since the revision it supersedes. |
 
 ## What is enforced, and what is not
 
@@ -145,6 +184,15 @@ Not enforced:
   change.
 - **Whether the content is right.** The check says every field is answered. It does not
   judge an answer, and it does not check that a revision a record names is a commit.
+- **That the registry is append-only.** A change can edit a record and its registry pin
+  together. The test suite writes each registered pin out literally, so such an edit
+  shows in review as a changed test; nothing else refuses it.
+- **That a scope is complete when it merges.** `--check` reads the record, not the tree, so
+  it does not compare the scope with the files. `--changes` does, and the run refuses to
+  start on any difference. At registration, revision 2's `--changes` reported none.
+- **The rule against previews.** Revision 2 forbids a full execution of the parts outside
+  `--run`, in any repository. No code can see a run in a throwaway repository, so this is a
+  procedure the record states and nothing enforces.
 
 The E01 record pins `uv.lock` and `pyproject.toml`, because the parsers and their
 dependencies are on the experiment path. So any dependency update is listed by
@@ -175,6 +223,31 @@ contract, the binding, the chart and its defaults, the compatibility matrix, the
 synchronous compatibility record, the defaults reader, and the dependency lock and project
 metadata.
 
+### Revision 2
+
+[`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json), registered by
+`V2-S2-004-PR1` on 2026-10-03, supersedes revision 1. The first Sprint 2 collective review
+found two defects in revision 1, and revision 2 corrects both without editing it:
+
+- **The criterion is the governing one again.** Revision 1's hypothesis, E01-AC5, and
+  E01-AC10 excepted two hand-written strings that repeated the contract's model pins. The
+  renderer now derives both, so revision 2 states the criterion without the exception:
+  no claim-relevant workload intent is written by hand after rendering, and no hand-written
+  string contains a contract-owned generated value of eight characters or more. E01-C gains
+  a seventh case: a hand-written download URL that contradicts the pins, refused.
+- **The executable path is frozen.** Revision 2 declares its material scope and pins 74
+  inputs: the 39 product files and the data files revision 1 pinned, the runner and
+  analysis, the freeze checker, and the packages they belong to. `inputChanges` classifies
+  every difference from revision 1: four changed files, from the renderer correction, and
+  seven added ones, the runner and checker files revision 1 never pinned.
+
+It also states, before any run under it: the run's preconditions, which now include that the
+runner and the `inferops` package are imported from the checked-out tree and that the record
+is registered; the executions that are not result evidence; the rule against previews; how
+the record avoids pinning itself; and, in `history`, the first run's audit limitation and
+what is and is not available of the earlier previews. E01-D's environment identity stays
+pending, with the same owner.
+
 ## The E01 static run
 
 `tools/experiment_e01` runs E01-A, E01-B, and E01-C once, as the freeze record registers
@@ -189,14 +262,18 @@ uv run --locked python -m tools.experiment_e01 --check
 ```
 
 **Before it runs a part,** the runner checks the record's preconditions and records each
-observation: the executing commit is a full revision reachable from `origin/main`, the
+observation. Under revision 2 it also checks that the runner module it runs is the
+checked-out tree's `tools/experiment_e01/core.py`, that the record is registered and
+unedited, and that no material file differs - added files included - and it records the
+`inferops` distribution version, the registry's digest, and every repository module file it
+and its second process loaded. Under revision 1 it checked: the executing commit is a full revision reachable from `origin/main`, the
 freeze record is in it, `git status --porcelain --untracked-files=all` prints nothing,
 every pinned input has its pinned content, and the `inferops` package it imported is the
 one under the checkout's `src`. If one fails, it writes a run with every part REFUSED and
 runs nothing. `origin/main` is read as the clone holds it, so a clone that has not fetched
-refuses a commit that is merged; the reverse cannot happen. The runner reads revision 1
-of the freeze record only: a later revision that classifies a moved input needs the
-runner to read it before a run can rely on it. It refuses an identifier whose date is not today's UTC date, and an
+refuses a commit that is merged; the reverse cannot happen. A new run executes the latest
+revision, revision 2; a committed run is judged by the analysis of the revision it names,
+so the first run is still judged by revision 1's criteria and page, byte for byte. It refuses an identifier whose date is not today's UTC date, and an
 evidence directory that already exists. It starts only with `PYTHONHASHSEED=1`; the second
 E01-A render runs in its own process with `PYTHONHASHSEED=2`.
 
@@ -250,3 +327,30 @@ the ones that ran, and the first commit of that change holds the ones that did. 
 changed no verdict of the run. Nothing compares a committed run with today's code: a later change to the
 renderer leaves the run as it was, and a new run needs a new identifier. Nothing here
 deploys the release input, reconciles it, or serves a completion; that is E01-D.
+
+## Audit of the first run, 2026-10-03
+
+The first Sprint 2 collective review examined run `20261002-e01-abc-1`. Its files, digests,
+and revision 1 outcomes are unchanged, and `--check` still judges it by revision 1. The
+audit adds this limitation; it does not reinterpret the run under revision 2:
+
+- **The execution boundary was not the freeze's.** The run records executing revision
+  `707e29f4`, but the runner it executed was not in that commit and was not a pinned input
+  of revision 1. Revision 1's change check compared only the files it listed, so it could
+  not report the runner. The run is not evidence that its execution was governed by its
+  freeze.
+- **The package location was observed by hand.** The run predates the check that records
+  which `inferops` package was imported.
+- **Previews were not preregistered.** Before the run, a full development preview executed
+  E01-A, E01-B, and E01-C in a throwaway repository and reported all three PASSED. After
+  it, two more full executions in throwaway repositories ran while review findings were
+  fixed, and reported E01-A INCONCLUSIVE and E01-B and E01-C PASSED. None was exempted
+  before it ran. Their raw evidence directories were deleted with their repositories and
+  are not available; a partial console capture of each exists outside this repository and
+  is not published, because it contains host paths. Nothing reconstructs them.
+- **What the audit found intact.** The review found no evidence that thresholds, workload,
+  faults, or raw result files were changed, every manifest-covered file keeps its digest,
+  and an independent comparison reproduced both original render-a files.
+
+Revision 2's `history` records the same. A new run under revision 2 answers revision 2's
+criteria; it is not evidence that the first run's boundary was valid.

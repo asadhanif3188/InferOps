@@ -15,12 +15,18 @@ over the committed records and plants each defect it refuses in a copy:
 It also holds the E01 family freeze to what its registration requires: E01-A, E01-B,
 and E01-C frozen as C0 work, E01-D's procedure and criteria frozen as C2 work, E01-D's
 environment identity pending with the owner the allowance names, and every input a
-part names pinned by content digest.
+part names pinned by content digest. Revision 1 is history and is held to what it
+was; revision 2 restores the governing no-duplication criterion, declares its
+material scope, pins the runner and analysis, and classifies every change since
+revision 1, added files included.
 
-**Nothing here runs E01.** No part's procedure executes, and no test compares the
-record's expected refusals with the code: that comparison is a result-bearing run,
-which may happen only after the record merges. Nor does any test compare the pins
-with today's files; a change to a pinned input may merge, and the run refuses to
+The material scope is checked on copies: an added file, a deleted one, a changed one,
+a new local helper the runner imports, and a pinned file the scope no longer names are
+each listed, and the import closure follows relative and absolute imports and nothing
+outside its package roots.
+
+**Nothing here runs E01.** No part's procedure executes. No test compares the pins
+with today's files; a change to a material file may merge, and the run refuses to
 start until a merged revision classifies it.
 """
 
@@ -43,18 +49,29 @@ from tools.experiment_freeze import (
     FREEZE_FIELDS,
     FROZEN_RECORDS,
     PENDING_ALLOWED,
+    REGISTRY_PATH,
     RULES,
+    UNSCOPED_RECORDS,
     changed_inputs,
     check_record,
     check_repository,
     content_digest,
+    import_closure,
+    load_registry,
+    material_files,
     record_paths,
 )
 
 pytestmark = pytest.mark.docs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-E01 = "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json"
+R1 = "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json"
+R2 = "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json"
+R3 = "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json"
+#: Revision 2's registered pin, written out so that a change to it is visible.
+R2_PIN = "198f60b5133338e445b1c0fef9f9171ad3e58fe3bde66ac1e7a8d1d674730ac8"
+#: The latest revision: the one every defect below is planted in.
+E01 = R2
 README = REPO_ROOT / "docs" / "proof" / "experiments" / "README.md"
 
 
@@ -82,7 +99,17 @@ def test_every_committed_record_holds_every_rule() -> None:
 
 
 def test_the_committed_records_are_the_pinned_ones() -> None:
-    assert record_paths() == sorted(FROZEN_RECORDS) == [E01]
+    assert record_paths() == sorted(FROZEN_RECORDS) == [R1, R2]
+    assert load_registry() == dict(FROZEN_RECORDS)
+
+
+def test_the_first_record_keeps_the_pin_it_was_registered_with() -> None:
+    """Revision 1 is history: its pin is the one V2-S2-003-PR1 registered."""
+    assert FROZEN_RECORDS[R1] == (
+        "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9"
+    )
+    assert content_digest((REPO_ROOT / R1).read_bytes()) == FROZEN_RECORDS[R1]
+    assert frozenset({R1}) == UNSCOPED_RECORDS
 
 
 def test_the_command_passes_over_the_committed_records() -> None:
@@ -94,11 +121,11 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "PASSED: 1 freeze record(s)" in result.stdout
+    assert "PASSED: 2 freeze record(s)" in result.stdout
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
-    assert len({rule.rule_id for rule in RULES}) == len(RULES) == 19
+    assert len({rule.rule_id for rule in RULES}) == len(RULES) == 22
     assert len({field.key for field in FREEZE_FIELDS}) == len(FREEZE_FIELDS) == 13
     text = README.read_text(encoding="utf-8")
     for rule in RULES:
@@ -464,17 +491,15 @@ def test_a_misnamed_record_and_a_wrong_revision_are_refused(copy_root: Path) -> 
     assert ("freeze-revision-sequence", "metadata.revision") in found
 
 
-R2 = "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json"
-
-
 def _revision_two(root: Path) -> dict[str, Any]:
-    """A second revision that supersedes the first correctly and moves no input."""
+    """A next revision that supersedes the latest correctly and moves no input."""
     document = load(root=root)
-    document["metadata"]["revision"] = 2
+    document["metadata"]["revision"] = 3
     document["metadata"]["supersedes"] = {
         "path": E01,
         "contentSha256": content_digest((root / E01).read_bytes()),
     }
+    document["inputChanges"] = []
     return document
 
 
@@ -489,7 +514,7 @@ def _revision_findings(root: Path) -> set[str]:
 def test_a_revision_that_follows_the_one_before_it_holds_the_revision_rules(
     copy_root: Path,
 ) -> None:
-    _write(copy_root, R2, _revision_two(copy_root))
+    _write(copy_root, R3, _revision_two(copy_root))
     assert _revision_findings(copy_root) == set()
 
 
@@ -498,14 +523,14 @@ def test_a_revision_that_names_the_wrong_predecessor_is_refused(
 ) -> None:
     document = _revision_two(copy_root)
     document["metadata"]["supersedes"]["contentSha256"] = "0" * 64
-    _write(copy_root, R2, document)
+    _write(copy_root, R3, document)
     assert _revision_findings(copy_root) == {"freeze-revision-supersedes"}
 
 
 def test_a_first_revision_that_supersedes_something_is_refused(copy_root: Path) -> None:
-    document = load(root=copy_root)
-    document["metadata"]["supersedes"] = {"path": E01, "contentSha256": "0" * 64}
-    _write(copy_root, E01, document)
+    document = load(R1, root=copy_root)
+    document["metadata"]["supersedes"] = {"path": R1, "contentSha256": "0" * 64}
+    _write(copy_root, R1, document)
     assert "freeze-revision-supersedes" in {
         f.rule_id for f in check_repository(copy_root)
     }
@@ -513,8 +538,8 @@ def test_a_first_revision_that_supersedes_something_is_refused(copy_root: Path) 
 
 def test_a_skipped_revision_is_refused(copy_root: Path) -> None:
     document = _revision_two(copy_root)
-    document["metadata"]["revision"] = 3
-    _write(copy_root, "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json", document)
+    document["metadata"]["revision"] = 4
+    _write(copy_root, "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json", document)
     assert "freeze-revision-sequence" in _revision_findings(copy_root)
 
 
@@ -522,20 +547,217 @@ def test_a_revision_must_classify_every_input_that_moved(copy_root: Path) -> Non
     document = _revision_two(copy_root)
     moved = document["pinnedInputs"][0]
     moved["sha256"] = "f" * 64
-    _write(copy_root, R2, document)
+    _write(copy_root, R3, document)
     assert _revision_findings(copy_root) == {"freeze-input-change-unclassified"}
 
     document["inputChanges"] = [
         {"path": moved["path"], "material": "no", "reason": "x"}
     ]
-    _write(copy_root, R2, document)
+    _write(copy_root, R3, document)
     assert _revision_findings(copy_root) == {"freeze-input-change-unclassified"}
 
     document["inputChanges"] = [
         {"path": moved["path"], "material": False, "reason": "A comment changed."}
     ]
-    _write(copy_root, R2, document)
+    _write(copy_root, R3, document)
     assert _revision_findings(copy_root) == set()
+
+
+def test_a_revision_must_classify_an_input_it_pins_for_the_first_time(
+    copy_root: Path,
+) -> None:
+    """An added file is a change, as revision 2 classified the runner it added."""
+    document = _revision_two(copy_root)
+    document["pinnedInputs"].append(
+        {
+            "path": "tools/new_helper.py",
+            "role": "runner-and-analysis",
+            "sha256": "e" * 64,
+        }
+    )
+    _write(copy_root, R3, document)
+    assert _revision_findings(copy_root) == {"freeze-input-change-unclassified"}
+
+
+def test_revision_two_classifies_every_input_that_moved_since_revision_one() -> None:
+    before = {i["path"]: i["sha256"] for i in load(R1)["pinnedInputs"]}
+    after = {i["path"]: i["sha256"] for i in load(R2)["pinnedInputs"]}
+    moved = {p for p in set(before) | set(after) if before.get(p) != after.get(p)}
+    classified = {c["path"]: c for c in load(R2)["inputChanges"]}
+    assert set(classified) == moved
+    added = {p for p in moved if p not in before}
+    assert added == {
+        "tools/__init__.py",
+        "tools/experiment_e01/__init__.py",
+        "tools/experiment_e01/__main__.py",
+        "tools/experiment_e01/core.py",
+        "tools/experiment_freeze/__init__.py",
+        "tools/experiment_freeze/core.py",
+        "tools/generated_release/__init__.py",
+    }
+    for path in added:
+        assert classified[path]["change"] == "added"
+        assert classified[path]["material"] is True
+
+
+# --------------------------------------------------------------------------
+# 3a. The registry and the material scope
+# --------------------------------------------------------------------------
+
+
+def test_an_unreadable_registry_is_refused(copy_root: Path) -> None:
+    (copy_root / REGISTRY_PATH).write_text("[]\n", encoding="utf-8")
+    found = {f.rule_id for f in check_repository(copy_root)}
+    assert "freeze-registry-unreadable" in found
+    assert "freeze-record-unregistered" in found
+
+
+def test_a_registry_that_pins_a_record_twice_is_refused(copy_root: Path) -> None:
+    registry = json.loads((copy_root / REGISTRY_PATH).read_text(encoding="utf-8"))
+    registry["records"].append(dict(registry["records"][0]))
+    _write(copy_root, REGISTRY_PATH, registry)
+    with pytest.raises(ValueError):
+        load_registry(copy_root)
+
+
+def test_a_record_without_a_scope_is_refused_unless_registered_before_scopes() -> None:
+    document = load()
+    del document["materialScope"]
+    assert ("freeze-scope-missing", "materialScope") in rules(
+        check_record(document, E01)
+    )
+    assert check_record(load(R1), R1) == []
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        lambda scope: scope.__setitem__("entryModules", []),
+        lambda scope: scope.__setitem__("entryModules", ["elsewhere.module"]),
+        lambda scope: scope.__setitem__("packageRoots", {"tools": "/abs"}),
+        lambda scope: scope.__setitem__("paths", ["../outside.yaml"]),
+        lambda scope: scope.__setitem__("paths", ["C:/outside.yaml"]),
+        lambda scope: scope.__setitem__("packageRoots", {"tools": "C:tools"}),
+        lambda scope: scope.__setitem__("exclusions", [{"path": "uv.lock"}]),
+    ],
+)
+def test_a_malformed_scope_is_refused(defect: Callable[[dict[str, Any]], None]) -> None:
+    document = load()
+    defect(document["materialScope"])
+    assert "freeze-scope-malformed" in {f.rule_id for f in check_record(document, E01)}
+
+
+def test_revision_two_pins_exactly_its_material_scope(pinned_root: Path) -> None:
+    """At registration, the pins and the scope are the same set of files. The scope is
+    computed over a tree that holds each pinned file as it was pinned, so this does
+    not compare the pins with today's files."""
+    document = load()
+    pinned = {item["path"] for item in document["pinnedInputs"]}
+    assert material_files(document["materialScope"], pinned_root) == pinned
+    assert len(pinned) == 74
+    assert "tools/experiment_e01/core.py" in pinned
+    assert "tools/experiment_freeze/core.py" in pinned
+    assert REGISTRY_PATH not in pinned
+    assert R2 not in pinned
+
+
+def test_every_registered_record_keeps_the_pin_it_was_registered_with() -> None:
+    """The registry is a file a change can edit, together with the record. These
+    literal pins are what a reviewer sees move if one does; nothing else stops it."""
+    assert FROZEN_RECORDS == {
+        R1: "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9",
+        R2: R2_PIN,
+    }
+
+
+def _tree(tmp_path: Path, files: dict[str, str]) -> Path:
+    for relative, text in files.items():
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    return tmp_path
+
+
+def test_the_import_closure_follows_local_imports_and_nothing_else(
+    tmp_path: Path,
+) -> None:
+    root = _tree(
+        tmp_path,
+        {
+            "tools/__init__.py": "",
+            "tools/run/__init__.py": "from .core import go\n",
+            "tools/run/__main__.py": "from . import go\n",
+            "tools/run/core.py": (
+                "import json\nimport yaml\nfrom pkg.a import b\n"
+                "def go():\n    from tools.helper import x\n"
+            ),
+            "tools/helper.py": "x = 1\n",
+            "tools/unused.py": "y = 2\n",
+            "src/pkg/__init__.py": "",
+            "src/pkg/a/__init__.py": "from .b import c\n",
+            "src/pkg/a/b.py": "c = 3\n",
+            "src/pkg/z.py": "",
+        },
+    )
+    closure = import_closure(["tools.run.__main__"], {"tools": ".", "pkg": "src"}, root)
+    assert closure == {
+        "tools/__init__.py",
+        "tools/run/__init__.py",
+        "tools/run/__main__.py",
+        "tools/run/core.py",
+        "tools/helper.py",
+        "src/pkg/__init__.py",
+        "src/pkg/a/__init__.py",
+        "src/pkg/a/b.py",
+    }
+
+
+def test_an_import_in_the_wrong_case_resolves_to_nothing_on_every_host(
+    tmp_path: Path,
+) -> None:
+    """Windows would open tools/Helper.py for ``tools.helper``; Linux would not. The
+    closure follows the directory listing, so both give the same scope."""
+    root = _tree(
+        tmp_path,
+        {
+            "tools/__init__.py": "",
+            "tools/run.py": "from tools.helper import x\n",
+            "tools/Helper.py": "x = 1\n",
+        },
+    )
+    assert import_closure(["tools.run"], {"tools": "."}, root) == {
+        "tools/__init__.py",
+        "tools/run.py",
+    }
+
+
+def test_material_files_add_paths_and_patterns_and_drop_exclusions(
+    tmp_path: Path,
+) -> None:
+    root = _tree(
+        tmp_path,
+        {
+            "tools/__init__.py": "",
+            "tools/run.py": "",
+            "charts/c/templates/a.yaml": "",
+            "charts/c/templates/sub/b.yaml": "",
+            "charts/c/README.md": "",
+            "uv.lock": "",
+            "tools/__pycache__/run.cpython-312.pyc": "",
+        },
+    )
+    scope = {
+        "entryModules": ["tools.run"],
+        "packageRoots": {"tools": "."},
+        "paths": ["charts/c/templates/**/*", "uv.lock"],
+        "exclusions": [{"path": "uv.lock", "reason": "a planted exclusion"}],
+    }
+    assert material_files(scope, root) == {
+        "tools/__init__.py",
+        "tools/run.py",
+        "charts/c/templates/a.yaml",
+        "charts/c/templates/sub/b.yaml",
+    }
 
 
 # --------------------------------------------------------------------------
@@ -568,19 +790,65 @@ def test_a_changed_and_an_absent_input_are_listed_and_a_crlf_one_is_not(
 ) -> None:
     document = load()
     contract = "contracts/workload/examples/valid/synchronous-llm-local.yaml"
-    renderer = "src/inferops/domain/render/helm_values.py"
+    defaults = "charts/inferops-llm/values.schema.json"
     chart = "charts/inferops-llm/Chart.yaml"
     (pinned_root / contract).write_bytes(
         (pinned_root / contract).read_bytes() + b"# x\n"
     )
-    (pinned_root / renderer).unlink()
+    (pinned_root / defaults).unlink()
     data = (pinned_root / chart).read_bytes().replace(b"\r\n", b"\n")
     (pinned_root / chart).write_bytes(data.replace(b"\n", b"\r\n"))
     changes = {
-        change.path: change.actual for change in changed_inputs(document, pinned_root)
+        change.path: (change.kind, change.actual)
+        for change in changed_inputs(document, pinned_root)
     }
-    assert set(changes) == {contract, renderer}
-    assert changes[renderer] is None
+    assert set(changes) == {contract, defaults}
+    assert changes[defaults] == ("absent", None)
+    assert changes[contract][0] == "changed"
+
+
+def test_an_added_material_file_is_listed(pinned_root: Path) -> None:
+    """The F2 gap: a file the record never listed is a change, not invisible."""
+    added = "charts/inferops-llm/templates/extra.yaml"
+    (pinned_root / added).write_text("kind: ConfigMap\n", encoding="utf-8")
+    changes = [(c.path, c.kind, c.pinned) for c in changed_inputs(load(), pinned_root)]
+    assert changes == [(added, "added", None)]
+
+
+def test_a_new_local_helper_the_runner_imports_is_listed(pinned_root: Path) -> None:
+    runner = pinned_root / "tools" / "experiment_e01" / "core.py"
+    runner.write_text(
+        runner.read_text(encoding="utf-8") + "\nfrom . import helper  # noqa\n",
+        encoding="utf-8",
+    )
+    (runner.parent / "helper.py").write_text("x = 1\n", encoding="utf-8")
+    changes = {c.path: c.kind for c in changed_inputs(load(), pinned_root)}
+    assert changes == {
+        "tools/experiment_e01/core.py": "changed",
+        "tools/experiment_e01/helper.py": "added",
+    }
+
+
+def test_a_pinned_file_the_scope_no_longer_names_is_listed(pinned_root: Path) -> None:
+    runner = pinned_root / "tools" / "experiment_e01" / "core.py"
+    text = runner.read_text(encoding="utf-8")
+    line = "from tools.generated_release.core import _chart_api_defaults\n"
+    assert line in text
+    runner.write_text(text.replace(line, ""), encoding="utf-8")
+    changes = {c.path: c.kind for c in changed_inputs(load(), pinned_root)}
+    assert changes["tools/experiment_e01/core.py"] == "changed"
+    assert changes["tools/generated_release/core.py"] == "unscoped"
+    assert changes["tools/generated_release/__init__.py"] == "unscoped"
+
+
+def test_revision_one_still_lists_only_its_own_pins(pinned_root: Path) -> None:
+    """A record registered before scopes is checked as it was: an added file it never
+    listed is invisible to it. That is the gap revision 2 closes."""
+    (pinned_root / "charts/inferops-llm/templates/extra.yaml").write_text(
+        "x: 1\n", encoding="utf-8"
+    )
+    paths = {c.path for c in changed_inputs(load(R1), pinned_root)}
+    assert "charts/inferops-llm/templates/extra.yaml" not in paths
 
 
 def _command(*arguments: str) -> subprocess.CompletedProcess[str]:
@@ -619,8 +887,9 @@ def test_the_command_reports_moved_inputs_and_an_edited_record(
 # --------------------------------------------------------------------------
 
 
-def test_e01_freezes_four_parts_a_b_and_c_at_c0_and_d_at_c2() -> None:
-    document = load()
+@pytest.mark.parametrize("path", [R1, R2])
+def test_e01_freezes_four_parts_a_b_and_c_at_c0_and_d_at_c2(path: str) -> None:
+    document = load(path)
     assert [part["id"] for part in document["parts"]] == [
         "E01-A",
         "E01-B",
@@ -632,14 +901,22 @@ def test_e01_freezes_four_parts_a_b_and_c_at_c0_and_d_at_c2() -> None:
         for part in ("E01-A", "E01-B", "E01-C", "E01-D")
     }
     assert levels == {"E01-A": "C0", "E01-B": "C0", "E01-C": "C0", "E01-D": "C2"}
-    assert document["metadata"]["revision"] == 1
-    assert document["metadata"]["supersedes"] is None
+    if path == R1:
+        assert document["metadata"]["revision"] == 1
+        assert document["metadata"]["supersedes"] is None
+    else:
+        assert document["metadata"]["revision"] == 2
+        assert document["metadata"]["supersedes"] == {
+            "path": R1,
+            "contentSha256": FROZEN_RECORDS[R1],
+        }
 
 
-def test_e01_ds_environment_identity_is_pending_on_its_owner_and_nothing_else_is() -> (
-    None
-):
-    document = load()
+@pytest.mark.parametrize("path", [R1, R2])
+def test_e01_ds_environment_identity_is_pending_on_its_owner_and_nothing_else_is(
+    path: str,
+) -> None:
+    document = load(path)
     pending = [
         (key, e["parts"], e.get("owner"))
         for key, entries in document["fields"].items()
@@ -650,17 +927,21 @@ def test_e01_ds_environment_identity_is_pending_on_its_owner_and_nothing_else_is
     assert entry(document, "environmentIdentity", "E01-A")["status"] == "value"
 
 
-def test_e01_states_why_a_fault_and_derived_bounds_do_not_apply() -> None:
-    document = load()
+@pytest.mark.parametrize("path", [R1, R2])
+def test_e01_states_why_a_fault_and_derived_bounds_do_not_apply(path: str) -> None:
+    document = load(path)
     for key in ("fault", "derivedNumericBounds"):
         entries = document["fields"][key]
         assert [e["status"] for e in entries] == ["not-applicable"], key
         assert entries[0]["parts"] == ["E01-A", "E01-B", "E01-C", "E01-D"]
 
 
-def test_e01_c_runs_at_least_the_four_required_kinds_of_negative_case() -> None:
-    cases = next(p for p in load()["parts"] if p["id"] == "E01-C")["cases"]
-    assert len({case["id"] for case in cases}) == len(cases) == 6
+@pytest.mark.parametrize(("path", "count"), [(R1, 6), (R2, 7)])
+def test_e01_c_runs_at_least_the_four_required_kinds_of_negative_case(
+    path: str, count: int
+) -> None:
+    cases = next(p for p in load(path)["parts"] if p["id"] == "E01-C")["cases"]
+    assert len({case["id"] for case in cases}) == len(cases) == count
     assert {
         "schema-invalid",
         "semantic-invalid",
@@ -678,8 +959,9 @@ def test_e01_c_runs_at_least_the_four_required_kinds_of_negative_case() -> None:
                 assert set(finding) == {"rule", "category", "code", "field"}, case["id"]
 
 
-def test_e01_numbers_its_criteria_in_order_and_gives_every_part_one() -> None:
-    document = load()
+@pytest.mark.parametrize("path", [R1, R2])
+def test_e01_numbers_its_criteria_in_order_and_gives_every_part_one(path: str) -> None:
+    document = load(path)
     ids = [
         criterion["id"]
         for e in document["fields"]["acceptanceCriteria"]
@@ -703,35 +985,104 @@ def _named_paths(node: Any) -> set[str]:
     return set()
 
 
-def test_every_input_a_part_names_is_pinned_and_so_are_the_four_the_brief_names() -> (
-    None
-):
-    document = load()
+@pytest.mark.parametrize(
+    ("path", "roles"),
+    [
+        (R1, ("workload-contract", "environment-binding", "renderer")),
+        (
+            R2,
+            (
+                "workload-contract",
+                "environment-binding",
+                "product-code",
+                "runner-and-analysis",
+                "freeze-checker",
+            ),
+        ),
+    ],
+)
+def test_every_input_a_part_names_is_pinned_and_so_are_the_ones_the_brief_names(
+    path: str, roles: tuple[str, ...]
+) -> None:
+    document = load(path)
     pinned = {item["path"]: item["role"] for item in document["pinnedInputs"]}
     named = _named_paths(document["parts"])
     assert named, "the parts name their input files"
     assert named <= set(pinned), sorted(named - set(pinned))
-    roles = set(pinned.values())
-    for role in ("workload-contract", "environment-binding", "renderer"):
-        assert role in roles, role
+    for role in roles:
+        assert role in set(pinned.values()), role
     assert pinned["charts/inferops-llm/values.yaml"].startswith("platform-defaults")
 
 
-def test_every_pinned_input_is_a_committed_file() -> None:
-    for item in load()["pinnedInputs"]:
+@pytest.mark.parametrize("path", [R1, R2])
+def test_every_pinned_input_is_a_committed_file(path: str) -> None:
+    for item in load(path)["pinnedInputs"]:
         assert (REPO_ROOT / item["path"]).is_file(), item["path"]
 
 
-def test_e01_names_its_preparation_revision_and_no_commit_that_merges_it() -> None:
-    value = load()["fields"]["gitRevision"][0]["value"]
+@pytest.mark.parametrize("path", [R1, R2])
+def test_e01_names_its_preparation_revision_and_no_commit_that_merges_it(
+    path: str,
+) -> None:
+    value = load(path)["fields"]["gitRevision"][0]["value"]
     assert re.fullmatch(r"[0-9a-f]{40}", value["preparedFrom"])
     assert "pinnedInputs" in value["pinnedInputs"]
 
 
-def test_the_record_names_only_its_own_story_and_the_pending_owner() -> None:
-    text = (REPO_ROOT / E01).read_text(encoding="utf-8")
-    assert set(re.findall(r"V2-S\d+-\d+-PR\d+", text)) == {
-        "V2-S2-003-PR1",
-        "V2-S3-004-PR1",
-    }
+@pytest.mark.parametrize(
+    ("path", "stories"),
+    [
+        (R1, {"V2-S2-003-PR1", "V2-S3-004-PR1"}),
+        (R2, {"V2-S2-004-PR1", "V2-S3-004-PR1"}),
+    ],
+)
+def test_the_record_names_only_its_own_story_and_the_pending_owner(
+    path: str, stories: set[str]
+) -> None:
+    text = (REPO_ROOT / path).read_text(encoding="utf-8")
+    assert set(re.findall(r"V2-S\d+-\d+-PR\d+", text)) == stories
     assert not re.search(r"[A-Za-z]:\\|/Users/|/home/", text)
+
+
+def test_revision_one_states_the_exception_revision_two_removes() -> None:
+    """History is kept: revision 1 still carries the exception the review rejected."""
+    assert "except the model's download URL" in load(R1)["definition"]["hypothesis"]
+
+
+def test_revision_two_restores_the_governing_no_duplication_criterion() -> None:
+    document = load(R2)
+    assert document["definition"]["hypothesis"].endswith(
+        "and no claim-relevant workload intent is written again by hand after "
+        "rendering."
+    )
+    statements = {
+        criterion["id"]: criterion["statement"]
+        for e in document["fields"]["acceptanceCriteria"]
+        for criterion in e["value"]
+    }
+    for criterion in ("E01-AC5", "E01-AC10"):
+        assert "except the model" not in statements[criterion], criterion
+        assert "eight characters" in statements[criterion], criterion
+    text = json.dumps(document)
+    assert "sourceUrl and model.license.reference strings" not in text
+
+
+def test_revision_two_records_the_first_runs_audit_and_the_preview_evidence() -> None:
+    history = load(R2)["history"]
+    assert [run["runId"] for run in history["priorRuns"]] == ["20261002-e01-abc-1"]
+    assert "not available" in history["previewEvidence"]
+    assert "not preregistered" not in history["previewEvidence"]
+    assert "None was preregistered" in history["previewEvidence"]
+
+
+def test_revision_two_defines_its_non_result_executions_before_any_run() -> None:
+    definition = load(R2)["definition"]
+    classes = [item["class"] for item in definition["nonResultExecutions"]]
+    assert classes == [
+        "test-suite",
+        "committed-run-check",
+        "freeze-check",
+        "registration-calibration",
+    ]
+    assert "not permitted" in definition["previewRule"]
+    assert "procedure" in definition["previewRule"]

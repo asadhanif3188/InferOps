@@ -19,10 +19,25 @@ the values the run recorded. :func:`check_run` compares that with the outcome st
 and the result page the run committed, so a committed run is checked again without
 executing it. A difference is a finding.
 
+**Versioned analysis.** A run executes the latest E01 freeze revision,
+:data:`CURRENT_REVISION`. A committed run is judged by the analysis of the revision it
+names: :func:`judge`, :func:`result_page`, and the precondition check each take the
+revision from the record, so the first run, registered under revision 1, is checked
+by revision 1's criteria and page, byte for byte, and is never reinterpreted.
+
+**Execution identity, from revision 2.** The runner is a pinned input of the record,
+within the record's material scope. Before it starts, a run checks that the runner
+module and the ``inferops`` package it imported are the ones in the checked-out tree,
+that the record is registered and unedited, and that no material file differs from
+the record - added files included. During the run it records every repository module
+file it and its second process loaded, with its content digest; a loaded file outside
+the frozen scope is an abort condition.
+
 **What this does not do.** It renders nothing for E01-D, contacts no cluster or
 network, and reads no model. It does not decide whether a moved input is material: a
-moved input refuses the run. The runner is not a pinned input of the freeze record.
-A run records the content digest of every runner file it executed instead.
+moved input refuses the run. It cannot stop a full run of the parts outside this
+command - in a throwaway repository, say. The record's rule against such previews is a
+procedure, and this module does not enforce it.
 """
 
 from __future__ import annotations
@@ -30,6 +45,7 @@ from __future__ import annotations
 import copy
 import datetime
 import hashlib
+import importlib.metadata
 import json
 import os
 import platform
@@ -41,7 +57,7 @@ import tempfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 import yaml
@@ -54,6 +70,7 @@ from inferops.domain.environment import (
 )
 from inferops.domain.release import GitRevision, binding_digest, contract_digest
 from inferops.domain.render import (
+    DERIVED_HELM_VALUES,
     HELM_VALUE_DISPOSITIONS,
     RELEASE_FILE_NAME,
     RENDER_FIELD_OWNERSHIP,
@@ -75,7 +92,12 @@ from inferops.domain.workload import (
     parse_workload_contract,
     set_matrix_loader,
 )
-from tools.experiment_freeze import changed_inputs, content_digest
+from tools.experiment_freeze import (
+    REGISTRY_PATH,
+    changed_inputs,
+    check_repository,
+    content_digest,
+)
 
 # The freeze record names this reader for the platform defaults: "the api block of
 # charts/inferops-llm/values.yaml, read as tools/generated_release reads them". The
@@ -86,7 +108,9 @@ __all__ = [
     "API_VERSION",
     "CHART_DEFAULTS",
     "CRITERIA",
+    "CURRENT_REVISION",
     "FREEZE_PATH",
+    "FREEZE_RECORDS",
     "HASH_SEEDS",
     "KIND",
     "MERGED_REF",
@@ -103,10 +127,13 @@ __all__ = [
     "committed_runs",
     "deep_merge",
     "execute_run",
+    "identity_conditions",
     "imported_package",
     "judge",
     "leaves",
     "load_freeze",
+    "loaded_modules",
+    "package_directories",
     "precondition_findings",
     "render_second",
     "result_page",
@@ -115,8 +142,26 @@ __all__ = [
 
 REPO_ROOT: Final = Path(__file__).resolve().parents[2]
 
-#: The freeze record this run executes. Revision 1 is the only one merged.
-FREEZE_PATH: Final = "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json"
+#: Every E01 freeze revision a committed run may name, by revision.
+FREEZE_RECORDS: Final[Mapping[int, str]] = {
+    1: "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json",
+    2: "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json",
+}
+
+#: The revision a new run executes: the latest merged one.
+CURRENT_REVISION: Final = 2
+
+#: The freeze record a new run executes.
+FREEZE_PATH: Final = FREEZE_RECORDS[CURRENT_REVISION]
+
+#: The runner module, as a repository path, which a run from revision 2 on must have
+#: imported from the checked-out tree.
+RUNNER_FILE: Final = "tools/experiment_e01/core.py"
+
+#: A hand-written string is compared with a generated contract value only when the
+#: value is at least this long, as the V1 compatibility record check does: shorter
+#: values - ``local``, ``real``, ``6`` - occur inside unrelated strings.
+PIN_MIN_LENGTH: Final = 8
 
 #: Where every run's evidence directory is written, by repository path.
 RUNS_DIR: Final = "docs/proof/experiments/v2-e01/runs"
@@ -316,12 +361,23 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def load_freeze(root: Path = REPO_ROOT) -> dict[str, Any]:
-    """The freeze record this run executes, read from ``root``."""
-    document = json.loads((root / FREEZE_PATH).read_text(encoding="utf-8"))
+def load_freeze(
+    root: Path = REPO_ROOT, revision: int = CURRENT_REVISION
+) -> dict[str, Any]:
+    """The E01 freeze record of ``revision``, read from ``root``: by default the one a
+    new run executes."""
+    path = FREEZE_RECORDS[revision]
+    document = json.loads((root / path).read_text(encoding="utf-8"))
     if not isinstance(document, dict):
-        raise ValueError(f"{FREEZE_PATH} is not a JSON object")
+        raise ValueError(f"{path} is not a JSON object")
     return document
+
+
+def _revision(freeze: Mapping[str, Any]) -> int:
+    revision = freeze["metadata"]["revision"]
+    if revision not in FREEZE_RECORDS:
+        raise ValueError(f"E01 freeze revision {revision!r} has no analysis")
+    return int(revision)
 
 
 def _part(freeze: Mapping[str, Any], part_id: str) -> Mapping[str, Any]:
@@ -418,6 +474,104 @@ def imported_package(root: Path) -> str:
         return "outside the checked-out tree"
 
 
+def package_directories(freeze: Mapping[str, Any]) -> tuple[str, ...]:
+    """The repository directories of the record's package roots, such as
+    ``src/inferops/`` and ``tools/``: where a loaded module is the experiment's own.
+
+    Only these count. A virtual environment inside the checkout, ``.venv/``, holds
+    third-party packages that uv.lock pins by version, not by content, so a module
+    loaded from it is not compared with the pins.
+    """
+    roots = freeze.get("materialScope", {}).get("packageRoots", {})
+    return tuple(
+        sorted(
+            f"{PurePosixPath(directory, package).as_posix()}/"
+            for package, directory in roots.items()
+        )
+    )
+
+
+def loaded_modules(root: Path, packages: Sequence[str]) -> dict[str, str]:
+    """Every module file this process has loaded from the package directories under
+    ``root``, by repository path, with its content digest. A module loaded from
+    anywhere else - another checkout, the standard library, a virtual environment
+    inside ``root`` - is not listed."""
+    base = root.resolve()
+    found: dict[str, str] = {}
+    for module in list(sys.modules.values()):
+        name = getattr(module, "__file__", None)
+        if not name:
+            continue
+        path = Path(name).resolve()
+        try:
+            relative = path.relative_to(base).as_posix()
+        except ValueError:
+            continue
+        if (
+            relative.startswith(tuple(packages))
+            and path.is_file()
+            and path.suffix == ".py"
+        ):
+            found[relative] = content_digest(path.read_bytes())
+    return dict(sorted(found.items()))
+
+
+#: The abort conditions the execution identity can meet, from revision 2.
+LOADED_OUTSIDE: Final = (
+    "a module file the run loaded is not a pinned input with its pinned content"
+)
+SECOND_OUTSIDE: Final = (
+    "the second process imported the runner or the inferops package from outside "
+    "the checked-out tree"
+)
+
+
+def identity_conditions(
+    manifest: Mapping[str, Any], freeze: Mapping[str, Any]
+) -> tuple[list[str], list[str]]:
+    """From a revision-2 manifest's own records: the loaded module files that are not
+    pinned inputs with their pinned content, and the abort conditions that gives.
+
+    A condition applies only to a run whose preconditions held; a refused run ran no
+    part, so what it loaded decides nothing.
+    """
+    identity = manifest["executionIdentity"]
+    pinned = {item["path"]: item["sha256"] for item in freeze["pinnedInputs"]}
+    outside = sorted(
+        {
+            path
+            for loaded in (
+                identity["loadedModules"],
+                identity["loadedModulesSecondProcess"],
+            )
+            for path, digest in loaded.items()
+            if pinned.get(path) != digest
+        }
+    )
+    if manifest["preconditions"]["findings"]:
+        return outside, []
+    conditions = [LOADED_OUTSIDE] if outside else []
+    second = (
+        manifest.get("observations", {}).get("E01-A", {}).get("renderB") or {}
+    ).get("reported") or {}
+    if second and (
+        second.get("runnerInCheckout") is not True
+        or second.get("inferopsPackage") != "src/inferops"
+    ):
+        conditions.append(SECOND_OUTSIDE)
+    return outside, conditions
+
+
+def _runner_in_checkout(root: Path) -> bool:
+    try:
+        return (
+            Path(__file__).resolve().relative_to(root.resolve()).as_posix()
+            == RUNNER_FILE
+        )
+    except ValueError:
+        return False
+
+
 def render_second(root: Path, revision: str, out: Path) -> dict[str, Any]:
     """E01-A step 4: the three steps again, in this process, written to ``out``."""
     freeze = load_freeze(root)
@@ -431,6 +585,8 @@ def render_second(root: Path, revision: str, out: Path) -> dict[str, Any]:
         "pythonHashSeed": os.environ.get("PYTHONHASHSEED"),
         "hashRandomization": bool(sys.flags.hash_randomization),
         "inferopsPackage": imported_package(root),
+        "runnerInCheckout": _runner_in_checkout(root),
+        "loadedModules": loaded_modules(root, package_directories(freeze)),
     }
 
 
@@ -458,34 +614,55 @@ def precondition_findings(
     moved_inputs: Sequence[str],
     parts: Sequence[str],
     package_in_checkout: bool = True,
+    revision: int,
+    runner_in_checkout: bool = True,
+    record_registered: bool = True,
 ) -> list[str]:
     """Each freeze precondition the observed state fails, in the record's order.
 
     Every argument is an observation the caller made: the commit checked out, whether
     it is reachable from the merged branch, whether the freeze record is in it, the
-    porcelain status lines, the pinned inputs whose content moved, the parts the
-    run executes, and whether the ``inferops`` package imported is the one in the
-    checked-out tree's ``src``.
+    porcelain status lines, the material files that differ from the record, the parts
+    the run executes, and whether the ``inferops`` package imported is the one in the
+    checked-out tree's ``src``. From ``revision`` 2: whether the runner module is the
+    checked-out tree's, and whether the record is registered and unedited. Revision 1's
+    findings are the ones that revision's runs recorded, word for word.
     """
+    freeze_path = FREEZE_RECORDS[revision]
     findings = []
     if not re.fullmatch(r"[0-9a-f]{40}", head):
         findings.append("the executing commit is not a full Git revision")
     if not merged:
         findings.append("the executing commit is not merged")
     if not freeze_at_head:
-        findings.append(f"the executing commit holds no {FREEZE_PATH}")
+        findings.append(f"the executing commit holds no {freeze_path}")
     if status:
         findings.append("the working tree is not clean")
-    if moved_inputs:
+    if moved_inputs and revision == 1:
         findings.append(
             f"{len(moved_inputs)} pinned input(s) differ from their pins, and no "
             "merged revision classifies them"
+        )
+    elif moved_inputs:
+        findings.append(
+            f"{len(moved_inputs)} material file(s) differ from the freeze record - "
+            "changed, absent, added, or out of scope - and no merged revision "
+            "classifies them"
         )
     if "E01-D" in parts:
         findings.append("E01-D is refused while its environment identity is pending")
     if not package_in_checkout:
         findings.append(
             "the inferops package imported is not the one in the checked-out tree"
+        )
+    if revision >= 2 and not runner_in_checkout:
+        findings.append(
+            "the runner imported is not the one in the checked-out tree, at "
+            f"{RUNNER_FILE}"
+        )
+    if revision >= 2 and not record_registered:
+        findings.append(
+            f"{freeze_path} is not registered, or differs from its registered pin"
         )
     return findings
 
@@ -495,7 +672,7 @@ def precondition_findings(
 MERGED_REF: Final = "origin/main"
 
 
-def _recorded_findings(manifest: Mapping[str, Any]) -> list[str]:
+def _recorded_findings(manifest: Mapping[str, Any], revision: int) -> list[str]:
     """The precondition findings the manifest's own observations give."""
     seen = manifest["preconditions"]
     package = seen.get("inferopsPackage", "src/inferops")
@@ -507,6 +684,10 @@ def _recorded_findings(manifest: Mapping[str, Any]) -> list[str]:
         moved_inputs=seen["movedPinnedInputs"],
         parts=manifest["metadata"]["parts"],
         package_in_checkout=package == "src/inferops",
+        revision=revision,
+        # Revision 1's runs did not record these checks; from revision 2 they must.
+        runner_in_checkout=True if revision == 1 else seen["runnerInCheckout"],
+        record_registered=True if revision == 1 else seen["freezeRecordRegistered"],
     )
 
 
@@ -543,6 +724,17 @@ def _tool_version(command: Sequence[str]) -> str:
     except OSError:
         return "not found"
     return result.stdout.strip() or "not reported"
+
+
+def _distribution_version(name: str) -> str:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return "not installed"
+
+
+def _digest_or_none(path: Path) -> str | None:
+    return content_digest(path.read_bytes()) if path.is_file() else None
 
 
 def _runner_files() -> dict[str, str]:
@@ -720,17 +912,38 @@ def _run_parts(
         admission = {"admitted": False, "refusal": _refusal(error)}
     observations["E01-A"]["admission"] = admission
 
-    # E01-A step 8: every chart value a workload-intent context value renders to.
+    # E01-A step 8: every chart value a workload-intent context value renders to,
+    # and, from revision 2, every value derived from workload-intent values only.
     owner = {row.name: row.layer.value for row in RENDER_FIELD_OWNERSHIP}
-    targets = sorted(
-        {
-            target
-            for name, disposition in HELM_VALUE_DISPOSITIONS.items()
-            if owner.get(name) == "workload-intent"
-            for target in disposition.targets
+    targets = {
+        target
+        for name, disposition in HELM_VALUE_DISPOSITIONS.items()
+        if owner.get(name) == "workload-intent"
+        for target in disposition.targets
+    }
+    if _revision(freeze) >= 2:
+        targets |= {
+            path
+            for path, derived in DERIVED_HELM_VALUES.items()
+            if all(owner.get(name) == "workload-intent" for name in derived.sources)
         }
-    )
-    observations["E01-A"]["workloadIntentTargets"] = targets
+        # E01-A step 9 of revision 2: no hand-written string restates one of them.
+        generated_values = dict(leaves(first.generated.values.as_document()))
+        observations["E01-A"]["restatedPins"] = [
+            {"path": path, "restates": restated}
+            for path, value in leaves(a["handWritten"])
+            if (
+                restated := sorted(
+                    target
+                    for target in targets
+                    if isinstance(value, str)
+                    and isinstance(generated_values.get(target), str)
+                    and len(generated_values[target]) >= PIN_MIN_LENGTH
+                    and generated_values[target] in value
+                )
+            )
+        ]
+    observations["E01-A"]["workloadIntentTargets"] = sorted(targets)
 
     # E01-A step 9: both merges, and every value that differs.
     chart_defaults = _load_yaml(root / CHART_DEFAULTS)
@@ -808,6 +1021,7 @@ def execute_run(
     log.add(invocation)
 
     freeze = load_freeze(root)
+    revision = _revision(freeze)
     head = _git(root, log, "rev-parse", "HEAD").stdout.strip()
     merged = (
         _git(root, log, "merge-base", "--is-ancestor", "HEAD", merged_ref).returncode
@@ -823,8 +1037,15 @@ def execute_run(
         f"record, the check behind python -m tools.experiment_freeze --changes "
         f"{FREEZE_PATH}"
     )
-    moved = [change.path for change in changed_inputs(freeze, root)]
+    inventory = changed_inputs(freeze, root)
+    moved = [change.path for change in inventory]
+    log.add(
+        "# in process: tools.experiment_freeze.check_repository, the check behind "
+        "python -m tools.experiment_freeze --check"
+    )
+    registered = not [f for f in check_repository(root) if f.record == FREEZE_PATH]
     location = imported_package(source_root or root)
+    runner_here = _runner_in_checkout(source_root or root)
     findings = precondition_findings(
         head=head,
         merged=merged,
@@ -833,6 +1054,9 @@ def execute_run(
         moved_inputs=moved,
         parts=PARTS,
         package_in_checkout=location == "src/inferops",
+        revision=revision,
+        runner_in_checkout=runner_here,
+        record_registered=registered,
     )
 
     evidence.mkdir(parents=True)
@@ -872,6 +1096,9 @@ def execute_run(
         aborts.append("a file outside the run's evidence directory changed")
     if scratch_removed is False:
         aborts.append("the run's temporary directory could not be removed")
+    loaded = loaded_modules(source_root or root, package_directories(freeze))
+    second = (observations.get("E01-A", {}).get("renderB") or {}).get("reported") or {}
+    loaded_second = second.get("loadedModules") or {}
 
     _write(evidence / COMMANDS, ("\n".join(log.lines) + "\n").encode("utf-8"))
     files = {
@@ -902,7 +1129,12 @@ def execute_run(
             "freezeRecordAtRevision": freeze_at_head,
             "statusBefore": status_before,
             "movedPinnedInputs": moved,
+            "inventoryChanges": [
+                {"path": change.path, "kind": change.kind} for change in inventory
+            ],
             "inferopsPackage": location,
+            "runnerInCheckout": runner_here,
+            "freezeRecordRegistered": registered,
             "findings": findings,
         },
         "host": {
@@ -912,6 +1144,19 @@ def execute_run(
             "uv": _tool_version(["uv", "--version"]),
         },
         "runner": {"package": package, "files": _runner_files()},
+        "executionIdentity": {
+            "runnerFile": RUNNER_FILE
+            if runner_here
+            else "outside the checked-out tree",
+            "inferopsPackage": location,
+            "inferopsVersion": _distribution_version("inferops"),
+            "registry": {
+                "path": REGISTRY_PATH,
+                "contentSha256": _digest_or_none(root / REGISTRY_PATH),
+            },
+            "loadedModules": loaded,
+            "loadedModulesSecondProcess": loaded_second,
+        },
         "observations": observations,
         "error": error,
         "abortChecks": {
@@ -922,6 +1167,9 @@ def execute_run(
         },
         "files": files,
     }
+    outside, identity_aborts = identity_conditions(manifest, freeze)
+    manifest["executionIdentity"]["loadedOutsideFrozenInputs"] = outside
+    manifest["abortChecks"]["conditions"].extend(identity_aborts)
     try:
         judgement = judge(evidence, freeze, manifest)
     except Exception as raised:  # the run is still recorded, and answers nothing
@@ -975,7 +1223,7 @@ def _field(document: Any, dotted: str) -> Any:
 
 
 def _judge_a(
-    evidence: Path, manifest: Mapping[str, Any]
+    evidence: Path, manifest: Mapping[str, Any], freeze_revision: int = 1
 ) -> dict[str, tuple[bool | None, list[str]]]:
     seen = manifest.get("observations", {}).get("E01-A")
     out: dict[str, tuple[bool | None, list[str]]] = {}
@@ -1108,13 +1356,32 @@ def _judge_a(
         f"render-a/{VALUES_FILE_NAME}" + (f": {', '.join(missing)}" if missing else ""),
         merged,
     ]
-    if differences is None or not targets:
+    restated = seen.get("restatedPins")
+    if freeze_revision >= 2:
+        if restated is None:
+            basis5.append("which hand-written strings restate a pin was not recorded")
+        else:
+            basis5.append(
+                "hand-written strings that restate a workload-intent generated value: "
+                + (
+                    "; ".join(
+                        f"{r['path']} ({', '.join(r['restates'])})" for r in restated
+                    )
+                    or "none"
+                )
+            )
+    if (
+        differences is None
+        or not targets
+        or (freeze_revision >= 2 and restated is None)
+    ):
         out["E01-AC5"] = (None, basis5)
     else:
         out["E01-AC5"] = (
             admission.get("admitted") is True
             and not missing
-            and differences == expected_difference,
+            and differences == expected_difference
+            and (freeze_revision == 1 or restated == []),
             basis5,
         )
     return out
@@ -1274,7 +1541,7 @@ def judge(
         ]
         results = {criterion.criterion_id: (None, reason) for criterion in CRITERIA}
     else:
-        results.update(_judge_a(evidence, manifest))
+        results.update(_judge_a(evidence, manifest, _revision(freeze)))
         results["E01-AC6"] = _judge_b(evidence, freeze, manifest)
         results["E01-AC7"] = _judge_c(evidence, freeze)
     outcomes = {}
@@ -1332,13 +1599,23 @@ def result_page(
         "",
     ]
     lines += [f"- {item}" for item in freeze["definition"]["limitations"]]
+    lines += ["", "Of this run:", ""]
+    if _revision(freeze) == 1:
+        lines.append(
+            "- The runner is not a pinned input of the freeze record. It ran from "
+            "outside the checked-out tree, and the manifest records the content digest "
+            "of each runner file."
+        )
+    else:
+        identity = manifest.get("executionIdentity", {})
+        lines.append(
+            "- The runner is a pinned input of the freeze record. The manifest records "
+            "where the runner and the inferops package were imported from - "
+            f"{identity.get('runnerFile')} and {identity.get('inferopsPackage')} - and "
+            "every repository module file the run and its second process loaded, with "
+            "its content digest."
+        )
     lines += [
-        "",
-        "Of this run:",
-        "",
-        "- The runner is not a pinned input of the freeze record. It ran from outside "
-        "the checked-out tree, and the manifest records the content digest of each "
-        "runner file.",
         "- The run executed on one host, named in the manifest. The evidence is C0: "
         "nothing was deployed, and no runtime component, cluster, or model executed.",
         "",
@@ -1426,12 +1703,25 @@ def _check_manifest(
     evidence: Path, name: str, manifest: Mapping[str, Any], root: Path
 ) -> list[RunFinding]:
     findings: list[RunFinding] = []
+    named = manifest["metadata"]["freezeRecord"]
+    revisions = {path: revision for revision, path in FREEZE_RECORDS.items()}
+    if named not in revisions or manifest["metadata"]["freezeRevision"] != (
+        revisions.get(named)
+    ):
+        return [
+            RunFinding(
+                name,
+                "metadata.freezeRecord",
+                "names no E01 freeze revision this analysis knows",
+            )
+        ]
+    revision = revisions[named]
     preconditions = manifest["preconditions"]
     if preconditions["mergedRef"] != MERGED_REF:
         findings.append(
             RunFinding(name, "preconditions.mergedRef", f"is not {MERGED_REF}")
         )
-    if preconditions["findings"] != _recorded_findings(manifest):
+    if preconditions["findings"] != _recorded_findings(manifest, revision):
         findings.append(
             RunFinding(
                 name,
@@ -1439,9 +1729,33 @@ def _check_manifest(
                 "are not the findings the recorded observations give",
             )
         )
-    freeze = load_freeze(root)
+    freeze = load_freeze(root, revision)
+    if revision >= 2:
+        # The execution identity is checked again from what the run recorded.
+        outside, identity_aborts = identity_conditions(manifest, freeze)
+        if manifest["executionIdentity"]["loadedOutsideFrozenInputs"] != outside:
+            findings.append(
+                RunFinding(
+                    name,
+                    "executionIdentity.loadedOutsideFrozenInputs",
+                    "is not what the recorded loaded modules and the pins give",
+                )
+            )
+        recorded = [
+            c
+            for c in manifest["abortChecks"]["conditions"]
+            if c in (LOADED_OUTSIDE, SECOND_OUTSIDE)
+        ]
+        if recorded != identity_aborts:
+            findings.append(
+                RunFinding(
+                    name,
+                    "abortChecks.conditions",
+                    "do not state the execution-identity conditions the record gives",
+                )
+            )
     pinned = manifest["metadata"]["freezeContentSha256"]
-    if content_digest((root / FREEZE_PATH).read_bytes()) != pinned:
+    if content_digest((root / named).read_bytes()) != pinned:
         findings.append(
             RunFinding(
                 name,

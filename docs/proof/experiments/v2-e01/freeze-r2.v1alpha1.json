@@ -1,0 +1,1246 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentFreeze",
+  "metadata": {
+    "experiment": "V2-E01",
+    "title": "Contract-to-deployment determinism",
+    "revision": 2,
+    "registered": "2026-10-03",
+    "registeredBy": "V2-S2-004-PR1",
+    "supersedes": {
+      "path": "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json",
+      "contentSha256": "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9"
+    }
+  },
+  "definition": {
+    "hypothesis": "If the WorkloadContract, the selected EnvironmentBinding, the versioned platform defaults, and the renderer revision are fixed, the render path produces the same complete claim-relevant release input for the V1 synchronous workload on every render. A claim-relevant contract change changes only the output it owns. Invalid and conflicting inputs are refused with a stable category and code. The release input deploys and serves a real completion, and no claim-relevant workload intent is written again by hand after rendering.",
+    "scope": "E01 tests the front of the V2 path: contract, render, and release input, and in E01-D also Git, Argo CD, and one served completion. E01 injects no fault and tests no failure tolerance.",
+    "outcomeStates": {
+      "PASSED": "Every acceptance criterion of the part held.",
+      "FAILED": "The part executed as registered, and at least one acceptance criterion did not hold. A FAILED run is valid evidence and stays recorded.",
+      "INCONCLUSIVE": "The part executed and could not answer its question: a check it needs did not run, or its evidence is incomplete.",
+      "REFUSED": "The part did not start, because a precondition failed.",
+      "ABORTED": "The part started and met an abort condition. The run records the condition and the cleanup."
+    },
+    "preconditions": [
+      "This record, or a later revision of it, is merged. The run records the merged commit it executes, as a full Git revision, and that commit is reachable from origin/main.",
+      "The working tree at that commit is clean.",
+      "This record is registered in docs/proof/experiments/registry.v1alpha1.json, and its content equals its registered pin.",
+      "No material file differs from this record: no pinned input is changed or absent, no file in materialScope is unpinned, and no pinned input is outside materialScope; or a merged later revision of this record classifies each difference. python -m tools.experiment_freeze --changes lists every difference.",
+      "The runner module and the inferops package the run imports are the ones in the checked-out tree: tools/experiment_e01/core.py and src/inferops. A run that imports either from elsewhere is REFUSED.",
+      "E01-D only: a merged revision of this record names the environment identity. While the environment identity is pending, E01-D is REFUSED."
+    ],
+    "repetitionRule": "No run is repeated to obtain a different outcome. After an INCONCLUSIVE, REFUSED, or ABORTED run, a new run may follow. Every run stays recorded with its outcome state, under its own run identifier.",
+    "notResultEvidence": "An E01 part counts only when it runs, after this record merges, as registered here, through python -m tools.experiment_e01 --run in the checked-out tree. nonResultExecutions lists every other execution that is allowed and why it is not result evidence. It was fixed when this record was registered, before any run under it.",
+    "limitations": [
+      "The platform-defaults revision a release records is asserted. Nothing reconstructs the defaults from it, so the release does not prove which defaults it was rendered from.",
+      "The renderer derives the model's download URL and licence reference from the contract's pins by one rule, for one model source. Nothing fetches either URL, so the run does not establish that they resolve.",
+      "The material scope's import closure is static: it follows import statements. A module loaded by a name built at run time is outside it; the run records every module file it loaded, and a loaded file outside the pinned inputs aborts the run.",
+      "The Python interpreter, the standard library, and installed third-party packages are not pinned by content. uv.lock pins the third-party versions; the run records the Python and uv versions.",
+      "Nothing blocks a merge that changes a material file. The precondition refuses the run until a merged revision classifies the change.",
+      "The rule against previews is a procedure, not enforced by code.",
+      "E01-C-4 is refused by the binding parser, which publishes a code and a field and no rule category.",
+      "E01-A, E01-B, and E01-C use one contract on one binding."
+    ],
+    "doesNotEstablish": [
+      "Portability to another workload shape.",
+      "Asynchronous or batch support.",
+      "Reliability under failure.",
+      "Production readiness.",
+      "That E01-D can run before its environment identity is frozen.",
+      "That the first run, 20261002-e01-abc-1, executed under this revision's execution boundary. It did not; history.priorRuns says why."
+    ],
+    "nonResultExecutions": [
+      {
+        "class": "test-suite",
+        "what": "The repository's test suites, which call the runner, the parts, and the judge against temporary repositories built from copies of committed files, including runs that are refused, aborted, or inconclusive on purpose.",
+        "whyNotResult": "A test execution checks the tool, not the experiment. It writes only under a temporary directory, and its outcome is a test result."
+      },
+      {
+        "class": "committed-run-check",
+        "what": "python -m tools.experiment_e01 --check, which judges committed runs again from their raw evidence.",
+        "whyNotResult": "It executes no part. It reads committed files only."
+      },
+      {
+        "class": "freeze-check",
+        "what": "python -m tools.experiment_freeze --check and --changes.",
+        "whyNotResult": "They read files only and execute no part."
+      },
+      {
+        "class": "registration-calibration",
+        "what": "Before this record merged, the test suite compared each expected refusal below with the refusal the published rule tables assign, in a temporary repository.",
+        "whyNotResult": "It fixes the registration, not the result. It ran before this record merged and is disclosed in the V2-S2-004-PR1 validation record."
+      }
+    ],
+    "previewRule": "No full execution of E01-A, E01-B, and E01-C is exempt from being an attempt. A development preview, a dry run, or a run in a throwaway repository is not permitted under this revision. If one happens, it is reported in the next run's validation record with what it executed and what it showed, and it is never presented as preregistered. This rule is a procedure: no code can stop a run outside this repository, and this record does not claim that one does.",
+    "executionIdentity": "The run records the merged commit it executes and the origin/main revision it checked against; the content digests of this record and of the registry; where the runner and the inferops package were imported from, and the inferops distribution version; and every repository module file the run and its second process loaded, with its content digest. A loaded file that is not a pinned input with its pinned content is an abort condition.",
+    "selfReference": "A record cannot contain the digest of a file that contains the record's digest, and it cannot name the commit that merges it. So this record does not pin the registry, which pins this record; the registry is data, not code, so the freeze checker that the run imports is pinned here without a cycle. The run records the registry's digest and the merged commit it executes instead. pinnedInputs fixes the experiment path; gitRevision.preparedFrom names the commit the record was prepared from, not the commit that merges it."
+  },
+  "parts": [
+    {
+      "id": "E01-A",
+      "title": "Deterministic double render",
+      "question": "Do two renders of identical inputs produce identical release input that records its sources?",
+      "inputs": {
+        "workloadContract": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+        "environmentBindings": [
+          "contracts/environment/examples/valid/local-kind.yaml"
+        ],
+        "bindingName": "local-kind",
+        "platformDefaults": "Version v1alpha1: the requestTimeoutMs, drainTimeoutMs, and maxOutputTokens values of the api block of charts/inferops-llm/values.yaml, read as tools/generated_release reads them.",
+        "compatibilityMatrix": "contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json",
+        "renderer": "HelmValuesRenderer from src/inferops/domain/render, constructed with the executing commit as its revision.",
+        "platformDefaultsRevision": "The executing commit.",
+        "handWrittenValues": "tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml",
+        "v1Values": "charts/inferops-llm/ci/real-values.yaml"
+      },
+      "procedure": [
+        "Load the compatibility matrix. Parse the contract with parse_workload_contract and the binding with parse_environment_binding.",
+        "Call generate_release with the renderer, the contract, the platform defaults, the binding, and binding_name local-kind. generate_release validates the contract and builds the render context before it renders.",
+        "Write the result with write_release to render-a, a directory that does not exist before the call.",
+        "In a second Python process, with a different PYTHONHASHSEED, repeat the three steps above and write to render-b.",
+        "Compare render-a with render-b: the bytes of values.generated.yaml, the bytes of rendered-workload-release.yaml, the SHA-256 of each file, and metadata.releaseId.",
+        "Check the provenance of render-a against values computed apart from the release: source.contract.sha256 against contract_digest of the parsed contract; the source.environmentBinding name, apiVersion, and sha256 against local-kind, inferops.io/v1alpha1, and binding_digest of the parsed binding; output.helmValues.sha256 against the SHA-256 of the bytes of render-a/values.generated.yaml; source.renderer.revision and source.platformDefaults.revision against the executing commit.",
+        "Admit the hand-written values beside the render-a values with admit_manual_values.",
+        "List every chart value that a workload-intent context value renders to, from HELM_VALUE_DISPOSITIONS and RENDER_FIELD_OWNERSHIP, and every chart value DERIVED_HELM_VALUES derives from workload-intent context values only. Check that each is in render-a/values.generated.yaml.",
+        "Merge the chart's defaults, render-a/values.generated.yaml, and the hand-written values the way Helm merges values files. Merge the chart's defaults and the V1 real values the same way. List every value that differs.",
+        "For every string in the hand-written values, list each value from the previous step that is at least eight characters long and occurs in it."
+      ]
+    },
+    {
+      "id": "E01-B",
+      "title": "Intent mutation",
+      "question": "Does one claim-relevant contract change move only the output it owns?",
+      "inputs": {
+        "workloadContract": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+        "mutation": [
+          {
+            "op": "replace",
+            "path": "/spec/scaling/minimumReplicas",
+            "value": 2
+          },
+          {
+            "op": "replace",
+            "path": "/spec/scaling/maximumReplicas",
+            "value": 2
+          }
+        ],
+        "otherInputs": "The E01-A inputs, unchanged."
+      },
+      "rationale": "The runtime replica count is claim-relevant workload intent with a known deployment effect. The chart runs a fixed replica count, so the range is set to one number, inside the chart's limit of 16.",
+      "procedure": [
+        "Apply the mutation, as JSON Patch operations, to the contract document as read from YAML, before parse_workload_contract.",
+        "Render and write as in E01-A steps 1 to 3, to mutation, a directory that does not exist before the call.",
+        "Compare mutation with render-a of the same run: list every leaf of values.generated.yaml that differs, with both values, and every field of rendered-workload-release.yaml that differs.",
+        "Check that source.contract.sha256 in mutation equals contract_digest of the mutated contract."
+      ],
+      "expectedChange": {
+        "values": {
+          "runtime.replicaCount": {
+            "from": 1,
+            "to": 2
+          }
+        },
+        "releaseFields": [
+          "metadata.releaseId",
+          "output.helmValues.sha256",
+          "source.contract.sha256"
+        ]
+      }
+    },
+    {
+      "id": "E01-C",
+      "title": "Negative contract and refusal cases",
+      "question": "Are invalid and conflicting inputs refused deterministically, with the expected stable category and code?",
+      "inputs": {
+        "cases": "The cases below. An edit is a JSON Patch operation, applied to the document as read from YAML before it is parsed. An input a case does not list is the E01-A input."
+      },
+      "procedure": [
+        "For each case, build its inputs from the pinned files and the edits it lists.",
+        "Run the step the case names. For generate_release and parse_environment_binding, parse the inputs and call generate_release as in E01-A. For admit_manual_values, call it with the values of the E01-A render and the edited hand-written values.",
+        "Record the refusal: its exception type, and for each finding in order, its rule identifier, category, code, and field. For a refusal with no findings, record its code and field.",
+        "Check that the case's output directory does not exist after the case.",
+        "Run each case a second time in the same way, and compare the two refusals."
+      ],
+      "cases": [
+        {
+          "id": "E01-C-1",
+          "kind": "schema-invalid",
+          "description": "The contract's synchronousLlm block is absent. The schema requires it for the synchronous-llm profile.",
+          "inputs": {
+            "workloadContract": {
+              "file": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+              "edits": [
+                {
+                  "op": "remove",
+                  "path": "/spec/synchronousLlm"
+                }
+              ]
+            }
+          },
+          "refusedBy": "generate_release",
+          "expected": {
+            "exception": "RenderRefused",
+            "findings": [
+              {
+                "rule": "field-required",
+                "category": "shape-invalid",
+                "code": "contract-invalid",
+                "field": "contract.spec.synchronousLlm"
+              }
+            ]
+          }
+        },
+        {
+          "id": "E01-C-2",
+          "kind": "semantic-invalid",
+          "description": "The contract's minimum replica count exceeds its maximum. Each value is valid alone; together they are not.",
+          "inputs": {
+            "workloadContract": {
+              "file": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+              "edits": [
+                {
+                  "op": "replace",
+                  "path": "/spec/scaling/minimumReplicas",
+                  "value": 2
+                },
+                {
+                  "op": "replace",
+                  "path": "/spec/scaling/maximumReplicas",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          "refusedBy": "generate_release",
+          "expected": {
+            "exception": "RenderRefused",
+            "findings": [
+              {
+                "rule": "replica-range-inverted",
+                "category": "semantic-invalid",
+                "code": "contract-invalid",
+                "field": "contract.spec.scaling"
+              }
+            ]
+          }
+        },
+        {
+          "id": "E01-C-3",
+          "kind": "ownership-conflict",
+          "description": "The hand-written values set runtime.replicaCount, which the contract owns and the renderer generates.",
+          "inputs": {
+            "handWrittenValues": {
+              "file": "tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml",
+              "edits": [
+                {
+                  "op": "add",
+                  "path": "/runtime/replicaCount",
+                  "value": 2
+                }
+              ]
+            },
+            "generatedValues": "The values of the E01-A render"
+          },
+          "refusedBy": "admit_manual_values",
+          "expected": {
+            "exception": "RenderRefused",
+            "findings": [
+              {
+                "rule": "render-manual-value-generated",
+                "category": "ownership-conflict",
+                "code": "contract-invalid",
+                "field": "manualValues.runtime.replicaCount"
+              }
+            ]
+          }
+        },
+        {
+          "id": "E01-C-4",
+          "kind": "ownership-conflict",
+          "description": "The binding supplies spec.scaling, the replica range the contract owns. The binding's schema has no field for it, so the binding parser refuses the document before the render boundary sees it.",
+          "inputs": {
+            "environmentBinding": {
+              "file": "contracts/environment/examples/valid/local-kind.yaml",
+              "edits": [
+                {
+                  "op": "add",
+                  "path": "/spec/scaling",
+                  "value": {
+                    "minimumReplicas": 2,
+                    "maximumReplicas": 2
+                  }
+                }
+              ]
+            }
+          },
+          "refusedBy": "parse_environment_binding",
+          "expected": {
+            "exception": "MalformedEnvironmentBindingError",
+            "code": "contract-invalid",
+            "field": "$.spec",
+            "categoryNote": "The binding parser publishes a code and a field. It publishes no rule category, so none is expected."
+          }
+        },
+        {
+          "id": "E01-C-5",
+          "kind": "unsupported-profile",
+          "description": "A valid mock-llm contract, with a binding that serves its ci environment. The renderer takes the synchronous-llm profile only.",
+          "inputs": {
+            "workloadContract": {
+              "file": "contracts/workload/examples/valid/mock-llm-ci.yaml",
+              "edits": []
+            },
+            "environmentBinding": {
+              "file": "contracts/environment/examples/valid/local-kind.yaml",
+              "edits": [
+                {
+                  "op": "replace",
+                  "path": "/metadata/name",
+                  "value": "ci-kind"
+                },
+                {
+                  "op": "replace",
+                  "path": "/spec/environment",
+                  "value": "ci"
+                },
+                {
+                  "op": "replace",
+                  "path": "/spec/gitops/destinationPath",
+                  "value": "gitops/environments/ci-kind"
+                }
+              ]
+            },
+            "bindingName": "ci-kind"
+          },
+          "refusedBy": "generate_release",
+          "expected": {
+            "exception": "RenderRefused",
+            "findings": [
+              {
+                "rule": "render-profile-unsupported",
+                "category": "profile-unsupported",
+                "code": "capability-unavailable",
+                "field": "contract.spec.profile"
+              }
+            ]
+          }
+        },
+        {
+          "id": "E01-C-6",
+          "kind": "unsupported-capability",
+          "description": "The contract asks for the balanced runtime profile. The chart configures one runtime sizing, resource-conscious.",
+          "inputs": {
+            "workloadContract": {
+              "file": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+              "edits": [
+                {
+                  "op": "replace",
+                  "path": "/spec/model/runtimeProfile",
+                  "value": "balanced"
+                }
+              ]
+            }
+          },
+          "refusedBy": "generate_release",
+          "expected": {
+            "exception": "RenderRefused",
+            "findings": [
+              {
+                "rule": "render-capability-unsupported",
+                "category": "value-unsupported",
+                "code": "capability-unavailable",
+                "field": "contract.spec.model.runtimeProfile"
+              }
+            ]
+          }
+        },
+        {
+          "id": "E01-C-7",
+          "kind": "ownership-conflict",
+          "description": "The hand-written values set model.artifact.sourceUrl to a location that contradicts the contract's pins. The renderer derives that value from the pins.",
+          "inputs": {
+            "handWrittenValues": {
+              "file": "tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml",
+              "edits": [
+                {
+                  "op": "add",
+                  "path": "/model/artifact",
+                  "value": {
+                    "sourceUrl": "https://example.invalid/model.gguf"
+                  }
+                }
+              ]
+            },
+            "generatedValues": "The values of the E01-A render"
+          },
+          "refusedBy": "admit_manual_values",
+          "expected": {
+            "exception": "RenderRefused",
+            "findings": [
+              {
+                "rule": "render-manual-value-generated",
+                "category": "ownership-conflict",
+                "code": "contract-invalid",
+                "field": "manualValues.model.artifact.sourceUrl"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "E01-D",
+      "title": "Real deployment",
+      "question": "Does the release rendered from the unmodified contract deploy through Git and Argo CD and serve a real completion?",
+      "inputs": {
+        "workloadContract": "The unmodified reference contract, contracts/workload/examples/valid/synchronous-llm-local.yaml",
+        "environmentBinding": "The binding the environment identity names.",
+        "platformDefaults": "As E01-A.",
+        "renderer": "As E01-A.",
+        "handWrittenValues": "One hand-written values file for the environment, which the environment identity names. It is admitted beside the generated values with no finding."
+      },
+      "procedure": [
+        "Render the release from the inputs above and write it with write_release.",
+        "Commit the generated release to the Git desired state, at the binding's spec.gitops.destinationPath.",
+        "Let Argo CD reconcile the desired state into the cluster. The release takes its values from the generated values file and the admitted hand-written values file only, with no parameter override.",
+        "Wait until the API's readiness endpoint answers 200 and the runtime pod is Ready. The wait is bounded by the startup budget the chart renders for the runtime, counted from the moment Argo CD reports the desired revision synced.",
+        "Send one request to the API Service: POST /v1/chat/completions, with model set to the generated model.identifier, one user message, and stream false.",
+        "Verify the identities named in E01-AC9 against the release, Argo CD, and the running pods."
+      ]
+    }
+  ],
+  "materialScope": {
+    "description": "The experiment path: the static import closure of the runner's entry module within the inferops and tools packages - product code, runner, analysis, freeze checker, and every local helper they import - plus the data files the parts read and the chart E01-D installs.",
+    "entryModules": [
+      "tools.experiment_e01.__main__"
+    ],
+    "packageRoots": {
+      "inferops": "src",
+      "tools": "."
+    },
+    "paths": [
+      "charts/inferops-llm/.helmignore",
+      "charts/inferops-llm/Chart.yaml",
+      "charts/inferops-llm/values.yaml",
+      "charts/inferops-llm/values.schema.json",
+      "charts/inferops-llm/ci/real-values.yaml",
+      "charts/inferops-llm/templates/**/*",
+      "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+      "contracts/workload/examples/valid/mock-llm-ci.yaml",
+      "contracts/environment/examples/valid/local-kind.yaml",
+      "contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json",
+      "tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml",
+      "docs/domain/v1-synchronous-compatibility.v1alpha1.json",
+      "pyproject.toml",
+      "uv.lock"
+    ],
+    "exclusions": []
+  },
+  "pinnedInputs": [
+    {
+      "path": "charts/inferops-llm/.helmignore",
+      "role": "chart",
+      "sha256": "6616c0dcb7188d2b5f90528049f6859d429e01dd72e01c48cfbc67b463419915"
+    },
+    {
+      "path": "charts/inferops-llm/Chart.yaml",
+      "role": "chart",
+      "sha256": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b"
+    },
+    {
+      "path": "charts/inferops-llm/ci/real-values.yaml",
+      "role": "v1-comparison-values",
+      "sha256": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48"
+    },
+    {
+      "path": "charts/inferops-llm/templates/NOTES.txt",
+      "role": "chart",
+      "sha256": "b7c0e66995248f602052fc9448dfcbf8c2d53c1615a7526f3c1bb7fe1e974363"
+    },
+    {
+      "path": "charts/inferops-llm/templates/_helpers.tpl",
+      "role": "chart",
+      "sha256": "4164aa12b6f92b80f23eea3ce944f9d3373d197762f51cf184bc5d88a129c02b"
+    },
+    {
+      "path": "charts/inferops-llm/templates/_validate.tpl",
+      "role": "chart",
+      "sha256": "f559c31bf730be5262cb6d0335fdb83467d3f79e3913964818c6d21400cd3224"
+    },
+    {
+      "path": "charts/inferops-llm/templates/api-deployment.yaml",
+      "role": "chart",
+      "sha256": "10cb2d95e269d6b93bbf983e6c434d383b1a802814a4d4391aabcbb2f658817a"
+    },
+    {
+      "path": "charts/inferops-llm/templates/api-service.yaml",
+      "role": "chart",
+      "sha256": "ae2ade9a5de1b2b8875d3b0bc0459400554bc10d33e23b9f0b9d248528ed346a"
+    },
+    {
+      "path": "charts/inferops-llm/templates/configmap.yaml",
+      "role": "chart",
+      "sha256": "22529d32db43e80934239e1567d344a67ecb1ce4f380bdee88e13297c67a4e45"
+    },
+    {
+      "path": "charts/inferops-llm/templates/model-acquisition-job.yaml",
+      "role": "chart",
+      "sha256": "0320986c90d7245a21fedd7b05cf13dffbc3425d6820f1cc1c67efc7ea944098"
+    },
+    {
+      "path": "charts/inferops-llm/templates/networkpolicy.yaml",
+      "role": "chart",
+      "sha256": "f18f83703fcbb6b7098dc9bd8b2f81738a89fc6c28dc3191dd4e44870bb8d0e5"
+    },
+    {
+      "path": "charts/inferops-llm/templates/runtime-deployment.yaml",
+      "role": "chart",
+      "sha256": "d4476282a14dc8b6ec183c0f57ee87fd2f9cad0469d9239bde3b0a6e3af7b292"
+    },
+    {
+      "path": "charts/inferops-llm/templates/runtime-service.yaml",
+      "role": "chart",
+      "sha256": "f01dc18891b1401d321bca4f01e1a3be1193e7cb4bf2d7a07ff4ebc4a996eaad"
+    },
+    {
+      "path": "charts/inferops-llm/templates/serviceaccount.yaml",
+      "role": "chart",
+      "sha256": "92732605addd07dff5d59a7e5e9883ac277e299b8d684abe62b81d3408181955"
+    },
+    {
+      "path": "charts/inferops-llm/templates/telemetry-collector.yaml",
+      "role": "chart",
+      "sha256": "3cf5b09891a77a59b2101a7eb4f7ec76d5cf27333e66711699dcfca50fae170a"
+    },
+    {
+      "path": "charts/inferops-llm/templates/telemetry-scrape-config.yaml",
+      "role": "chart",
+      "sha256": "3fdecea5037a897bf126fa7ebb5e1dfbe2edf79078183efe7df916e6c39e5442"
+    },
+    {
+      "path": "charts/inferops-llm/templates/tests/connection.yaml",
+      "role": "chart",
+      "sha256": "b62f9728d0234f1ab403b6ac0b0a61c3e8b37eef7873d697a14a4474441e99f4"
+    },
+    {
+      "path": "charts/inferops-llm/values.schema.json",
+      "role": "chart",
+      "sha256": "d1d5dfd929e2ae9cb19104af40f6a109f624a1c7eea0e60384d3e6089619b1f5"
+    },
+    {
+      "path": "charts/inferops-llm/values.yaml",
+      "role": "platform-defaults and chart defaults",
+      "sha256": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9"
+    },
+    {
+      "path": "contracts/environment/examples/valid/local-kind.yaml",
+      "role": "environment-binding",
+      "sha256": "b5f84ad86f7e328a16928ec1f5c76bbcb0394d31288759805bafa13c2254c33e"
+    },
+    {
+      "path": "contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json",
+      "role": "compatibility-matrix",
+      "sha256": "d30b25cc6abc85e738fd23ed4b7525312ea75e32521339b357fa59c002467a20"
+    },
+    {
+      "path": "contracts/workload/examples/valid/mock-llm-ci.yaml",
+      "role": "negative-case-contract",
+      "sha256": "b381207276be4b2e62d1ebc1ed6bacca387ada1ad9d8799361d1badb199b3732"
+    },
+    {
+      "path": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+      "role": "workload-contract",
+      "sha256": "74b20b71e4cdafd79378e21f881b216588625de867cd8ba029b4be1308a8fb7a"
+    },
+    {
+      "path": "docs/domain/v1-synchronous-compatibility.v1alpha1.json",
+      "role": "v1-compatibility-record",
+      "sha256": "fc7bd8324d1106548593c8439a21ccac81c914e5754d70b5137deb8fedb00cad"
+    },
+    {
+      "path": "pyproject.toml",
+      "role": "project-metadata",
+      "sha256": "58b45d56c5c77a526e4ce3c779ae96173f5088742d2d679987597133de936ab0"
+    },
+    {
+      "path": "src/inferops/__init__.py",
+      "role": "product-code",
+      "sha256": "871ae3c4e73373b9e916405fb585676c84ed70c62405abeac50fabf17465adff"
+    },
+    {
+      "path": "src/inferops/domain/__init__.py",
+      "role": "product-code",
+      "sha256": "bbbb9f098f2a31746200e6f62bdd3ec3fc8a9610e346575b354bf8f596cf6ce2"
+    },
+    {
+      "path": "src/inferops/domain/context.py",
+      "role": "product-code",
+      "sha256": "4d833e2e684b8c714ab8b649616bb8ad84a62cd2324b716aa4f8e151b44cbeb2"
+    },
+    {
+      "path": "src/inferops/domain/environment/__init__.py",
+      "role": "product-code",
+      "sha256": "f560fcb6076e7b5f6abb92260c5f0aa036e99a019ddf0cc8032daa6823d00333"
+    },
+    {
+      "path": "src/inferops/domain/environment/binding.py",
+      "role": "product-code",
+      "sha256": "827637be73f57ee37021f63f45c931051a8046aa20c1662fafa07aae3c3ece66"
+    },
+    {
+      "path": "src/inferops/domain/environment/errors.py",
+      "role": "product-code",
+      "sha256": "3f4ffdf2ca1f80021fbd26b7efcbd3ee5eb17f6728a9359373e7cba79e81af84"
+    },
+    {
+      "path": "src/inferops/domain/environment/parsing.py",
+      "role": "product-code",
+      "sha256": "0ae16bb095fda6c0f14bcabf1f31b68a897414db3c69d6fbcf051ea2373f30eb"
+    },
+    {
+      "path": "src/inferops/domain/environment/selection.py",
+      "role": "product-code",
+      "sha256": "4550cd6e189ff7b20e64b7eba2e3f5a64e62240d8c87b433152662cc9560f47c"
+    },
+    {
+      "path": "src/inferops/domain/environment/values.py",
+      "role": "product-code",
+      "sha256": "887c4007216e5c843a35add485966b3d27ccde0dd596041d1a63e4ebe6a1d766"
+    },
+    {
+      "path": "src/inferops/domain/environment/versions.py",
+      "role": "product-code",
+      "sha256": "79778ca8c19ea198ea7f3776bfcd86f0e4e7ccad184f73810b2d89e2b1781c6c"
+    },
+    {
+      "path": "src/inferops/domain/release/__init__.py",
+      "role": "product-code",
+      "sha256": "857959b49b8cbc259ae0e09bf5b976f0fb7d831cd06b80df68cfd80106a2a011"
+    },
+    {
+      "path": "src/inferops/domain/release/canonical.py",
+      "role": "product-code",
+      "sha256": "f40f3121e3dca0fd4763fb8a942c4af7f3a643ccf34794f9bed186d40e002caa"
+    },
+    {
+      "path": "src/inferops/domain/release/errors.py",
+      "role": "product-code",
+      "sha256": "4c7f9227f47d2dfbf4c7a9af5fb4c10233970095e1d93b8547260b6485daf45e"
+    },
+    {
+      "path": "src/inferops/domain/release/parsing.py",
+      "role": "product-code",
+      "sha256": "a7a02ff0d1a573057ede8a2495c9fff2b4eb1487c5920aff8c3e1491a29b0ecd"
+    },
+    {
+      "path": "src/inferops/domain/release/provenance.py",
+      "role": "product-code",
+      "sha256": "1cfa02b04d1c3f04f1d3f1d2afdf54a62ced7c55fef40fe826476af6634d2c64"
+    },
+    {
+      "path": "src/inferops/domain/release/release.py",
+      "role": "product-code",
+      "sha256": "59090281c7ad0bcaa34ecd93f0fb2cf38c0f7075b5dc6235ac800db7c8abc5b1"
+    },
+    {
+      "path": "src/inferops/domain/release/values.py",
+      "role": "product-code",
+      "sha256": "0ad4a3ea228846eb29bb0c5e61864d2e2706dd3f5fdf8b91d23d7c1832070bcf"
+    },
+    {
+      "path": "src/inferops/domain/release/versions.py",
+      "role": "product-code",
+      "sha256": "e08e149da56999f45c431cc5b28c3f857b89827e669ae5b8a33330032fb3fca7"
+    },
+    {
+      "path": "src/inferops/domain/render/__init__.py",
+      "role": "product-code",
+      "sha256": "1a6c3e2048499e3582573f3647e1ac51352823b8a4c3cccb80d2946afe23973d"
+    },
+    {
+      "path": "src/inferops/domain/render/acceptance.py",
+      "role": "product-code",
+      "sha256": "627b50121f538c89f4e37a43df82ce699a6e27fde49cae264ea2471db6561ae3"
+    },
+    {
+      "path": "src/inferops/domain/render/conflicts.py",
+      "role": "product-code",
+      "sha256": "1fcdd35a7eb55ebd8c99259579b62735ec94c714b20694e2c392fb81cea1795f"
+    },
+    {
+      "path": "src/inferops/domain/render/defaults.py",
+      "role": "product-code",
+      "sha256": "fb71916ea6a6289016fb05ebde0d5cb02b2609ebe4c64104e36d96d06a93819f"
+    },
+    {
+      "path": "src/inferops/domain/render/errors.py",
+      "role": "product-code",
+      "sha256": "9c54cf30cd9c94e0258ca547cc7df7fb9278ecc7bcdcd2ffa47aa6e41b11c09b"
+    },
+    {
+      "path": "src/inferops/domain/render/generation.py",
+      "role": "product-code",
+      "sha256": "2dc6c75bda20bffb346621557040056d3eb4363ee4e6c204b753d655d56078a3"
+    },
+    {
+      "path": "src/inferops/domain/render/helm_values.py",
+      "role": "product-code",
+      "sha256": "9213b69cc09c3ed59e8e5df94253f39dd95d0c0e9485844f6b2160e35cc93366"
+    },
+    {
+      "path": "src/inferops/domain/render/normalization.py",
+      "role": "product-code",
+      "sha256": "9a1a59c4eb5d6c5bfe83c05d9df8e0d6ec8bf749a7762d82f36f299e312024d6"
+    },
+    {
+      "path": "src/inferops/domain/render/ownership.py",
+      "role": "product-code",
+      "sha256": "80c05f624c15aa2e983807e90d3cbfbe594ec3692805d50c802d6056f4638ab5"
+    },
+    {
+      "path": "src/inferops/domain/render/recording.py",
+      "role": "product-code",
+      "sha256": "2f6691bb0128bb2375d8c55effe4bdbecbdd0873cfd960a80b9d03ebdddf0257"
+    },
+    {
+      "path": "src/inferops/domain/render/renderer.py",
+      "role": "product-code",
+      "sha256": "bd79bf4c4cd074e3b1dfa903b6e945488285ac3b01aabae48c90dbaf9200d2a1"
+    },
+    {
+      "path": "src/inferops/domain/render/support.py",
+      "role": "product-code",
+      "sha256": "b64dc3da4873e42898cd1b067bbeccfd982b93b99d8a2b91c73368e54f3c96bd"
+    },
+    {
+      "path": "src/inferops/domain/render/values_yaml.py",
+      "role": "product-code",
+      "sha256": "933c169e177509df53720acbe3663c0354b1570dc50c9de2c3140075e736a516"
+    },
+    {
+      "path": "src/inferops/domain/render/writing.py",
+      "role": "product-code",
+      "sha256": "f3dd441cc5f0c6a9f92e2486b198e359bd17ea00da4ab70460a9b0394a8313c0"
+    },
+    {
+      "path": "src/inferops/domain/workload/__init__.py",
+      "role": "product-code",
+      "sha256": "c0501df503eea8b7601a9e34e772fd549f9f83be4196836620dc2ebadc2734ae"
+    },
+    {
+      "path": "src/inferops/domain/workload/contract.py",
+      "role": "product-code",
+      "sha256": "b85e7b2597a5310bdb964191b7b7f83fe1bdedb72780ddb2c8fb4718545c3fc2"
+    },
+    {
+      "path": "src/inferops/domain/workload/errors.py",
+      "role": "product-code",
+      "sha256": "f0735dd4ce03efafd6d5a177021bfa22b8ae90f41de27994cd838dadf1038aab"
+    },
+    {
+      "path": "src/inferops/domain/workload/parsing.py",
+      "role": "product-code",
+      "sha256": "578a6cd13ceaaabdbc9ac31ee6def51544837ab93f817af43d3f970758ee96e8"
+    },
+    {
+      "path": "src/inferops/domain/workload/validation.py",
+      "role": "product-code",
+      "sha256": "45a8f4f4bb6a242231633926e1d178c35d6bb9424f3d4a2e2df5c4324a80bfdb"
+    },
+    {
+      "path": "src/inferops/domain/workload/values.py",
+      "role": "product-code",
+      "sha256": "3a2a4c6d79a6caee3afb2b67b47220f3e746c68b47fc4e004b0913142e6587d2"
+    },
+    {
+      "path": "src/inferops/domain/workload/versions.py",
+      "role": "product-code",
+      "sha256": "00a8bc3f3ad17c83765c5ce34c18c1affee1cb6175a2ece4519bb21848819ff6"
+    },
+    {
+      "path": "tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml",
+      "role": "hand-written-values",
+      "sha256": "77c495d322e173d4cf398dd66b4581ec6e75b20c8a6b6c1ea59fd6c8c428c093"
+    },
+    {
+      "path": "tools/__init__.py",
+      "role": "tools-package",
+      "sha256": "2aa0150d36adadb891175596f532622211973267f11c20201a7e4fb10bd18ddb"
+    },
+    {
+      "path": "tools/experiment_e01/__init__.py",
+      "role": "runner-and-analysis",
+      "sha256": "4e073f8cc767aea6e10e5d0cd07abacaa54c114d72eb9dcfa7272353f051e345"
+    },
+    {
+      "path": "tools/experiment_e01/__main__.py",
+      "role": "runner-and-analysis",
+      "sha256": "eb945c722aa5b3da3d07b831e78b71a13dccb147c8e5b245254808c7354ad8d8"
+    },
+    {
+      "path": "tools/experiment_e01/core.py",
+      "role": "runner-and-analysis",
+      "sha256": "df39eda6350df96b05b128fb4b6246d9ae3be1380fa1dcb04916520ebcaf027c"
+    },
+    {
+      "path": "tools/experiment_freeze/__init__.py",
+      "role": "freeze-checker",
+      "sha256": "938f5d3c48d11f759c72d9ca99f376f26396b2b46eb9eb0cc43647f91def57ad"
+    },
+    {
+      "path": "tools/experiment_freeze/core.py",
+      "role": "freeze-checker",
+      "sha256": "db9b1c1fd83668a77639ab8e1e56dbe3ab422460d30a22be4a6be3d68b0f4b46"
+    },
+    {
+      "path": "tools/generated_release/__init__.py",
+      "role": "platform-defaults-reader",
+      "sha256": "203fc27a0acc71325c68e345e3a6e04bc076c81a7a4ddc4bc3713618c5b30ad6"
+    },
+    {
+      "path": "tools/generated_release/core.py",
+      "role": "platform-defaults-reader",
+      "sha256": "896085c594c09d00e5e498877b40684ab8a7c35b08bae086881e58e968fbd6a6"
+    },
+    {
+      "path": "uv.lock",
+      "role": "dependency-lock",
+      "sha256": "4bab9f981da7e582c5493aa1eb21c99cbcc76bcb2772dacd70e22c06d0b93301"
+    }
+  ],
+  "inputChanges": [
+    {
+      "path": "docs/domain/v1-synchronous-compatibility.v1alpha1.json",
+      "change": "changed",
+      "material": false,
+      "reason": "The compatibility record now lists the two values as generated and derived. No part reads it; it is pinned because it states the V1 comparison E01-AC5 makes, which this revision restates."
+    },
+    {
+      "path": "src/inferops/domain/render/__init__.py",
+      "change": "changed",
+      "material": true,
+      "reason": "Exports the derived-value table and rule the corrected renderer and the runner use. It is on the import path of every part."
+    },
+    {
+      "path": "src/inferops/domain/render/helm_values.py",
+      "change": "changed",
+      "material": true,
+      "reason": "The F1 correction. The renderer now derives model.artifact.sourceUrl and model.license.reference from the contract's model pins, so both are generated values that admission refuses by hand. It changes the generated values file and its digest, which E01-A records and E01-C-7 exercises."
+    },
+    {
+      "path": "tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml",
+      "change": "changed",
+      "material": true,
+      "reason": "The F1 correction. The hand-written copies of the download URL and licence reference are removed. E01-A admits this file and E01-C-3 and E01-C-7 edit it."
+    },
+    {
+      "path": "tools/__init__.py",
+      "change": "added",
+      "material": true,
+      "reason": "Added to the pins: the package every tools module the runner imports belongs to. Revision 1 did not pin the runner path."
+    },
+    {
+      "path": "tools/experiment_e01/__init__.py",
+      "change": "added",
+      "material": true,
+      "reason": "Added to the pins: the runner and analysis package. It did not exist when revision 1 merged, and the first run executed an unpinned copy of it."
+    },
+    {
+      "path": "tools/experiment_e01/__main__.py",
+      "change": "added",
+      "material": true,
+      "reason": "Added to the pins: the runner's command, including the second-render process. It did not exist when revision 1 merged."
+    },
+    {
+      "path": "tools/experiment_e01/core.py",
+      "change": "added",
+      "material": true,
+      "reason": "Added to the pins: the runner and the versioned analysis that judges every criterion. It did not exist when revision 1 merged. This revision's analysis adds the derived values to E01-AC5's targets, the restated-pin check, and the execution-identity preconditions and records."
+    },
+    {
+      "path": "tools/experiment_freeze/__init__.py",
+      "change": "added",
+      "material": true,
+      "reason": "Added to the pins: the freeze checker the run calls for its preconditions. It changed after revision 1: the registry moved to a data file and the material-scope check was added."
+    },
+    {
+      "path": "tools/experiment_freeze/core.py",
+      "change": "added",
+      "material": true,
+      "reason": "Added to the pins: the freeze checker the run calls for its preconditions. It changed after revision 1: the registry moved to a data file, so this file can be pinned, and the material scope, the import closure, and added-file detection were added."
+    },
+    {
+      "path": "tools/generated_release/__init__.py",
+      "change": "added",
+      "material": true,
+      "reason": "Added to the pins: importing the platform-defaults reader runs this package module. Revision 1 pinned the reader and not its package."
+    }
+  ],
+  "history": {
+    "supersededRevision": {
+      "path": "docs/proof/experiments/v2-e01/freeze-r1.v1alpha1.json",
+      "why": "The first Sprint 2 collective review on 2026-10-03 found that revision 1 stated an exception to the governing E01 criterion for two hand-written model strings, and that it did not pin the runner and analysis the first run executed. This revision restores the criterion and freezes the executable path."
+    },
+    "priorRuns": [
+      {
+        "runId": "20261002-e01-abc-1",
+        "freezeRevision": 1,
+        "auditLimitation": "Dated 2026-10-03. The run recorded executing revision 707e29f4, but the runner it executed was not in that commit and was not a pinned input of revision 1: it was a copy from outside the checked-out tree, whose recorded digests match a later commit. Revision 1's change check compared only files revision 1 listed, so it could not report the runner. The location of the inferops package the run imported was observed by hand and not recorded by the run. The run's files, hashes, and revision 1 outcomes are kept unchanged and are judged by revision 1's analysis; this revision does not reinterpret them. The run is not evidence that its execution boundary was governed by its freeze."
+      }
+    ],
+    "previewEvidence": "Before the first run, on 2026-10-02, a full development preview executed E01-A, E01-B, and E01-C in a throwaway repository built from copies of revision 1's pinned inputs, and reported all three PASSED. After the first run, two more full executions in throwaway repositories ran while its review findings were fixed; their console shows E01-A INCONCLUSIVE and E01-B and E01-C PASSED. None was preregistered, and none was exempted before it ran. Their raw evidence directories were deleted with their throwaway repositories and are not available. A partial console capture of each exists outside this repository and is not published, because it contains host paths. Nothing here reconstructs them."
+  },
+  "fields": {
+    "experimentIdVersion": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C",
+          "E01-D"
+        ],
+        "status": "value",
+        "value": {
+          "experiment": "V2-E01",
+          "freezeRevision": 2,
+          "definition": "This record states the hypothesis, the parts, the procedure, and the acceptance criteria in full. A change to any of them is a new revision of this record."
+        }
+      }
+    ],
+    "gitRevision": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C",
+          "E01-D"
+        ],
+        "status": "value",
+        "value": {
+          "preparedFrom": "26aecfcb4ae628a7f10f0f507726f77d969187c8",
+          "pinnedInputs": "Every file in materialScope is pinned by its content digest in pinnedInputs. A record cannot name the commit that merges it, so the pins freeze the path, not a commit.",
+          "executingRevision": "Each run records the merged commit it executes, as a full Git revision, checks that it is reachable from origin/main, and checks every material file at that commit before it starts."
+        }
+      }
+    ],
+    "environmentIdentity": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C"
+        ],
+        "status": "value",
+        "value": {
+          "kind": "static: the parts render, write files, and refuse in memory",
+          "cluster": "none",
+          "network": "none",
+          "model": "none: no model artifact is read or loaded",
+          "toolchain": "Python 3.12 with the dependencies uv.lock pins, run with uv run --locked",
+          "recordedPerRun": "The host's operating system and version, the Python version, and the uv version"
+        }
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "pending",
+        "owner": "V2-S3-004-PR1",
+        "reason": "E01-D needs a real cluster with Argo CD reconciling from Git, and that environment does not exist yet. The freeze revision that names it is owned by V2-S3-004-PR1. E01-D is REFUSED while this entry is pending."
+      }
+    ],
+    "callerProfileRevision": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C"
+        ],
+        "status": "not-applicable",
+        "reason": "No caller sends a request: the parts render and refuse in memory."
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "not-applicable",
+        "reason": "E01-D sends one completion to show the path serves, and its procedure fixes the request. It runs no caller workload profile, and it makes no claim about caller outcomes under load."
+      }
+    ],
+    "topology": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C"
+        ],
+        "status": "not-applicable",
+        "reason": "Nothing is deployed."
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "value",
+        "value": {
+          "runtimeReplicas": "1, from spec.scaling of the unmodified reference contract",
+          "apiReplicas": "The spec.platform.apiReplicas of the binding the environment identity names: 1 in both committed local bindings",
+          "namespace": "The spec.destination.namespace of that binding",
+          "delivery": "Argo CD reconciles the release from the Git desired state at that binding's spec.gitops.destinationPath"
+        }
+      }
+    ],
+    "fault": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C",
+          "E01-D"
+        ],
+        "status": "not-applicable",
+        "reason": "E01 injects no fault. It tests whether workload intent becomes release input and a served completion, not tolerance of a failure."
+      }
+    ],
+    "repetitionCount": [
+      {
+        "parts": [
+          "E01-A"
+        ],
+        "status": "value",
+        "value": "One run of two renders, under definition.repetitionRule."
+      },
+      {
+        "parts": [
+          "E01-B"
+        ],
+        "status": "value",
+        "value": "One mutated render in the same run as E01-A, compared with that run's render-a, under definition.repetitionRule."
+      },
+      {
+        "parts": [
+          "E01-C"
+        ],
+        "status": "value",
+        "value": "One run in which each of the seven cases executes twice, under definition.repetitionRule."
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "value",
+        "value": "One real deployment with one completion, under definition.repetitionRule."
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "parts": [
+          "E01-A"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "id": "E01-AC1",
+            "statement": "The two renders are canonically identical: both files are byte-identical, the SHA-256 of each file is equal, and metadata.releaseId is equal."
+          },
+          {
+            "id": "E01-AC2",
+            "statement": "The release records the source contract digest, and it equals contract_digest of the parsed contract."
+          },
+          {
+            "id": "E01-AC3",
+            "statement": "The release records the EnvironmentBinding's name, apiVersion, and digest, and they equal local-kind, inferops.io/v1alpha1, and binding_digest of the parsed binding."
+          },
+          {
+            "id": "E01-AC4",
+            "statement": "The release records the generated values digest, and it equals the SHA-256 of the bytes of the values file beside it. The renderer and platform-defaults revisions it records equal the executing commit."
+          },
+          {
+            "id": "E01-AC5",
+            "statement": "No claim-relevant workload intent is written by hand after rendering: admit_manual_values admits the hand-written values with no finding; every chart value that a workload-intent context value renders to, or that is derived from workload-intent context values only, is in the generated values file; no hand-written string contains one of those generated values of eight characters or more; and the generated and hand-written values, merged over the chart's defaults, equal the V1 real values merged the same way, except telemetry.deploymentEnvironment, which is local in V2 and dev in V1 as the V1 synchronous compatibility record states."
+          }
+        ]
+      },
+      {
+        "parts": [
+          "E01-B"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "id": "E01-AC6",
+            "statement": "The mutation changes only the expected semantic output: in values.generated.yaml, only runtime.replicaCount, from 1 to 2; in rendered-workload-release.yaml, only metadata.releaseId, output.helmValues.sha256, and source.contract.sha256; and source.contract.sha256 equals contract_digest of the mutated contract."
+          }
+        ]
+      },
+      {
+        "parts": [
+          "E01-C"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "id": "E01-AC7",
+            "statement": "Every negative case is refused at its registered step with its expected refusal: for a RenderRefused, exactly the registered findings, in order, each with its rule, category, code, and field; for E01-C-4, the registered exception type, code, and field. No case writes an output directory, and each case's second execution gives the same refusal as its first."
+          }
+        ]
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "id": "E01-AC8",
+            "statement": "The release rendered from the unmodified reference contract, accepted into Git and reconciled by Argo CD, produces at least one real successful completion: HTTP 200, with at least one choice whose assistant message is not empty."
+          },
+          {
+            "id": "E01-AC9",
+            "statement": "The deployed identities verify against the release: the desired-state revision Argo CD reports as synced holds the generated release; the release records the contract, binding, and values digests, and they match their sources and the values file; the running runtime container's image digest is the generated runtime.image.digest; the model revision the runtime reads is the generated model.revision; and the API serves the model under the generated model.identifier."
+          },
+          {
+            "id": "E01-AC10",
+            "statement": "No claim-relevant workload intent is written by hand after rendering: the release is installed from the generated values file and one hand-written values file only, with no parameter override; admit_manual_values admits that hand-written file beside the generated values with no finding; and no string in it contains a workload-intent generated value of eight characters or more."
+          }
+        ]
+      }
+    ],
+    "derivedNumericBounds": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C",
+          "E01-D"
+        ],
+        "status": "not-applicable",
+        "reason": "No E01 criterion is a timing or caller-outcome bound, and the runtime-startup and stable-caller qualifications have not run. The E01-D readiness wait is bounded by the startup budget the chart renders. That is an operational limit, not a derived acceptance bound."
+      }
+    ],
+    "evidencePaths": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C"
+        ],
+        "status": "value",
+        "value": {
+          "directory": "docs/proof/experiments/v2-e01/runs/<run-id>/, where <run-id> is the run's UTC date as YYYYMMDD, the parts it executes, and a sequence number",
+          "files": {
+            "run.v1alpha1.json": "The run manifest: the run identifier, the parts, the executing commit, the freeze and registry digests, the material-file check, the execution identity, the host facts, and one outcome state for each part.",
+            "commands.txt": "The exact commands, in order.",
+            "render-a/ and render-b/": "The two E01-A renders, as write_release wrote them.",
+            "mutation/": "The E01-B render.",
+            "refusals.json": "The two recorded refusals of each E01-C case.",
+            "result.md": "Each criterion, its verdict, and the evidence it rests on, with the limitations first."
+          }
+        }
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "value",
+        "value": {
+          "directory": "docs/proof/experiments/v2-e01/runs/<run-id>/, named as for E01-A",
+          "files": {
+            "run.v1alpha1.json": "The run manifest, as for E01-A, with the environment identity.",
+            "commands.txt": "The exact commands, in order.",
+            "release/": "The two generated files as committed to the Git desired state.",
+            "argo.json": "The Argo CD application status at verification, with credentials removed.",
+            "pods.json": "The API and runtime pods, with their image digests.",
+            "completion.json": "The request, and the response's status, model, and text length. The generated text is not kept.",
+            "result.md": "Each criterion, its verdict, and the evidence it rests on, with the limitations first."
+          }
+        }
+      }
+    ],
+    "abortConditions": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C"
+        ],
+        "status": "value",
+        "value": [
+          "A step writes outside the run's evidence directory or a temporary directory the run created.",
+          "A tracked file changes while the run executes.",
+          "The checked-out commit changes while the run executes.",
+          "A module file the run or its second process loaded from the repository is not a pinned input with its pinned content."
+        ],
+        "note": "The parts run in memory and write only their evidence, so the stop conditions are the ones that would make that evidence unreliable. Conditions about a cluster, a caller stream, a fault, or spend have no counterpart here."
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "value",
+        "value": [
+          "The run affects a workload or resource outside the release's namespace.",
+          "The run puts the model cache's contents at risk.",
+          "The desired-state revision Argo CD applies cannot be determined.",
+          "A deployed runtime image digest, model revision, or model identifier differs from the rendered one.",
+          "The cleanup path becomes unsafe.",
+          "A provider or cluster incident dominates the run.",
+          "Where the environment identity names a paid provider: spend exceeds, or is projected to exceed, the authorized budget."
+        ],
+        "note": "No condition is about a lost caller stream or an injected fault: E01-D runs no caller workload and injects no fault."
+      }
+    ],
+    "cleanupProcedure": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C"
+        ],
+        "status": "value",
+        "value": [
+          "Keep the evidence directory.",
+          "Remove every temporary directory the run created outside it.",
+          "Check that git status shows no change except the new evidence directory."
+        ]
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "value",
+        "value": [
+          "Restore the known-good Git desired state that preceded the run, or, where none did, remove the release from the desired state.",
+          "Wait for Argo CD to reconcile it.",
+          "Verify the expected API and runtime replica counts.",
+          "Where a release remains, verify that a request to the API succeeds.",
+          "Remove every experiment-only resource.",
+          "Keep the evidence directory.",
+          "Verify that Argo CD reports no drift and that no manual change remains.",
+          "Where the environment identity names a paid provider: destroy the authorized experiment resources, verify the provider's inventory, and record the cleanup and the cost basis."
+        ]
+      }
+    ],
+    "intendedEvidenceLevel": [
+      {
+        "parts": [
+          "E01-A",
+          "E01-B",
+          "E01-C"
+        ],
+        "status": "value",
+        "value": "C0",
+        "note": "Static: the parts render, write, and refuse in memory, and no runtime component executes."
+      },
+      {
+        "parts": [
+          "E01-D"
+        ],
+        "status": "value",
+        "value": "C2",
+        "note": "Runtime: a real cluster, Argo CD, the real runtime, and the real model serve one completion. One environment and one run; not representative."
+      }
+    ]
+  }
+}

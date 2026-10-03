@@ -66,6 +66,7 @@ from inferops.domain.render import (
     CHART_VALUE_CONSTRAINTS,
     CHART_VERSION,
     CONTRACT_INVALID,
+    DERIVED_HELM_VALUES,
     GENERATED_VALUE_PATHS,
     HELM_VALUE_DISPOSITIONS,
     HELM_VALUES_SUPPORT,
@@ -86,6 +87,8 @@ from inferops.domain.render import (
     build_render_context,
     canonical_yaml,
     manual_value_findings,
+    model_licence_reference,
+    model_source_url,
     render_with,
     validate_for_render,
 )
@@ -422,6 +425,19 @@ def test_every_generated_value_is_the_inputs_own() -> None:
                 "fileName": sync["modelArtifact"]["file"],
                 "sizeBytes": sync["modelArtifact"]["sizeBytes"],
                 "sha256": sync["modelArtifact"]["sha256"],
+                "sourceUrl": (
+                    "https://huggingface.co/"
+                    f"{sync['modelArtifact']['repository']}/resolve/"
+                    f"{sync['modelArtifact']['revision']}/"
+                    f"{sync['modelArtifact']['file']}?download=true"
+                ),
+            },
+            "license": {
+                "reference": (
+                    "https://huggingface.co/"
+                    f"{sync['modelArtifact']['repository']}/blob/"
+                    f"{sync['modelArtifact']['revision']}/LICENSE"
+                )
             },
             "cache": {"claimName": kind["spec"]["modelCache"]["claimName"]},
         },
@@ -612,8 +628,13 @@ def test_only_a_rendered_value_names_a_target_and_every_target_is_constrained() 
         assert bool(row.targets) == (row.disposition is Disposition.RENDERED)
         assert row.reason
     assert len(targets) == len(set(targets)) == 25
-    assert set(targets) == set(CHART_VALUE_CONSTRAINTS)
-    assert {".".join(path) for path in GENERATED_VALUE_PATHS} == set(targets)
+    # The derived values are the only chart values no disposition row targets.
+    assert set(targets).isdisjoint(DERIVED_HELM_VALUES)
+    assert set(targets) | set(DERIVED_HELM_VALUES) == set(CHART_VALUE_CONSTRAINTS)
+    assert len(CHART_VALUE_CONSTRAINTS) == 27
+    assert {".".join(path) for path in GENERATED_VALUE_PATHS} == set(
+        CHART_VALUE_CONSTRAINTS
+    )
 
 
 def test_a_render_writes_every_generated_value_and_nothing_else() -> None:
@@ -1283,7 +1304,7 @@ def test_admission_refuses_a_hand_written_file_that_sets_replaces_or_removes_a_g
     [
         # 5. A sibling of a generated value.
         {"runtime": {"image": {"pullPolicy": "Always"}}},
-        {"model": {"artifact": {"sourceUrl": "https://example.invalid/m"}}},
+        {"model": {"license": {"spdx": "Apache-2.0"}}},
         # 6. An empty mapping above a generated value merges nothing into it.
         {"runtime": {}},
         {"runtime": {"resources": {}}},
@@ -1469,7 +1490,12 @@ def test_setting_any_generated_value_by_hand_is_refused(path: str) -> None:
         ({"profile": {}}, ["manualValues.profile"]),
         ({"security": {"secretRefs": []}}, ["manualValues.security.secretRefs"]),
         ({"runtime": {"resources": {}}}, []),
-        ({"model": {"artifact": {"sourceUrl": "https://example.invalid/m"}}}, []),
+        (
+            {"model": {"artifact": {"sourceUrl": "https://example.invalid/m"}}},
+            ["manualValues.model.artifact.sourceUrl"],
+        ),
+        ({"model": {"license": None}}, ["manualValues.model.license"]),
+        ({"model": {"license": {"spdx": "Apache-2.0"}}}, []),
         ({"runtime": {"resources": {"requests": {"cpu": "2"}}}}, []),
         ({"api": {"image": {"digest": "sha256:" + "0" * 64}}}, []),
     ],
@@ -1484,6 +1510,153 @@ def test_a_manual_finding_names_the_path_and_never_the_value() -> None:
     findings = manual_value_findings({"ownership": {"tenant": "ghp_leaked"}})
     assert len(findings) == 1
     assert "ghp_leaked" not in json.dumps(findings[0].as_dict())
+
+
+# --------------------------------------------------------------------------
+# 6a. The model's download location and licence reference are derived
+# --------------------------------------------------------------------------
+
+
+def _leaf_values(document: Mapping[str, Any]) -> dict[str, Any]:
+    """Every leaf value of a values document, by dotted path."""
+    return {".".join(path): at(document, path) for path in leaf_paths(document)}
+
+
+def _pins(document: Mapping[str, Any]) -> dict[str, Any]:
+    artifact: dict[str, Any] = document["spec"]["synchronousLlm"]["modelArtifact"]
+    return artifact
+
+
+def test_the_derivation_rule_is_the_one_the_v1_model_source_record_follows() -> None:
+    """The rule is not new: the V1 source record already holds these two strings, and
+    the V1 acquisition preflight already refuses a record that does not follow it."""
+    record = json.loads(
+        (REPO_ROOT / "docs" / "serving" / "model-source.v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert record["sourceUrl"] == model_source_url(
+        record["repository"], record["revision"], record["file"]
+    )
+    assert record["license"]["reference"] == model_licence_reference(
+        record["repository"], record["revision"]
+    )
+
+
+def test_every_derived_value_reads_only_contract_pins_the_renderer_renders() -> None:
+    owner = {row.name: row.layer.value for row in RENDER_FIELD_OWNERSHIP}
+    for path, derived in DERIVED_HELM_VALUES.items():
+        assert path in CHART_VALUE_CONSTRAINTS
+        assert derived.reason
+        for source in derived.sources:
+            assert owner[source] == "workload-intent", (path, source)
+            assert HELM_VALUE_DISPOSITIONS[source].disposition is Disposition.RENDERED
+
+
+def test_a_model_pin_change_moves_the_derived_references_with_no_hand_written_edit() -> (
+    None
+):
+    """The F1 regression: another revision, file, and repository need no manual edit.
+
+    The hand-written file is unchanged and still admitted, the two derived strings
+    follow the new pins, and nothing else in the generated values moves.
+    """
+    before = render().as_document()
+
+    def repin(document: dict[str, Any]) -> None:
+        artifact = _pins(document)
+        artifact["repository"] = "Qwen/Qwen3-1.7B-GGUF-mirror"
+        artifact["revision"] = "1" * 40
+        artifact["file"] = "Qwen3-1.7B-Q4_K_M.gguf"
+
+    after = render(changed(repin)).as_document()
+    assert after["model"]["artifact"]["sourceUrl"] == (
+        "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF-mirror/resolve/"
+        + "1" * 40
+        + "/Qwen3-1.7B-Q4_K_M.gguf?download=true"
+    )
+    assert after["model"]["license"]["reference"] == (
+        "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF-mirror/blob/"
+        + "1" * 40
+        + "/LICENSE"
+    )
+    old, new = _leaf_values(before), _leaf_values(after)
+    moved = {path for path in set(old) | set(new) if old.get(path) != new.get(path)}
+    assert moved == {
+        "model.artifact.repository",
+        "model.artifact.fileName",
+        "model.artifact.sourceUrl",
+        "model.license.reference",
+        "model.revision",
+    }
+    manual = load(MANUAL)
+    admit_manual_values(render(changed(repin)), manual)
+
+
+def test_a_stale_hand_written_reference_is_refused_after_a_pin_change() -> None:
+    """The copy the hand-written file used to carry, now stale, cannot be installed."""
+    stale = {
+        "model": {
+            "artifact": {
+                "sourceUrl": model_source_url(
+                    "Qwen/Qwen3-1.7B-GGUF", "9" * 40, "Qwen3-1.7B-Q8_0.gguf"
+                )
+            },
+            "license": {
+                "spdx": "Apache-2.0",
+                "reference": model_licence_reference("Qwen/Qwen3-1.7B-GGUF", "9" * 40),
+            },
+        }
+    }
+    with pytest.raises(RenderRefused) as raised:
+        admit_manual_values(render(), stale)
+    assert [(f.rule_id, f.field) for f in raised.value.findings] == [
+        ("render-manual-value-generated", "manualValues.model.artifact.sourceUrl"),
+        ("render-manual-value-generated", "manualValues.model.license.reference"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "copy_of",
+    ["identical", "contradicting"],
+)
+def test_a_hand_written_copy_of_a_derived_value_is_refused_whatever_it_says(
+    copy_of: str,
+) -> None:
+    """Agreeing is not enough: a second copy of contract intent is the defect."""
+    generated = render()
+    url = generated.as_document()["model"]["artifact"]["sourceUrl"]
+    value = url if copy_of == "identical" else "https://example.invalid/other.gguf"
+    with pytest.raises(RenderRefused) as raised:
+        admit_manual_values(generated, {"model": {"artifact": {"sourceUrl": value}}})
+    assert [f.field for f in raised.value.findings] == [
+        "manualValues.model.artifact.sourceUrl"
+    ]
+
+
+def test_no_hand_written_string_restates_a_contract_model_pin() -> None:
+    """What the review measured as a duplicate is gone from the supported file."""
+    sync = contract_document()["spec"]["synchronousLlm"]
+    pins = [
+        sync["modelArtifact"]["repository"],
+        sync["modelArtifact"]["revision"],
+        sync["modelArtifact"]["file"],
+        sync["modelArtifact"]["sha256"].removeprefix("sha256:"),
+    ]
+    for path, value in _leaf_values(load(MANUAL)).items():
+        if isinstance(value, str):
+            assert not [pin for pin in pins if pin in value], path
+
+
+def test_a_refused_pin_is_reported_once_at_the_pin() -> None:
+    """A derived string built from a refused pin adds no second finding."""
+    refusal = refusal_of(changed(_artifact("file", "hf_weights.gguf")))
+    assert [(f.rule_id, f.field) for f in refusal.findings] == [
+        (
+            "render-value-credential-shaped",
+            "contract.spec.synchronousLlm.modelArtifact.file",
+        )
+    ]
 
 
 # --------------------------------------------------------------------------

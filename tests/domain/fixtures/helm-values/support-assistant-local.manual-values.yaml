@@ -9,12 +9,13 @@
 #   - `api.image` is the same PLACEHOLDER digest that file documents. No InferOps
 #     image is published, so the digest is a contributor's build, not a contract
 #     value;
-#   - `model.alias`, `model.artifact.sourceUrl` and `model.license` come from
-#     docs/serving/model-source.v1.json. The contract pins the artifact's bytes; it
-#     has no field for where to download them or the licence they carry. The URL
-#     repeats the repository, revision, and file the contract pins, and nothing
-#     here checks that it agrees with them: the acquisition job's content hash,
-#     which the generated file supplies, is what refuses a different file;
+#   - `model.alias` and `model.license.spdx` come from
+#     docs/serving/model-source.v1.json. No contract pin determines either: the
+#     alias is a display name, and the SPDX identifier is what the licence is, which
+#     a repository name does not say. The download location and the licence
+#     reference are not here: the renderer derives both from the repository,
+#     revision, and file the contract pins, and admission refuses a hand-written
+#     copy of either;
 #   - the remaining members choose how the release runs on the reference host:
 #     how the claim is filled and verified, and whether the release's own
 #     collector runs.
@@ -34,11 +35,8 @@ runtime:
 
 model:
   alias: qwen3-1.7b-q8_0
-  artifact:
-    sourceUrl: https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true
   license:
     spdx: Apache-2.0
-    reference: https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/blob/90862c4b9d2787eaed51d12237eafdfe7c5f6077/LICENSE
   acquisition:
     enabled: true
     source: download

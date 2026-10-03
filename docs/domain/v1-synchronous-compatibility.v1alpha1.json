@@ -4,7 +4,10 @@
   "metadata": {
     "name": "v1-synchronous-compatibility",
     "registeredBy": "V2-S2-003-PR1",
-    "evidenceLevel": "C0"
+    "evidenceLevel": "C0",
+    "amendedBy": [
+      "V2-S2-004-PR1"
+    ]
   },
   "target": {
     "description": "The V1 real synchronous release: the inferops-llm chart at the version released in v1.0.0, installed with the V1 real values file over the chart's defaults.",
@@ -28,14 +31,14 @@
     "chart-default": "V1 set nothing; the chart's default applied."
   },
   "owners": {
-    "workload-intent": "The WorkloadContract owns the value. It is claim-relevant workload intent.",
+    "workload-intent": "The WorkloadContract owns the value. It is claim-relevant workload intent. A generated row names the context value it renders from, or, for a derived value, the context values its rule reads.",
     "environment-binding": "The selected EnvironmentBinding owns the value.",
     "platform-defaults": "The platform defaults own the value."
   },
   "handWrittenClasses": {
     "platform-component": "The platform's own API image. It is a contributor's local build that no registry publishes, so no input owns it yet. It is not workload intent: every workload on the platform runs the same API.",
-    "model-acquisition": "Where and how the model cache is filled. The generated model.artifact.sha256 decides which bytes the acquisition accepts, so a different location changes no model identity.",
-    "model-metadata": "Facts about the artifact that no contract field carries: its licence, and the name the runtime serves it under. Callers name the model by the generated model.identifier.",
+    "model-acquisition": "How the model cache is filled: whether the acquisition job runs, and how it fetches. The download location is not in this class: the renderer derives it from the contract's pins. The generated model.artifact.sha256 decides which bytes the acquisition accepts.",
+    "model-metadata": "Facts about the artifact that no contract field determines: its licence identifier, and the name the runtime serves it under. The licence reference is derived from the contract's pins and is generated. Callers name the model by the generated model.identifier.",
     "host-operation": "How the release runs and checks itself on the host: pull policies, the cache mount, start-time verification, and whether its own collector runs."
   },
   "rows": [
@@ -134,13 +137,13 @@
     {
       "chartValue": "model.artifact.sourceUrl",
       "v1": "values-file",
-      "v2": "hand-written",
-      "class": "model-acquisition",
-      "restates": [
-        "model.artifact.fileName",
+      "v2": "generated",
+      "derivedFrom": [
         "model.artifact.repository",
-        "model.revision"
-      ]
+        "model.artifact.revision",
+        "model.artifact.file"
+      ],
+      "owner": "workload-intent"
     },
     {
       "chartValue": "model.cache.claimName",
@@ -177,12 +180,12 @@
     {
       "chartValue": "model.license.reference",
       "v1": "values-file",
-      "v2": "hand-written",
-      "class": "model-metadata",
-      "restates": [
+      "v2": "generated",
+      "derivedFrom": [
         "model.artifact.repository",
-        "model.revision"
-      ]
+        "model.artifact.revision"
+      ],
+      "owner": "workload-intent"
     },
     {
       "chartValue": "model.license.spdx",

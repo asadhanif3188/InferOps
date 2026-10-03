@@ -2141,9 +2141,10 @@ def test_the_chart_asks_nothing_beyond_the_generated_values_that_a_contract_owns
 
     `helm lint` exits 0 under `--strict` even when a template `fail` guard fires: it
     reports the failure as `[INFO]`. That is why this reads the report rather than
-    the exit status. Given the generated values alone, the guards require six values.
+    the exit status. Given the generated values alone, the guards require four values.
     Each is a hand-written row of the compatibility record, and none is a value a
-    WorkloadContract owns.
+    WorkloadContract owns. The model's download URL and licence reference are not
+    among them: the renderer derives both from the contract's pins.
     """
     lint = _lint(GENERATED_VALUES)
     assert lint.returncode == 0, "lint now fails on a guard; read the exit status too"
@@ -2152,8 +2153,6 @@ def test_the_chart_asks_nothing_beyond_the_generated_values_that_a_contract_owns
         "api.image.digest",
         "api.image.repository",
         "model.alias",
-        "model.artifact.sourceUrl",
-        "model.license.reference",
         "model.license.spdx",
     }
     rows = {row["chartValue"]: row for row in _load_json(COMPATIBILITY_RECORD)["rows"]}

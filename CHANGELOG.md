@@ -10,6 +10,31 @@ from `1.0.0`.
 
 ### Added
 
+- **The model's download URL and licence reference are derived, and the E01 freeze covers
+  its whole executable path.** `V2-S2-004-PR1` closes two findings of the first Sprint 2
+  collective review. First, the renderer now writes `model.artifact.sourceUrl` and
+  `model.license.reference` from the contract's model repository, revision, and file, by
+  the rule the V1 model source record already follows; the hand-written reference file no
+  longer carries either, and admission refuses a hand-written copy whether it agrees with
+  the contract or not. A model-pin change now needs no hand-written edit. The generated
+  reference release has 27 values, not 25; the [V1 compatibility
+  record](docs/domain/v1-synchronous-compatibility.md) is amended, and the chart's guards
+  now require four hand-written values, not six. Second, [freeze revision
+  2](docs/proof/experiments/README.md) supersedes revision 1 without editing it: it
+  restores the governing no-duplication criterion that revision 1 had excepted, declares a
+  material scope - the static import closure of the runner plus the data files - and pins
+  74 inputs, the runner, the analysis, and the freeze checker among them. The freeze
+  registry moved from code to [a data file](docs/proof/experiments/registry.v1alpha1.json),
+  so the checker can be pinned without pinning itself. `--changes` now lists added and
+  out-of-scope files as well as changed and absent ones. The runner refuses to start unless
+  it and the `inferops` package are the checkout's own and the record is registered, and it
+  records every module file it loads. A committed run is judged by the analysis of the
+  revision it names, so the first run is unchanged and still checked by revision 1. That
+  run carries a dated [audit limitation](docs/proof/experiments/README.md#audit-of-the-first-run-2026-10-03):
+  its runner was outside its executing revision and its freeze, and earlier previews were
+  not preregistered and their raw evidence is not available. No E01 part ran in this
+  change, and no claim moves; [the validation
+  record](docs/proof/domain/v2-s2-004-pr1-validation.md) says what was run.
 - **The first run of the V2-E01 static parts.** `V2-S2-003-PR2` executed E01-A, E01-B,
   and E01-C once, as [freeze revision 1](docs/proof/experiments/README.md) registers them,
   at the merged commit `707e29f`, with every pinned input unchanged and nothing uncommitted.
