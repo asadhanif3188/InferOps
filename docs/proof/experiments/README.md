@@ -5,7 +5,10 @@ freeze, revision 1. **One run added by `V2-S2-003-PR2`**: E01-A, E01-B, and E01-
 once under that record. **Revision 2 added by `V2-S2-004-PR1`**: it restores the governing
 no-duplication criterion and freezes the whole executable path, runner and analysis
 included. **One run added by `V2-S2-004-PR2`**: E01-A, E01-B, and E01-C, executed once
-under revision 2 from the merged checkout. A freeze record fixes an experiment family before its first
+under revision 2 from the merged checkout. **One independent review published by
+`V2-S2-005-PR1`**: a review of that second run, with one finding about the wording of its
+register claim, which is [not yet corrected](#independent-review-of-the-second-run-2026-10-03).
+A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
 
@@ -386,3 +389,35 @@ Since `V2-S2-004-PR2` the register carries the audit too: the first run's claim 
 limitation appended, dated, after the text it already had, and [a ledger](../testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json)
 holds one correction beside the first run's result page. The claim's statement, status,
 and record are unchanged.
+
+## Independent review of the second run, 2026-10-03
+
+[`v2-e01/reviews/20261003-e01-abc-1-review-1.md`](v2-e01/reviews/20261003-e01-abc-1-review-1.md)
+is the report of one independent review of run `20261003-e01-abc-1`, with
+[its machine-readable record](v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json).
+The review read the merge of pull request 114, `3f08f439`, on 2026-10-03, read-only. It
+started no run. A review record is not evidence of the run, and no register claim cites it.
+
+- **The frozen run.** The review found no defect in the run's ten files, its digests, its
+  freeze and registry identity, its executing revision and 74 pins, its seven criterion
+  verdicts, or its three PASSED outcome states.
+- **The register statement.** The review found one claim-material defect, in wording only.
+  The second-run claim's statement says the evidence holds "no hand-written string that
+  contains a generated workload-intent value". E01-AC5 limits that to generated values
+  "of eight characters or more". Without the limit the clause is false: three hand-written
+  strings contain a shorter generated value, `local` or `6`. With the limit the clause is
+  true. **The claim is not corrected yet.** The register, the ledgers, the evidence index,
+  and the dashboard still carry the broader clause. `V2-S2-005-PR2` owns the correction.
+- **The order of review and registration.** The review that the second run's validation
+  record documents read commit `c24fda4`, which already held the register change. This
+  review also read a revision that held it. So no record establishes that an independent
+  review preceded the register change for this run, and this review does not repair that
+  order. The same holds for the first run: its documented review read the commit that
+  added its claim.
+- **No rerun.** The finding is in one sentence of the register, not in the run. A new run
+  would write the same evidence.
+
+The report lists thirteen findings, what the review could not verify, and the limits of its
+independence: the reviewer is an automated session that the maintainer started, not a
+person outside the project. No check requires a review record before a register change;
+nothing enforces that order.
