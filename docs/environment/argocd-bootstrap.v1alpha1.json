@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/environment/argocd-bootstrap.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "Argo CD bootstrap inputs and ownership, v1alpha1",
-  "description": "The inputs and the ownership rules for the Argo CD installation that V2 uses as its GitOps controller: the pinned release, install manifest and images, the namespace, each object the manifest declares and the ownership row that holds it, the privileges the installation needs and grants, the refusals, and the scoped removal. One repository procedure implements it: it installs, verifies, and removes the installation on a cluster the operator selects and the procedure verifies. It was executed on one provider, docker-desktop. It was not executed on kind. No Application exists, so Argo CD reconciles nothing. Every rule states what enforces it and what that check does not establish.",
+  "description": "The inputs and the ownership rules for the Argo CD installation that V2 uses as its GitOps controller: the pinned release, install manifest and images, the namespace, each object the manifest declares and the ownership row that holds it, the privileges the installation needs and grants, the refusals, and the scoped removal. One repository procedure implements it: it installs, verifies, and removes the installation on a cluster the operator selects and the procedure verifies. It was executed on one provider, docker-desktop. It was not executed on kind. This procedure creates no Application. Since 2026-10-04 another procedure applies one Application and its project, which ADR 0019 decided. Every rule states what enforces it and what that check does not establish.",
   "decisionRef": "docs/architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md",
   "documentRef": "docs/environment/argocd-bootstrap.md",
   "ownershipRef": "docs/architecture/resource-ownership.v1alpha1.json",
@@ -330,7 +330,7 @@
       "kind": "namespaced objects",
       "otherOwner": "helm",
       "boundary": "namespace",
-      "statement": "Every namespaced object the bootstrap owner creates is in the namespace argocd. A Helm release installs into the platform namespace and never into argocd. The boundary does not cover an object of an argoproj.io kind: an Application or an AppProject would also be in argocd, and the bootstrap owner does not own it. Who owns such an object is not decided."
+      "statement": "Every namespaced object the bootstrap owner creates is in the namespace argocd. A Helm release installs into the platform namespace and never into argocd. The boundary does not cover an object of an argoproj.io kind: one Application and one AppProject are also in argocd, and the bootstrap owner does not own them. Since 2026-10-04 the Application procedure owns them, as the row argocd-workload-application."
     }
   ],
   "requiredPrivileges": {
@@ -496,18 +496,18 @@
     {
       "ruleId": "argocd-does-not-manage-its-own-installation",
       "statement": "Argo CD does not create, upgrade, or remove its own installation, and it reconciles no object that the bootstrap owner or Terraform owns.",
-      "enforcement": "tested-absence",
-      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_no_argocd_custom_resource_is_committed",
+      "enforcement": "tested",
+      "enforcedBy": "tests/architecture/test_argocd_application.py::test_the_application_reaches_no_object_another_owner_holds",
       "owedBy": null,
-      "limit": "The test establishes an absence: no Application, ApplicationSet, or AppProject is in a tracked file, so Argo CD has nothing to reconcile. A manifest that a template assembles from parts is not matched. It does not restrict what a future Application may target. The change that adds the first argo cd application owes that restriction and must replace this test."
+      "limit": "Until 2026-10-04 this rule was held by an absence: no Argo CD custom resource was committed. ADR 0019 added one Application and its project, and the test now reads them. The project admits one destination namespace, which is not argocd, eight namespaced kinds, and no cluster-scoped kind. So the one Application is refused the installation, the definitions, the cluster role, a Namespace, and a claim. A second test holds that no other tracked file declares an Argo CD custom resource. The tests read files. They do not narrow the grant of the application controller, and they do not see an Application that a person creates in the cluster by hand."
     },
     {
       "ruleId": "no-application-set-and-no-second-cluster",
       "statement": "InferOps commits no ApplicationSet object, no app-of-apps Application, and no Argo CD cluster registration.",
       "enforcement": "tested-absence",
-      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_no_argocd_custom_resource_is_committed",
+      "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_no_application_set_and_no_cluster_registration_is_committed",
       "owedBy": null,
-      "limit": "The same absence test. It reads every tracked file except this suite, for an Argo CD custom resource and for a cluster registration secret. A manifest that a template assembles from parts is not matched. It reads no cluster."
+      "limit": "The test reads every tracked file except two suites that quote a custom resource. It holds that the two manifests of ADR 0019 are the only tracked files that declare an Argo CD custom resource, that neither is an ApplicationSet, and that no file registers a cluster. The source of the one Application is the chart and not a directory of Applications, and another suite holds that. A manifest that a template assembles from parts is not matched. It reads no cluster."
     },
     {
       "ruleId": "argocd-is-not-on-the-inference-request-path",
@@ -515,7 +515,7 @@
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_bootstrap.py::test_no_serving_component_refers_to_argocd",
       "owedBy": null,
-      "limit": "The test reads every tracked file under the serving directories for a reference to Argo CD, and refuses a second build file that names it beside the procedure. It does not establish that a request is served while Argo CD is absent or stopped; no run has measured that, and no release was installed during the bootstrap run. Not being on the request path is not the same as being unable to affect serving: once an Application exists, a running controller can change, restart, or delete serving objects, and its containers compete for the node without a request or a limit."
+      "limit": "The test reads every tracked file under the serving directories for a reference to Argo CD, and refuses a build file that names it beside the two procedures and the two manifests. It does not establish that a request is served while Argo CD is absent or stopped; no run has measured that, and no release was installed during the bootstrap run. Not being on the request path is not the same as being unable to affect serving: while the Application is applied, a running controller can change, restart, or delete serving objects, and its containers compete for the node without a request or a limit."
     },
     {
       "ruleId": "the-pins-are-immutable-identifiers",
@@ -563,7 +563,7 @@
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_bootstrap_procedure.py::test_removal_refuses_while_a_custom_resource_exists",
       "owedBy": null,
-      "limit": "The test executes the removal against stub tools, once for each of the three kinds. Further tests hold the order of the ten deletions, hold each deletion to a named object, hold the wait for the pods and the wait for the namespace, and refuse an unanswered pod query. A static suite refuses a deletion that is not one of the six exact commands. The runs on docker-desktop removed the installation four times with no Application present. No Application has existed in a cluster, so the refusal was never executed against one. No test reaches a time limit, and no call sets a request timeout, so an API server that stops answering holds a read. The record lists four gaps in the order."
+      "limit": "The test executes the removal against stub tools, once for each of the three kinds. Further tests hold the order of the ten deletions, hold each deletion to a named object, hold the wait for the pods and the wait for the namespace, and refuse an unanswered pod query. A static suite refuses a deletion that is not one of the six exact commands. The runs on docker-desktop removed the installation four times with no Application present. On 2026-10-04 a run on docker-desktop executed the removal while the Application and its project existed: it refused before it stopped a controller, and deleted nothing. The second check, after the controllers stop, is executed against stubs only. No test reaches a time limit, and no call sets a request timeout, so an API server that stops answering holds a read. The record lists four gaps in the order."
     },
     {
       "ruleId": "security-baseline-rows-precede-the-first-install",
@@ -583,15 +583,15 @@
     }
   ],
   "doesNotEstablish": [
-    "that Argo CD reconciles anything; no Application exists",
+    "that Argo CD reconciles anything; this procedure creates no Application, and the record of the Application procedure's run is a separate record",
     "that the procedure installs or removes Argo CD on the kind provider; it was executed on docker-desktop only, and one provider's run certifies no other",
     "that upstream still serves the pinned bytes after the run, or that a pinned image is free of known vulnerabilities; neither image was scanned",
     "that the pinned release or images are authentic; no signature was verified",
     "that a request is served while Argo CD is absent or stopped; no release was installed during the run",
-    "that a removal with an Application present refuses on a cluster, or that the order avoids a stuck deletion; both removals ran with no Application",
+    "that the order avoids a stuck deletion; every completed removal ran with no Application, and the one removal with an Application present refused at its first check",
     "that a container runs the pinned image after a later restart",
-    "that the core profile reconciles an Application; by inference from upstream source, no AppProject exists after a core installation",
-    "that the host has the capacity to run Argo CD beside a release; the run installed no release",
+    "that the core profile reconciles an Application on kind; on docker-desktop it reconciled one Application in a committed project, in the Application procedure's run",
+    "that the host has the capacity to run Argo CD beside a release under load; the Application procedure's run held one release beside it and measured nothing",
     "that a credential narrower than cluster-admin can run the bootstrap"
   ]
 }

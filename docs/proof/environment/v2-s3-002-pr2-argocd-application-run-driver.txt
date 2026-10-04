@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+# Drives the Application procedure on the docker-desktop provider and prints one
+# transcript. Run from the repository root. kubectl must be on PATH within one
+# minor version of the server. The API image and the model seed image must be
+# built and loaded into the node already.
+#
+# It prepares the cluster, runs the procedure, and returns the cluster to the
+# state it found. It downloads no model: one throwaway Helm release fills the
+# model cache claim from the local seed image, and is uninstalled before Argo CD
+# is installed.
+set -u
+
+SCRIPT="scripts/environment/argocd-application.sh"
+BOOTSTRAP="scripts/environment/argocd-bootstrap.sh"
+PREREQUISITES="scripts/environment/terraform-prerequisites.sh"
+NAMESPACE="inferops-release"
+APPLICATION="local-docker-desktop-support-assistant"
+API_SERVICE="inferops-inferops-llm"
+API_DEPLOYMENT="inferops-inferops-llm"
+KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings"
+
+step() { printf '\n##### %s\n' "$*"; }
+
+# Runs one command, prints it, and prints its exit status.
+run() {
+  printf '$ %s\n' "$*"
+  "$@"
+  printf '[exit %s]\n' "$?"
+}
+
+k() { kubectl --context docker-desktop "$@"; }
+
+# What the cluster holds, asked with plain kubectl and not through the procedure.
+independent_state() {
+  run k get namespaces -o name
+  run k get applications.argoproj.io,appprojects.argoproj.io,applicationsets.argoproj.io --all-namespaces -o name
+  run k get "${KINDS}" -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o name
+  run k get persistentvolumeclaims -n "${NAMESPACE}" -o name
+  run k get secrets -n "${NAMESPACE}" -l owner=helm -o name
+}
+
+# One request that a caller sends, through a port-forward to the API Service.
+# Nothing here reads Argo CD.
+#
+# kubectl is started directly, and not through the function above. A background
+# job that runs a shell function is a subshell, and killing it leaves kubectl
+# listening on the port. Each request also takes its own local port, so a
+# forward that outlived its request cannot answer the next one.
+caller_request() {
+  local port="$1" forward
+  kubectl --context docker-desktop port-forward "service/${API_SERVICE}" "${port}:8090"     -n "${NAMESPACE}" >.artifacts/argocd-application-forward.log 2>&1 &
+  forward=$!
+  sleep 5
+  run cat .artifacts/argocd-application-forward.log
+  run curl --silent --show-error --max-time 300     --write-out '
+http_status=%{http_code} seconds=%{time_total}
+'     --header 'Content-Type: application/json'     --data '{"model":"qwen3-1-7b-q8-0","messages":[{"role":"user","content":"Reply with the single word: ready"}]}'     "http://127.0.0.1:${port}/v1/chat/completions"
+  kill "${forward}" 2>/dev/null
+  wait "${forward}" 2>/dev/null
+}
+
+step "0. Tools, revision, and the cluster before the run"
+run date -u +%Y-%m-%dT%H:%M:%SZ
+run git rev-parse HEAD
+run git ls-remote origin refs/heads/main
+run sha256sum "${SCRIPT}" "${BOOTSTRAP}" scripts/environment/lib.sh \
+  infra/argocd/workloads-project.yaml "infra/argocd/${APPLICATION}.yaml"
+run kubectl version --context docker-desktop
+run k get namespaces -o name
+
+step "1. No provider selected"
+unset INFEROPS_PROVIDER INFEROPS_KIND_CLUSTER_NAME
+run bash "${SCRIPT}" verify
+
+export INFEROPS_PROVIDER=docker-desktop
+
+step "2. apply with no digest"
+run bash "${SCRIPT}" apply
+
+step "3. apply before Argo CD is installed"
+run bash "${SCRIPT}" apply --api-image-digest "sha256:$(printf '0%.0s' $(seq 1 64))"
+
+step "4. Preparation: the prerequisite layer"
+run bash "${PREREQUISITES}" apply
+
+step "5. Preparation: fill the claim from the local seed image, with one throwaway Helm release"
+API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)"
+printf 'API image digest on this host: %s\n' "${API_IMAGE_DIGEST}"
+bash scripts/environment/api-image.sh values >.artifacts/api-image-values.yaml
+bash scripts/environment/model-seed-image.sh values >.artifacts/model-seed-values.yaml
+run helm --kube-context docker-desktop install inferops charts/inferops-llm \
+  --namespace "${NAMESPACE}" \
+  --values charts/inferops-llm/ci/real-values.yaml \
+  --values .artifacts/api-image-values.yaml \
+  --values .artifacts/model-seed-values.yaml \
+  --wait --timeout 15m
+
+step "6. Preparation: install Argo CD"
+run bash "${BOOTSTRAP}" install
+
+step "7. apply while the Helm release is recorded"
+run bash "${SCRIPT}" apply --api-image-digest "${API_IMAGE_DIGEST}"
+
+step "8. Preparation: uninstall the throwaway Helm release"
+run helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --wait --timeout 600s
+for _ in $(seq 1 120); do
+  [ -n "$(k get "${KINDS}" -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o name)" ] || break
+  sleep 2
+done
+independent_state
+
+step "9. verify, before any apply"
+run bash "${SCRIPT}" verify
+
+step "10. remove, before any apply"
+run bash "${SCRIPT}" remove --confirm
+
+step "11. apply"
+# The acquisition hook is deleted when it succeeds. This loop keeps what it
+# logged, so that the transcript shows whether it downloaded anything.
+(
+  for _ in $(seq 1 600); do
+    log="$(k logs -n "${NAMESPACE}" -l app.kubernetes.io/component=model-acquisition --tail=20 2>/dev/null)"
+    if [ -n "${log}" ]; then
+      printf '%s\n' "${log}" >.artifacts/argocd-application-acquisition.log
+      break
+    fi
+    sleep 1
+  done
+) &
+watcher=$!
+rm -f .artifacts/argocd-application-acquisition.log
+run bash "${SCRIPT}" apply --api-image-digest "${API_IMAGE_DIGEST}"
+kill "${watcher}" 2>/dev/null
+wait "${watcher}" 2>/dev/null
+printf 'What the acquisition hook logged, if this run read it in time:\n'
+run cat .artifacts/argocd-application-acquisition.log
+
+step "12. verify"
+run bash "${SCRIPT}" verify
+
+step "13. The cluster after the apply, asked independently"
+independent_state
+run k rollout status "deployment/${API_DEPLOYMENT}" -n "${NAMESPACE}" --timeout=600s
+run k rollout status "deployment/${API_DEPLOYMENT}-runtime" -n "${NAMESPACE}" --timeout=600s
+run k get application "${APPLICATION}" -n argocd \
+  -o 'jsonpath={range .status.operationState.syncResult.resources[*]}{.kind}/{.name} hook={.hookType} {.hookPhase} {.status}{"\n"}{end}'
+run k get pods -n "${NAMESPACE}" \
+  -o 'jsonpath={range .items[*]}{.metadata.name}{range .status.containerStatuses[*]} {.name}={.imageID}{end}{"\n"}{end}'
+
+step "14. One caller request"
+caller_request 18091
+
+step "15. A manual change to a Git-owned field, and what happens to it"
+# This is a check of the configured sync policy. It is not the drift experiment:
+# it sends no request, applies no bound, and has one observation.
+run k get deployment "${API_DEPLOYMENT}" -n "${NAMESPACE}" -o 'jsonpath={.spec.replicas}{"\n"}'
+run date -u +%Y-%m-%dT%H:%M:%SZ
+run k scale "deployment/${API_DEPLOYMENT}" -n "${NAMESPACE}" --replicas=2
+for _ in $(seq 1 120); do
+  replicas="$(k get deployment "${API_DEPLOYMENT}" -n "${NAMESPACE}" -o 'jsonpath={.spec.replicas}')"
+  printf '%s replicas=%s\n' "$(date -u +%H:%M:%SZ)" "${replicas}"
+  [ "${replicas}" != "1" ] || break
+  sleep 1
+done
+run k get application "${APPLICATION}" -n argocd \
+  -o 'jsonpath={.status.operationState.operation.initiatedBy} {.status.operationState.startedAt} {.status.operationState.finishedAt} {.status.operationState.phase}{"\n"}'
+
+step "16. apply again, on the objects this procedure created"
+run bash "${SCRIPT}" apply --api-image-digest "${API_IMAGE_DIGEST}"
+
+step "17. The bootstrap removal, while the Application exists"
+run bash "${BOOTSTRAP}" remove --confirm
+
+step "18. remove without --confirm"
+run bash "${SCRIPT}" remove
+
+step "19. remove"
+run bash "${SCRIPT}" remove --confirm
+
+step "20. The cluster after the removal, asked independently"
+independent_state
+
+step "21. verify, after the removal"
+run bash "${SCRIPT}" verify
+
+step "22. apply after a removal"
+run bash "${SCRIPT}" apply --api-image-digest "${API_IMAGE_DIGEST}"
+
+step "23. One caller request"
+run k rollout status "deployment/${API_DEPLOYMENT}" -n "${NAMESPACE}" --timeout=600s
+run k rollout status "deployment/${API_DEPLOYMENT}-runtime" -n "${NAMESPACE}" --timeout=600s
+caller_request 18092
+
+step "24. remove"
+run bash "${SCRIPT}" remove --confirm
+
+step "25. Cleanup: remove Argo CD and the prerequisite layer"
+run bash "${BOOTSTRAP}" remove --confirm
+run bash "${PREREQUISITES}" destroy --confirm
+
+step "26. The cluster after the run, asked independently"
+run k get namespaces -o name
+run k get customresourcedefinitions -o name
+run date -u +%Y-%m-%dT%H:%M:%SZ

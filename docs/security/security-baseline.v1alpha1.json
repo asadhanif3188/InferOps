@@ -616,10 +616,10 @@
       "abuseCase": "The application controller's service account holds every verb on every resource and on every non-resource URL. A desired state that names a namespace Terraform owns, or the controller's own installation, is reconciled like any other. So is whatever a replaced controller image decides to do.",
       "impact": "An object that Terraform, Helm, or the bootstrap owns is changed or deleted by a tool the ownership inventory does not give it to.",
       "controls": [
-        "no-argocd-custom-resource-is-committed",
+        "restrict-the-argocd-application-to-one-destination",
         "narrow-the-argocd-controller-grant"
       ],
-      "residualRisk": "The grant is the upstream default and is not narrowed. The one enforced control is an absence: no Application is committed, so the controller reconciles nothing today. That control restricts nothing about what a later Application may target, and it does not see an object a person creates in the cluster by hand.",
+      "residualRisk": "The grant is the upstream default and is not narrowed. The one enforced control restricts the one committed Application: its project admits one destination namespace, eight namespaced kinds, and no cluster-scoped kind. That control reads files. It does not narrow the controller, and it does not see an Application or a project that a person creates in the cluster by hand. On a cluster where the Application is applied, whoever can change the followed branch changes what runs in that namespace.",
       "deferredRiskRef": "DR-14"
     },
     {
@@ -1594,27 +1594,27 @@
       "v1Status": "enforced-on-the-host",
       "owner": "environment",
       "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
-      "whatItDoesNotVerify": "That no object appears between the second check and the deletion of its definition. The checks and the deletions are not atomic. No run executed the refusal against an object in a cluster: no Application has existed in one, and the refusal is executed against stubs only."
+      "whatItDoesNotVerify": "That no object appears between the second check and the deletion of its definition. The checks and the deletions are not atomic. On 2026-10-04 one run executed the refusal against an Application and its project in a cluster, at the first check. The second check is executed against stubs only."
     },
     {
-      "controlId": "no-argocd-custom-resource-is-committed",
-      "statement": "No tracked file declares an Application, ApplicationSet, or AppProject object or an Argo CD cluster registration, so nothing committed gives the controller an object to reconcile.",
+      "controlId": "restrict-the-argocd-application-to-one-destination",
+      "statement": "The only tracked files that declare an Argo CD custom resource are one Application and its project. The project admits one source repository, one destination namespace that is not argocd, eight namespaced kinds, and no cluster-scoped kind, so that Application reaches no object that Terraform or the bootstrap owns.",
       "boundaryId": "B2",
       "threats": [
         "T-24"
       ],
       "verification": {
         "kind": "automated-test",
-        "ref": "tests/architecture/test_argocd_bootstrap.py",
-        "symbol": "test_no_argocd_custom_resource_is_committed"
+        "ref": "tests/architecture/test_argocd_application.py",
+        "symbol": "test_the_application_reaches_no_object_another_owner_holds"
       },
       "runtimeScope": "repository-only",
       "specifiedFor": null,
       "restsOnAConfiguration": false,
       "v1Status": "enforced-over-documents",
       "owner": "environment",
-      "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
-      "whatItDoesNotVerify": "What a cluster holds. It reads tracked files, so an object a person creates with kubectl is not seen. It is an absence and not a restriction: it does not limit what a later Application may target, and the change that adds the first one must replace it. A manifest that a template assembles from parts is not matched."
+      "evidenceRef": "docs/proof/environment/v2-s3-002-pr2-argocd-application-run.md",
+      "whatItDoesNotVerify": "What a cluster holds. It reads tracked files, so an Application or a project that a person creates with kubectl is not seen, and neither is a change to the live project. It restricts one Application and does not narrow the grant of the application controller. Until 2026-10-04 this control was an absence, under the identifier no-argocd-custom-resource-is-committed: no Argo CD custom resource was committed. A manifest that a template assembles from parts is not matched."
     },
     {
       "controlId": "narrow-the-argocd-controller-grant",
@@ -1803,8 +1803,8 @@
       "threats": [
         "T-24"
       ],
-      "whyDeferred": "The grant is the upstream default of the pinned core manifest, which is applied unmodified. The ownership inventory says who may create and destroy an object, and it does not stop a controller that holds a wider grant. No Application is committed, and a test holds that absence, so the controller reconciles nothing today. A namespace-scoped installation, or a project that limits destinations and kinds, would narrow the grant. Neither is decided, and ADR 0017 carries this as R1. The manifest declares four network policies. The network plugin the local providers run was measured not to enforce the release's policy (DR-04), so these four are expected to be inert as well. That is an inference: no run tested them.",
-      "whatWouldHaveToBeTrue": "A decision that narrows the grant: an AppProject that restricts destinations and kinds, committed with the first Application and held by a test, or an installation whose roles are namespace-scoped. A network plugin that enforces the manifest's policies.",
+      "whyDeferred": "The grant is the upstream default of the pinned core manifest, which is applied unmodified. The ownership inventory says who may create and destroy an object, and it does not stop a controller that holds a wider grant. Since 2026-10-04 one Application is committed, and its project limits that Application to one destination namespace and eight namespaced kinds. The project does not narrow the grant: the controller holds it whatever a project says, and a second project is held by nothing. A namespace-scoped installation would narrow the grant. It is not decided, and ADR 0017 carries this as R1. The manifest declares four network policies. The network plugin the local providers run was measured not to enforce the release's policy (DR-04), so these four are expected to be inert as well. That is an inference: no run tested them.",
+      "whatWouldHaveToBeTrue": "A decision that narrows the grant itself: an installation whose roles are namespace-scoped. The project that ADR 0019 committed restricts one Application, and it is not that decision. A network plugin that enforces the manifest's policies.",
       "notClaimed": "No least-privilege property is claimed for Argo CD. No isolation between the controller and the objects Terraform, Helm, or the bootstrap owns is claimed.",
       "blocksProductionUse": true
     }

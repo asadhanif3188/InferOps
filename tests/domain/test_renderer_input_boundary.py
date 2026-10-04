@@ -1362,9 +1362,9 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
 #: - ``gitops_desired_state`` verifies the Git desired-state tree and regenerates a
 #:   release in it, when a contributor names one. It does not import the render
 #:   package: it calls ``generated_release``, which is why it is listed. Its output
-#:   is the first that a controller is meant to reconcile, and nothing reconciles it
-#:   yet. The second test below holds that no script, workflow, chart, or
-#:   distribution module calls it.
+#:   is the first that a controller reconciles: one Application reads it, on a
+#:   cluster where an operator applied that Application. The second test below
+#:   holds that no script, workflow, chart, or distribution module calls it.
 REPOSITORY_CHECKS: tuple[str, ...] = (
     "experiment_e01",
     "generated_release",

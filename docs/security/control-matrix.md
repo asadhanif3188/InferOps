@@ -83,15 +83,19 @@ and on every change since as the `secret-scan` gate — and neither of those is 
 control reads. A configuration file is not a result. (This paragraph said until
 2026-09-22 that no scanner had been run.)
 
-The eleventh, `no-argocd-custom-resource-is-committed`, arrived with the Argo CD
-bootstrap on 2026-10-03. It is an absence and not a restriction: no tracked file
-declares an Application, an ApplicationSet, an AppProject, or a cluster
-registration, so the controller has nothing to reconcile. It reads files and no
-cluster, and it does not limit what a later Application may target.
+The eleventh arrived with the Argo CD bootstrap on 2026-10-03, as
+`no-argocd-custom-resource-is-committed`. It was an absence: no tracked file
+declared an Argo CD custom resource. On 2026-10-04 one Application and its
+project were committed, and the control became
+`restrict-the-argocd-application-to-one-destination`. It now holds that those two
+files are the only ones that declare an Argo CD custom resource, and that the
+project admits one destination namespace, eight namespaced kinds, and no
+cluster-scoped kind. It reads files and no cluster. It restricts one Application
+and does not narrow the controller.
 
 | Control | Boundary | Verified by | Owner | Evidence |
 |---|---|---|---|---|
-| `no-argocd-custom-resource-is-committed` | B2 | `test_no_argocd_custom_resource_is_committed` | environment | [environment](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) |
+| `restrict-the-argocd-application-to-one-destination` | B2 | `test_the_application_reaches_no_object_another_owner_holds` | environment | [environment](../proof/environment/v2-s3-002-pr2-argocd-application-run.md) |
 
 ## What is enforced over the manifests
 
@@ -206,8 +210,9 @@ of a definition. What each establishes is narrow:
   namespace. A person who can change a namespace can set both. It was executed
   against stubs, and no run met a foreign installation. When a marked namespace
   exists, the install does not check whose the five cluster-scoped objects are.
-- The custom-resource refusal was executed against stubs. No Application has
-  existed in a cluster, so no run refused one.
+- The custom-resource refusal was executed against stubs. On 2026-10-04 one
+  run executed it against an Application and its project in a cluster, and the
+  removal refused at its first check.
 - On a cluster, the runs executed the passing side of the first two only.
 
 ## The vulnerability-scan severity policy

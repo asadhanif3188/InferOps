@@ -1,12 +1,12 @@
 # Architecture and decision records
 
-Status: entry point established. Eighteen records: eleven accepted in part, five
+Status: entry point established. Nineteen records: twelve accepted in part, five
 accepted, one accepted with a recorded exception, and one accepted and later
 amended. Every one of them names an accountable decision owner, and none is
 unassigned. (This sentence described eleven records until 2026-09-21; it was not
 machine-checked and had not been updated since ADR 0011. It described sixteen
 until 2026-10-03, when ADR 0017 was added, and seventeen until 2026-10-04, when
-ADR 0018 was added.)
+ADR 0018 was added. ADR 0019 was added the same day.)
 
 Accepted architecture decisions are indexed here with their status, date, decision
 owner, alternatives, consequences, compatibility impact, and supporting evidence.
@@ -37,7 +37,8 @@ caller names, and nothing installs a release from them.
 | [Resource ownership](resource-ownership.md) | Which tool owns which resource, with lifecycle and handoff rules |
 | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) | The authoritative form of that inventory, validated by `tests/architecture/` |
 | [The Argo CD bootstrap record](../environment/argocd-bootstrap.md) | The pinned Argo CD release, manifest and images, the objects of the installation and the row that owns each, the refusals, the scoped removal, and the procedure that implements them. Decided by ADR 0017. Executed on the `docker-desktop` provider and not on `kind` |
-| [The Git desired state](../environment/git-desired-state.md) | The `gitops/` tree: the path of a generated release, what the tree may hold, the promotion boundary, and the check that accounts for every entry. Decided by ADR 0018. Nothing reconciles it |
+| [The Git desired state](../environment/git-desired-state.md) | The `gitops/` tree: the path of a generated release, what the tree may hold, the promotion boundary, and the check that accounts for every entry. Decided by ADR 0018. One Application reads it, on a cluster where an operator applied that Application |
+| [The Argo CD Application](../environment/argocd-application.md) | The one Application and its project, the values it gives the chart, its sync policy, the procedure that applies and removes it, and the refusals. Decided by ADR 0019. Executed on the `docker-desktop` provider and not on `kind`. What it reports is not a caller outcome |
 | [Project boundaries](project-boundaries.md) | Where this project stops, and what belongs to gateway or deeper serving work instead |
 | [Boundary review checklist](boundary-review-checklist.md) | The questions a reviewer applies to all of the above |
 | [Workload domain model](../domain/workload-domain-model.md) | The first component built under these boundaries, and the dependency rule it is held to |
@@ -66,7 +67,8 @@ caller names, and nothing installs a release from them.
 | [0015](decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | V1 decision ownership and sign-off authority rest with the repository maintainer role | Accepted | 2026-09-21 | [Change validation](../proof/architecture/v1-s5-003-pr1-validation.md); the register is machine-checked in both directions against the records on disk, every record's own metadata row is compared to it, and no decision record or governance document may still say this authority is unassigned. It amends ADR 0008 D13 and the `Decision owner` field of every earlier record. It decides accountability only: no claim, level, or evidence class moves, and fourteen of the fifteen owners it assigned are assigned retrospectively |
 | [0016](decisions/ADR-0016-inferops-evidence-level-model.md) | InferOps Evidence Levels describe how evidence was obtained, and attach to an evidence record | Accepted | 2026-09-23 | [Change validation](../proof/testing/v1-s5-011-pr1-validation.md); it amends ADR 0005 D4's level **meanings** and leaves its ceiling mechanism, layers, and lanes untouched. `C3` Failure and `C4` Composed are superseded as level meanings; failure and composition become evidence-record metadata. The definition is machine-checked for consistency -- one current definition, the mapping table, the project-defined disclaimer, and no superseded meaning presented as current outside the surfaces registered to state one, a list with nothing awaiting migration on it. **It is also applied to the evidence now:** V1-S5-011-PR2 published a versioned evidence-record schema, `V1-S5-012-PR1` the rules that replace the ceiling mechanism for `v1alpha2` records, and `V1-S5-012-PR2` migrated the register to `v1alpha2` by reading every cited record against the current definitions, moved the strategy data to the current names, and moved every consumer, the proof dashboard included, onto `v1alpha2`; the record carries a dated note for each of those three changes. `V1-S5-006-PR1` then normalized the migrated records and indexed them in [the V1 evidence index](../proof/v1-evidence-index.md), which changed no decision here |
 | [0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md) | Argo CD is installed by a pinned bootstrap that has one owner | Accepted in part | 2026-10-03 | [Change validation](../proof/architecture/v2-s3-001-pr1-validation.md); it amends ADR 0004 D3 by adding one owner, one lifecycle, and six rows to the ownership inventory, and moves no existing row. The pins and the object-to-row map are machine-checked for form and for agreement with the inventory, the Terraform defaults, and the committed renders. As accepted, nothing was installed. **Amended 2026-10-03:** a procedure implements it and ran on the `docker-desktop` provider ([the run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md)); it was not executed on `kind`. The four bootstrap rows and the upstream-release row are `implemented`, the apply mechanism (D8) and the image-digest mechanism (D6) are accepted for that provider, the choice of the core profile (D5) stays proposed, and the pins were read from upstream without verifying a signature |
-| [0018](decisions/ADR-0018-git-desired-state-layout.md) | Generated releases are the Git desired state, one directory for one binding and one workload | Accepted in part | 2026-10-04 | [Change validation](../proof/environment/v2-s3-002-pr1-validation.md); the path of a release is derived from its EnvironmentBinding and WorkloadContract and machine-checked, every entry in `gitops/` is accounted for, and the one release is compared byte for byte with what its declared sources derive. **Nothing reconciles the tree**: no Application exists and nothing was installed. Where a hand-written values file lives is open, the promotion boundary is held by review alone, and the recorded revision is a declaration |
+| [0018](decisions/ADR-0018-git-desired-state-layout.md) | Generated releases are the Git desired state, one directory for one binding and one workload | Accepted in part | 2026-10-04 | [Change validation](../proof/environment/v2-s3-002-pr1-validation.md); the path of a release is derived from its EnvironmentBinding and WorkloadContract and machine-checked, every entry in `gitops/` is accounted for, and the one release is compared byte for byte with what its declared sources derive. When it was accepted nothing reconciled the tree; ADR 0019 added the Application that reads it. The promotion boundary is held by review alone, and the recorded revision is a declaration |
+| [0019](decisions/ADR-0019-argocd-application-and-sync-policy.md) | One Argo CD Application reconciles the generated release, with self-heal and without pruning | Accepted in part | 2026-10-04 | [One run on `docker-desktop`](../proof/environment/v2-s3-002-pr2-argocd-application-run.md): Argo CD applied the release at the commit `main` named, one request was answered after each of two applies, one manual change was reverted, and the removal left no workload object. A static suite and a suite that executes the procedure against stubs hold the manifests and the procedure. Not executed on `kind`. No later commit of `main` was observed being applied, and the API image digest is not in Git. No claim is registered |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -309,9 +311,21 @@ are accepted, three of those as a rule or as scope. The eighth, D3, is accepted
 for the tree and open for an installed release: the tree holds no hand-written
 values file, and where that file lives is not decided. That open part is why the
 record is accepted in part.
-**Nothing reconciles the tree.** No Application exists. The generated values do
-not install the chart alone, because the chart requires four values that no
-contract owns.
+When it was accepted, nothing reconciled the tree and no Application existed.
+The generated values do not install the chart alone, because the chart requires
+four values that no contract owns.
+
+0019 adds the Application that 0017 and 0018 left open. One Application reads the
+chart and the generated values of the one release, at the revision `main` names.
+Its project admits one repository, one destination namespace, eight namespaced
+kinds, and no cluster-scoped kind, which is the restriction 0017 owed. Sync is
+automated with self-heal, and pruning is disabled. The hand-written values are
+inside the Application, and the API image digest is a parameter that an operator
+supplies, because no API image is published. A procedure applies, verifies, and
+removes the Application, and it has one owner in the inventory. Nine of its ten
+decisions are accepted. The tenth, the procedure, is accepted for
+`docker-desktop`, where one run executed it, and proposed for `kind`. **What
+Argo CD reports is not a caller outcome**, and the record says so as a decision.
 
 ## Conventions
 

@@ -806,9 +806,11 @@ files say about each other and nothing about a running system.
   a directory a caller names. Since `V2-S2-002-PR1`, one command verifies every declared
   committed release against its declared sources and regenerates a release a contributor
   names. Nothing calls either function from a delivery path; one generated release is
-  committed outside a test's golden release, as Git desired state under `gitops/`, and
-  nothing reconciles or installs it; and the values file a release is installed
-  with is still written by hand.
+  committed outside a test's golden release, as Git desired state under `gitops/`.
+  Since `V2-S3-002-PR2` one Argo CD Application reads the generated values of that
+  release, on a cluster where an operator applied the Application. It reads the
+  values file and not this document. The values that no contract owns are still
+  written by hand, in that Application.
 - **It checks a source digest only when it is given the source.** The platform domain
   confirms the contract and binding digests against documents a caller supplies. The
   drift check finds those documents for a declared committed release through its

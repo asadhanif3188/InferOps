@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/architecture/resource-ownership.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "V1 resource ownership inventory, v1alpha1",
-  "description": "Which tool, person, or controller owns the lifecycle of each resource the V1 architecture names, and what happens to that resource under each teardown operation. Ownership means the right to create and destroy. Referencing a resource is not owning it, and no resource in this file has more than one owner. Most rows are now implemented and cite the run that moved them; the v1Status field says which is which, and a row may only cite evidence when it is implemented. Rows added on 2026-10-03 by ADR 0017 describe the Argo CD bootstrap that V2 decided; for those rows v1Status records whether the row is built, and it does not place the row in V1 scope.",
+  "description": "Which tool, person, or controller owns the lifecycle of each resource the V1 architecture names, and what happens to that resource under each teardown operation. Ownership means the right to create and destroy. Referencing a resource is not owning it, and no resource in this file has more than one owner. Most rows are now implemented and cite the run that moved them; the v1Status field says which is which, and a row may only cite evidence when it is implemented. Rows added on 2026-10-03 by ADR 0017 describe the Argo CD bootstrap that V2 decided; for those rows v1Status records whether the row is built, and it does not place the row in V1 scope. Rows added on 2026-10-04 by ADR 0019 describe the one Argo CD Application and its project. For the rows of the `release` lifecycle, createdBy and destroyedBy describe the operator's Helm path. On a cluster where the Application is applied, Argo CD creates those objects from the same chart, and the Application procedure's removal deletes them. The two paths do not run in one namespace at one time: the Application procedure refuses while a Helm release of the same name is recorded there.",
   "decisionRef": "docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md",
   "documentRef": "docs/architecture/resource-ownership.md",
   "lifecycles": {
@@ -13,6 +13,7 @@
     "operator-provided": "Provided by the operator outside InferOps, with a supported provider's own tooling. InferOps selects, verifies and consumes it, and nothing on its platform path creates, enables, resets, reconfigures, or deletes it (ADR 0011).",
     "prerequisite": "Provisioned before a workload release and outliving it. Terraform's half of the cluster.",
     "bootstrap": "Installed once in a cluster by the Argo CD bootstrap procedure, before any GitOps reconciliation, and outliving every release. Terraform, Helm and Argo CD itself neither create nor destroy it (ADR 0017).",
+    "reconciliation": "Applied in a cluster by the Argo CD Application procedure, after the bootstrap and after the prerequisite layer. It names what Argo CD reconciles. The bootstrap, Terraform, and Helm neither create nor destroy it (ADR 0019).",
     "release": "Part of one Helm release. Created by install or upgrade, removed by uninstall.",
     "derived": "Never declared by any tool. A Kubernetes controller creates it from an owned object and garbage-collects it.",
     "undecided": "No owner has been selected. Every resource carrying this lifecycle must be deferred out of V1."
@@ -73,6 +74,13 @@
       "lifecycle": "bootstrap",
       "createdBy": "scripts/environment/argocd-bootstrap.sh",
       "destroyedBy": "scripts/environment/argocd-bootstrap.sh"
+    },
+    {
+      "ownerId": "argocd-application",
+      "name": "The Argo CD Application procedure, run by an operator against a selected and verified cluster",
+      "lifecycle": "reconciliation",
+      "createdBy": "scripts/environment/argocd-application.sh",
+      "destroyedBy": "scripts/environment/argocd-application.sh"
     },
     {
       "ownerId": "helm",
@@ -280,9 +288,33 @@
         "terraform destroy",
         "cluster teardown"
       ],
-      "referencedBy": [],
-      "handoff": "Added to this inventory on 2026-10-04 by ADR 0018. The directory `gitops/` holds generated releases, one directory for one environment binding and one workload, and nothing written by hand except the page that describes it. A file in it is changed only by regenerating a release from its declared sources, in a reviewed change. `implemented` means that the tree exists and that a check holds every entry in it to a declared release. It does not mean that anything reconciles it: no Application names the tree, and `referencedBy` is empty for that reason. The tree holds no cluster object. The objects a release creates in a cluster are the `helm` rows, and what becomes of them when a controller applies the chart is not decided.",
+      "referencedBy": [
+        "argocd-application"
+      ],
+      "handoff": "Added to this inventory on 2026-10-04 by ADR 0018. The directory `gitops/` holds generated releases, one directory for one environment binding and one workload, and nothing written by hand except the page that describes it. A file in it is changed only by regenerating a release from its declared sources, in a reviewed change. `implemented` means that the tree exists and that a check holds every entry in it to a declared release. Since 2026-10-04 one Application names one file of the tree: the generated values of the one release. ADR 0019 decided it, and `referencedBy` names the Application procedure for that reason. Argo CD reads the file from the Git remote at the revision `main` names, on a cluster where the Application is applied. The tree holds no cluster object. The objects a release creates in a cluster are the rows of the `release` lifecycle.",
       "evidenceRef": "docs/proof/environment/v2-s3-002-pr1-validation.md"
+    },
+    {
+      "resourceId": "argocd-application-manifests",
+      "name": "The Argo CD Application and project manifests",
+      "kind": "repository artifact",
+      "owner": "repository",
+      "lifecycle": "repository",
+      "v1Status": "implemented",
+      "createdBy": "a merged pull request",
+      "destroyedBy": "a merged pull request",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy",
+        "cluster teardown"
+      ],
+      "referencedBy": [
+        "argocd-application"
+      ],
+      "handoff": "Added to this inventory on 2026-10-04 by ADR 0019. Two files: `infra/argocd/workloads-project.yaml` and `infra/argocd/local-docker-desktop-support-assistant.yaml`. They declare one project and one Application. A test holds that no other tracked file declares an Argo CD custom resource. The files are not desired state: Argo CD does not read them from Git, and a merge that changes one changes no cluster until the Application procedure runs again. The Application file holds no API image digest; the procedure adds it. `implemented` means that the files exist and that a suite holds them to ADR 0019.",
+      "evidenceRef": "docs/proof/environment/v2-s3-002-pr2-argocd-application-run.md"
     },
     {
       "resourceId": "workload-contract-document",
@@ -560,7 +592,8 @@
         "scoped object teardown"
       ],
       "referencedBy": [
-        "helm"
+        "helm",
+        "argocd-application"
       ],
       "handoff": "Terraform creates it; Helm installs into it. Helm must never be invoked with --create-namespace, which is the single most likely way for these two tools to end up owning one object.",
       "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
@@ -601,7 +634,8 @@
         "scoped object teardown"
       ],
       "referencedBy": [
-        "helm"
+        "helm",
+        "argocd-application"
       ],
       "handoff": "Terraform provisions an empty claim; a Helm-owned job fills it; the serving Deployment mounts it read-only. Its lifecycle is deliberately longer than a release's, so that uninstalling does not force a re-download of weights whose transport is unauthenticated. The cost is that it holds roughly 1.7 GiB until terraform destroy runs, and that must be documented rather than discovered.",
       "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
@@ -697,8 +731,27 @@
         "terraform destroy"
       ],
       "referencedBy": [],
-      "handoff": "The twenty-nine namespaced objects the pinned manifest declares, all in the namespace `argocd`: the application controller, the repository server, Redis, and the ApplicationSet controller, with their services, configuration, service accounts, roles and network policies. One more object was observed at run time: a Secret, `argocd-redis`, from an init container. A leader-election Lease is expected and was not observed. An Application or an AppProject would also be in this namespace and is not part of this row; who owns one is not decided. A Helm release owns objects of the same kinds, in the platform namespace; the two sets are told apart by namespace. Nothing here is on the inference request path. The manifest sets no resource request and no limit on any container. `implemented` since 2026-10-03: a run on the docker-desktop provider created and removed it, twice. No run on kind exists.",
+      "handoff": "The twenty-nine namespaced objects the pinned manifest declares, all in the namespace `argocd`: the application controller, the repository server, Redis, and the ApplicationSet controller, with their services, configuration, service accounts, roles and network policies. One more object was observed at run time: a Secret, `argocd-redis`, from an init container. A leader-election Lease is expected and was not observed. An Application and its project are also in this namespace and are not part of this row: since 2026-10-04 they are the row `argocd-workload-application`, which the Application procedure owns. A Helm release owns objects of the same kinds, in the platform namespace; the two sets are told apart by namespace. Nothing here is on the inference request path. The manifest sets no resource request and no limit on any container. `implemented` since 2026-10-03: a run on the docker-desktop provider created and removed it, twice. No run on kind exists.",
       "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md"
+    },
+    {
+      "resourceId": "argocd-workload-application",
+      "name": "The workload Application and its project",
+      "kind": "Argo CD custom resource (AppProject, Application)",
+      "owner": "argocd-application",
+      "lifecycle": "reconciliation",
+      "v1Status": "implemented",
+      "createdBy": "scripts/environment/argocd-application.sh",
+      "destroyedBy": "scripts/environment/argocd-application.sh",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy"
+      ],
+      "referencedBy": [],
+      "handoff": "Two objects in the namespace `argocd`: the project `inferops-workloads` and the Application `local-docker-desktop-support-assistant`. The bootstrap owns the namespace and does not own these two objects. The procedure applies them with server-side apply, and marks each with a label and a recorded manifest SHA-256. It refuses beside any other Application, ApplicationSet, or AppProject object. While the Application exists, Argo CD creates and updates the objects of the `release` rows in the platform namespace from the chart, and the procedure's removal deletes them with a cascade. The procedure refuses to apply while a Helm release of the same name is recorded there. The bootstrap removal refuses while either object exists. `terraform destroy` deletes the platform namespace and not these two objects. What the Application reports after that was not observed. `implemented` since 2026-10-04: a run on the docker-desktop provider applied and removed both, twice. No run on kind exists.",
+      "evidenceRef": "docs/proof/environment/v2-s3-002-pr2-argocd-application-run.md"
     },
     {
       "resourceId": "workload-service-account",

@@ -1,0 +1,72 @@
+# The one Argo CD Application: the reference workload on the local-docker-desktop
+# environment binding.
+#
+# Source. The chart at charts/inferops-llm, at the revision that `main` names. The
+# values are the generated values of the desired-state release, read from Git, and
+# the hand-written values below, which set nothing that the generated file holds.
+#
+# The API image digest is not in this file. No InferOps API image is published, so
+# the digest names a build on the operator's host. The procedure that applies this
+# file adds it as one Helm parameter, `api.image.digest`. Without that parameter
+# the chart refuses to render, and the Application reconciles nothing.
+#
+# Sync. Automated, with self-heal. Pruning is disabled: an object that leaves the
+# rendered chart stays in the cluster until a person deletes it. The file carries
+# no resource finalizer, so deleting the Application object alone deletes no
+# workload object.
+#
+# This file is not desired state. Argo CD does not read it from Git. An operator
+# applies it with scripts/environment/argocd-application.sh, and a merge that
+# changes it changes no cluster until that procedure runs again.
+#
+# On a model cache claim that does not hold the pinned artifact, the chart's
+# acquisition hook downloads it from the address the generated values name.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: local-docker-desktop-support-assistant
+  namespace: argocd
+  labels:
+    inferops.io/lifecycle: reconciliation
+spec:
+  project: inferops-workloads
+  source:
+    repoURL: https://github.com/asadhanif3188/InferOps.git
+    targetRevision: main
+    path: charts/inferops-llm
+    helm:
+      releaseName: inferops
+      valueFiles:
+        - /gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml
+      valuesObject:
+        api:
+          image:
+            repository: localhost/inferops-api
+            pullPolicy: Never
+        runtime:
+          image:
+            pullPolicy: IfNotPresent
+        model:
+          alias: qwen3-1.7b-q8_0
+          license:
+            spdx: Apache-2.0
+          acquisition:
+            enabled: true
+            source: download
+          cache:
+            mountPath: /models
+            readOnly: true
+          integrity:
+            verifyOnStart: sha256
+        telemetry:
+          scrapeAnnotations: true
+          collection:
+            collector:
+              deploy: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: inferops-release
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true

@@ -97,7 +97,8 @@ _REFERENCE_RENDER_REVISION: Final = "c056b9772a3de391fd61589649b1d3ed1c5ac7c4"
 #:
 #: The one entry is the reference workload on the ``local-docker-desktop`` binding.
 #: That binding names the one provider on which the GitOps controller's bootstrap
-#: was executed. Nothing reconciles this release yet.
+#: was executed. One Application of that controller reads this release, on a
+#: cluster where an operator applied the Application.
 DESIRED_STATE_RELEASES: Final[tuple[DeclaredRelease, ...]] = (
     DeclaredRelease(
         directory=(

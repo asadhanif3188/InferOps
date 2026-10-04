@@ -5,7 +5,7 @@
 | Status | **Accepted in part** |
 | Date proposed | 2026-10-03 |
 | Date accepted | 2026-10-03, for the decisions the table below marks accepted |
-| Amended | 2026-10-03, in place, by the change that implemented the bootstrap. Each amended decision says so, with the date. No decision was withdrawn |
+| Amended | 2026-10-03, in place, by the change that implemented the bootstrap. Each amended decision says so, with the date. No decision was withdrawn. Amended again on 2026-10-04, by the change that added the first Application: D5, D9, R5, and R6 say so |
 | Decision owner | [`repository-maintainer`](../../governance/decision-authority.md) |
 | Supersedes | None |
 | Amends | [ADR 0004](ADR-0004-component-and-ownership-boundaries.md) D3: the ownership inventory gains one owner, one lifecycle, and six rows. No existing row moves |
@@ -40,6 +40,15 @@
 > reconciles nothing. The amendments are marked in the status table, in D3, D5,
 > D6, D8, D11, and D12, and in the consequences, the compatibility impact, the
 > security considerations, the evidence, and the risks.
+
+> [!NOTE]
+> **Amended 2026-10-04: one Application exists.** [ADR 0019](ADR-0019-argocd-application-and-sync-policy.md)
+> decided one Application, its project, and the procedure that applies them. It
+> answers what D9, R5, and R6 left to the change that adds the first
+> Application. On `docker-desktop` the core profile reconciled that Application,
+> and a removal of the installation refused while it existed. The sentences of
+> this record that say no Application exists describe the record as it was
+> written.
 
 ## Decision status
 
@@ -220,6 +229,14 @@ unmodified on `docker-desktop`: 34 objects, as the pin says. The four workloads 
 the core profile became ready. The choice of the profile **stays proposed**: the
 run created no Application, so it did not show that this profile reconciles one.
 
+**Amended 2026-10-04.** The choice of the core profile is **accepted for
+`docker-desktop`**, and stays proposed for `kind`. A run of the Application
+procedure found no project after the bootstrap, as R6 inferred. It applied a
+committed project and one Application, and Argo CD applied the release.
+[ADR 0019](ADR-0019-argocd-application-and-sync-policy.md) and
+[the record of that run](../../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+say what was observed.
+
 ## D6 — Images run at their pinned digests
 
 **Accepted as a rule for the moment the bootstrap reports success. The mechanism
@@ -344,6 +361,14 @@ Terraform owns.** Today that holds because no Application exists, and a test
 refuses a committed Argo CD custom resource. The test establishes an absence. It
 does not restrict what an Application may target. The change that adds the first
 Application owes that restriction, and must replace the test.
+
+**Amended 2026-10-04.** That change replaced the test.
+[ADR 0019](ADR-0019-argocd-application-and-sync-policy.md) D3 decides the
+restriction: the one Application is in a project that admits one destination
+namespace, which is not `argocd`, eight namespaced kinds, and no cluster-scoped
+kind. A test reads the project and the kinds each other owner holds. The rule
+now holds by a restriction on one committed Application. It does not narrow the
+controller's grant, and R1 stays open.
 
 ## D10 — Argo CD is not on the request path
 
@@ -568,8 +593,8 @@ reconciliation, or about serving. No claim is registered.
 | R2 | The pinned bytes are identified and not authenticated, and the image pin does not hold after a restart | Open | A compromised upstream release would be pinned as faithfully as a sound one. Under the unmodified manifest, a restarted pod resolves its image tag again (D6) |
 | R3 | Upstream may withdraw the manifest or an image | Accepted | The bootstrap then fails closed at the digest check or the pull. Nothing is copied here to prevent it. Removal does not need the manifest: it deletes by the names the record lists |
 | R4 | No Argo CD container declares a resource request or a limit | Open | The reference host refused the multi-replica profile on capacity. Whether it runs four more pods beside a release is not known, and neither is their effect on the latency of the serving runtime they share a node with |
-| R5 | What becomes of the `helm` rows when Argo CD applies the chart | Open | Argo CD renders a chart and applies the result; it does not run `helm install`. The rows' `createdBy` and `destroyedBy`, and the chart's `pre-install` hook, are then described by the wrong tool. An Application and its project would also be objects in `argocd` that the bootstrap does not own. The change that adds the first Application owes both answers |
-| R6 | A core installation probably holds no project | Open | Inferred, not observed: upstream source at the pinned commit creates the `default` project in the API server (`initializeDefaultProject` in `server/server.go`), and the core profile installs no API server. An Application names a project, so the first Application needs a committed AppProject and an owner for it. This is why the choice of profile in D5 is proposed |
+| R5 | What becomes of the `helm` rows when Argo CD applies the chart | Open | Argo CD renders a chart and applies the result; it does not run `helm install`. The rows' `createdBy` and `destroyedBy`, and the chart's `pre-install` hook, are then described by the wrong tool. An Application and its project would also be objects in `argocd` that the bootstrap does not own. The change that adds the first Application owes both answers. **Amended 2026-10-04: answered** by ADR 0019. The Application and its project have their own owner and row (D2). The `release` rows keep `helm`, and the two delivery paths do not run in one namespace at one time (D8). In a run, Argo CD ran the chart's `pre-install` hook before the sync |
+| R6 | A core installation probably holds no project | Open | Inferred, not observed: upstream source at the pinned commit creates the `default` project in the API server (`initializeDefaultProject` in `server/server.go`), and the core profile installs no API server. An Application names a project, so the first Application needs a committed AppProject and an owner for it. This is why the choice of profile in D5 is proposed. **Amended 2026-10-04: closed for `docker-desktop`.** A run found no project after the bootstrap. ADR 0019 commits one, with an owner, and the Application synced in it |
 | R7 | The bootstrap's marker is a label | Accepted | A person who can label a namespace can set it. It prevents an accident and not an impersonation, as `EX-02` and `EX-06` already record for the cluster guard |
 | R8 | The tested Kubernetes list is upstream's statement | Accepted | No supported provider has run this release. **Amended 2026-10-03:** `docker-desktop` ran it at server `v1.34.3`. `kind` has not |
 | R9 | Server-side apply was not tried | Open. **Amended 2026-10-03: closed for `docker-desktop`**, open for `kind` | D8 stays proposed until a run. A run on `docker-desktop` applied all 34 objects three times |

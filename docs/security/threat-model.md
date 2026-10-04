@@ -169,7 +169,7 @@ because that is the shape of a threat nobody decided about.
 | T-21 | A stale cache is trusted instead of a hash | tampering | `model-cache-volume` | B3 | Contributor | `verify-artifact-hash-before-use` | — |
 | T-22 | A secret reference names a place nobody manages | information-disclosure | `secret-material` | B3 | Workload owner | `refuse-a-secret-value-in-a-contract` | DR-10 |
 | T-23 | The Argo CD manifest or an image is replaced at its source | tampering | `gitops-controller-installation` | B1 | Publisher | `verify-the-argocd-manifest-digest-before-apply`, `argocd-containers-run-their-pinned-digest-at-install`, `verify-artifact-provenance` | DR-13 |
-| T-24 | The GitOps controller's grant reaches an object another owner holds | elevation-of-privilege | `gitops-controller-installation` | B2 | Contributor | `no-argocd-custom-resource-is-committed`, `narrow-the-argocd-controller-grant` | DR-14 |
+| T-24 | The GitOps controller's grant reaches an object another owner holds | elevation-of-privilege | `gitops-controller-installation` | B2 | Contributor | `restrict-the-argocd-application-to-one-destination`, `narrow-the-argocd-controller-grant` | DR-14 |
 | T-25 | The bootstrap or its removal acts on an Argo CD it did not install | elevation-of-privilege | `gitops-controller-installation` | B2 | Contributor | `refuse-an-argocd-installation-this-project-did-not-create`, `refuse-argocd-removal-while-a-custom-resource-exists` | — |
 
 Three of the twenty-five name only a control with no verification at all —
@@ -194,9 +194,11 @@ T-23 to T-25 arrived on 2026-10-03 with the Argo CD bootstrap. T-23 and T-24 hav
 the same shape as T-02 and T-19: each names a control with no verification —
 `verify-artifact-provenance` and `narrow-the-argocd-controller-grant` — beside
 controls that are verified. `DR-13` and `DR-14` carry what the verified half does
-not reach. For T-24 the verified half is an absence: no Application is committed,
-so the controller reconciles nothing, and nothing limits what a later Application
-may target.
+not reach. For T-24 the verified half was an absence until 2026-10-04: no
+Application was committed. One Application is now committed, and the verified
+half is a restriction on it: its project admits one destination namespace, eight
+namespaced kinds, and no cluster-scoped kind. The restriction reads files, and it
+does not narrow the controller.
 
 ## Five abuse cases worth reading in full
 

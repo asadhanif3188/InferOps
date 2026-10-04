@@ -28,6 +28,16 @@
 > [the desired-state document](../../environment/git-desired-state.md) and checked
 > by `tests/domain/test_gitops_desired_state.py`.
 
+> [!NOTE]
+> **Added 2026-10-04, by the change that added the Application.** The block above
+> describes this record as it was accepted, when nothing reconciled the
+> directory. [ADR 0019](ADR-0019-argocd-application-and-sync-policy.md) has since
+> decided one Application that reads the generated values of the release, its
+> project, its sync policy, and the revision it follows. It also decided where
+> the hand-written values of an installed release live: inside the Application,
+> and not in this tree. No decision of this record changed. The notes are in D3,
+> D5, and D8, and in R1.
+
 ## Decision status
 
 | ID | Decision | Status | What supports it |
@@ -165,6 +175,11 @@ in this tree. The change that adds the first Application decides its location an
 how the Application reads it. Until then the tree is reviewable, and it is not
 installable by itself.
 
+**Added 2026-10-04.** [ADR 0019](ADR-0019-argocd-application-and-sync-policy.md) D5
+decided it. The hand-written values are inside the Application, and the tree
+still holds generated files only. The API image digest is in neither: the
+operator gives it to the procedure that applies the Application.
+
 | Alternative | Assessment |
 |---|---|
 | **Generated files only** | **Selected.** Every file in the tree is derived, so the drift check covers all of it |
@@ -206,6 +221,11 @@ promotion stage exists: one environment has one path.
 
 A regeneration on a contributor's machine changes nothing until that change is
 accepted. Verification writes nothing.
+
+**Added 2026-10-04.** The last step of the diagram is built.
+[ADR 0019](ADR-0019-argocd-application-and-sync-policy.md) D4 decided that the
+Application follows `main`. A run resolved `main` to one commit and applied it.
+No run observed a later commit being applied.
 
 **What holds this rule is review.** The default-lane suite fails a change whose
 release is stale, hand-edited, or at the wrong path. It does not establish that a
@@ -267,6 +287,10 @@ generated file is declared, and it now reads both lists.
   controller applies the chart.
 - **A desired-state path for `kind`.**
 
+**Added 2026-10-04.** [ADR 0019](ADR-0019-argocd-application-and-sync-policy.md)
+decided the first four items. A desired-state path for `kind` is still not
+decided.
+
 ## Consequences
 
 - **A binding's destination path now names a directory that exists.** The binding
@@ -324,7 +348,7 @@ or whether the release serves a request: **nothing**. No claim is registered.
 
 | ID | Item | Status | Impact |
 |---|---|---|---|
-| R1 | The generated values do not install the chart alone | Open | Four hand-written values are required. The API image is a contributor's local build, published to no registry. The change that adds the first Application must say where those values come from |
+| R1 | The generated values do not install the chart alone | Open | Four hand-written values are required. The API image is a contributor's local build, published to no registry. The change that adds the first Application must say where those values come from. **Added 2026-10-04:** ADR 0019 D5 says it. Three of the four are inside the Application. The API image digest is a parameter that the operator supplies, and it is not in Git |
 | R2 | The recorded revision is a declaration | Accepted | A contributor can declare a commit at which the renderer differed, or a string that names no commit. The defaults at that commit are compared in a full clone, and not in the hosted lane. The renderer's source is not compared |
 | R3 | Nothing verifies that a merge was reviewed | Open | The promotion boundary is a rule that review holds. Branch protection is not claimed as configured |
 | R4 | The path rule reads "at the destination path" as "beneath it" | Open | The freeze record says "at" in its procedure and in its topology. A later freeze revision must name the exact path before a result-bearing run. None does yet |

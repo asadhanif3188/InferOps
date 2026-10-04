@@ -639,7 +639,7 @@ runs without a skip.
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| A delivery workflow writes a generated release | Since `V2-S3-002-PR1` a contributor regenerates a [desired-state release](../environment/git-desired-state.md) by key, and the change that contains it is committed. That is the promotion boundary, and nothing is delivered: no workflow writes a release, and no controller reads the tree | An Application that follows the tree |
+| A delivery workflow writes a generated release | Since `V2-S3-002-PR1` a contributor regenerates a [desired-state release](../environment/git-desired-state.md) by key, and the change that contains it is committed. That is the promotion boundary. No workflow writes a release. Since `V2-S3-002-PR2` one [Argo CD Application](../environment/argocd-application.md) reads the committed generated values, on a cluster where an operator applied it | A workflow that renders a release and proposes the change |
 | A revision a release records names a commit | Neither the declaration nor the drift check reads Git history, and the reference release's revisions are placeholders. For a desired-state release the form of the revision is checked, and the defaults at it are compared only in a full clone | A check against the repository the release is committed in |
 | A secret reference is rendered | No accepted mapping from a contract locator to the chart's secret binding | A decision on that mapping |
 | The `mock-llm` profile is rendered | The renderer declares the synchronous profile only, as the story scopes it | A renderer, or a support change, for the mock profile |

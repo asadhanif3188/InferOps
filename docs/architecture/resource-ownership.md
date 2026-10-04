@@ -43,8 +43,28 @@ on the `docker-desktop` provider created and removed them, and
 `kind` exists. The pins and the rules are in
 [the Argo CD bootstrap record](../environment/argocd-bootstrap.md). This change
 moves no existing row. Terraform keeps the prerequisites and Helm keeps the
-release. Which objects Argo CD reconciles is not decided here, because no
-Application exists.
+release. Which objects Argo CD reconciles was not decided there, because no
+Application existed.
+
+**A sixth layer was decided on 2026-10-04, and built the same day.**
+[ADR 0019](decisions/ADR-0019-argocd-application-and-sync-policy.md) decides one
+Argo CD Application for one release path, and the project that holds it. They
+have one owner: `argocd-application`, with the `reconciliation` lifecycle. The
+inventory gains that owner and two rows. One row is the two committed manifests.
+The other is the two objects in a cluster, and it is `implemented`: a run on the
+`docker-desktop` provider applied and removed them, and
+[the record of that run](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+says what was observed. No run on `kind` exists.
+
+**The release rows keep their owner, and the inventory now describes two paths to
+them.** `createdBy` and `destroyedBy` on a `release` row describe the operator's
+Helm path. On a cluster where the Application is applied, Argo CD creates the
+same objects from the same chart, and the Application procedure's removal deletes
+them. The two paths do not run in one namespace at one time: the procedure
+refuses while a Helm release of the same name is recorded there. That refusal is
+executed against stubs and was observed once on `docker-desktop`. Nothing stops
+an operator who runs `helm install` after the Application is applied, and ADR
+0019 records that as a risk.
 
 **Three procedures now install and uninstall the same release in the same
 namespace**, and the distinction is what each is for rather than what each
@@ -154,6 +174,7 @@ Three corollaries, because each is a mistake this inventory is built to prevent:
 | `cluster-operator` | The operator who provides the local cluster, with a supported provider's own tooling | `operator-provided` | The `kind` CLI, or enabling Kubernetes in Docker Desktop | Cluster teardown, by the operator. Nothing on the platform path does it |
 | `terraform` | The platform prerequisite layer | `prerequisite` | `terraform apply` | `terraform destroy` |
 | `argocd-bootstrap` | The Argo CD bootstrap procedure, run by an operator against a selected and verified cluster. Decided by ADR 0017 | `bootstrap` | `scripts/environment/argocd-bootstrap.sh install` | `scripts/environment/argocd-bootstrap.sh remove` |
+| `argocd-application` | The Argo CD Application procedure, run by an operator against a selected and verified cluster. Decided by ADR 0019 | `reconciliation` | `scripts/environment/argocd-application.sh apply` | `scripts/environment/argocd-application.sh remove` |
 | `helm` | The workload release layer | `release` | `helm install` or `helm upgrade` | `helm uninstall` |
 | `kubernetes-control-plane` | Kubernetes controllers | `derived` | Reconciliation | Garbage collection |
 | `undecided` | Not selected | `undecided` | Nothing | Nothing |
@@ -213,7 +234,7 @@ not place the row in V1 scope.
 | `argocd-namespace` | `v1/Namespace` | Name. Terraform owns the platform namespace; this one is `argocd` | The pinned manifest declares no Namespace, so the bootstrap creates it and labels it `inferops.io/lifecycle=bootstrap`. The name does not begin with `inferops-` |
 | `argocd-custom-resource-definitions` | `apiextensions.k8s.io/v1 CustomResourceDefinition` | Kind. No other owner declares one | Three definitions. Deleting one deletes every object of its kind, so removal refuses while an Application, ApplicationSet, or AppProject object exists, and deletes the definitions only after the controllers have stopped |
 | `argocd-cluster-rbac` | `rbac.authorization.k8s.io/v1 ClusterRole` and `ClusterRoleBinding` | Kind. No other owner declares one | One of each. The role grants every verb on every resource. It is the upstream default and is not narrowed |
-| `argocd-controller-installation` | `platform service` | Namespace. A Helm release owns the same kinds in the platform namespace | Twenty-nine namespaced objects in `argocd`. One more was observed at run time, a Secret. A leader-election Lease is expected and was not observed. No container declares a resource request or a limit. An Application or an AppProject would also be in `argocd` and is not part of this row; who owns one is not decided |
+| `argocd-controller-installation` | `platform service` | Namespace. A Helm release owns the same kinds in the platform namespace | Twenty-nine namespaced objects in `argocd`. One more was observed at run time, a Secret. A leader-election Lease is expected and was not observed. No container declares a resource request or a limit. One Application and its project are also in `argocd` and are not part of this row: they are `argocd-workload-application` |
 
 Three limits apply to this table:
 
@@ -223,12 +244,37 @@ Three limits apply to this table:
   certifies nothing about `kind`.
 - **The role in `argocd-cluster-rbac` reaches every object in the cluster.** The
   inventory says who may create and destroy an object. It does not stop a
-  controller that holds a wider grant. No Application exists, so Argo CD
-  reconciles nothing today; the change that adds the first Application owes the
-  restriction on what it may target.
+  controller that holds a wider grant. Since 2026-10-04 one Application exists
+  in the repository, and its project admits one destination namespace, eight
+  namespaced kinds, and no cluster-scoped kind. That restricts the one
+  Application. It does not narrow the role.
 - **The ApplicationSet controller is installed and unused.** The pinned manifest
   includes it and is applied unmodified. InferOps commits no ApplicationSet
   object.
+
+### The Argo CD Application
+
+Added on 2026-10-04 by
+[ADR 0019](decisions/ADR-0019-argocd-application-and-sync-policy.md). The row is
+`implemented` since the run on `docker-desktop` on 2026-10-04.
+
+> **The Application procedure owns one Application and one project. The
+> bootstrap, Terraform, Helm, and Argo CD itself do not create them and do not
+> destroy them.**
+
+| `resourceId` | Kind | Told apart from another owner by | Note |
+|---|---|---|---|
+| `argocd-workload-application` | `Argo CD custom resource (AppProject, Application)` | Kind and name. The bootstrap owns the namespace `argocd` and every object in it that is not of an `argoproj.io` kind | The project `inferops-workloads` and the Application `local-docker-desktop-support-assistant`. Each carries a label and a recorded manifest SHA-256. The procedure refuses beside any other Application, ApplicationSet, or AppProject object. The bootstrap removal refuses while either exists |
+
+Three limits apply to this row:
+
+- **It is built on one provider.** [The run](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+  was on `docker-desktop`. It certifies nothing about `kind`.
+- **The marker prevents an accident and not an impersonation.** A person who can
+  write an object in `argocd` can write the label and the annotation.
+- **The Application is not desired state.** Argo CD does not read the two
+  manifests from Git. A merge that changes one changes no cluster until the
+  procedure runs again.
 
 ### The release
 
@@ -276,7 +322,8 @@ inside one.
 | `inference-operations-dashboard` | `repository` | The dashboard's panels, queries and empty-state texts as a committed record, and the Grafana JSON generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-13. `implemented` means the definition exists and is checked against the query policy and synthetic scenarios; one throwaway Grafana imported it once for the V1-S4-002-PR2 validation, and nothing here runs one |
 | `inference-alert-definitions` | `repository` | The six V1 alerts -- expression, window, threshold source, owner, severity, caller impact, action, runbook -- as a committed record, and the Prometheus rule file per profile generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-17. `implemented` means the definition exists and is checked against the query policy and eight committed scenarios; no Prometheus in a cluster has loaded it, nothing routes an alert, and nobody has ever been told about one |
 | `argocd-bootstrap-inputs` | `repository` | The pinned Argo CD release, install manifest and images, the namespace, the object-to-row map, the refusals, and the scoped removal, as a committed record. `implemented` means that the record exists and is checked against this inventory. It does not mean that Argo CD is installed. Added 2026-10-03 |
-| `git-desired-state` | `repository` | The directory `gitops/`: generated releases, one directory for one environment binding and one workload, and nothing written by hand except the page that describes it. Decided by [ADR 0018](decisions/ADR-0018-git-desired-state-layout.md). `implemented` means that the tree exists and that a check accounts for every entry in it. It does not mean that anything reconciles it: no Application names the tree. It holds no cluster object. Added 2026-10-04 |
+| `git-desired-state` | `repository` | The directory `gitops/`: generated releases, one directory for one environment binding and one workload, and nothing written by hand except the page that describes it. Decided by [ADR 0018](decisions/ADR-0018-git-desired-state-layout.md). `implemented` means that the tree exists and that a check accounts for every entry in it. Since 2026-10-04 one Application reads the generated values of the one release from it, on a cluster where that Application is applied. It holds no cluster object. Added 2026-10-04 |
+| `argocd-application-manifests` | `repository` | Two files under `infra/argocd/`: one project and one Application. Decided by [ADR 0019](decisions/ADR-0019-argocd-application-and-sync-policy.md). They are not desired state: Argo CD does not read them from Git, and the Application procedure applies them. The Application file holds no API image digest. `implemented` means that the files exist and that a suite holds them to the decision. Added 2026-10-04 |
 | `workload-contract-document` | `workload-owner` | The platform reads it and never writes it back |
 | `workload-secret-material` | `workload-owner` | Referenced by name. This project never creates, rotates, or reads it |
 | `serving-runtime-container-image` | `external-publisher` | Pinned by digest. Availability is not this project's to guarantee |
@@ -333,6 +380,14 @@ procedure that is not in the list. The test that refuses a row which survives
 its own destruction compares against the list, so it cannot fail for these rows.
 The removal steps and their refusals are in
 [the Argo CD bootstrap record](../environment/argocd-bootstrap.md#removal).
+
+**The Application removal is not one of the five either.** It deletes the
+Application with a cascade, so Argo CD deletes the release objects it applied,
+and then it deletes the project. It does not touch the platform namespace, a
+claim, or the Argo CD installation. The row `argocd-workload-application`
+survives every operation above except cluster teardown, for the same reason as
+the bootstrap rows. The steps are in
+[the Argo CD Application document](../environment/argocd-application.md#removal).
 
 The inventory records, per resource, which of these it survives. Two tests read
 those records: one refuses a row that claims to survive the operation that destroys
@@ -406,12 +461,20 @@ only: that every object the pinned manifest declares maps to a row the
 the namespace is not the platform namespace, not the smoke namespace, and not
 under the `inferops-` prefix; that neither committed chart render and no
 Terraform file declares a cluster-scoped kind the bootstrap owns or names the
-namespace `argocd`; that no tracked file declares an Argo CD custom resource or a
-cluster registration; that removal refuses before it deletes, and deletes the
+namespace `argocd`; that the two manifests of ADR 0019 are the only tracked
+files that declare an Argo CD custom resource, and that none registers a
+cluster; that removal refuses before it deletes, and deletes the
 definitions after the controllers; and that every bootstrap row is `implemented`,
 names the procedure, and cites the record of a run. Until the procedure existed
 the last check pinned `planned`, and the change that implemented the bootstrap
 moved it.
+
+Checked by `tests/architecture/test_argocd_application.py`, for the Application
+rows only: that the `argocd-application` owner holds one row and names the
+procedure; that the project admits one repository, one destination, the kinds
+the chart's real profile renders, and no cluster-scoped kind; that no admitted
+kind is one Terraform owns; and that the Application reads the generated values
+of the declared release and prunes nothing.
 
 Checked by `tests/architecture/test_helm_chart.py`, for the release layer only:
 that the committed chart renders every row the release table gives it or declares

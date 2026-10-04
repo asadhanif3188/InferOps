@@ -631,11 +631,11 @@
         },
         {
           "itemId": "the-argocd-bootstrap-refuses-what-it-did-not-install",
-          "statement": "The Argo CD bootstrap and its removal refuse an installation that does not carry the bootstrap marker, the removal refuses while an Application, ApplicationSet, or AppProject object exists, and no tracked file declares such an object. The two refusals are executed against stub tools; no run met either condition in a cluster.",
+          "statement": "The Argo CD bootstrap and its removal refuse an installation that does not carry the bootstrap marker, the removal refuses while an Application, ApplicationSet, or AppProject object exists, and the only tracked files that declare such an object are one Application and its project, which admits one destination namespace and no cluster-scoped kind. The two refusals are executed against stub tools. No run met the first condition in a cluster. One run met the second, and the removal refused.",
           "controlIds": [
             "refuse-an-argocd-installation-this-project-did-not-create",
             "refuse-argocd-removal-while-a-custom-resource-exists",
-            "no-argocd-custom-resource-is-committed"
+            "restrict-the-argocd-application-to-one-destination"
           ],
           "claimIds": [],
           "evidence": [
@@ -653,7 +653,7 @@
             },
             {
               "kind": "test",
-              "ref": "tests/architecture/test_argocd_bootstrap.py::test_no_argocd_custom_resource_is_committed"
+              "ref": "tests/architecture/test_argocd_application.py::test_the_application_reaches_no_object_another_owner_holds"
             },
             {
               "kind": "record",
