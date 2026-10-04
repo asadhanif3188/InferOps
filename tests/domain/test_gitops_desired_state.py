@@ -434,11 +434,12 @@ def test_a_symbolic_link_in_the_tree_is_refused_and_not_followed(
 
 def _junction(link: Path, target: Path) -> None:
     """A directory junction, which an unprivileged Windows account can create."""
-    if sys.platform != "win32":
-        pytest.skip("a directory junction exists on Windows only")
-    import _winapi
+    if sys.platform == "win32":
+        import _winapi
 
-    _winapi.CreateJunction(str(target), str(link))
+        _winapi.CreateJunction(str(target), str(link))
+    else:
+        pytest.skip("a directory junction exists on Windows only")
 
 
 @pytest.mark.parametrize(
