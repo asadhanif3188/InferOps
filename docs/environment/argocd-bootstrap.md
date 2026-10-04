@@ -341,6 +341,13 @@ ApplicationSet object; a second cluster or a cluster registered with Argo CD; a
 service mesh; Argo Rollouts; the Argo CD API server, web interface, single
 sign-on, and notifications; and a high-availability installation.
 
+**Added 2026-10-04.** The list above is what this record excludes, and it is
+unchanged. [ADR 0018](../architecture/decisions/ADR-0018-git-desired-state-layout.md)
+has since decided the desired-state directory, and
+[the desired-state document](git-desired-state.md) describes it. The directory
+holds generated releases and no Argo CD object. No Application names it, so the
+two rules above that hold as an absence still hold.
+
 ## What this record does not establish
 
 - That Argo CD reconciles anything. No Application exists.

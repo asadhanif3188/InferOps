@@ -403,7 +403,8 @@ typed exceptions with a field location and no canonical code, and
 A generated release committed to this repository - `values.generated.yaml` and the
 `rendered-workload-release.yaml` that names it - is the platform's output. Nobody edits
 it by hand. After a change to a WorkloadContract, an EnvironmentBinding, the chart's
-`api` defaults, or the renderer, verify every committed release:
+`api` defaults, or the renderer, verify the reference release, and then the desired
+state (next section):
 
 ```sh
 uv run --locked python -m tools.generated_release --check
@@ -419,12 +420,38 @@ uv run --locked python -m tools.generated_release --write support-assistant-loca
 ```
 
 A hand edit is always drift, even a comment: the release records the SHA-256 of the
-values file's exact bytes. A new committed release is declared in `DECLARED_RELEASES` in
+values file's exact bytes. A new reference release is declared in `DECLARED_RELEASES` in
 [`tools/generated_release/core.py`](tools/generated_release/core.py), in a directory that
 `.gitattributes` pins to LF; a test fails if a tracked generated file is outside a
 declared directory. The default-lane suite runs the same check, so a stale release fails
 the build. [The renderer page](docs/domain/helm-values-renderer.md#verifying-a-committed-release)
 lists the rules and what the check does not cover.
+
+### Git desired state
+
+[`gitops/`](gitops/README.md) holds the desired state of a workload, as generated
+releases. Nobody edits a file in it by hand, and no hand-written values file belongs
+in it. The same change to a WorkloadContract, an EnvironmentBinding, or the chart's
+`api` defaults that makes a release stale must regenerate it:
+
+```sh
+uv run --locked python -m tools.gitops_desired_state --check
+uv run --locked python -m tools.gitops_desired_state --write local-docker-desktop/support-assistant
+```
+
+The check derives the path of each release from its binding and its contract, compares
+both files with what their declared sources derive, and reports every entry in the tree
+that no declared release accounts for. It writes nothing. Review the generated
+difference with the change that causes it: the desired state changes when that change
+is accepted into `main`. A desired-state release is declared in
+`DESIRED_STATE_RELEASES` in
+[`tools/gitops_desired_state/core.py`](tools/gitops_desired_state/core.py), not in the
+drift check's own list. A release records the commit its change was based on. A
+change to the chart's `api` defaults or to the renderer is the exception: the release
+must then record a commit of the same change that already holds the new files, so
+that change needs two commits and a merge that keeps them. Nothing reconciles the tree
+yet.
+[The desired-state document](docs/environment/git-desired-state.md) states the rules.
 
 ### Experiment freeze records
 

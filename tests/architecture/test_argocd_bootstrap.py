@@ -48,6 +48,7 @@ from tools.ci_gates.ownership_overlap import (
     kind_of_terraform_type,
     terraform_resource_types,
 )
+from tools.gitops_desired_state import verify_tree
 
 pytestmark = pytest.mark.architecture
 
@@ -134,11 +135,13 @@ PROCEDURES = frozenset({"bootstrap", "removal"})
 
 #: The directories whose files a cluster, a release, or a serving process is
 #: built from. `docs/` and `tests/` are left out on purpose: this record and this
-#: suite have to name the controller to say anything about it.
+#: suite have to name the controller to say anything about it. `gitops/` joined
+#: the list when ADR 0018 created it: a release is built from what it holds.
 BUILD_ROOTS = (
     "charts",
     "contracts",
     "deploy",
+    "gitops",
     "infra",
     "scripts",
     "src",
@@ -695,9 +698,18 @@ def test_no_argocd_custom_resource_is_committed() -> None:
         if ARGOCD_CUSTOM_RESOURCE.search(text_of(path))
     ]
     assert not offenders, offenders
-    assert not (REPO_ROOT / "gitops").exists(), (
-        "a desired-state directory exists; this record decided none"
-    )
+    # Until ADR 0018 this also refused a `gitops/` directory, because ADR 0017
+    # decided none. ADR 0018 decided the layout, and the directory now holds
+    # generated releases. It still gives Argo CD nothing to reconcile: no
+    # Application names it. The tree's own check accounts for every entry in it.
+    # That check reads the working tree, while the scan above reads the index, so
+    # an untracked file under `gitops/` fails this test although it is not
+    # committed. In a clean checkout the two views are the same.
+    desired_state = [
+        path for path in files if path.is_relative_to(REPO_ROOT / "gitops")
+    ]
+    assert desired_state, "the desired-state tree was not read"
+    assert verify_tree() == ()
 
 
 def test_no_serving_component_refers_to_argocd() -> None:

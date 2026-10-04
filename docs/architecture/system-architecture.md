@@ -459,6 +459,15 @@ nothing after it. A procedure implements that installation, and it ran on the
        an Application, and what it reconciles
 ```
 
+**Added 2026-10-04.**
+[ADR 0018](decisions/ADR-0018-git-desired-state-layout.md) decides the next step of
+that path, and not the last one. The desired state is the generated releases under
+`gitops/`, one directory for one environment binding and one workload, and
+[the desired-state document](../environment/git-desired-state.md) states the
+rules. One release is committed there. The lower box of the diagram is unchanged:
+no Application exists, so Argo CD reads no path, and nothing in the tree was
+installed.
+
 Three statements bound this diagram:
 
 - **The upper box exists, and the lower one does not.**
@@ -472,8 +481,9 @@ Three statements bound this diagram:
   request with Argo CD absent or stopped. That is not a statement that Argo CD
   cannot affect serving: once an Application exists, a running controller can
   change, restart, or delete serving objects, and its pods share the node.
-- **The Terraform and Helm bands above do not move.** What Argo CD reconciles, and
-  what becomes of the Helm band when it does, are not decided.
+- **The Terraform and Helm bands above do not move.** Which tree a controller is
+  meant to follow is decided by ADR 0018. The Application, its sync policy, the
+  revision it follows, and what becomes of the Helm band are not decided.
 
 The pins, the objects, the refusals, and the removal are in
 [the Argo CD bootstrap record](../environment/argocd-bootstrap.md).
@@ -908,6 +918,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | What a running release reports about itself | [The inference operations dashboard](../telemetry/inference-operations-dashboard.md) |
 | Reproducing all of it from a clean clone | [The clean-clone workflow](../environment/clean-clone.md) |
 | How the GitOps controller is installed and owned, and where the bootstrap was run | [ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md), and [the Argo CD bootstrap record](../environment/argocd-bootstrap.md) |
+| Where the desired state of a workload is kept, and what that directory may hold | [ADR 0018](decisions/ADR-0018-git-desired-state-layout.md), and [the Git desired state](../environment/git-desired-state.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |

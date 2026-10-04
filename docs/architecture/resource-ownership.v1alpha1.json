@@ -265,6 +265,26 @@
       "evidenceRef": "docs/proof/architecture/v2-s3-001-pr1-validation.md"
     },
     {
+      "resourceId": "git-desired-state",
+      "name": "The Git desired-state tree",
+      "kind": "repository artifact",
+      "owner": "repository",
+      "lifecycle": "repository",
+      "v1Status": "implemented",
+      "createdBy": "a merged pull request",
+      "destroyedBy": "a merged pull request",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy",
+        "cluster teardown"
+      ],
+      "referencedBy": [],
+      "handoff": "Added to this inventory on 2026-10-04 by ADR 0018. The directory `gitops/` holds generated releases, one directory for one environment binding and one workload, and nothing written by hand except the page that describes it. A file in it is changed only by regenerating a release from its declared sources, in a reviewed change. `implemented` means that the tree exists and that a check holds every entry in it to a declared release. It does not mean that anything reconciles it: no Application names the tree, and `referencedBy` is empty for that reason. The tree holds no cluster object. The objects a release creates in a cluster are the `helm` rows, and what becomes of them when a controller applies the chart is not decided.",
+      "evidenceRef": "docs/proof/environment/v2-s3-002-pr1-validation.md"
+    },
+    {
       "resourceId": "workload-contract-document",
       "name": "A workload contract instance authored by an owning team",
       "kind": "document",

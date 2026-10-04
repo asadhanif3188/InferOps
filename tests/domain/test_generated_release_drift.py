@@ -69,6 +69,7 @@ from tools.generated_release import (
 )
 from tools.generated_release import core as core_module
 from tools.generated_release.__main__ import main
+from tools.gitops_desired_state import DESIRED_STATE_RELEASES
 
 pytestmark = pytest.mark.unit
 
@@ -194,10 +195,13 @@ RUN_RENDERS = frozenset({"render-a", "render-b", "mutation"})
 def test_every_committed_generated_file_is_in_a_declared_release_directory() -> None:
     """A release nobody declared would never be compared, so none may exist.
 
-    The one other place a generated file may be committed is an E01 run's evidence,
-    and only as a file the run's manifest records. Those renders are bound to the
-    commit that ran them, so this check does not derive them again from today's
-    sources; ``python -m tools.experiment_e01 --check`` holds each to its own bytes.
+    A generated file may be committed in two other places. One is the Git desired
+    state under ``gitops/``, whose releases ``tools.gitops_desired_state`` declares
+    and derives again through this package's check. The other is an E01 run's
+    evidence, and only as a file the run's manifest records. Those renders are bound
+    to the commit that ran them, so this check does not derive them again from
+    today's sources; ``python -m tools.experiment_e01 --check`` holds each to its
+    own bytes.
     """
     result = subprocess.run(
         ["git", "ls-files", "--", *(f"*{name}" for name in GENERATED_FILES)],
@@ -209,7 +213,7 @@ def test_every_committed_generated_file_is_in_a_declared_release_directory() -> 
     committed = sorted(result.stdout.splitlines())
     declared = [
         f"{release.directory}/{name}"
-        for release in DECLARED_RELEASES
+        for release in (*DECLARED_RELEASES, *DESIRED_STATE_RELEASES)
         for name in GENERATED_FILES
     ]
     run_evidence = [
