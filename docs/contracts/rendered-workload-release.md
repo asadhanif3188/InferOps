@@ -13,10 +13,13 @@ renderer](../domain/helm-values-renderer.md) generates chart values, and since
 `V2-S2-001-PR2` [`generate_release`](../domain/helm-values-renderer.md#the-generated-release)
 records the release that names them - with the values file's digest, by [the rule decided
 below](#generated-files-and-their-digests) - and `write_release` writes both files to a
-directory a caller names. **Nothing installs a release.** The one generated release
-committed to the repository is a test's golden release, rendered at placeholder
+directory a caller names. **Nothing installs a release.** Two generated releases are
+committed. One is a test's golden release, rendered at placeholder
 revisions, and since `V2-S2-002-PR1` [a drift check](../domain/helm-values-renderer.md#verifying-a-committed-release)
-compares it with what its declared sources derive. Neither fixture here describes a
+compares it with what its declared sources derive. Since `V2-S3-002-PR1` the other is
+committed as [Git desired state](../environment/git-desired-state.md), at a declared
+revision, and a tool of its own checks it through the same drift check. Nothing
+reconciles it. Neither fixture here describes a
 release that was rendered, installed, or run.
 
 | Property | Value |
@@ -247,7 +250,8 @@ written. A secret deliberately written as an otherwise valid public identifier r
 lists the tests.
 
 What this costs: a checkout that rewrites line endings changes a generated file's bytes
-and so its digest. The one generated release committed today, a test's golden release, is
+and so its digest. Both generated releases committed today, a test's golden release and the
+desired-state release under `gitops/`, are
 pinned to LF by `.gitattributes`, and so must any directory generated releases are
 committed to. Since `V2-S2-002-PR1` a test asks Git for the line-ending attribute of every
 declared release directory's files, and the drift check names a CRLF file as a
@@ -801,8 +805,9 @@ files say about each other and nothing about a running system.
   the values the Helm values renderer produced, and `write_release` writes the two files to
   a directory a caller names. Since `V2-S2-002-PR1`, one command verifies every declared
   committed release against its declared sources and regenerates a release a contributor
-  names. Nothing calls either function from a delivery path; no generated release is
-  committed outside a test's golden release; and the values file a release is installed
+  names. Nothing calls either function from a delivery path; one generated release is
+  committed outside a test's golden release, as Git desired state under `gitops/`, and
+  nothing reconciles or installs it; and the values file a release is installed
   with is still written by hand.
 - **It checks a source digest only when it is given the source.** The platform domain
   confirms the contract and binding digests against documents a caller supplies. The

@@ -303,9 +303,9 @@ The tests assert each property directly:
   them: it does not import the package, and it calls the drift check to derive a
   [desired-state release](../environment/git-desired-state.md). Another reads every tracked file under `src`, `tools`, `scripts`,
   `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, whatever its suffix,
-  and fails if any file outside the two tools names either tool's package as a whole
+  and fails if any file outside the three tools names any of their packages as a whole
   word - so no module, script, chart, deployment or infrastructure file, workflow, or
-  project setting reaches either in turn. A file inside one of the two is not read, so
+  project setting reaches any of them in turn. A file inside one of the three is not read, so
   the E01 runner may name the drift check's reader.
 
 ## The renderer interface

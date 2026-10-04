@@ -8,7 +8,7 @@ values are written in, the RenderedWorkloadRelease that names them and the two f
 are written to, how a committed release is checked against its sources, what a
 hand-written values file may still set, and how the result compares with the V1 real
 release. A caller can write the values and their release to a directory it names. One
-command [verifies every committed generated release](#verifying-a-committed-release)
+command [verifies every generated release it declares](#verifying-a-committed-release)
 against the inputs it is declared to be derived from, and regenerates a release a
 contributor names. The one release that check declares is the reference release, a test
 fixture. Since `V2-S3-002-PR1` a second generated release is committed as
@@ -359,7 +359,9 @@ only while it is what its sources produce. [`tools/generated_release`](../../too
 checks that. It is also the only path in this repository that regenerates a committed
 release.
 
-**Declared inputs.** `DECLARED_RELEASES` names each committed release directory and the
+**Declared inputs.** Desired-state releases are declared in `DESIRED_STATE_RELEASES`, in
+`tools/gitops_desired_state`, and this command does not read them.
+`DECLARED_RELEASES` names each release directory this check declares and the
 inputs it is derived from: the WorkloadContract, the EnvironmentBindings offered to the
 boundary and the name of the one to select, the file the platform defaults are read from,
 and the renderer and platform-defaults revisions. The check derives both files again from
@@ -461,7 +463,9 @@ drift in a committed release; it is not closed.
 **What it does not check.**
 
 - **That either revision names a commit**, or that the platform defaults are the ones at
-  the declared revision. Nothing reads Git history, and nothing reconstructs the defaults.
+  the declared revision. The drift check reads no Git history, and nothing reconstructs
+  the defaults. For a desired-state release, one test reads the defaults file at the
+  declared revision, in a checkout that holds the commit.
 - **A release nobody declared.** A test lists every tracked file named like a generated
   file and fails unless each is in a declared directory, is in a
   [desired-state release](../environment/git-desired-state.md) that
@@ -635,8 +639,8 @@ runs without a skip.
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| A delivery workflow writes a generated release | Since `V2-S3-002-PR1` a contributor regenerates a [desired-state release](../environment/git-desired-state.md) by key, and the reviewed change that contains it is the delivery step. No workflow writes one, and no controller reads the tree | An Application that follows the tree |
-| A revision a release records names a commit | Neither the declaration nor the drift check reads Git history, and the reference release's revisions are placeholders | A check against the repository the release is committed in |
+| A delivery workflow writes a generated release | Since `V2-S3-002-PR1` a contributor regenerates a [desired-state release](../environment/git-desired-state.md) by key, and the change that contains it is committed. That is the promotion boundary, and nothing is delivered: no workflow writes a release, and no controller reads the tree | An Application that follows the tree |
+| A revision a release records names a commit | Neither the declaration nor the drift check reads Git history, and the reference release's revisions are placeholders. For a desired-state release the form of the revision is checked, and the defaults at it are compared only in a full clone | A check against the repository the release is committed in |
 | A secret reference is rendered | No accepted mapping from a contract locator to the chart's secret binding | A decision on that mapping |
 | The `mock-llm` profile is rendered | The renderer declares the synchronous profile only, as the story scopes it | A renderer, or a support change, for the mock profile |
 | The platform defaults are read from a committed file | No defaults file exists; the caller supplies the defaults and states their revision, as at the boundary. Until then defaults content changed under a falsely retained revision moves the values digest and not the release identifier, and a test measures it | A change that reconstructs the defaults from a committed source bound to the revision a release records, before any source verification relies on that revision. The drift check reads the reference release's defaults from the chart's `api` block, so a change to them is reported as drift, and the declared revision does not move |

@@ -37,9 +37,13 @@
 | D3 | The tree holds generated releases and nothing written by hand | **Accepted** for the tree. Where a hand-written values file lives is **open** | A check walks the tree and refuses every entry that no declared release accounts for |
 | D4 | One path exists: the reference workload on `local-docker-desktop`. No promotion ladder is created | **Accepted** as scope | A test pins the one declaration, and the check refuses a second environment directory that nobody declared |
 | D5 | The desired state changes when a reviewed change is accepted into `main` | **Accepted** as a rule | Review alone. Nothing in this repository verifies that a merge was reviewed |
-| D6 | A desired-state release records a real commit as its renderer and platform-defaults revision | **Accepted**, with a stated limit | A check refuses a placeholder revision. A test compares the defaults at that commit with the defaults read today, where the checkout holds the commit |
+| D6 | A desired-state release records a full Git revision, not a placeholder, as its renderer and platform-defaults revision | **Accepted**, with a stated limit | A check holds the form of the revision and refuses one repeated character. A test compares the defaults at that commit with the defaults read today, in a full clone only. Nothing establishes that the revision names a commit |
 | D7 | The releases are declared in a tool of their own, and derived through the existing drift check | **Accepted** | The tool calls the drift check and holds no second renderer. The first experiment's freeze record pins no file that this change edits |
 | D8 | The Application, its project, its sync policy, and the followed revision are not decided here | **Accepted** as scope | The absence test of ADR 0017 still holds: no Argo CD custom resource is committed |
+
+Seven of the eight decisions are accepted. D3 is accepted for the tree and open for
+an installed release. That open part is why this record is accepted in part. No
+decision is proposed.
 
 ## Context
 
@@ -78,8 +82,11 @@ In order:
 
 **Accepted.**
 
-Desired state is kept under `gitops/`, at the repository root. Each
-EnvironmentBinding's destination path is under `gitops/environments/`.
+Desired state is kept under `gitops/`, at the repository root. The destination
+path of a binding that a declared release names is under `gitops/environments/`,
+and the check refuses one that is not. The binding schema does not require it, so
+a binding that no release names is not held to it. Nothing ties the directory's
+name to the binding's name.
 
 `gitops/` is a build directory. The suite that holds ADR 0017 reads it with the
 other build directories, and refuses a file in it that names the controller.
@@ -107,15 +114,21 @@ Three consequences follow:
 
 - **The binding owns the environment's path.** If a binding changes its
   destination path, the committed release is at a path that nothing derives, and
-  the check fails until the release moves.
+  the check fails until the declaration and the release are both moved.
 - **One binding may hold several workloads**, each in its own directory.
 - **One workload may be released on two bindings.** The command therefore selects
   a release by `<binding name>/<workload id>`.
 
 The first experiment's freeze record says that the generated release is committed
-"at the binding's `spec.gitops.destinationPath`". This record reads that as the
-workload's directory beneath that path. The freeze revision for the
-real-deployment part names the exact path.
+"at the binding's `spec.gitops.destinationPath`", in its procedure and in its
+topology. This record reads that as the workload's directory beneath that path.
+No freeze revision names the exact path yet. A later revision for the
+real-deployment part must name it before a result-bearing run.
+
+The same record says that a hand-written values file is admitted "beside" the
+generated values. That is the admission rule's term: the two files are given to
+Helm together. It does not place the file in the release directory, and D3 keeps
+it out.
 
 | Alternative | Assessment |
 |---|---|
@@ -132,11 +145,14 @@ A release directory holds `values.generated.yaml` and
 `rendered-workload-release.yaml`, and nothing else. The tree holds release
 directories, the directories that lead to them, and `gitops/README.md`. The check
 refuses every other entry: a hand-written values file, a copy of a release under
-another name, an empty directory, and a symbolic link.
+another name, an empty directory, and a symbolic link or a directory junction. A
+link at a declared path is refused too, and a regeneration does not write through
+one.
 
 A file in the tree is changed only by regeneration. A contributor changes the
-contract, the binding, or the platform defaults, regenerates the release by key,
-and commits both in one change.
+contract or the binding, regenerates the release by key, and commits both in one
+change. A change to the platform defaults or to the renderer needs two commits,
+and D6 says why.
 
 **The generated values do not install the chart alone.** The chart's guards
 require four values that no WorkloadContract owns: the API image repository and
@@ -205,14 +221,26 @@ defaults. The reference release in the test fixtures records placeholders. A
 desired-state release records a full Git revision that is not a placeholder, and
 the check refuses one that is.
 
-A release cannot name the commit that adds it. The revision is therefore the
-commit that the generating change was based on. For the first release that is
+A release cannot name the commit that adds it. For a change that edits neither
+the renderer nor the chart's `api` defaults, the revision is therefore the commit
+that the generating change was based on. For the first release that is
 `c056b9772a3de391fd61589649b1d3ed1c5ac7c4`.
 
-**The limit.** The revision is declared by the contributor. A test reads the
-defaults file at that commit and compares it with the defaults read today, and it
-skips in a checkout that does not hold the commit. No test compares the
-renderer's source at that commit with the renderer that runs.
+**A change to the `api` defaults or to the renderer is the exception.** The base
+commit holds the old files. The declared revision must then be a commit of the
+same change that already holds the new ones. That change needs two commits and a
+merge that keeps them.
+
+**The limit.** The revision is declared by the contributor. The check holds its
+form: 40 lowercase hexadecimal characters, and not one repeated character. A
+made-up revision of that form passes the check, and a test pins that.
+
+One test reads the defaults file at the declared commit and compares it with the
+defaults read today. It skips in a checkout that does not hold the commit. The
+hosted default lane uses a shallow checkout, so the test skips there and runs
+only in a full clone. A revision that names no commit skips the same test. It
+does not fail it. No test compares the renderer's source at that commit with the
+renderer that runs.
 
 ## D7 — Where the releases are declared
 
@@ -248,9 +276,10 @@ generated file is declared, and it now reads both lists.
   That is the intended cost: the generated difference is reviewed with its cause.
 - **The suite of ADR 0017 no longer refuses a `gitops/` directory.** It still
   refuses a committed Argo CD custom resource, anywhere in the repository.
-- **A merge to `main` will change a cluster**, once an Application follows this
-  tree. ADR 0017 states the same consequence. Review of a change to `gitops/`
-  then becomes the approval of a deployment.
+- **A merge to the branch an Application follows will change a cluster**, once
+  one follows this tree. ADR 0017 states the same consequence. D5 keeps the
+  desired state on `main`, and D8 leaves the followed revision undecided. Review
+  of a change to `gitops/` then becomes the approval of a deployment.
 - **A committed release is public.** The generated files carry names an author
   chose, and the bounded property the renderer document states applies to them.
 
@@ -274,7 +303,9 @@ This record asserts no new security property.
   is refused. A secret written as an otherwise valid public name is not detected.
   The renderer document states that limit, and it applies to this tree.
 - **The check reads the working tree.** A file that Git ignores is still found. A
-  second test reads the index, so a tracked file is found too.
+  second test reads the index, so a tracked file is found too. On a file system
+  that ignores case, a root named `GitOps` passes the working-tree check, and the
+  test that reads the index does not pass it.
 
 ## Evidence
 
@@ -294,8 +325,8 @@ or whether the release serves a request: **nothing**. No claim is registered.
 | ID | Item | Status | Impact |
 |---|---|---|---|
 | R1 | The generated values do not install the chart alone | Open | Four hand-written values are required. The API image is a contributor's local build, published to no registry. The change that adds the first Application must say where those values come from |
-| R2 | The recorded revision is a declaration | Accepted | A contributor can declare a commit at which the renderer differed. The defaults at that commit are compared, where history allows. The renderer's source is not |
+| R2 | The recorded revision is a declaration | Accepted | A contributor can declare a commit at which the renderer differed, or a string that names no commit. The defaults at that commit are compared in a full clone, and not in the hosted lane. The renderer's source is not compared |
 | R3 | Nothing verifies that a merge was reviewed | Open | The promotion boundary is a rule that review holds. Branch protection is not claimed as configured |
-| R4 | The path rule reads "at the destination path" as "beneath it" | Accepted | The freeze revision for the real-deployment part names the exact path, so the reading is fixed before a result-bearing run |
+| R4 | The path rule reads "at the destination path" as "beneath it" | Open | The freeze record says "at" in its procedure and in its topology. A later freeze revision must name the exact path before a result-bearing run. None does yet |
 | R5 | A release committed for one provider says nothing about another | Accepted | The one path is for `local-docker-desktop`. `kind` has no path and no bootstrap run |
 | R6 | The check reports a file the operating system created | Accepted | The walk reads the working tree, so a stray file in `gitops/` fails the suite locally. It is removed, not exempted |

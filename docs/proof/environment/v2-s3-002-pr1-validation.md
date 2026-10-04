@@ -22,9 +22,8 @@ the evidence pack and moves no claim.
   with `FROZEN` for `V1-S5-013-PR2`, `RELEASED v1.0.0` at `718ad2e0…` with the set
   `1d40b33f…` and the pack `652e9051…`, and `CURRENT` with the set `0271ae27…` and
   the pack `222bc533…`. Those are the five values that the two records of
-  `V2-S3-001` state. The command was run after this change was written. It was not
-  run on `main` in this session: no file this change touches is cited by an
-  evidence record.
+  `V2-S3-001` state, so this change moved none of them. The command was run after
+  this change was written. It was not run on `main` in this session.
 - **The frozen experiment.** `python -m tools.experiment_freeze --check` exited 0
   for both freeze records, and `python -m tools.experiment_e01 --check` exited 0
   for both runs. The second freeze record pins the files of
@@ -54,8 +53,10 @@ the evidence pack and moves no claim.
 - **The ownership inventory** gains the row `git-desired-state`, owned by
   `repository`. No existing row moves.
 - **Indexes and living documents**: the architecture index, the decision-authority
-  register, the system architecture, the renderer document, the binding document,
-  the contributor guide, the README, the test inventory, and the changelog. The
+  register, the system architecture, the renderer document, the renderer input
+  boundary document, the binding document, the release document, the contracts
+  index, the binding examples' page, the Argo CD bootstrap document, the proof
+  index, the contributor guide, the README, the test inventory, and the changelog. The
   comment of the `local-docker-desktop` binding fixture said that its destination
   was not a directory that exists, and it is corrected. A binding is hashed by its
   parsed value, so the comment moves no digest.
@@ -117,7 +118,83 @@ figures after its fixes are in the next section.
 
 ## What the independent review found
 
-Two independent reviews read this change as it was staged for the first commit, one over the tool and the suites and one over the documents and the data. This section is written in the commit that follows, with each finding and its fix.
+Two independent reviews read this change as it was staged for the first commit,
+while the default lane ran. One read the tool and the suites, and executed the tool
+against copies. The other read the documents and the data, and recomputed the digests
+and the counts. Neither edited the repository. The first commit was made as it was
+written, and the fixes below are the second commit.
+
+Neither review found a check that passes a hand-written file in the tree, a wrong
+digest, a wrong count, a broken link, or private text. They found the following.
+
+**What the first commit got wrong in the tool.**
+
+- **A regeneration wrote outside the root.** With a Windows directory junction at
+  `gitops/environments/local-docker-desktop`, `regenerate_release` created the release
+  in the junction's target. The module said that it writes only the declared
+  directory. The write now refuses a link, or a file, at every path from the tree's
+  root to the release.
+- **A junction at a declared path was followed and not reported.** The check asked for
+  a symbolic link, and Windows does not report a junction as one. A junction to a
+  directory with the same files verified clean. The check now refuses both, at the
+  root, at a directory, and at a file. The first commit's test planted a link at an
+  undeclared name only.
+- **The rule on revisions said more than it checks.** It said "a full Git revision
+  that is not a placeholder". It checks 40 lowercase hexadecimal characters that are
+  not one repeated character, so `abab…` passes. The rule now says what it checks, and
+  a test pins that a made-up revision of that form is accepted.
+- **A binding whose destination is `gitops/environments` itself was accepted.** The
+  first commit tested the declared directory's prefix and not the binding's
+  destination. The destination must now be beneath that directory.
+- **A failed write printed the host's absolute path**, and advised a retry that could
+  not succeed, when a file stood where a directory belongs. That case is now a refusal
+  that names the path under the root.
+- **Two assertions were weak.** One could not fail, and it is removed. One accepted
+  either refusal branch of the command, and it now matches the branch it names.
+
+**What the first commit got wrong in the documents.**
+
+- **"A real commit" was not held by anything.** The decision record and the
+  architecture index said that a release records a real commit. The check holds a
+  form. The one test that reads history skips when the commit is absent, and the
+  hosted default lane uses a shallow checkout, so that test never runs there. A
+  revision that names no commit skips it too. The documents now say each of those
+  things.
+- **The documented workflow could not be followed for one case.** The documents said
+  that a release records the commit its change was based on. For a change to the
+  chart's `api` defaults that commit holds the old defaults, and the history test
+  fails. Such a change needs two commits. The decision record, the document, and the
+  contributor guide now say so.
+- **The decision record described a freeze revision that does not exist.** It said
+  that the freeze revision for the real-deployment part "names the exact path". No
+  revision does. The risk is now open, and the text says that a later revision must
+  name it.
+- **"Accepted in part" stood beside "all eight decisions are accepted".** The index
+  now says that seven are accepted and that D3 is open for an installed release.
+- **Five living documents still described the repository before this change.** The
+  release document said three times that the only committed generated release is a
+  test's golden release. Two rows of the test inventory described assertions that
+  this change replaced. The contracts index, the binding examples' page, the renderer
+  document, and the contributor guide each kept one such sentence. All are corrected.
+- **Smaller corrections**: "delivery step" for a commit that delivers nothing, a
+  consequence that named `main` while the followed revision is undecided, a count of
+  two tools where the test now reads three, and two inventory clauses that named the
+  wrong subject.
+
+**What was not changed.** The review asked whether the hosted lane should fetch full
+history, so that the history test runs. It does not: a workflow change moves the gate
+matrix, and it is outside this change. The limit is stated instead. The security
+baseline gains no row. The review found that the existing threat and controls for the
+controller's grant still describe the repository, and that no statement in them became
+false.
+
+| Check, after the fixes | Result |
+|---|---|
+| `ruff format --check`, `ruff check`, `mypy` | Clean: 629 files formatted, no lint finding, no type error in 344 source files |
+| `tests/domain/test_gitops_desired_state.py` | 69 passed and 4 skipped. The four skips are the symbolic-link cases on a Windows host. The three junction cases ran and passed there. On the Linux runner the symbolic-link cases run and the junction cases skip, and that was not observed from this host |
+| The six command checks in the table above | Each exited 0, and the five evidence values were unchanged |
+| The default lane, `pytest -q -rs` | 18,326 passed, none failed, 36 skipped, 14 deselected, in 24 minutes 48 seconds, with every file of the change staged. The three skips more than the first commit are the three symbolic-link cases at a declared path |
+| `git diff --check` | Clean |
 
 ## Gates that do not apply, and work not executed
 

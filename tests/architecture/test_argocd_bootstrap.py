@@ -702,6 +702,9 @@ def test_no_argocd_custom_resource_is_committed() -> None:
     # decided none. ADR 0018 decided the layout, and the directory now holds
     # generated releases. It still gives Argo CD nothing to reconcile: no
     # Application names it. The tree's own check accounts for every entry in it.
+    # That check reads the working tree, while the scan above reads the index, so
+    # an untracked file under `gitops/` fails this test although it is not
+    # committed. In a clean checkout the two views are the same.
     desired_state = [
         path for path in files if path.is_relative_to(REPO_ROOT / "gitops")
     ]

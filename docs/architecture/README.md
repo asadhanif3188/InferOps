@@ -304,9 +304,11 @@ destination path, followed by `workloads` and the contract's workload identifier
 and a check derives that path and refuses a release anywhere else. The tree holds
 generated files only, and the check refuses every other entry. One release is
 committed, the reference workload on the `local-docker-desktop` binding, at a
-real revision. All eight of its decisions are accepted, three of them as a rule
-or as scope, and one with a part open: the tree holds no hand-written values
-file, and where that file lives for an installed release is not decided.
+declared full Git revision and not a placeholder. Seven of its eight decisions
+are accepted, three of those as a rule or as scope. The eighth, D3, is accepted
+for the tree and open for an installed release: the tree holds no hand-written
+values file, and where that file lives is not decided. That open part is why the
+record is accepted in part.
 **Nothing reconciles the tree.** No Application exists. The generated values do
 not install the chart alone, because the chart requires four values that no
 contract owns.

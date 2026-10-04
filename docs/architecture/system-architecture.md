@@ -481,8 +481,9 @@ Three statements bound this diagram:
   request with Argo CD absent or stopped. That is not a statement that Argo CD
   cannot affect serving: once an Application exists, a running controller can
   change, restart, or delete serving objects, and its pods share the node.
-- **The Terraform and Helm bands above do not move.** What Argo CD reconciles, and
-  what becomes of the Helm band when it does, are not decided.
+- **The Terraform and Helm bands above do not move.** Which tree a controller is
+  meant to follow is decided by ADR 0018. The Application, its sync policy, the
+  revision it follows, and what becomes of the Helm band are not decided.
 
 The pins, the objects, the refusals, and the removal are in
 [the Argo CD bootstrap record](../environment/argocd-bootstrap.md).

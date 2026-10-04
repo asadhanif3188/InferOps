@@ -9,7 +9,9 @@ These are **contract examples, not configuration anything reads.** No controller
 script in this repository consumes a binding - the platform domain's render boundary
 reads parsed bindings into a render context, and the Helm values renderer generates
 values from that context, written only where a caller names - and the GitOps
-destinations they name are declared locations rather than directories that exist.
+destination of `local-docker-desktop` is the directory that holds one generated
+release, under `workloads/<workload id>/`, while the `local-kind` destination names
+no directory. Nothing reconciles either.
 Nothing here has been deployed, and none of it is evidence about the environment it
 describes.
 

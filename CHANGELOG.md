@@ -18,12 +18,13 @@ from `1.0.0`.
   holds generated releases only: `values.generated.yaml` and the
   RenderedWorkloadRelease that names it. One release is committed, the reference
   workload on the `local-docker-desktop` binding, at the revision this change was
-  based on and not at a placeholder. A new tool, `tools/gitops_desired_state`, derives
+  based on and not at a placeholder. The check holds the form of that revision and
+  does not establish that it names a commit. A new tool, `tools/gitops_desired_state`, derives
   each release's path from its binding and contract, compares both files with what
   their declared sources derive through the existing drift check, and refuses every
   entry in the tree that no declared release accounts for: a hand-written values
   file, a copy of a release under another environment name, an empty directory, a
-  symbolic link. It regenerates a release only when a contributor names it by key.
+  symbolic link or a directory junction. It regenerates a release only when a contributor names it by key.
   The desired state changes when a reviewed change is accepted into `main`, and no
   second promotion stage exists; review holds that rule, and nothing verifies that a
   merge was reviewed. **No Application exists, no cluster was contacted, and nothing
@@ -35,8 +36,14 @@ from `1.0.0`.
   renderer's source. The suite of ADR 0017 no longer refuses a `gitops/` directory
   and still refuses a committed Argo CD custom resource. The ownership inventory
   gains one row, `git-desired-state`, owned by `repository`. No file that the first
-  experiment's freeze record pins changed. [The validation
-  record](docs/proof/environment/v2-s3-002-pr1-validation.md) says what was checked.
+  experiment's freeze record pins changed. Two independent reviews of the first commit
+  found that a regeneration wrote outside the repository through a Windows directory
+  junction, that a junction at a declared path was followed and not reported, that the
+  rule on revisions and the phrase "a real commit" said more than the check holds, that
+  the history test never runs in the hosted lane's shallow checkout, and that five
+  living documents still said one generated release is committed. [The validation
+  record](docs/proof/environment/v2-s3-002-pr1-validation.md) lists each and says what
+  was checked.
 - **A procedure that installs, verifies, and removes the pinned Argo CD, executed on
   one provider. No Application exists.** `V2-S3-001-PR2` adds
   [`scripts/environment/argocd-bootstrap.sh`](scripts/environment/argocd-bootstrap.sh),

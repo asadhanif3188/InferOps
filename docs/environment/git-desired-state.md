@@ -38,7 +38,9 @@ directory.
 
 - **The binding owns the environment's path.** `spec.gitops.destinationPath` is
   declared in [the binding](../contracts/environment-binding.md). If a binding changes
-  its path, the check fails until the release is moved.
+  its path, the check fails until the declaration and the release are both moved. The
+  path must be beneath `gitops/environments/`. Nothing ties the directory's name to the
+  binding's name.
 - **The contract owns the workload's name.** A renamed workload moves its directory.
 - **A release directory holds the two generated files and nothing else.**
 - **An environment directory exists only for a binding that a declared release
@@ -60,8 +62,10 @@ Its release identifier is
 Argo CD bootstrap was executed. No release is committed for `local-kind`.
 
 **What the revisions are.** A release cannot name the commit that adds it. Both
-revisions are the commit that the generating change was based on. The renderer and the
-chart's `api` defaults were read at that commit.
+revisions are the commit that the generating change was based on. That change edited
+neither the renderer nor the chart's `api` defaults, so both were the files at that
+commit. A change that edits either must record a commit of its own that already holds
+the new files, which takes two commits and a merge that keeps them.
 
 **What the values are.** The values file is byte for byte the values file of the
 reference release in the test fixtures. The two local bindings render the same chart
@@ -126,10 +130,14 @@ The check applies four rules, in this order:
 
 | Rule | Statement |
 |---|---|
-| `desired-state-declaration-invalid` | A desired-state release selects one binding by name, and each of its two revisions is a full Git revision that is not a placeholder. |
+| `desired-state-declaration-invalid` | A desired-state release selects one binding by name, and each of its two revisions is 40 lowercase hexadecimal characters and not one repeated character. |
 | `desired-state-path-not-derived` | A desired-state release directory is the selected binding's destination path, under gitops/environments/, followed by workloads and the workload identifier the contract names. |
 | `desired-state-entry-undeclared` | Every entry under gitops/ is a generated file of a declared release, a directory that leads to one, or the tree's README.md. |
 | `desired-state-release-drifted` | Each desired-state release is, byte for byte, what its declared sources derive. |
+
+A placeholder is a revision of one repeated character, which is the shape the test
+fixtures use. Any other 40 lowercase hexadecimal characters pass the first rule,
+whether or not they name a commit, and a test pins that limit.
 
 The last rule is the drift check's. Each of its eight rules is reported under
 `desired-state-release-drifted`, with the drift check's own rule in the detail.
@@ -143,11 +151,18 @@ tree and its inputs:
   `desired-state-entry-undeclared`.
 - **A copy of a release under another environment name** is one
   `desired-state-entry-undeclared` finding, at the directory. So are a second workload
-  directory that nobody declared, an empty directory, and a symbolic link, which is not
-  followed. The symbolic-link case skips on a host that cannot create a link.
+  directory that nobody declared, an empty directory, a left-over staging directory,
+  and a symbolic link or a Windows directory junction, which is not followed. A link at
+  a declared path is refused too, and a regeneration does not write through one. The
+  symbolic-link cases skip on a host that cannot create a link, and the junction cases
+  skip off Windows.
 - **A hand-edited value** is `desired-state-release-drifted`, with a diff.
 - **A binding that moved its destination path**, or a contract that renamed its
-  workload, is `desired-state-path-not-derived`, and the stale digest is drift.
+  workload, is `desired-state-path-not-derived`, and the stale digest is drift. So is a
+  binding whose destination is `gitops/environments` itself.
+- **A binding that the declaration cannot resolve** gives no path to compare. The
+  drift check then refuses the sources, and the release is reported under
+  `desired-state-release-drifted`.
 - **A placeholder revision or a short revision in a declaration** is
   `desired-state-declaration-invalid`. A committed release edited to name a placeholder
   is drift.
@@ -203,14 +218,19 @@ is open, and ADR 0017 R5 carries it.
 - **That the release installs.** No cluster read these files. The generated values
   alone fail the chart's guards.
 - **That the release serves a request.** Nothing was installed.
-- **That the recorded revision is the commit the release was rendered at.** It is a
-  declaration. A test compares the platform defaults at that commit with the defaults
-  read today, and it skips in a checkout that does not hold the commit. The renderer's
-  source at that commit is not compared.
+- **That the recorded revision is the commit the release was rendered at, or that it
+  names a commit.** It is a declaration, and the check holds its form only. A test
+  compares the platform defaults at that commit with the defaults read today, and it
+  skips in a checkout that does not hold the commit. The hosted default lane uses a
+  shallow checkout, so the test skips there and runs only in a full clone. A revision
+  that names no commit skips the test and does not fail it. The renderer's source at
+  that commit is not compared.
 - **That a merge to `main` was reviewed.**
 - **Anything about `kind`.** The one path is for the `local-docker-desktop` binding.
 - **That a file Git ignores is absent from another checkout.** The check reads the
-  working tree, and a second test reads the files that Git tracks.
+  working tree, and a second test reads the files that Git tracks. On a file system
+  that ignores case, a root named `GitOps` passes the working-tree check and not the
+  test that reads the index.
 
 ## Validation
 

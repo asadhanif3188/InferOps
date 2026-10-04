@@ -22,7 +22,12 @@ files, and a new declaration there would move a pin.
 **Everything in the tree is accounted for.** :func:`verify_tree` walks ``gitops/``
 and reports every entry that is not a generated file of a declared release, a
 directory that leads to one, or the tree's own page. A hand-written values file, a
-second copy of a release, and a symbolic link are each such an entry.
+second copy of a release, and a symbolic link or a directory junction are each such
+an entry. A link is reported at a declared path too, and is not followed.
+
+**What a revision check holds.** A declared revision is 40 lowercase hexadecimal
+characters and is not one repeated character. Nothing here reads Git, so whether
+the revision names a commit is not checked by this module.
 
 **Offline.** Every function reads files under the root it is given, and
 :func:`regenerate_release` writes only the declared release directory and the
@@ -122,7 +127,8 @@ RULES: Final[tuple[Rule, ...]] = (
     Rule(
         "desired-state-declaration-invalid",
         "A desired-state release selects one binding by name, and each of its two "
-        "revisions is a full Git revision that is not a placeholder.",
+        "revisions is 40 lowercase hexadecimal characters and not one repeated "
+        "character.",
     ),
     Rule(
         "desired-state-path-not-derived",
@@ -195,8 +201,17 @@ def desired_state_release(key: str) -> DeclaredRelease:
 
 
 def _is_placeholder(revision: str) -> bool:
-    """A revision of one repeated character names no commit."""
+    """A revision of one repeated character names no commit.
+
+    This is the one shape the test fixtures use. Any other 40 hexadecimal
+    characters pass, whether or not they name a commit.
+    """
     return len(set(revision)) == 1
+
+
+def _is_link(path: Path) -> bool:
+    """A symbolic link, or a directory junction, which Windows does not call one."""
+    return path.is_symlink() or path.is_junction()
 
 
 def _declaration_findings(declared: DeclaredRelease) -> list[Finding]:
@@ -231,12 +246,8 @@ def _load_yaml(path: Path) -> Any:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def expected_directory(declared: DeclaredRelease, root: Path = REPO_ROOT) -> str | None:
-    """The directory the declared inputs place this release in.
-
-    ``None`` when the inputs do not say: no declared binding has the selected name,
-    or the sources derive no release. The drift check reports the second case.
-    """
+def _destination(declared: DeclaredRelease, root: Path) -> str | None:
+    """The destination path of the binding the declaration selects, or ``None``."""
     destination = None
     for path in declared.bindings:
         try:
@@ -245,6 +256,18 @@ def expected_directory(declared: DeclaredRelease, root: Path = REPO_ROOT) -> str
             continue
         if str(binding.metadata.name) == declared.binding_name:
             destination = str(binding.spec.gitops.destination_path)
+    return destination
+
+
+def expected_directory(declared: DeclaredRelease, root: Path = REPO_ROOT) -> str | None:
+    """The directory the declared inputs place this release in.
+
+    ``None`` when the inputs do not say: no declared binding that parses has the
+    selected name, or the sources derive no release. In each of those cases the
+    drift check refuses the sources, so the release is still reported. A test
+    holds that for a missing name, a missing file, and two bindings of one name.
+    """
+    destination = _destination(declared, root)
     if destination is None:
         return None
     try:
@@ -264,6 +287,16 @@ def _path_findings(declared: DeclaredRelease, root: Path) -> list[Finding]:
                 "desired-state-path-not-derived",
                 f"{key}: {declared.directory}",
                 f"the release directory is not under {ENVIRONMENTS_PATH}/",
+            )
+        )
+    destination = _destination(declared, root)
+    if destination is not None and not destination.startswith(f"{ENVIRONMENTS_PATH}/"):
+        findings.append(
+            Finding(
+                "desired-state-path-not-derived",
+                f"{key}: {declared.directory}",
+                f"the selected binding's destination path, {destination}, is not "
+                f"under {ENVIRONMENTS_PATH}/",
             )
         )
     expected = expected_directory(declared, root)
@@ -302,13 +335,36 @@ def _undeclared(subject: str, detail: str) -> Finding:
     return Finding("desired-state-entry-undeclared", subject, detail)
 
 
+_LINK_DETAIL: Final = "a symbolic link or a junction is not followed"
+
+
+def _ancestor_findings(declared: DeclaredRelease, root: Path) -> list[Finding]:
+    """Each path from the tree's root to the release that a write must not pass.
+
+    A link there would take the write out of the tree, and a file there is not a
+    directory to write into. A path that does not exist yet is created by the write.
+    """
+    findings = []
+    path = PurePosixPath(declared.directory)
+    for ancestor in (*reversed(path.parents), path):
+        relative = ancestor.as_posix()
+        if relative == ".":
+            continue
+        entry = root / relative
+        if _is_link(entry):
+            findings.append(_undeclared(relative, _LINK_DETAIL))
+        elif entry.exists() and not entry.is_dir():
+            findings.append(_undeclared(relative, "the path is not a directory"))
+    return findings
+
+
 def _entry_findings(releases: Sequence[DeclaredRelease], root: Path) -> list[Finding]:
     tree = root / DESIRED_STATE_ROOT
-    if tree.is_symlink() or (tree.exists() and not tree.is_dir()):
+    if _is_link(tree) or (tree.exists() and not tree.is_dir()):
         return [
             _undeclared(
                 DESIRED_STATE_ROOT,
-                "the desired-state root is a symbolic link or a file, not a directory",
+                "the desired-state root is a link or a file, not a directory",
             )
         ]
     if not tree.is_dir():
@@ -320,10 +376,8 @@ def _entry_findings(releases: Sequence[DeclaredRelease], root: Path) -> list[Fin
         for name in sorted(names):
             entry = here / name
             relative = entry.relative_to(root).as_posix()
-            if entry.is_symlink():
-                findings.append(
-                    _undeclared(relative, "a symbolic link is not followed")
-                )
+            if _is_link(entry):
+                findings.append(_undeclared(relative, _LINK_DETAIL))
             elif relative not in directories:
                 findings.append(
                     _undeclared(relative, "the directory leads to no declared release")
@@ -334,10 +388,8 @@ def _entry_findings(releases: Sequence[DeclaredRelease], root: Path) -> list[Fin
         for name in sorted(file_names):
             entry = here / name
             relative = entry.relative_to(root).as_posix()
-            if entry.is_symlink():
-                findings.append(
-                    _undeclared(relative, "a symbolic link is not followed")
-                )
+            if _is_link(entry):
+                findings.append(_undeclared(relative, _LINK_DETAIL))
             elif relative not in files:
                 findings.append(
                     _undeclared(
@@ -404,13 +456,18 @@ def regenerate_release(declared: DeclaredRelease, root: Path = REPO_ROOT) -> boo
     that lead to the release are created when they are absent.
 
     Raises:
-        WriteRefused: the declaration or the path breaks a rule; nothing is touched.
+        WriteRefused: the declaration or the path breaks a rule, or a path from the
+            tree's root to the release is a link or a file; nothing is touched.
         SourcesRefused: the declared inputs derive no release; nothing is touched.
         RegenerationRefused: the release path holds something the platform did not
             write, or a staging directory is left beside it; nothing is touched.
         OSError: a file could not be removed or written.
     """
-    refused = [*_declaration_findings(declared), *_path_findings(declared, root)]
+    refused = [
+        *_declaration_findings(declared),
+        *_path_findings(declared, root),
+        *_ancestor_findings(declared, root),
+    ]
     if refused:
         raise WriteRefused(refused)
     derive(declared, root)

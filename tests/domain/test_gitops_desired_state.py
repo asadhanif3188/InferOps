@@ -336,7 +336,6 @@ def test_the_tree_holds_no_hand_written_values_file_and_no_cluster_object() -> N
     assert files, "the tree was not read"
     for path in files:
         assert path.name in GENERATED_FILES, path
-        assert not path.name.endswith(MANUAL_VALUES_SUFFIX), path
     # A generated release is a repository document. It is not a cluster resource,
     # and the one kind in the tree is the release's own.
     kinds = {
@@ -433,6 +432,83 @@ def test_a_symbolic_link_in_the_tree_is_refused_and_not_followed(
     ]
 
 
+def _junction(link: Path, target: Path) -> None:
+    """A directory junction, which an unprivileged Windows account can create."""
+    if sys.platform != "win32":
+        pytest.skip("a directory junction exists on Windows only")
+    import _winapi
+
+    _winapi.CreateJunction(str(target), str(link))
+
+
+@pytest.mark.parametrize(
+    "linked",
+    (
+        "gitops",
+        "gitops/environments/local-docker-desktop",
+        "gitops/environments/local-docker-desktop/workloads/support-assistant",
+    ),
+)
+@pytest.mark.parametrize("make", (_symlink, _junction), ids=("symlink", "junction"))
+def test_a_link_at_a_declared_path_is_refused_and_a_write_does_not_pass_it(
+    root: Path, tmp_path: Path, linked: str, make
+) -> None:
+    """A link whose target holds the same files would otherwise verify clean.
+
+    The first version tested a link at an undeclared name only, and asked the file
+    system for a symbolic link, which a Windows junction is not. A junction at a
+    declared path was followed, and a regeneration through one wrote outside the
+    root. The symbolic-link half skips on a host that cannot create one, and the
+    junction half skips off Windows.
+    """
+    outside = tmp_path / "outside"
+    shutil.move(root / linked, outside)
+    make(root / linked, outside)
+
+    assert ("desired-state-entry-undeclared", linked) in found(verify_tree(root))
+
+    before = snapshot(outside)
+    with pytest.raises(WriteRefused) as refused:
+        regenerate_release(REFERENCE, root)
+    assert (
+        "desired-state-entry-undeclared",
+        linked,
+    ) in [(f.rule_id, f.subject) for f in refused.value.findings]
+    assert snapshot(outside) == before
+
+    # The same refusal with the release absent, which is when a write creates
+    # directories.
+    shutil.rmtree(outside / (REFERENCE.directory[len(linked) :].lstrip("/") or "."))
+    remaining = snapshot(outside) if outside.exists() else {}
+    with pytest.raises(WriteRefused):
+        regenerate_release(REFERENCE, root)
+    assert (snapshot(outside) if outside.exists() else {}) == remaining
+
+
+def test_a_left_over_staging_directory_is_an_undeclared_entry_and_drift(
+    root: Path,
+) -> None:
+    staging = f"{ENVIRONMENTS_PATH}/local-docker-desktop/{WORKLOADS_SEGMENT}/"
+    staging += ".support-assistant.partial"
+    (root / staging).mkdir()
+    findings = verify_tree(root)
+    assert ("desired-state-entry-undeclared", staging) in found(findings)
+    assert "generated-release-staging-left" in [
+        f.detail.split(":")[0] for f in findings
+    ]
+
+
+def test_a_directory_named_like_a_generated_file_is_refused(root: Path) -> None:
+    (root / REFERENCE.directory / VALUES).unlink()
+    (root / REFERENCE.directory / VALUES).mkdir()
+    findings = verify_tree(root)
+    assert (
+        "desired-state-entry-undeclared",
+        f"{REFERENCE.directory}/{VALUES}",
+    ) in found(findings)
+    assert "desired-state-release-drifted" in rules_of(findings)
+
+
 def test_the_tree_page_is_allowed_and_not_required(root: Path) -> None:
     (root / TREE_DOCUMENT).unlink()
     assert verify_tree(root) == ()
@@ -495,6 +571,61 @@ def test_a_binding_that_moves_its_destination_leaves_the_release_at_the_wrong_pa
     assert f"{KEY}: source.environmentBinding.sha256" in [f.subject for f in findings]
 
 
+def test_a_destination_that_is_not_beneath_the_environments_directory_is_refused(
+    root: Path,
+) -> None:
+    """`gitops/environments` itself is a destination with no environment in it.
+
+    The first version tested the declared directory's prefix and not the binding's
+    destination, so a release at `gitops/environments/workloads/<id>` was accepted.
+    Nothing ties the directory's name to the binding's name, or holds the
+    destination to one segment: `gitops/environments/a/b` is accepted.
+    """
+    edit(
+        root / REFERENCE.bindings[0],
+        "destinationPath: gitops/environments/local-docker-desktop",
+        "destinationPath: gitops/environments",
+    )
+    moved = replace(
+        REFERENCE, directory="gitops/environments/workloads/support-assistant"
+    )
+    details = [
+        f.detail
+        for f in verify_tree(root, (moved,))
+        if f.rule_id == "desired-state-path-not-derived"
+    ]
+    assert details == [
+        "the selected binding's destination path, gitops/environments, is not "
+        "under gitops/environments/"
+    ]
+    with pytest.raises(WriteRefused):
+        regenerate_release(moved, root)
+    assert not (root / moved.directory).exists()
+
+
+def test_a_binding_the_declaration_cannot_resolve_is_reported_as_refused_sources(
+    root: Path,
+) -> None:
+    """No path can be derived, so the path rule is silent. The drift check is not."""
+    twice = (REFERENCE.bindings[0], REFERENCE.bindings[0])
+    for declared in (
+        replace(REFERENCE, binding_name="nope"),
+        replace(REFERENCE, bindings=("contracts/environment/absent.yaml",)),
+        replace(REFERENCE, bindings=twice),
+    ):
+        findings = verify_tree(root, (declared,))
+        assert "generated-release-sources-refused" in [
+            f.detail.split(":")[0] for f in findings
+        ], declared
+    assert expected_directory(replace(REFERENCE, binding_name="nope"), root) is None
+    assert (
+        expected_directory(
+            replace(REFERENCE, bindings=("contracts/environment/absent.yaml",)), root
+        )
+        is None
+    )
+
+
 def test_a_contract_that_renames_its_workload_leaves_the_release_at_the_wrong_path(
     root: Path,
 ) -> None:
@@ -555,6 +686,27 @@ def test_a_placeholder_or_short_revision_is_refused_in_a_declaration(
     ]
     assert [f.subject for f in invalid] == [f"{KEY}: {field}"]
     assert reason in invalid[0].detail
+
+
+@pytest.mark.parametrize(
+    "revision",
+    ("ab" * 20, "0123456789abcdef0123456789abcdef01234567", "0" * 39 + "1"),
+)
+def test_a_made_up_revision_of_the_right_shape_is_accepted_by_the_rule(
+    root: Path, revision: str
+) -> None:
+    """The limit of the rule, pinned so that nobody reads it as wider.
+
+    The rule checks a shape. It reads no Git history, so a revision that names no
+    commit passes it. A release declared with one is still drift here, because the
+    committed release records another revision.
+    """
+    declared = replace(
+        REFERENCE, renderer_revision=revision, platform_defaults_revision=revision
+    )
+    findings = verify_tree(root, (declared,))
+    assert "desired-state-declaration-invalid" not in rules_of(findings)
+    assert rules_of(findings) == {"desired-state-release-drifted"}
 
 
 def test_a_declaration_that_selects_no_binding_by_name_is_refused(root: Path) -> None:
@@ -721,7 +873,24 @@ def test_regeneration_refuses_sources_that_no_longer_render(
     edit(root / REFERENCE.contract, "name: support-assistant", "name: Not_A_Label")
     before = snapshot(root)
     assert main(["--write", KEY, "--root", str(root)]) == 1
-    assert f"REFUSED  {KEY}: nothing was written" in capsys.readouterr().out
+    # The colon after "written" is the sources branch's: it prints the reason.
+    assert f"REFUSED  {KEY}: nothing was written: " in capsys.readouterr().out
+    assert snapshot(root) == before
+
+
+@pytest.mark.parametrize("blocked", ("gitops", "gitops/environments"))
+def test_regeneration_refuses_a_file_where_a_directory_belongs_and_names_no_host_path(
+    root: Path, capsys: pytest.CaptureFixture[str], blocked: str
+) -> None:
+    """The first version let the write fail, and printed the host's absolute path."""
+    shutil.rmtree(root / blocked)
+    write(root / blocked, "not a directory\n")
+    before = snapshot(root)
+    assert main(["--write", KEY, "--root", str(root)]) == 1
+    out = capsys.readouterr().out
+    assert f"REFUSED  {KEY}: nothing was written" in out
+    assert f"{blocked}: the path is not a directory" in out
+    assert str(root) not in out and "FAILED" not in out
     assert snapshot(root) == before
 
 
