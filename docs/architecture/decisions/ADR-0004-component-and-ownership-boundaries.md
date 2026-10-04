@@ -48,7 +48,7 @@
 |---|---|---|---|
 | D1 | Component decomposition and dependency direction | **Accepted** as a constraint on unwritten code | Review only. Nothing enforces it; there is no code to enforce it against |
 | D2 | The serving runtime is a separate deployment, not a sidecar | **Accepted** | The memory-mapping measurement in ADR 0002, and the probe mapping it proved |
-| D3 | Terraform owns prerequisites, Helm owns the release, controllers own derived objects | **Accepted; amended 2026-09-11.** The cluster belongs to its operator, and the third prohibition binds the whole platform path ([ADR 0011](ADR-0011-external-local-cluster-provider-contract.md)). **Amended 2026-10-03:** the inventory gains a fourth owner of cluster objects, the Argo CD bootstrap, which is decided and not built ([ADR 0017](ADR-0017-argocd-bootstrap-and-ownership.md)) | A committed inventory, with single ownership and disjointness enforced by a test |
+| D3 | Terraform owns prerequisites, Helm owns the release, controllers own derived objects | **Accepted; amended 2026-09-11.** The cluster belongs to its operator, and the third prohibition binds the whole platform path ([ADR 0011](ADR-0011-external-local-cluster-provider-contract.md)). **Amended 2026-10-03:** the inventory gains a fourth owner of cluster objects, the Argo CD bootstrap, which is decided and not built ([ADR 0017](ADR-0017-argocd-bootstrap-and-ownership.md)); later that day a procedure built it, and ADR 0017 records that | A committed inventory, with single ownership and disjointness enforced by a test |
 | D4 | The model cache is a prerequisite, not a release resource | **Accepted** | The teardown finding in the feasibility record: a cache inside the release's own scope was destroyed and cost a full re-download |
 | D5 | The trust boundary map | **Accepted as a map only** | Every control it names is unimplemented. It records where controls would go and who owns deciding them |
 | D6 | Two serving capabilities, and no gateway or deep-serving work | **Accepted** as a scope rule; **amended 2026-09-14** so that a bounded local performance observation may be published and a portable capacity, SLO, or benchmark figure still may not ([ADR 0013](ADR-0013-bounded-local-performance-observations.md)) | Review only, plus the record checks ADR 0013 D3 names |
@@ -182,7 +182,9 @@ provider supplied it.
 adds a fourth owner of cluster objects to the inventory: `argocd-bootstrap`, with
 the `bootstrap` lifecycle, for the Argo CD installation. Terraform and Helm keep
 what this decision gave them, and no existing row moves. The new owner's rows are
-`planned`: no bootstrap procedure exists, and nothing is installed.
+`planned`: no bootstrap procedure exists, and nothing is installed. (Later on
+2026-10-03 a procedure was added and executed on the `docker-desktop` provider,
+and the rows moved to `implemented`. ADR 0017 records it.)
 
 ### The overlap this decision found
 

@@ -1,0 +1,611 @@
+
+##### 0. Tools, revision, and the cluster before the run
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-03T15:52:03Z
+[exit 0]
+$ git rev-parse HEAD
+a932973d2709d6048a1b5e981ce40b85adab73a9
+[exit 0]
+$ sha256sum scripts/environment/argocd-bootstrap.sh scripts/environment/lib.sh
+4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf *scripts/environment/argocd-bootstrap.sh
+b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd *scripts/environment/lib.sh
+[exit 0]
+$ kubectl version --context docker-desktop
+Client Version: v1.34.3
+Kustomize Version: v5.7.1
+Server Version: v1.34.3
+[exit 0]
+$ kubectl --context docker-desktop get namespace argocd --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get customresourcedefinition/applications.argoproj.io customresourcedefinition/applicationsets.argoproj.io customresourcedefinition/appprojects.argoproj.io clusterrole/argocd-application-controller clusterrolebinding/argocd-application-controller --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get namespaces -o name
+namespace/default
+namespace/inferops-serving-feasibility
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+namespace/<redacted: one namespace that is not this project's>
+[exit 0]
+
+##### 1. No provider selected
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] FAILED: refusing to select a target: no-provider-selected: no INFEROPS_PROVIDER was given. Set it to "kind" or "docker-desktop"; there is no default.
+[exit 1]
+
+##### 2. Provider kind with no cluster name
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] FAILED: refusing to select a target: ambiguous-target: provider "kind" was selected with no INFEROPS_KIND_CLUSTER_NAME. Several kind clusters can exist on one engine, and choosing among them is exactly the decision that must not be made on the operators behalf.
+[exit 1]
+
+##### 3. An unsupported provider
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] FAILED: refusing to select a target: unsupported-provider: 'minikube' is neither 'kind' nor 'docker-desktop'.
+[exit 1]
+
+##### 4. verify, before any install
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: no namespace 'argocd' exists. Argo CD is not installed by this procedure on this target.
+[exit 1]
+
+##### 5. remove, before any install
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: refusing: foreign-argocd-present: no namespace 'argocd' exists, so no marker says that this procedure installed anything here. Nothing was changed.
+[exit 1]
+
+##### 6. install
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.34 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] no namespace 'argocd' and no Argo CD cluster-scoped object exists.
+[inferops] downloading https://raw.githubusercontent.com/argoproj/argo-cd/c9c369efcc5b2a0bd720803f8d14a1c3eaddf579/manifests/core-install.yaml
+[inferops] manifest SHA-256 is the pinned value: 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448
+
+[inferops] === Namespace ===
+namespace/argocd created
+
+[inferops] === Apply ===
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io serverside-applied
+serviceaccount/argocd-application-controller serverside-applied
+serviceaccount/argocd-applicationset-controller serverside-applied
+serviceaccount/argocd-redis serverside-applied
+serviceaccount/argocd-repo-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+configmap/argocd-cm serverside-applied
+configmap/argocd-cmd-params-cm serverside-applied
+configmap/argocd-gpg-keys-cm serverside-applied
+configmap/argocd-rbac-cm serverside-applied
+configmap/argocd-ssh-known-hosts-cm serverside-applied
+configmap/argocd-tls-certs-cm serverside-applied
+secret/argocd-secret serverside-applied
+service/argocd-applicationset-controller serverside-applied
+service/argocd-metrics serverside-applied
+service/argocd-redis serverside-applied
+service/argocd-repo-server serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+[inferops] 34 objects applied by field manager 'inferops-argocd-bootstrap'.
+
+[inferops] === Rollout ===
+Waiting for deployment "argocd-applicationset-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-applicationset-controller" successfully rolled out
+Waiting for deployment "argocd-redis" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-redis" successfully rolled out
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Result ===
+[inferops] Argo CD v3.5.3 is installed in 'argocd' on provider 'docker-desktop'.
+[inferops] no Application exists, so it reconciles nothing.
+[exit 0]
+
+##### 7. verify
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] the namespace carries inferops.io/lifecycle=bootstrap and records the pinned SHA-256.
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Rollout ===
+deployment "argocd-applicationset-controller" successfully rolled out
+deployment "argocd-redis" successfully rolled out
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Objects the manifest does not declare ===
+secret/argocd-redis
+secret/argocd-secret
+configmap/argocd-cm
+configmap/argocd-cmd-params-cm
+configmap/argocd-gpg-keys-cm
+configmap/argocd-rbac-cm
+configmap/argocd-ssh-known-hosts-cm
+configmap/argocd-tls-certs-cm
+configmap/kube-root-ca.crt
+
+[inferops] === Custom resources ===
+[inferops] no Application, ApplicationSet, or AppProject object exists, so Argo CD reconciles nothing.
+
+[inferops] === Result ===
+[inferops] the installation in 'argocd' is the pinned Argo CD v3.5.3, and every container runs its pinned digest at this moment.
+[exit 0]
+
+##### 8. install again, on the installation this procedure created
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.34 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] the namespace 'argocd' carries the bootstrap marker and records the pinned SHA-256. The same bytes are applied again.
+[inferops] a copy with the pinned SHA-256 is already in .artifacts/argocd-bootstrap/; no download.
+[inferops] manifest SHA-256 is the pinned value: 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448
+
+[inferops] === Namespace ===
+[inferops] the namespace already exists; it is not created or relabelled.
+
+[inferops] === Apply ===
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io serverside-applied
+serviceaccount/argocd-application-controller serverside-applied
+serviceaccount/argocd-applicationset-controller serverside-applied
+serviceaccount/argocd-redis serverside-applied
+serviceaccount/argocd-repo-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+configmap/argocd-cm serverside-applied
+configmap/argocd-cmd-params-cm serverside-applied
+configmap/argocd-gpg-keys-cm serverside-applied
+configmap/argocd-rbac-cm serverside-applied
+configmap/argocd-ssh-known-hosts-cm serverside-applied
+configmap/argocd-tls-certs-cm serverside-applied
+secret/argocd-secret serverside-applied
+service/argocd-applicationset-controller serverside-applied
+service/argocd-metrics serverside-applied
+service/argocd-redis serverside-applied
+service/argocd-repo-server serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+[inferops] 34 objects applied by field manager 'inferops-argocd-bootstrap'.
+
+[inferops] === Rollout ===
+deployment "argocd-applicationset-controller" successfully rolled out
+deployment "argocd-redis" successfully rolled out
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Result ===
+[inferops] Argo CD v3.5.3 is installed in 'argocd' on provider 'docker-desktop'.
+[inferops] no Application exists, so it reconciles nothing.
+[exit 0]
+
+##### 9. verify
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] the namespace carries inferops.io/lifecycle=bootstrap and records the pinned SHA-256.
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Rollout ===
+deployment "argocd-applicationset-controller" successfully rolled out
+deployment "argocd-redis" successfully rolled out
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Objects the manifest does not declare ===
+secret/argocd-redis
+secret/argocd-secret
+configmap/argocd-cm
+configmap/argocd-cmd-params-cm
+configmap/argocd-gpg-keys-cm
+configmap/argocd-rbac-cm
+configmap/argocd-ssh-known-hosts-cm
+configmap/argocd-tls-certs-cm
+configmap/kube-root-ca.crt
+
+[inferops] === Custom resources ===
+[inferops] no Application, ApplicationSet, or AppProject object exists, so Argo CD reconciles nothing.
+
+[inferops] === Result ===
+[inferops] the installation in 'argocd' is the pinned Argo CD v3.5.3, and every container runs its pinned digest at this moment.
+[exit 0]
+
+##### 10. remove without --confirm
+$ bash scripts/environment/argocd-bootstrap.sh remove
+[inferops] FAILED: 'remove' deletes the namespace 'argocd', three definitions, one cluster role, and one cluster role binding. Run it again with --confirm.
+[exit 1]
+
+##### 11. remove
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] no Application, ApplicationSet, or AppProject object exists (before the controllers stop).
+
+[inferops] === Stopping the controllers ===
+statefulset.apps "argocd-application-controller" deleted from argocd namespace
+deployment.apps "argocd-applicationset-controller" deleted from argocd namespace
+deployment.apps "argocd-redis" deleted from argocd namespace
+deployment.apps "argocd-repo-server" deleted from argocd namespace
+[inferops] no pod remains in 'argocd'.
+
+[inferops] === Second check ===
+[inferops] no Application, ApplicationSet, or AppProject object exists (after the controllers stopped).
+
+[inferops] === Deleting the cluster-scoped objects ===
+customresourcedefinition.apiextensions.k8s.io "applications.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "applicationsets.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "appprojects.argoproj.io" deleted
+clusterrolebinding.rbac.authorization.k8s.io "argocd-application-controller" deleted
+clusterrole.rbac.authorization.k8s.io "argocd-application-controller" deleted
+
+[inferops] === Deleting the namespace ===
+namespace "argocd" deleted
+
+[inferops] === Residue ===
+
+[inferops] === Result ===
+[inferops] no Argo CD definition, cluster role, cluster role binding, or namespace 'argocd' remains.
+[inferops] the cluster, the platform namespace, and every release were not touched. Images that the node pulled stay in its image store.
+[exit 0]
+
+##### 12. The cluster after the removal, asked independently
+$ kubectl --context docker-desktop get namespace argocd --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get customresourcedefinition/applications.argoproj.io customresourcedefinition/applicationsets.argoproj.io customresourcedefinition/appprojects.argoproj.io clusterrole/argocd-application-controller clusterrolebinding/argocd-application-controller --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get namespaces -o name
+namespace/default
+namespace/inferops-serving-feasibility
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+namespace/<redacted: one namespace that is not this project's>
+[exit 0]
+
+##### 13. verify, after the removal
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: no namespace 'argocd' exists. Argo CD is not installed by this procedure on this target.
+[exit 1]
+
+##### 14. install after a removal
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.34 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] no namespace 'argocd' and no Argo CD cluster-scoped object exists.
+[inferops] a copy with the pinned SHA-256 is already in .artifacts/argocd-bootstrap/; no download.
+[inferops] manifest SHA-256 is the pinned value: 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448
+
+[inferops] === Namespace ===
+namespace/argocd created
+
+[inferops] === Apply ===
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io serverside-applied
+serviceaccount/argocd-application-controller serverside-applied
+serviceaccount/argocd-applicationset-controller serverside-applied
+serviceaccount/argocd-redis serverside-applied
+serviceaccount/argocd-repo-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+configmap/argocd-cm serverside-applied
+configmap/argocd-cmd-params-cm serverside-applied
+configmap/argocd-gpg-keys-cm serverside-applied
+configmap/argocd-rbac-cm serverside-applied
+configmap/argocd-ssh-known-hosts-cm serverside-applied
+configmap/argocd-tls-certs-cm serverside-applied
+secret/argocd-secret serverside-applied
+service/argocd-applicationset-controller serverside-applied
+service/argocd-metrics serverside-applied
+service/argocd-redis serverside-applied
+service/argocd-repo-server serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+[inferops] 34 objects applied by field manager 'inferops-argocd-bootstrap'.
+
+[inferops] === Rollout ===
+Waiting for deployment "argocd-applicationset-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-applicationset-controller" successfully rolled out
+Waiting for deployment "argocd-redis" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-redis" successfully rolled out
+Waiting for deployment "argocd-repo-server" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Result ===
+[inferops] Argo CD v3.5.3 is installed in 'argocd' on provider 'docker-desktop'.
+[inferops] no Application exists, so it reconciles nothing.
+[exit 0]
+
+##### 15. verify
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] the namespace carries inferops.io/lifecycle=bootstrap and records the pinned SHA-256.
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Rollout ===
+deployment "argocd-applicationset-controller" successfully rolled out
+deployment "argocd-redis" successfully rolled out
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Objects the manifest does not declare ===
+secret/argocd-redis
+secret/argocd-secret
+configmap/argocd-cm
+configmap/argocd-cmd-params-cm
+configmap/argocd-gpg-keys-cm
+configmap/argocd-rbac-cm
+configmap/argocd-ssh-known-hosts-cm
+configmap/argocd-tls-certs-cm
+configmap/kube-root-ca.crt
+
+[inferops] === Custom resources ===
+[inferops] no Application, ApplicationSet, or AppProject object exists, so Argo CD reconciles nothing.
+
+[inferops] === Result ===
+[inferops] the installation in 'argocd' is the pinned Argo CD v3.5.3, and every container runs its pinned digest at this moment.
+[exit 0]
+
+##### 16. remove
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: 4c05c4925ed2ac14d877b2d9af5591aa4f1ab50e08a068a86995c24e5ca43fcf
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] no Application, ApplicationSet, or AppProject object exists (before the controllers stop).
+
+[inferops] === Stopping the controllers ===
+statefulset.apps "argocd-application-controller" deleted from argocd namespace
+deployment.apps "argocd-applicationset-controller" deleted from argocd namespace
+deployment.apps "argocd-redis" deleted from argocd namespace
+deployment.apps "argocd-repo-server" deleted from argocd namespace
+[inferops] no pod remains in 'argocd'.
+
+[inferops] === Second check ===
+[inferops] no Application, ApplicationSet, or AppProject object exists (after the controllers stopped).
+
+[inferops] === Deleting the cluster-scoped objects ===
+customresourcedefinition.apiextensions.k8s.io "applications.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "applicationsets.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "appprojects.argoproj.io" deleted
+clusterrolebinding.rbac.authorization.k8s.io "argocd-application-controller" deleted
+clusterrole.rbac.authorization.k8s.io "argocd-application-controller" deleted
+
+[inferops] === Deleting the namespace ===
+namespace "argocd" deleted
+
+[inferops] === Residue ===
+
+[inferops] === Result ===
+[inferops] no Argo CD definition, cluster role, cluster role binding, or namespace 'argocd' remains.
+[inferops] the cluster, the platform namespace, and every release were not touched. Images that the node pulled stay in its image store.
+[exit 0]
+
+##### 17. The cluster after the run, asked independently
+$ kubectl --context docker-desktop get namespace argocd --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get customresourcedefinition/applications.argoproj.io customresourcedefinition/applicationsets.argoproj.io customresourcedefinition/appprojects.argoproj.io clusterrole/argocd-application-controller clusterrolebinding/argocd-application-controller --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get namespaces -o name
+namespace/default
+namespace/inferops-serving-feasibility
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+namespace/<redacted: one namespace that is not this project's>
+[exit 0]
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-03T15:57:30Z
+[exit 0]

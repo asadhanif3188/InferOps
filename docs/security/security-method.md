@@ -56,8 +56,8 @@ one, which is the same limitation the baseline declares for its own status deriv
 
 ## 1. Assets and trust boundaries
 
-[The threat model](threat-model.md) names eleven assets, six actors, six trust
-boundaries and twenty-two threats. Five boundaries come from
+[The threat model](threat-model.md) names twelve assets, six actors, six trust
+boundaries and twenty-five threats. Five boundaries come from
 [the architecture](../architecture/system-architecture.md) verbatim, and a test
 compares the two. The sixth, B6, is the boundary every commit crosses, and it is the
 only one whose failures cannot be undone.
@@ -89,6 +89,7 @@ fetched over the transport that delivers the file it describes.
 | The model is pinned by revision and per-file SHA-256, and compared before anything reads it — by the acquisition job, and by the chart's `verify-model` init container on every pod start | `pin-model-revision`, `verify-artifact-hash-before-use` | `test_the_model_acquisition_job_pins_a_revision_and_verifies_a_hash`, `test_the_integrity_check_runs_before_the_runtime_and_on_every_start` | [runtime feasibility](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md), [v1-s3-008-pr1](../proof/environment/v1-s3-008-pr1-validation.md) | `local-static` |
 | Every image a committed manifest or render names is pinned by digest | `pin-image-by-digest` | `test_every_manifest_image_is_pinned_by_digest`, `test_every_rendered_image_is_pinned_by_digest`; gate `default-lane-tests` | [v1-s0-009-pr1](../proof/security/v1-s0-009-pr1-validation.md) | `local-static` |
 | The pinned runtime image and the committed lockfile are scanned against one committed blocking severity, and a CycloneDX bill of materials is generated for each | `scan-the-pinned-runtime-image-for-known-vulnerabilities`, `scan-python-dependencies-for-known-vulnerabilities`; claim `the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published` | the shared library in [`scripts/security/lib.sh`](../../scripts/security/lib.sh), `test_the_image_scan_reads_the_digest_the_manifests_already_pin`; gates `dependency-and-image-scan`, `software-bill-of-materials` | [v1-s2-006-pr1](../proof/security/v1-s2-006-pr1-validation.md) | `local-static` |
+| The Argo CD bootstrap verifies the SHA-256 of the install manifest before its first mutation, and reports success only when every container reports the pinned digest of its image. Two runs on `docker-desktop` did both, for the pinned bytes. The refusal of other bytes and of another digest is executed against stub tools only | `verify-the-argocd-manifest-digest-before-apply`, `argocd-containers-run-their-pinned-digest-at-install` | the guards in [`scripts/environment/argocd-bootstrap.sh`](../../scripts/environment/argocd-bootstrap.sh), `test_install_refuses_manifest_bytes_that_are_not_the_pin`, `test_verification_fails_when_a_container_does_not_run_its_pin` | [the Argo CD bootstrap run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) | `local-real-cpu` |
 
 **Not implemented**
 
@@ -98,6 +99,7 @@ fetched over the transport that delivers the file it describes.
 | The model transport reported certificate validation as disabled | DR-06 | No integrity property beyond the hash comparison |
 | Nothing records that a given check resolved from the committed lockfile, and the non-Python tools are pinned in prose | `pin-every-dependency-with-a-committed-lockfile`, deferred; DR-07 | No reproducibility property for the tool chain |
 | A publisher that stops serving the pinned revision stops every serving record being reproducible | DR-09 | No availability property for an external artifact |
+| No signature is verified for the Argo CD release, the manifest names each image by tag, and nothing reads a container's image after the bootstrap's check. Neither image was scanned | DR-13 | No provenance or authenticity property for the Argo CD release, and no statement about the image a container runs after the check |
 
 ## 3. Secrets
 
@@ -161,12 +163,14 @@ read a pod that resulted.
 | Every pod specification and container runs as non-root with the runtime-default seccomp profile, mounts no service account token, forbids privilege escalation, has a read-only root filesystem, and drops every capability | `run-as-non-root`, `seccomp-runtime-default`, `do-not-mount-a-service-account-token`, `forbid-privilege-escalation`, `read-only-root-filesystem`, `drop-all-capabilities` | `test_every_pod_spec_carries_every_required_pod_security_field`, `test_every_container_carries_every_required_container_security_field` | [v1-s0-009-pr1](../proof/security/v1-s0-009-pr1-validation.md) | `local-static` |
 | A render that drops a dedicated service account or an explicit resource envelope is refused, and nine insecure fixtures each prove a rule fires | `use-a-dedicated-service-account-per-workload`, `declare-explicit-resource-requests-and-limits`, `refuse-a-workload-manifest-that-omits-a-required-control`; claim `a-workload-manifest-that-omits-a-required-security-control-is-refused` | `test_the_fixtures_between_them_exercise_every_rule`, `test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records`; gates `expected-failures`, `helm-chart` | [v1-s3-004-pr1](../proof/security/v1-s3-004-pr1-validation.md) | `local-static` |
 | A platform action reaches only a cluster the operator selected and verified, through the project kubeconfig | `refuse-to-act-on-a-cluster-this-project-did-not-create`, `scope-every-kubectl-call-to-the-project-kubeconfig` | the guards in [`scripts/environment/lib.sh`](../../scripts/environment/lib.sh), `test_a_mutating_kubectl_call_goes_through_the_wrapper` | [cluster smoke](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) | `local-real-cpu` |
+| The Argo CD bootstrap and its removal refuse an installation without the bootstrap marker, the removal refuses while an Application, ApplicationSet, or AppProject object exists, and no tracked file declares one. Both refusals are executed against stub tools; no run met either condition in a cluster | `refuse-an-argocd-installation-this-project-did-not-create`, `refuse-argocd-removal-while-a-custom-resource-exists`, `no-argocd-custom-resource-is-committed` | the guards in [`scripts/environment/argocd-bootstrap.sh`](../../scripts/environment/argocd-bootstrap.sh), `test_install_refuses_a_namespace_it_did_not_create`, `test_removal_refuses_while_a_custom_resource_exists`, `test_no_argocd_custom_resource_is_committed` | [the Argo CD bootstrap run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) | `mock` |
 
 **Not implemented**
 
 | What | Carried by | Not claimed |
 |---|---|---|
 | Nothing reads a pod this platform deployed, and no admission control constrains one | DR-05; claim `a-deployed-inferops-workload-is-defended` is not claimed | No deployed workload may be described as constrained |
+| The Argo CD application controller holds every verb on every resource, and nothing limits the namespaces or kinds it may change | `narrow-the-argocd-controller-grant`, deferred; DR-14 | No least-privilege property for Argo CD, and no isolation between the controller and an object another owner holds |
 
 ## 6. Scan and policy gates
 
@@ -287,8 +291,10 @@ implemented and a defended system, and it is published in full rather than trimm
 | DR-10 | No secret manager, rotation policy, or expiry check exists | yes |
 | DR-11 | No recurring run of a secret scanner is recorded | no |
 | DR-12 | Records are written and nothing keeps them, so nothing can be reconstructed | yes |
+| DR-13 | The Argo CD manifest and images are identified and not authenticated, and an image pin does not hold after a pod restarts | yes |
+| DR-14 | The Argo CD application controller holds every verb on every resource, and nothing narrows it | yes |
 
-Twelve risks are carried rather than reduced, and ten block production use. No entry is
+Fourteen risks are carried rather than reduced, and twelve block production use. No entry is
 described as reduced, and an entry leaves the register only with the control that
 reduces it — a rule no test can enforce, and which is marked review-only for that reason.
 
@@ -315,7 +321,8 @@ repository.
 ## What publishing this corrected
 
 Writing the method meant reading every document it summarises against the repository,
-and five kinds of statement had stopped being true. Each is corrected in place with the date,
+and five kinds of statement had stopped being true. A sixth correction was added
+on 2026-10-03 and is the last item below. Each is corrected in place with the date,
 and the record lists them:
 
 - **Eight places said no job in the default-lane workflow had run on the selected
@@ -336,6 +343,11 @@ and the record lists them:
 - **One register row carried a title its own heading had replaced**, and another
   entry's title said no scan was recorded two paragraphs above the sentence recording
   one.
+- **This method described twelve risks, thirty-eight controls, and twenty-two
+  threats until 2026-10-03.** The change that implemented the Argo CD bootstrap
+  added six controls, three threats, two risks, and one asset to the baseline.
+  Topics 2, 5, and 9 carry them. They belong to a V2 installation procedure, and
+  this method's title still says V1.
 
 ## Related records
 

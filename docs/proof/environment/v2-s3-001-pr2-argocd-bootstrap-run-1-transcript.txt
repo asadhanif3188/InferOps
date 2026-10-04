@@ -1,0 +1,260 @@
+
+##### 0. Tools, revision, and the cluster before the run
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-03T15:47:54Z
+[exit 0]
+$ git rev-parse HEAD
+a932973d2709d6048a1b5e981ce40b85adab73a9
+[exit 0]
+$ sha256sum scripts/environment/argocd-bootstrap.sh scripts/environment/lib.sh
+f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1 *scripts/environment/argocd-bootstrap.sh
+b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd *scripts/environment/lib.sh
+[exit 0]
+$ kubectl version --context docker-desktop
+Client Version: v1.34.3
+Kustomize Version: v5.7.1
+Server Version: v1.34.3
+[exit 0]
+$ kubectl --context docker-desktop get namespace argocd --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get customresourcedefinition/applications.argoproj.io customresourcedefinition/applicationsets.argoproj.io customresourcedefinition/appprojects.argoproj.io clusterrole/argocd-application-controller clusterrolebinding/argocd-application-controller --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get namespaces -o name
+namespace/default
+namespace/inferops-serving-feasibility
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+namespace/<redacted: one namespace that is not this project's>
+[exit 0]
+
+##### 1. No provider selected
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] FAILED: refusing to select a target: no-provider-selected: no INFEROPS_PROVIDER was given. Set it to "kind" or "docker-desktop"; there is no default.
+[exit 1]
+
+##### 2. Provider kind with no cluster name
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] FAILED: refusing to select a target: ambiguous-target: provider "kind" was selected with no INFEROPS_KIND_CLUSTER_NAME. Several kind clusters can exist on one engine, and choosing among them is exactly the decision that must not be made on the operators behalf.
+[exit 1]
+
+##### 3. An unsupported provider
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] FAILED: refusing to select a target: unsupported-provider: 'minikube' is neither 'kind' nor 'docker-desktop'.
+[exit 1]
+
+##### 4. verify, before any install
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: no namespace 'argocd' exists. Argo CD is not installed by this procedure on this target.
+[exit 1]
+
+##### 5. remove, before any install
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: refusing: foreign-argocd-present: no namespace 'argocd' exists, so no marker says that this procedure installed anything here. Nothing was changed.
+[exit 1]
+
+##### 6. install
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.34 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] no namespace 'argocd' and no Argo CD cluster-scoped object exists.
+[inferops] downloading https://raw.githubusercontent.com/argoproj/argo-cd/c9c369efcc5b2a0bd720803f8d14a1c3eaddf579/manifests/core-install.yaml
+curl: (23) Failure writing output to destination, passed 16384 returned 4294967295
+[inferops] FAILED: the manifest could not be downloaded. Nothing was changed. A copy obtained another way is accepted with --manifest PATH, and is verified the same way.
+[exit 1]
+
+##### 7. verify
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: no namespace 'argocd' exists. Argo CD is not installed by this procedure on this target.
+[exit 1]
+
+##### 8. install again, on the installation this procedure created
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.34 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] no namespace 'argocd' and no Argo CD cluster-scoped object exists.
+[inferops] downloading https://raw.githubusercontent.com/argoproj/argo-cd/c9c369efcc5b2a0bd720803f8d14a1c3eaddf579/manifests/core-install.yaml
+curl: (23) Failure writing output to destination, passed 16384 returned 4294967295
+[inferops] FAILED: the manifest could not be downloaded. Nothing was changed. A copy obtained another way is accepted with --manifest PATH, and is verified the same way.
+[exit 1]
+
+##### 9. verify
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: no namespace 'argocd' exists. Argo CD is not installed by this procedure on this target.
+[exit 1]
+
+##### 10. remove without --confirm
+$ bash scripts/environment/argocd-bootstrap.sh remove
+[inferops] FAILED: 'remove' deletes the namespace 'argocd', three definitions, one cluster role, and one cluster role binding. Run it again with --confirm.
+[exit 1]
+
+##### 11. remove
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: refusing: foreign-argocd-present: no namespace 'argocd' exists, so no marker says that this procedure installed anything here. Nothing was changed.
+[exit 1]
+
+##### 12. The cluster after the removal, asked independently
+$ kubectl --context docker-desktop get namespace argocd --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get customresourcedefinition/applications.argoproj.io customresourcedefinition/applicationsets.argoproj.io customresourcedefinition/appprojects.argoproj.io clusterrole/argocd-application-controller clusterrolebinding/argocd-application-controller --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get namespaces -o name
+namespace/default
+namespace/inferops-serving-feasibility
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+namespace/<redacted: one namespace that is not this project's>
+[exit 0]
+
+##### 13. verify, after the removal
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: no namespace 'argocd' exists. Argo CD is not installed by this procedure on this target.
+[exit 1]
+
+##### 14. install after a removal
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.34 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] no namespace 'argocd' and no Argo CD cluster-scoped object exists.
+[inferops] downloading https://raw.githubusercontent.com/argoproj/argo-cd/c9c369efcc5b2a0bd720803f8d14a1c3eaddf579/manifests/core-install.yaml
+curl: (23) Failure writing output to destination, passed 12402 returned 4294967295
+[inferops] FAILED: the manifest could not be downloaded. Nothing was changed. A copy obtained another way is accepted with --manifest PATH, and is verified the same way.
+[exit 1]
+
+##### 15. verify
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: no namespace 'argocd' exists. Argo CD is not installed by this procedure on this target.
+[exit 1]
+
+##### 16. remove
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.34.3
+[inferops] container runtime: containerd://2.2.0
+[inferops] node image digest: sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+[inferops] repository revision: a932973d2709d6048a1b5e981ce40b85adab73a9
+[inferops] procedure SHA-256: f4f568663855b37debf28b6b5338d115571cc073dcbd5c17250aaa5057bb74a1
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] FAILED: refusing: foreign-argocd-present: no namespace 'argocd' exists, so no marker says that this procedure installed anything here. Nothing was changed.
+[exit 1]
+
+##### 17. The cluster after the run, asked independently
+$ kubectl --context docker-desktop get namespace argocd --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get customresourcedefinition/applications.argoproj.io customresourcedefinition/applicationsets.argoproj.io customresourcedefinition/appprojects.argoproj.io clusterrole/argocd-application-controller clusterrolebinding/argocd-application-controller --ignore-not-found -o name
+[exit 0]
+$ kubectl --context docker-desktop get namespaces -o name
+namespace/default
+namespace/inferops-serving-feasibility
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+namespace/<redacted: one namespace that is not this project's>
+[exit 0]
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-03T15:49:59Z
+[exit 0]

@@ -23,7 +23,8 @@ below have no control at all.
 > not one.
 >
 > What is really enforced is enforced over committed files, over five YAML
-> manifests, over the chart's two committed renders, and by four shell functions.
+> manifests, over the chart's two committed renders, and by eight shell functions.
+> Four of the eight are guards of the Argo CD bootstrap, added on 2026-10-03.
 > A release installed from those renders was read by none of them. That is a narrow
 > and real thing, and the
 > distance between it and a defended system is
@@ -51,7 +52,7 @@ Question five is the one this project keeps answering in public.
 
 ## Assets
 
-Eleven things worth protecting. Each names the boundary it sits behind and the worst
+Twelve things worth protecting. Each names the boundary it sits behind and the worst
 outcome that follows from losing it — not a score, because a severity number here
 would be invented and an invented number applied consistently still ranks nothing.
 
@@ -68,6 +69,7 @@ would be invented and an invented number applied consistently still ranks nothin
 | `contributor-kubeconfig` | The project-scoped kubeconfig, carrying a client key | B2 | The contributor |
 | `local-cluster` | The single-node cluster the environment scripts create | B2 | The contributor |
 | `model-cache-volume` | A prerequisite volume holding one hash-verified artifact | B3 | Environment |
+| `gitops-controller-installation` | The Argo CD installation the bootstrap creates in `argocd`, whose application controller holds every verb on every resource | B2 | Environment |
 
 Two of them deserve a sentence beyond the row. **The evidence record is a stricter
 surface than a log store, not a looser one** — it is public, permanent, and not
@@ -137,7 +139,7 @@ to be false, the controls resting on it are worth no more than the assumption.
 
 ## Threats
 
-Twenty-two, in six categories. Each names the asset, the boundary, the actor, the
+Twenty-five, in six categories. Each names the asset, the boundary, the actor, the
 controls that address it, and the deferred risk that carries whatever the controls do
 not. A threat with neither a control nor a deferred risk is refused by a test,
 because that is the shape of a threat nobody decided about.
@@ -166,8 +168,11 @@ because that is the shape of a threat nobody decided about.
 | T-20 | Nothing records who did what | repudiation | `telemetry-signals` | B5 | Caller | `record-what-the-platform-did` | DR-12 |
 | T-21 | A stale cache is trusted instead of a hash | tampering | `model-cache-volume` | B3 | Contributor | `verify-artifact-hash-before-use` | — |
 | T-22 | A secret reference names a place nobody manages | information-disclosure | `secret-material` | B3 | Workload owner | `refuse-a-secret-value-in-a-contract` | DR-10 |
+| T-23 | The Argo CD manifest or an image is replaced at its source | tampering | `gitops-controller-installation` | B1 | Publisher | `verify-the-argocd-manifest-digest-before-apply`, `argocd-containers-run-their-pinned-digest-at-install`, `verify-artifact-provenance` | DR-13 |
+| T-24 | The GitOps controller's grant reaches an object another owner holds | elevation-of-privilege | `gitops-controller-installation` | B2 | Contributor | `no-argocd-custom-resource-is-committed`, `narrow-the-argocd-controller-grant` | DR-14 |
+| T-25 | The bootstrap or its removal acts on an Argo CD it did not install | elevation-of-privilege | `gitops-controller-installation` | B2 | Contributor | `refuse-an-argocd-installation-this-project-did-not-create`, `refuse-argocd-removal-while-a-custom-resource-exists` | — |
 
-Three of the twenty-two name only a control with no verification at all —
+Three of the twenty-five name only a control with no verification at all —
 `authenticate-and-authorise-a-caller`, `limit-what-one-caller-may-consume`, and
 `record-what-the-platform-did`. Those rows are naming the gap in the shape of a
 control so that the register has something to point at, and the matrix marks every
@@ -184,6 +189,14 @@ is now verified on a contributor's host: `verify-artifact-provenance` and
 `scan-python-dependencies-for-known-vulnerabilities` sit beside them. A threat row
 naming a verified control is not a closed threat; `DR-08` and `DR-07` still carry
 what the verified half does not reach.
+
+T-23 to T-25 arrived on 2026-10-03 with the Argo CD bootstrap. T-23 and T-24 have
+the same shape as T-02 and T-19: each names a control with no verification —
+`verify-artifact-provenance` and `narrow-the-argocd-controller-grant` — beside
+controls that are verified. `DR-13` and `DR-14` carry what the verified half does
+not reach. For T-24 the verified half is an absence: no Application is committed,
+so the controller reconciles nothing, and nothing limits what a later Application
+may target.
 
 ## Five abuse cases worth reading in full
 
@@ -272,7 +285,7 @@ so the claim about public history stays `planned`. (This paragraph said until
 
 - **It does not score anything.** No threat carries a likelihood, a severity, or a
   risk rating. Every such number here would be invented, and a test refuses one.
-- **It is not exhaustive.** Twenty-two threats were enumerated because each is a
+- **It is not exhaustive.** Twenty-five threats were enumerated because each is a
   failure somebody would plausibly reach. A threat nobody thought of is a threat
   nobody modelled, and nothing in the method guarantees coverage.
 - **It does not describe an attack that has happened.** No incident, real credential,

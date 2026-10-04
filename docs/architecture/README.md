@@ -35,7 +35,7 @@ caller names, and nothing installs a release from them.
 | [System architecture](system-architecture.md) | Context, components, inference request flow, deployment flow, telemetry and evidence flow, trust boundaries |
 | [Resource ownership](resource-ownership.md) | Which tool owns which resource, with lifecycle and handoff rules |
 | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) | The authoritative form of that inventory, validated by `tests/architecture/` |
-| [The Argo CD bootstrap record](../environment/argocd-bootstrap.md) | The pinned Argo CD release, manifest and images, the objects of the installation and the row that owns each, the refusals, and the scoped removal. Decided by ADR 0017 and not implemented |
+| [The Argo CD bootstrap record](../environment/argocd-bootstrap.md) | The pinned Argo CD release, manifest and images, the objects of the installation and the row that owns each, the refusals, the scoped removal, and the procedure that implements them. Decided by ADR 0017. Executed on the `docker-desktop` provider and not on `kind` |
 | [Project boundaries](project-boundaries.md) | Where this project stops, and what belongs to gateway or deeper serving work instead |
 | [Boundary review checklist](boundary-review-checklist.md) | The questions a reviewer applies to all of the above |
 | [Workload domain model](../domain/workload-domain-model.md) | The first component built under these boundaries, and the dependency rule it is held to |
@@ -63,7 +63,7 @@ caller names, and nothing installs a release from them.
 | [0014](decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md) | The V1 cost calculation reaches the estimated basis, from bounded measured use | Accepted in part | 2026-09-15 | [Change validation](../proof/cost/v1-s4-005-pr1-validation.md); amends ADR 0007 D1, D2, D3, and D9 and clarifies D13. The basis, the price-source refusals, the evidence a measured class must name, the arithmetic, and the record shape are machine-checked on synthetic fixtures; D3's rules for taking usage from samples are enforced by `tools/cost_baseline` for the inputs it writes, [the V1 cost baseline](../proof/cost/v1-s4-005-pr2-cost-baseline.md), and review only for a hand-typed input. No cost figure is published |
 | [0015](decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | V1 decision ownership and sign-off authority rest with the repository maintainer role | Accepted | 2026-09-21 | [Change validation](../proof/architecture/v1-s5-003-pr1-validation.md); the register is machine-checked in both directions against the records on disk, every record's own metadata row is compared to it, and no decision record or governance document may still say this authority is unassigned. It amends ADR 0008 D13 and the `Decision owner` field of every earlier record. It decides accountability only: no claim, level, or evidence class moves, and fourteen of the fifteen owners it assigned are assigned retrospectively |
 | [0016](decisions/ADR-0016-inferops-evidence-level-model.md) | InferOps Evidence Levels describe how evidence was obtained, and attach to an evidence record | Accepted | 2026-09-23 | [Change validation](../proof/testing/v1-s5-011-pr1-validation.md); it amends ADR 0005 D4's level **meanings** and leaves its ceiling mechanism, layers, and lanes untouched. `C3` Failure and `C4` Composed are superseded as level meanings; failure and composition become evidence-record metadata. The definition is machine-checked for consistency -- one current definition, the mapping table, the project-defined disclaimer, and no superseded meaning presented as current outside the surfaces registered to state one, a list with nothing awaiting migration on it. **It is also applied to the evidence now:** V1-S5-011-PR2 published a versioned evidence-record schema, `V1-S5-012-PR1` the rules that replace the ceiling mechanism for `v1alpha2` records, and `V1-S5-012-PR2` migrated the register to `v1alpha2` by reading every cited record against the current definitions, moved the strategy data to the current names, and moved every consumer, the proof dashboard included, onto `v1alpha2`; the record carries a dated note for each of those three changes. `V1-S5-006-PR1` then normalized the migrated records and indexed them in [the V1 evidence index](../proof/v1-evidence-index.md), which changed no decision here |
-| [0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md) | Argo CD is installed by a pinned bootstrap that has one owner | Accepted in part | 2026-10-03 | [Change validation](../proof/architecture/v2-s3-001-pr1-validation.md); it amends ADR 0004 D3 by adding one owner, one lifecycle, and six rows to the ownership inventory, and moves no existing row. The pins and the object-to-row map are machine-checked for form and for agreement with the inventory, the Terraform defaults, and the committed renders. **Nothing is installed:** no bootstrap procedure exists, no cluster was contacted, the four bootstrap rows are `planned`, the apply mechanism (D8), the choice of the core profile (D5), and the image-digest mechanism (D6) are proposed, and the pins were read from upstream once without verifying a signature |
+| [0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md) | Argo CD is installed by a pinned bootstrap that has one owner | Accepted in part | 2026-10-03 | [Change validation](../proof/architecture/v2-s3-001-pr1-validation.md); it amends ADR 0004 D3 by adding one owner, one lifecycle, and six rows to the ownership inventory, and moves no existing row. The pins and the object-to-row map are machine-checked for form and for agreement with the inventory, the Terraform defaults, and the committed renders. As accepted, nothing was installed. **Amended 2026-10-03:** a procedure implements it and ran on the `docker-desktop` provider ([the run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md)); it was not executed on `kind`. The four bootstrap rows and the upstream-release row are `implemented`, the apply mechanism (D8) and the image-digest mechanism (D6) are accepted for that provider, the choice of the core profile (D5) stays proposed, and the pins were read from upstream without verifying a signature |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -208,9 +208,10 @@ control claiming an implemented status has to name a committed evidence record. 
 is the same shape as 0007's derived confidence, applied to the failure that a written
 control is counted as an enforced one.
 
-It establishes **nothing about whether anything running is defended**. Twenty-nine of
-its thirty-eight controls are enforced by something and nine are not; twelve risks are
-carried rather than reduced, ten of them blocking production use; seven exceptions are
+It establishes **nothing about whether anything running is defended**. Thirty-four of
+its forty-four controls are enforced by something and ten are not; fourteen risks are
+carried rather than reduced, twelve of them blocking production use (until
+2026-10-03 this sentence said twenty-nine of thirty-eight, nine, twelve, and ten); seven exceptions are
 recorded with a compensating control each; and the pod-security properties hold over
 five YAML files and two committed renders, read as files — a release has since been
 installed from those renders and no check here reads a pod that resulted. A secret
@@ -284,6 +285,15 @@ and a test holds the four bootstrap rows apart from what Terraform and Helm own.
 hold only as an absence: Argo CD reconciles nothing another owner holds because
 no Application is committed. It records that the upstream controller holds every
 verb on every resource, and does not narrow that.
+
+That paragraph describes 0017 as it was accepted. The same day, a procedure
+implemented it and ran on the `docker-desktop` provider: three installs and two
+removals, recorded in [the run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md). ADR 0017 is amended in
+place, with the date. The apply mechanism and the image-digest mechanism are
+accepted for that provider, the four bootstrap rows and the upstream-release row
+are `implemented`, and the
+choice of the core profile stays proposed, because no Application was
+reconciled. The procedure was not executed on `kind`.
 
 ## Conventions
 

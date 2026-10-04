@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Drives the Argo CD bootstrap procedure on the docker-desktop provider and
+# prints one transcript. Run from the repository root. kubectl must be on PATH
+# within one minor version of the server.
+set -u
+
+SCRIPT="scripts/environment/argocd-bootstrap.sh"
+
+step() { printf '\n##### %s\n' "$*"; }
+
+# Runs one command, prints it, and prints its exit status.
+run() {
+  printf '$ %s\n' "$*"
+  "$@"
+  printf '[exit %s]\n' "$?"
+}
+
+# What the cluster holds, asked with plain kubectl and not through the procedure.
+independent_state() {
+  run kubectl --context docker-desktop get namespace argocd --ignore-not-found -o name
+  run kubectl --context docker-desktop get \
+    customresourcedefinition/applications.argoproj.io \
+    customresourcedefinition/applicationsets.argoproj.io \
+    customresourcedefinition/appprojects.argoproj.io \
+    clusterrole/argocd-application-controller \
+    clusterrolebinding/argocd-application-controller \
+    --ignore-not-found -o name
+  run kubectl --context docker-desktop get namespaces -o name
+}
+
+step "0. Tools, revision, and the cluster before the run"
+run date -u +%Y-%m-%dT%H:%M:%SZ
+run git rev-parse HEAD
+run sha256sum "${SCRIPT}" scripts/environment/lib.sh
+run kubectl version --context docker-desktop
+independent_state
+
+step "1. No provider selected"
+unset INFEROPS_PROVIDER INFEROPS_KIND_CLUSTER_NAME
+run bash "${SCRIPT}" install
+
+step "2. Provider kind with no cluster name"
+INFEROPS_PROVIDER=kind run bash "${SCRIPT}" install
+
+step "3. An unsupported provider"
+INFEROPS_PROVIDER=minikube run bash "${SCRIPT}" install
+
+export INFEROPS_PROVIDER=docker-desktop
+
+step "4. verify, before any install"
+run bash "${SCRIPT}" verify
+
+step "5. remove, before any install"
+run bash "${SCRIPT}" remove --confirm
+
+step "6. install"
+run bash "${SCRIPT}" install
+
+step "7. verify"
+run bash "${SCRIPT}" verify
+
+step "8. install again, on the installation this procedure created"
+run bash "${SCRIPT}" install
+
+step "9. verify"
+run bash "${SCRIPT}" verify
+
+step "10. remove without --confirm"
+run bash "${SCRIPT}" remove
+
+step "11. remove"
+run bash "${SCRIPT}" remove --confirm
+
+step "12. The cluster after the removal, asked independently"
+independent_state
+
+step "13. verify, after the removal"
+run bash "${SCRIPT}" verify
+
+step "14. install after a removal"
+run bash "${SCRIPT}" install
+
+step "15. verify"
+run bash "${SCRIPT}" verify
+
+step "16. remove"
+run bash "${SCRIPT}" remove --confirm
+
+step "17. The cluster after the run, asked independently"
+independent_state
+run date -u +%Y-%m-%dT%H:%M:%SZ

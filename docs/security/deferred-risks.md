@@ -1,9 +1,9 @@
 # Deferred risks and accepted exceptions
 
 Status: **accepted register**, in
-[ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). Twelve risks
+[ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). Fourteen risks
 V1 carries rather than reduces, and seven weaknesses it accepts with a compensating
-control. Ten of the twelve block production use.
+control. Twelve of the fourteen block production use.
 
 This is the document that makes the rest of the security baseline honest. A control
 list on its own describes what a project does; it takes a register to describe what
@@ -25,20 +25,22 @@ Each entry declares five things, and a test requires all five:
 - **what would have to be true** to close it;
 - **what may not be claimed** while it stands — the field that does the work, and
   the one a test requires to be phrased as a denial;
-- whether it **blocks production use**, which ten of the twelve do.
+- whether it **blocks production use**, which twelve of the fourteen do.
 
 An entry leaves this register when a control that reduces it is added in the same
 change. It is never removed because the register had become an uncomfortable thing to
 publish. No test can enforce that, and the rule is marked `review` in
 [the control matrix](control-matrix.md) rather than dressed up as something stronger.
 
-**One surface is decided and not installed, and has no entry here.**
+**Two entries were added on 2026-10-03, for Argo CD.**
 [ADR 0017](../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md)
-decides how V2 installs Argo CD. It records two open risks, R1 and R2: the
+decides how V2 installs Argo CD, and records two open risks, R1 and R2: the
 controller holds every verb on every resource, and its pinned inputs are
-identified and not authenticated. Nothing is installed, so this register, which
-describes what exists, gains no entry. The change that first installs Argo CD
-owes the entries before it runs. No test enforces that.
+identified and not authenticated. Until that date this paragraph said that the
+surface was decided and not installed, and that the change which first installed
+it owed the entries before it ran. That change wrote `DR-13` and `DR-14` before
+its first install. Nothing checks that order; the record of the run states it.
+The title sentence above says "V1"; these two entries are V2's.
 
 ## The register
 
@@ -56,6 +58,8 @@ owes the entries before it runs. No test enforces that.
 | DR-10 | No secret manager, rotation policy, or expiry check exists | B3 | yes |
 | DR-11 | No recurring run of a secret scanner is recorded | B6 | no |
 | DR-12 | Records are written and nothing keeps them, so nothing can be reconstructed | B5 | yes |
+| DR-13 | The Argo CD manifest and images are identified and not authenticated, and an image pin does not hold after a pod restarts | B1 | yes |
+| DR-14 | The Argo CD application controller holds every verb on every resource, and nothing narrows it | B2 | yes |
 
 ### DR-01 — No caller is authenticated and no request is authorised
 
@@ -339,6 +343,51 @@ failure leaves no trace cannot be shown to have held.** Every other entry here
 describes something that is missing; this one describes why the things that are
 present cannot be demonstrated in operation.
 
+### DR-13 — The Argo CD manifest and images are identified and not authenticated, and an image pin does not hold after a pod restarts
+
+**Why deferred.** The bootstrap verifies the SHA-256 of the install manifest before
+it applies it, and it compares the image identity each container reports with the
+pinned digest before it reports success. Both pins were read from upstream over
+HTTPS on 2026-10-03. No signature, attestation, or provenance statement was
+verified. The manifest is applied unmodified so that one digest identifies what
+was applied, and it names each image by tag. Four containers set
+`imagePullPolicy: Always`, so a pod that restarts after the check resolves the tag
+again. Replacing each tag with its digest would hold after a restart. It would
+also change the applied bytes, which ADR 0017 D5 does not allow without an
+amendment. Neither image was scanned for a known vulnerability.
+
+**What would have to be true.** A component that verifies the upstream release
+signature before the manifest is applied. An image reference by digest in the
+applied objects, decided as an amendment to ADR 0017 D5, or an admission policy
+that refuses a tag. A recorded scan of both images.
+
+**Not claimed.** No provenance or authenticity property is claimed for the Argo CD
+release. No statement is made about which image a container runs after the
+bootstrap or the verification returns. No vulnerability statement is made about
+either image.
+
+### DR-14 — The Argo CD application controller holds every verb on every resource, and nothing narrows it
+
+**Why deferred.** The grant is the upstream default of the pinned core manifest,
+which is applied unmodified. The ownership inventory says who may create and
+destroy an object. It does not stop a controller that holds a wider grant. No
+Application is committed, and a test holds that absence, so the controller
+reconciles nothing today. A namespace-scoped installation, or a project that
+limits destinations and kinds, would narrow the grant. Neither is decided, and
+ADR 0017 carries this as R1. The manifest declares four network policies. The
+network plugin the local providers run was measured not to enforce the release's
+policy (`DR-04`), so these four are expected to be inert as well. That is an
+inference: no run tested them.
+
+**What would have to be true.** A decision that narrows the grant: an AppProject
+that restricts destinations and kinds, committed with the first Application and
+held by a test, or an installation whose roles are namespace-scoped. A network
+plugin that enforces the manifest's policies.
+
+**Not claimed.** No least-privilege property is claimed for Argo CD. No isolation
+is claimed between the controller and the objects that Terraform, Helm, or the
+bootstrap owns.
+
 ## Accepted exceptions
 
 Seven weaknesses this project accepts rather than fixes. Each names where it was
@@ -532,7 +581,7 @@ drop it.
   a plan, and no entry names a date or a release.
 - **It is not exhaustive.** A risk nobody thought of is a risk nobody registered, and
   the same limitation applies to it as to
-  [the threat model's twenty-two threats](threat-model.md).
+  [the threat model's twenty-five threats](threat-model.md).
 - **It was published before it could be reported against privately.** No private
   vulnerability reporting channel existed when it was written, and that is the reason
   everything here is published rather than held. Since `v1.0.0`,

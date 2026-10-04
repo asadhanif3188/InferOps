@@ -427,14 +427,16 @@ measured to have about 23 GB free on the volume where the container engine keeps
 virtual disk. Reclaiming it is `terraform destroy`, and that must be documented where
 an operator will find it rather than discovered as a disk-full error.
 
-### A GitOps controller, decided and not built
+### A GitOps controller, installed by a bootstrap and reconciling nothing
 
-Added on 2026-10-03. The flow above is the one that exists: an operator runs
-`helm install` through an environment script.
+Added on 2026-10-03. The flow above is the one that deploys a release: an operator
+runs `helm install` through an environment script.
 [ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md) decides the first
 step of a second path, in which Argo CD reconciles the cluster to desired state
 kept in this repository. It decides the installation of the controller and
-nothing after it.
+nothing after it. A procedure implements that installation, and it ran on the
+`docker-desktop` provider ([the run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md)). This heading said
+"decided and not built" until then.
 
 ```text
    [ operator ]                                    outside InferOps
@@ -444,7 +446,7 @@ nothing after it.
        select the provider, verify the cluster
                 |
    -------------|------------------------------------------------------
-   [ argocd-bootstrap ]              decided by ADR 0017, NOT BUILT
+   [ argocd-bootstrap ]       ADR 0017; run on docker-desktop only
        verify the pinned manifest's SHA-256
        namespace argocd  ->  three definitions, one cluster role and
        its binding  ->  the controllers
@@ -459,8 +461,11 @@ nothing after it.
 
 Three statements bound this diagram:
 
-- **No box in it exists.** No bootstrap procedure is committed, and no cluster
-  holds Argo CD.
+- **The upper box exists, and the lower one does not.**
+  `scripts/environment/argocd-bootstrap.sh` installs, verifies, and removes the
+  controller. It was executed on `docker-desktop` and not on `kind`. The run
+  removed what it installed. No Application is committed, so an installed
+  Argo CD reconciles nothing.
 - **Argo CD is not on the request path in section 3.** A request goes to the
   InferOps API and from there to the serving runtime. No serving component refers
   to Argo CD, and a test reads the source for a reference. No run has measured a
@@ -902,7 +907,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | How a cost figure is produced, and what it may be called | [ADR 0014](decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md), and [the cost method](../cost/cost-method.md) |
 | What a running release reports about itself | [The inference operations dashboard](../telemetry/inference-operations-dashboard.md) |
 | Reproducing all of it from a clean clone | [The clean-clone workflow](../environment/clean-clone.md) |
-| How the GitOps controller is installed and owned, decided and not built | [ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md), and [the Argo CD bootstrap record](../environment/argocd-bootstrap.md) |
+| How the GitOps controller is installed and owned, and where the bootstrap was run | [ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md), and [the Argo CD bootstrap record](../environment/argocd-bootstrap.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |

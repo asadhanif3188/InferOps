@@ -21,11 +21,13 @@ decisions are accepted; two are explicitly not made.
 > party has ever been performed.
 >
 > What is enforced is enforced over committed files, over five YAML manifests and
-> two committed chart renders, and by four shell functions. Every one of those
-> reads a file or a contributor's host; the release installed from those renders
+> two committed chart renders, and by eight shell functions. Four of the eight are
+> the Argo CD bootstrap's. One of the four reads a manifest file, and three read
+> the local cluster that bootstrap acts on.
+> Every one of the others reads a file or a contributor's host; the release installed from those renders
 > was read by none of them. That is narrow and real. The distance between it and a
 > defended system is
-> [the deferred-risk register](deferred-risks.md), and it is twelve entries long.
+> [the deferred-risk register](deferred-risks.md), and it is fourteen entries long.
 
 ## The documents
 
@@ -65,15 +67,21 @@ paragraph above it.
 
 | Status | Controls | May be called implemented |
 |---|---|---|
-| `enforced-over-documents` | 10 | yes |
+| `enforced-over-documents` | 11 | yes |
 | `enforced-over-manifests` | 15 | yes |
-| `enforced-on-the-host` | 4 | yes |
+| `enforced-on-the-host` | 8 | yes |
 | `review-enforced` | 3 | no |
 | `specified-only` | 2 | no |
-| `deferred` | 4 | no |
+| `deferred` | 5 | no |
 
-Twenty-nine of thirty-eight controls are enforced by something. Nine are not, and the
+Thirty-four of forty-four controls are enforced by something. Ten are not, and the
 register says why for each.
+
+Six of the forty-four arrived on 2026-10-03 with
+[the Argo CD bootstrap](../environment/argocd-bootstrap.md): four guards in the
+host procedure, one test that holds an absence, and one control that is deferred.
+They describe a controller that is installed on request in a local cluster. They
+do not describe a workload that serves a request.
 
 `enforced-over-manifests` is the status that needs its own sentence. Every manifest this status covers is read as a file: the smoke and trial apparatus under `deploy/`, and the chart's two committed renders. The eight pod-security assertions and the digest pin hold over those seven files, which is a property of a repository and not of a cluster. A release **has** been installed from those renders, so the workloads it deployed carried the settings — and no check here read a pod that resulted, which is exactly the distance this status exists to keep. `EX-04` records that, and `DR-05` carries the gap.
 

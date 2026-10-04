@@ -15,7 +15,7 @@
   "reportingRef": "SECURITY.md",
   "securityStatus": {
     "state": "nothing-enforces-at-runtime",
-    "meaning": "No component in this repository authenticates a caller, authorises a request, terminates a connection, admits or rejects a pod, or reads a workload it deployed. A release installed from this repository's chart does deploy workloads carrying the pod-security settings the chart renders, and the network policy it creates was measured not to be enforced by the plugin the observed clusters run. What is enforced today is enforced over committed files, over manifests and committed renders, and by four host scripts. That is a real and narrow thing, and the difference between it and a defended system is the subject of the deferred-risk register.",
+    "meaning": "No component in this repository authenticates a caller, authorises a request, terminates a connection, admits or rejects a pod, or reads a workload it deployed. A release installed from this repository's chart does deploy workloads carrying the pod-security settings the chart renders, and the network policy it creates was measured not to be enforced by the plugin the observed clusters run. What is enforced today is enforced over committed files, over manifests and committed renders, and by eight guards in the host scripts. Four of the eight are the Argo CD bootstrap's, and one of those reads the image identity of the pods that bootstrap installed; none reads a workload that serves a request. That is a real and narrow thing, and the difference between it and a defended system is the subject of the deferred-risk register.",
     "controlsEnforcedInARunningSystem": 0,
     "secretScannerRunsRecorded": 1,
     "securityAssessmentsPerformed": 0,
@@ -226,6 +226,14 @@
       "whatItIs": "A prerequisite volume holding one hash-verified artifact, with a lifecycle longer than any release.",
       "boundary": "B3",
       "worstCase": "A cache that survives an uninstall holds bytes that were verified once, and a consumer that trusts the cache rather than the hash inherits whatever is in it.",
+      "ownedBy": "environment"
+    },
+    {
+      "assetId": "gitops-controller-installation",
+      "name": "The Argo CD installation",
+      "whatItIs": "The GitOps controller that the bootstrap procedure installs into the namespace argocd from one pinned manifest and two pinned images. Its application controller holds every verb on every resource.",
+      "boundary": "B2",
+      "worstCase": "A controller that holds a cluster-wide grant runs bytes nobody pinned, or changes or deletes an object another owner holds.",
       "ownedBy": "environment"
     }
   ],
@@ -580,6 +588,55 @@
       ],
       "residualRisk": "The contract constrains the shape of a locator and nothing beyond it. No secret manager, rotation policy, or expiry check exists.",
       "deferredRiskRef": "DR-10"
+    },
+    {
+      "threatId": "T-23",
+      "title": "The Argo CD manifest or an image is replaced at its source",
+      "category": "tampering",
+      "assetId": "gitops-controller-installation",
+      "boundaryId": "B1",
+      "actorId": "artifact-publisher",
+      "abuseCase": "The bootstrap downloads the install manifest, and the node pulls two images that the manifest names by tag. A publisher, or anything that controls the source, serves other bytes under the same address or moves a tag.",
+      "impact": "The cluster runs a controller nobody selected, and that controller holds every verb on every resource.",
+      "controls": [
+        "verify-the-argocd-manifest-digest-before-apply",
+        "argocd-containers-run-their-pinned-digest-at-install",
+        "verify-artifact-provenance"
+      ],
+      "residualRisk": "The SHA-256 and the two image digests identify bytes and do not authenticate them: a compromised release that was pinned is applied as faithfully as a sound one. The image check covers the moment the bootstrap reports success. Four containers set imagePullPolicy Always and name their image by tag, so a pod that restarts later resolves the tag again.",
+      "deferredRiskRef": "DR-13"
+    },
+    {
+      "threatId": "T-24",
+      "title": "The GitOps controller's grant reaches an object another owner holds",
+      "category": "elevation-of-privilege",
+      "assetId": "gitops-controller-installation",
+      "boundaryId": "B2",
+      "actorId": "platform-contributor",
+      "abuseCase": "The application controller's service account holds every verb on every resource and on every non-resource URL. A desired state that names a namespace Terraform owns, or the controller's own installation, is reconciled like any other. So is whatever a replaced controller image decides to do.",
+      "impact": "An object that Terraform, Helm, or the bootstrap owns is changed or deleted by a tool the ownership inventory does not give it to.",
+      "controls": [
+        "no-argocd-custom-resource-is-committed",
+        "narrow-the-argocd-controller-grant"
+      ],
+      "residualRisk": "The grant is the upstream default and is not narrowed. The one enforced control is an absence: no Application is committed, so the controller reconciles nothing today. That control restricts nothing about what a later Application may target, and it does not see an object a person creates in the cluster by hand.",
+      "deferredRiskRef": "DR-14"
+    },
+    {
+      "threatId": "T-25",
+      "title": "The bootstrap or its removal acts on an Argo CD it did not install",
+      "category": "elevation-of-privilege",
+      "assetId": "gitops-controller-installation",
+      "boundaryId": "B2",
+      "actorId": "platform-contributor",
+      "abuseCase": "A local cluster already holds an Argo CD that somebody else installed, or holds Application objects. The bootstrap applies its manifest over the first with server-side apply and --force-conflicts. The removal deletes the three definitions, and with them every object of their kinds.",
+      "impact": "Another party's controller is taken over or deleted, or a workload that an Application manages is deleted with it.",
+      "controls": [
+        "refuse-an-argocd-installation-this-project-did-not-create",
+        "refuse-argocd-removal-while-a-custom-resource-exists"
+      ],
+      "residualRisk": "The marker is a label on the namespace, and a person who can label a namespace can set it. The five cluster-scoped objects carry no marker and are read by name. The two custom-resource checks and the deletions are not atomic. A second Argo CD in another namespace shares the definitions and is not detected when it holds no Application.",
+      "deferredRiskRef": null
     }
   ],
   "enforcementKinds": [
@@ -1383,7 +1440,8 @@
       "statement": "An image signature or build attestation is verified before the image is run.",
       "boundaryId": "B1",
       "threats": [
-        "T-02"
+        "T-02",
+        "T-23"
       ],
       "verification": {
         "kind": "none",
@@ -1457,6 +1515,126 @@
       "owner": "security",
       "evidenceRef": null,
       "whatItDoesNotVerify": "Everything. The telemetry catalog specifies the record; no component writes one."
+    },
+    {
+      "controlId": "verify-the-argocd-manifest-digest-before-apply",
+      "statement": "Before its first mutation, the bootstrap computes the SHA-256 of the install manifest bytes, downloaded or supplied, and refuses to continue when it is not the pinned value.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-23"
+      ],
+      "verification": {
+        "kind": "script-guard",
+        "ref": "scripts/environment/argocd-bootstrap.sh",
+        "symbol": "argocd::obtain_manifest"
+      },
+      "runtimeScope": "host-scripts",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-on-the-host",
+      "owner": "environment",
+      "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
+      "whatItDoesNotVerify": "Who made the bytes. No signature, attestation, or provenance statement is verified, so a compromised release that was pinned passes. It does not verify the images the manifest names: the manifest names each by tag. The runs on a cluster verified the pinned bytes only; the refusal of other bytes was executed against stub tools."
+    },
+    {
+      "controlId": "argocd-containers-run-their-pinned-digest-at-install",
+      "statement": "The bootstrap does not report success unless every Argo CD container, init containers included, reports the pinned digest as its image identity, and the verification reports the same check on request.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-23"
+      ],
+      "verification": {
+        "kind": "script-guard",
+        "ref": "scripts/environment/argocd-bootstrap.sh",
+        "symbol": "argocd::assert_pinned_images"
+      },
+      "runtimeScope": "host-scripts",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-on-the-host",
+      "owner": "environment",
+      "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
+      "whatItDoesNotVerify": "Anything after the moment of the check. Four containers set imagePullPolicy Always and name their image by tag, so a pod that restarts later resolves the tag again and nothing reads it. It compares the identity the container runtime reports and does not hash an image layer. Nothing scanned either image for a known vulnerability. The runs on a cluster executed the passing comparison only; the refusal of another identity was executed against stub tools."
+    },
+    {
+      "controlId": "refuse-an-argocd-installation-this-project-did-not-create",
+      "statement": "The bootstrap, its verification, and its removal refuse a namespace named argocd that does not carry the bootstrap label together with a recorded manifest SHA-256, and the bootstrap refuses when no such namespace exists while an Argo CD definition, cluster role, or cluster role binding does.",
+      "boundaryId": "B2",
+      "threats": [
+        "T-25"
+      ],
+      "verification": {
+        "kind": "script-guard",
+        "ref": "scripts/environment/argocd-bootstrap.sh",
+        "symbol": "argocd::refuse_foreign_installation"
+      },
+      "runtimeScope": "host-scripts",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-on-the-host",
+      "owner": "environment",
+      "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
+      "whatItDoesNotVerify": "That the marker was set by this procedure. It is a label and an annotation, and a person who can change a namespace can set both. Every case the statement names was executed against stub tools only; the one refusal a run on a cluster produced was a removal with no namespace. When a marked namespace exists, the install does not check whose the five cluster-scoped objects are, and server-side apply takes over one that another party replaced. It does not detect an Argo CD installed in a namespace with another name when that installation holds no cluster-scoped object under the names this procedure reads."
+    },
+    {
+      "controlId": "refuse-argocd-removal-while-a-custom-resource-exists",
+      "statement": "The removal refuses while an Application, ApplicationSet, or AppProject object exists in any namespace. It asks before it stops the controllers and again before it deletes a definition, and it does not read an unanswered query as an absence.",
+      "boundaryId": "B2",
+      "threats": [
+        "T-25"
+      ],
+      "verification": {
+        "kind": "script-guard",
+        "ref": "scripts/environment/argocd-bootstrap.sh",
+        "symbol": "argocd::refuse_custom_resources"
+      },
+      "runtimeScope": "host-scripts",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-on-the-host",
+      "owner": "environment",
+      "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
+      "whatItDoesNotVerify": "That no object appears between the second check and the deletion of its definition. The checks and the deletions are not atomic. No run executed the refusal against an object in a cluster: no Application has existed in one, and the refusal is executed against stubs only."
+    },
+    {
+      "controlId": "no-argocd-custom-resource-is-committed",
+      "statement": "No tracked file declares an Application, ApplicationSet, or AppProject object or an Argo CD cluster registration, so nothing committed gives the controller an object to reconcile.",
+      "boundaryId": "B2",
+      "threats": [
+        "T-24"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/architecture/test_argocd_bootstrap.py",
+        "symbol": "test_no_argocd_custom_resource_is_committed"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-over-documents",
+      "owner": "environment",
+      "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
+      "whatItDoesNotVerify": "What a cluster holds. It reads tracked files, so an object a person creates with kubectl is not seen. It is an absence and not a restriction: it does not limit what a later Application may target, and the change that adds the first one must replace it. A manifest that a template assembles from parts is not matched."
+    },
+    {
+      "controlId": "narrow-the-argocd-controller-grant",
+      "statement": "The application controller's grant is limited to the namespaces and kinds it reconciles.",
+      "boundaryId": "B2",
+      "threats": [
+        "T-24"
+      ],
+      "verification": {
+        "kind": "none",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "deferred",
+      "owner": "environment",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything. The pinned manifest is applied unmodified, and its cluster role grants every verb on every resource and on every non-resource URL."
     }
   ],
   "deferredRisks": [
@@ -1604,6 +1782,30 @@
       "whyDeferred": "Narrowed by V1-S1-008-PR1 rather than closed. A logger, a formatter, and a redacting sink exist: the API writes the record the telemetry catalog specifies, a suite reads records the API wrote and asserts that no prompt, completion, or adapter message appears in one, and a field the catalog does not publish is refused rather than written. Records the API wrote with the real adapter against the real runtime are quoted in three committed files from two runs. What is missing is everything after the process: no log store, shipper, retention window, or access rule is selected, the serving-runtime adapter writes nothing, and no suite reads a real-runtime record for content. This field said until 2026-09-22 that no logger, formatter, or sink existed.",
       "whatWouldHaveToBeTrue": "A store with a stated retention window and an access rule naming who may read it, records produced by the serving-runtime adapter as well as the API, and a check that reads records produced against a real runtime for content.",
       "notClaimed": "No auditability, traceability, or incident-reconstruction property is claimed, and no control here may be described as observed.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-13",
+      "statement": "The Argo CD manifest and images are identified and not authenticated, and an image pin does not hold after a pod restarts.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-23"
+      ],
+      "whyDeferred": "The bootstrap verifies the SHA-256 of the manifest before it applies it, and compares the image identity each container reports with the pinned digest before it reports success. Both pins were read from upstream over HTTPS on 2026-10-03, and no signature, attestation, or provenance statement was verified. The manifest is applied unmodified so that one digest identifies what was applied, and it names each image by tag. Four containers set imagePullPolicy Always, so a pod that restarts after the check resolves the tag again. Replacing each tag with its digest would hold after a restart and would change the applied bytes, which ADR 0017 D5 does not allow without an amendment. Neither image was scanned for a known vulnerability.",
+      "whatWouldHaveToBeTrue": "A component that verifies the upstream release signature before the manifest is applied. An image reference by digest in the applied objects, decided as an amendment to ADR 0017 D5, or an admission policy that refuses a tag. A scan of both images, recorded.",
+      "notClaimed": "No provenance or authenticity property is claimed for the Argo CD release. No statement is made about which image a container runs after the bootstrap or the verification returns. No vulnerability statement is made about either image.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-14",
+      "statement": "The Argo CD application controller holds every verb on every resource, and nothing narrows it.",
+      "boundaryId": "B2",
+      "threats": [
+        "T-24"
+      ],
+      "whyDeferred": "The grant is the upstream default of the pinned core manifest, which is applied unmodified. The ownership inventory says who may create and destroy an object, and it does not stop a controller that holds a wider grant. No Application is committed, and a test holds that absence, so the controller reconciles nothing today. A namespace-scoped installation, or a project that limits destinations and kinds, would narrow the grant. Neither is decided, and ADR 0017 carries this as R1. The manifest declares four network policies. The network plugin the local providers run was measured not to enforce the release's policy (DR-04), so these four are expected to be inert as well. That is an inference: no run tested them.",
+      "whatWouldHaveToBeTrue": "A decision that narrows the grant: an AppProject that restricts destinations and kinds, committed with the first Application and held by a test, or an installation whose roles are namespace-scoped. A network plugin that enforces the manifest's policies.",
+      "notClaimed": "No least-privilege property is claimed for Argo CD. No isolation between the controller and the objects Terraform, Helm, or the bootstrap owns is claimed.",
       "blocksProductionUse": true
     }
   ],
@@ -1845,7 +2047,7 @@
   "limitations": [
     {
       "limitationId": "nothing-runs",
-      "statement": "No control here has ever acted inside a system serving a request. What is enforced is enforced over committed files, over manifests and committed renders, and by four host scripts."
+      "statement": "No control here has ever acted inside a system serving a request. What is enforced is enforced over committed files, over manifests and committed renders, and by eight guards in the host scripts. Four of the eight belong to the Argo CD bootstrap, which installs a controller and no workload that serves a request."
     },
     {
       "limitationId": "no-scanner-run",
@@ -1869,7 +2071,7 @@
     },
     {
       "limitationId": "threats-are-not-exhaustive",
-      "statement": "Twenty-two threats were enumerated because each is a failure somebody would plausibly reach. A threat nobody thought of is a threat nobody modelled, and no methodology here guarantees coverage."
+      "statement": "Twenty-five threats were enumerated because each is a failure somebody would plausibly reach. A threat nobody thought of is a threat nobody modelled, and no methodology here guarantees coverage."
     },
     {
       "limitationId": "no-likelihood-or-severity-score",

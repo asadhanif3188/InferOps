@@ -1,20 +1,26 @@
 # The Argo CD bootstrap record
 
-Status: **decided, and not implemented**, in
+Status: **implemented, and executed on one provider**. Decided in
 [ADR 0017](../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md)
 on 2026-10-03. The authoritative form is data,
 [`argocd-bootstrap.v1alpha1.json`](argocd-bootstrap.v1alpha1.json), and
-`tests/architecture/test_argocd_bootstrap.py` holds this page and
-[the ownership inventory](../architecture/resource-ownership.md) to it.
+`tests/architecture/test_argocd_bootstrap.py` holds this page,
+[the ownership inventory](../architecture/resource-ownership.md), and
+[the procedure](../../scripts/environment/argocd-bootstrap.sh) to it.
 
 > [!IMPORTANT]
-> **Nothing here is installed.** No bootstrap procedure exists, and this
-> repository has not installed Argo CD in any cluster. This page records the
-> inputs a bootstrap will use and the rules it must follow. The record's
-> `implementationState` is `decided-not-implemented`, and a test pins that value.
-> The test fails when a tracked file under the build directories names Argo CD,
-> so a change that implements the bootstrap must move the value. A procedure that
-> never names the controller would pass it.
+> **One provider, and no Application.** The procedure installed, verified, and
+> removed Argo CD on the `docker-desktop` provider on 2026-10-03.
+> [The record of that run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) says what was observed. The procedure was not
+> executed on `kind`, and one provider's run certifies no other provider.
+>
+> No Application, AppProject, or ApplicationSet object exists. An installed
+> Argo CD reconciles nothing. This page does not describe a deployment path.
+>
+> Until the procedure existed, this page said that nothing was installed and that
+> no procedure existed. The record's `implementationState` was
+> `decided-not-implemented`. It is now `implemented`, and a test pins that value
+> and fails when a second build file names Argo CD.
 
 ## What a reader can answer from this page
 
@@ -26,6 +32,7 @@ on 2026-10-03. The authoritative form is data,
 4. When must the bootstrap or the removal refuse?
 5. What does removal delete, and what does it leave?
 6. Which of these rules does a test enforce today?
+7. How is the bootstrap run, and where was it run?
 
 ## The pinned inputs
 
@@ -65,10 +72,57 @@ https://raw.githubusercontent.com/argoproj/argo-cd/c9c369efcc5b2a0bd720803f8d14a
 The manifest names each image by tag: `quay.io/argoproj/argocd:v3.5.3` and
 `public.ecr.aws/docker/library/redis:8.2.3-alpine`. A tag can be moved upstream,
 so the manifest's SHA-256 does not identify the image bytes. The image digests
-above are the pins, and the rule `images-run-at-their-pinned-digests` is not yet
-implemented. The rule covers the moment the bootstrap reports success. Four
-containers set `imagePullPolicy: Always`, so a pod that restarts later resolves
-the tag again.
+above are the pins. The procedure applies the manifest unmodified, so the apply
+does not fix the image bytes. After the rollout it reads the image identity that
+each container reports, init containers included, and compares it with the pin.
+It reports success only when all six agree. This is the mechanism ADR 0017 D6
+left open, and it keeps D5: the applied bytes are the verified bytes.
+
+The check covers the moment it runs. Four containers set
+`imagePullPolicy: Always`, so a pod that restarts later resolves the tag again,
+and nothing reads its identity then.
+
+## The procedure
+
+One script, three operations. Each takes the provider from the operator, with no
+default, and verifies the cluster before it reads it.
+
+```text
+INFEROPS_PROVIDER=docker-desktop scripts/environment/argocd-bootstrap.sh install
+INFEROPS_PROVIDER=docker-desktop scripts/environment/argocd-bootstrap.sh verify
+INFEROPS_PROVIDER=docker-desktop scripts/environment/argocd-bootstrap.sh remove --confirm
+```
+
+For `kind`, also set `INFEROPS_KIND_CLUSTER_NAME`.
+
+| Operation | What it does | What it changes |
+|---|---|---|
+| Install | Refuses as the table below says. Downloads the manifest, or reads the file named with `--manifest PATH`, and verifies its SHA-256. Creates the namespace with its marker in one request. Applies the manifest with server-side apply. Waits at most 900 seconds for the four workloads. Checks the 34 objects and the six image identities | The namespace `argocd` and the 34 objects |
+| Verify | Checks the marker, the recorded pin, the 5 cluster-scoped and 29 namespaced objects, the four workloads, and the six image identities. Lists the Secrets, Leases, and ConfigMaps by name, and any Application, ApplicationSet, or AppProject | Nothing in the cluster |
+| Remove | Refuses as the table below says. Follows [the removal steps](#removal). Each wait is at most 300 seconds | Deletes the namespace `argocd` and the five cluster-scoped objects |
+
+Facts about the procedure that a reader needs before running it:
+
+- **A second `install` on an installation the procedure created applies the same
+  bytes again.** It uses the same field manager,
+  `inferops-argocd-bootstrap`. It does not create or relabel the namespace.
+- **The downloaded manifest is kept in `.artifacts/argocd-bootstrap/`**, which
+  Git ignores. A kept copy is used again only when its SHA-256 is the pin. The
+  file is hashed a second time immediately before the apply.
+- **The procedure reads no Secret value and runs nothing inside a container.** It
+  therefore verifies the version as an image digest, and does not ask the
+  Argo CD binary.
+- **A failed install leaves the installation in place**, and writes diagnostics
+  to `.artifacts/argocd-bootstrap/`. `remove --confirm` removes it.
+- **`kubectl` must be within one minor version of the server.** The target guard
+  refuses otherwise.
+
+Where it was run:
+
+| Provider | Result | Record |
+|---|---|---|
+| Docker Desktop | Passed twice on 2026-10-03, server `v1.34.3`: in each run three installs and two removals. An earlier attempt failed at the download and changed nothing | [The run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) |
+| kind | Not executed | — |
 
 ## The namespace
 
@@ -106,10 +160,12 @@ inventory, and every row belongs to the `argocd-bootstrap` owner.
 The Namespace is not in the manifest. The bootstrap creates it, and the row
 `argocd-namespace` holds it.
 
-At least two more objects are expected at run time: a Secret named
-`argocd-redis`, which an init container of the Redis Deployment creates, and a
-leader-election Lease of the ApplicationSet controller. Both are inferred from
-the Roles that permit them, and neither was observed. The list is not complete.
+Two more objects were expected at run time. A Secret named `argocd-redis` was
+observed in the runs on `docker-desktop`. That an init container of the Redis
+Deployment creates it is still an inference from the Role. A leader-election Lease of the ApplicationSet controller is
+inferred from the Role that permits it, and the run did not observe it. The run
+also listed `kube-root-ca.crt`, which Kubernetes creates in every namespace. The
+list is not complete.
 Pods and replica sets belong to the Kubernetes control plane, as they do for a
 release.
 
@@ -146,7 +202,8 @@ three CustomResourceDefinitions, one ClusterRole, and one ClusterRoleBinding, an
 the namespaced objects. Kubernetes refuses to create a role that grants more than
 its creator holds, and the ClusterRole grants everything. The credential
 therefore needs cluster-admin or an equivalent grant. This is inferred from the
-manifest; no apply was attempted.
+manifest. The run on `docker-desktop` used that provider's administrator
+credential, and the apply succeeded. No run tried a narrower credential.
 
 **What Argo CD receives.**
 
@@ -164,8 +221,22 @@ this as R1.
 
 ## Refusals
 
-Each refusal happens before the first mutation. **None is implemented**; the
-bootstrap procedure owes all six.
+The procedure implements all six, and states the `refusalId` in the message. The
+first is stated by the provider contract's guard, with that contract's own
+identifiers. Each refusal happens before the first mutation, with one exception
+that the removal steps below decide: the removal checks for a custom resource a
+second time after it deletes the four workloads, and before it deletes a
+definition. Until 2026-10-03 this paragraph said that every refusal precedes the
+first mutation, which the removal steps on this same page contradicted.
+
+The marker is the label and a recorded manifest SHA-256 together. The procedure
+writes both in one request, so it refuses a namespace that carries the label
+alone. It also refuses a namespace `argocd` that is being deleted, and it does
+not read an unanswered query as an absence.
+
+One gap is not a refusal. When a marked namespace exists, the install does not
+check whose the five cluster-scoped objects are, because they carry no marker.
+Server-side apply then takes over one that another party replaced.
 
 | `refusalId` | Applies to | Condition |
 |---|---|---|
@@ -189,8 +260,10 @@ reads it.
 ## Removal
 
 Removal deletes what the bootstrap created, and nothing else. It deletes by the
-kinds and names the record lists, so it needs no download. **It was not executed,
-and its order is a design.** Its steps, in order:
+kinds and names the record lists, so it needs no download. It was executed four
+times on `docker-desktop`, in two runs, with no Application present, and each time
+no listed object remained. The refusal for an existing Application was executed against stubs
+only. Its steps, in order:
 
 1. Select and verify the target cluster, as for every mutation.
 2. Refuse unless a namespace named `argocd` exists and carries the bootstrap
@@ -243,17 +316,22 @@ says why.
 | `no-other-tool-declares-a-bootstrap-object` | tested | It reads the two committed renders and the Terraform files. It does not read a values file or a namespace flag that a caller supplies at install time, or a template branch the renders do not take |
 | `argocd-does-not-manage-its-own-installation` | tested, as an absence | No Argo CD custom resource is in a tracked file, so Argo CD has nothing to reconcile. The test does not restrict what a future Application may target, and it does not match a manifest that a template assembles from parts |
 | `no-application-set-and-no-second-cluster` | tested, as an absence | The same test, which also matches a cluster registration secret |
-| `argocd-is-not-on-the-inference-request-path` | tested | It reads source for a reference. No run has measured a request with Argo CD absent or stopped. It says nothing about what a running controller can do to serving objects |
+| `argocd-is-not-on-the-inference-request-path` | tested | It reads source for a reference, and refuses a second build file that names Argo CD beside the procedure. No run has measured a request with Argo CD absent or stopped. It says nothing about what a running controller can do to serving objects |
 | `the-pins-are-immutable-identifiers` | tested | It checks the form of each pin. It contacts no network, so it does not establish that upstream still serves these bytes |
-| `bootstrap-acts-only-on-a-selected-and-verified-cluster` | not implemented | Owed by the change that implements the bootstrap |
-| `the-manifest-is-verified-before-it-is-used` | not implemented | Owed by the change that implements the bootstrap |
-| `images-run-at-their-pinned-digests` | not implemented | Owed by the change that implements the bootstrap. The mechanism is not decided, and the rule covers the moment of the check only |
-| `a-foreign-argocd-installation-is-refused` | not implemented | Owed by the change that implements the bootstrap. The marker is a label on the namespace; the five cluster-scoped objects carry none |
-| `removal-is-scoped-and-refuses-while-an-application-exists` | not implemented | Owed by the change that implements the bootstrap |
-| `security-baseline-rows-precede-the-first-install` | not implemented | Owed by the change that implements the bootstrap. The security baseline has no row for Argo CD today |
+| `bootstrap-acts-only-on-a-selected-and-verified-cluster` | tested | The procedure is executed against stub tools. The runs repeated three target refusals with the real tools; each was refused before any cluster was contacted, and no run refused a wrong cluster. The guard's own limits are the provider contract's |
+| `the-manifest-is-verified-before-it-is-used` | tested | Executed against stub tools. The stub download did not reproduce the path defect the first run on Windows exposed. A SHA-256 identifies bytes and does not authenticate them |
+| `images-run-at-their-pinned-digests` | tested | Executed against stub tools, through `verify` and through `install` with `sha256sum` also replaced. The runs executed the passing comparison only. The check keys on the container name. The rule covers the moment of the check and nothing after it |
+| `a-foreign-argocd-installation-is-refused` | tested | Executed against stub tools. No run met a foreign installation in a cluster. The marker is a label and an annotation on the namespace; the five cluster-scoped objects carry none, and the install does not check whose they are when a marked namespace exists |
+| `removal-is-scoped-and-refuses-while-an-application-exists` | tested | Executed against stub tools, for each of the three kinds. Every removal in the runs had no Application present, so the refusal was never executed against one in a cluster. No test reaches a time limit |
+| `security-baseline-rows-precede-the-first-install` | tested | It establishes that the rows exist. It cannot establish that they were written before the first install; the record of the run states that order |
 | `gitops-state-is-not-caller-health` | review | Nothing records Argo CD state yet |
 
-Four rules are tested, two are tested only as an absence, six are not implemented, and one is held by review.
+Ten rules are tested, two are tested only as an absence, zero are not implemented, and one is held by review.
+
+"Tested" has two meanings in this table, and the third column says which. Five
+rules are held by tests that read files. Five are held by tests that execute the
+procedure with every external tool replaced by a stub. Neither is a run on a
+cluster.
 
 ## Out of scope
 
@@ -265,14 +343,19 @@ sign-on, and notifications; and a high-availability installation.
 
 ## What this record does not establish
 
-- That Argo CD is installed, runs, or reconciles anything.
-- That the pinned manifest applies to either supported provider's cluster.
-- That upstream still serves the pinned bytes, or that a pinned image is free of
-  known vulnerabilities. No image named here was scanned.
+- That Argo CD reconciles anything. No Application exists.
+- That the procedure installs or removes Argo CD on `kind`. It was executed on
+  `docker-desktop` only.
+- That upstream still serves the pinned bytes after the run, or that a pinned
+  image is free of known vulnerabilities. No image named here was scanned.
 - That the pinned release or images are authentic. No signature was verified.
-- That a request is served while Argo CD is absent or stopped.
-- That the removal leaves no residue, or that its order avoids a stuck deletion.
+- That a request is served while Argo CD is absent or stopped. No release was
+  installed during the run.
+- That a removal refuses on a cluster when an Application exists, or that its
+  order avoids a stuck deletion. Both removals ran with no Application.
 - That a container runs the pinned image after a later restart.
 - That the core profile reconciles an Application. By inference from upstream
   source, no project exists after a core installation.
-- That the host has the capacity to run Argo CD beside a release.
+- That the host has the capacity to run Argo CD beside a release. The run
+  installed no release.
+- That a credential narrower than cluster-admin can run the bootstrap.
