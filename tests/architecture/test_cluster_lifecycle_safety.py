@@ -79,6 +79,7 @@ ENTRY_POINTS = (
     "target-detect.sh",
     "clean-clone.sh",
     "argocd-bootstrap.sh",
+    "argocd-application.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
@@ -471,6 +472,30 @@ BOOTSTRAP_LOOP_SOURCES = {
 }
 
 
+# The Application procedure deletes two objects in `argocd`: the Application and
+# the project that ADR 0019 decided. The bootstrap does not own them, and the
+# namespace is not this project's. Each command is written out here, exactly,
+# and a deletion matches only when the whole command is one of them. The
+# deletion of the Application carries no `--ignore-not-found`: the procedure
+# reaches it only after it read that the Application exists.
+APPLICATION_SCRIPT = "argocd-application.sh"
+APPLICATION_DELETIONS = (
+    "inferops::target_kubectl delete applications.argoproj.io"
+    ' "${INFEROPS_GITOPS_APPLICATION_NAME}" -n "${INFEROPS_ARGOCD_NAMESPACE}"'
+    ' --timeout="${REMOVAL_BUDGET_SECONDS}s"',
+    "inferops::target_kubectl delete appprojects.argoproj.io"
+    ' "${INFEROPS_GITOPS_PROJECT_NAME}" -n "${INFEROPS_ARGOCD_NAMESPACE}"'
+    ' --ignore-not-found --timeout="${REMOVAL_BUDGET_SECONDS}s"',
+)
+
+#: Each exact deletion outside the project namespaces, and the one script that
+#: may make it.
+EXACT_DELETIONS = {
+    **{deletion: BOOTSTRAP_SCRIPT for deletion in BOOTSTRAP_DELETIONS},
+    **{deletion: APPLICATION_SCRIPT for deletion in APPLICATION_DELETIONS},
+}
+
+
 def deletion_lines() -> list[tuple[str, int, str]]:
     """Every kubectl deletion in the environment scripts, as a logical line."""
     return [row for row in all_code_lines() if INVOKES_DELETE.search(row[2])]
@@ -494,7 +519,7 @@ def deletion_is_scoped(line: str) -> bool:
     """
     if 'delete namespace "${INFEROPS_NAMESPACE}"' in line:
         return True
-    if line.strip() in BOOTSTRAP_DELETIONS:
+    if line.strip() in EXACT_DELETIONS:
         return True
     # Two namespaces, because this project owns two: the smoke namespace every
     # cluster-lifecycle script works in, and the release namespace the
@@ -503,8 +528,9 @@ def deletion_is_scoped(line: str) -> bool:
     # what the rule is about is that a deletion names a namespace at all, not
     # which of this project's two it names.
     #
-    # The namespace `argocd` is not a third. The bootstrap owns it, and its
-    # deletions are the exact commands matched above and no others.
+    # The namespace `argocd` is not a third. The bootstrap owns it, and the
+    # Application procedure owns two objects in it. Their deletions are the
+    # exact commands matched above and no others.
     scoped = (
         '-n "${INFEROPS_NAMESPACE}"' in line
         or '-n "${INFEROPS_RELEASE_NAMESPACE}"' in line
@@ -525,23 +551,44 @@ def test_every_object_deletion_is_scoped() -> None:
 
 
 def test_only_the_bootstrap_deletes_outside_the_project_namespaces() -> None:
-    """The commands written out for the Argo CD removal are that script's alone.
+    """The commands written out for the two Argo CD procedures are theirs alone.
 
-    They exist so that one procedure can delete its own installation. Another
+    They exist so that the bootstrap can delete its own installation, and so
+    that the Application procedure can delete its own two objects. Another
     script using one would be deleting an object the ownership inventory gives
-    to the bootstrap. Every deletion the bootstrap makes is one of them.
+    to one of them. Every deletion either procedure makes is one of its own.
     """
     found = set()
     for name, number, line in deletion_lines():
-        if line.strip() in BOOTSTRAP_DELETIONS:
-            assert name == BOOTSTRAP_SCRIPT, f"{name}:{number}: {line.strip()}"
+        owner = EXACT_DELETIONS.get(line.strip())
+        if owner is not None:
+            assert name == owner, f"{name}:{number}: {line.strip()}"
             found.add(line.strip())
         else:
-            assert name != BOOTSTRAP_SCRIPT, f"{name}:{number}: {line.strip()}"
+            assert name not in (BOOTSTRAP_SCRIPT, APPLICATION_SCRIPT), (
+                f"{name}:{number}: {line.strip()}"
+            )
             assert "INFEROPS_ARGOCD" not in line, f"{name}:{number}: {line.strip()}"
-    assert found == set(BOOTSTRAP_DELETIONS), (
-        "a command this module allows is one the bootstrap no longer uses; drop it"
+            assert "argoproj" not in line, f"{name}:{number}: {line.strip()}"
+    assert found == set(EXACT_DELETIONS), (
+        "a command this module allows is one no procedure uses any more; drop it"
     )
+
+
+def test_the_application_deletions_name_two_constants() -> None:
+    """A deletion by variable names what the variable holds, so hold the variable."""
+    body = script_text(APPLICATION_SCRIPT)
+    for constant in (
+        "INFEROPS_GITOPS_APPLICATION_NAME",
+        "INFEROPS_GITOPS_PROJECT_NAME",
+        "INFEROPS_ARGOCD_NAMESPACE",
+    ):
+        assert re.search(
+            rf'^readonly {constant}="[a-z0-9-]+"$', body, flags=re.MULTILINE
+        ), f"{constant} is not a readonly literal"
+        assert not re.search(
+            rf"(?<![\w]){constant}=", body.replace(f"readonly {constant}=", "")
+        ), f"{constant} is assigned a second time"
 
 
 def test_the_bootstrap_deletions_name_only_recorded_objects() -> None:

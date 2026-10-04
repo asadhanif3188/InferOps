@@ -1,0 +1,49 @@
+# The Argo CD project of the InferOps workload Application.
+#
+# The pinned core installation holds no project until something creates one, and
+# an Application must name a project. This project limits what an Application in
+# it may read and change:
+#
+#   - one source repository;
+#   - one destination: the platform namespace of the cluster that Argo CD runs in;
+#   - the eight namespaced kinds that the chart's real profile renders;
+#   - no cluster-scoped kind.
+#
+# It does not narrow the grant of the application controller. That grant is
+# cluster-wide, and an Application in another project is not held by this file.
+#
+# This file is not desired state. Argo CD does not read it from Git. An operator
+# applies it with scripts/environment/argocd-application.sh, and a merge that
+# changes it changes no cluster until that procedure runs again.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: inferops-workloads
+  namespace: argocd
+  labels:
+    inferops.io/lifecycle: reconciliation
+spec:
+  description: One InferOps workload release path on the cluster that Argo CD runs in.
+  sourceRepos:
+    - https://github.com/asadhanif3188/InferOps.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: inferops-release
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: apps
+      kind: Deployment
+    - group: batch
+      kind: Job
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding

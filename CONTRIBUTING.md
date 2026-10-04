@@ -449,9 +449,18 @@ is accepted into `main`. A desired-state release is declared in
 drift check's own list. A release records the commit its change was based on. A
 change to the chart's `api` defaults or to the renderer is the exception: the release
 must then record a commit of the same change that already holds the new files, so
-that change needs two commits and a merge that keeps them. Nothing reconciles the tree
-yet.
+that change needs two commits and a merge that keeps them.
 [The desired-state document](docs/environment/git-desired-state.md) states the rules.
+
+**A merge that changes the tree or the chart is a deployment**, on a cluster where an
+operator applied the one Argo CD Application. That Application follows `main`, with
+self-heal and without pruning.
+[`scripts/environment/argocd-application.sh`](scripts/environment/argocd-application.sh)
+applies, verifies, and removes it, and the two manifests under `infra/argocd/` are not
+desired state: a merge that changes one changes no cluster until the procedure runs
+again. [The Argo CD Application document](docs/environment/argocd-application.md)
+states the rules. What that procedure reports is what Argo CD reports, and it is not
+a caller outcome.
 
 ### Experiment freeze records
 

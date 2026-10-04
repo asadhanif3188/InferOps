@@ -98,7 +98,7 @@ index of what has and has not been proven.
 
 [![InferOps V1 architecture: workload contract validation, platform domain, manually prepared release values, serving path, and proof register](docs/architecture/inferops-v1-architecture.png)](docs/architecture/inferops-v1-architecture.png)
 
-*Select the diagram to view it at full size. Deployment rendering is unbuilt end to end; the values a release is installed with are written by hand.*
+*Select the diagram to view it at full size. It shows V1. Deployment rendering is unbuilt end to end: in V1 the values a release is installed with are written by hand, and in V2 one Argo CD Application applies generated values on a cluster where an operator applied it.*
 
 <details>
 <summary>View the text architecture diagram</summary>
@@ -163,15 +163,18 @@ Three decisions shape it:
 
 The design boundary, the request and deployment flows, the trust boundaries, and
 what is not defended at each are in
-[the system architecture](docs/architecture/system-architecture.md). The eighteen
+[the system architecture](docs/architecture/system-architecture.md). The nineteen
 decision records are indexed in [the architecture index](docs/architecture/README.md).
 One component of the design is still unbuilt end to end: since `V2-S2-001-PR1` the Helm
 values renderer derives release values from a validated contract, and since
 `V2-S2-001-PR2` they can be written, with the release that records their sources, to a
 directory a caller names. Since `V2-S3-002-PR1` one generated release is committed as
-[Git desired state](docs/environment/git-desired-state.md) under `gitops/` - but nothing
-reconciles that tree, nothing installs a release from generated values, and the values
-file a release is installed with is still written by hand.
+[Git desired state](docs/environment/git-desired-state.md) under `gitops/`. Since
+`V2-S3-002-PR2` one [Argo CD Application](docs/environment/argocd-application.md) reads
+that release's generated values. On one provider, in three runs on one day, Argo CD
+applied the release six times, and five of six caller requests were answered. Those are
+runs and not a deployment: the Application is applied by an operator, the API image
+digest is not in Git, and four values the chart requires are still written by hand.
 
 ## Prerequisites
 
@@ -360,8 +363,11 @@ time.
 - **Not defended.** See [the security boundary](#security-boundary).
 - **Deployment rendering is unbuilt end to end.** A validated contract produces Helm
   values and a release recording their sources, written only to a directory a caller
-  names; no release is installed from them, and the serving-a-described-workload claim
-  is `planned`.
+  names; no workflow or Helm procedure installs a release from them. Since
+  `V2-S3-002-PR2` one Argo CD Application applies the chart with the committed generated
+  values, on a cluster where an operator applied it, and it did so on one provider on
+  2026-10-04. The API image digest and four chart values are still supplied by hand,
+  and the serving-a-described-workload claim is `planned`.
 - **A release adds no evidence.** `v1.0.0` is cut over the frozen evidence pack and
   changes nothing in it. The register on `main` now certifies, at `C0`, only that the
   release exists, on [a record read after it](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md);
@@ -447,11 +453,11 @@ intention reads as a capability:
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Inference API surface | [docs/serving/inference-api-surface.md](docs/serving/inference-api-surface.md) | Decided shape; five endpoints, served in part |
 | InferOps inference API | [docs/serving/inference-api.md](docs/serving/inference-api.md) | Five ASGI routes with explicit mock or real adapter selection; repository tooling carries a loopback-only local HTTP carrier, while the distribution has no server dependency |
-| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; parsed by the platform domain, and no runtime component consumes it. EnvironmentBinding `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which selects the binding serving a contract and reads it beside a validated contract into a render context; nothing renders one. RenderedWorkloadRelease `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which defines its canonical form and source digests, checks its provenance, and builds one only from fields its input-trust policy classifies public or derived; since `V2-S2-001-PR2` one is generated for rendered values and can be written to a directory a caller names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S2-003-PR1` [a record](docs/domain/v1-synchronous-compatibility.md) says who owns each value of the V1 real release when V2 renders it; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](docs/environment/git-desired-state.md), and nothing reconciles it; nothing installs one |
+| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; parsed by the platform domain, and no runtime component consumes it. EnvironmentBinding `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which selects the binding serving a contract and reads it beside a validated contract into a render context; nothing renders one. RenderedWorkloadRelease `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which defines its canonical form and source digests, checks its provenance, and builds one only from fields its input-trust policy classifies public or derived; since `V2-S2-001-PR2` one is generated for rendered values and can be written to a directory a caller names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S2-003-PR1` [a record](docs/domain/v1-synchronous-compatibility.md) says who owns each value of the V1 real release when V2 renders it; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](docs/environment/git-desired-state.md); since `V2-S3-002-PR2` one [Argo CD Application](docs/environment/argocd-application.md) reads its generated values, on a cluster where an operator applied it, and nothing reads the release document itself |
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
 | Workload domain model | [docs/domain/workload-domain-model.md](docs/domain/workload-domain-model.md) | Typed domain objects, parsing, contract-version handling, and the seven-rule semantic validation pipeline implemented; the schema's profile conditions are not among its rules, and only the renderer input boundary applies them |
 | Workload template | [docs/scaffolding/workload-template.md](docs/scaffolding/workload-template.md) | Template, rendering library, and non-overwriting scaffolding command implemented and verified for mock and synchronous profiles; no generated workload is committed |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Eighteen decisions: eleven accepted in part, five accepted, one accepted with a recorded exception, and one accepted and later amended. Every one names an accountable decision owner |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Nineteen decisions: twelve accepted in part, five accepted, one accepted with a recorded exception, and one accepted and later amended. Every one names an accountable decision owner |
 | V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; the platform domain, both adapters, the API, the chart, and the Terraform prerequisite layer are built and have been executed on `docker-desktop`; deployment rendering is not |
 | Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked. Terraform and Helm both exist and have been applied and installed on `docker-desktop`; twenty rows moved from `planned` to `implemented` and each cites the run that moved it |
 | Project boundaries | [docs/architecture/project-boundaries.md](docs/architecture/project-boundaries.md) | Accepted scope rule; two serving capabilities and no gateway or deep-serving work |

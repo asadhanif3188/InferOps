@@ -6,7 +6,9 @@
 #
 # This is a contract example. The platform domain parses it, and one generated
 # release is derived from it. The GitOps destination below is the directory that
-# holds that release, under workloads/<workload id>/. Nothing reconciles it.
+# holds that release, under workloads/<workload id>/. One Application of the
+# GitOps controller reads the generated values of that release, on a cluster
+# where an operator applied the Application.
 apiVersion: inferops.io/v1alpha1
 kind: EnvironmentBinding
 

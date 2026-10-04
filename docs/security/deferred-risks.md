@@ -370,18 +370,20 @@ either image.
 
 **Why deferred.** The grant is the upstream default of the pinned core manifest,
 which is applied unmodified. The ownership inventory says who may create and
-destroy an object. It does not stop a controller that holds a wider grant. No
-Application is committed, and a test holds that absence, so the controller
-reconciles nothing today. A namespace-scoped installation, or a project that
-limits destinations and kinds, would narrow the grant. Neither is decided, and
-ADR 0017 carries this as R1. The manifest declares four network policies. The
+destroy an object. It does not stop a controller that holds a wider grant.
+Since 2026-10-04 one Application is committed, and its project limits that
+Application to one destination namespace and eight namespaced kinds. The project
+does not narrow the grant: the controller holds it whatever a project says, and
+a second project is held by nothing. A namespace-scoped installation would
+narrow the grant. It is not decided, and ADR 0017 carries this as R1. The
+manifest declares four network policies. The
 network plugin the local providers run was measured not to enforce the release's
 policy (`DR-04`), so these four are expected to be inert as well. That is an
 inference: no run tested them.
 
-**What would have to be true.** A decision that narrows the grant: an AppProject
-that restricts destinations and kinds, committed with the first Application and
-held by a test, or an installation whose roles are namespace-scoped. A network
+**What would have to be true.** A decision that narrows the grant itself: an
+installation whose roles are namespace-scoped. The project that ADR 0019
+committed restricts one Application, and it is not that decision. A network
 plugin that enforces the manifest's policies.
 
 **Not claimed.** No least-privilege property is claimed for Argo CD. No isolation

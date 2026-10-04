@@ -11,7 +11,9 @@ reads parsed bindings into a render context, and the Helm values renderer genera
 values from that context, written only where a caller names - and the GitOps
 destination of `local-docker-desktop` is the directory that holds one generated
 release, under `workloads/<workload id>/`, while the `local-kind` destination names
-no directory. Nothing reconciles either.
+no directory. One Application of the GitOps controller reads the generated values of
+that release, on a cluster where an operator applied the Application. Nothing reads
+the `local-kind` destination.
 Nothing here has been deployed, and none of it is evidence about the environment it
 describes.
 

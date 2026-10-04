@@ -20,8 +20,11 @@ document describes the boundary V1 is held to; each box says what exists.
 > more have been served through it since under declared load, failure, and
 > clean-clone experiments. **Deployment rendering is still unbuilt end to end** — a
 > validated contract document is turned into Helm values since `V2-S2-001-PR1`, and
-> since `V2-S2-001-PR2` into a release written only to a directory a caller names; the
-> values file a release is installed with is written by hand.
+> since `V2-S2-001-PR2` into a release written only to a directory a caller names. No
+> workflow or Helm procedure installs a release from them. Since `V2-S3-002-PR2` one
+> Argo CD Application applies the chart with the committed generated values, on a
+> cluster where an operator applied it. The API image digest and four chart values
+> are still supplied by hand.
 >
 > Every result behind those sentences is one provider, one Windows host, CPU, and
 > one replica of each tier. The multi-replica profile was refused at the capacity
@@ -228,8 +231,10 @@ that composes one, the chart, and the prerequisite layer have all been built
 since, and `V1-S3-011` ran them together on the reference provider. What is still
 unbuilt end to end is deployment rendering: since `V2-S2-001-PR1` a validated
 document is turned into Helm values, and since `V2-S2-001-PR2` into a release and its
-values written to a directory a caller names, and nothing installs a release from them;
-the values file a release is installed with is written by hand.
+values written to a directory a caller names. No workflow or Helm procedure installs
+a release from them, and on the Helm path the values file a release is installed with
+is written by hand. Since `V2-S3-002-PR2` one Argo CD Application applies the chart
+with the committed generated values, on a cluster where an operator applied it.
 
 The rule has a visible consequence and it is worth stating rather than discovering:
 the composition point — the place that decides which adapter is live — is the one
@@ -464,26 +469,41 @@ nothing after it. A procedure implements that installation, and it ran on the
 that path, and not the last one. The desired state is the generated releases under
 `gitops/`, one directory for one environment binding and one workload, and
 [the desired-state document](../environment/git-desired-state.md) states the
-rules. One release is committed there. The lower box of the diagram is unchanged:
-no Application exists, so Argo CD reads no path, and nothing in the tree was
-installed.
+rules. One release is committed there. When that record was accepted, the lower
+box of the diagram was unchanged: no Application existed.
+
+**Added 2026-10-04, later the same day.**
+[ADR 0019](decisions/ADR-0019-argocd-application-and-sync-policy.md) decides the lower box.
+One Application reads the chart and the generated values of that release, at the
+revision `main` names, with self-heal and without pruning. An operator applies it
+with `scripts/environment/argocd-application.sh`, after the bootstrap and after
+the prerequisite layer. On 2026-10-04, in three runs on `docker-desktop`, Argo CD
+applied the release six times at one commit of `main`, and five of six caller
+requests were answered.
+[The Argo CD Application document](../environment/argocd-application.md) states the
+rules. The diagram above is kept as it was drawn. Its lower box still reads
+"NOT DECIDED"; ADR 0019 decides it.
 
 Three statements bound this diagram:
 
 - **The upper box exists, and the lower one does not.**
   `scripts/environment/argocd-bootstrap.sh` installs, verifies, and removes the
   controller. It was executed on `docker-desktop` and not on `kind`. The run
-  removed what it installed. No Application is committed, so an installed
-  Argo CD reconciles nothing.
+  removed what it installed. Until 2026-10-04 no Application was committed. One
+  is now, and a second procedure applies it. After the bootstrap alone, an
+  installed Argo CD reconciles nothing.
 - **Argo CD is not on the request path in section 3.** A request goes to the
   InferOps API and from there to the serving runtime. No serving component refers
   to Argo CD, and a test reads the source for a reference. No run has measured a
   request with Argo CD absent or stopped. That is not a statement that Argo CD
-  cannot affect serving: once an Application exists, a running controller can
-  change, restart, or delete serving objects, and its pods share the node.
+  cannot affect serving: while the Application is applied, a running controller
+  can change, restart, or delete serving objects, and its pods share the node.
+  What it reports about those objects is not a caller outcome.
 - **The Terraform and Helm bands above do not move.** Which tree a controller is
-  meant to follow is decided by ADR 0018. The Application, its sync policy, the
-  revision it follows, and what becomes of the Helm band are not decided.
+  meant to follow is decided by ADR 0018. The Application, its sync policy, and
+  the revision it follows are decided by ADR 0019. That record also says how the
+  Helm band and the Application share the release objects: one at a time in one
+  namespace.
 
 The pins, the objects, the refusals, and the removal are in
 [the Argo CD bootstrap record](../environment/argocd-bootstrap.md).

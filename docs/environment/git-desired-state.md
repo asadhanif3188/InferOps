@@ -1,12 +1,18 @@
 # Git desired state
 
-Status: **the layout exists and is checked. Nothing reconciles it.** `V2-S3-002-PR1`
-added the directory [`gitops/`](../../gitops/README.md), one generated release in it,
-and a check that accounts for every entry in the tree.
-[ADR 0018](../architecture/decisions/ADR-0018-git-desired-state-layout.md) records the
-decisions. No Application exists, so no controller reads the tree. No cluster was
-contacted, and nothing in the tree was installed. Every check behind this page is
-static, at evidence level `C0`.
+Status: **the layout exists and is checked, and one Application reads it.**
+`V2-S3-002-PR1` added the directory [`gitops/`](../../gitops/README.md), one generated
+release in it, and a check that accounts for every entry in the tree.
+[ADR 0018](../architecture/decisions/ADR-0018-git-desired-state-layout.md) records
+those decisions. Every check of the tree is static, at evidence level `C0`.
+
+`V2-S3-002-PR2` added one Argo CD Application that reads the generated values of that
+release. [ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
+records those decisions, and
+[the Argo CD Application document](argocd-application.md) describes the Application.
+On 2026-10-04, in three runs on the `docker-desktop` provider, Argo CD applied the
+release, and each run removed it afterwards. **This page describes the tree. It
+establishes nothing about a cluster.**
 
 | Property | Value |
 |---|---|
@@ -17,6 +23,7 @@ static, at evidence level `C0`.
 | Derivation | [`tools/generated_release`](../../tools/generated_release/core.py), the drift check described in [the renderer document](../domain/helm-values-renderer.md#verifying-a-committed-release) |
 | Tests | [`tests/domain/test_gitops_desired_state.py`](../../tests/domain/test_gitops_desired_state.py) |
 | Validation record | [`v2-s3-002-pr1-validation.md`](../proof/environment/v2-s3-002-pr1-validation.md) |
+| Read by | One [Argo CD Application](argocd-application.md), on a cluster where an operator applied it. It reads `values.generated.yaml` and not the release document |
 
 ## The layout
 
@@ -83,7 +90,7 @@ review the source change and the generated difference together
         |
 the change is accepted into main        <- the promotion boundary
         |
-a controller reads the new revision     NOT BUILT: no Application exists
+Argo CD applies the new revision        on a cluster where the Application is applied
 ```
 
 **The desired state is the content of `gitops/` on `main`.** It changes when a
@@ -184,9 +191,11 @@ For the reference workload those values are in
 what such a file may set: no value that the generated file holds. The fixture's API
 image digest is a placeholder, because no InferOps API image is published.
 
-Where the hand-written file for an installed release lives, and how an Application
-reads it, is not decided. ADR 0018 leaves it to the change that adds the first
-Application.
+ADR 0018 left open where the hand-written values of an installed release live.
+[ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
+decided it: they are inside the Application, and not in this tree. The API image
+digest is not in Git at all. The operator gives it to the procedure that applies
+the Application, because no InferOps API image is published.
 
 ## Ownership
 
@@ -195,17 +204,17 @@ The tree is a repository artifact. It is the row `git-desired-state` of
 `repository`: a merged pull request creates it and changes it.
 
 The tree holds no cluster object. A RenderedWorkloadRelease is a repository document,
-not a cluster resource. The objects that a release creates in a cluster are the `helm`
-rows of the inventory. What becomes of those rows when a controller applies the chart
-is open, and ADR 0017 R5 carries it.
+not a cluster resource. The objects that a release creates in a cluster are the
+`release` rows of the inventory. ADR 0019 D8 says how those rows are shared when
+Argo CD applies the chart.
 
 ## Not applied yet
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| A controller reconciles the tree | No Application and no project is committed | The change that adds the first Application |
-| A sync policy | Automated sync, self-heal, and pruning are settings of an Application | The same change |
-| The hand-written values of an installed release | The chart requires four values that no contract owns, and the tree holds generated files only | A decision on where that file lives and how it is read |
+| A cluster that is continuously reconciled to the tree | The Application is applied by an operator, on one cluster at a time. Each recorded run removed it | An environment that keeps the Application applied |
+| An observation of a later commit being applied | Each recorded run applied the same commit of `main` | A run that merges a change while the Application is applied |
+| The API image identity in Git | The API image is a contributor's local build, and its digest is given to the procedure | A published image, pinned where a contract or a platform default owns it |
 | A published API image | The API image is a contributor's local build | A published image, or a procedure that loads one into the cluster |
 | A desired-state path for `kind` | No bootstrap ran on `kind` | A run on `kind`, and a declared release for the `local-kind` binding |
 | The renderer's source is compared at the recorded revision | The check reads no Git history | A check that reads the renderer at the recorded commit |
@@ -213,11 +222,14 @@ is open, and ADR 0017 R5 carries it.
 
 ## What this does not establish
 
-- **That a controller reconciles the tree.** None reads it. The Argo CD bootstrap
-  installs a controller, and no Application names this path.
-- **That the release installs.** No cluster read these files. The generated values
-  alone fail the chart's guards.
-- **That the release serves a request.** Nothing was installed.
+- **That a cluster is reconciled to the tree now.** One Application reads the
+  tree where an operator applied it. Three runs applied and removed it on
+  `docker-desktop`, and [their record](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+  is the evidence. No check on this page reads a cluster.
+- **That the release installs from the generated values alone.** They fail the
+  chart's guards. The Application adds hand-written values and one parameter.
+- **That the release serves requests.** Each run sent one request after each of
+  its two applies. Five of the six were answered. This page's checks send none.
 - **That the recorded revision is the commit the release was rendered at, or that it
   names a commit.** It is a declaration, and the check holds its form only. A test
   compares the platform defaults at that commit with the defaults read today, and it

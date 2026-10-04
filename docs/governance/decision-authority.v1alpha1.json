@@ -198,6 +198,13 @@
       "owner": "repository-maintainer",
       "assignedOn": "2026-10-04",
       "basis": "assigned-at-acceptance"
+    },
+    {
+      "decisionId": "ADR-0019",
+      "path": "docs/architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-10-04",
+      "basis": "assigned-at-acceptance"
     }
   ],
   "transferRules": [

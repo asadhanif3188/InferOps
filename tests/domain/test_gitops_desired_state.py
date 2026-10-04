@@ -434,11 +434,12 @@ def test_a_symbolic_link_in_the_tree_is_refused_and_not_followed(
 
 def _junction(link: Path, target: Path) -> None:
     """A directory junction, which an unprivileged Windows account can create."""
-    if sys.platform != "win32":
-        pytest.skip("a directory junction exists on Windows only")
-    import _winapi
+    if sys.platform == "win32":
+        import _winapi
 
-    _winapi.CreateJunction(str(target), str(link))
+        _winapi.CreateJunction(str(target), str(link))
+    else:
+        pytest.skip("a directory junction exists on Windows only")
 
 
 @pytest.mark.parametrize(
@@ -925,8 +926,12 @@ def test_the_document_names_every_release_and_its_revision() -> None:
         assert release["metadata"]["releaseId"] in text
 
 
-def test_the_tree_page_says_that_nothing_reconciles_the_tree() -> None:
-    """The page sits where a reader would assume the opposite."""
+def test_the_tree_page_says_what_a_merge_to_the_tree_changes() -> None:
+    """The page sits where a contributor edits. It says what a merge does.
+
+    Until one Application read the tree, this page said that nothing reconciled
+    it, and this test pinned that sentence.
+    """
     text = TREE_PAGE.read_text(encoding="utf-8")
-    assert "**Nothing reconciles it\nyet.**" in text
+    assert "**A merge that changes a file here changes that\ncluster.**" in text
     assert "Do not edit one by hand" in text

@@ -18,6 +18,11 @@ uv.lock text eol=lf
 # like a script. `text=auto` already normalises what is stored; this pins what is
 # checked out, so a runner cannot receive CRLF whatever the checkout did.
 .github/workflows/*.yml text eol=lf
+
+# The Application procedure records the SHA-256 of each manifest it applies. With
+# LF on every platform, the recorded digest names the committed bytes whatever the
+# checkout did.
+infra/argocd/*.yaml text eol=lf
 .github/workflows/*.yaml text eol=lf
 
 # The chart hashes its own rendered configuration into a pod annotation

@@ -1,8 +1,9 @@
 # Git desired state
 
 This directory holds the desired state of InferOps workloads, as generated releases.
-A GitOps controller is meant to reconcile a cluster to it. **Nothing reconciles it
-yet.**
+One Application of the GitOps controller reads it, on a cluster where an operator
+applied that Application. **A merge that changes a file here changes that
+cluster.**
 
 Every file below this page is generated. Do not edit one by hand.
 

@@ -3,7 +3,7 @@
 Status: one contract accepted and two schemas published, all at alpha maturity. The
 platform domain reads a WorkloadContract and an EnvironmentBinding into typed objects and
 selects the binding that serves a contract; nothing deploys, serves, or admits a workload
-from either, and nothing installs what is rendered from one. The [renderer input
+from either, and no workflow or Helm procedure installs what is rendered from one; since `V2-S3-002-PR2` one [Argo CD Application](../environment/argocd-application.md) applies the chart with one committed set of generated values, on a cluster where an operator applied it. The [renderer input
 boundary](../domain/renderer-input-boundary.md) reads a validated contract and the binding
 selected for it into a render context, refuses under one canonical vocabulary inputs that
 are invalid, unbound, unsupported by a renderer, or in conflict over who owns a value, and
@@ -12,7 +12,7 @@ platform domain reads a RenderedWorkloadRelease and checks its provenance, and b
 from a render context only through the allowlisted path its [provenance input-trust
 policy](rendered-workload-release.md#provenance-input-trust) defines; since
 `V2-S2-001-PR2` a caller can write a release and the values it names to a directory it
-names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](../environment/git-desired-state.md) and checked the same way; and nothing installs one.
+names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](../environment/git-desired-state.md) and checked the same way; since `V2-S3-002-PR2` one [Argo CD Application](../environment/argocd-application.md) reads its generated values, on a cluster where an operator applied it, and nothing reads the release document itself.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under
@@ -51,7 +51,7 @@ writes a release, and it is built against both, so their shapes, the binding's b
 with the WorkloadContract, and the release's rule for its own identifier have to be fixed
 and tested first. Each document says, in its status line, what reads it. The renderer's input
 side exists as [its own boundary](../domain/renderer-input-boundary.md), and the [Helm values
-renderer](../domain/helm-values-renderer.md) is built on it; nothing installs what it renders.
+renderer](../domain/helm-values-renderer.md) is built on it; no workflow or Helm procedure installs what it renders, and one Argo CD Application applies one committed render.
 
 A **cost record** is the one of those whose shape is now written down. [The cost
 method](../cost/cost-method.md) publishes the fields a record would carry, as part

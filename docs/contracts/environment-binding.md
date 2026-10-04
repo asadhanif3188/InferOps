@@ -5,7 +5,9 @@ Status: **published schema**, at `v1alpha1` maturity, added by `V2-S1-001-PR1`, 
 compatibility rules, its ownership boundary with the WorkloadContract, and its valid and
 invalid fixtures are published here and validated on every change. The domain parses a
 binding into typed objects, refuses bindings that conflict with each other, and selects
-the one binding that serves a WorkloadContract. **Nothing installs what it selects**:
+the one binding that serves a WorkloadContract. **No workflow installs what it selects**,
+and since `V2-S3-002-PR2` one Argo CD Application applies the values generated for the
+`local-docker-desktop` binding, on a cluster where an operator applied it:
 since `V2-S1-003-PR1`, [the renderer input boundary](../domain/renderer-input-boundary.md)
 reads a selected binding's facts into a render context beside the contract's intent, and
 since `V2-S2-001-PR1` [the Helm values renderer](../domain/helm-values-renderer.md) turns
@@ -167,7 +169,11 @@ artifact exists to replace.
 - **`platform.apiReplicas`** uses the bounds the chart's values schema accepts for the
   API tier, one to sixteen. A test holds the two schemas to the same bounds.
 - **`gitops.destinationPath`** is repository-relative and written as lowercase segments.
-  It is a declared location, and nothing reconciles one. Since `V2-S3-002-PR1` the
+  It is a declared location. Since `V2-S3-002-PR2` one Argo CD Application reads
+  the generated values beneath the `local-docker-desktop` binding's path, on a
+  cluster where an operator applied that Application, and
+  [the Argo CD Application document](../environment/argocd-application.md)
+  describes it. Nothing reads the `local-kind` path. Since `V2-S3-002-PR1` the
   directory [`gitops/`](../../gitops/README.md) exists, and a generated release is
   committed beneath the `local-docker-desktop` binding's path, in
   `workloads/<workload id>/`. The `local-kind` binding's path names no directory.
@@ -326,7 +332,7 @@ are.
 |---|---|---|
 | A binding value shaped like a lowercase credential is refused | A single binding has no semantic layer; see [Secrets](#secrets) | A semantic rule, which is a conditionally compatible change |
 | The selected cluster, namespace, and claim exist | A document check cannot see a cluster | The provider contract's verification, at run time, as today |
-| The values a release is installed with are derived from a contract and the binding selected for it | Since `V2-S2-001-PR1` the Helm values renderer derives chart values from the context, and since `V2-S2-001-PR2` they are written beside a release to a directory a caller names; nothing writes them where an install reads them, and the values a release is installed with are still written by hand | A later change that installs a release from generated values |
+| The values a release is installed with are derived from a contract and the binding selected for it | Since `V2-S2-001-PR1` the Helm values renderer derives chart values from the context, and since `V2-S2-001-PR2` they are written beside a release to a directory a caller names; since `V2-S3-002-PR1` one set is committed as Git desired state, and since `V2-S3-002-PR2` one Argo CD Application applies the chart with it, on a cluster where an operator applied it. The API image digest and four chart values are still supplied by hand | A published API image, and a contract or a default that owns the four values |
 
 ## Fixtures
 
@@ -409,8 +415,10 @@ files say about each other and nothing about a running system.
 - **It deploys nothing.** The platform domain parses a binding, selects one for a
   contract, and reads its facts into a render context, and the Helm values renderer turns
   that context into chart values, which a caller can write with their release to a
-  directory it names; nothing writes those values where a release is installed from. The
-  values file a release is installed with is still written by hand.
+  directory it names. Since `V2-S3-002-PR2` one Argo CD Application applies the chart with
+  the committed generated values of one binding, on a cluster where an operator applied
+  it. On the Helm path the values file a release is installed with is still written by
+  hand.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about an environment.** A valid binding is a well-formed

@@ -10,8 +10,35 @@ from `1.0.0`.
 
 ### Added
 
-- **A Git desired-state layout that holds one generated release. Nothing reconciles
-  it.** `V2-S3-002-PR1` adds the directory [`gitops/`](gitops/README.md) and
+- **One Argo CD Application reconciles the generated release, with self-heal and
+  without pruning. Executed on one provider.** `V2-S3-002-PR2` adds
+  [ADR 0019](docs/architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md),
+  two manifests under `infra/argocd/` - one Application and the project that holds
+  it - and
+  [`scripts/environment/argocd-application.sh`](scripts/environment/argocd-application.sh),
+  which applies, verifies, and removes them. The Application reads the chart and
+  the generated values of the desired-state release at the revision `main` names.
+  The project admits one repository, one destination namespace, eight namespaced
+  kinds, and no cluster-scoped kind. On 2026-10-04, in three runs on
+  `docker-desktop`, Argo CD applied the release six times at one commit of `main`.
+  Five of six caller requests were answered, one manual change was reverted in
+  each run, and each removal left no workload object and kept the namespace and
+  the claim.
+  [The run record](docs/proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+  keeps all three runs: in the first, one request returned no response, and the
+  record states the inferred cause. The procedure compares the whole spec of both
+  live objects with the committed manifests.
+  **What Argo CD reports is not a caller outcome.** The procedure was not executed
+  on `kind`. No later commit of `main` was observed being applied. The API image
+  digest is not in Git: no API image is published, and the operator supplies it.
+  The two manifests are not desired state, and a merge that changes one changes
+  no cluster until the procedure runs again. The test that held that no Argo CD
+  custom resource was committed now holds that these two are the only ones, and
+  one security control changed from an absence to that restriction. No claim is
+  registered, and this run is not a run of the first experiment.
+- **A Git desired-state layout that holds one generated release.** When this entry
+  was written, nothing reconciled it; the entry above adds the Application that
+  reads it. `V2-S3-002-PR1` adds the directory [`gitops/`](gitops/README.md) and
   [ADR 0018](docs/architecture/decisions/ADR-0018-git-desired-state-layout.md), which
   decides it. A release directory is the EnvironmentBinding's destination path,
   followed by `workloads` and the WorkloadContract's workload identifier. The tree

@@ -130,7 +130,16 @@ ENFORCEMENT_LABELS = {
 }
 
 #: The one test that establishes an absence, and the rules that may cite it.
-ABSENCE_TEST = "test_no_argocd_custom_resource_is_committed"
+ABSENCE_TEST = "test_no_application_set_and_no_cluster_registration_is_committed"
+
+#: The Argo CD custom resources that ADR 0019 decided: one Application and the
+#: project that holds it. No other tracked file may declare one.
+ARGOCD_MANIFESTS = (
+    "infra/argocd/local-docker-desktop-support-assistant.yaml",
+    "infra/argocd/workloads-project.yaml",
+)
+APPLICATION_PROCEDURE_REL = "scripts/environment/argocd-application.sh"
+APPLICATION_MODULE_REL = "tests/architecture/test_argocd_application.py"
 PROCEDURES = frozenset({"bootstrap", "removal"})
 
 #: The directories whose files a cluster, a release, or a serving process is
@@ -152,16 +161,19 @@ BUILD_ROOTS = (
 #: The directories a request is served from.
 SERVING_ROOTS = ("src", "charts", "deploy")
 
-#: The build files that may name the controller: the procedure, and nothing else.
-#: A second file is a second thing that addresses Argo CD, and this suite reads
-#: only the first.
-ALLOWED_REFERENCES = [PROCEDURE_REL]
+#: The build files that may name the controller: the two manifests that ADR 0019
+#: decided, the procedure that applies them, and the procedure that installs the
+#: controller. A fifth file is a fifth thing that addresses Argo CD, and no suite
+#: reads it. None of the four is under a directory a request is served from.
+ALLOWED_REFERENCES = [*ARGOCD_MANIFESTS, APPLICATION_PROCEDURE_REL, PROCEDURE_REL]
 
 #: The modules a rule may name as its enforcement: this one, which reads files,
-#: and the one that executes the procedure against stubs.
+#: the one that executes the procedure against stubs, and the one that reads the
+#: Application and its project.
 ENFORCING_MODULES = {
     THIS_MODULE_REL: THIS_MODULE,
     PROCEDURE_MODULE_REL: REPO_ROOT / PROCEDURE_MODULE_REL,
+    APPLICATION_MODULE_REL: REPO_ROOT / APPLICATION_MODULE_REL,
 }
 
 #: How a manifest kind is written as a kubectl resource in the procedure.
@@ -672,43 +684,62 @@ def test_no_other_tool_declares_a_bootstrap_owned_object() -> None:
             resource_type
         )
 
-    assert not references_to_argocd(("charts", "infra"))
+    assert not references_to_argocd(("charts",))
+    # Under `infra/`, the two manifests of ADR 0019 name the controller, and no
+    # Terraform file does.
+    assert references_to_argocd(("infra",)) == list(ARGOCD_MANIFESTS)
 
 
-def test_no_argocd_custom_resource_is_committed() -> None:
-    """An absence, and a pin on it.
+def test_no_application_set_and_no_cluster_registration_is_committed() -> None:
+    """Two Argo CD custom resources are committed, and this pins which two.
 
-    Argo CD reconciles what an Application names. None is committed, so it has
-    nothing to reconcile: not its own installation, not a Terraform-owned object,
-    not an ApplicationSet, not a second cluster. That is all this establishes.
+    Until ADR 0019 this was a plain absence: no Application, no ApplicationSet,
+    and no AppProject was committed, so Argo CD had nothing to reconcile. ADR
+    0019 decided one Application and the project that holds it. This test now
+    holds that those two files are the only tracked files that declare an Argo CD
+    custom resource, that neither is an ApplicationSet, and that no tracked file
+    registers a cluster.
 
-    It restricts nothing about what an Application may target. The change that
-    adds the first Application must replace this test with a check of that
-    Application's destination and of the kinds it may manage.
+    What the one Application may reach is held elsewhere:
+    `tests/architecture/test_argocd_application.py` reads its destination, its
+    source, and the kinds its project admits.
 
-    It reads every tracked file except this module. The first version read eight
-    named directories, so a manifest under `docs/`, `tests/`, or a new top-level
-    directory passed it, and it could not see a cluster registration at all.
+    It reads every tracked file except this module and that one, which both
+    have to quote a custom resource to test the pattern. A manifest that a
+    template assembles from parts is not matched. It reads no cluster, so an
+    object a person creates with kubectl is not seen.
     """
-    files = [path for path in tracked_files() if path != THIS_MODULE]
+    quoting = {THIS_MODULE, REPO_ROOT / APPLICATION_MODULE_REL}
+    files = [path for path in tracked_files() if path not in quoting]
     assert len(files) > 100, "the tracked tree was not read"
-    offenders = [
+    declaring = [
         path.relative_to(REPO_ROOT).as_posix()
         for path in files
         if ARGOCD_CUSTOM_RESOURCE.search(text_of(path))
     ]
-    assert not offenders, offenders
-    # Until ADR 0018 this also refused a `gitops/` directory, because ADR 0017
-    # decided none. ADR 0018 decided the layout, and the directory now holds
-    # generated releases. It still gives Argo CD nothing to reconcile: no
-    # Application names it. The tree's own check accounts for every entry in it.
-    # That check reads the working tree, while the scan above reads the index, so
-    # an untracked file under `gitops/` fails this test although it is not
-    # committed. In a clean checkout the two views are the same.
+    assert declaring == list(ARGOCD_MANIFESTS), declaring
+
+    kinds = []
+    for relative in ARGOCD_MANIFESTS:
+        body = text_of(REPO_ROOT / relative)
+        documents = [
+            document for document in yaml.safe_load_all(body) if document is not None
+        ]
+        assert len(documents) == 1, relative
+        kinds.append(documents[0]["kind"])
+        assert "argocd.argoproj.io/secret-type" not in body, relative
+    assert kinds == ["Application", "AppProject"]
+
+    # The desired-state tree holds generated releases and no custom resource.
+    # The tree's own check accounts for every entry in it. That check reads the
+    # working tree, while the scan above reads the index, so an untracked file
+    # under `gitops/` fails this test although it is not committed. In a clean
+    # checkout the two views are the same.
     desired_state = [
         path for path in files if path.is_relative_to(REPO_ROOT / "gitops")
     ]
     assert desired_state, "the desired-state tree was not read"
+    assert not set(desired_state) & {REPO_ROOT / rel for rel in ARGOCD_MANIFESTS}
     assert verify_tree() == ()
 
 
@@ -728,7 +759,8 @@ def test_no_serving_component_refers_to_argocd() -> None:
     # controller: the procedure that installs it. A client, a second script, or
     # a workflow that addressed the controller would be the first dependency.
     assert references_to_argocd(BUILD_ROOTS) == ALLOWED_REFERENCES
-    assert PROCEDURE_REL.split("/", 1)[0] not in SERVING_ROOTS
+    for allowed in ALLOWED_REFERENCES:
+        assert allowed.split("/", 1)[0] not in SERVING_ROOTS, allowed
 
 
 @pytest.mark.parametrize(
@@ -1155,9 +1187,14 @@ def test_the_document_states_the_enforcement_split_the_data_produces(
     document: str,
 ) -> None:
     counts = Counter(rule["enforcement"] for rule in RULES)
+
+    def verb(count: int) -> str:
+        return "is" if count == 1 else "are"
+
     sentence = (
         f"{NUMBER_WORDS[counts['tested']].capitalize()} rules are tested, "
-        f"{NUMBER_WORDS[counts['tested-absence']]} are tested only as an absence, "
+        f"{NUMBER_WORDS[counts['tested-absence']]} "
+        f"{verb(counts['tested-absence'])} tested only as an absence, "
         f"{NUMBER_WORDS[counts['not-implemented']]} are not implemented, and "
         f"{NUMBER_WORDS[counts['review']]} is held by review."
     )

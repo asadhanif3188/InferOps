@@ -14,8 +14,14 @@ on 2026-10-03. The authoritative form is data,
 > [The record of that run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) says what was observed. The procedure was not
 > executed on `kind`, and one provider's run certifies no other provider.
 >
-> No Application, AppProject, or ApplicationSet object exists. An installed
-> Argo CD reconciles nothing. This page does not describe a deployment path.
+> The bootstrap creates no Application, AppProject, or ApplicationSet object.
+> After the bootstrap alone, an installed Argo CD reconciles nothing. This page
+> does not describe a deployment path.
+>
+> **Added 2026-10-04.** [ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
+> decided one Application and its project, and a second procedure applies them.
+> [The Argo CD Application document](argocd-application.md) describes that path.
+> This page still describes the installation only.
 >
 > Until the procedure existed, this page said that nothing was installed and that
 > no procedure existed. The record's `implementationState` was
@@ -189,7 +195,7 @@ told apart, and a test refuses a shared kind that has no named boundary.
 | Shared | Other owner | Told apart by |
 |---|---|---|
 | `Namespace` | `terraform` | Name. Terraform owns the platform namespace. The bootstrap owns `argocd` |
-| The namespaced kinds | `helm` | Namespace. A release installs into the platform namespace and never into `argocd`. The boundary does not cover an object of an `argoproj.io` kind: an Application or an AppProject would also be in `argocd`, and the bootstrap does not own it |
+| The namespaced kinds | `helm` | Namespace. A release installs into the platform namespace and never into `argocd`. The boundary does not cover an object of an `argoproj.io` kind: one Application and one AppProject are also in `argocd`, and the bootstrap does not own them. Since 2026-10-04 the Application procedure owns them |
 
 The three cluster-scoped kinds — `CustomResourceDefinition`, `ClusterRole`, and
 `ClusterRoleBinding` — are shared with no owner. Neither committed chart render
@@ -216,8 +222,10 @@ credential, and the apply succeeded. No run tried a narrower credential.
 
 The ClusterRole is the upstream default and is not narrowed. The application
 controller is therefore able to change an object that Terraform owns, or one of
-its own. No Application exists, so it reconciles nothing today. ADR 0017 records
-this as R1.
+its own. ADR 0017 records this as R1. Since 2026-10-04 one Application exists
+in the repository. Its project admits one destination namespace, eight
+namespaced kinds, and no cluster-scoped kind. That restricts the one
+Application, and it does not narrow the ClusterRole.
 
 ## Refusals
 
@@ -262,8 +270,12 @@ reads it.
 Removal deletes what the bootstrap created, and nothing else. It deletes by the
 kinds and names the record lists, so it needs no download. It was executed four
 times on `docker-desktop`, in two runs, with no Application present, and each time
-no listed object remained. The refusal for an existing Application was executed against stubs
-only. Its steps, in order:
+no listed object remained. Until 2026-10-04 the refusal for an existing Application
+was executed against stubs only. On that day each of
+[three runs of the Application procedure](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+executed the removal while the Application and its project existed. Each time it
+refused at step 3 and deleted nothing. Each of those runs also completed one
+removal afterwards, as cleanup, with no Application present. Its steps, in order:
 
 1. Select and verify the target cluster, as for every mutation.
 2. Refuse unless a namespace named `argocd` exists and carries the bootstrap
@@ -314,19 +326,19 @@ says why.
 |---|---|---|
 | `bootstrap-owns-nothing-another-tool-owns` | tested | It compares kinds and not objects, and it reads files and no cluster |
 | `no-other-tool-declares-a-bootstrap-object` | tested | It reads the two committed renders and the Terraform files. It does not read a values file or a namespace flag that a caller supplies at install time, or a template branch the renders do not take |
-| `argocd-does-not-manage-its-own-installation` | tested, as an absence | No Argo CD custom resource is in a tracked file, so Argo CD has nothing to reconcile. The test does not restrict what a future Application may target, and it does not match a manifest that a template assembles from parts |
-| `no-application-set-and-no-second-cluster` | tested, as an absence | The same test, which also matches a cluster registration secret |
+| `argocd-does-not-manage-its-own-installation` | tested | Until 2026-10-04 an absence held this rule. A test now reads the one Application and its project: one destination namespace that is not `argocd`, eight namespaced kinds, and no cluster-scoped kind. It reads files. It does not narrow the controller's grant, and it does not see an Application that a person creates in the cluster |
+| `no-application-set-and-no-second-cluster` | tested, as an absence | The two manifests of ADR 0019 are the only tracked files that declare an Argo CD custom resource. Neither is an ApplicationSet, and no file registers a cluster. A manifest that a template assembles from parts is not matched |
 | `argocd-is-not-on-the-inference-request-path` | tested | It reads source for a reference, and refuses a second build file that names Argo CD beside the procedure. No run has measured a request with Argo CD absent or stopped. It says nothing about what a running controller can do to serving objects |
 | `the-pins-are-immutable-identifiers` | tested | It checks the form of each pin. It contacts no network, so it does not establish that upstream still serves these bytes |
 | `bootstrap-acts-only-on-a-selected-and-verified-cluster` | tested | The procedure is executed against stub tools. The runs repeated three target refusals with the real tools; each was refused before any cluster was contacted, and no run refused a wrong cluster. The guard's own limits are the provider contract's |
 | `the-manifest-is-verified-before-it-is-used` | tested | Executed against stub tools. The stub download did not reproduce the path defect the first run on Windows exposed. A SHA-256 identifies bytes and does not authenticate them |
 | `images-run-at-their-pinned-digests` | tested | Executed against stub tools, through `verify` and through `install` with `sha256sum` also replaced. The runs executed the passing comparison only. The check keys on the container name. The rule covers the moment of the check and nothing after it |
 | `a-foreign-argocd-installation-is-refused` | tested | Executed against stub tools. No run met a foreign installation in a cluster. The marker is a label and an annotation on the namespace; the five cluster-scoped objects carry none, and the install does not check whose they are when a marked namespace exists |
-| `removal-is-scoped-and-refuses-while-an-application-exists` | tested | Executed against stub tools, for each of the three kinds. Every removal in the runs had no Application present, so the refusal was never executed against one in a cluster. No test reaches a time limit |
+| `removal-is-scoped-and-refuses-while-an-application-exists` | tested | Executed against stub tools, for each of the three kinds. Every completed removal in the runs had no Application present. Three removals on `docker-desktop`, one in each run of the Application procedure, ran while the Application existed, and each refused at its first check. The second check is executed against stubs only. No test reaches a time limit |
 | `security-baseline-rows-precede-the-first-install` | tested | It establishes that the rows exist. It cannot establish that they were written before the first install; the record of the run states that order |
 | `gitops-state-is-not-caller-health` | review | Nothing records Argo CD state yet |
 
-Ten rules are tested, two are tested only as an absence, zero are not implemented, and one is held by review.
+Eleven rules are tested, one is tested only as an absence, zero are not implemented, and one is held by review.
 
 "Tested" has two meanings in this table, and the third column says which. Five
 rules are held by tests that read files. Five are held by tests that execute the
@@ -345,12 +357,17 @@ sign-on, and notifications; and a high-availability installation.
 unchanged. [ADR 0018](../architecture/decisions/ADR-0018-git-desired-state-layout.md)
 has since decided the desired-state directory, and
 [the desired-state document](git-desired-state.md) describes it. The directory
-holds generated releases and no Argo CD object. No Application names it, so the
-two rules above that hold as an absence still hold.
+holds generated releases and no Argo CD object.
+[ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
+has decided one workload Application and its project. They are outside this
+record: the bootstrap creates neither, and another procedure owns them. One of
+the two rules that held as an absence is now held by a test that reads the
+Application. The other still holds as an absence.
 
 ## What this record does not establish
 
-- That Argo CD reconciles anything. No Application exists.
+- That Argo CD reconciles anything. The bootstrap creates no Application. The
+  run of the Application procedure is a separate record.
 - That the procedure installs or removes Argo CD on `kind`. It was executed on
   `docker-desktop` only.
 - That upstream still serves the pinned bytes after the run, or that a pinned
@@ -358,11 +375,13 @@ two rules above that hold as an absence still hold.
 - That the pinned release or images are authentic. No signature was verified.
 - That a request is served while Argo CD is absent or stopped. No release was
   installed during the run.
-- That a removal refuses on a cluster when an Application exists, or that its
-  order avoids a stuck deletion. Both removals ran with no Application.
+- That the order of a removal avoids a stuck deletion. Every completed removal
+  ran with no Application. The three removals with an Application present
+  refused at their first check.
 - That a container runs the pinned image after a later restart.
-- That the core profile reconciles an Application. By inference from upstream
-  source, no project exists after a core installation.
-- That the host has the capacity to run Argo CD beside a release. The run
-  installed no release.
+- That the core profile reconciles an Application on `kind`. On
+  `docker-desktop` it reconciled one Application in a committed project, in the
+  Application procedure's run.
+- That the host has the capacity to run Argo CD beside a release under load. The
+  Application procedure's run held one release beside it and measured nothing.
 - That a credential narrower than cluster-admin can run the bootstrap.
