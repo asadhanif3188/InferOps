@@ -299,7 +299,9 @@ The tests assert each property directly:
   runs the static parts of E01 and writes only a new run directory under
   `docs/proof/experiments/v2-e01/runs/`; it reads the platform defaults with the drift
   check's reader, because the freeze record names that reader. A test holds that each
-  exemption is used. Another reads every tracked file under `src`, `tools`, `scripts`,
+  exemption is used. Since `V2-S3-002-PR1`, `tools/gitops_desired_state` is listed with
+  them: it does not import the package, and it calls the drift check to derive a
+  [desired-state release](../environment/git-desired-state.md). Another reads every tracked file under `src`, `tools`, `scripts`,
   `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, whatever its suffix,
   and fails if any file outside the two tools names either tool's package as a whole
   word - so no module, script, chart, deployment or infrastructure file, workflow, or

@@ -12,7 +12,7 @@ platform domain reads a RenderedWorkloadRelease and checks its provenance, and b
 from a render context only through the allowlisted path its [provenance input-trust
 policy](rendered-workload-release.md#provenance-input-trust) defines; since
 `V2-S2-001-PR2` a caller can write a release and the values it names to a directory it
-names; since `V2-S2-002-PR1` a drift check compares the one committed release, a test's golden release, with its declared sources; and nothing installs one.
+names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](../environment/git-desired-state.md) and checked the same way; and nothing installs one.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under

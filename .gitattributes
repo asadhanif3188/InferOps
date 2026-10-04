@@ -61,3 +61,10 @@ tests/domain/fixtures/helm-values/** text eol=lf
 # on every platform. Pinned so a Windows checkout cannot turn the evidence into CRLF
 # copies whose digests no longer match the run that wrote them.
 docs/proof/experiments/v2-e01/runs/** text eol=lf
+
+# The Git desired state holds generated releases, each compared byte for byte with
+# what its declared sources derive, and each release records the SHA-256 of its
+# values file's bytes. The renderer writes LF on every platform. Pinned so a
+# Windows checkout cannot turn the desired state into CRLF copies that no render
+# matches.
+gitops/** text eol=lf

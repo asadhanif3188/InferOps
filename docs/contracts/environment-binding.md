@@ -167,8 +167,12 @@ artifact exists to replace.
 - **`platform.apiReplicas`** uses the bounds the chart's values schema accepts for the
   API tier, one to sixteen. A test holds the two schemas to the same bounds.
 - **`gitops.destinationPath`** is repository-relative and written as lowercase segments.
-  It is a declared location: no GitOps directory exists in this repository, and nothing
-  reconciles one.
+  It is a declared location, and nothing reconciles one. Since `V2-S3-002-PR1` the
+  directory [`gitops/`](../../gitops/README.md) exists, and a generated release is
+  committed beneath the `local-docker-desktop` binding's path, in
+  `workloads/<workload id>/`. The `local-kind` binding's path names no directory.
+  [The desired-state document](../environment/git-desired-state.md) states the rule.
+  (This item said that no GitOps directory existed until 2026-10-04.)
 
 ## Secrets
 

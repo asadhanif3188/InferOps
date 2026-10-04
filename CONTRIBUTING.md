@@ -426,6 +426,28 @@ declared directory. The default-lane suite runs the same check, so a stale relea
 the build. [The renderer page](docs/domain/helm-values-renderer.md#verifying-a-committed-release)
 lists the rules and what the check does not cover.
 
+### Git desired state
+
+[`gitops/`](gitops/README.md) holds the desired state of a workload, as generated
+releases. Nobody edits a file in it by hand, and no hand-written values file belongs
+in it. The same change to a WorkloadContract, an EnvironmentBinding, or the chart's
+`api` defaults that makes a release stale must regenerate it:
+
+```sh
+uv run --locked python -m tools.gitops_desired_state --check
+uv run --locked python -m tools.gitops_desired_state --write local-docker-desktop/support-assistant
+```
+
+The check derives the path of each release from its binding and its contract, compares
+both files with what their declared sources derive, and reports every entry in the tree
+that no declared release accounts for. It writes nothing. Review the generated
+difference with the change that causes it: the desired state changes when that change
+is accepted into `main`. A desired-state release is declared in
+`DESIRED_STATE_RELEASES` in
+[`tools/gitops_desired_state/core.py`](tools/gitops_desired_state/core.py), not in the
+drift check's own list. Nothing reconciles the tree yet.
+[The desired-state document](docs/environment/git-desired-state.md) states the rules.
+
 ### Experiment freeze records
 
 An experiment family is frozen before its first result-bearing run, in a record under

@@ -191,6 +191,13 @@
       "owner": "repository-maintainer",
       "assignedOn": "2026-10-03",
       "basis": "assigned-at-acceptance"
+    },
+    {
+      "decisionId": "ADR-0018",
+      "path": "docs/architecture/decisions/ADR-0018-git-desired-state-layout.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-10-04",
+      "basis": "assigned-at-acceptance"
     }
   ],
   "transferRules": [

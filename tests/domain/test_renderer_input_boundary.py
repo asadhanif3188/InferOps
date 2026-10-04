@@ -1359,7 +1359,20 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
 #:   ``--check`` reads committed runs and writes nothing. It reads the platform
 #:   defaults with the generated-release reader, because the freeze record names
 #:   that reader.
-REPOSITORY_CHECKS: tuple[str, ...] = ("experiment_e01", "generated_release")
+#: - ``gitops_desired_state`` verifies the Git desired-state tree and regenerates a
+#:   release in it, when a contributor names one. It does not import the render
+#:   package: it calls ``generated_release``, which is why it is listed. Its output
+#:   is the first that a controller is meant to reconcile, and nothing reconciles it
+#:   yet. The second test below holds that no script, workflow, chart, or
+#:   distribution module calls it.
+REPOSITORY_CHECKS: tuple[str, ...] = (
+    "experiment_e01",
+    "generated_release",
+    "gitops_desired_state",
+)
+
+#: The repository checks that import the render package themselves.
+RENDER_IMPORTERS: tuple[str, ...] = ("experiment_e01", "generated_release")
 
 
 def _repository_check(path: Path) -> str | None:
@@ -1394,7 +1407,7 @@ def test_nothing_outside_the_render_package_imports_it() -> None:
             else:
                 offenders.append(path.relative_to(REPO_ROOT).as_posix())
     # Each exemption is used, so none can outlive the tool it names.
-    assert exempt == {name: ["core.py"] for name in REPOSITORY_CHECKS}
+    assert exempt == {name: ["core.py"] for name in RENDER_IMPORTERS}
     for root in ("scripts", "charts", "deploy", "infra"):
         for path in sorted((REPO_ROOT / root).rglob("*")):
             if path.is_file() and path.suffix in {".py", ".sh", ".yaml", ".tf"}:

@@ -4,8 +4,9 @@
 # copied from the record that owns it, and a test compares them, so a drift between
 # this fixture and the environment it describes fails the build.
 #
-# This is a contract example. Nothing in this repository reads a binding yet, and
-# the GitOps destination below is a declared location, not a directory that exists.
+# This is a contract example. The platform domain parses it, and one generated
+# release is derived from it. The GitOps destination below is the directory that
+# holds that release, under workloads/<workload id>/. Nothing reconciles it.
 apiVersion: inferops.io/v1alpha1
 kind: EnvironmentBinding
 
