@@ -1594,7 +1594,7 @@
       "v1Status": "enforced-on-the-host",
       "owner": "environment",
       "evidenceRef": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
-      "whatItDoesNotVerify": "That no object appears between the second check and the deletion of its definition. The checks and the deletions are not atomic. On 2026-10-04 one run executed the refusal against an Application and its project in a cluster, at the first check. The second check is executed against stubs only."
+      "whatItDoesNotVerify": "That no object appears between the second check and the deletion of its definition. The checks and the deletions are not atomic. On 2026-10-04 each of three runs of the Application procedure executed the refusal against an Application and its project in a cluster, at the first check; docs/proof/environment/v2-s3-002-pr2-argocd-application-run.md records them. The second check is executed against stubs only."
     },
     {
       "controlId": "restrict-the-argocd-application-to-one-destination",

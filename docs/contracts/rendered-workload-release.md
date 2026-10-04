@@ -13,7 +13,9 @@ renderer](../domain/helm-values-renderer.md) generates chart values, and since
 `V2-S2-001-PR2` [`generate_release`](../domain/helm-values-renderer.md#the-generated-release)
 records the release that names them - with the values file's digest, by [the rule decided
 below](#generated-files-and-their-digests) - and `write_release` writes both files to a
-directory a caller names. **Nothing installs a release.** Two generated releases are
+directory a caller names. **Nothing installs a release document.** Since `V2-S3-002-PR2`
+one Argo CD Application applies the chart with the generated values that one release
+records, on a cluster where an operator applied it. Two generated releases are
 committed. One is a test's golden release, rendered at placeholder
 revisions, and since `V2-S2-002-PR1` [a drift check](../domain/helm-values-renderer.md#verifying-a-committed-release)
 compares it with what its declared sources derive. Since `V2-S3-002-PR1` the other is
@@ -801,7 +803,7 @@ files say about each other and nothing about a running system.
 
 ## What this contract does not do
 
-- **Nothing installs it.** Since `V2-S2-001-PR2`, `generate_release` records a release for
+- **Nothing installs the release document.** Since `V2-S2-001-PR2`, `generate_release` records a release for
   the values the Helm values renderer produced, and `write_release` writes the two files to
   a directory a caller names. Since `V2-S2-002-PR1`, one command verifies every declared
   committed release against its declared sources and regenerates a release a contributor

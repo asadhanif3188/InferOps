@@ -44,12 +44,12 @@
 |---|---|---|---|
 | D1 | Desired state is kept in this repository, under `gitops/` | **Accepted** | [ADR 0017](ADR-0017-argocd-bootstrap-and-ownership.md) D1 selected the repository. This record names the directory. Review alone |
 | D2 | A release directory is `<destinationPath>/workloads/<workloadId>` | **Accepted** | A check derives the path from the EnvironmentBinding and the WorkloadContract and refuses a release anywhere else |
-| D3 | The tree holds generated releases and nothing written by hand | **Accepted** for the tree. Where a hand-written values file lives is **open** | A check walks the tree and refuses every entry that no declared release accounts for |
+| D3 | The tree holds generated releases and nothing written by hand | **Accepted** for the tree. Where a hand-written values file lives is **open**. **Added 2026-10-04:** ADR 0019 D5 decided it | A check walks the tree and refuses every entry that no declared release accounts for |
 | D4 | One path exists: the reference workload on `local-docker-desktop`. No promotion ladder is created | **Accepted** as scope | A test pins the one declaration, and the check refuses a second environment directory that nobody declared |
 | D5 | The desired state changes when a reviewed change is accepted into `main` | **Accepted** as a rule | Review alone. Nothing in this repository verifies that a merge was reviewed |
 | D6 | A desired-state release records a full Git revision, not a placeholder, as its renderer and platform-defaults revision | **Accepted**, with a stated limit | A check holds the form of the revision and refuses one repeated character. A test compares the defaults at that commit with the defaults read today, in a full clone only. Nothing establishes that the revision names a commit |
 | D7 | The releases are declared in a tool of their own, and derived through the existing drift check | **Accepted** | The tool calls the drift check and holds no second renderer. The first experiment's freeze record pins no file that this change edits |
-| D8 | The Application, its project, its sync policy, and the followed revision are not decided here | **Accepted** as scope | The absence test of ADR 0017 still holds: no Argo CD custom resource is committed |
+| D8 | The Application, its project, its sync policy, and the followed revision are not decided here | **Accepted** as scope | The absence test of ADR 0017 still holds: no Argo CD custom resource is committed. **Added 2026-10-04:** ADR 0019 committed two, and replaced that test |
 
 Seven of the eight decisions are accepted. D3 is accepted for the tree and open for
 an installed release. That open part is why this record is accepted in part. No

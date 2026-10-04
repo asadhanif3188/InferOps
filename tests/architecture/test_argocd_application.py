@@ -469,12 +469,41 @@ def test_the_procedure_forces_nothing_and_deletes_no_prerequisite() -> None:
 
 
 def test_the_procedure_reads_no_secret_value() -> None:
-    secret_reads = [call for call in kubectl_calls() if "secrets" in call]
-    assert len(secret_reads) == 1
-    assert secret_reads[0][-2:] == ["-o", 'name)";'] or "-o name" in " ".join(
-        secret_reads[0]
+    """One command names a Secret, and it asks for names.
+
+    The whole text of every command is read for the word, in either number, so
+    a read by another spelling is counted too.
+    """
+    naming = [
+        command
+        for command in procedure_commands()
+        if re.search(r"\bsecrets?\b", command)
+        and "inferops::" in command
+        and not command.lstrip().startswith("inferops::fail")
+        and not command.lstrip().startswith("inferops::log")
+    ]
+    assert len(naming) == 1, naming
+    (command,) = naming
+    assert command == (
+        'if ! helm_records="$(inferops::target_kubectl get secrets'
+        ' -n "${INFEROPS_RELEASE_NAMESPACE}"'
+        ' -l "owner=helm,name=${INFEROPS_RELEASE_NAME}" -o name)"; then'
     )
-    assert "jsonpath" not in " ".join(secret_reads[0])
+
+
+def test_every_kubectl_call_goes_through_the_target_wrapper() -> None:
+    """A direct call would not be read by the allow-list above, or by the guard."""
+    for command in procedure_commands():
+        for found in re.finditer(r"(?<![\w:-])kubectl\b", command):
+            before = command[: found.start()]
+            assert before.endswith("inferops::require_cmd ") or (
+                "inferops::log" in before
+                or "inferops::fail" in before
+                or "inferops::warn" in before
+            ), command
+    body = "\n".join(procedure_commands())
+    assert "inferops::kubectl " not in body
+    assert "inferops::target_helm" not in body and "inferops::helm" not in body
 
 
 def test_the_procedure_says_that_its_report_is_not_a_caller_outcome() -> None:

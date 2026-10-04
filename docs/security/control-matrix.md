@@ -210,9 +210,11 @@ of a definition. What each establishes is narrow:
   namespace. A person who can change a namespace can set both. It was executed
   against stubs, and no run met a foreign installation. When a marked namespace
   exists, the install does not check whose the five cluster-scoped objects are.
-- The custom-resource refusal was executed against stubs. On 2026-10-04 one
-  run executed it against an Application and its project in a cluster, and the
-  removal refused at its first check.
+- The custom-resource refusal was executed against stubs. On 2026-10-04 each of
+  three runs of the Application procedure executed it against an Application and
+  its project in a cluster, and each time the removal refused at its first
+  check. [The record of those runs](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+  holds them.
 - On a cluster, the runs executed the passing side of the first two only.
 
 ## The vulnerability-scan severity policy

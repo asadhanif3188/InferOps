@@ -98,7 +98,7 @@ index of what has and has not been proven.
 
 [![InferOps V1 architecture: workload contract validation, platform domain, manually prepared release values, serving path, and proof register](docs/architecture/inferops-v1-architecture.png)](docs/architecture/inferops-v1-architecture.png)
 
-*Select the diagram to view it at full size. Deployment rendering is unbuilt end to end; the values a release is installed with are written by hand.*
+*Select the diagram to view it at full size. It shows V1. Deployment rendering is unbuilt end to end: in V1 the values a release is installed with are written by hand, and in V2 one Argo CD Application applies generated values on a cluster where an operator applied it.*
 
 <details>
 <summary>View the text architecture diagram</summary>
@@ -171,10 +171,10 @@ values renderer derives release values from a validated contract, and since
 directory a caller names. Since `V2-S3-002-PR1` one generated release is committed as
 [Git desired state](docs/environment/git-desired-state.md) under `gitops/`. Since
 `V2-S3-002-PR2` one [Argo CD Application](docs/environment/argocd-application.md) reads
-that release's generated values, and on one provider, once, Argo CD applied the release
-and one request was answered. That is one run and not a deployment: the Application is
-applied by an operator, the API image digest is not in Git, and four values the chart
-requires are still written by hand.
+that release's generated values. On one provider, in three runs on one day, Argo CD
+applied the release six times, and five of six caller requests were answered. Those are
+runs and not a deployment: the Application is applied by an operator, the API image
+digest is not in Git, and four values the chart requires are still written by hand.
 
 ## Prerequisites
 
@@ -363,8 +363,11 @@ time.
 - **Not defended.** See [the security boundary](#security-boundary).
 - **Deployment rendering is unbuilt end to end.** A validated contract produces Helm
   values and a release recording their sources, written only to a directory a caller
-  names; no release is installed from them, and the serving-a-described-workload claim
-  is `planned`.
+  names; no workflow or Helm procedure installs a release from them. Since
+  `V2-S3-002-PR2` one Argo CD Application applies the chart with the committed generated
+  values, on a cluster where an operator applied it, and it did so on one provider on
+  2026-10-04. The API image digest and four chart values are still supplied by hand,
+  and the serving-a-described-workload claim is `planned`.
 - **A release adds no evidence.** `v1.0.0` is cut over the frozen evidence pack and
   changes nothing in it. The register on `main` now certifies, at `C0`, only that the
   release exists, on [a record read after it](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md);

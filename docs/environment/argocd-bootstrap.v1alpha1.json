@@ -563,7 +563,7 @@
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_bootstrap_procedure.py::test_removal_refuses_while_a_custom_resource_exists",
       "owedBy": null,
-      "limit": "The test executes the removal against stub tools, once for each of the three kinds. Further tests hold the order of the ten deletions, hold each deletion to a named object, hold the wait for the pods and the wait for the namespace, and refuse an unanswered pod query. A static suite refuses a deletion that is not one of the six exact commands. The runs on docker-desktop removed the installation four times with no Application present. On 2026-10-04 a run on docker-desktop executed the removal while the Application and its project existed: it refused before it stopped a controller, and deleted nothing. The second check, after the controllers stop, is executed against stubs only. No test reaches a time limit, and no call sets a request timeout, so an API server that stops answering holds a read. The record lists four gaps in the order."
+      "limit": "The test executes the removal against stub tools, once for each of the three kinds. Further tests hold the order of the ten deletions, hold each deletion to a named object, hold the wait for the pods and the wait for the namespace, and refuse an unanswered pod query. A static suite refuses a deletion that is not one of the six exact commands. The runs on docker-desktop removed the installation four times with no Application present. On 2026-10-04 each of three runs of the Application procedure on docker-desktop executed the removal while the Application and its project existed. Each time it refused at its first check and deleted nothing. It refused before it stopped a controller. The second check, after the controllers stop, is executed against stubs only. No test reaches a time limit, and no call sets a request timeout, so an API server that stops answering holds a read. The record lists four gaps in the order."
     },
     {
       "ruleId": "security-baseline-rows-precede-the-first-install",
@@ -588,7 +588,7 @@
     "that upstream still serves the pinned bytes after the run, or that a pinned image is free of known vulnerabilities; neither image was scanned",
     "that the pinned release or images are authentic; no signature was verified",
     "that a request is served while Argo CD is absent or stopped; no release was installed during the run",
-    "that the order avoids a stuck deletion; every completed removal ran with no Application, and the one removal with an Application present refused at its first check",
+    "that the order avoids a stuck deletion; every completed removal ran with no Application, and the three removals with an Application present refused at their first check",
     "that a container runs the pinned image after a later restart",
     "that the core profile reconciles an Application on kind; on docker-desktop it reconciled one Application in a committed project, in the Application procedure's run",
     "that the host has the capacity to run Argo CD beside a release under load; the Application procedure's run held one release beside it and measured nothing",

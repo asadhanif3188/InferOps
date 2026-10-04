@@ -5,9 +5,11 @@
 # built and loaded into the node already.
 #
 # It prepares the cluster, runs the procedure, and returns the cluster to the
-# state it found. It downloads no model: one throwaway Helm release fills the
-# model cache claim from the local seed image, and is uninstalled before Argo CD
-# is installed.
+# state it found. It is written to download no model: one throwaway Helm release
+# fills the model cache claim from the local seed image, and is uninstalled
+# before the Application is applied. Whether the acquisition hook downloaded
+# anything is read from the hook's own log at step 11, as far as this driver
+# catches that log before the hook is deleted.
 set -u
 
 SCRIPT="scripts/environment/argocd-application.sh"
@@ -85,9 +87,12 @@ run bash "${PREREQUISITES}" apply
 
 step "5. Preparation: fill the claim from the local seed image, with one throwaway Helm release"
 API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)"
+printf '[exit %s] api-image.sh digest\n' "$?"
 printf 'API image digest on this host: %s\n' "${API_IMAGE_DIGEST}"
 bash scripts/environment/api-image.sh values >.artifacts/api-image-values.yaml
+printf '[exit %s] api-image.sh values\n' "$?"
 bash scripts/environment/model-seed-image.sh values >.artifacts/model-seed-values.yaml
+printf '[exit %s] model-seed-image.sh values\n' "$?"
 run helm --kube-context docker-desktop install inferops charts/inferops-llm \
   --namespace "${NAMESPACE}" \
   --values charts/inferops-llm/ci/real-values.yaml \
@@ -154,6 +159,12 @@ caller_request 18091
 step "15. A manual change to a Git-owned field, and what happens to it"
 # This is a check of the configured sync policy. It is not the drift experiment:
 # it sends no request, applies no bound, and has one observation.
+operation() {
+  run k get application "${APPLICATION}" -n argocd \
+    -o 'jsonpath={.status.operationState.operation.initiatedBy} {.status.operationState.startedAt} {.status.operationState.finishedAt} {.status.operationState.phase}{"\n"}'
+}
+printf 'The last operation Argo CD reports, before the change:\n'
+operation
 run k get deployment "${API_DEPLOYMENT}" -n "${NAMESPACE}" -o 'jsonpath={.spec.replicas}{"\n"}'
 run date -u +%Y-%m-%dT%H:%M:%SZ
 run k scale "deployment/${API_DEPLOYMENT}" -n "${NAMESPACE}" --replicas=2
@@ -163,8 +174,8 @@ for _ in $(seq 1 120); do
   [ "${replicas}" != "1" ] || break
   sleep 1
 done
-run k get application "${APPLICATION}" -n argocd \
-  -o 'jsonpath={.status.operationState.operation.initiatedBy} {.status.operationState.startedAt} {.status.operationState.finishedAt} {.status.operationState.phase}{"\n"}'
+printf 'The last operation Argo CD reports, after the change:\n'
+operation
 
 step "16. apply again, on the objects this procedure created"
 run bash "${SCRIPT}" apply --api-image-digest "${API_IMAGE_DIGEST}"

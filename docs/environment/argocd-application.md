@@ -3,11 +3,11 @@
 Status: **implemented, and executed on one provider.**
 [ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
 decided one Argo CD Application, the project that holds it, and its sync policy.
-On 2026-10-04 a procedure applied both on the `docker-desktop` provider. Argo CD
-applied the generated release at the commit that `main` named, and one request
-that a caller sent was answered.
-[The record of that run](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
-says what was observed. The procedure was not executed on `kind`.
+On 2026-10-04, in three runs on the `docker-desktop` provider, a procedure applied
+both, and Argo CD applied the generated release six times at one commit of
+`main`. Five of six caller requests were answered. One returned no response, and
+[the record of the runs](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+says what is known about it. The procedure was not executed on `kind`.
 
 > [!IMPORTANT]
 > **What Argo CD reports is not a caller outcome.** The procedure prints a
@@ -52,8 +52,8 @@ On a cluster where the Application is applied:
 - **A merge does not change the API image.** The API image digest is not in Git.
   See [the values](#the-values).
 
-No run observed a later commit of `main` being applied. The run resolved `main`
-to one commit and applied it.
+No run observed a later commit of `main` being applied. Each run resolved `main`
+to the same commit and applied it.
 
 ## The values
 
@@ -101,6 +101,10 @@ The project does not narrow the application controller. That controller holds a
 cluster-wide grant, and a project or an Application that a person creates by hand
 is not held by this file. The procedure refuses to run beside one.
 
+The project admits Role and RoleBinding, because the chart's collector needs
+them. Whoever can change `main` can therefore bind a role inside the destination
+namespace, on a cluster where the Application is applied.
+
 ## The sync policy
 
 | Setting | Value | Effect |
@@ -110,12 +114,13 @@ is not held by this file. The procedure refuses to run beside one.
 | Pruning | Off | An object that leaves the rendered chart stays until a person deletes it |
 | Sync options | None | The controller does not create the namespace. Terraform owns it |
 
-The procedure compares the live Application with these settings. A person who
-edits the live object is found by `verify`.
+The procedure compares the whole spec of the live Application and of the live
+project with the committed manifests. A person who edits a live object is found
+by `verify`.
 
-The run made one manual change: it scaled the API Deployment from one replica to
-two. Two seconds later the Deployment declared one replica again. That is a check
-of the setting and not the drift experiment.
+Each run made one manual change: it scaled the API Deployment from one replica
+to two. The Deployment declared one replica again within 2 to 4 seconds, read
+once a second. That is a check of the setting and not the drift experiment.
 
 ## The procedure
 
@@ -128,8 +133,8 @@ scripts/environment/argocd-application.sh remove --confirm
 
 | Operation | What it does | What it changes |
 |---|---|---|
-| `apply` | Applies the project and then the Application, with server-side apply. Adds the pin annotation to both, and the digest parameter to the Application. Waits up to 1,200 seconds until Argo CD reports a succeeded sync at the commit it resolved. Compares the live Application with the decision | The two objects in `argocd`. Argo CD then creates the release objects |
-| `verify` | Checks the marker of both objects. Compares the live source, destination, sync policy, and finalizers with the decision. Prints the revision and the states that Argo CD reports, and the workload objects by name | Nothing in the cluster |
+| `apply` | Applies the project and then the Application, with server-side apply. Adds the pin annotation to both, and the digest parameter to the Application. Builds both documents before it applies either. Waits up to 1,200 seconds until Argo CD reports a succeeded sync at the commit it resolved, for the digest it was given. Compares the whole live spec of both objects with the committed manifests | The two objects in `argocd`. Argo CD then creates the release objects |
+| `verify` | Checks the marker of both objects. Compares the whole live spec of each with the committed manifest, the SHA-256 that each records with the committed file, and the finalizers. Reads the digest from the live Application. Prints the revision and the states that Argo CD reports, and the workload objects by name | Nothing in the cluster |
 | `remove` | Deletes the Application with a cascade, waits until no release object remains, and deletes the project. Confirms that the claims are unchanged | The two objects, and the release objects that Argo CD applied |
 
 `apply` on objects that this procedure created applies the same bytes again. A
@@ -140,8 +145,8 @@ manifests. It records each manifest's SHA-256 on the object it applies.
 
 ## Refusals
 
-Every refusal comes before the first mutation. A query that did not answer is
-not read as an absence.
+Every refusal named here comes before the first mutation. A query that did not
+answer is not read as an absence.
 
 | Refusal | Applies to | Condition |
 |---|---|---|
@@ -150,15 +155,19 @@ not read as an absence.
 | `argocd-not-installed-by-the-bootstrap` | apply, verify, remove | No namespace `argocd` exists, or it does not carry the bootstrap marker and a recorded manifest SHA-256, or it is being deleted |
 | `destination-not-prepared` | apply | The namespace `inferops-release` or the claim `inferops-model-cache` does not exist. The procedure creates neither |
 | `helm-release-present` | apply | A Helm release named `inferops` is recorded in the destination namespace |
-| `foreign-argocd-custom-resource` | apply, remove | An Application, ApplicationSet, or AppProject object exists that this procedure did not create. An object with one of the two names and without the marker is not adopted |
+| `foreign-argocd-custom-resource` | apply, verify, remove | An Application, ApplicationSet, or AppProject object exists that this procedure did not create. An object with one of the two names and without the marker is not adopted |
 | `application-controller-not-ready` | remove | The application controller reports no ready replica. It performs the cascade |
+| `live-application-differs` | remove | The live Application names another project, destination server, or destination namespace. A cascade deletes what the live Application manages |
 
-`verify` also fails, without a refusal identifier, when the two objects do not
-both exist with the marker, or when the live Application differs from the
-decision.
+`verify` and `apply` also fail, without a refusal identifier, when a live object
+differs from the committed manifest or records another SHA-256. `verify` fails
+when the two objects do not both exist with the marker. `remove` stops at the
+argument check without `--confirm`.
 
-Each refusal is executed against stubs. The run executed four of them with the
-real tools: no provider, no digest, no Argo CD, and a recorded Helm release.
+Each refusal is executed against stubs. Each run executed four of them on the
+host: no provider and no digest, which stop before any cluster call, and no
+Argo CD and a recorded Helm release, which read the cluster. Of
+`argocd-not-installed-by-the-bootstrap`, only the case of no namespace ran.
 
 ## Removal
 
@@ -171,7 +180,7 @@ real tools: no provider, no digest, no Argo CD, and a recorded Helm release.
 
 The removal does not delete the namespace, a claim, or the Argo CD installation.
 [The bootstrap removal](argocd-bootstrap.md#removal) refuses while the Application
-or the project exists, so a full removal runs this procedure first. The run
+or the project exists, so a full removal runs this procedure first. Each run
 observed that refusal.
 
 The committed Application carries no resource finalizer. Deleting the Application
@@ -193,12 +202,15 @@ and applies the result.
 - **They do not run in one namespace at one time.** `apply` refuses while a Helm
   release of the same name is recorded. Nothing stops `helm install` after the
   Application is applied.
-- **Argo CD records no Helm release.** `helm list` shows nothing for an applied
-  Application, and `helm rollback` does not apply to it. A rollback is a Git
+- **Argo CD records no Helm release.** After an apply, the destination namespace
+  held no Helm release record. `helm list` was not run. A rollback is a Git
   change that is accepted into `main`.
-- **The chart's `pre-install` hook runs before the sync.** In the run, Argo CD
-  ran the acquisition Job and deleted it when it succeeded.
-- **The chart's `helm test` pod is not created.**
+- **The chart's `pre-install` hook runs before the sync.** In each run, Argo CD
+  reported the acquisition Job as a hook that succeeded, and the Job was not in
+  the later listing of the release objects.
+- **No pod from the chart's `helm test` hook was listed.**
+- **The bootstrap procedure prints that no Application exists, and does not
+  check.** The line can be false after an install over a live installation.
 
 ## Ownership
 
@@ -225,13 +237,16 @@ paths share them.
 
 ## What this does not establish
 
-- **That the workload serves requests.** One request was answered after each of
-  two applies. That is one observation each, with no load and no bound.
+- **That the workload serves requests.** Five of six requests were answered, one
+  after each apply, in three runs. One returned no response. Each is one
+  observation, with no load and no bound.
 - **Anything a sync state or a health state appears to say about a caller.**
 - **That Argo CD applies a later commit of `main`**, or how long it takes to
   notice one.
 - **That self-heal holds under load or within a bound.** One manual change was
-  reverted once.
+  reverted once in each run.
+- **That a live object which differs from the committed one is found on a
+  cluster.** Every comparison on a cluster found them equal.
 - **Anything about `kind`.**
 - **That the API image is the one a commit describes.** The digest is not in Git.
 - **That a merge to `main` was reviewed.**

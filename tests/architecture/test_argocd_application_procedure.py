@@ -18,6 +18,8 @@ stub answers what the test tells it to answer. No test reaches a time limit.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -54,7 +56,14 @@ BOOTSTRAPPED = f"Active|bootstrap|{PIN}"
 OWN_APPLICATION = f"Application/{ARGOCD_NAMESPACE}/{APPLICATION}|reconciliation|{PIN}\n"
 OWN_PROJECT = f"AppProject/{ARGOCD_NAMESPACE}/{PROJECT}|reconciliation|{PIN}\n"
 RECONCILED = "2026-01-01T00:00:02Z"
-SYNCED = f"Synced|{REVISION}|Healthy|Succeeded|{REVISION}|{RECONCILED}"
+SYNCED = (
+    f"Synced|{REVISION}|Healthy|Succeeded|{REVISION}|{RECONCILED}|{DIGEST}|{DIGEST}"
+)
+DECIDED_TARGET = f"{PROJECT}|https://kubernetes.default.svc|{RELEASE_NAMESPACE}"
+# What the stub prints for the spec of each committed manifest. The live
+# objects print the same strings unless a test says otherwise.
+PROJECT_SPEC = "committed-project-spec"
+APPLICATION_SPEC = "committed-application-spec"
 LIVE_SPEC = (
     f"{PROJECT}|https://github.com/asadhanif3188/InferOps.git|main|charts/inferops-llm|"
     f"https://kubernetes.default.svc|{RELEASE_NAMESPACE}|false|true|"
@@ -127,7 +136,19 @@ case "$*" in
     fi
     ;;
   *"get secrets"*) printf '%s' "${STUB_HELM_RECORDS:-}" ;;
+  *"patch --local"*"jsonpath={.spec}"*"workloads-project.yaml"*) printf 'committed-project-spec' ;;
+  *"patch --local"*"jsonpath={.spec}"*) printf 'committed-application-spec' ;;
   *"patch --local"*) printf '{"stub":"document"}\\n' ;;
+  *"get appprojects.argoproj.io inferops-workloads"*"|{.spec}"*) printf '%s' "${STUB_LIVE_PROJECT:-}" ;;
+  *"get applications.argoproj.io local-docker-desktop-support-assistant"*"|{.spec}"*)
+    printf '%s' "${STUB_LIVE_APPLICATION:-}"
+    ;;
+  *"get applications.argoproj.io local-docker-desktop-support-assistant"*"jsonpath={.spec.source.helm.parameters[0].value}")
+    printf '%s' "${STUB_LIVE_DIGEST:-}"
+    ;;
+  *"get applications.argoproj.io local-docker-desktop-support-assistant"*"{.spec.project}|{.spec.destination.server}"*)
+    printf '%s' "${STUB_LIVE_TARGET:-}"
+    ;;
   *"apply --server-side"*)
     sed 's/^/kubectl-stdin /' >>"${INFEROPS_STUB_LOG}"
     printf 'object serverside-applied\\n'
@@ -251,6 +272,24 @@ class Run:
         raise AssertionError(f"no call holds {fragments}: {self.calls}")
 
 
+def sha256_of(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def document_patches(run: Run) -> list[list[str]]:
+    """The two local patches that build the documents `apply` sends."""
+    return [
+        call
+        for call in run.kubectl
+        if call[:2] == ["patch", "--local"] and call[call.index("-o") + 1] == "json"
+    ]
+
+
+def patch_operations(call: list[str]) -> list[dict]:
+    """The JSON patch a call was given, parsed. A malformed patch fails here."""
+    return json.loads(call[call.index("-p") + 1])
+
+
 @pytest.fixture
 def sandbox(tmp_path: Path) -> Path:
     """A directory laid out like the repository, holding the committed bytes.
@@ -307,6 +346,12 @@ def run_script(
     env["STUB_STATUS"] = SYNCED
     env["STUB_LIVE_SPEC"] = LIVE_SPEC
     env["STUB_CONTROLLER_READY"] = "1"
+    env["STUB_LIVE_PROJECT"] = f"{sha256_of(sandbox / PROJECT_REL)}|{PROJECT_SPEC}"
+    env["STUB_LIVE_APPLICATION"] = (
+        f"{sha256_of(sandbox / APPLICATION_REL)}|{APPLICATION_SPEC}"
+    )
+    env["STUB_LIVE_DIGEST"] = DIGEST
+    env["STUB_LIVE_TARGET"] = DECIDED_TARGET
     if provider is not None:
         env["INFEROPS_PROVIDER"] = provider
     if cluster_name is not None:
@@ -523,7 +568,7 @@ def test_apply_does_not_read_an_unanswered_query_as_absence(
 def test_apply_applies_the_project_and_then_the_application(sandbox: Path) -> None:
     run = run_script(sandbox, *APPLY)
     assert run.returncode == 0, run.output
-    patches = [call for call in run.kubectl if call[:2] == ["patch", "--local"]]
+    patches = document_patches(run)
     assert len(patches) == 2
     assert any("workloads-project.yaml" in word for word in patches[0])
     assert any(
@@ -531,9 +576,15 @@ def test_apply_applies_the_project_and_then_the_application(sandbox: Path) -> No
     )
     # Each local patch is followed by one apply, and nothing mutates before the
     # first one.
-    first_patch = run.index_of("patch --local", "workloads-project.yaml")
+    # Both documents are built before the first apply, so a manifest that
+    # cannot be read leaves nothing half applied.
     first_apply = run.index_of("apply --server-side")
-    assert first_patch < first_apply
+    assert (
+        run.index_of("patch --local", "-o json", "workloads-project.yaml") < first_apply
+    )
+    assert (
+        run.index_of("patch --local", "-o json", "support-assistant.yaml") < first_apply
+    )
     assert run.stdin == ['{"stub":"document"}'] * 2
     for mutation in run.mutations:
         assert "--field-manager=inferops-argocd-application" in mutation
@@ -545,31 +596,143 @@ def test_apply_applies_the_project_and_then_the_application(sandbox: Path) -> No
 def test_apply_adds_the_pin_to_both_and_the_digest_to_the_application(
     sandbox: Path,
 ) -> None:
+    """Each patch is parsed, so a malformed one fails, and compared as a whole."""
     run = run_script(sandbox, *APPLY)
-    project_patch, application_patch = [
-        " ".join(call) for call in run.kubectl if call[:2] == ["patch", "--local"]
-    ]
+    project_patch, application_patch = document_patches(run)
     annotation = "inferops.io/argocd-application-manifest-sha256"
-    for patch, relative in (
-        (project_patch, PROJECT_REL),
-        (application_patch, APPLICATION_REL),
-    ):
-        committed = (
-            subprocess.run(
-                ["sha256sum", str(sandbox / relative)],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            .stdout.split()[0]
-            .lstrip("\\")
+
+    def pin(relative: str) -> dict:
+        return {
+            "op": "add",
+            "path": "/metadata/annotations",
+            "value": {annotation: sha256_of(sandbox / relative)},
+        }
+
+    assert patch_operations(project_patch) == [pin(PROJECT_REL)]
+    assert patch_operations(application_patch) == [
+        pin(APPLICATION_REL),
+        {
+            "op": "add",
+            "path": "/spec/source/helm/parameters",
+            "value": [{"name": "api.image.digest", "value": DIGEST}],
+        },
+    ]
+
+
+@needs_bash
+def test_apply_applies_nothing_when_a_manifest_cannot_be_read(sandbox: Path) -> None:
+    """The first version applied the project before it read the Application file."""
+    run = run_script(sandbox, *APPLY, fail_on="support-assistant.yaml")
+    assert run.refused
+    assert "Nothing was changed" in run.output
+    assert run.mutations == []
+
+
+@needs_bash
+def test_apply_does_not_end_on_a_report_about_another_digest(sandbox: Path) -> None:
+    """A comparison that started before the apply can finish after it.
+
+    It carries a new comparison time and the earlier digest. The wait ends only
+    on the digest that this apply was given.
+    """
+    other = "sha256:" + "d" * 64
+    run = run_script(
+        sandbox,
+        *APPLY,
+        before="3|2026-01-01T00:00:01Z",
+        generation_after="4",
+        sync_polls="2",
+        status_pending=(
+            f"Synced|{REVISION}|Healthy|Succeeded|{REVISION}|{RECONCILED}|{other}|{other}"
+        ),
+        **APPLIED,
+    )
+    assert run.returncode == 0, run.output
+    assert sum(1 for line in run.calls if line.startswith("sleep ")) == 2
+
+
+@needs_bash
+@pytest.mark.parametrize("operation", (APPLY, ("verify",)), ids=lambda o: o[0])
+@pytest.mark.parametrize(
+    ("stub", "finding"),
+    (
+        ({"live_project": "PIN|another-spec"}, "spec of the live project differs"),
+        (
+            {"live_application": "PIN|another-spec"},
+            "spec of the live Application differs",
+        ),
+        ({"live_project": f"{'e' * 64}|{PROJECT_SPEC}"}, "applied from other bytes"),
+        (
+            {"live_application": f"{'e' * 64}|{APPLICATION_SPEC}"},
+            "applied from other bytes",
+        ),
+    ),
+    ids=("project-spec", "application-spec", "project-pin", "application-pin"),
+)
+def test_a_live_object_that_is_not_the_committed_one_is_a_finding(
+    sandbox: Path, operation: tuple[str, ...], stub: dict[str, str], finding: str
+) -> None:
+    """The whole spec and the recorded SHA-256 of both objects are compared.
+
+    The first version read nine fields of the Application and none of the
+    project. A sync option, a second source, another values file, or a project
+    that admits every kind passed it.
+    """
+    values = {
+        key: value.replace(
+            "PIN",
+            sha256_of(
+                sandbox / (PROJECT_REL if key == "live_project" else APPLICATION_REL)
+            ),
         )
-        assert f'"{annotation}":"{committed}"' in patch
-    assert DIGEST not in project_patch
-    assert (
-        '{"op":"add","path":"/spec/source/helm/parameters",'
-        f'"value":[{{"name":"api.image.digest","value":"{DIGEST}"}}]}}'
-    ) in application_patch
+        for key, value in stub.items()
+    }
+    run = run_script(sandbox, *operation, **APPLIED, **values)
+    assert run.refused
+    assert finding in run.output
+    assert "The live objects are not the ones that were decided" in run.output
+
+
+@needs_bash
+def test_verification_reads_the_digest_from_the_live_application(sandbox: Path) -> None:
+    run = run_script(sandbox, "verify", live_digest="not-a-digest", **APPLIED)
+    assert run.refused
+    assert "is not an image digest" in run.output
+    assert run.mutations == []
+
+
+@needs_bash
+def test_verification_refuses_beside_an_object_it_did_not_create(sandbox: Path) -> None:
+    run = run_script(
+        sandbox,
+        "verify",
+        applications=OWN_APPLICATION + "Application/argocd/another||\n",
+        projects=OWN_PROJECT,
+    )
+    assert run.refused
+    assert "foreign-argocd-custom-resource" in run.output
+    assert run.mutations == []
+
+
+@needs_bash
+@pytest.mark.parametrize(
+    "target",
+    (
+        f"{PROJECT}|https://kubernetes.default.svc|default",
+        f"{PROJECT}|https://203.0.113.7|{RELEASE_NAMESPACE}",
+        f"default|https://kubernetes.default.svc|{RELEASE_NAMESPACE}",
+        "",
+    ),
+    ids=("namespace", "server", "project", "unreadable-fields"),
+)
+def test_removal_refuses_a_live_application_with_another_destination(
+    sandbox: Path, target: str
+) -> None:
+    """The cascade deletes what the live Application manages."""
+    run = run_script(sandbox, "remove", "--confirm", live_target=target, **APPLIED)
+    assert run.refused
+    assert "live-application-differs" in run.output
+    assert run.mutations == []
 
 
 @needs_bash
@@ -612,7 +775,7 @@ def test_apply_does_not_accept_a_report_from_before_it_changed_the_application(
     )
     assert run.returncode == 0, run.output
     assert sum(1 for line in run.calls if line.startswith("sleep ")) == 2
-    assert "has not compared the changed Application yet" in run.output
+    assert "has not compared the Application since the apply" in run.output
 
 
 @needs_bash
@@ -622,7 +785,7 @@ def test_apply_that_changes_nothing_accepts_the_current_report(sandbox: Path) ->
     )
     assert run.returncode == 0, run.output
     assert not any(line.startswith("sleep ") for line in run.calls)
-    assert "did not change the Application" in run.output
+    assert "did not change across the apply" in run.output
 
 
 @needs_bash

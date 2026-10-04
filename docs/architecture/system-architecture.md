@@ -20,8 +20,11 @@ document describes the boundary V1 is held to; each box says what exists.
 > more have been served through it since under declared load, failure, and
 > clean-clone experiments. **Deployment rendering is still unbuilt end to end** — a
 > validated contract document is turned into Helm values since `V2-S2-001-PR1`, and
-> since `V2-S2-001-PR2` into a release written only to a directory a caller names; the
-> values file a release is installed with is written by hand.
+> since `V2-S2-001-PR2` into a release written only to a directory a caller names. No
+> workflow or Helm procedure installs a release from them. Since `V2-S3-002-PR2` one
+> Argo CD Application applies the chart with the committed generated values, on a
+> cluster where an operator applied it. The API image digest and four chart values
+> are still supplied by hand.
 >
 > Every result behind those sentences is one provider, one Windows host, CPU, and
 > one replica of each tier. The multi-replica profile was refused at the capacity
@@ -228,8 +231,10 @@ that composes one, the chart, and the prerequisite layer have all been built
 since, and `V1-S3-011` ran them together on the reference provider. What is still
 unbuilt end to end is deployment rendering: since `V2-S2-001-PR1` a validated
 document is turned into Helm values, and since `V2-S2-001-PR2` into a release and its
-values written to a directory a caller names, and nothing installs a release from them;
-the values file a release is installed with is written by hand.
+values written to a directory a caller names. No workflow or Helm procedure installs
+a release from them, and on the Helm path the values file a release is installed with
+is written by hand. Since `V2-S3-002-PR2` one Argo CD Application applies the chart
+with the committed generated values, on a cluster where an operator applied it.
 
 The rule has a visible consequence and it is worth stating rather than discovering:
 the composition point — the place that decides which adapter is live — is the one
@@ -472,11 +477,12 @@ box of the diagram was unchanged: no Application existed.
 One Application reads the chart and the generated values of that release, at the
 revision `main` names, with self-heal and without pruning. An operator applies it
 with `scripts/environment/argocd-application.sh`, after the bootstrap and after
-the prerequisite layer. On `docker-desktop`, once, Argo CD applied the release and
-one request that a caller sent was answered.
+the prerequisite layer. On 2026-10-04, in three runs on `docker-desktop`, Argo CD
+applied the release six times at one commit of `main`, and five of six caller
+requests were answered.
 [The Argo CD Application document](../environment/argocd-application.md) states the
-rules. The diagram above is kept as it was drawn: its lower box read
-"NOT DECIDED" until this change.
+rules. The diagram above is kept as it was drawn. Its lower box still reads
+"NOT DECIDED"; ADR 0019 decides it.
 
 Three statements bound this diagram:
 

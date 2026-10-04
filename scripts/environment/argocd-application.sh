@@ -16,21 +16,23 @@
 #          parameter. Waits a bounded time until Argo CD reports that it applied
 #          the revision that `main` names.
 # verify   Reads the two objects and changes nothing in the cluster. Compares
-#          the live sync policy, source, and destination with the decision, and
-#          prints the revision and the states that Argo CD reports.
+#          the whole live spec of each with the committed manifest, and the
+#          recorded SHA-256 with the committed file. Prints the revision and
+#          the states that Argo CD reports.
 # remove   Deletes the Application with a cascade, so that Argo CD deletes the
 #          workload objects it applied. Then deletes the project. The namespace
 #          and the claim stay.
 #
-# Every refusal below comes before the first mutation.
+# Every refusal named below comes before the first mutation.
 #
 #   target-not-selected-or-not-verified   inferops::resolve_target
 #   api-image-digest-not-given            apply
 #   argocd-not-installed-by-the-bootstrap apply, verify, remove
 #   destination-not-prepared              apply
 #   helm-release-present                  apply
-#   foreign-argocd-custom-resource        apply, remove
+#   foreign-argocd-custom-resource        apply, verify, remove
 #   application-controller-not-ready      remove
+#   live-application-differs              remove
 #
 # What this script reports is what Argo CD reports: a revision, a sync state, and
 # a health state. None of them is a caller outcome. A request that a caller sent
@@ -206,6 +208,45 @@ gitops::application_field() {
   printf '%s' "${output}" | tr -d '\r'
 }
 
+# The recorded pin and the spec of one live object, as `pin|spec`. kubectl
+# prints the spec as one line of JSON with sorted keys.
+gitops::live_object() {
+  local output
+  if ! output="$(inferops::target_kubectl get "$1" "$2" \
+    -n "${INFEROPS_ARGOCD_NAMESPACE}" --ignore-not-found \
+    -o "jsonpath={.metadata.annotations.${INFEROPS_GITOPS_PIN_ANNOTATION//./\\.}}|{.spec}")"; then
+    inferops::warn "the query for '$1/$2' did not answer."
+    return 1
+  fi
+  printf '%s' "${output}" | tr -d '\r'
+}
+
+# The spec of a committed manifest after a local patch, printed the same way.
+# The patch is local: it reads the file and contacts no cluster.
+gitops::committed_spec() {
+  local output
+  if ! output="$(inferops::target_kubectl patch --local --type json -o 'jsonpath={.spec}' \
+    -f "$(inferops::native_path "$1")" -p "$2")"; then
+    inferops::warn "the manifest ${1#"${INFEROPS_ROOT}/"} could not be read."
+    return 1
+  fi
+  printf '%s' "${output}" | tr -d '\r'
+}
+
+# The two patches. Each adds the pin annotation, and the Application's also adds
+# the digest parameter. `add` on /metadata/annotations sets the whole map: the
+# committed manifests carry no annotation, and a test holds that.
+gitops::project_patch() {
+  printf '[{"op":"add","path":"/metadata/annotations","value":{"%s":"%s"}}]' \
+    "${INFEROPS_GITOPS_PIN_ANNOTATION}" "${project_sha}"
+}
+
+gitops::application_patch() {
+  printf '[{"op":"add","path":"/metadata/annotations","value":{"%s":"%s"}},{"op":"add","path":"/spec/source/helm/parameters","value":[{"name":"%s","value":"%s"}]}]' \
+    "${INFEROPS_GITOPS_PIN_ANNOTATION}" "${application_sha}" \
+    "${INFEROPS_GITOPS_DIGEST_PARAMETER}" "$1"
+}
+
 # The workload objects in the destination namespace that carry the release
 # label, by name.
 gitops::workload_objects() {
@@ -313,22 +354,70 @@ gitops::assert_live_application() {
   gitops::expect "automated pruning" "${prune}" "false"
   gitops::expect "automated self-heal" "${self_heal}" "true"
   gitops::expect "finalizers" "${finalizers}" ""
+
+  # The fields above are printed for the reader. The comparison below is the
+  # check: the whole spec of each live object against the committed manifest,
+  # and the recorded SHA-256 against the committed file.
+  local digest="$1" live expected
+  if [ -z "${digest}" ]; then
+    if ! digest="$(gitops::application_field "{.spec.source.helm.parameters[0].value}")"; then
+      inferops::fail "could not read the Application. ${UNANSWERED}"
+    fi
+  fi
+  if [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    inferops::log "API image digest on the live Application: ${digest}"
+  else
+    inferops::warn "the first Helm parameter of the live Application is '${digest}', and it is not an image digest."
+    findings=$((findings + 1))
+    digest="sha256:none"
+  fi
+
+  gitops::compare_object() {
+    local label="$1" resource="$2" name="$3" file="$4" sha="$5" patch="$6"
+    if ! expected="$(gitops::committed_spec "${file}" "${patch}")"; then
+      inferops::fail "could not read the committed ${label}."
+    fi
+    if ! live="$(gitops::live_object "${resource}" "${name}")"; then
+      inferops::fail "could not read the live ${label}. ${UNANSWERED}"
+    fi
+    if [ "${live%%|*}" = "${sha}" ]; then
+      inferops::log "the ${label} records the SHA-256 of the committed manifest."
+    else
+      inferops::warn "the ${label} records manifest SHA-256 '${live%%|*}', and the committed file has ${sha}. It was applied from other bytes. Run 'apply' again."
+      findings=$((findings + 1))
+    fi
+    if [ "${live#*|}" = "${expected}" ]; then
+      inferops::log "the whole spec of the live ${label} is the committed one."
+    else
+      inferops::warn "the spec of the live ${label} differs from the committed manifest."
+      inferops::warn "live:      ${live#*|}"
+      inferops::warn "committed: ${expected}"
+      findings=$((findings + 1))
+    fi
+  }
+  gitops::compare_object "project" appprojects.argoproj.io "${INFEROPS_GITOPS_PROJECT_NAME}" \
+    "${project_file}" "${project_sha}" "$(gitops::project_patch)"
+  gitops::compare_object "Application" applications.argoproj.io "${INFEROPS_GITOPS_APPLICATION_NAME}" \
+    "${application_file}" "${application_sha}" "$(gitops::application_patch "${digest}")"
+
   [ "${findings}" -eq 0 ] ||
-    inferops::fail "${findings} finding(s). The live Application is not the one that was decided."
+    inferops::fail "${findings} finding(s). The live objects are not the ones that were decided."
 }
 
 # Prints what Argo CD reports about the Application.
 gitops::report_application() {
   local record
-  if ! record="$(gitops::application_field '{.status.sync.status}|{.status.sync.revision}|{.status.health.status}|{.status.operationState.phase}|{.status.operationState.syncResult.revision}|{.status.reconciledAt}')"; then
+  if ! record="$(gitops::application_field '{.status.sync.status}|{.status.sync.revision}|{.status.health.status}|{.status.operationState.phase}|{.status.operationState.syncResult.revision}|{.status.reconciledAt}|{.status.sync.comparedTo.source.helm.parameters[0].value}|{.status.operationState.syncResult.source.helm.parameters[0].value}')"; then
     inferops::fail "could not read the Application. ${UNANSWERED}"
   fi
-  IFS='|' read -r sync_status sync_revision health_status operation_phase operation_revision reconciled_at <<<"${record}"
+  IFS='|' read -r sync_status sync_revision health_status operation_phase operation_revision reconciled_at compared_digest applied_digest <<<"${record}"
   inferops::log "desired revision: ${INFEROPS_GITOPS_TARGET_REVISION}, resolved by Argo CD to ${sync_revision:-nothing yet}"
   inferops::log "revision of the last sync operation: ${operation_revision:-none}, phase ${operation_phase:-none}"
   inferops::log "sync state: ${sync_status:-none}"
   inferops::log "health state: ${health_status:-none}"
   inferops::log "last comparison with Git: ${reconciled_at:-none}"
+  inferops::log "API image digest that Argo CD compared: ${compared_digest:-none}"
+  inferops::log "API image digest of the last sync operation: ${applied_digest:-none}"
   inferops::log "${NOT_CALLER_TRUTH}"
 }
 
@@ -360,25 +449,33 @@ on_apply_exit() {
   exit "${rc}"
 }
 
-# Applies one committed manifest with the pin annotation, and for the
-# Application the digest parameter. The patch is local: it reads the file and
-# contacts no cluster.
-gitops::apply_manifest() {
+# One committed manifest after its local patch, as the document to apply. The
+# file is hashed again afterwards, so the bytes that are applied are the bytes
+# whose SHA-256 is recorded.
+gitops::patched_document() {
   local file="$1" sha="$2" patch="$3" document
   if ! document="$(inferops::target_kubectl patch --local --type json -o json \
     -f "$(inferops::native_path "${file}")" -p "${patch}")"; then
-    inferops::fail "the manifest ${file#"${INFEROPS_ROOT}/"} could not be read."
+    inferops::warn "the manifest ${file#"${INFEROPS_ROOT}/"} could not be read."
+    return 1
   fi
-  [ "$(sha256sum "${file}" | awk '{ print $1 }')" = "${sha}" ] ||
-    inferops::fail "the manifest ${file#"${INFEROPS_ROOT}/"} changed while this procedure ran. It was not applied."
+  if [ "$(sha256sum "${file}" | awk '{ print $1 }')" != "${sha}" ]; then
+    inferops::warn "the manifest ${file#"${INFEROPS_ROOT}/"} changed while this procedure ran."
+    return 1
+  fi
+  printf '%s\n' "${document}"
+}
+
+gitops::apply_document() {
   mutated=1
-  printf '%s\n' "${document}" |
+  printf '%s\n' "$1" |
     inferops::target_kubectl apply --server-side \
       --field-manager="${INFEROPS_GITOPS_FIELD_MANAGER}" -f -
 }
 
 apply() {
-  local claims helm_records deadline annotation_patch before generation_before reconciled_before generation_after
+  local claims helm_records deadline before generation_before reconciled_before generation_after
+  local project_document application_document
 
   inferops::section "Refusals"
   gitops::report_target
@@ -418,39 +515,49 @@ apply() {
   generation_before="${before%%|*}"
   reconciled_before="${before#*|}"
 
+  # Both documents are built before the first apply, so a manifest that cannot
+  # be read leaves nothing half applied.
+  if ! project_document="$(gitops::patched_document "${project_file}" "${project_sha}" "$(gitops::project_patch)")"; then
+    inferops::fail "the project manifest could not be prepared. Nothing was changed."
+  fi
+  if ! application_document="$(gitops::patched_document "${application_file}" "${application_sha}" "$(gitops::application_patch "${api_image_digest}")")"; then
+    inferops::fail "the Application manifest could not be prepared. Nothing was changed."
+  fi
+
   trap on_apply_exit EXIT
 
   inferops::section "Apply"
-  annotation_patch='{"op":"add","path":"/metadata/annotations","value":{"'"${INFEROPS_GITOPS_PIN_ANNOTATION}"'":"%s"}}'
-  # shellcheck disable=SC2059
-  gitops::apply_manifest "${project_file}" "${project_sha}" \
-    "[$(printf "${annotation_patch}" "${project_sha}")]"
-  # shellcheck disable=SC2059
-  gitops::apply_manifest "${application_file}" "${application_sha}" \
-    "[$(printf "${annotation_patch}" "${application_sha}"),{\"op\":\"add\",\"path\":\"/spec/source/helm/parameters\",\"value\":[{\"name\":\"${INFEROPS_GITOPS_DIGEST_PARAMETER}\",\"value\":\"${api_image_digest}\"}]}]"
+  gitops::apply_document "${project_document}"
+  gitops::apply_document "${application_document}"
 
   if ! generation_after="$(gitops::application_field '{.metadata.generation}')"; then
     inferops::fail "could not read the Application after the apply. ${UNANSWERED}"
   fi
+  # Argo CD writes the status into the same object, so its writes move the
+  # generation too. A changed generation means that the apply or Argo CD wrote
+  # the object. It is treated as a change by the apply.
   if [ "${generation_after}" = "${generation_before}" ]; then
-    inferops::log "the apply did not change the Application (generation ${generation_after})."
+    inferops::log "the generation of the Application did not change across the apply (${generation_after})."
   else
-    inferops::log "the apply changed the Application: generation '${generation_before:-none}' to '${generation_after}'. A report from before the change is not accepted."
+    inferops::log "the generation of the Application changed across the apply: '${generation_before:-none}' to '${generation_after}'. A comparison from before the apply is not accepted."
   fi
 
   inferops::section "Sync"
   # Synced alone is not enough: an Application is Synced before its first
   # operation when nothing differs. The operation must have succeeded at a
   # revision, and that revision must be the one the comparison resolved. When
-  # the apply changed the Application, the comparison must also be a new one.
+  # the generation changed, the comparison must also be a new one. In every
+  # case the digest that Argo CD compared and applied must be the one given, so
+  # that a report about an earlier digest does not end the wait.
   deadline=$((SECONDS + SYNC_BUDGET_SECONDS))
   while :; do
     gitops::report_application
     if [ "${generation_after}" != "${generation_before}" ] &&
       { [ -z "${reconciled_at}" ] || [ "${reconciled_at}" = "${reconciled_before}" ]; }; then
-      inferops::log "Argo CD has not compared the changed Application yet."
+      inferops::log "Argo CD has not compared the Application since the apply."
     elif [ "${sync_status}" = "Synced" ] && [ "${operation_phase}" = "Succeeded" ] &&
-      [[ "${sync_revision}" =~ ^[0-9a-f]{40}$ ]] && [ "${operation_revision}" = "${sync_revision}" ]; then
+      [[ "${sync_revision}" =~ ^[0-9a-f]{40}$ ]] && [ "${operation_revision}" = "${sync_revision}" ] &&
+      [ "${compared_digest}" = "${api_image_digest}" ] && [ "${applied_digest}" = "${api_image_digest}" ]; then
       break
     fi
     if [ "${SECONDS}" -ge "${deadline}" ]; then
@@ -462,8 +569,8 @@ apply() {
     sleep 10
   done
 
-  inferops::section "Live Application"
-  gitops::assert_live_application
+  inferops::section "Live objects"
+  gitops::assert_live_application "${api_image_digest}"
 
   inferops::section "Result"
   inferops::log "Argo CD reports that it applied revision ${sync_revision} of '${INFEROPS_GITOPS_TARGET_REVISION}' to '${INFEROPS_RELEASE_NAMESPACE}' on provider '${INFEROPS_TARGET_PROVIDER}'."
@@ -483,8 +590,8 @@ verify() {
     inferops::fail "the project '${INFEROPS_GITOPS_PROJECT_NAME}' and the Application '${INFEROPS_GITOPS_APPLICATION_NAME}' do not both exist with the marker. The Application is not applied by this procedure on this target."
   inferops::log "the project and the Application exist, and each carries ${INFEROPS_GITOPS_MARKER_LABEL}=${INFEROPS_GITOPS_MARKER_VALUE} and a recorded manifest SHA-256."
 
-  inferops::section "Live Application"
-  gitops::assert_live_application
+  inferops::section "Live objects"
+  gitops::assert_live_application ""
 
   inferops::section "What Argo CD reports"
   gitops::report_application
@@ -496,14 +603,14 @@ verify() {
   printf '%s\n' "${objects}"
 
   inferops::section "Result"
-  inferops::log "the Application '${INFEROPS_GITOPS_APPLICATION_NAME}' is the one that was decided: automated sync, self-heal, and no pruning."
+  inferops::log "the live project and the live Application '${INFEROPS_GITOPS_APPLICATION_NAME}' have the committed spec: automated sync, self-heal, and no pruning."
   inferops::log "This does not establish that the workload serves a request."
 }
 
 # --- remove -----------------------------------------------------------------
 
 remove() {
-  local ready claims_before claims_after deadline objects
+  local ready claims_before claims_after deadline objects live_target decided_target
 
   inferops::section "Refusals"
   gitops::report_target
@@ -526,6 +633,16 @@ remove() {
     ready="$(printf '%s' "${ready}" | tr -d '\r')"
     [ "${ready:-0}" -ge 1 ] ||
       inferops::fail "refusing: application-controller-not-ready: the statefulset '${INFEROPS_ARGOCD_CONTROLLER}' reports no ready replica. It performs the cascade, and without it the deletion does not finish. Nothing was changed."
+
+    # The cascade deletes what the live Application manages, and the residue
+    # question below asks in one namespace. So the live Application must name
+    # the decided project and destination.
+    if ! live_target="$(gitops::application_field '{.spec.project}|{.spec.destination.server}|{.spec.destination.namespace}')"; then
+      inferops::fail "could not read the Application. ${UNANSWERED}"
+    fi
+    decided_target="${INFEROPS_GITOPS_PROJECT_NAME}|${INFEROPS_GITOPS_DESTINATION_SERVER}|${INFEROPS_RELEASE_NAMESPACE}"
+    [ "${live_target}" = "${decided_target}" ] ||
+      inferops::fail "refusing: live-application-differs: the live Application names project, server, and namespace '${live_target}', and the decision is '${decided_target}'. A cascade deletes what the live Application manages. Nothing was changed."
 
     inferops::section "Deleting the Application, with a cascade"
     inferops::target_kubectl patch applications.argoproj.io "${INFEROPS_GITOPS_APPLICATION_NAME}" \

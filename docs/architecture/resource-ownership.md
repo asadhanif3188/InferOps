@@ -51,9 +51,9 @@ Application existed.
 Argo CD Application for one release path, and the project that holds it. They
 have one owner: `argocd-application`, with the `reconciliation` lifecycle. The
 inventory gains that owner and two rows. One row is the two committed manifests.
-The other is the two objects in a cluster, and it is `implemented`: a run on the
-`docker-desktop` provider applied and removed them, and
-[the record of that run](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+The other is the two objects in a cluster, and it is `implemented`: three runs on
+the `docker-desktop` provider applied and removed them, and
+[the record of those runs](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
 says what was observed. No run on `kind` exists.
 
 **The release rows keep their owner, and the inventory now describes two paths to
@@ -62,7 +62,7 @@ Helm path. On a cluster where the Application is applied, Argo CD creates the
 same objects from the same chart, and the Application procedure's removal deletes
 them. The two paths do not run in one namespace at one time: the procedure
 refuses while a Helm release of the same name is recorded there. That refusal is
-executed against stubs and was observed once on `docker-desktop`. Nothing stops
+executed against stubs and was observed once in each run on `docker-desktop`. Nothing stops
 an operator who runs `helm install` after the Application is applied, and ADR
 0019 records that as a risk.
 
@@ -268,8 +268,8 @@ Added on 2026-10-04 by
 
 Three limits apply to this row:
 
-- **It is built on one provider.** [The run](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
-  was on `docker-desktop`. It certifies nothing about `kind`.
+- **It is built on one provider.** [The runs](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+  were on `docker-desktop`. They certify nothing about `kind`.
 - **The marker prevents an accident and not an impersonation.** A person who can
   write an object in `argocd` can write the label and the annotation.
 - **The Application is not desired state.** Argo CD does not read the two

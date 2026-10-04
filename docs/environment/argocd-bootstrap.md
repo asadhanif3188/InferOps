@@ -271,10 +271,11 @@ Removal deletes what the bootstrap created, and nothing else. It deletes by the
 kinds and names the record lists, so it needs no download. It was executed four
 times on `docker-desktop`, in two runs, with no Application present, and each time
 no listed object remained. Until 2026-10-04 the refusal for an existing Application
-was executed against stubs only. On that day
-[a run of the Application procedure](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
-executed the removal while the Application and its project existed. It refused at
-step 3 and deleted nothing. Its steps, in order:
+was executed against stubs only. On that day each of
+[three runs of the Application procedure](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+executed the removal while the Application and its project existed. Each time it
+refused at step 3 and deleted nothing. Each of those runs also completed one
+removal afterwards, as cleanup, with no Application present. Its steps, in order:
 
 1. Select and verify the target cluster, as for every mutation.
 2. Refuse unless a namespace named `argocd` exists and carries the bootstrap
@@ -333,7 +334,7 @@ says why.
 | `the-manifest-is-verified-before-it-is-used` | tested | Executed against stub tools. The stub download did not reproduce the path defect the first run on Windows exposed. A SHA-256 identifies bytes and does not authenticate them |
 | `images-run-at-their-pinned-digests` | tested | Executed against stub tools, through `verify` and through `install` with `sha256sum` also replaced. The runs executed the passing comparison only. The check keys on the container name. The rule covers the moment of the check and nothing after it |
 | `a-foreign-argocd-installation-is-refused` | tested | Executed against stub tools. No run met a foreign installation in a cluster. The marker is a label and an annotation on the namespace; the five cluster-scoped objects carry none, and the install does not check whose they are when a marked namespace exists |
-| `removal-is-scoped-and-refuses-while-an-application-exists` | tested | Executed against stub tools, for each of the three kinds. Every completed removal in the runs had no Application present. One removal on `docker-desktop` ran while the Application existed, and it refused at its first check. The second check is executed against stubs only. No test reaches a time limit |
+| `removal-is-scoped-and-refuses-while-an-application-exists` | tested | Executed against stub tools, for each of the three kinds. Every completed removal in the runs had no Application present. Three removals on `docker-desktop`, one in each run of the Application procedure, ran while the Application existed, and each refused at its first check. The second check is executed against stubs only. No test reaches a time limit |
 | `security-baseline-rows-precede-the-first-install` | tested | It establishes that the rows exist. It cannot establish that they were written before the first install; the record of the run states that order |
 | `gitops-state-is-not-caller-health` | review | Nothing records Argo CD state yet |
 
@@ -375,8 +376,8 @@ Application. The other still holds as an absence.
 - That a request is served while Argo CD is absent or stopped. No release was
   installed during the run.
 - That the order of a removal avoids a stuck deletion. Every completed removal
-  ran with no Application. The one removal with an Application present refused
-  at its first check.
+  ran with no Application. The three removals with an Application present
+  refused at their first check.
 - That a container runs the pinned image after a later restart.
 - That the core profile reconciles an Application on `kind`. On
   `docker-desktop` it reconciled one Application in a committed project, in the

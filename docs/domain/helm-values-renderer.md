@@ -13,9 +13,12 @@ against the inputs it is declared to be derived from, and regenerates a release 
 contributor names. The one release that check declares is the reference release, a test
 fixture. Since `V2-S3-002-PR1` a second generated release is committed as
 [Git desired state](../environment/git-desired-state.md), declared and checked by a tool
-of its own. Nothing in this repository installs a generated release: the values a
-release is installed with are still written by hand. Every check behind this page is static, at
-evidence level C0, and so is every file it generates until a real deployment installs one.
+of its own. No workflow or Helm procedure installs a generated release. Since
+`V2-S3-002-PR2` one [Argo CD Application](../environment/argocd-application.md) applies
+the chart with the generated values of that second release, on a cluster where an
+operator applied it, and it did so on `docker-desktop` on 2026-10-04. Every check behind
+this page is static, at evidence level C0. The record of those runs is the only evidence
+about an installed render, and it is not this page's.
 
 | Property | Value |
 |---|---|
@@ -644,19 +647,23 @@ runs without a skip.
 | A secret reference is rendered | No accepted mapping from a contract locator to the chart's secret binding | A decision on that mapping |
 | The `mock-llm` profile is rendered | The renderer declares the synchronous profile only, as the story scopes it | A renderer, or a support change, for the mock profile |
 | The platform defaults are read from a committed file | No defaults file exists; the caller supplies the defaults and states their revision, as at the boundary. Until then defaults content changed under a falsely retained revision moves the values digest and not the release identifier, and a test measures it | A change that reconstructs the defaults from a committed source bound to the revision a release records, before any source verification relies on that revision. The drift check reads the reference release's defaults from the chart's `api` block, so a change to them is reported as drift, and the declared revision does not move |
-| A hand-written values file outside the supported suffix is checked | Only files named with `.manual-values.yaml` are found and admitted; nothing installs generated values, so there is no install path to refuse others on | The deployment path that installs generated values |
+| A hand-written values file outside the supported suffix is checked | Only files named with `.manual-values.yaml` are found and admitted. The Argo CD Application holds its hand-written values inside its manifest, and a test runs the admission check over them | A rule for a hand-written file on another install path |
 | The API image is generated | It is a contributor's local build, published to no registry | A published API image |
 | A model source other than the Hugging Face Hub is rendered | The derivation rule names one host and one layout, the ones the V1 model source record uses | An accepted rule for another source |
 | A data classification changes a render | No chart setting or policy engine acts on one | A policy engine |
 
 ## What this does not establish
 
-- **That anything was installed.** The renders were compared as files. No cluster read
-  them, and no generated release has served a request.
-- **That a release used generated values.** The values a release is installed with are
-  still written by hand: generated values and their release are written only to a
-  directory a caller names, and nothing installs from one.
-  `deployment-values-derive-only-from-a-validated-document` stays planned.
+- **That anything was installed.** The checks behind this page compare renders as
+  files, and no cluster reads them. One Argo CD Application applied the committed
+  generated values on one provider on 2026-10-04, and
+  [the record of those runs](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+  is the evidence for that, not this page.
+- **That a release used only generated values.** The Application adds hand-written
+  values and one operator-supplied digest. On the Helm path the values a release is
+  installed with are still written by hand.
+  `deployment-values-derive-only-from-a-validated-document` stays planned: the runs
+  register no claim.
 - **That a release directory nobody declared is still what was written.** The writer reads
   both files back before it moves them into place, and the drift check compares every
   declared committed release with its sources. A directory outside the declaration, or

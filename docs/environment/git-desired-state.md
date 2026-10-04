@@ -10,9 +10,9 @@ those decisions. Every check of the tree is static, at evidence level `C0`.
 release. [ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
 records those decisions, and
 [the Argo CD Application document](argocd-application.md) describes the Application.
-On 2026-10-04 Argo CD applied the release on the `docker-desktop` provider, and the
-run removed it afterwards. **This page describes the tree. It establishes nothing
-about a cluster.**
+On 2026-10-04, in three runs on the `docker-desktop` provider, Argo CD applied the
+release, and each run removed it afterwards. **This page describes the tree. It
+establishes nothing about a cluster.**
 
 | Property | Value |
 |---|---|
@@ -212,8 +212,8 @@ Argo CD applies the chart.
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| A cluster that is continuously reconciled to the tree | The Application is applied by an operator, on one cluster at a time. The recorded run removed it | An environment that keeps the Application applied |
-| An observation of a later commit being applied | The recorded run applied one commit of `main` | A run that merges a change while the Application is applied |
+| A cluster that is continuously reconciled to the tree | The Application is applied by an operator, on one cluster at a time. Each recorded run removed it | An environment that keeps the Application applied |
+| An observation of a later commit being applied | Each recorded run applied the same commit of `main` | A run that merges a change while the Application is applied |
 | The API image identity in Git | The API image is a contributor's local build, and its digest is given to the procedure | A published image, pinned where a contract or a platform default owns it |
 | A published API image | The API image is a contributor's local build | A published image, or a procedure that loads one into the cluster |
 | A desired-state path for `kind` | No bootstrap ran on `kind` | A run on `kind`, and a declared release for the `local-kind` binding |
@@ -223,13 +223,13 @@ Argo CD applies the chart.
 ## What this does not establish
 
 - **That a cluster is reconciled to the tree now.** One Application reads the
-  tree where an operator applied it. A run applied and removed it on
-  `docker-desktop`, and [its record](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+  tree where an operator applied it. Three runs applied and removed it on
+  `docker-desktop`, and [their record](../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
   is the evidence. No check on this page reads a cluster.
 - **That the release installs from the generated values alone.** They fail the
   chart's guards. The Application adds hand-written values and one parameter.
-- **That the release serves requests.** The run sent one request after each of two
-  applies. This page's checks send none.
+- **That the release serves requests.** Each run sent one request after each of
+  its two applies. Five of the six were answered. This page's checks send none.
 - **That the recorded revision is the commit the release was rendered at, or that it
   names a commit.** It is a declaration, and the check holds its form only. A test
   compares the platform defaults at that commit with the defaults read today, and it

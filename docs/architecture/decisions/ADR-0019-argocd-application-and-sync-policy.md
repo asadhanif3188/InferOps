@@ -19,11 +19,11 @@
 > repository, at the revision that `main` names. Sync is automated, with
 > self-heal. Pruning is disabled.
 >
-> **It was executed on one provider.** On 2026-10-04 the procedure applied the
-> Application on `docker-desktop`. Argo CD applied the release at the revision
-> of `main`, and one request that a caller sent was answered.
-> [The record of that run](../../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
-> says what was observed. The procedure was not executed on `kind`.
+> **It was executed on one provider.** On 2026-10-04, in three runs on
+> `docker-desktop`, Argo CD applied the release six times at one commit of
+> `main`. Five of six caller requests were answered. One returned no response,
+> and [the record of the runs](../../proof/environment/v2-s3-002-pr2-argocd-application-run.md)
+> says what is known about it. The procedure was not executed on `kind`.
 >
 > **What Argo CD reports is not a caller outcome.** A sync state and a health
 > state say what the controller did and what Kubernetes reports. Neither says
@@ -41,18 +41,18 @@
 | ID | Decision | Status | What supports it |
 |---|---|---|---|
 | D1 | One Application for one release path: the reference workload on the `local-docker-desktop` binding | **Accepted** | A test pins the one desired-state release and the one Application, and holds the Application's name and values path to that release |
-| D2 | The Application and its project are two committed manifests under `infra/argocd/`. They are not desired state: a repository procedure applies them, and it has one owner | **Accepted** for `docker-desktop`. **Proposed** for `kind` | The ownership inventory. A run applied and removed both on `docker-desktop`. No run on `kind` |
-| D3 | The project admits one source repository, one destination namespace, the eight namespaced kinds the chart's real profile renders, and no cluster-scoped kind | **Accepted** | A test compares the project with the committed render and with the kinds another owner holds. A run synced the release inside these limits |
-| D4 | The Application follows `main`. The accepted Git change is the promotion boundary | **Accepted**, with a stated limit | A run resolved `main` to a commit and applied it. No run observed a later revision of `main` being applied |
+| D2 | The Application and its project are two committed manifests under `infra/argocd/`. They are not desired state: a repository procedure applies them, and it has one owner | **Accepted** for `docker-desktop`. **Proposed** for `kind` | The ownership inventory. Three runs applied and removed both on `docker-desktop`. No run on `kind` |
+| D3 | The project admits one source repository, one destination namespace, the eight namespaced kinds the chart's real profile renders, and no cluster-scoped kind | **Accepted** | A test compares the project with the committed render and with the kinds another owner holds. Each run synced the release inside these limits |
+| D4 | The Application follows `main`. The accepted Git change is the promotion boundary | **Accepted**, with a stated limit | Each run resolved `main` to the same commit and applied it. No run observed a later revision of `main` being applied |
 | D5 | The values are the generated values, read from Git by path, and hand-written values inside the Application. The hand-written values set nothing that the generated values hold. The API image digest is one Helm parameter that the operator supplies | **Accepted**, with a stated limit | Two tests on the hand-written values. The digest is outside Git, and R1 records it |
-| D6 | Sync is automated, with self-heal. Pruning is disabled. No sync option, retry, or ignored difference is set | **Accepted** | A test compares the whole policy as one value. The procedure compares the live object with it. A run observed one manual change being reverted |
-| D7 | The committed Application carries no resource finalizer. The removal adds one, so that a removal deletes the workload objects and an accident does not | **Accepted** for `docker-desktop` | A run removed the Application twice, and no workload object remained. The namespace and the claim remained |
+| D6 | Sync is automated, with self-heal. Pruning is disabled. No sync option, retry, or ignored difference is set | **Accepted** | A test compares the whole policy as one value. The procedure compares the whole live spec with the committed manifest. Each run observed one manual change being reverted |
+| D7 | The committed Application carries no resource finalizer. The removal adds one, so that a removal deletes the workload objects and an accident does not | **Accepted** for `docker-desktop`. **Proposed** for `kind` | Each of three runs removed the Application twice, and no workload object remained. The namespace and the claim remained |
 | D8 | A Helm release and the Application do not own the same objects at one time. The `release` rows of the inventory keep their owner | **Accepted** as a rule, held in one direction | The procedure refuses while a Helm release of the same name is recorded. Nothing stops `helm install` after the Application is applied |
 | D9 | No InferOps record derives a caller outcome from a sync state or a health state | **Accepted** as a rule | The procedure prints the boundary with each report, and a test holds that. Review holds the rule for records |
 | D10 | Argo Rollouts, automatic rollback, an ApplicationSet, an app-of-apps Application, a second source, a sync window, and notifications are out of scope | **Accepted** as scope | Tests refuse a rollout object, a second Argo CD custom resource, and any field of the Application beyond the four that were decided |
 
-Nine decisions are accepted. D2 is accepted for one provider and proposed for the
-other. That is why this record is accepted in part.
+Eight decisions are accepted. D2 and D7 are accepted for `docker-desktop` and
+proposed for `kind`. That is why this record is accepted in part.
 
 ## Context
 
@@ -164,8 +164,13 @@ Application is therefore refused each of those objects.
 the controller.** The application controller keeps the cluster-wide grant that
 ADR 0017 R1 records. A person who can write an object in `argocd` can create a
 second project that admits everything. The project also admits Role and
-RoleBinding, because the chart's collector needs them, so the Application is
-able to grant a permission inside the destination namespace.
+RoleBinding, because the chart's collector needs them. The Application is
+therefore able to bind a role inside the destination namespace, a cluster-wide
+role included, and whoever can change `main` can make it do so.
+
+The test compares the project with the committed render of the real profile. It
+does not render the chart with the Application's own values. A chart change that
+adds a kind only under those values would pass the test and fail the sync.
 
 The project also answers ADR 0017 R6. The run found no project after the
 bootstrap, as that record inferred, and the Application synced in this one.
@@ -198,7 +203,7 @@ second promotion stage exists.
 | A pinned commit | Not selected. Each promotion would then need a second change, to the Application, that an operator applies by hand. That second step would become the real approval |
 | A tag | Not selected. No release process creates one for a desired-state change |
 
-**The limit.** A run resolved `main` to a commit and applied it. No run observed
+**The limit.** Each run resolved `main` to the same commit and applied it. No run observed
 `main` moving to a later commit and Argo CD applying that commit. How long Argo CD
 takes to notice a new commit was not measured. The repository server reads the
 remote without a credential, and no commit signature is verified.
@@ -238,8 +243,9 @@ render: the chart refuses a release with no API image digest.
 
 **On an empty claim, the acquisition hook downloads the model.** The
 hand-written values select the download source. When the claim already holds the
-pinned artifact, the hook verifies it and downloads nothing. The run used a claim
-that was filled from a local image, and the hook logged that it acquired nothing.
+pinned artifact, the hook verifies it and downloads nothing. Each run used a claim
+that was filled from a local image. The hook's log, read once in each run, said
+that it acquired nothing.
 
 | Alternative | Assessment |
 |---|---|
@@ -269,15 +275,19 @@ Nothing else is set. No `CreateNamespace` option exists, so the controller does
 not create the namespace that Terraform owns. No retry, sync window, or ignored
 difference exists.
 
-The procedure compares the live Application with these values after it applies
-it, and `verify` compares them again. A person who edits the live object to
-enable pruning is found by `verify`.
+The procedure compares the whole spec of the live Application and of the live
+project with the committed manifests after it applies them, and `verify`
+compares them again. It also compares the SHA-256 that each object records with
+the committed file. A person who edits a live object, to enable pruning or to
+admit another kind, is found by `verify`. That finding is executed against
+stubs. On a cluster, every comparison found the objects equal.
 
-**One manual change was observed.** The run scaled the API Deployment from one
-replica to two. Two seconds later the Deployment declared one replica, and Argo CD
-reported an automated operation that succeeded. This is a check of the setting.
+**One manual change was observed in each run.** The driver scaled the API
+Deployment from one replica to two. The Deployment declared one replica again
+within 2 to 4 seconds, read once a second, and the last operation that Argo CD
+reported was an automated one that succeeded. This is a check of the setting.
 It is not the drift experiment: it sent no request, applied no bound, and has one
-observation.
+observation in each run.
 
 ## D7 — Removal
 
@@ -290,8 +300,9 @@ no workload object.
 `argocd-application.sh remove --confirm` does the opposite on purpose:
 
 1. Refuse when the target is not selected and verified, when the bootstrap did
-   not install Argo CD, when another Argo CD custom resource exists, and when the
-   application controller reports no ready replica.
+   not install Argo CD, when another Argo CD custom resource exists, when the
+   application controller reports no ready replica, and when the live Application
+   names another project or destination.
 2. Add the resource finalizer to the Application, and delete it. Argo CD then
    deletes the objects it applied.
 3. Wait until no object that carries the release label remains.
@@ -316,7 +327,7 @@ CD renders and applies it. They create the same objects in the same namespace.
 
 **The two paths do not run in one namespace at one time.** The procedure reads
 the Helm release records in the destination namespace, by name, and refuses
-while one names this release. The run observed that refusal. Nothing stops an
+while one names this release. Each run observed that refusal. Nothing stops an
 operator who runs `helm install` after the Application is applied, and R4
 records that.
 
@@ -326,15 +337,17 @@ applied, Argo CD creates the objects and the procedure's removal deletes them.
 The inventory's description and the ownership document say so. The rows are not
 split, because the objects are the same objects.
 
-Two details of ADR 0017 R5 were observed in the run:
+Two details of ADR 0017 R5 were observed in the runs:
 
-- **The chart's `pre-install` hook runs.** Argo CD ran the acquisition Job and
-  its ServiceAccount before the sync, and deleted both when the Job succeeded.
-- **The chart's `helm test` pod is not created.** Argo CD created no pod from
-  it. The project does not admit Pod.
+- **The chart's `pre-install` hook runs.** Argo CD reported the acquisition Job
+  and its ServiceAccount as hooks that succeeded before the sync. Neither was in
+  the later listing of the release objects.
+- **No pod from the chart's `helm test` hook was listed.** The project does not
+  admit Pod.
 
-Argo CD records no Helm release. `helm list` shows nothing for an applied
-Application, and `helm rollback` does not apply to it.
+Argo CD records no Helm release. After an apply, the destination namespace held
+no Helm release record. `helm list` was not run. By upstream's description,
+`helm rollback` does not apply to an Application.
 
 ## D9 — Reconciliation state is not caller truth
 
@@ -348,7 +361,7 @@ from what Kubernetes reports. Neither is evidence that a request was answered.
   outcome, and a test holds that.
 - The procedure waits for a succeeded sync operation. It does not wait for a
   health state, and no result of it depends on one.
-- In the run, the caller request was sent through a port-forward to the API
+- In the runs, each caller request was sent through a port-forward to the API
   Service, by a command that reads nothing from Argo CD.
 - No serving component reads Argo CD. The test of ADR 0017 D10 still holds, and
   now names the four build files that may name the controller.
@@ -418,18 +431,18 @@ interchangeable:
 - `C0`: `tests/architecture/test_argocd_application.py` reads the two manifests
   and the procedure as text.
 - `C1`: `tests/architecture/test_argocd_application_procedure.py` executes the
-  procedure with every external tool replaced by a stub.
-- `C2`: [one run on the `docker-desktop` provider](../../proof/environment/v2-s3-002-pr2-argocd-application-run.md),
-  on 2026-10-04.
+  procedure with `kubectl`, `kind`, `docker`, and `sleep` replaced by stubs.
+- `C2`: [three runs on the `docker-desktop` provider](../../proof/environment/v2-s3-002-pr2-argocd-application-run.md),
+  on 2026-10-04. The third ran the committed procedure.
 
-The run establishes that, on that provider and on that day, Argo CD applied the
-generated release at the commit `main` named, that one request was answered
-afterwards, that one manual change was reverted, and that the removal left no
-workload object and kept the prerequisites. It establishes nothing about `kind`,
-about a later commit of `main`, about latency, capacity, or availability, and
-nothing about the first experiment: that experiment's real-deployment part runs
-under its own frozen revision, and this run is not a run of it. **No claim is
-registered.**
+The runs establish that, on that provider and on that day, Argo CD applied the
+generated release at the commit `main` named, six times. Five of six caller
+requests were answered afterwards, and one returned no response. One manual
+change was reverted in each run, and each removal left no workload object and
+kept the prerequisites. The runs establish nothing about `kind`, about a later
+commit of `main`, about latency, capacity, or availability, and nothing about
+the first experiment: that experiment's real-deployment part runs under its own
+frozen revision, and no run here is a run of it. **No claim is registered.**
 
 ## Risks, assumptions, and open questions
 
@@ -445,4 +458,5 @@ registered.**
 | R8 | A cascade that does not finish has no decided recovery | Open | The removal refuses when the controller reports no ready replica. It cannot refuse a controller that stops afterwards |
 | R9 | Self-heal reverts a break-glass change | Accepted | A manual change needs the Application removed first. The break-glass boundary is not decided here |
 | R10 | The first experiment's freeze record names no Application | Open | A later freeze revision for the real-deployment part must name the Application, the project, and the desired-state path before a result-bearing run. ADR 0018 R4 carries the path |
-| R11 | The Argo CD pods run beside the release with no resource request or limit | Open | ADR 0017 R4. The run held one release beside them and measured nothing |
+| R11 | The Argo CD pods run beside the release with no resource request or limit | Open | ADR 0017 R4. Each run held one release beside them and measured nothing |
+| R12 | The bootstrap procedure prints that no Application exists, and does not check | Accepted | The line is true after a first install. It can be false after an install over a live installation. The bootstrap procedure is unchanged, so that its recorded runs still name its bytes |

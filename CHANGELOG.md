@@ -19,12 +19,15 @@ from `1.0.0`.
   which applies, verifies, and removes them. The Application reads the chart and
   the generated values of the desired-state release at the revision `main` names.
   The project admits one repository, one destination namespace, eight namespaced
-  kinds, and no cluster-scoped kind. On 2026-10-04, on `docker-desktop`, Argo CD
-  applied the release, one request that a caller sent was answered after each of
-  two applies in the second run, one manual change was reverted, and the removal
-  left no workload object and kept the namespace and the claim.
+  kinds, and no cluster-scoped kind. On 2026-10-04, in three runs on
+  `docker-desktop`, Argo CD applied the release six times at one commit of `main`.
+  Five of six caller requests were answered, one manual change was reverted in
+  each run, and each removal left no workload object and kept the namespace and
+  the claim.
   [The run record](docs/proof/environment/v2-s3-002-pr2-argocd-application-run.md)
-  keeps both runs: in the first, one request failed, and the record says why.
+  keeps all three runs: in the first, one request returned no response, and the
+  record states the inferred cause. The procedure compares the whole spec of both
+  live objects with the committed manifests.
   **What Argo CD reports is not a caller outcome.** The procedure was not executed
   on `kind`. No later commit of `main` was observed being applied. The API image
   digest is not in Git: no API image is published, and the operator supplies it.
