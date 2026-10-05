@@ -179,7 +179,12 @@ Since `V2-S3-003-PR1` a tool reads
 [which release a Git commit holds](docs/environment/desired-state-provenance.md),
 given the commit that Argo CD reports and never a branch name. It reads Git and
 no cluster, and no applied object carries the release identifier of the release
-document.
+document. Since `V2-S3-003-PR2` the procedure can
+[collect what Argo CD reports](docs/environment/reconciliation-evidence.md) in a
+bounded number of reads, and a tool builds a record in which a field that was not
+reported stays not reported. That collection ran on one provider on one day,
+beside one apply and one removal, and what Argo CD reports is not a caller
+outcome.
 
 ## Prerequisites
 

@@ -47,6 +47,9 @@ APPLICATION_REL = "infra/argocd/local-docker-desktop-support-assistant.yaml"
 PROCEDURE_REL = "scripts/environment/argocd-application.sh"
 PROCEDURE_PATH = REPO_ROOT / PROCEDURE_REL
 LIB_PATH = REPO_ROOT / "scripts" / "environment" / "lib.sh"
+EVIDENCE_DOCUMENT_PATH = (
+    REPO_ROOT / "docs" / "environment" / "reconciliation-evidence.md"
+)
 DOCUMENT_PATH = REPO_ROOT / "docs" / "environment" / "argocd-application.md"
 DECISION_PATH = (
     REPO_ROOT
@@ -504,6 +507,40 @@ def test_every_kubectl_call_goes_through_the_target_wrapper() -> None:
     body = "\n".join(procedure_commands())
     assert "inferops::kubectl " not in body
     assert "inferops::target_helm" not in body and "inferops::helm" not in body
+
+
+def test_the_observation_is_bounded_and_reads_only() -> None:
+    """The limits of one observation, and what its reads ask for.
+
+    `observe` reads the Application as JSON, and the kind, the name, and the
+    labels of the release objects. Every kubectl call of the operation is a
+    `get`. The count and the interval have limits, and the evidence document
+    publishes the same two numbers.
+    """
+    body = text_of(PROCEDURE_PATH)
+    assert "readonly OBSERVE_MAX_SAMPLES=120" in body
+    assert "readonly OBSERVE_MAX_INTERVAL_SECONDS=30" in body
+    assert (
+        'readonly OBSERVE_OBJECT_FIELDS=\'{range .items[*]}{.kind}{"\\t"}'
+        '{.metadata.name}{"\\t"}{.metadata.labels}{"\\n"}{end}\''
+    ) in body
+    evidence = text_of(EVIDENCE_DOCUMENT_PATH)
+    assert "A whole number from 1 to 120" in evidence
+    assert "A whole number from 1 to 30" in evidence
+
+    commands = procedure_commands()
+    start = commands.index("observe() {")
+    end = commands.index("remove() {")
+    calls = [
+        fragment.split()
+        for command in commands[start:end]
+        for fragment in command.split("inferops::target_kubectl ")[1:]
+    ]
+    assert [call[0] for call in calls] == ["get", "get"], calls
+    assert calls[0][1] == "applications.argoproj.io"
+    assert calls[0][calls[0].index("-o") + 1] == "json"
+    assert "secret" not in " ".join(commands[start:end]).lower()
+    assert "${NOT_CALLER_TRUTH}" in " ".join(commands[start:end])
 
 
 def test_the_procedure_says_that_its_report_is_not_a_caller_outcome() -> None:

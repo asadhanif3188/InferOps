@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Applies, verifies, and removes the one Argo CD Application that ADR 0019 decided,
-# and the project that holds it.
+# Applies, verifies, observes, and removes the one Argo CD Application that
+# ADR 0019 decided, and the project that holds it.
 #
 # The cluster already exists and is the operator's. Argo CD is already installed
 # by scripts/environment/argocd-bootstrap.sh. The platform namespace and the model
@@ -19,6 +19,14 @@
 #          the whole live spec of each with the committed manifest, and the
 #          recorded SHA-256 with the committed file. Prints the revision and
 #          the states that Argo CD reports.
+# observe  Reads the Application and the workload objects a bounded number of
+#          times, and changes nothing in the cluster. Writes what each read
+#          returned into a new directory under .artifacts/, and records a read
+#          that did not answer as unanswered. It does not require that the
+#          Application exists: an absent Application is an observation. It
+#          judges nothing. The evidence tool that
+#          docs/environment/reconciliation-evidence.md describes reads the
+#          directory.
 # remove   Deletes the Application with a cascade, so that Argo CD deletes the
 #          workload objects it applied. Then deletes the project. The namespace
 #          and the claim stay.
@@ -33,6 +41,8 @@
 #   foreign-argocd-custom-resource        apply, verify, remove
 #   application-controller-not-ready      remove
 #   live-application-differs              remove
+#   observation-bounds-not-given          observe
+#   observation-directory-exists          observe
 #
 # What this script reports is what Argo CD reports: a revision, a sync state, and
 # a health state. None of them is a caller outcome. A request that a caller sent
@@ -44,12 +54,13 @@
 #
 # Usage: scripts/environment/argocd-application.sh apply --api-image-digest sha256:HEX
 #        scripts/environment/argocd-application.sh verify
+#        scripts/environment/argocd-application.sh observe --samples COUNT --interval SECONDS --into NAME
 #        scripts/environment/argocd-application.sh remove --confirm
 
 # shellcheck source=scripts/environment/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-readonly USAGE="Usage: argocd-application.sh apply --api-image-digest sha256:HEX | verify | remove --confirm"
+readonly USAGE="Usage: argocd-application.sh apply --api-image-digest sha256:HEX | verify | observe --samples COUNT --interval SECONDS --into NAME | remove --confirm"
 
 # --- The two objects --------------------------------------------------------
 
@@ -97,6 +108,13 @@ readonly INFEROPS_GITOPS_RESIDUE_KINDS="deployments,replicasets,pods,jobs,servic
 readonly SYNC_BUDGET_SECONDS=1200
 # One budget for each wait of the removal.
 readonly REMOVAL_BUDGET_SECONDS=600
+# The bounds of one observation. The largest one waits 119 times 30 seconds,
+# which is less than one hour, and makes 240 reads.
+readonly OBSERVE_MAX_SAMPLES=120
+readonly OBSERVE_MAX_INTERVAL_SECONDS=30
+# What one read of the workload objects asks for: the kind, the name, and the
+# labels of each object. kubectl prints the labels as one line of JSON.
+readonly OBSERVE_OBJECT_FIELDS='{range .items[*]}{.kind}{"\t"}{.metadata.name}{"\t"}{.metadata.labels}{"\n"}{end}'
 
 readonly UNANSWERED="A query that did not answer is not an empty result. This procedure does not continue on an unanswered query."
 readonly NOT_CALLER_TRUTH="These are the states that Argo CD reports. They are not a caller outcome."
@@ -110,6 +128,10 @@ shift
 api_image_digest=""
 digest_given=0
 confirmed=0
+observe_samples=""
+observe_interval=""
+observe_name=""
+observe_options=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -124,11 +146,35 @@ while [ "$#" -gt 0 ]; do
       confirmed=1
       shift
       ;;
+    --samples)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || inferops::fail "--samples needs a value. ${USAGE}"
+      [ -z "${observe_samples}" ] || inferops::fail "--samples was given twice. ${USAGE}"
+      observe_samples="$2"
+      observe_options=1
+      shift 2
+      ;;
+    --interval)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || inferops::fail "--interval needs a value. ${USAGE}"
+      [ -z "${observe_interval}" ] || inferops::fail "--interval was given twice. ${USAGE}"
+      observe_interval="$2"
+      observe_options=1
+      shift 2
+      ;;
+    --into)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || inferops::fail "--into needs a value. ${USAGE}"
+      [ -z "${observe_name}" ] || inferops::fail "--into was given twice. ${USAGE}"
+      observe_name="$2"
+      observe_options=1
+      shift 2
+      ;;
     *)
       inferops::fail "unknown argument '$1'. ${USAGE}"
       ;;
   esac
 done
+
+[ "${observe_options}" -eq 0 ] || [ "${operation}" = "observe" ] ||
+  inferops::fail "--samples, --interval, and --into apply to 'observe' only. ${USAGE}"
 
 case "${operation}" in
   apply)
@@ -139,6 +185,17 @@ case "${operation}" in
   verify)
     [ "${digest_given}" -eq 0 ] && [ "${confirmed}" -eq 0 ] ||
       inferops::fail "'verify' takes no option. ${USAGE}"
+    ;;
+  observe)
+    [ "${digest_given}" -eq 0 ] && [ "${confirmed}" -eq 0 ] ||
+      inferops::fail "'observe' takes --samples, --interval, and --into only. ${USAGE}"
+    # An observation with no stated bound is refused. No default is applied.
+    [[ "${observe_samples}" =~ ^[1-9][0-9]{0,2}$ ]] && [ "${observe_samples}" -le "${OBSERVE_MAX_SAMPLES}" ] ||
+      inferops::fail "refusing: observation-bounds-not-given: 'observe' needs --samples COUNT, a whole number from 1 to ${OBSERVE_MAX_SAMPLES}. Nothing was read."
+    [[ "${observe_interval}" =~ ^[1-9][0-9]?$ ]] && [ "${observe_interval}" -le "${OBSERVE_MAX_INTERVAL_SECONDS}" ] ||
+      inferops::fail "refusing: observation-bounds-not-given: 'observe' needs --interval SECONDS, a whole number from 1 to ${OBSERVE_MAX_INTERVAL_SECONDS}. Nothing was read."
+    [[ "${observe_name}" =~ ^[a-z0-9][a-z0-9-]{0,62}$ ]] ||
+      inferops::fail "refusing: observation-bounds-not-given: 'observe' needs --into NAME, up to 63 lowercase letters, digits, and hyphens. It names a new directory under .artifacts/argocd-application/observations/. Nothing was read."
     ;;
   remove)
     [ "${digest_given}" -eq 0 ] || inferops::fail "--api-image-digest applies to 'apply' only. ${USAGE}"
@@ -607,6 +664,69 @@ verify() {
   inferops::log "This does not establish that the workload serves a request."
 }
 
+# --- observe ----------------------------------------------------------------
+
+# One collection: a header, two files and a status file for each sample, and an
+# end file that is written only when every sample was taken. Each file is what a
+# read returned. Nothing here interprets one.
+observe() {
+  local directory="${INFEROPS_ARTIFACT_DIR}/argocd-application/observations/${observe_name}"
+  local shown=".artifacts/argocd-application/observations/${observe_name}"
+  local index stem observed_at application_read objects_read
+
+  inferops::section "Observation"
+  gitops::report_target
+  [ ! -e "${directory}" ] ||
+    inferops::fail "refusing: observation-directory-exists: ${shown} exists. An observation does not write into the directory of another one. Give another name with --into. Nothing was read."
+  mkdir -p "${directory}"
+  {
+    printf 'provider=%s\n' "${INFEROPS_TARGET_PROVIDER}"
+    printf 'serverVersion=%s\n' "${INFEROPS_TARGET_SERVER_VERSION:-}"
+    printf 'repositoryRevision=%s\n' "${INFEROPS_TARGET_VERIFIED_REVISION}"
+    printf 'procedureSha256=%s\n' "$(sha256sum "${BASH_SOURCE[0]}" | awk '{ print $1 }')"
+    printf 'librarySha256=%s\n' "$(sha256sum "$(dirname "${BASH_SOURCE[0]}")/lib.sh" | awk '{ print $1 }')"
+    printf 'application=%s\n' "${INFEROPS_GITOPS_APPLICATION_NAME}"
+    printf 'applicationNamespace=%s\n' "${INFEROPS_ARGOCD_NAMESPACE}"
+    printf 'workloadNamespace=%s\n' "${INFEROPS_RELEASE_NAMESPACE}"
+    printf 'requestedSamples=%s\n' "${observe_samples}"
+    printf 'intervalSeconds=%s\n' "${observe_interval}"
+  } >"${directory}/collection.meta"
+  inferops::log "samples: ${observe_samples}, one every ${observe_interval}s, into ${shown}"
+
+  for ((index = 1; index <= observe_samples; index++)); do
+    stem="${directory}/$(printf 'sample-%03d' "${index}")"
+    observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    # An absent Application answers with no output. A read that fails is
+    # recorded as unanswered, and its output is not kept as an answer.
+    application_read="answered"
+    if ! inferops::target_kubectl get applications.argoproj.io "${INFEROPS_GITOPS_APPLICATION_NAME}" \
+      -n "${INFEROPS_ARGOCD_NAMESPACE}" --ignore-not-found -o json >"${stem}.application.json"; then
+      application_read="unanswered"
+      rm -f "${stem}.application.json"
+    fi
+
+    objects_read="answered"
+    if ! inferops::target_kubectl get "${INFEROPS_GITOPS_RESIDUE_KINDS}" \
+      -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" \
+      -o "jsonpath=${OBSERVE_OBJECT_FIELDS}" >"${stem}.objects.txt"; then
+      objects_read="unanswered"
+      rm -f "${stem}.objects.txt"
+    fi
+
+    printf 'observedAt=%s\napplicationRead=%s\nobjectsRead=%s\n' \
+      "${observed_at}" "${application_read}" "${objects_read}" >"${stem}.meta"
+    inferops::log "sample ${index} of ${observe_samples} at ${observed_at}: Application read ${application_read}, object read ${objects_read}"
+    [ "${index}" -ge "${observe_samples}" ] || sleep "${observe_interval}"
+  done
+  printf 'completedSamples=%s\n' "${observe_samples}" >"${directory}/collection.end"
+
+  inferops::section "Result"
+  inferops::log "${observe_samples} sample(s) were written into ${shown}. This operation judged none of them."
+  inferops::log "A read that is recorded as unanswered returned no state. It is not a healthy state."
+  inferops::log "${NOT_CALLER_TRUTH}"
+}
+
 # --- remove -----------------------------------------------------------------
 
 remove() {
@@ -692,5 +812,6 @@ application_sha="$(sha256sum "${application_file}" | awk '{ print $1 }')"
 case "${operation}" in
   apply) apply ;;
   verify) verify ;;
+  observe) observe ;;
   remove) remove ;;
 esac

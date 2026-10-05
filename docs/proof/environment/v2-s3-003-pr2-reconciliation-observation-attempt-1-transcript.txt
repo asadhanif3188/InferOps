@@ -1,0 +1,570 @@
+
+##### 0. Tools, revision, and the cluster before the run
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-05T11:13:21Z
+[exit 0]
+$ git rev-parse HEAD
+40452957d8f602357ecc512dc643cb820db57202
+[exit 0]
+$ git status --short
+ M CHANGELOG.md
+ M CONTRIBUTING.md
+ M README.md
+ M docs/architecture/README.md
+ M docs/architecture/system-architecture.md
+ M docs/domain/renderer-input-boundary.md
+ M docs/environment/argocd-application.md
+ M docs/environment/desired-state-provenance.md
+ A docs/environment/reconciliation-evidence.md
+ M docs/proof/README.md
+ A docs/proof/environment/v2-s3-003-pr2-validation.md
+ M docs/testing/test-inventory.md
+ M docs/testing/test-inventory.v1alpha1.json
+ M scripts/environment/argocd-application.sh
+ M tests/architecture/test_argocd_application.py
+ M tests/architecture/test_argocd_application_procedure.py
+ A tests/domain/test_reconciliation_evidence.py
+ M tests/domain/test_renderer_input_boundary.py
+ A tools/reconciliation_evidence/__init__.py
+ A tools/reconciliation_evidence/__main__.py
+ A tools/reconciliation_evidence/core.py
+?? docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-driver.txt
+[exit 0]
+$ git ls-remote origin refs/heads/main
+40452957d8f602357ecc512dc643cb820db57202	refs/heads/main
+[exit 0]
+$ sha256sum scripts/environment/argocd-application.sh scripts/environment/argocd-bootstrap.sh scripts/environment/lib.sh tools/reconciliation_evidence/core.py tools/reconciliation_evidence/__main__.py infra/argocd/workloads-project.yaml infra/argocd/local-docker-desktop-support-assistant.yaml
+03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140 *scripts/environment/argocd-application.sh
+9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25 *scripts/environment/argocd-bootstrap.sh
+b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd *scripts/environment/lib.sh
+b5be26a93ccc76d5af74006d201b39578b91c26494415baf5880bc03b3718d85 *tools/reconciliation_evidence/core.py
+e384182742a9c7db203de76aa3f5b8974f3f44152b0047415a1ba59ee997dd4d *tools/reconciliation_evidence/__main__.py
+34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39 *infra/argocd/workloads-project.yaml
+42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd *infra/argocd/local-docker-desktop-support-assistant.yaml
+[exit 0]
+$ kubectl version --context docker-desktop
+Client Version: v1.36.1
+Kustomize Version: v5.8.1
+Server Version: v1.36.1
+[exit 0]
+$ k get nodes -o name
+node/desktop-control-plane
+[exit 0]
+$ k get namespaces -o name
+namespace/default
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+[exit 0]
+
+##### 1. observe with no provider selected
+$ bash scripts/environment/argocd-application.sh observe --samples 1 --interval 1 --into s3-003-run-1-refused
+[inferops] FAILED: refusing to select a target: no-provider-selected: no INFEROPS_PROVIDER was given. Set it to "kind" or "docker-desktop"; there is no default.
+[exit 1]
+
+##### 2. observe with no bound
+$ bash scripts/environment/argocd-application.sh observe --into s3-003-run-1-refused
+[inferops] FAILED: refusing: observation-bounds-not-given: 'observe' needs --samples COUNT, a whole number from 1 to 120. Nothing was read.
+[exit 1]
+
+##### 3. observe before Argo CD is installed
+$ bash scripts/environment/argocd-application.sh observe --samples 2 --interval 1 --into s3-003-run-1-no-controller
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 40452957d8f602357ecc512dc643cb820db57202
+[inferops] procedure SHA-256: 03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] samples: 2, one every 1s, into .artifacts/argocd-application/observations/s3-003-run-1-no-controller
+error: the server doesn't have a resource type "applications"
+[inferops] sample 1 of 2 at 2026-10-05T11:13:38Z: Application read unanswered, object read answered
+error: the server doesn't have a resource type "applications"
+[inferops] sample 2 of 2 at 2026-10-05T11:13:40Z: Application read unanswered, object read answered
+
+[inferops] === Result ===
+[inferops] 2 sample(s) were written into .artifacts/argocd-application/observations/s3-003-run-1-no-controller. This operation judged none of them.
+[inferops] A read that is recorded as unanswered returned no state. It is not a healthy state.
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[exit 0]
+$ python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/s3-003-run-1-no-controller > .artifacts/argocd-application/observations/s3-003-run-1-no-controller.record.json
+[exit 0]
+$ sha256sum .artifacts/argocd-application/observations/s3-003-run-1-no-controller.record.json
+e61bef07ecf45bdf5119712fcbc57e7d0e85699d486943a9202e6e699fda2c36 *.artifacts/argocd-application/observations/s3-003-run-1-no-controller.record.json
+[exit 0]
+collection complete: True
+summary: {"applicationReads": {"absent": 0, "not-taken": 0, "reported": 0, "unanswered": 2, "unreadable": 0}, "resolvedRevisions": [], "samples": 2, "samplesSettled": 0, "samplesWithEveryRequiredField": 0}
+sample 001 2026-10-05T11:13:38Z read=unanswered sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared
+sample 002 2026-10-05T11:13:40Z read=unanswered sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared
+consistency findings: 0
+
+##### 4. Preparation: the two images, loaded into the node
+$ bash scripts/environment/api-image.sh load
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+localhost/inferops api:dev              	saved
+application/vnd.oci.image.index.v1+json sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+Importing	elapsed: 13.2s	total:   0.0 B	(0.0 B/s)
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-api@sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd' resolves inside 'desktop-control-plane'.
+[inferops] the real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched.
+[exit 0]
+$ bash scripts/environment/model-seed-image.sh load
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+localhost/inferops model seed:90862c4b9d	saved
+application/vnd.oci.image.index.v1+json sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d
+Importing	elapsed: 318.5s	total:   0.0 B	(0.0 B/s)
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-model-seed@sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d' resolves inside 'desktop-control-plane'.
+[inferops] WARNING: this image carries 1834426016 bytes of model weights and now occupies that much inside the node as well as the claim it fills. Reclaiming it is the operator's operation on their own cluster, and it differs by provider: deleting a kind cluster reclaims both, and on Docker Desktop neither InferOps nor this project's cleanup removes the imported image -- what resetting Kubernetes in Docker Desktop's own settings reclaims has not been observed.
+[exit 0]
+
+##### 5. Preparation: the prerequisite layer
+$ bash scripts/environment/terraform-prerequisites.sh apply
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+[inferops] === terraform plan ===
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # module.platform_prerequisites.kubernetes_namespace_v1.platform will be created
+  + resource "kubernetes_namespace_v1" "platform" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "platform-namespace"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache will be created
+  + resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
+      + id               = (known after apply)
+      + wait_until_bound = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+              + "inferops.io/retention"                = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "model-cache-volume-claim"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-model-cache"
+          + namespace        = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + spec {
+          + access_modes       = [
+              + "ReadWriteOnce",
+            ]
+          + storage_class_name = (known after apply)
+          + volume_mode        = (known after apply)
+          + volume_name        = (known after apply)
+
+          + resources {
+              + requests = {
+                  + "storage" = "4Gi"
+                }
+            }
+        }
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + model_cache_claim_name      = "inferops-model-cache"
+  + model_cache_size            = "4Gi"
+  + namespace                   = "inferops-release"
+  + prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+<repository>\.artifacts\terraform\prerequisites.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "<repository>\\.artifacts\\terraform\\prerequisites.tfplan"
+
+[inferops] === terraform apply ===
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Creating...
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Creation complete after 0s [id=inferops-release]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Creating...
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Creation complete after 1s [id=inferops-release/inferops-model-cache]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+model_cache_claim_name = "inferops-model-cache"
+model_cache_size = "4Gi"
+namespace = "inferops-release"
+prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+[inferops] prerequisites applied. Install a release into them with scripts/environment/helm-lifecycle.sh; never pass a flag that would let Helm create this namespace.
+[exit 0]
+
+##### 6. Preparation: fill the claim from the local seed image, with one throwaway Helm release
+[exit 0] api-image.sh digest
+API image digest on this host: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[exit 0] api-image.sh values
+[exit 0] model-seed-image.sh values
+$ helm --kube-context docker-desktop install inferops charts/inferops-llm --namespace inferops-release --values charts/inferops-llm/ci/real-values.yaml --values .artifacts/api-image-values.yaml --values .artifacts/model-seed-values.yaml --wait --timeout 15m
+Error: INSTALLATION FAILED: failed pre-install: 1 error occurred:
+	* job inferops-inferops-llm-model-acquisition failed: BackoffLimitExceeded
+
+
+[exit 1]
+$ helm --kube-context docker-desktop uninstall inferops --namespace inferops-release --wait --timeout 600s
+release "inferops" uninstalled
+[exit 0]
+$ k get deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings -n inferops-release -l app.kubernetes.io/instance=inferops -o name
+pod/inferops-inferops-llm-model-acquisition-mz25q
+job.batch/inferops-inferops-llm-model-acquisition
+[exit 0]
+
+##### 7. Preparation: install Argo CD
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] container runtime: containerd://2.3.1
+[inferops] node image digest: sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+[inferops] repository revision: 40452957d8f602357ecc512dc643cb820db57202
+[inferops] procedure SHA-256: 9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.36 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] no namespace 'argocd' and no Argo CD cluster-scoped object exists.
+[inferops] a copy with the pinned SHA-256 is already in .artifacts/argocd-bootstrap/; no download.
+[inferops] manifest SHA-256 is the pinned value: 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448
+
+[inferops] === Namespace ===
+namespace/argocd created
+
+[inferops] === Apply ===
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io serverside-applied
+serviceaccount/argocd-application-controller serverside-applied
+serviceaccount/argocd-applicationset-controller serverside-applied
+serviceaccount/argocd-redis serverside-applied
+serviceaccount/argocd-repo-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+configmap/argocd-cm serverside-applied
+configmap/argocd-cmd-params-cm serverside-applied
+configmap/argocd-gpg-keys-cm serverside-applied
+configmap/argocd-rbac-cm serverside-applied
+configmap/argocd-ssh-known-hosts-cm serverside-applied
+configmap/argocd-tls-certs-cm serverside-applied
+secret/argocd-secret serverside-applied
+service/argocd-applicationset-controller serverside-applied
+service/argocd-metrics serverside-applied
+service/argocd-redis serverside-applied
+service/argocd-repo-server serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+[inferops] 34 objects applied by field manager 'inferops-argocd-bootstrap'.
+
+[inferops] === Rollout ===
+Waiting for deployment "argocd-applicationset-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-applicationset-controller" successfully rolled out
+Waiting for deployment "argocd-redis" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-redis" successfully rolled out
+Waiting for deployment "argocd-repo-server" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Result ===
+[inferops] Argo CD v3.5.3 is installed in 'argocd' on provider 'docker-desktop'.
+[inferops] no Application exists, so it reconciles nothing.
+[exit 0]
+
+##### 8. observe: no Application exists
+$ bash scripts/environment/argocd-application.sh observe --samples 3 --interval 2 --into s3-003-run-1-absent
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 40452957d8f602357ecc512dc643cb820db57202
+[inferops] procedure SHA-256: 03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] samples: 3, one every 2s, into .artifacts/argocd-application/observations/s3-003-run-1-absent
+[inferops] sample 1 of 3 at 2026-10-05T11:26:37Z: Application read answered, object read answered
+[inferops] sample 2 of 3 at 2026-10-05T11:26:39Z: Application read answered, object read answered
+[inferops] sample 3 of 3 at 2026-10-05T11:26:42Z: Application read answered, object read answered
+
+[inferops] === Result ===
+[inferops] 3 sample(s) were written into .artifacts/argocd-application/observations/s3-003-run-1-absent. This operation judged none of them.
+[inferops] A read that is recorded as unanswered returned no state. It is not a healthy state.
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[exit 0]
+$ python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/s3-003-run-1-absent > .artifacts/argocd-application/observations/s3-003-run-1-absent.record.json
+[exit 0]
+$ sha256sum .artifacts/argocd-application/observations/s3-003-run-1-absent.record.json
+68cd45ac3bdaf619b9203dbfefbb88446f22c30a69fec12b839d989e4e0ad907 *.artifacts/argocd-application/observations/s3-003-run-1-absent.record.json
+[exit 0]
+collection complete: True
+summary: {"applicationReads": {"absent": 3, "not-taken": 0, "reported": 0, "unanswered": 0, "unreadable": 0}, "resolvedRevisions": [], "samples": 3, "samplesSettled": 0, "samplesWithEveryRequiredField": 0}
+sample 001 2026-10-05T11:26:37Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:2 consistency=not-compared
+sample 002 2026-10-05T11:26:39Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:2 consistency=not-compared
+sample 003 2026-10-05T11:26:42Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:2 consistency=not-compared
+consistency findings: 0
+
+##### 9. observe into a directory that exists
+$ bash scripts/environment/argocd-application.sh observe --samples 3 --interval 2 --into s3-003-run-1-absent
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 40452957d8f602357ecc512dc643cb820db57202
+[inferops] procedure SHA-256: 03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] FAILED: refusing: observation-directory-exists: .artifacts/argocd-application/observations/s3-003-run-1-absent exists. An observation does not write into the directory of another one. Give another name with --into. Nothing was read.
+[exit 1]
+
+##### 10. observe, while the procedure applies the Application
+$ bash scripts/environment/argocd-application.sh apply --api-image-digest sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 40452957d8f602357ecc512dc643cb820db57202
+[inferops] procedure SHA-256: 03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] API image digest: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+[inferops] the namespace 'inferops-release' and the claim 'inferops-model-cache' exist.
+[inferops] no Helm release named 'inferops' is recorded in 'inferops-release'.
+[inferops] no other Application, ApplicationSet, or AppProject object exists.
+
+[inferops] === Apply ===
+appproject.argoproj.io/inferops-workloads serverside-applied
+application.argoproj.io/local-docker-desktop-support-assistant serverside-applied
+[inferops] the generation of the Application changed across the apply: 'none' to '1'. A comparison from before the apply is not accepted.
+
+[inferops] === Sync ===
+[inferops] desired revision: main, resolved by Argo CD to nothing yet
+[inferops] revision of the last sync operation: none, phase none
+[inferops] sync state: none
+[inferops] health state: none
+[inferops] last comparison with Git: none
+[inferops] API image digest that Argo CD compared: none
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] Argo CD has not compared the Application since the apply.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: none, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T11:27:25Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T11:27:25Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T11:27:54Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T11:27:54Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T11:28:14Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T11:28:14Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+##### Cleanup after the aborted attempt
+2026-10-05T11:29:31Z
+$ bash scripts/environment/argocd-application.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 40452957d8f602357ecc512dc643cb820db57202
+[inferops] procedure SHA-256: 03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+
+[inferops] === Deleting the Application, with a cascade ===
+Warning: metadata.finalizers: "resources-finalizer.argocd.argoproj.io": prefer a domain-qualified finalizer name including a path (/) to avoid accidental conflicts with other finalizer writers
+application.argoproj.io/local-docker-desktop-support-assistant patched
+application.argoproj.io "local-docker-desktop-support-assistant" deleted from argocd namespace
+
+[inferops] === Workload residue ===
+[inferops] no object carrying 'app.kubernetes.io/instance=inferops' remains in 'inferops-release'.
+
+[inferops] === Deleting the project ===
+appproject.argoproj.io "inferops-workloads" deleted from argocd namespace
+
+[inferops] === Prerequisites ===
+[inferops] the namespace 'inferops-release' and its claims are unchanged: none
+
+[inferops] === Result ===
+[inferops] no Application and no project of this procedure remains. The Argo CD installation, the namespace, and the claim were not touched.
+[exit 0]
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] container runtime: containerd://2.3.1
+[inferops] node image digest: sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+[inferops] repository revision: 40452957d8f602357ecc512dc643cb820db57202
+[inferops] procedure SHA-256: 9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] no Application, ApplicationSet, or AppProject object exists (before the controllers stop).
+
+[inferops] === Stopping the controllers ===
+statefulset.apps "argocd-application-controller" deleted from argocd namespace
+deployment.apps "argocd-applicationset-controller" deleted from argocd namespace
+deployment.apps "argocd-redis" deleted from argocd namespace
+deployment.apps "argocd-repo-server" deleted from argocd namespace
+[inferops] no pod remains in 'argocd'.
+
+[inferops] === Second check ===
+[inferops] no Application, ApplicationSet, or AppProject object exists (after the controllers stopped).
+
+[inferops] === Deleting the cluster-scoped objects ===
+customresourcedefinition.apiextensions.k8s.io "applications.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "applicationsets.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "appprojects.argoproj.io" deleted
+clusterrolebinding.rbac.authorization.k8s.io "argocd-application-controller" deleted
+clusterrole.rbac.authorization.k8s.io "argocd-application-controller" deleted
+
+[inferops] === Deleting the namespace ===
+namespace "argocd" deleted
+
+[inferops] === Residue ===
+
+[inferops] === Result ===
+[inferops] no Argo CD definition, cluster role, cluster role binding, or namespace 'argocd' remains.
+[inferops] the cluster, the platform namespace, and every release were not touched. Images that the node pulled stay in its image store.
+[exit 0]
+$ kubectl --context docker-desktop get namespaces -o name
+namespace/default
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+$ kubectl --context docker-desktop get customresourcedefinitions -o name
+2026-10-05T11:33:31Z

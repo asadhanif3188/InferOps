@@ -73,3 +73,6 @@ docs/proof/experiments/v2-e01/runs/** text eol=lf
 # Windows checkout cannot turn the desired state into CRLF copies that no render
 # matches.
 gitops/** text eol=lf
+# The transcripts and the records of the reconciliation observation name their
+# SHA-256 in the run record, so their bytes are the same on every host.
+docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-* text eol=lf
