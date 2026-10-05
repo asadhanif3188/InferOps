@@ -175,6 +175,10 @@ that release's generated values. On one provider, in three runs on one day, Argo
 applied the release six times, and five of six caller requests were answered. Those are
 runs and not a deployment: the Application is applied by an operator, the API image
 digest is not in Git, and four values the chart requires are still written by hand.
+Since `V2-S3-003-PR1` a tool reads
+[which release a Git commit holds](docs/environment/desired-state-provenance.md),
+from the commit that Argo CD reports and never from a branch name. It reads Git and
+no cluster, and no applied object carries a release identifier.
 
 ## Prerequisites
 

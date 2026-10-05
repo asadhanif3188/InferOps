@@ -301,11 +301,15 @@ The tests assert each property directly:
   check's reader, because the freeze record names that reader. A test holds that each
   exemption is used. Since `V2-S3-002-PR1`, `tools/gitops_desired_state` is listed with
   them: it does not import the package, and it calls the drift check to derive a
-  [desired-state release](../environment/git-desired-state.md). Another reads every tracked file under `src`, `tools`, `scripts`,
+  [desired-state release](../environment/git-desired-state.md). Since `V2-S3-003-PR1`,
+  `tools/desired_state_provenance` is listed too: it does not import the package, and it
+  names the drift check and the desired-state tool to read
+  [a declared release at a Git commit](../environment/desired-state-provenance.md). It
+  writes nothing. Another reads every tracked file under `src`, `tools`, `scripts`,
   `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, whatever its suffix,
-  and fails if any file outside the three tools names any of their packages as a whole
+  and fails if any file outside the four tools names any of their packages as a whole
   word - so no module, script, chart, deployment or infrastructure file, workflow, or
-  project setting reaches any of them in turn. A file inside one of the three is not read, so
+  project setting reaches any of them in turn. A file inside one of the four is not read, so
   the E01 runner may name the drift check's reader.
 
 ## The renderer interface
