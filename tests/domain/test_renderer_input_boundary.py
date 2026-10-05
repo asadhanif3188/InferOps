@@ -1369,11 +1369,19 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
 #:   holds it and prints its identities. It writes nothing. It does not import the
 #:   render package: it names ``generated_release`` and ``gitops_desired_state`` for
 #:   the declared releases, which is why it is listed.
+#: - ``reconciliation_evidence`` reads the directory that an observation of the
+#:   Application wrote and prints one evidence record. It writes nothing and
+#:   reads no cluster. It does not import the render package: it names
+#:   ``desired_state_provenance``, ``generated_release``, and
+#:   ``gitops_desired_state`` to compare a sample with a declared release, which
+#:   is why it is listed. The procedure that collects the directory does not call
+#:   it.
 REPOSITORY_CHECKS: tuple[str, ...] = (
     "desired_state_provenance",
     "experiment_e01",
     "generated_release",
     "gitops_desired_state",
+    "reconciliation_evidence",
 )
 
 #: The repository checks that import the render package themselves.

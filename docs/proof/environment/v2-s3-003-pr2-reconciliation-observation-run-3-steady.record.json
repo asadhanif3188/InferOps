@@ -1,0 +1,1146 @@
+{
+  "collection": {
+    "application": {
+      "state": "reported",
+      "value": "local-docker-desktop-support-assistant"
+    },
+    "applicationNamespace": {
+      "state": "reported",
+      "value": "argocd"
+    },
+    "complete": true,
+    "completedSamples": {
+      "state": "reported",
+      "value": 5
+    },
+    "intervalSeconds": {
+      "state": "reported",
+      "value": 2
+    },
+    "librarySha256": {
+      "state": "reported",
+      "value": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd"
+    },
+    "procedureSha256": {
+      "state": "reported",
+      "value": "dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3"
+    },
+    "provider": {
+      "state": "reported",
+      "value": "docker-desktop"
+    },
+    "repositoryRevision": {
+      "state": "reported",
+      "value": "4dfb69eba75686d2d7475a58054ead3c345b17af"
+    },
+    "requestedSamples": 5,
+    "serverVersion": {
+      "state": "reported",
+      "value": "v1.36.1"
+    },
+    "workloadNamespace": {
+      "state": "reported",
+      "value": "inferops-release"
+    }
+  },
+  "doesNotEstablish": [
+    "That a caller request was answered. A sync state and a health state are what the controller reports. They are not a caller outcome.",
+    "That a field with a state other than reported had any value. A field that was not reported is not healthy, not synced, and not unhealthy.",
+    "What happened between two samples. A state that began and ended between two samples leaves no transition.",
+    "That the controller applied the commit it reports, or that an applied object was rendered at that commit.",
+    "That the reported commit is on a branch, or that a merge was reviewed.",
+    "Anything about the API image or the hand-written values. Neither is read from the reported commit.",
+    "That the record holds no secret. It is built from an allowlist of fields, and a message is cut and passed through a prefix heuristic."
+  ],
+  "objectSets": {
+    "14ecbec0a791ea09": [
+      {
+        "kind": "ConfigMap",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector-configuration"
+      },
+      {
+        "kind": "ConfigMap",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-configuration"
+      },
+      {
+        "kind": "ConfigMap",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-telemetry-scrape"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-api"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-default-deny"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-model-acquisition"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-release-test"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector-86bfc987cf-52ck6"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector-86bfc987cf"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c"
+      },
+      {
+        "kind": "Role",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "RoleBinding",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "Service",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm"
+      },
+      {
+        "kind": "Service",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "Service",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "ServiceAccount",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-api"
+      },
+      {
+        "kind": "ServiceAccount",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "ServiceAccount",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      }
+    ]
+  },
+  "samples": [
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 1,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:46:33Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 2,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:46:36Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 3,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:46:40Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 4,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:46:43Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 5,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:46:46Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    }
+  ],
+  "schema": "inferops.io/reconciliation-observation/v1alpha1",
+  "summary": {
+    "applicationReads": {
+      "absent": 0,
+      "not-taken": 0,
+      "reported": 5,
+      "unanswered": 0,
+      "unreadable": 0
+    },
+    "resolvedRevisions": [
+      "40452957d8f602357ecc512dc643cb820db57202"
+    ],
+    "samples": 5,
+    "samplesSettled": 5,
+    "samplesWithEveryRequiredField": 5
+  },
+  "transitions": []
+}

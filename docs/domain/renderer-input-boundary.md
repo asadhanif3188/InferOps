@@ -305,11 +305,15 @@ The tests assert each property directly:
   `tools/desired_state_provenance` is listed too: it does not import the package, and it
   names the drift check and the desired-state tool to read
   [a declared release at a Git commit](../environment/desired-state-provenance.md). It
-  writes nothing. Another reads every tracked file under `src`, `tools`, `scripts`,
+  writes nothing. Since `V2-S3-003-PR2`, `tools/reconciliation_evidence` is listed
+  too: it does not import the package, and it names the provenance tool, the
+  drift check, and the desired-state tool to compare
+  [what a controller reported](../environment/reconciliation-evidence.md) with a
+  declared release. It writes nothing. Another reads every tracked file under `src`, `tools`, `scripts`,
   `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, whatever its suffix,
-  and fails if any file outside the four tools names any of their packages as a whole
+  and fails if any file outside the five tools names any of their packages as a whole
   word - so no module, script, chart, deployment or infrastructure file, workflow, or
-  project setting reaches any of them in turn. A file inside one of the four is not read, so
+  project setting reaches any of them in turn. A file inside one of the five is not read, so
   the E01 runner may name the drift check's reader.
 
 ## The renderer interface

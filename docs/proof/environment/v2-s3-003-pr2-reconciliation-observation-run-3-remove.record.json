@@ -1,0 +1,4944 @@
+{
+  "collection": {
+    "application": {
+      "state": "reported",
+      "value": "local-docker-desktop-support-assistant"
+    },
+    "applicationNamespace": {
+      "state": "reported",
+      "value": "argocd"
+    },
+    "complete": true,
+    "completedSamples": {
+      "state": "reported",
+      "value": 40
+    },
+    "intervalSeconds": {
+      "state": "reported",
+      "value": 2
+    },
+    "librarySha256": {
+      "state": "reported",
+      "value": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd"
+    },
+    "procedureSha256": {
+      "state": "reported",
+      "value": "dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3"
+    },
+    "provider": {
+      "state": "reported",
+      "value": "docker-desktop"
+    },
+    "repositoryRevision": {
+      "state": "reported",
+      "value": "4dfb69eba75686d2d7475a58054ead3c345b17af"
+    },
+    "requestedSamples": 40,
+    "serverVersion": {
+      "state": "reported",
+      "value": "v1.36.1"
+    },
+    "workloadNamespace": {
+      "state": "reported",
+      "value": "inferops-release"
+    }
+  },
+  "doesNotEstablish": [
+    "That a caller request was answered. A sync state and a health state are what the controller reports. They are not a caller outcome.",
+    "That a field with a state other than reported had any value. A field that was not reported is not healthy, not synced, and not unhealthy.",
+    "What happened between two samples. A state that began and ended between two samples leaves no transition.",
+    "That the controller applied the commit it reports, or that an applied object was rendered at that commit.",
+    "That the reported commit is on a branch, or that a merge was reviewed.",
+    "Anything about the API image or the hand-written values. Neither is read from the reported commit.",
+    "That the record holds no secret. It is built from an allowlist of fields, and a message is cut and passed through a prefix heuristic."
+  ],
+  "objectSets": {
+    "14ecbec0a791ea09": [
+      {
+        "kind": "ConfigMap",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector-configuration"
+      },
+      {
+        "kind": "ConfigMap",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-configuration"
+      },
+      {
+        "kind": "ConfigMap",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-telemetry-scrape"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-api"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-default-deny"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-model-acquisition"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-release-test"
+      },
+      {
+        "kind": "NetworkPolicy",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector-86bfc987cf-52ck6"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector-86bfc987cf"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c"
+      },
+      {
+        "kind": "Role",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "RoleBinding",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "Service",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm"
+      },
+      {
+        "kind": "Service",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "Service",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "ServiceAccount",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-api"
+      },
+      {
+        "kind": "ServiceAccount",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "ServiceAccount",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      }
+    ],
+    "4f0a3f968808044d": [
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c"
+      }
+    ],
+    "4f53cda18c2baa0c": [],
+    "a25d5dfe66371c32": [
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-collector-86bfc987cf"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c"
+      }
+    ]
+  },
+  "samples": [
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 1,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:26Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 2,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:30Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 3,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:35Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 4,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:39Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:45:30Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "Synced"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 5,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:43Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [],
+        "value": true
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 8,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "reported",
+          "value": "2026-10-05T12:47:45Z"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Progressing"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:47:44Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "OutOfSync"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 6,
+      "notReported": [],
+      "objectCount": 8,
+      "objectSet": "a25d5dfe66371c32",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:47Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is reported as OutOfSync, and not Synced",
+          "healthStatus is reported as Progressing, and not Healthy",
+          "the Application has a deletion timestamp"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 6,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "reported",
+          "value": "2026-10-05T12:47:45Z"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Progressing"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:47:44Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "OutOfSync"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 7,
+      "notReported": [],
+      "objectCount": 6,
+      "objectSet": "4f0a3f968808044d",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:52Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is reported as OutOfSync, and not Synced",
+          "healthStatus is reported as Progressing, and not Healthy",
+          "the Application has a deletion timestamp"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "reason": "the object read returned no object",
+          "state": "not-compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "reported",
+          "value": "2026-10-05T12:47:45Z"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Progressing"
+        },
+        "historyDeployedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "historyId": {
+          "state": "reported",
+          "value": 0
+        },
+        "historyRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:49Z"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Succeeded"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:47:44Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "OutOfSync"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 8,
+      "notReported": [],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "successfully synced (all tasks run)"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is reported as OutOfSync, and not Synced",
+          "healthStatus is reported as Progressing, and not Healthy",
+          "the Application has a deletion timestamp"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 9,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 10,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:03Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 11,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:06Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 12,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:09Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 13,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:12Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 14,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:15Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 15,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:18Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 16,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:21Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 17,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:24Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 18,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:27Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 19,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:30Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 20,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:33Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 21,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:36Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 22,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:40Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 23,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:43Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 24,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:46Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 25,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:49Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 26,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:53Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 27,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:56Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 28,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:00Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 29,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:03Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 30,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:06Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 31,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:09Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 32,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:12Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 33,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:15Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 34,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:18Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 35,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:22Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 36,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:26Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 37,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:28Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 38,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:31Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 39,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:34Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 40,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:49:37Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    }
+  ],
+  "schema": "inferops.io/reconciliation-observation/v1alpha1",
+  "summary": {
+    "applicationReads": {
+      "absent": 32,
+      "not-taken": 0,
+      "reported": 8,
+      "unanswered": 0,
+      "unreadable": 0
+    },
+    "resolvedRevisions": [
+      "40452957d8f602357ecc512dc643cb820db57202"
+    ],
+    "samples": 40,
+    "samplesSettled": 5,
+    "samplesWithEveryRequiredField": 8
+  },
+  "transitions": [
+    {
+      "field": "syncStatus",
+      "from": {
+        "state": "reported",
+        "value": "Synced"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:43Z"
+      },
+      "fromSample": 5,
+      "to": {
+        "state": "reported",
+        "value": "OutOfSync"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:47Z"
+      },
+      "toSample": 6
+    },
+    {
+      "field": "healthStatus",
+      "from": {
+        "state": "reported",
+        "value": "Healthy"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:43Z"
+      },
+      "fromSample": 5,
+      "to": {
+        "state": "reported",
+        "value": "Progressing"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:47Z"
+      },
+      "toSample": 6
+    },
+    {
+      "field": "applicationRead",
+      "from": {
+        "state": "reported",
+        "value": "reported"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "reported",
+        "value": "absent"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    },
+    {
+      "field": "syncStatus",
+      "from": {
+        "state": "reported",
+        "value": "OutOfSync"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "not-collected"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    },
+    {
+      "field": "resolvedRevision",
+      "from": {
+        "state": "reported",
+        "value": "40452957d8f602357ecc512dc643cb820db57202"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "not-collected"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    },
+    {
+      "field": "healthStatus",
+      "from": {
+        "state": "reported",
+        "value": "Progressing"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "not-collected"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    },
+    {
+      "field": "operationPhase",
+      "from": {
+        "state": "reported",
+        "value": "Succeeded"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "not-collected"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    },
+    {
+      "field": "operationRevision",
+      "from": {
+        "state": "reported",
+        "value": "40452957d8f602357ecc512dc643cb820db57202"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "not-collected"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    },
+    {
+      "field": "operationStartedAt",
+      "from": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:18Z"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "not-collected"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    },
+    {
+      "field": "operationFinishedAt",
+      "from": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:49Z"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "not-collected"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    },
+    {
+      "field": "historyId",
+      "from": {
+        "state": "reported",
+        "value": 0
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:55Z"
+      },
+      "fromSample": 8,
+      "to": {
+        "state": "not-collected"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "toSample": 9
+    }
+  ]
+}

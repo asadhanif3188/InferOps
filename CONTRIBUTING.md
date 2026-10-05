@@ -474,6 +474,22 @@ It reads Git objects and writes nothing.
 [The desired-state provenance document](docs/environment/desired-state-provenance.md)
 describes the record and what it does not establish.
 
+**What Argo CD reports is collected in two steps.** The procedure's `observe`
+operation reads the cluster a bounded number of times and writes a directory
+under `.artifacts/`. The evidence tool reads that directory and no cluster:
+
+```sh
+scripts/environment/argocd-application.sh observe --samples 30 --interval 2 --into NAME
+uv run --locked python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/NAME
+```
+
+A field that was not reported is recorded as not reported, and never as healthy.
+Do not commit the directory: commit the record.
+**A manual `kubectl` change to an object that the Application manages is not
+the release path.**
+[The reconciliation evidence document](docs/environment/reconciliation-evidence.md)
+states the record and the boundary for a manual change.
+
 ### Experiment freeze records
 
 An experiment family is frozen before its first result-bearing run, in a record under

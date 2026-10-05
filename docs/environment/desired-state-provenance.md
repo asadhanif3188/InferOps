@@ -213,8 +213,14 @@ The suite uses each function on committed files:
   `helm template` and skips when Helm is absent. A second test reads the chart's
   committed real render and needs no Helm.
 
-No function was given a value that was read from a cluster. A later change collects
-the Argo CD state and the labels of applied objects.
+In the suite, no function is given a value that was read from a cluster. Since
+`V2-S3-003-PR2`, [the reconciliation evidence tool](reconciliation-evidence.md)
+gives the three functions what an `observe` collection read. On 2026-10-05, on
+one provider, it gave them what Argo CD reported and the labels of the applied
+objects, and no function reported a finding.
+[The record of those runs](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
+holds the samples. The evidence tool does not give the commit that Argo CD
+resolved to `observed_revision_findings`: the record is read at that commit.
 
 ## Why no label was added
 
@@ -252,12 +258,11 @@ that it reads none of the three provenance labels.
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| A collection of the commit that Argo CD reports, with sync and health states | This change reads Git only | A collector for the Argo CD state |
-| A comparison of the labels of an applied object with a record | No test reads a cluster | A collection of applied objects on a run |
+| A finding of one of the three comparisons on a cluster | `V2-S3-003-PR2` added [the collection](reconciliation-evidence.md), and two runs on one provider compared their samples. Every comparison agreed | An observation of a state that disagrees |
 | The release identifier of the release document on an applied object | The renderer and the chart are pinned by the first experiment's freeze records | A freeze revision, then a generated value and a chart label |
 | The render repeated at the commit | The tool reads five kinds of file and renders nothing | A check that derives the release from the sources at the commit |
 | A check that the commit is on `main` | The tool reads objects and no branch | A decision on which remote reference is authoritative |
-| The break-glass boundary for a manual change | Not in this change | A document and a decision on how an operator suspends reconciliation |
+| A way to suspend reconciliation for a manual change | [The boundary](reconciliation-evidence.md#the-boundary-for-a-manual-change) is stated, and it decides no mechanism | A decision record |
 
 ## What this does not establish
 

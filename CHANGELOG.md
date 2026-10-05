@@ -10,6 +10,55 @@ from `1.0.0`.
 
 ### Added
 
+- **What Argo CD reports about the Application can be collected, and a field
+  that was not reported stays not reported. Executed on one provider.**
+  `V2-S3-003-PR2` adds an `observe` operation to
+  `scripts/environment/argocd-application.sh`, the tool
+  `tools/reconciliation_evidence`, and
+  [the reconciliation evidence document](docs/environment/reconciliation-evidence.md).
+  `observe` reads the Application, and the kind, name, and labels of the release
+  objects, a stated number of times at a stated interval, with no default and
+  with limits of 120 samples and 30 seconds. It changes nothing in the cluster.
+  It writes what each read returned into a new directory under `.artifacts/`,
+  and it records a read that did not answer as unanswered. The tool reads that
+  directory and no cluster. It prints one record: the desired revision, the
+  commit that Argo CD resolved, the sync state, the health state, and the last
+  operation at each sample, the changes between two consecutive samples, and a
+  comparison of each sample with
+  [the provenance](docs/environment/desired-state-provenance.md) of the release
+  at the commit the sample reports. Each field has a state, and only a reported
+  field carries a value. A sample that lacks one required field is not settled,
+  and a comparison that could not be made is recorded as not compared. The
+  record is built from an allowlist of fields, and a message is cut and
+  redacted. The document also states the boundary for a manual change: six
+  rules, each with how it is held. Three are held by review, two are not
+  enforced, and one is tested against stubs. No admission control exists, and no
+  way to suspend reconciliation is decided.
+  **What Argo CD reports is reconciliation evidence, and it is not a caller
+  outcome.** On 2026-10-05, on the `docker-desktop` provider at Kubernetes
+  v1.36.1, `observe` read one Application beside an apply, after it, and beside
+  a removal.
+  [The record of the run](docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
+  holds the samples of two runs. A new Application reported no state for 19
+  seconds in one run and 46 seconds in the other, one sample of each run reported
+  `Healthy` beside `OutOfSync`, and in one run an Application with a deletion
+  timestamp still reported `Synced` and `Healthy`; the tool counts none of those
+  samples as settled, and it reads the deletion timestamp only since that run.
+  Every comparison with the provenance agreed. One caller request was sent in
+  each run, and each was answered. A first attempt was aborted and is kept: the
+  chart's acquisition job failed with `BackoffLimitExceeded`, the operator saw
+  `OOMKilled` by hand, the cause was not investigated, and the driver did not
+  stop. The last run is the run of the committed procedure, tool, and driver.
+  Two independent reviews of the first commit found that label findings beyond
+  200 objects were dropped under a compared state, that a sample was reported as
+  compared when only its resolved revision had been compared with itself, that a
+  repository address with a credential in it reached the record, that a refusal
+  said that nothing was read after the target had been read, and that the run record stated three
+  things no committed file holds;
+  [the validation record](docs/proof/environment/v2-s3-003-pr2-validation.md)
+  lists each. Three of the six boundary rules are in no decision record, and the
+  document says so. The operation was not executed on `kind`. No claim is
+  registered, and no decision record changes.
 - **A tool resolves a Git commit to the release it holds. Static only.**
   `V2-S3-003-PR1` adds `tools/desired_state_provenance` and
   [the desired-state provenance document](docs/environment/desired-state-provenance.md).

@@ -238,7 +238,7 @@ column.
 | `networkPolicyEnforcement` | Not enforced by kindnetd. *Inferred* from the Docker Desktop measurement, which ran the same plugin | Not enforced by the kindnetd build tested. *Observed* |
 | `capacity` | The node shares the engine VM; preflight measures it. *Observed* | The node is given effectively the whole VM: allocatable 12 cpu and 10188020Ki against an engine allocation of 12 processors and 10432532480 bytes on the V1 reference host. A gate must read the node's own allocatable and what is already requested on it, not the engine total, because the engine figure counts memory other workloads in the same cluster already hold. *Observed* |
 | `wholeClusterCleanup` | `kind delete cluster --name <cluster>` removes the node and its volumes; the `kind` network and node image survive. *Observed* | *Unknown.* What a reset or disable removes has not been observed, and no V1 workflow performs either |
-| `kubernetesVersion` | Chosen by the node image; the helper pins 1.34.8. *Observed* | Bound to the Docker Desktop release, not pinnable. `v1.34.3` both times it was read. *Observed* |
+| `kubernetesVersion` | Chosen by the node image; the helper pins 1.34.8. *Observed* | Bound to the Docker Desktop release, not pinnable. `v1.34.3` at the first two reads, and `v1.36.1` on 2026-10-05, after the owner of the host made a new cluster. *Observed* |
 | `nodeTopology` | `<cluster>-control-plane`, one node in the helper's definition. *Observed* | One node, `desktop-control-plane`, running kindest/kindnetd. *Observed* |
 
 The two providers share a network plugin and a node shape. That is exactly what

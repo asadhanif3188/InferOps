@@ -493,6 +493,18 @@ and no cluster, and this change adds no label to an applied object.
 [The desired-state provenance document](../environment/desired-state-provenance.md)
 states the rules and the limits.
 
+**Added 2026-10-05.** The Application procedure has an `observe` operation. It
+reads the Application a bounded number of times and changes nothing. A tool,
+`tools/reconciliation_evidence`, builds one record from those reads: the commit,
+the sync state, and the health state that Argo CD reported at each sample, the
+fields it did not report, and the changes between two samples. A field that was
+not reported stays not reported. The record is reconciliation evidence, and it
+is not a caller outcome. The operation ran on the `docker-desktop` provider on
+2026-10-05, at one commit, and not on `kind`. The tool built records from the
+directories of those runs.
+[The reconciliation evidence document](../environment/reconciliation-evidence.md)
+states the record, its limits, and the boundary for a manual change.
+
 Three statements bound this diagram:
 
 - **The upper box exists, and the lower one does not.**
@@ -949,6 +961,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | How the GitOps controller is installed and owned, and where the bootstrap was run | [ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md), and [the Argo CD bootstrap record](../environment/argocd-bootstrap.md) |
 | Where the desired state of a workload is kept, and what that directory may hold | [ADR 0018](decisions/ADR-0018-git-desired-state-layout.md), and [the Git desired state](../environment/git-desired-state.md) |
 | Which release a Git commit holds, starting from the commit that Argo CD reports | [Desired-state provenance](../environment/desired-state-provenance.md) |
+| What Argo CD reported about the Application, what it did not report, and when a manual change is permitted | [Reconciliation evidence](../environment/reconciliation-evidence.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |

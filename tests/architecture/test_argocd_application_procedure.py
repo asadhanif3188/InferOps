@@ -10,8 +10,8 @@ committed bytes. kubectl, kind, docker, and sleep are stubs. No cluster is
 contacted, no Argo CD runs, and no chart is rendered.
 
 What it establishes: the order of the procedure's calls, that each refusal comes
-before the first mutation, what the two apply requests are given, and what the
-removal deletes. What it does not establish: that Argo CD reconciles the release,
+before the first mutation, what the two apply requests are given, what the
+removal deletes, and what an observation reads and writes. What it does not establish: that Argo CD reconciles the release,
 that a cascade deletes the workload, or anything a real API server answers. The
 stub answers what the test tells it to answer. No test reaches a time limit.
 """
@@ -136,6 +136,9 @@ case "$*" in
     fi
     ;;
   *"get secrets"*) printf '%s' "${STUB_HELM_RECORDS:-}" ;;
+  *"get applications.argoproj.io local-docker-desktop-support-assistant"*"-o json")
+    printf '%s' "${STUB_APPLICATION_JSON:-}"
+    ;;
   *"patch --local"*"jsonpath={.spec}"*"workloads-project.yaml"*) printf 'committed-project-spec' ;;
   *"patch --local"*"jsonpath={.spec}"*) printf 'committed-application-spec' ;;
   *"patch --local"*) printf '{"stub":"document"}\\n' ;;
@@ -981,6 +984,242 @@ def test_removal_touches_only_the_two_named_objects(sandbox: Path) -> None:
         assert "-l" not in words
 
 
+# --------------------------------------------------------------------------
+# observe
+# --------------------------------------------------------------------------
+
+OBSERVE = ("observe", "--samples", "3", "--interval", "7", "--into", "run-1")
+OBSERVATION_REL = ".artifacts/argocd-application/observations/run-1"
+# The evidence tool does not accept one repeated character as a commit, so the
+# observation reports another value than the apply cases use.
+OBSERVED_REVISION = "0123456789abcdef0123456789abcdef01234567"
+REPORTED_APPLICATION = json.dumps(
+    {
+        "kind": "Application",
+        "metadata": {"name": APPLICATION},
+        "spec": {"source": {"targetRevision": "main"}},
+        "status": {
+            "sync": {"status": "Synced", "revision": OBSERVED_REVISION},
+            "health": {"status": "Healthy"},
+            "operationState": {
+                "phase": "Succeeded",
+                "syncResult": {"revision": OBSERVED_REVISION},
+            },
+        },
+    }
+)
+OBSERVED_OBJECT = (
+    'Deployment\tinferops-inferops-llm\t{"helm.sh/chart":"inferops-llm-0.3.0"}\n'
+)
+
+
+@needs_bash
+def test_observation_reads_a_bounded_number_of_times_and_changes_nothing(
+    sandbox: Path,
+) -> None:
+    run = run_script(
+        sandbox,
+        *OBSERVE,
+        application_json=REPORTED_APPLICATION,
+        workload=OBSERVED_OBJECT,
+    )
+    assert run.returncode == 0, run.output
+    assert run.mutations == []
+    reads = [
+        call for call in run.kubectl if call[:2] == ["get", "applications.argoproj.io"]
+    ]
+    assert len(reads) == 3
+    for call in reads:
+        assert call[2:6] == [APPLICATION, "-n", ARGOCD_NAMESPACE, "--ignore-not-found"]
+        assert call[-2:] == ["-o", "json"]
+    assert (
+        sum(
+            1
+            for call in run.kubectl
+            if call[:2]
+            == [
+                "get",
+                "deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings",
+            ]
+        )
+        == 3
+    )
+    # One wait between two samples, and none after the last one.
+    assert [line for line in run.calls if line.startswith("sleep ")] == ["sleep 7"] * 2
+    assert "They are not a caller outcome." in run.output
+    assert "It is not a healthy state." in run.output
+
+    directory = sandbox / OBSERVATION_REL
+    assert sorted(entry.name for entry in directory.iterdir()) == [
+        "collection.end",
+        "collection.meta",
+        *(
+            f"sample-00{n}.{suffix}"
+            for n in (1, 2, 3)
+            for suffix in ("application.json", "meta", "objects.txt")
+        ),
+    ]
+    header = (directory / "collection.meta").read_text(encoding="utf-8")
+    assert "requestedSamples=3\n" in header and "intervalSeconds=7\n" in header
+    assert f"procedureSha256={sha256_of(sandbox / SCRIPT_REL)}\n" in header
+    assert (directory / "collection.end").read_text(encoding="utf-8") == (
+        "completedSamples=3\n"
+    )
+
+
+@needs_bash
+def test_the_evidence_tool_reads_what_the_observation_wrote(sandbox: Path) -> None:
+    """The file format, held by execution on both sides of it."""
+    from tools.reconciliation_evidence import build_record
+
+    run = run_script(
+        sandbox,
+        *OBSERVE,
+        application_json=REPORTED_APPLICATION,
+        workload=OBSERVED_OBJECT,
+    )
+    assert run.returncode == 0, run.output
+    record = build_record(sandbox / OBSERVATION_REL)
+    assert record["collection"]["complete"] is True
+    assert record["collection"]["intervalSeconds"] == {"state": "reported", "value": 7}
+    assert record["summary"]["applicationReads"]["reported"] == 3
+    assert record["summary"]["samplesSettled"] == 3
+    assert record["summary"]["resolvedRevisions"] == [OBSERVED_REVISION]
+    assert record["transitions"] == []
+    for sample in record["samples"]:
+        assert sample["objectsRead"] == "collected"
+        (entry,) = record["objectSets"][sample["objectSet"]]
+        assert entry["kind"] == "Deployment"
+        assert entry["labels"]["helm.sh/chart"] == {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0",
+        }
+        assert entry["labels"]["inferops.io/workload"] == {"state": "missing"}
+
+
+@needs_bash
+def test_an_absent_application_is_an_observation_and_not_a_refusal(
+    sandbox: Path,
+) -> None:
+    from tools.reconciliation_evidence import build_record
+
+    run = run_script(sandbox, *OBSERVE, namespace="")
+    assert run.returncode == 0, run.output
+    record = build_record(sandbox / OBSERVATION_REL)
+    assert record["summary"]["applicationReads"]["absent"] == 3
+    assert record["summary"]["samplesSettled"] == 0
+    for sample in record["samples"]:
+        assert sample["objectsRead"] == "collected"
+        assert record["objectSets"][sample["objectSet"]] == []
+
+
+@needs_bash
+@pytest.mark.parametrize(
+    ("fail_on", "application_read", "objects_read"),
+    (
+        ("--ignore-not-found -o json", "unanswered", "collected"),
+        ("get deployments,replicasets,pods", "reported", "unanswered"),
+    ),
+    ids=("application", "objects"),
+)
+def test_a_read_that_did_not_answer_is_recorded_as_unanswered(
+    sandbox: Path, fail_on: str, application_read: str, objects_read: str
+) -> None:
+    from tools.reconciliation_evidence import build_record
+
+    run = run_script(
+        sandbox,
+        *OBSERVE,
+        application_json=REPORTED_APPLICATION,
+        workload=OBSERVED_OBJECT,
+        fail_on=fail_on,
+    )
+    # The observation goes on: an unanswered read is a sample.
+    assert run.returncode == 0, run.output
+    assert run.output.count("unanswered") >= 3
+    directory = sandbox / OBSERVATION_REL
+    kept = {entry.name for entry in directory.iterdir()}
+    if application_read == "unanswered":
+        assert not any(name.endswith(".application.json") for name in kept)
+    else:
+        assert not any(name.endswith(".objects.txt") for name in kept)
+    record = build_record(directory)
+    assert record["collection"]["complete"] is True
+    for sample in record["samples"]:
+        assert sample["applicationRead"] == application_read
+        assert sample["objectsRead"] == objects_read
+    assert record["summary"]["samplesSettled"] == (
+        3 if application_read == "reported" else 0
+    )
+
+
+@needs_bash
+def test_observation_does_not_write_into_an_existing_directory(sandbox: Path) -> None:
+    existing = sandbox / OBSERVATION_REL
+    existing.mkdir(parents=True)
+    (existing / "kept.txt").write_text("kept", encoding="utf-8")
+    run = run_script(sandbox, *OBSERVE, application_json=REPORTED_APPLICATION)
+    assert run.refused
+    assert "observation-directory-exists" in run.output
+    # Before the target is verified. The first version of the procedure
+    # verified the target first, which reads the cluster, and then said that
+    # nothing was read.
+    assert run.kubectl == []
+    assert [entry.name for entry in existing.iterdir()] == ["kept.txt"]
+
+
+@needs_bash
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ("observe",),
+        ("observe", "--samples", "3", "--interval", "7"),
+        ("observe", "--samples", "3", "--into", "run-1"),
+        ("observe", "--interval", "7", "--into", "run-1"),
+        ("observe", "--samples", "0", "--interval", "7", "--into", "run-1"),
+        ("observe", "--samples", "121", "--interval", "7", "--into", "run-1"),
+        ("observe", "--samples", "3x", "--interval", "7", "--into", "run-1"),
+        ("observe", "--samples", "3", "--interval", "0", "--into", "run-1"),
+        ("observe", "--samples", "3", "--interval", "31", "--into", "run-1"),
+        ("observe", "--samples", "3", "--interval", "7", "--into", "../run"),
+        ("observe", "--samples", "3", "--interval", "7", "--into", "Run"),
+        ("observe", "--samples", "3", "--interval", "7", "--into", "a" * 64),
+    ),
+)
+def test_observation_without_stated_bounds_reads_nothing(
+    sandbox: Path, arguments: tuple[str, ...]
+) -> None:
+    run = run_script(sandbox, *arguments)
+    assert run.refused
+    assert "observation-bounds-not-given" in run.output
+    assert run.kubectl == []
+    assert not (sandbox / ".artifacts").exists()
+
+
+@needs_bash
+def test_the_largest_interval_and_the_longest_name_are_accepted(
+    sandbox: Path,
+) -> None:
+    """The largest count is not executed here: 240 stub reads are slow. The
+    static suite reads the two limits, and a count of 121 is refused above."""
+    run = run_script(
+        sandbox, "observe", "--samples", "2", "--interval", "30", "--into", "a" * 63
+    )
+    assert run.returncode == 0, run.output
+    assert [line for line in run.calls if line.startswith("sleep ")] == ["sleep 30"]
+
+
+@needs_bash
+def test_observation_selects_and_verifies_the_target_first(sandbox: Path) -> None:
+    run = run_script(sandbox, *OBSERVE, provider=None)
+    assert run.refused
+    assert run.kubectl == []
+    run = run_script(sandbox, *OBSERVE, api_node="some-other-control-plane")
+    assert run.refused
+    assert not any("argoproj.io" in " ".join(call) for call in run.kubectl)
+    assert not (sandbox / ".artifacts").exists()
+
+
 @needs_bash
 @pytest.mark.parametrize(
     "arguments",
@@ -990,6 +1229,12 @@ def test_removal_touches_only_the_two_named_objects(sandbox: Path) -> None:
         ("apply", "--api-image-digest", DIGEST, "--api-image-digest", DIGEST),
         ("remove", "--confirm", "--api-image-digest", DIGEST),
         ("verify", "--prune"),
+        ("verify", "--samples", "3"),
+        ("apply", "--api-image-digest", DIGEST, "--into", "run-1"),
+        ("remove", "--confirm", "--interval", "7"),
+        (*OBSERVE, "--confirm"),
+        (*OBSERVE, "--api-image-digest", DIGEST),
+        (*OBSERVE, "--samples", "3"),
         (),
     ),
 )

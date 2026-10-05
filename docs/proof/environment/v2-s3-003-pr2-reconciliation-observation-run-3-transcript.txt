@@ -1,0 +1,1268 @@
+
+##### 0. Tools, revision, and the cluster before the run
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-05T12:29:25Z
+[exit 0]
+$ git rev-parse HEAD
+4dfb69eba75686d2d7475a58054ead3c345b17af
+[exit 0]
+$ git status --short
+ M docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-driver.txt
+ M scripts/environment/argocd-application.sh
+ M tests/architecture/test_argocd_application_procedure.py
+ M tests/domain/test_reconciliation_evidence.py
+ M tools/reconciliation_evidence/core.py
+[exit 0]
+$ git ls-remote origin refs/heads/main
+40452957d8f602357ecc512dc643cb820db57202	refs/heads/main
+[exit 0]
+$ sha256sum scripts/environment/argocd-application.sh scripts/environment/argocd-bootstrap.sh scripts/environment/lib.sh tools/reconciliation_evidence/core.py tools/reconciliation_evidence/__main__.py infra/argocd/workloads-project.yaml infra/argocd/local-docker-desktop-support-assistant.yaml
+dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3 *scripts/environment/argocd-application.sh
+9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25 *scripts/environment/argocd-bootstrap.sh
+b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd *scripts/environment/lib.sh
+affa06c7d41976dc14c49cb82c3337fb4d4bdb26ad2fd7ec5de75b27fa699e11 *tools/reconciliation_evidence/core.py
+e384182742a9c7db203de76aa3f5b8974f3f44152b0047415a1ba59ee997dd4d *tools/reconciliation_evidence/__main__.py
+34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39 *infra/argocd/workloads-project.yaml
+42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd *infra/argocd/local-docker-desktop-support-assistant.yaml
+[exit 0]
+$ kubectl version --context docker-desktop
+Client Version: v1.36.1
+Kustomize Version: v5.8.1
+Server Version: v1.36.1
+[exit 0]
+$ k get nodes -o name
+node/desktop-control-plane
+[exit 0]
+$ k get namespaces -o name
+namespace/default
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+[exit 0]
+
+##### 1. observe with no provider selected
+$ bash scripts/environment/argocd-application.sh observe --samples 1 --interval 1 --into s3-003-run-3-refused
+[inferops] FAILED: refusing to select a target: no-provider-selected: no INFEROPS_PROVIDER was given. Set it to "kind" or "docker-desktop"; there is no default.
+[exit 1]
+
+##### 2. observe with no bound
+$ bash scripts/environment/argocd-application.sh observe --into s3-003-run-3-refused
+[inferops] FAILED: refusing: observation-bounds-not-given: 'observe' needs --samples COUNT, a whole number from 1 to 120. Nothing was read.
+[exit 1]
+
+##### 3. observe before Argo CD is installed
+$ bash scripts/environment/argocd-application.sh observe --samples 2 --interval 1 --into s3-003-run-3-no-controller
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] samples: 2, one every 1s, into .artifacts/argocd-application/observations/s3-003-run-3-no-controller
+error: the server doesn't have a resource type "applications"
+[inferops] sample 1 of 2 at 2026-10-05T12:29:46Z: Application read unanswered, object read answered
+error: the server doesn't have a resource type "applications"
+[inferops] sample 2 of 2 at 2026-10-05T12:29:48Z: Application read unanswered, object read answered
+
+[inferops] === Result ===
+[inferops] 2 sample(s) were written into .artifacts/argocd-application/observations/s3-003-run-3-no-controller. This operation judged none of them.
+[inferops] A read that is recorded as unanswered returned no state. It is not a healthy state.
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[exit 0]
+$ python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/s3-003-run-3-no-controller > .artifacts/argocd-application/observations/s3-003-run-3-no-controller.record.json
+[exit 0]
+$ sha256sum .artifacts/argocd-application/observations/s3-003-run-3-no-controller.record.json
+0c2dc6a2a56c76c700ea6e012392334d3f37eb86a3865e127ff2bb702a01a502 *.artifacts/argocd-application/observations/s3-003-run-3-no-controller.record.json
+[exit 0]
+collection complete: True
+summary: {"applicationReads": {"absent": 0, "not-taken": 0, "reported": 0, "unanswered": 2, "unreadable": 0}, "resolvedRevisions": [], "samples": 2, "samplesSettled": 0, "samplesWithEveryRequiredField": 0}
+distinct lists of objects: 1
+sample 001 2026-10-05T12:29:46Z read=unanswered sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 002 2026-10-05T12:29:48Z read=unanswered sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+comparison revisions: made in 0 sample(s), not made in 0, findings 0, states []
+comparison source: made in 0 sample(s), not made in 0, findings 0, states []
+comparison labels: made in 0 sample(s), not made in 0, findings 0, states []
+consistency findings: 0
+
+##### 4. Preparation: the two images, loaded into the node
+$ bash scripts/environment/api-image.sh load
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+localhost/inferops api:dev              	saved
+application/vnd.oci.image.index.v1+json sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+Importing	elapsed: 10.4s	total:   0.0 B	(0.0 B/s)
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-api@sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd' resolves inside 'desktop-control-plane'.
+[inferops] the real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched.
+[exit 0]
+$ bash scripts/environment/model-seed-image.sh load
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+localhost/inferops model seed:90862c4b9d	saved
+application/vnd.oci.image.index.v1+json sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d
+Importing	elapsed: 353.8s	total:   0.0 B	(0.0 B/s)
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-model-seed@sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d' resolves inside 'desktop-control-plane'.
+[inferops] WARNING: this image carries 1834426016 bytes of model weights and now occupies that much inside the node as well as the claim it fills. Reclaiming it is the operator's operation on their own cluster, and it differs by provider: deleting a kind cluster reclaims both, and on Docker Desktop neither InferOps nor this project's cleanup removes the imported image -- what resetting Kubernetes in Docker Desktop's own settings reclaims has not been observed.
+[exit 0]
+
+##### 5. Preparation: the prerequisite layer
+$ bash scripts/environment/terraform-prerequisites.sh apply
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+[inferops] === terraform plan ===
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # module.platform_prerequisites.kubernetes_namespace_v1.platform will be created
+  + resource "kubernetes_namespace_v1" "platform" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "platform-namespace"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache will be created
+  + resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
+      + id               = (known after apply)
+      + wait_until_bound = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+              + "inferops.io/retention"                = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "model-cache-volume-claim"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-model-cache"
+          + namespace        = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + spec {
+          + access_modes       = [
+              + "ReadWriteOnce",
+            ]
+          + storage_class_name = (known after apply)
+          + volume_mode        = (known after apply)
+          + volume_name        = (known after apply)
+
+          + resources {
+              + requests = {
+                  + "storage" = "4Gi"
+                }
+            }
+        }
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + model_cache_claim_name      = "inferops-model-cache"
+  + model_cache_size            = "4Gi"
+  + namespace                   = "inferops-release"
+  + prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+<repository>\.artifacts\terraform\prerequisites.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "<repository>\\.artifacts\\terraform\\prerequisites.tfplan"
+
+[inferops] === terraform apply ===
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Creating...
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Creation complete after 0s [id=inferops-release]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Creating...
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Creation complete after 0s [id=inferops-release/inferops-model-cache]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+model_cache_claim_name = "inferops-model-cache"
+model_cache_size = "4Gi"
+namespace = "inferops-release"
+prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+[inferops] prerequisites applied. Install a release into them with scripts/environment/helm-lifecycle.sh; never pass a flag that would let Helm create this namespace.
+[exit 0]
+
+##### 6. Preparation: fill the claim from the local seed image, with one throwaway Helm release
+[exit 0] api-image.sh digest
+API image digest on this host: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[exit 0] api-image.sh values
+[exit 0] model-seed-image.sh values
+$ helm --kube-context docker-desktop install inferops charts/inferops-llm --namespace inferops-release --values charts/inferops-llm/ci/real-values.yaml --values .artifacts/api-image-values.yaml --values .artifacts/model-seed-values.yaml --set model.acquisition.resources.limits.memory=2Gi --wait --timeout 15m
+NAME: inferops
+LAST DEPLOYED: Mon Oct  5 17:36:58 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 1
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+[exit 0]
+$ helm --kube-context docker-desktop uninstall inferops --namespace inferops-release --wait --timeout 600s
+release "inferops" uninstalled
+[exit 0]
+What the throwaway release left: nothing
+
+##### 7. Preparation: install Argo CD
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] container runtime: containerd://2.3.1
+[inferops] node image digest: sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: 9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.36 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] no namespace 'argocd' and no Argo CD cluster-scoped object exists.
+[inferops] a copy with the pinned SHA-256 is already in .artifacts/argocd-bootstrap/; no download.
+[inferops] manifest SHA-256 is the pinned value: 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448
+
+[inferops] === Namespace ===
+namespace/argocd created
+
+[inferops] === Apply ===
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io serverside-applied
+serviceaccount/argocd-application-controller serverside-applied
+serviceaccount/argocd-applicationset-controller serverside-applied
+serviceaccount/argocd-redis serverside-applied
+serviceaccount/argocd-repo-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+configmap/argocd-cm serverside-applied
+configmap/argocd-cmd-params-cm serverside-applied
+configmap/argocd-gpg-keys-cm serverside-applied
+configmap/argocd-rbac-cm serverside-applied
+configmap/argocd-ssh-known-hosts-cm serverside-applied
+configmap/argocd-tls-certs-cm serverside-applied
+secret/argocd-secret serverside-applied
+service/argocd-applicationset-controller serverside-applied
+service/argocd-metrics serverside-applied
+service/argocd-redis serverside-applied
+service/argocd-repo-server serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+[inferops] 34 objects applied by field manager 'inferops-argocd-bootstrap'.
+
+[inferops] === Rollout ===
+Waiting for deployment "argocd-applicationset-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-applicationset-controller" successfully rolled out
+Waiting for deployment "argocd-redis" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-redis" successfully rolled out
+Waiting for deployment "argocd-repo-server" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Result ===
+[inferops] Argo CD v3.5.3 is installed in 'argocd' on provider 'docker-desktop'.
+[inferops] no Application exists, so it reconciles nothing.
+[exit 0]
+
+##### 8. observe: no Application exists
+$ bash scripts/environment/argocd-application.sh observe --samples 3 --interval 2 --into s3-003-run-3-absent
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] samples: 3, one every 2s, into .artifacts/argocd-application/observations/s3-003-run-3-absent
+[inferops] sample 1 of 3 at 2026-10-05T12:39:43Z: Application read answered, object read answered
+[inferops] sample 2 of 3 at 2026-10-05T12:39:47Z: Application read answered, object read answered
+[inferops] sample 3 of 3 at 2026-10-05T12:39:50Z: Application read answered, object read answered
+
+[inferops] === Result ===
+[inferops] 3 sample(s) were written into .artifacts/argocd-application/observations/s3-003-run-3-absent. This operation judged none of them.
+[inferops] A read that is recorded as unanswered returned no state. It is not a healthy state.
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[exit 0]
+$ python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/s3-003-run-3-absent > .artifacts/argocd-application/observations/s3-003-run-3-absent.record.json
+[exit 0]
+$ sha256sum .artifacts/argocd-application/observations/s3-003-run-3-absent.record.json
+fefde612826c37f3ecf9fda49c5a715adec922a2266cd5cf6df4b3d3ce9f5226 *.artifacts/argocd-application/observations/s3-003-run-3-absent.record.json
+[exit 0]
+collection complete: True
+summary: {"applicationReads": {"absent": 3, "not-taken": 0, "reported": 0, "unanswered": 0, "unreadable": 0}, "resolvedRevisions": [], "samples": 3, "samplesSettled": 0, "samplesWithEveryRequiredField": 0}
+distinct lists of objects: 1
+sample 001 2026-10-05T12:39:43Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 002 2026-10-05T12:39:47Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 003 2026-10-05T12:39:50Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+comparison revisions: made in 0 sample(s), not made in 0, findings 0, states []
+comparison source: made in 0 sample(s), not made in 0, findings 0, states []
+comparison labels: made in 0 sample(s), not made in 0, findings 0, states []
+consistency findings: 0
+
+##### 9. observe into a directory that exists
+$ bash scripts/environment/argocd-application.sh observe --samples 3 --interval 2 --into s3-003-run-3-absent
+[inferops] FAILED: refusing: observation-directory-exists: .artifacts/argocd-application/observations/s3-003-run-3-absent exists. An observation does not write into the directory of another one. Give another name with --into. Nothing was read.
+[exit 1]
+
+##### 10. observe, while the procedure applies the Application
+$ bash scripts/environment/argocd-application.sh apply --api-image-digest sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] API image digest: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+[inferops] the namespace 'inferops-release' and the claim 'inferops-model-cache' exist.
+[inferops] no Helm release named 'inferops' is recorded in 'inferops-release'.
+[inferops] no other Application, ApplicationSet, or AppProject object exists.
+
+[inferops] === Apply ===
+appproject.argoproj.io/inferops-workloads serverside-applied
+application.argoproj.io/local-docker-desktop-support-assistant serverside-applied
+[inferops] the generation of the Application changed across the apply: 'none' to '1'. A comparison from before the apply is not accepted.
+
+[inferops] === Sync ===
+[inferops] desired revision: main, resolved by Argo CD to nothing yet
+[inferops] revision of the last sync operation: none, phase none
+[inferops] sync state: none
+[inferops] health state: none
+[inferops] last comparison with Git: none
+[inferops] API image digest that Argo CD compared: none
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] Argo CD has not compared the Application since the apply.
+[inferops] desired revision: main, resolved by Argo CD to nothing yet
+[inferops] revision of the last sync operation: none, phase none
+[inferops] sync state: none
+[inferops] health state: none
+[inferops] last comparison with Git: none
+[inferops] API image digest that Argo CD compared: none
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] Argo CD has not compared the Application since the apply.
+[inferops] desired revision: main, resolved by Argo CD to nothing yet
+[inferops] revision of the last sync operation: none, phase none
+[inferops] sync state: none
+[inferops] health state: none
+[inferops] last comparison with Git: none
+[inferops] API image digest that Argo CD compared: none
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] Argo CD has not compared the Application since the apply.
+[inferops] desired revision: main, resolved by Argo CD to nothing yet
+[inferops] revision of the last sync operation: none, phase none
+[inferops] sync state: none
+[inferops] health state: none
+[inferops] last comparison with Git: none
+[inferops] API image digest that Argo CD compared: none
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] Argo CD has not compared the Application since the apply.
+[inferops] desired revision: main, resolved by Argo CD to nothing yet
+[inferops] revision of the last sync operation: none, phase none
+[inferops] sync state: none
+[inferops] health state: none
+[inferops] last comparison with Git: none
+[inferops] API image digest that Argo CD compared: none
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] Argo CD has not compared the Application since the apply.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: none, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T12:40:26Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T12:40:26Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Running
+[inferops] sync state: OutOfSync
+[inferops] health state: Missing
+[inferops] last comparison with Git: 2026-10-05T12:40:26Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Succeeded
+[inferops] sync state: Synced
+[inferops] health state: Progressing
+[inferops] last comparison with Git: 2026-10-05T12:41:49Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+
+[inferops] === Live objects ===
+[inferops] project: inferops-workloads
+[inferops] source repository: https://github.com/asadhanif3188/InferOps.git
+[inferops] followed revision: main
+[inferops] source path: charts/inferops-llm
+[inferops] destination server: https://kubernetes.default.svc
+[inferops] destination namespace: inferops-release
+[inferops] automated pruning: false
+[inferops] automated self-heal: true
+[inferops] finalizers:
+[inferops] API image digest on the live Application: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] the project records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live project is the committed one.
+[inferops] the Application records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live Application is the committed one.
+
+[inferops] === Result ===
+[inferops] Argo CD reports that it applied revision 40452957d8f602357ecc512dc643cb820db57202 of 'main' to 'inferops-release' on provider 'docker-desktop'.
+[inferops] This does not establish that the workload serves a request.
+[exit 0]
+[exit 0] observe, in the background
+$ cat .artifacts/reconciliation-observation-apply.log
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] samples: 80, one every 3s, into .artifacts/argocd-application/observations/s3-003-run-3-apply
+[inferops] sample 1 of 80 at 2026-10-05T12:40:05Z: Application read answered, object read answered
+[inferops] sample 2 of 80 at 2026-10-05T12:40:10Z: Application read answered, object read answered
+[inferops] sample 3 of 80 at 2026-10-05T12:40:14Z: Application read answered, object read answered
+[inferops] sample 4 of 80 at 2026-10-05T12:40:19Z: Application read answered, object read answered
+[inferops] sample 5 of 80 at 2026-10-05T12:40:23Z: Application read answered, object read answered
+[inferops] sample 6 of 80 at 2026-10-05T12:40:28Z: Application read answered, object read answered
+[inferops] sample 7 of 80 at 2026-10-05T12:40:31Z: Application read answered, object read answered
+[inferops] sample 8 of 80 at 2026-10-05T12:40:36Z: Application read answered, object read answered
+[inferops] sample 9 of 80 at 2026-10-05T12:40:40Z: Application read answered, object read answered
+[inferops] sample 10 of 80 at 2026-10-05T12:40:44Z: Application read answered, object read answered
+[inferops] sample 11 of 80 at 2026-10-05T12:40:47Z: Application read answered, object read answered
+[inferops] sample 12 of 80 at 2026-10-05T12:40:52Z: Application read answered, object read answered
+[inferops] sample 13 of 80 at 2026-10-05T12:40:56Z: Application read answered, object read answered
+[inferops] sample 14 of 80 at 2026-10-05T12:40:59Z: Application read answered, object read answered
+[inferops] sample 15 of 80 at 2026-10-05T12:41:03Z: Application read answered, object read answered
+[inferops] sample 16 of 80 at 2026-10-05T12:41:07Z: Application read answered, object read answered
+[inferops] sample 17 of 80 at 2026-10-05T12:41:10Z: Application read answered, object read answered
+[inferops] sample 18 of 80 at 2026-10-05T12:41:14Z: Application read answered, object read answered
+[inferops] sample 19 of 80 at 2026-10-05T12:41:18Z: Application read answered, object read answered
+[inferops] sample 20 of 80 at 2026-10-05T12:41:22Z: Application read answered, object read answered
+[inferops] sample 21 of 80 at 2026-10-05T12:41:26Z: Application read answered, object read answered
+[inferops] sample 22 of 80 at 2026-10-05T12:41:30Z: Application read answered, object read answered
+[inferops] sample 23 of 80 at 2026-10-05T12:41:35Z: Application read answered, object read answered
+[inferops] sample 24 of 80 at 2026-10-05T12:41:39Z: Application read answered, object read answered
+[inferops] sample 25 of 80 at 2026-10-05T12:41:43Z: Application read answered, object read answered
+[inferops] sample 26 of 80 at 2026-10-05T12:41:48Z: Application read answered, object read answered
+[inferops] sample 27 of 80 at 2026-10-05T12:41:53Z: Application read answered, object read answered
+[inferops] sample 28 of 80 at 2026-10-05T12:41:58Z: Application read answered, object read answered
+[inferops] sample 29 of 80 at 2026-10-05T12:42:02Z: Application read answered, object read answered
+[inferops] sample 30 of 80 at 2026-10-05T12:42:07Z: Application read answered, object read answered
+[inferops] sample 31 of 80 at 2026-10-05T12:42:11Z: Application read answered, object read answered
+[inferops] sample 32 of 80 at 2026-10-05T12:42:15Z: Application read answered, object read answered
+[inferops] sample 33 of 80 at 2026-10-05T12:42:20Z: Application read answered, object read answered
+[inferops] sample 34 of 80 at 2026-10-05T12:42:24Z: Application read answered, object read answered
+[inferops] sample 35 of 80 at 2026-10-05T12:42:27Z: Application read answered, object read answered
+[inferops] sample 36 of 80 at 2026-10-05T12:42:31Z: Application read answered, object read answered
+[inferops] sample 37 of 80 at 2026-10-05T12:42:35Z: Application read answered, object read answered
+[inferops] sample 38 of 80 at 2026-10-05T12:42:39Z: Application read answered, object read answered
+[inferops] sample 39 of 80 at 2026-10-05T12:42:42Z: Application read answered, object read answered
+[inferops] sample 40 of 80 at 2026-10-05T12:42:46Z: Application read answered, object read answered
+[inferops] sample 41 of 80 at 2026-10-05T12:42:50Z: Application read answered, object read answered
+[inferops] sample 42 of 80 at 2026-10-05T12:42:53Z: Application read answered, object read answered
+[inferops] sample 43 of 80 at 2026-10-05T12:42:57Z: Application read answered, object read answered
+[inferops] sample 44 of 80 at 2026-10-05T12:43:01Z: Application read answered, object read answered
+[inferops] sample 45 of 80 at 2026-10-05T12:43:04Z: Application read answered, object read answered
+[inferops] sample 46 of 80 at 2026-10-05T12:43:08Z: Application read answered, object read answered
+[inferops] sample 47 of 80 at 2026-10-05T12:43:12Z: Application read answered, object read answered
+[inferops] sample 48 of 80 at 2026-10-05T12:43:16Z: Application read answered, object read answered
+[inferops] sample 49 of 80 at 2026-10-05T12:43:19Z: Application read answered, object read answered
+[inferops] sample 50 of 80 at 2026-10-05T12:43:23Z: Application read answered, object read answered
+[inferops] sample 51 of 80 at 2026-10-05T12:43:27Z: Application read answered, object read answered
+[inferops] sample 52 of 80 at 2026-10-05T12:43:30Z: Application read answered, object read answered
+[inferops] sample 53 of 80 at 2026-10-05T12:43:34Z: Application read answered, object read answered
+[inferops] sample 54 of 80 at 2026-10-05T12:43:37Z: Application read answered, object read answered
+[inferops] sample 55 of 80 at 2026-10-05T12:43:41Z: Application read answered, object read answered
+[inferops] sample 56 of 80 at 2026-10-05T12:43:45Z: Application read answered, object read answered
+[inferops] sample 57 of 80 at 2026-10-05T12:43:49Z: Application read answered, object read answered
+[inferops] sample 58 of 80 at 2026-10-05T12:43:54Z: Application read answered, object read answered
+[inferops] sample 59 of 80 at 2026-10-05T12:43:58Z: Application read answered, object read answered
+[inferops] sample 60 of 80 at 2026-10-05T12:44:02Z: Application read answered, object read answered
+[inferops] sample 61 of 80 at 2026-10-05T12:44:07Z: Application read answered, object read answered
+[inferops] sample 62 of 80 at 2026-10-05T12:44:12Z: Application read answered, object read answered
+[inferops] sample 63 of 80 at 2026-10-05T12:44:16Z: Application read answered, object read answered
+[inferops] sample 64 of 80 at 2026-10-05T12:44:21Z: Application read answered, object read answered
+[inferops] sample 65 of 80 at 2026-10-05T12:44:25Z: Application read answered, object read answered
+[inferops] sample 66 of 80 at 2026-10-05T12:44:29Z: Application read answered, object read answered
+[inferops] sample 67 of 80 at 2026-10-05T12:44:33Z: Application read answered, object read answered
+[inferops] sample 68 of 80 at 2026-10-05T12:44:36Z: Application read answered, object read answered
+[inferops] sample 69 of 80 at 2026-10-05T12:44:40Z: Application read answered, object read answered
+[inferops] sample 70 of 80 at 2026-10-05T12:44:44Z: Application read answered, object read answered
+[inferops] sample 71 of 80 at 2026-10-05T12:44:48Z: Application read answered, object read answered
+[inferops] sample 72 of 80 at 2026-10-05T12:44:52Z: Application read answered, object read answered
+[inferops] sample 73 of 80 at 2026-10-05T12:44:55Z: Application read answered, object read answered
+[inferops] sample 74 of 80 at 2026-10-05T12:44:59Z: Application read answered, object read answered
+[inferops] sample 75 of 80 at 2026-10-05T12:45:03Z: Application read answered, object read answered
+[inferops] sample 76 of 80 at 2026-10-05T12:45:06Z: Application read answered, object read answered
+[inferops] sample 77 of 80 at 2026-10-05T12:45:10Z: Application read answered, object read answered
+[inferops] sample 78 of 80 at 2026-10-05T12:45:14Z: Application read answered, object read answered
+[inferops] sample 79 of 80 at 2026-10-05T12:45:17Z: Application read answered, object read answered
+[inferops] sample 80 of 80 at 2026-10-05T12:45:22Z: Application read answered, object read answered
+
+[inferops] === Result ===
+[inferops] 80 sample(s) were written into .artifacts/argocd-application/observations/s3-003-run-3-apply. This operation judged none of them.
+[inferops] A read that is recorded as unanswered returned no state. It is not a healthy state.
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[exit 0]
+$ python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/s3-003-run-3-apply > .artifacts/argocd-application/observations/s3-003-run-3-apply.record.json
+[exit 0]
+$ sha256sum .artifacts/argocd-application/observations/s3-003-run-3-apply.record.json
+1992d3ed05699bb9a925a2cfd887196b37d5baff49b3f57e7a1b0869f7c2b856 *.artifacts/argocd-application/observations/s3-003-run-3-apply.record.json
+[exit 0]
+collection complete: True
+summary: {"applicationReads": {"absent": 5, "not-taken": 0, "reported": 75, "unanswered": 0, "unreadable": 0}, "resolvedRevisions": ["40452957d8f602357ecc512dc643cb820db57202"], "samples": 80, "samplesSettled": 47, "samplesWithEveryRequiredField": 60}
+distinct lists of objects: 4
+sample 001 2026-10-05T12:40:05Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 002 2026-10-05T12:40:10Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 003 2026-10-05T12:40:14Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 004 2026-10-05T12:40:19Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 005 2026-10-05T12:40:23Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 006 2026-10-05T12:40:28Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 007 2026-10-05T12:40:31Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 008 2026-10-05T12:40:36Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 009 2026-10-05T12:40:40Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 010 2026-10-05T12:40:44Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 011 2026-10-05T12:40:47Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 012 2026-10-05T12:40:52Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 013 2026-10-05T12:40:56Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 014 2026-10-05T12:40:59Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 015 2026-10-05T12:41:03Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 016 2026-10-05T12:41:07Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 017 2026-10-05T12:41:10Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 018 2026-10-05T12:41:14Z read=reported sync=<missing> health=<missing> phase=<missing> resolved=<missing> operation=<missing> settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 019 2026-10-05T12:41:18Z read=reported sync=OutOfSync health=Missing phase=Running resolved=40452957d8f6 operation=<missing> settled=False objects=collected:0 consistency=provenance-resolved/not-compared/compared/not-compared
+sample 020 2026-10-05T12:41:22Z read=reported sync=OutOfSync health=Missing phase=Running resolved=40452957d8f6 operation=<missing> settled=False objects=collected:1 consistency=provenance-resolved/not-compared/compared/compared
+sample 021 2026-10-05T12:41:26Z read=reported sync=OutOfSync health=Missing phase=Running resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:3 consistency=provenance-resolved/compared/compared/compared
+sample 022 2026-10-05T12:41:30Z read=reported sync=OutOfSync health=Missing phase=Running resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:3 consistency=provenance-resolved/compared/compared/compared
+sample 023 2026-10-05T12:41:35Z read=reported sync=OutOfSync health=Missing phase=Running resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:3 consistency=provenance-resolved/compared/compared/compared
+sample 024 2026-10-05T12:41:39Z read=reported sync=OutOfSync health=Missing phase=Running resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:3 consistency=provenance-resolved/compared/compared/compared
+sample 025 2026-10-05T12:41:43Z read=reported sync=OutOfSync health=Missing phase=Running resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:3 consistency=provenance-resolved/compared/compared/compared
+sample 026 2026-10-05T12:41:48Z read=reported sync=OutOfSync health=Healthy phase=Running resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 027 2026-10-05T12:41:53Z read=reported sync=Synced health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 028 2026-10-05T12:41:58Z read=reported sync=Synced health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 029 2026-10-05T12:42:02Z read=reported sync=Synced health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 030 2026-10-05T12:42:07Z read=reported sync=Synced health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 031 2026-10-05T12:42:11Z read=reported sync=Synced health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 032 2026-10-05T12:42:15Z read=reported sync=Synced health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 033 2026-10-05T12:42:20Z read=reported sync=Synced health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 034 2026-10-05T12:42:24Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 035 2026-10-05T12:42:27Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 036 2026-10-05T12:42:31Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 037 2026-10-05T12:42:35Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 038 2026-10-05T12:42:39Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 039 2026-10-05T12:42:42Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 040 2026-10-05T12:42:46Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 041 2026-10-05T12:42:50Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 042 2026-10-05T12:42:53Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 043 2026-10-05T12:42:57Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 044 2026-10-05T12:43:01Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 045 2026-10-05T12:43:04Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 046 2026-10-05T12:43:08Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 047 2026-10-05T12:43:12Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 048 2026-10-05T12:43:16Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 049 2026-10-05T12:43:19Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 050 2026-10-05T12:43:23Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 051 2026-10-05T12:43:27Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 052 2026-10-05T12:43:30Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 053 2026-10-05T12:43:34Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 054 2026-10-05T12:43:37Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 055 2026-10-05T12:43:41Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 056 2026-10-05T12:43:45Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 057 2026-10-05T12:43:49Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 058 2026-10-05T12:43:54Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 059 2026-10-05T12:43:58Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 060 2026-10-05T12:44:02Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 061 2026-10-05T12:44:07Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 062 2026-10-05T12:44:12Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 063 2026-10-05T12:44:16Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 064 2026-10-05T12:44:21Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 065 2026-10-05T12:44:25Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 066 2026-10-05T12:44:29Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 067 2026-10-05T12:44:33Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 068 2026-10-05T12:44:36Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 069 2026-10-05T12:44:40Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 070 2026-10-05T12:44:44Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 071 2026-10-05T12:44:48Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 072 2026-10-05T12:44:52Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 073 2026-10-05T12:44:55Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 074 2026-10-05T12:44:59Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 075 2026-10-05T12:45:03Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 076 2026-10-05T12:45:06Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 077 2026-10-05T12:45:10Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 078 2026-10-05T12:45:14Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 079 2026-10-05T12:45:17Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 080 2026-10-05T12:45:22Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+transition applicationRead 005->006 absent -> reported
+transition syncStatus 005->006 <not-collected> -> <missing>
+transition resolvedRevision 005->006 <not-collected> -> <missing>
+transition healthStatus 005->006 <not-collected> -> <missing>
+transition operationPhase 005->006 <not-collected> -> <missing>
+transition operationRevision 005->006 <not-collected> -> <missing>
+transition operationStartedAt 005->006 <not-collected> -> <missing>
+transition operationFinishedAt 005->006 <not-collected> -> <missing>
+transition historyId 005->006 <not-collected> -> <missing>
+transition syncStatus 018->019 <missing> -> OutOfSync
+transition resolvedRevision 018->019 <missing> -> 40452957d8f602357ecc512dc643cb820db57202
+transition healthStatus 018->019 <missing> -> Missing
+transition operationPhase 018->019 <missing> -> Running
+transition operationStartedAt 018->019 <missing> -> 2026-10-05T12:41:18Z
+transition operationRevision 020->021 <missing> -> 40452957d8f602357ecc512dc643cb820db57202
+transition healthStatus 025->026 Missing -> Healthy
+transition syncStatus 026->027 OutOfSync -> Synced
+transition healthStatus 026->027 Healthy -> Progressing
+transition operationPhase 026->027 Running -> Succeeded
+transition operationFinishedAt 026->027 <missing> -> 2026-10-05T12:41:49Z
+transition historyId 026->027 <missing> -> 0
+transition healthStatus 033->034 Progressing -> Healthy
+comparison revisions: made in 60 sample(s), not made in 2, findings 0, states ['compared', 'not-compared']
+comparison source: made in 62 sample(s), not made in 0, findings 0, states ['compared']
+comparison labels: made in 61 sample(s), not made in 1, findings 0, states ['compared', 'not-compared']
+consistency findings: 0
+
+##### 11. verify
+$ bash scripts/environment/argocd-application.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+[inferops] the project and the Application exist, and each carries inferops.io/lifecycle=reconciliation and a recorded manifest SHA-256.
+
+[inferops] === Live objects ===
+[inferops] project: inferops-workloads
+[inferops] source repository: https://github.com/asadhanif3188/InferOps.git
+[inferops] followed revision: main
+[inferops] source path: charts/inferops-llm
+[inferops] destination server: https://kubernetes.default.svc
+[inferops] destination namespace: inferops-release
+[inferops] automated pruning: false
+[inferops] automated self-heal: true
+[inferops] finalizers:
+[inferops] API image digest on the live Application: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] the project records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live project is the committed one.
+[inferops] the Application records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live Application is the committed one.
+
+[inferops] === What Argo CD reports ===
+[inferops] desired revision: main, resolved by Argo CD to 40452957d8f602357ecc512dc643cb820db57202
+[inferops] revision of the last sync operation: 40452957d8f602357ecc512dc643cb820db57202, phase Succeeded
+[inferops] sync state: Synced
+[inferops] health state: Healthy
+[inferops] last comparison with Git: 2026-10-05T12:45:30Z
+[inferops] API image digest that Argo CD compared: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] API image digest of the last sync operation: sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+
+[inferops] === Workload objects in the destination namespace, by name ===
+deployment.apps/inferops-inferops-llm
+deployment.apps/inferops-inferops-llm-collector
+deployment.apps/inferops-inferops-llm-runtime
+replicaset.apps/inferops-inferops-llm-74bcc74dd4
+replicaset.apps/inferops-inferops-llm-collector-86bfc987cf
+replicaset.apps/inferops-inferops-llm-runtime-67b4856f9c
+pod/inferops-inferops-llm-74bcc74dd4-9b8hj
+pod/inferops-inferops-llm-collector-86bfc987cf-52ck6
+pod/inferops-inferops-llm-runtime-67b4856f9c-j67j5
+service/inferops-inferops-llm
+service/inferops-inferops-llm-collector
+service/inferops-inferops-llm-runtime
+configmap/inferops-inferops-llm-collector-configuration
+configmap/inferops-inferops-llm-configuration
+configmap/inferops-inferops-llm-telemetry-scrape
+serviceaccount/inferops-inferops-llm-api
+serviceaccount/inferops-inferops-llm-collector
+serviceaccount/inferops-inferops-llm-runtime
+networkpolicy.networking.k8s.io/inferops-inferops-llm-api
+networkpolicy.networking.k8s.io/inferops-inferops-llm-collector
+networkpolicy.networking.k8s.io/inferops-inferops-llm-default-deny
+networkpolicy.networking.k8s.io/inferops-inferops-llm-model-acquisition
+networkpolicy.networking.k8s.io/inferops-inferops-llm-release-test
+networkpolicy.networking.k8s.io/inferops-inferops-llm-runtime
+role.rbac.authorization.k8s.io/inferops-inferops-llm-collector
+rolebinding.rbac.authorization.k8s.io/inferops-inferops-llm-collector
+
+[inferops] === Result ===
+[inferops] the live project and the live Application 'local-docker-desktop-support-assistant' have the committed spec: automated sync, self-heal, and no pruning.
+[inferops] This does not establish that the workload serves a request.
+[exit 0]
+$ k rollout status deployment/inferops-inferops-llm -n inferops-release --timeout=600s
+deployment "inferops-inferops-llm" successfully rolled out
+[exit 0]
+$ k rollout status deployment/inferops-inferops-llm-runtime -n inferops-release --timeout=600s
+deployment "inferops-inferops-llm-runtime" successfully rolled out
+[exit 0]
+
+##### 12. observe: after the apply returned
+$ bash scripts/environment/argocd-application.sh observe --samples 5 --interval 2 --into s3-003-run-3-steady
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] samples: 5, one every 2s, into .artifacts/argocd-application/observations/s3-003-run-3-steady
+[inferops] sample 1 of 5 at 2026-10-05T12:46:33Z: Application read answered, object read answered
+[inferops] sample 2 of 5 at 2026-10-05T12:46:36Z: Application read answered, object read answered
+[inferops] sample 3 of 5 at 2026-10-05T12:46:40Z: Application read answered, object read answered
+[inferops] sample 4 of 5 at 2026-10-05T12:46:43Z: Application read answered, object read answered
+[inferops] sample 5 of 5 at 2026-10-05T12:46:46Z: Application read answered, object read answered
+
+[inferops] === Result ===
+[inferops] 5 sample(s) were written into .artifacts/argocd-application/observations/s3-003-run-3-steady. This operation judged none of them.
+[inferops] A read that is recorded as unanswered returned no state. It is not a healthy state.
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[exit 0]
+$ python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/s3-003-run-3-steady > .artifacts/argocd-application/observations/s3-003-run-3-steady.record.json
+[exit 0]
+$ sha256sum .artifacts/argocd-application/observations/s3-003-run-3-steady.record.json
+8aa52396d132ab668a8ad140a9959727fa1297be5e530d5710e1bbd934daff22 *.artifacts/argocd-application/observations/s3-003-run-3-steady.record.json
+[exit 0]
+collection complete: True
+summary: {"applicationReads": {"absent": 0, "not-taken": 0, "reported": 5, "unanswered": 0, "unreadable": 0}, "resolvedRevisions": ["40452957d8f602357ecc512dc643cb820db57202"], "samples": 5, "samplesSettled": 5, "samplesWithEveryRequiredField": 5}
+distinct lists of objects: 1
+sample 001 2026-10-05T12:46:33Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 002 2026-10-05T12:46:36Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 003 2026-10-05T12:46:40Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 004 2026-10-05T12:46:43Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 005 2026-10-05T12:46:46Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+comparison revisions: made in 5 sample(s), not made in 0, findings 0, states ['compared']
+comparison source: made in 5 sample(s), not made in 0, findings 0, states ['compared']
+comparison labels: made in 5 sample(s), not made in 0, findings 0, states ['compared']
+consistency findings: 0
+$ k get deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.kind}/{.metadata.name} chart={.metadata.labels.helm\.sh/chart} version={.metadata.labels.app\.kubernetes\.io/version} workload={.metadata.labels.inferops\.io/workload}{"\n"}{end}
+Deployment/inferops-inferops-llm chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Deployment/inferops-inferops-llm-collector chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Deployment/inferops-inferops-llm-runtime chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ReplicaSet/inferops-inferops-llm-74bcc74dd4 chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ReplicaSet/inferops-inferops-llm-collector-86bfc987cf chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ReplicaSet/inferops-inferops-llm-runtime-67b4856f9c chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Pod/inferops-inferops-llm-74bcc74dd4-9b8hj chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Pod/inferops-inferops-llm-collector-86bfc987cf-52ck6 chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Pod/inferops-inferops-llm-runtime-67b4856f9c-j67j5 chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Service/inferops-inferops-llm chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Service/inferops-inferops-llm-collector chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Service/inferops-inferops-llm-runtime chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ConfigMap/inferops-inferops-llm-collector-configuration chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ConfigMap/inferops-inferops-llm-configuration chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ConfigMap/inferops-inferops-llm-telemetry-scrape chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ServiceAccount/inferops-inferops-llm-api chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ServiceAccount/inferops-inferops-llm-collector chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+ServiceAccount/inferops-inferops-llm-runtime chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+NetworkPolicy/inferops-inferops-llm-api chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+NetworkPolicy/inferops-inferops-llm-collector chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+NetworkPolicy/inferops-inferops-llm-default-deny chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+NetworkPolicy/inferops-inferops-llm-model-acquisition chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+NetworkPolicy/inferops-inferops-llm-release-test chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+NetworkPolicy/inferops-inferops-llm-runtime chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+Role/inferops-inferops-llm-collector chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+RoleBinding/inferops-inferops-llm-collector chart=inferops-llm-0.3.0 version=0.1.0 workload=support-assistant
+[exit 0]
+
+##### 13. One caller request. Nothing here reads Argo CD
+$ cat .artifacts/reconciliation-observation-forward.log
+Forwarding from 127.0.0.1:18093 -> 8090
+Forwarding from [::1]:18093 -> 8090
+[exit 0]
+$ curl --silent --show-error --max-time 300 --write-out \nhttp_status=%{http_code} seconds=%{time_total}\n --header Content-Type: application/json --data {"model":"qwen3-1-7b-q8-0","messages":[{"role":"user","content":"Reply with the single word: ready"}]} http://127.0.0.1:18093/v1/chat/completions
+{"id":"chatcmpl-41074401a91844d395160d3564b540c6","object":"chat.completion","created":1791204426,"model":"qwen3-1-7b-q8-0","choices":[{"index":0,"message":{"role":"assistant","content":"Ready."},"finish_reason":"stop"}],"usage":{"prompt_tokens":19,"completion_tokens":3,"total_tokens":22},"x_inferops":{"requestId":"7a5d4733-3c3b-46b1-968e-8353732aaada","correlationId":"3e5ff5a8-4f74-4735-ad47-fe1942856923","contractVersion":"inferops.io/v1alpha1","adapterKind":"real","modelRef":"qwen3-1-7b-q8-0"}}
+http_status=200 seconds=10.854021
+[exit 0]
+
+##### 14. observe, while the procedure removes the Application
+$ bash scripts/environment/argocd-application.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+
+[inferops] === Deleting the Application, with a cascade ===
+Warning: metadata.finalizers: "resources-finalizer.argocd.argoproj.io": prefer a domain-qualified finalizer name including a path (/) to avoid accidental conflicts with other finalizer writers
+application.argoproj.io/local-docker-desktop-support-assistant patched
+application.argoproj.io "local-docker-desktop-support-assistant" deleted from argocd namespace
+
+[inferops] === Workload residue ===
+[inferops] no object carrying 'app.kubernetes.io/instance=inferops' remains in 'inferops-release'.
+
+[inferops] === Deleting the project ===
+appproject.argoproj.io "inferops-workloads" deleted from argocd namespace
+
+[inferops] === Prerequisites ===
+[inferops] the namespace 'inferops-release' and its claims are unchanged: persistentvolumeclaim/inferops-model-cache
+
+[inferops] === Result ===
+[inferops] no Application and no project of this procedure remains. The Argo CD installation, the namespace, and the claim were not touched.
+[exit 0]
+[exit 0] observe, in the background
+$ cat .artifacts/reconciliation-observation-remove.log
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] samples: 40, one every 2s, into .artifacts/argocd-application/observations/s3-003-run-3-remove
+[inferops] sample 1 of 40 at 2026-10-05T12:47:26Z: Application read answered, object read answered
+[inferops] sample 2 of 40 at 2026-10-05T12:47:30Z: Application read answered, object read answered
+[inferops] sample 3 of 40 at 2026-10-05T12:47:35Z: Application read answered, object read answered
+[inferops] sample 4 of 40 at 2026-10-05T12:47:39Z: Application read answered, object read answered
+[inferops] sample 5 of 40 at 2026-10-05T12:47:43Z: Application read answered, object read answered
+[inferops] sample 6 of 40 at 2026-10-05T12:47:47Z: Application read answered, object read answered
+[inferops] sample 7 of 40 at 2026-10-05T12:47:52Z: Application read answered, object read answered
+[inferops] sample 8 of 40 at 2026-10-05T12:47:55Z: Application read answered, object read answered
+[inferops] sample 9 of 40 at 2026-10-05T12:47:59Z: Application read answered, object read answered
+[inferops] sample 10 of 40 at 2026-10-05T12:48:03Z: Application read answered, object read answered
+[inferops] sample 11 of 40 at 2026-10-05T12:48:06Z: Application read answered, object read answered
+[inferops] sample 12 of 40 at 2026-10-05T12:48:09Z: Application read answered, object read answered
+[inferops] sample 13 of 40 at 2026-10-05T12:48:12Z: Application read answered, object read answered
+[inferops] sample 14 of 40 at 2026-10-05T12:48:15Z: Application read answered, object read answered
+[inferops] sample 15 of 40 at 2026-10-05T12:48:18Z: Application read answered, object read answered
+[inferops] sample 16 of 40 at 2026-10-05T12:48:21Z: Application read answered, object read answered
+[inferops] sample 17 of 40 at 2026-10-05T12:48:24Z: Application read answered, object read answered
+[inferops] sample 18 of 40 at 2026-10-05T12:48:27Z: Application read answered, object read answered
+[inferops] sample 19 of 40 at 2026-10-05T12:48:30Z: Application read answered, object read answered
+[inferops] sample 20 of 40 at 2026-10-05T12:48:33Z: Application read answered, object read answered
+[inferops] sample 21 of 40 at 2026-10-05T12:48:36Z: Application read answered, object read answered
+[inferops] sample 22 of 40 at 2026-10-05T12:48:40Z: Application read answered, object read answered
+[inferops] sample 23 of 40 at 2026-10-05T12:48:43Z: Application read answered, object read answered
+[inferops] sample 24 of 40 at 2026-10-05T12:48:46Z: Application read answered, object read answered
+[inferops] sample 25 of 40 at 2026-10-05T12:48:49Z: Application read answered, object read answered
+[inferops] sample 26 of 40 at 2026-10-05T12:48:53Z: Application read answered, object read answered
+[inferops] sample 27 of 40 at 2026-10-05T12:48:56Z: Application read answered, object read answered
+[inferops] sample 28 of 40 at 2026-10-05T12:49:00Z: Application read answered, object read answered
+[inferops] sample 29 of 40 at 2026-10-05T12:49:03Z: Application read answered, object read answered
+[inferops] sample 30 of 40 at 2026-10-05T12:49:06Z: Application read answered, object read answered
+[inferops] sample 31 of 40 at 2026-10-05T12:49:09Z: Application read answered, object read answered
+[inferops] sample 32 of 40 at 2026-10-05T12:49:12Z: Application read answered, object read answered
+[inferops] sample 33 of 40 at 2026-10-05T12:49:15Z: Application read answered, object read answered
+[inferops] sample 34 of 40 at 2026-10-05T12:49:18Z: Application read answered, object read answered
+[inferops] sample 35 of 40 at 2026-10-05T12:49:22Z: Application read answered, object read answered
+[inferops] sample 36 of 40 at 2026-10-05T12:49:26Z: Application read answered, object read answered
+[inferops] sample 37 of 40 at 2026-10-05T12:49:28Z: Application read answered, object read answered
+[inferops] sample 38 of 40 at 2026-10-05T12:49:31Z: Application read answered, object read answered
+[inferops] sample 39 of 40 at 2026-10-05T12:49:34Z: Application read answered, object read answered
+[inferops] sample 40 of 40 at 2026-10-05T12:49:37Z: Application read answered, object read answered
+
+[inferops] === Result ===
+[inferops] 40 sample(s) were written into .artifacts/argocd-application/observations/s3-003-run-3-remove. This operation judged none of them.
+[inferops] A read that is recorded as unanswered returned no state. It is not a healthy state.
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[exit 0]
+$ python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/s3-003-run-3-remove > .artifacts/argocd-application/observations/s3-003-run-3-remove.record.json
+[exit 0]
+$ sha256sum .artifacts/argocd-application/observations/s3-003-run-3-remove.record.json
+16679d2429eb9633c72210ab03eafdacff127b40de820e0291df46a988c90369 *.artifacts/argocd-application/observations/s3-003-run-3-remove.record.json
+[exit 0]
+collection complete: True
+summary: {"applicationReads": {"absent": 32, "not-taken": 0, "reported": 8, "unanswered": 0, "unreadable": 0}, "resolvedRevisions": ["40452957d8f602357ecc512dc643cb820db57202"], "samples": 40, "samplesSettled": 5, "samplesWithEveryRequiredField": 8}
+distinct lists of objects: 4
+sample 001 2026-10-05T12:47:26Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 002 2026-10-05T12:47:30Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 003 2026-10-05T12:47:35Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 004 2026-10-05T12:47:39Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 005 2026-10-05T12:47:43Z read=reported sync=Synced health=Healthy phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=True objects=collected:26 consistency=provenance-resolved/compared/compared/compared
+sample 006 2026-10-05T12:47:47Z read=reported sync=OutOfSync health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:8 consistency=provenance-resolved/compared/compared/compared
+sample 007 2026-10-05T12:47:52Z read=reported sync=OutOfSync health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:6 consistency=provenance-resolved/compared/compared/compared
+sample 008 2026-10-05T12:47:55Z read=reported sync=OutOfSync health=Progressing phase=Succeeded resolved=40452957d8f6 operation=40452957d8f6 settled=False objects=collected:0 consistency=provenance-resolved/compared/compared/not-compared
+sample 009 2026-10-05T12:47:59Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 010 2026-10-05T12:48:03Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 011 2026-10-05T12:48:06Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 012 2026-10-05T12:48:09Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 013 2026-10-05T12:48:12Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 014 2026-10-05T12:48:15Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 015 2026-10-05T12:48:18Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 016 2026-10-05T12:48:21Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 017 2026-10-05T12:48:24Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 018 2026-10-05T12:48:27Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 019 2026-10-05T12:48:30Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 020 2026-10-05T12:48:33Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 021 2026-10-05T12:48:36Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 022 2026-10-05T12:48:40Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 023 2026-10-05T12:48:43Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 024 2026-10-05T12:48:46Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 025 2026-10-05T12:48:49Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 026 2026-10-05T12:48:53Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 027 2026-10-05T12:48:56Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 028 2026-10-05T12:49:00Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 029 2026-10-05T12:49:03Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 030 2026-10-05T12:49:06Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 031 2026-10-05T12:49:09Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 032 2026-10-05T12:49:12Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 033 2026-10-05T12:49:15Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 034 2026-10-05T12:49:18Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 035 2026-10-05T12:49:22Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 036 2026-10-05T12:49:26Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 037 2026-10-05T12:49:28Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 038 2026-10-05T12:49:31Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 039 2026-10-05T12:49:34Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+sample 040 2026-10-05T12:49:37Z read=absent sync=<not-collected> health=<not-collected> phase=<not-collected> resolved=<not-collect operation=<not-collect settled=False objects=collected:0 consistency=not-compared/-/-/-
+transition syncStatus 005->006 Synced -> OutOfSync
+transition healthStatus 005->006 Healthy -> Progressing
+transition applicationRead 008->009 reported -> absent
+transition syncStatus 008->009 OutOfSync -> <not-collected>
+transition resolvedRevision 008->009 40452957d8f602357ecc512dc643cb820db57202 -> <not-collected>
+transition healthStatus 008->009 Progressing -> <not-collected>
+transition operationPhase 008->009 Succeeded -> <not-collected>
+transition operationRevision 008->009 40452957d8f602357ecc512dc643cb820db57202 -> <not-collected>
+transition operationStartedAt 008->009 2026-10-05T12:41:18Z -> <not-collected>
+transition operationFinishedAt 008->009 2026-10-05T12:41:49Z -> <not-collected>
+transition historyId 008->009 0 -> <not-collected>
+comparison revisions: made in 8 sample(s), not made in 0, findings 0, states ['compared']
+comparison source: made in 8 sample(s), not made in 0, findings 0, states ['compared']
+comparison labels: made in 7 sample(s), not made in 1, findings 0, states ['compared', 'not-compared']
+consistency findings: 0
+
+##### 15. Cleanup: remove Argo CD and the prerequisite layer
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] container runtime: containerd://2.3.1
+[inferops] node image digest: sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+[inferops] repository revision: 4dfb69eba75686d2d7475a58054ead3c345b17af
+[inferops] procedure SHA-256: 9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] no Application, ApplicationSet, or AppProject object exists (before the controllers stop).
+
+[inferops] === Stopping the controllers ===
+statefulset.apps "argocd-application-controller" deleted from argocd namespace
+deployment.apps "argocd-applicationset-controller" deleted from argocd namespace
+deployment.apps "argocd-redis" deleted from argocd namespace
+deployment.apps "argocd-repo-server" deleted from argocd namespace
+[inferops] no pod remains in 'argocd'.
+
+[inferops] === Second check ===
+[inferops] no Application, ApplicationSet, or AppProject object exists (after the controllers stopped).
+
+[inferops] === Deleting the cluster-scoped objects ===
+customresourcedefinition.apiextensions.k8s.io "applications.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "applicationsets.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "appprojects.argoproj.io" deleted
+clusterrolebinding.rbac.authorization.k8s.io "argocd-application-controller" deleted
+clusterrole.rbac.authorization.k8s.io "argocd-application-controller" deleted
+
+[inferops] === Deleting the namespace ===
+namespace "argocd" deleted
+
+[inferops] === Residue ===
+
+[inferops] === Result ===
+[inferops] no Argo CD definition, cluster role, cluster role binding, or namespace 'argocd' remains.
+[inferops] the cluster, the platform namespace, and every release were not touched. Images that the node pulled stay in its image store.
+[exit 0]
+$ bash scripts/environment/terraform-prerequisites.sh destroy --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+[inferops] WARNING: terraform destroy removes the namespace 'inferops-release' and the model cache claim. Deleting a namespace cascades: anything still inside it goes too.
+[inferops] WARNING: This reclaims the model weights -- roughly 1.71 GiB -- and so does deleting the cluster, because the claim is backed by local-path storage inside the kind node container. The next release re-downloads them over a transport whose certificate this project does not validate.
+
+[inferops] === terraform destroy ===
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Refreshing state... [id=inferops-release]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Refreshing state... [id=inferops-release/inferops-model-cache]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  - destroy
+
+Terraform will perform the following actions:
+
+  # module.platform_prerequisites.kubernetes_namespace_v1.platform will be destroyed
+  - resource "kubernetes_namespace_v1" "platform" {
+      - id                               = "inferops-release" -> null
+      - wait_for_default_service_account = false -> null
+
+      - metadata {
+          - annotations      = {
+              - "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              - "inferops.io/removed-by"               = "terraform destroy"
+            } -> null
+          - generation       = 0 -> null
+          - labels           = {
+              - "app.kubernetes.io/component"  = "platform-namespace"
+              - "app.kubernetes.io/managed-by" = "Terraform"
+              - "app.kubernetes.io/part-of"    = "inferops"
+              - "inferops.io/lifecycle"        = "prerequisite"
+            } -> null
+          - name             = "inferops-release" -> null
+          - resource_version = "10147" -> null
+          - uid              = "dfe69eac-8ef0-49bd-a332-27c049ee0c2e" -> null
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache will be destroyed
+  - resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
+      - id               = "inferops-release/inferops-model-cache" -> null
+      - wait_until_bound = false -> null
+
+      - metadata {
+          - annotations      = {
+              - "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              - "inferops.io/removed-by"               = "terraform destroy"
+              - "inferops.io/retention"                = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
+            } -> null
+          - generation       = 0 -> null
+          - labels           = {
+              - "app.kubernetes.io/component"  = "model-cache-volume-claim"
+              - "app.kubernetes.io/managed-by" = "Terraform"
+              - "app.kubernetes.io/part-of"    = "inferops"
+              - "inferops.io/lifecycle"        = "prerequisite"
+            } -> null
+          - name             = "inferops-model-cache" -> null
+          - namespace        = "inferops-release" -> null
+          - resource_version = "10198" -> null
+          - uid              = "f978323e-e03f-4f91-9160-b1939147d925" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+      - spec {
+          - access_modes       = [
+              - "ReadWriteOnce",
+            ] -> null
+          - storage_class_name = "standard" -> null
+          - volume_mode        = "Filesystem" -> null
+          - volume_name        = "pvc-f978323e-e03f-4f91-9160-b1939147d925" -> null
+
+          - resources {
+              - limits   = {} -> null
+              - requests = {
+                  - "storage" = "4Gi"
+                } -> null
+            }
+        }
+    }
+
+Plan: 0 to add, 0 to change, 2 to destroy.
+
+Changes to Outputs:
+  - model_cache_claim_name      = "inferops-model-cache" -> null
+  - model_cache_size            = "4Gi" -> null
+  - namespace                   = "inferops-release" -> null
+  - prerequisite_label_selector = "inferops.io/lifecycle=prerequisite" -> null
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Destroying... [id=inferops-release/inferops-model-cache]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Destruction complete after 1s
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Destroying... [id=inferops-release]
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Destruction complete after 6s
+
+Destroy complete! Resources: 2 destroyed.
+[inferops] prerequisites destroyed. The cluster is untouched: removing it is scripts/environment/cluster-down.sh, and neither Terraform nor Helm may do it.
+[exit 0]
+
+##### 16. The cluster after the run, asked independently
+$ k get namespaces -o name
+namespace/default
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+[exit 0]
+$ k get customresourcedefinitions -o name
+[exit 0]
+$ git status --short
+ M docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-driver.txt
+ M scripts/environment/argocd-application.sh
+ M tests/architecture/test_argocd_application_procedure.py
+ M tests/domain/test_reconciliation_evidence.py
+ M tools/reconciliation_evidence/core.py
+[exit 0]
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-05T12:50:38Z
+[exit 0]
