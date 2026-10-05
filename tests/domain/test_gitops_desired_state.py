@@ -16,8 +16,9 @@ Four things are held:
 * verification writes nothing, and regeneration needs a key and refuses a release
   the rules refuse.
 
-What this establishes about a cluster: nothing. No controller reads the tree, no
-Application names it, and nothing in it was installed. Every check here reads
+What this establishes about a cluster: nothing. One Application reads the tree, on
+a cluster where an operator applied it, and another suite holds that Application.
+This suite reads no cluster. Every check here reads
 committed files, or a copy of them under pytest's temporary directory. Three tests
 run Git, to list tracked files, to read attributes, and to read one file at a
 declared revision. The last one skips when the checkout does not hold that commit.

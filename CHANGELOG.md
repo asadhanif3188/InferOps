@@ -21,19 +21,27 @@ from `1.0.0`.
   and the chart version. It checks at the commit that the release identifier is
   derived, that the values file hashes to the recorded digest, and that the
   contract and the binding are the ones the release names. It refuses a branch
-  name, a tag name, and an abbreviated commit before it runs Git. Three
+  name, a tag name, and an abbreviated commit before it runs Git, and the
+  identifier of a tag object after it. Three
   functions compare a record with an Application's declared source, with the
   commits a controller reported, and with the labels of an object. The suite
   uses them on the committed Application, on the commit that the three recorded
   runs reported, and on a render of the chart.
   **No label, annotation, or metric label is added, and no cluster was
-  contacted.** No applied object carries a release identifier: the renderer and
-  the chart are pinned by the first experiment's freeze record, and the document
-  records that and two other alternatives that were not taken. The tool does not
+  contacted.** No applied object carries the release identifier of the release
+  document: the renderer and the chart are pinned by the first experiment's
+  freeze records, and the document records that and two other alternatives that
+  were not taken. The paths that the tool reads, and its rules, are the
+  checked-out code's and not the commit's. The tool does not
   render the release again at the commit, and it does not establish that an
   applied object was rendered at the commit, that the commit is on `main`, or
-  anything about the API image or the hand-written values. No claim is
-  registered, and no decision record changes.
+  anything about the API image or the hand-written values. Two independent
+  reviews of the first commit found that the identifier of a tag object passed
+  as a commit, that one input raised an error that was not a refusal, that the
+  tool inherited the caller's `GIT_*` variables, and that one sentence about
+  metric labels was false;
+  [the validation record](docs/proof/environment/v2-s3-003-pr1-validation.md)
+  lists each. No claim is registered, and no decision record changes.
 - **One Argo CD Application reconciles the generated release, with self-heal and
   without pruning. Executed on one provider.** `V2-S3-002-PR2` adds
   [ADR 0019](docs/architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md),

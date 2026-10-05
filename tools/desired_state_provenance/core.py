@@ -3,17 +3,21 @@
 A GitOps controller follows a branch, and a branch name is not an identity: it
 names another commit after the next merge. The controller resolves the branch to
 a commit and reports that commit. This module starts from that commit. It reads
-the desired-state release as the commit holds it, and returns the identities that
-bind an applied workload to its source: the release identifier, the digests the
-release records, the workload identity, and the chart version.
+the desired-state release as the commit holds it, and returns the identities of
+that release: the release identifier, the digests the release records, the
+workload identity, and the chart version.
 
 **The revision is a commit, in full.** :func:`resolve` accepts 40 lowercase
 hexadecimal characters that are not one repeated character. It refuses a branch
-name, a tag name, and an abbreviated commit before it runs Git.
+name, a tag name, and an abbreviated commit before it runs Git. Git must then
+report that the object is a commit: the identifier of a tag object or a tree is
+refused.
 
-**Everything is read from the commit, and not from the working tree.** Each file
-is read as the blob the commit holds, so an uncommitted edit and a line-ending
-conversion of the checkout change nothing. Replacement objects are disabled.
+**Each declared file is read from the commit, and not from the working tree.**
+Each file is read as the blob the commit holds, so an uncommitted edit of one of
+them changes nothing. Replacement objects are disabled. Which paths are read,
+and the rules applied to them, are this checkout's: the declaration of the
+release and the parsers are the code that runs, and not the commit's.
 
 **What is checked at the commit.** The release document parses, and its
 identifier is the one its own fields derive. The values file hashes to the digest
@@ -30,15 +34,19 @@ collects the observation.
 
 **What this does not do.** It does not render the release again at the commit, so
 it does not establish that the values file is what the recorded renderer revision
-derives. It does not establish that the commit is on a branch or was reviewed. It
-writes no file and changes no label.
+derives. It does not establish that the commit is on a branch or was reviewed, or
+that a controller reported it. It writes no file and changes no label.
 
-Git is the one program this module runs, and it runs two read-only subcommands.
-Nothing here contacts a cluster, a registry, a network, or a model.
+Git is the one program this module runs. It runs one subcommand, ``cat-file``,
+in two read-only forms, without the caller's ``GIT_*`` variables and with lazy
+fetching disabled, so a clone that lacks an object does not fetch it. Nothing
+here contacts a cluster, a registry, a network, or a model.
 """
 
 from __future__ import annotations
 
+import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -84,7 +92,8 @@ __all__ = [
 RECORD_SCHEMA: Final = "inferops.io/desired-state-provenance/v1alpha1"
 
 #: The three labels the chart already derives that carry a provenance identity.
-#: This module adds none. The chart's label helper sets each one on every object.
+#: This module adds none. The chart's label helper sets the first two on every
+#: object, and the third when the values name a workload, which generated values do.
 CHART_LABEL: Final = "helm.sh/chart"
 VERSION_LABEL: Final = "app.kubernetes.io/version"
 WORKLOAD_LABEL: Final = "inferops.io/workload"
@@ -118,8 +127,8 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "revision-not-readable",
-        "The repository holds the revision as a commit, and Git is available to "
-        "read it.",
+        "Git is available, and it reports that the repository at the root holds "
+        "the revision as a commit object.",
     ),
     Rule(
         "desired-state-absent-at-revision",
@@ -128,8 +137,9 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "release-not-accepted",
-        "The release document at the commit parses, and its identifier is the one "
-        "its workload identity and source derive.",
+        "The release document at the commit parses, names the generated values "
+        "file, holds no credential-shaped identifier, and has the identifier its "
+        "workload identity and source derive.",
     ),
     Rule(
         "values-digest-mismatch",
@@ -148,8 +158,8 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "source-not-the-release",
-        "An Application reads the chart the release was rendered for, and the "
-        "values file of the release, from this repository.",
+        "An Application reads the chart the release was rendered for from this "
+        "repository, and its one value file is the values file of the release.",
     ),
     Rule(
         "observed-revision-mismatch",
@@ -225,9 +235,14 @@ class Provenance:
         return f"{self.directory}/{_RELEASE_FILE}"
 
     def workload_labels(self) -> dict[str, str]:
-        """The labels the chart sets on every object from these identities."""
+        """The labels the chart derives from these identities.
+
+        The chart label is formed as the chart's helper forms it: ``+`` becomes
+        ``_``, the value is cut to 63 characters, and a trailing ``-`` is removed.
+        """
+        chart = f"{self.chart_name}-{self.chart_version}".replace("+", "_")
         return {
-            CHART_LABEL: f"{self.chart_name}-{self.chart_version}",
+            CHART_LABEL: chart[:63].removesuffix("-"),
             VERSION_LABEL: self.chart_app_version,
             WORKLOAD_LABEL: self.workload_id,
         }
@@ -289,16 +304,28 @@ def is_immutable_revision(revision: object) -> bool:
 
 
 def _git(root: Path, *arguments: str) -> subprocess.CompletedProcess[bytes] | None:
-    """Run one read-only Git command in ``root``, or ``None`` when Git is absent."""
+    """Run one read-only Git command in ``root``, or ``None`` when Git is absent.
+
+    The caller's ``GIT_*`` variables are removed, so a ``GIT_DIR`` set by a hook
+    does not replace ``root``. Lazy fetching and prompts are disabled.
+    """
     git = shutil.which("git")
     if git is None:
         return None
+    environment = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.upper().startswith("GIT_")
+    }
+    environment["GIT_NO_LAZY_FETCH"] = "1"
+    environment["GIT_TERMINAL_PROMPT"] = "0"
     try:
         return subprocess.run(
             [git, "--no-replace-objects", "-C", str(root), *arguments],
             capture_output=True,
             check=False,
             timeout=_GIT_TIMEOUT_SECONDS,
+            env=environment,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -349,25 +376,41 @@ def _source_findings_at(
         ]
     recorded_name = str(release.source.environment_binding.name)
     selected = []
+    unparsed = []
     for path in declared.bindings:
         try:
             binding = parse_environment_binding(_mapping(blobs[path]))
-        except (DomainError, ValueError, TypeError):
+        except (DomainError, ValueError, TypeError) as error:
+            unparsed.append(f"{path} ({type(error).__name__})")
             continue
         if str(binding.metadata.name) == recorded_name:
             selected.append(binding)
     if len(selected) != 1:
+        cause = f"; not parsed: {', '.join(unparsed)}" if unparsed else ""
         return [
             Finding(
                 "release-sources-mismatch",
                 "release.source.environmentBinding.name",
                 f"{len(selected)} declared bindings at the commit parse and have "
-                f"the name the release records, {recorded_name}; one is required",
+                f"the name the release records, {recorded_name}; one is required"
+                f"{cause}",
+            )
+        ]
+    try:
+        refusals = verify_release_sources(release, contract, selected[0])
+    except (DomainError, ValueError, TypeError) as error:
+        # A contract can parse and still hold a value with no canonical form.
+        return [
+            Finding(
+                "release-sources-mismatch",
+                declared.contract,
+                "the contract or the binding at the commit has no digest: "
+                f"{type(error).__name__}",
             )
         ]
     return [
         Finding("release-sources-mismatch", refusal.field, refusal.reason)
-        for refusal in verify_release_sources(release, contract, selected[0])
+        for refusal in refusals
     ]
 
 
@@ -419,14 +462,25 @@ def resolve(
                 )
             ]
         )
-    exists = _git(root, "cat-file", "-e", f"{revision}^{{commit}}")
-    if exists is None or exists.returncode != 0:
+    kind = _git(root, "cat-file", "-t", revision)
+    if kind is None:
+        detail = "Git is not available, or did not answer"
+    elif kind.returncode != 0:
         detail = (
-            "Git is not available, or did not answer"
-            if exists is None
-            else "the repository does not hold this commit; a shallow clone holds "
-            "only the commits it fetched"
+            "Git read no object with this identifier at the root: the repository "
+            "does not hold it, or the root is not a repository Git accepts; a "
+            "shallow clone holds only the commits it fetched"
         )
+    elif kind.stdout.strip() != b"commit":
+        # A tag object would be peeled to its commit by every later read, and
+        # the record would then name an identifier that is not a commit.
+        detail = (
+            "the object is not a commit; the identifier of a tag object, a tree, "
+            "or a file is not a revision"
+        )
+    else:
+        detail = ""
+    if detail:
         raise ProvenanceRefused([Finding("revision-not-readable", revision, detail)])
 
     chart_path = _chart_path(declared)
@@ -449,7 +503,7 @@ def resolve(
                 Finding(
                     "desired-state-absent-at-revision",
                     path,
-                    f"the commit {revision} holds no file at this path",
+                    f"Git returned no file at this path at the commit {revision}",
                 )
             )
         else:
@@ -470,10 +524,20 @@ def resolve(
                 )
             ]
         ) from None
-    findings = [
-        Finding("release-not-accepted", refusal.field, refusal.reason)
-        for refusal in check_rendered_workload_release(release)
-    ]
+    try:
+        findings = [
+            Finding("release-not-accepted", refusal.field, refusal.reason)
+            for refusal in check_rendered_workload_release(release)
+        ]
+    except (DomainError, ValueError, TypeError) as error:
+        findings = [
+            Finding(
+                "release-not-accepted",
+                release_path,
+                "the release at the commit has no derived identifier: "
+                f"{type(error).__name__}",
+            )
+        ]
     if str(release.output.helm_values.path) != _VALUES_FILE:
         findings.append(
             Finding(
@@ -537,13 +601,22 @@ def resolve(
 # --------------------------------------------------------------------------
 
 
+def _normal(path: str) -> str:
+    """A path from the repository root, in its normal form, without a leading ``/``."""
+    return posixpath.normpath(path.lstrip("/"))
+
+
 def source_findings(
     provenance: Provenance, source: ReconciliationSource, repository: str
 ) -> tuple[Finding, ...]:
     """Every way an Application's declared source is not this release's.
 
-    ``repository`` is the address this repository is published at. A value file is
-    compared as a path from the repository root, with or without a leading ``/``.
+    ``repository`` is the address this repository is published at. A path is
+    compared in its normal form from the repository root, so a leading ``/``, a
+    ``./``, and a doubled ``/`` change nothing. A second value file is a finding:
+    a later file overrides the generated values. Values that an Application sets
+    inline or as parameters are not given to this function, and it does not
+    compare them.
     """
     findings = []
     if source.repository != repository:
@@ -554,7 +627,7 @@ def source_findings(
                 f"the source reads {source.repository}, and not {repository}",
             )
         )
-    if source.chart_path.strip("/") != provenance.chart_path:
+    if _normal(source.chart_path) != provenance.chart_path:
         findings.append(
             Finding(
                 "source-not-the-release",
@@ -563,13 +636,12 @@ def source_findings(
                 f"release was rendered for {provenance.chart_path}",
             )
         )
-    value_files = [path.lstrip("/") for path in source.value_files]
-    if value_files.count(provenance.values_path) != 1:
+    if [_normal(path) for path in source.value_files] != [provenance.values_path]:
         findings.append(
             Finding(
                 "source-not-the-release",
                 "value files",
-                f"the source does not read {provenance.values_path} exactly once",
+                f"the one value file of the source is not {provenance.values_path}",
             )
         )
     return tuple(findings)
@@ -616,16 +688,17 @@ def observed_revision_findings(
 
 
 def metadata_findings(
-    provenance: Provenance, labels: Mapping[str, str]
+    provenance: Provenance, labels: Mapping[str, str] | None
 ) -> tuple[Finding, ...]:
     """Every provenance label an applied object does not carry as derived.
 
-    ``labels`` is the ``metadata.labels`` of one object. Labels this module does
-    not derive are not read.
+    ``labels`` is the ``metadata.labels`` of one object, or ``None`` for an object
+    that has none. Labels this module does not derive are not read.
     """
     findings = []
+    carried = labels or {}
     for label, expected in provenance.workload_labels().items():
-        actual = labels.get(label)
+        actual = carried.get(label)
         if actual != expected:
             findings.append(
                 Finding(

@@ -14,11 +14,13 @@ a key, every declared release is resolved.
 The command prints one JSON document: a list with one record for each release. A
 record holds identifiers and digests, and no timestamp. Exit status is 0 when
 every selected release resolved, and 1 when one was refused. A refusal is printed
-to the standard error stream, and no record is printed for any release.
+to the standard error stream, and no record is printed for any release. Exit
+status is 2 when the arguments are not usable: no revision, or an unknown key.
 
 **The command reads Git objects and writes nothing.** It contacts no cluster, no
-registry, no network, and no model. It does not render the release again, and it
-does not establish that the commit is on a branch or was reviewed.
+registry, no network, and no model: Git runs with lazy fetching disabled. It does
+not render the release again, and it does not establish that the commit is on a
+branch, was reviewed, or was reported by a controller.
 See docs/environment/desired-state-provenance.md.
 """
 
@@ -66,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     selected = list(DESIRED_STATE_RELEASES)
     if arguments.keys:
         selected = []
-        for key in arguments.keys:
+        for key in dict.fromkeys(arguments.keys):
             try:
                 selected.append(desired_state_release(key))
             except KeyError:

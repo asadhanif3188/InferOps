@@ -8,17 +8,20 @@ labels the chart derives.
 
 Five things are held:
 
-* a full commit identifier resolves to one record, and a branch name, a tag name,
-  an abbreviated commit, and a placeholder are refused before Git runs;
-* the record is read from the commit and not from the working tree, it holds
-  identifiers and digests only, and one commit gives one document;
-* each defect planted in a commit of a temporary repository is refused under its
-  own rule: an absent file, an edited values file, an edited release identifier,
-  a changed contract, and a chart without a version;
+* a full commit identifier resolves to one record, a branch name, a tag name,
+  an abbreviated commit, and a placeholder are refused before Git runs, and the
+  identifier of a tag object or a tree is refused after it;
+* the declared files are read from the commit and not from the working tree, the
+  record holds identifiers and digests only, and one commit gives one document;
+* each defect planted in a commit of a temporary repository is refused under the
+  rules it breaks: an absent file, an edited values file, an edited release
+  identifier, a changed contract, a contract that has no digest, and a chart
+  without an application version or with a numeric version;
 * the record agrees with the committed Application's source, with the commit the
   three recorded runs reported, and with the labels of every rendered object;
 * the tool derives no label that the chart does not already set, no scrape job
-  reads one of those labels, and the tool runs Git with two read-only subcommands.
+  reads one of those labels, and the tool runs one Git subcommand, `cat-file`, in
+  two read-only forms, without the caller's `GIT_*` variables.
 
 What this establishes about a cluster: nothing. No test reads one. The labels are
 read from a render, and the reported commit is read from committed transcripts.
@@ -34,11 +37,13 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Iterator
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -106,6 +111,13 @@ def run_git(root: Path, *arguments: str) -> subprocess.CompletedProcess[bytes]:
     git = shutil.which("git")
     if git is None:
         pytest.skip("git is not on PATH")
+    # A hook sets GIT_DIR and GIT_INDEX_FILE. Without this, a commit meant for a
+    # temporary repository would go to the repository the hook runs in.
+    environment = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.upper().startswith("GIT_")
+    }
     return subprocess.run(
         [
             git,
@@ -124,6 +136,7 @@ def run_git(root: Path, *arguments: str) -> subprocess.CompletedProcess[bytes]:
         capture_output=True,
         check=False,
         timeout=120,
+        env=environment,
     )
 
 
@@ -303,6 +316,37 @@ def test_an_object_that_is_not_a_commit_is_refused(head: str) -> None:
     assert rule_ids(refused.value) == {"revision-not-readable"}
 
 
+def test_the_identifier_of_a_tag_object_is_refused(clone: tuple[Path, str]) -> None:
+    """Git peels a tag object to its commit. The tool does not: the record would
+    name an identifier that is not a commit."""
+    root, revision = clone
+    assert run_git(root, "tag", "-a", "v1", "-m", "a tag").returncode == 0
+    tag = run_git(root, "rev-parse", "v1").stdout.decode("ascii").strip()
+    assert is_immutable_revision(tag) and tag != revision
+    assert run_git(root, "cat-file", "-t", tag).stdout.strip() == b"tag"
+    with pytest.raises(ProvenanceRefused) as refused:
+        resolve(tag, DECLARED, root)
+    assert rule_ids(refused.value) == {"revision-not-readable"}
+    assert resolve(revision, DECLARED, root).revision == revision
+
+
+def test_a_directory_that_is_not_a_repository_is_refused(
+    head: str, tmp_path: Path
+) -> None:
+    with pytest.raises(ProvenanceRefused) as refused:
+        resolve(head, DECLARED, tmp_path)
+    assert rule_ids(refused.value) == {"revision-not-readable"}
+
+
+def test_the_callers_git_variables_do_not_replace_the_root(
+    head: str, record: Provenance, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A hook sets `GIT_DIR`. The tool reads the repository it is given."""
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "no-such-repository"))
+    monkeypatch.setenv("GIT_OBJECT_DIRECTORY", str(tmp_path / "no-objects"))
+    assert resolve(head, DECLARED) == record
+
+
 def test_a_host_without_git_is_refused_and_not_an_error(
     head: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -446,6 +490,16 @@ PLANTED: tuple[tuple[str, Callable[[Path], None], set[str]], ...] = (
         {"release-sources-mismatch"},
     ),
     (
+        "a contract that parses and has no digest",
+        _edit(DECLARED.contract, "sizeBytes: 1834426016", f"sizeBytes: 1{'0' * 400}"),
+        {"release-sources-mismatch"},
+    ),
+    (
+        "a release that names another values file",
+        _edit(RELEASE_REL, 'path: "values.generated.yaml"', 'path: "other.yaml"'),
+        {"release-not-accepted"},
+    ),
+    (
         "a contract that does not parse",
         _write(DECLARED.contract, "kind: Other\n"),
         {"release-sources-mismatch"},
@@ -482,7 +536,7 @@ PLANTED: tuple[tuple[str, Callable[[Path], None], set[str]], ...] = (
     ("plant", "expected"),
     [pytest.param(plant, expected, id=name) for name, plant, expected in PLANTED],
 )
-def test_a_planted_defect_is_refused_under_its_rule(
+def test_a_planted_defect_is_refused_under_the_rules_it_breaks(
     plant: Callable[[Path], None], expected: set[str], clone: tuple[Path, str]
 ) -> None:
     root, clean = clone
@@ -563,6 +617,8 @@ def test_the_application_follows_a_name_and_the_tool_refuses_that_name() -> None
         ({"value_files": ()}, "value files"),
         ({"value_files": ("/gitops/environments/other/values.yaml",)}, "value files"),
         ({"value_files": (f"/{VALUES_REL}", VALUES_REL)}, "value files"),
+        ({"value_files": (f"/{VALUES_REL}", "/extra.yaml")}, "value files"),
+        ({"value_files": ("/extra.yaml", f"/{VALUES_REL}")}, "value files"),
     ],
 )
 def test_a_source_that_is_not_the_release_is_reported(
@@ -573,6 +629,25 @@ def test_a_source_that_is_not_the_release_is_reported(
     assert [(f.rule_id, f.subject) for f in findings] == [
         ("source-not-the-release", subject)
     ]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"value_files": (VALUES_REL,)},
+        {"value_files": (f"./{VALUES_REL}",)},
+        {"value_files": (f"//{VALUES_REL.replace('/', '//', 1)}",)},
+        {"chart_path": f"/{CHART_REL}/"},
+        {"chart_path": f"./{CHART_REL}/."},
+        {"followed_revision": "another-branch"},
+    ],
+)
+def test_a_path_is_compared_in_its_normal_form(
+    change: dict[str, Any], record: Provenance
+) -> None:
+    """The followed revision is not compared: it is not an identity."""
+    source = ReconciliationSource(**{**vars(application_source()), **change})
+    assert source_findings(record, source, REPOSITORY) == ()
 
 
 def test_a_reported_commit_is_compared_with_the_record(record: Provenance) -> None:
@@ -597,19 +672,31 @@ def test_a_reported_commit_is_compared_with_the_record(record: Provenance) -> No
 
 
 def reported_revisions(transcript: Path) -> set[str]:
-    """Each commit a recorded run printed as the one Argo CD applied or resolved."""
+    """Each commit a recorded run printed as one Argo CD resolved, synced, or applied.
+
+    Three line shapes are read. Before the first sync a line says `nothing yet` or
+    `none`, and neither begins as a commit does. A transcript holds other
+    identifiers too, such as the model revision, and they are not read.
+    """
     text = transcript.read_text(encoding="utf-8", errors="replace")
-    return set(
-        re.findall(r"Argo CD reports that it applied revision (\S+) of 'main'", text)
-    ) | set(re.findall(r"resolved by Argo CD to ([0-9a-f]\S*)", text))
+    return (
+        set(
+            re.findall(
+                r"Argo CD reports that it applied revision (\S+) of 'main'", text
+            )
+        )
+        | set(re.findall(r"resolved by Argo CD to ([0-9a-f]{7,})", text))
+        | set(re.findall(r"last sync operation: ([0-9a-f]{7,}),", text))
+    )
 
 
 def test_the_recorded_runs_reported_one_commit_and_it_resolves_to_the_release() -> None:
     """The three recorded runs, read as files. Nothing is observed again here.
 
     The transcripts record the commit Argo CD reported. They record no label of an
-    applied object, so this binds the reported commit to a release and binds no
-    object to it.
+    applied object, so this relates the reported commit to a release and relates no
+    object to it. The release identifier is restated here, and the desired-state
+    document states the same one.
     """
     for transcript in TRANSCRIPTS:
         assert reported_revisions(transcript) == {RECORDED_RUN_REVISION}, transcript
@@ -755,6 +842,29 @@ def test_a_label_that_is_absent_or_different_is_reported(
     assert metadata_findings(record, {**labels, "team": "other"}) == ()
 
 
+def test_an_object_without_labels_carries_none_of_the_three(
+    record: Provenance,
+) -> None:
+    expected = [CHART_LABEL, VERSION_LABEL, WORKLOAD_LABEL]
+    assert [f.subject for f in metadata_findings(record, None)] == expected
+    assert [f.subject for f in metadata_findings(record, {})] == expected
+
+
+def test_the_chart_label_is_formed_as_the_charts_helper_forms_it(
+    record: Provenance,
+) -> None:
+    """`+` becomes `_`, the value is cut to 63 characters, a trailing `-` goes."""
+    helpers = HELPERS_PATH.read_text(encoding="utf-8")
+    assert (
+        '{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" '
+        '| trunc 63 | trimSuffix "-" -}}'
+    ) in helpers
+    built = replace(record, chart_version="0.3.0+build.1")
+    assert built.workload_labels()[CHART_LABEL] == "inferops-llm-0.3.0_build.1"
+    long = replace(record, chart_name="a" * 62, chart_version="1.0.0")
+    assert long.workload_labels()[CHART_LABEL] == "a" * 62
+
+
 # --------------------------------------------------------------------------
 # The command, and what the tool runs
 # --------------------------------------------------------------------------
@@ -779,6 +889,10 @@ def test_the_command_prints_one_record_for_the_commit(
     assert json.loads(result.stdout) == [record.as_document()]
     keyed = run_command("--revision", head, release_key(DECLARED))
     assert keyed.returncode == 0 and keyed.stdout == result.stdout
+    twice = run_command(
+        "--revision", head, release_key(DECLARED), release_key(DECLARED)
+    )
+    assert twice.returncode == 0 and twice.stdout == result.stdout
 
 
 def test_the_command_refuses_a_branch_name_and_prints_no_record() -> None:
@@ -806,8 +920,12 @@ def test_the_tool_restates_the_two_generated_file_names() -> None:
     )
 
 
-def test_the_tool_runs_git_with_two_read_only_subcommands() -> None:
-    """Every Git call goes through one function, with `cat-file` as its subcommand."""
+def test_the_tool_runs_git_as_cat_file_in_two_read_only_forms() -> None:
+    """Every Git call goes through one function, with `cat-file` as its subcommand.
+
+    This reads the source and pins its shape. It is a tripwire for a new Git call,
+    and it does not observe a process.
+    """
     tree = ast.parse(TOOL_CORE_PATH.read_text(encoding="utf-8"))
     subcommands = []
     for node in ast.walk(tree):
@@ -822,7 +940,7 @@ def test_the_tool_runs_git_with_two_read_only_subcommands() -> None:
                 if isinstance(argument, ast.Constant)
             ]
             subcommands.append(tuple(words))
-    assert sorted(subcommands) == [("cat-file", "-e"), ("cat-file", "blob")]
+    assert sorted(subcommands) == [("cat-file", "-t"), ("cat-file", "blob")]
     runs = [
         node
         for node in ast.walk(tree)
@@ -830,7 +948,9 @@ def test_the_tool_runs_git_with_two_read_only_subcommands() -> None:
         and node.attr in {"run", "Popen", "call", "check_output", "check_call"}
     ]
     assert len(runs) == 1, "one subprocess call, inside the Git wrapper"
-    assert '"--no-replace-objects"' in TOOL_CORE_PATH.read_text(encoding="utf-8")
+    source = TOOL_CORE_PATH.read_text(encoding="utf-8")
+    assert '"--no-replace-objects"' in source
+    assert 'environment["GIT_NO_LAZY_FETCH"] = "1"' in source
 
 
 def test_the_document_publishes_every_rule_and_the_record_schema() -> None:

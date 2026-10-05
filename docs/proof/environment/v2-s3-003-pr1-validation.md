@@ -23,9 +23,9 @@ the evidence pack and moves no claim.
   this session.
 - **The frozen experiment.** `python -m tools.experiment_freeze --check` exited 0
   for both freeze records, before the first edit and after the last one.
-  `python -m tools.experiment_e01 --check` exited 0 for both runs. The second
-  freeze record pins the chart, the platform domain, and the files of
-  `tools/generated_release`. This change edits none of them.
+  `python -m tools.experiment_e01 --check` exited 0 for both runs. Among the files
+  that the second freeze record pins are the chart, the platform domain, and the
+  files of `tools/generated_release`. This change edits no pinned file.
 
 ## What changed
 
@@ -80,13 +80,14 @@ chart `inferops-llm` at version `0.3.0`.
 holds. It is not a new observation of a cluster, and the transcripts hold no label
 of an applied object.
 
-Three other revisions were given to the command:
+Four other revisions were given to the command:
 
 | Revision | Result |
 |---|---|
 | `b2be70b391ebeaab089935982e1843cd6b275223`, the base of this change | Exit 0. The same release identifier |
 | `c056b9772a3de391fd61589649b1d3ed1c5ac7c4`, a commit before the tree existed | Exit 1, `desired-state-absent-at-revision`, for both generated files |
-| `main` | Exit 1, `revision-not-immutable`. Git did not run |
+| `main` | Exit 1, `revision-not-immutable`. The tool checks the form before its first Git call |
+| `17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04`, the tag object of `v1.0.0` | Exit 1, `revision-not-readable`: the object is not a commit. Run after the review's correction. At the first commit this identifier passed that check |
 
 ## Results
 
@@ -112,8 +113,83 @@ figures after its fixes are in the next section.
 
 ## What the independent review found
 
-Two independent reviews read the staged tree of the first commit. This section is
-written by the commit that follows it.
+Two independent reviews read the staged tree of the first commit while the default
+lane ran. One read the tool and its suite, and reproduced its findings in temporary
+repositories. One read the documents against the code and the repository. Neither
+ran the suite. The second commit of this change holds the corrections.
+
+**What the first commit got wrong.**
+
+- **The identifier of a tag object was accepted as a commit.** Both reviews found
+  it and reproduced it. The tool asked Git whether the identifier names a commit
+  after peeling, and Git peels a tag object. In a temporary repository the record
+  printed a tag object's identifier as `git.revision`. The rule and two documents
+  said that the revision is a commit. The tool now asks for the type of the object
+  and refuses any type but a commit. A test plants an annotated tag.
+- **One input made the tool raise an error that is not a refusal.** A contract
+  whose size is a 401-digit integer parses, and then has no canonical form. The
+  comparison with the release raised `CanonicalFormError`, and the command printed
+  a traceback and no rule. Both calls into the release rules are now guarded, and a
+  planted case holds it.
+- **The tool inherited the caller's `GIT_*` variables.** With `GIT_DIR` set, as a
+  hook sets it, Git read another repository than the one the tool was given. The
+  tool and the suite's own Git helper now remove those variables. The tool also
+  disables lazy fetching, so "contacts no network" holds in a partial clone. That
+  last part was not executed in a partial clone.
+- **A second value file was accepted.** The source comparison required the values
+  file once and allowed other files, and a later file overrides the generated
+  values. The comparison now requires the values file as the one value file, and
+  compares paths in their normal form.
+- **A false sentence about metric labels.** The document said that no metric label
+  carries a release identifier. The build-information series carries a label named
+  `inferops.release.id`, whose value is the Helm release name. The document now
+  says what this change adds, which is no metric label, and names that series.
+- **A wrong count.** The document said that the tool reads four kinds of file. It
+  reads five.
+- **An unstated limit.** The documents said that everything is read from the
+  commit. The paths that are read and the rules that are applied come from the
+  checked-out code. Both documents now say so.
+- **"Two read-only subcommands"** was one subcommand, `cat-file`, in two forms.
+- **Wording that bound more than the tool binds.** The tool's docstring said that
+  the identities "bind an applied workload to its source", and two limits said
+  that the record "binds" a controller's report to a release. The tool is given a
+  commit and relates it to the release that the commit holds.
+- **A sentence no test held.** The document said that a line-ending conversion of
+  the checkout changes nothing. It follows from the design, and no test planted
+  it. The sentence was removed.
+- **Smaller corrections.** The chart label is now formed as the chart's helper
+  forms it, for a version with build metadata. An object without labels is three
+  findings and not an error. A repeated key prints one record. The detail of a
+  failed Git call no longer states one cause for three. The rule
+  `release-not-accepted` now states the two other things it refuses. The document
+  names the two Deployments whose pod templates carry the common annotations, the
+  placeholder API image digest of the render test, the exit status 2, and the
+  checkout of the third recorded run. The inventory row named a document that the
+  test does not read and omitted several things that the suite holds.
+- **Two stale sentences from earlier changes**, found by the sweep and corrected:
+  the docstring of the desired-state suite said that no Application names the tree,
+  and a comment of the render-boundary suite said "either" beside four tools.
+
+**What the reviews found clean.** Every added link resolves. The diff holds no
+local path, credential, or private text. No file under `charts/`, `src/`,
+`gitops/`, `infra/`, `scripts/`, `contracts/`, or `.github/` changed. The count
+phrases of the inventory and the boundary document agree with the data. The
+four-revision table reproduced.
+
+**Not changed.** The test that reads the tool's source for its Git calls pins a
+shape and observes no process; its docstring now says so. A blob is read whole into
+memory, without a size limit. A repository that uses 64-character object
+identifiers is refused by the form of the revision.
+
+| Check, after the corrections | Result |
+|---|---|
+| `ruff format --check`, `ruff check`, `mypy` | Clean: 640 files formatted, no lint finding, no type error in 350 source files |
+| `tests/domain/test_desired_state_provenance.py` | 80 passed and none skipped |
+| The default lane, `pytest -q -rs` | 18,611 passed, none failed, 39 skipped, 14 deselected, in 26 minutes 30 seconds, with every correction staged. The skips are the same 39 kinds as at the first commit, and none is a test of this change |
+| `tools.experiment_freeze --check`, `tools.experiment_e01 --check` | Exit 0 for both |
+| `tools.evidence_index --gate`, `--check`, `tools.proof_dashboard --check` | Exit 0, with the same four values |
+| `tools.gitops_desired_state --check`, `tools.generated_release --check` | Exit 0 for both |
+| `git diff --check` | Clean |
 
 ## Gates that do not apply, and work not executed
 
@@ -141,10 +217,15 @@ own.
 
 ## What this does not establish
 
-- **That an applied object was rendered at a commit.** The tool binds the commit
-  that a controller reports to a release. It binds no object.
+- **That an applied object was rendered at a commit.** The tool relates a commit
+  to the release that the commit holds. It relates no object to either.
+- **That a controller reported the commit.** The commit is an input.
+- **That the commit declares the same release paths as the checkout that ran the
+  tool.**
+- **That the record holds no secret.** One test applies a credential-prefix
+  heuristic to every value.
 - **That a cluster carries the three labels.** They were read from a render.
-- **That Argo CD reports the commit that it applied.** The commit is an input.
+- **That Argo CD reports the commit that it applied.**
 - **That the values file is what the recorded renderer revision derives.** The tool
   does not render at the commit.
 - **That a commit is on `main`, or that a merge was reviewed.**

@@ -1348,7 +1348,7 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
 
 #: The tools allowed to import the render package, by directory name under
 #: ``tools``. Each is a repository check, not a delivery path, and the second test below
-#: holds that nothing on a delivery path reaches either in turn.
+#: holds that nothing on a delivery path reaches any listed tool in turn.
 #:
 #: - ``generated_release`` derives the committed generated releases again from their
 #:   declared inputs, and writes only a declared release directory in this
