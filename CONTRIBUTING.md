@@ -462,6 +462,18 @@ again. [The Argo CD Application document](docs/environment/argocd-application.md
 states the rules. What that procedure reports is what Argo CD reports, and it is not
 a caller outcome.
 
+**`main` is a name, and a commit is an identity.** To learn which release a commit
+holds, give the tool the full commit identifier. It refuses a branch name, a tag
+name, and an abbreviated commit:
+
+```sh
+uv run --locked python -m tools.desired_state_provenance --revision "$(git rev-parse HEAD)"
+```
+
+It reads Git objects and writes nothing.
+[The desired-state provenance document](docs/environment/desired-state-provenance.md)
+describes the record and what it does not establish.
+
 ### Experiment freeze records
 
 An experiment family is frozen before its first result-bearing run, in a record under

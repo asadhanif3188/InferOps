@@ -24,6 +24,7 @@ establishes nothing about a cluster.**
 | Tests | [`tests/domain/test_gitops_desired_state.py`](../../tests/domain/test_gitops_desired_state.py) |
 | Validation record | [`v2-s3-002-pr1-validation.md`](../proof/environment/v2-s3-002-pr1-validation.md) |
 | Read by | One [Argo CD Application](argocd-application.md), on a cluster where an operator applied it. It reads `values.generated.yaml` and not the release document |
+| Read at a commit by | [`tools/desired_state_provenance`](desired-state-provenance.md), which prints the identities of a release as one Git commit holds it. It reads no cluster |
 
 ## The layout
 
@@ -104,6 +105,9 @@ path. No second promotion stage exists.
 - The suite does not establish that a person reviewed the change. Review holds that
   part of the rule. This repository does not claim that branch protection is
   configured.
+- `main` is a name that moves. The identity of an accepted change is its commit.
+  [The provenance tool](desired-state-provenance.md) reads the release that one
+  commit holds, and it refuses a branch name.
 
 ## The workflow
 

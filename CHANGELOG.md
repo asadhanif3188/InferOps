@@ -10,6 +10,38 @@ from `1.0.0`.
 
 ### Added
 
+- **A tool resolves a Git commit to the release it holds. Static only.**
+  `V2-S3-003-PR1` adds `tools/desired_state_provenance` and
+  [the desired-state provenance document](docs/environment/desired-state-provenance.md).
+  The Argo CD Application follows `main`, and a branch name is not an identity.
+  The tool takes the full commit identifier that Argo CD reports and reads the
+  desired-state release as that commit holds it, from Git objects and not from
+  the working tree. It prints one record: the release identifier, the values,
+  contract, and binding digests, the renderer revision, the workload identity,
+  and the chart version. It checks at the commit that the release identifier is
+  derived, that the values file hashes to the recorded digest, and that the
+  contract and the binding are the ones the release names. It refuses a branch
+  name, a tag name, and an abbreviated commit before it runs Git, and the
+  identifier of a tag object after it. Three
+  functions compare a record with an Application's declared source, with the
+  commits a controller reported, and with the labels of an object. The suite
+  uses them on the committed Application, on the commit that the three recorded
+  runs reported, and on a render of the chart.
+  **No label, annotation, or metric label is added, and no cluster was
+  contacted.** No applied object carries the release identifier of the release
+  document: the renderer and the chart are pinned by the first experiment's
+  freeze records, and the document records that and two other alternatives that
+  were not taken. The paths that the tool reads, and its rules, are the
+  checked-out code's and not the commit's. The tool does not
+  render the release again at the commit, and it does not establish that an
+  applied object was rendered at the commit, that the commit is on `main`, or
+  anything about the API image or the hand-written values. Two independent
+  reviews of the first commit found that the identifier of a tag object passed
+  as a commit, that one input raised an error that was not a refusal, that the
+  tool inherited the caller's `GIT_*` variables, and that one sentence about
+  metric labels was false;
+  [the validation record](docs/proof/environment/v2-s3-003-pr1-validation.md)
+  lists each. No claim is registered, and no decision record changes.
 - **One Argo CD Application reconciles the generated release, with self-heal and
   without pruning. Executed on one provider.** `V2-S3-002-PR2` adds
   [ADR 0019](docs/architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md),

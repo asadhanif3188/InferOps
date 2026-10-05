@@ -55,6 +55,13 @@ On a cluster where the Application is applied:
 No run observed a later commit of `main` being applied. Each run resolved `main`
 to the same commit and applied it.
 
+**The Application follows a name, and Argo CD reports a commit.** `main` is not an
+identity. The commit that `verify` prints is one. Given that commit,
+[the provenance tool](desired-state-provenance.md) prints the release identifier,
+the recorded digests, and the chart version of the release that the commit holds.
+It reads Git and no cluster. It does not cover the hand-written values or the API
+image digest, because neither is read from that commit.
+
 ## The values
 
 The Application gives the chart three things. A later one overrides an earlier

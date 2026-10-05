@@ -484,6 +484,15 @@ requests were answered.
 rules. The diagram above is kept as it was drawn. Its lower box still reads
 "NOT DECIDED"; ADR 0019 decides it.
 
+**Added 2026-10-05.** The Application follows `main`, and a branch name is not an
+identity. Argo CD reports the commit that it resolved. A tool,
+`tools/desired_state_provenance`, reads the desired-state release as that commit
+holds it and prints the release identifier, the recorded digests, the workload
+identity, and the chart version. It refuses a branch name. It reads Git objects
+and no cluster, and this change adds no label to an applied object.
+[The desired-state provenance document](../environment/desired-state-provenance.md)
+states the rules and the limits.
+
 Three statements bound this diagram:
 
 - **The upper box exists, and the lower one does not.**
@@ -939,6 +948,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | Reproducing all of it from a clean clone | [The clean-clone workflow](../environment/clean-clone.md) |
 | How the GitOps controller is installed and owned, and where the bootstrap was run | [ADR 0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md), and [the Argo CD bootstrap record](../environment/argocd-bootstrap.md) |
 | Where the desired state of a workload is kept, and what that directory may hold | [ADR 0018](decisions/ADR-0018-git-desired-state-layout.md), and [the Git desired state](../environment/git-desired-state.md) |
+| Which release a Git commit holds, starting from the commit that Argo CD reports | [Desired-state provenance](../environment/desired-state-provenance.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |

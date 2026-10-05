@@ -1348,7 +1348,7 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
 
 #: The tools allowed to import the render package, by directory name under
 #: ``tools``. Each is a repository check, not a delivery path, and the second test below
-#: holds that nothing on a delivery path reaches either in turn.
+#: holds that nothing on a delivery path reaches any listed tool in turn.
 #:
 #: - ``generated_release`` derives the committed generated releases again from their
 #:   declared inputs, and writes only a declared release directory in this
@@ -1365,7 +1365,12 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
 #:   is the first that a controller reconciles: one Application reads it, on a
 #:   cluster where an operator applied that Application. The second test below
 #:   holds that no script, workflow, chart, or distribution module calls it.
+#: - ``desired_state_provenance`` reads the desired-state release as one Git commit
+#:   holds it and prints its identities. It writes nothing. It does not import the
+#:   render package: it names ``generated_release`` and ``gitops_desired_state`` for
+#:   the declared releases, which is why it is listed.
 REPOSITORY_CHECKS: tuple[str, ...] = (
+    "desired_state_provenance",
     "experiment_e01",
     "generated_release",
     "gitops_desired_state",
