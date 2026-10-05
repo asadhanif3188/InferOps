@@ -8,6 +8,11 @@
 # the procedure's `observe` operation, and returns the cluster to the state it
 # found. It makes no manual change to an object that the Application manages.
 #
+# When a preparation step ends the driver, the driver cleans up nothing. What
+# it prepared stays: the images in the node, the prerequisite layer, and, by the
+# step that failed, a Helm release or Argo CD. The message names the procedures
+# that remove them.
+#
 # A preparation step that fails ends the driver. The Application's own values
 # select the download source, so an apply over a claim that the preparation did
 # not fill would download the model. The first version of this driver did not
@@ -56,10 +61,19 @@ prepare() {
   "$@"
   local status=$?
   printf '[exit %s]\n' "${status}"
-  if [ "${status}" -ne 0 ]; then
-    printf 'ABORTED: a preparation step failed. Nothing after it was run.\n'
-    exit 1
-  fi
+  [ "${status}" -eq 0 ] || abort "a preparation step failed"
+}
+
+# Ends the driver. Nothing is cleaned up here: the operator reads the state
+# first.
+abort() {
+  printf 'ABORTED: %s. Nothing after it was run, and nothing was cleaned up.\n' "$1"
+  printf 'To return the cluster to the state it had, run what applies, in this order:\n'
+  printf '  helm --kube-context docker-desktop uninstall inferops --namespace %s\n' "${NAMESPACE}"
+  printf '  bash %s remove --confirm\n' "${SCRIPT}"
+  printf '  bash %s remove --confirm\n' "${BOOTSTRAP}"
+  printf '  bash %s destroy --confirm\n' "${PREREQUISITES}"
+  exit 1
 }
 
 k() { kubectl --context docker-desktop "$@"; }
@@ -101,6 +115,9 @@ for sample in record["samples"]:
         f" settled={sample['settled']['value']}"
         f" objects={sample['objectsRead']}:{sample['objectCount']}"
         f" consistency={sample['consistency']['state']}"
+        f"/{sample['consistency'].get('revisions', {}).get('state', '-')}"
+        f"/{sample['consistency'].get('source', {}).get('state', '-')}"
+        f"/{sample['consistency'].get('labels', {}).get('state', '-')}"
     )
 for transition in record["transitions"]:
     print(
@@ -108,17 +125,28 @@ for transition in record["transitions"]:
         f" {transition['fromSample']:03d}->{transition['toSample']:03d}"
         f" {shown(transition['from'])} -> {shown(transition['to'])}"
     )
-findings = [
-    (sample["index"], kind, finding)
-    for sample in record["samples"]
-    if sample["consistency"]["state"] == "compared"
-    for kind, findings in (
-        ("revision", sample["consistency"]["revisionFindings"]),
-        ("source", sample["consistency"]["source"].get("findings", [])),
-        ("labels", sample["consistency"]["labels"].get("findings", [])),
+# One line for each of the three comparisons: how many samples made it, and
+# how many findings they hold. A comparison that was not made is counted apart.
+findings = []
+for kind in ("revisions", "source", "labels"):
+    sections = [
+        sample["consistency"][kind]
+        for sample in record["samples"]
+        if sample["consistency"]["state"] == "provenance-resolved"
+    ]
+    states = sorted({section["state"] for section in sections})
+    made = [section for section in sections if section["state"] != "not-compared"]
+    count = sum(len(section["findings"]) for section in made)
+    print(
+        f"comparison {kind}: made in {len(made)} sample(s), not made in"
+        f" {len(sections) - len(made)}, findings {count}, states {states}"
     )
-    for finding in findings
-]
+for sample in record["samples"]:
+    if sample["consistency"]["state"] != "provenance-resolved":
+        continue
+    for kind in ("revisions", "source", "labels"):
+        for finding in sample["consistency"][kind].get("findings", []):
+            findings.append((sample["index"], kind, finding))
 print("consistency findings:", len(findings))
 for index, kind, finding in findings[:40]:
     print(f"finding sample {index:03d} {kind} {finding['rule']} {finding['subject']}")
@@ -177,13 +205,16 @@ step "5. Preparation: the prerequisite layer"
 prepare bash "${PREREQUISITES}" apply
 
 step "6. Preparation: fill the claim from the local seed image, with one throwaway Helm release"
-API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)"
-printf '[exit %s] api-image.sh digest\n' "$?"
+API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)" ||
+  abort "api-image.sh digest failed"
+printf '[exit 0] api-image.sh digest\n'
 printf 'API image digest on this host: %s\n' "${API_IMAGE_DIGEST}"
-bash scripts/environment/api-image.sh values >.artifacts/api-image-values.yaml
-printf '[exit %s] api-image.sh values\n' "$?"
-bash scripts/environment/model-seed-image.sh values >.artifacts/model-seed-values.yaml
-printf '[exit %s] model-seed-image.sh values\n' "$?"
+bash scripts/environment/api-image.sh values >.artifacts/api-image-values.yaml ||
+  abort "api-image.sh values failed"
+printf '[exit 0] api-image.sh values\n'
+bash scripts/environment/model-seed-image.sh values >.artifacts/model-seed-values.yaml ||
+  abort "model-seed-image.sh values failed"
+printf '[exit 0] model-seed-image.sh values\n'
 prepare helm --kube-context docker-desktop install inferops charts/inferops-llm \
   --namespace "${NAMESPACE}" \
   --values charts/inferops-llm/ci/real-values.yaml \
@@ -192,17 +223,18 @@ prepare helm --kube-context docker-desktop install inferops charts/inferops-llm 
   --set model.acquisition.resources.limits.memory=2Gi \
   --wait --timeout 15m
 prepare helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --wait --timeout 600s
+# An object that the throwaway release left would be met by the Application's
+# sync. In attempt 1 a failed acquisition job was left, and the sync waited on
+# it. A query that does not answer is not read as no object.
+left="unread"
 for _ in $(seq 1 120); do
-  [ -n "$(k get "${KINDS}" -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o name)" ] || break
+  left="$(k get "${KINDS}" -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o name)" ||
+    abort "the query for what the throwaway release left did not answer"
+  [ -n "${left}" ] || break
   sleep 2
 done
-run k get "${KINDS}" -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o name
-# An object that the throwaway release left would be met by the Application's
-# sync. In attempt 1 a failed acquisition job was left, and the sync waited on it.
-if [ -n "$(k get "${KINDS}" -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o name)" ]; then
-  printf 'ABORTED: the throwaway release left an object. Nothing after it was run.\n'
-  exit 1
-fi
+printf 'What the throwaway release left: %s\n' "${left:-nothing}"
+[ -z "${left}" ] || abort "the throwaway release left an object"
 
 step "7. Preparation: install Argo CD"
 prepare bash "${BOOTSTRAP}" install

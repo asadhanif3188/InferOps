@@ -65,15 +65,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -183,15 +186,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -301,15 +307,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {

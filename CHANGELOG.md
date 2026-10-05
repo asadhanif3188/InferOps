@@ -39,15 +39,25 @@ from `1.0.0`.
   v1.36.1, `observe` read one Application beside an apply, after it, and beside
   a removal.
   [The record of the run](docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
-  holds the samples. A new Application reported no state for about 20 seconds,
-  one sample reported `Healthy` beside `OutOfSync`, and an Application that was
-  being deleted still reported `Synced` and `Healthy`; the tool counts none of
-  those samples as settled, and it reads the deletion timestamp only since that
-  run.
-  Every comparison with the provenance agreed. One caller request was sent, and
-  it was answered. A first attempt was aborted and is kept: the chart's
-  acquisition job was stopped as out of memory on that Kubernetes version, and
-  the driver did not stop. The operation was not executed on `kind`. No claim is
+  holds the samples of two runs. A new Application reported no state for 19
+  seconds in one run and 46 seconds in the other, one sample of each run reported
+  `Healthy` beside `OutOfSync`, and in one run an Application with a deletion
+  timestamp still reported `Synced` and `Healthy`; the tool counts none of those
+  samples as settled, and it reads the deletion timestamp only since that run.
+  Every comparison with the provenance agreed. One caller request was sent in
+  each run, and each was answered. A first attempt was aborted and is kept: the
+  chart's acquisition job failed with `BackoffLimitExceeded`, the operator saw
+  `OOMKilled` by hand, the cause was not investigated, and the driver did not
+  stop. The last run is the run of the committed procedure, tool, and driver.
+  Two independent reviews of the first commit found that label findings beyond
+  200 objects were dropped under a compared state, that a sample was reported as
+  compared when only its resolved revision had been compared with itself, that a
+  repository address with a credential in it reached the record, that a refusal
+  said that nothing was read after the target had been read, and that the run record stated three
+  things no committed file holds;
+  [the validation record](docs/proof/environment/v2-s3-003-pr2-validation.md)
+  lists each. Three of the six boundary rules are in no decision record, and the
+  document says so. The operation was not executed on `kind`. No claim is
   registered, and no decision record changes.
 - **A tool resolves a Git commit to the release it holds. Static only.**
   `V2-S3-003-PR1` adds `tools/desired_state_provenance` and

@@ -32,9 +32,15 @@ samples leaves no transition.
 
 Given a clone that holds the commit a sample reports, the record also compares
 that sample with the provenance of the desired-state release at that commit:
-the reported commits, the source the Application declares, and the labels of
-the workload objects. A comparison that could not be made is recorded as not
-compared. It is never recorded as consistent.
+the two other reported commits, the source the Application declares, and the
+labels of the workload objects. Each of the three is a comparison of its own. One
+that could not be made is recorded as not compared. It is never recorded as
+consistent. The resolved revision is not compared with the provenance that was
+read at it.
+
+**What ``settled`` does not read.** It reads no condition and no queued
+operation, and it does not check the kind or the name of the object. The
+``observe`` operation asks for one Application by name.
 """
 
 from __future__ import annotations
@@ -185,10 +191,13 @@ DOES_NOT_ESTABLISH: Final = (
 )
 
 _MESSAGE_LIMIT: Final = 240
+_TEXT_LIMIT: Final = 256
+_LIST_LIMIT: Final = 20
+_NUMBER_DIGITS: Final = 6
 _CONDITION_LIMIT: Final = 10
 _OBJECT_LIMIT: Final = 200
 _USERINFO: Final = re.compile(r"//[^/@\s]+@")
-_SAMPLE_META: Final = re.compile(r"sample-(\d{3})\.meta")
+_SAMPLE_META: Final = re.compile(r"sample-([0-9]{3})\.meta")
 _PROVENANCE_LABELS: Final = (CHART_LABEL, VERSION_LABEL, WORKLOAD_LABEL)
 
 
@@ -254,16 +263,32 @@ def diagnostic_text(value: object) -> str:
     return text
 
 
+def _bounded_text(value: object) -> str | None:
+    """A text value as the record may hold it, or ``None`` when it may not.
+
+    A value that is empty, longer than the limit, or credential-shaped is not
+    held. The user part of an address is replaced, so a repository address
+    with a credential in it does not reach the record.
+    """
+    if not isinstance(value, str) or not value or len(value) > _TEXT_LIMIT:
+        return None
+    text = _USERINFO.sub("//<redacted>@", value)
+    return None if is_credential_shaped(text) else text
+
+
 def _typed(value: object, kind: str) -> Field:
     if kind == _TEXT:
-        return Field(REPORTED, value) if isinstance(value, str) and value else _bad()
+        text = _bounded_text(value)
+        return Field(REPORTED, text) if text is not None else _bad()
     if kind == _FLAG:
         return Field(REPORTED, value) if isinstance(value, bool) else _bad()
     if kind == _NUMBER:
         usable = isinstance(value, int) and not isinstance(value, bool)
         return Field(REPORTED, value) if usable else _bad()
-    if isinstance(value, list) and all(isinstance(v, str) for v in value):
-        return Field(REPORTED, list(value))
+    if isinstance(value, list) and len(value) <= _LIST_LIMIT:
+        texts = [_bounded_text(entry) for entry in value]
+        if all(text is not None for text in texts):
+            return Field(REPORTED, texts)
     return _bad()
 
 
@@ -302,6 +327,10 @@ def application_fields(document: Mapping[str, Any]) -> dict[str, Field]:
         last, state = None, MALFORMED
     for name, (key, kind) in _HISTORY_FIELDS.items():
         fields[name] = _at(last, (key,), kind) if state == REPORTED else Field(state)
+    # A Kubernetes object has metadata. Without it, an absent deletion
+    # timestamp says nothing about a deletion.
+    if not isinstance(document.get("metadata"), Mapping):
+        fields["deletionTimestamp"] = Field(MALFORMED)
     return fields
 
 
@@ -355,16 +384,15 @@ def _pairs(path: Path) -> dict[str, str]:
 
 def _stated(pairs: Mapping[str, str], key: str) -> Field:
     value = pairs.get(key)
-    return Field(REPORTED, value) if value else Field(MISSING)
+    return _typed(value, _TEXT) if value else Field(MISSING)
 
 
 def _count(pairs: Mapping[str, str], key: str) -> Field:
     value = pairs.get(key)
     if not value:
         return Field(MISSING)
-    return (
-        Field(REPORTED, int(value)) if value.isascii() and value.isdigit() else _bad()
-    )
+    usable = value.isascii() and value.isdigit() and len(value) <= _NUMBER_DIGITS
+    return Field(REPORTED, int(value)) if usable else _bad()
 
 
 def _objects(text: str) -> tuple[list[dict[str, Any]], int]:
@@ -392,7 +420,13 @@ def _objects(text: str) -> tuple[list[dict[str, Any]], int]:
                 label: _at(labels, (label,), _TEXT).as_document()
                 for label in _PROVENANCE_LABELS
             }
-        found.append({"kind": kind.strip(), "name": name.strip(), "labels": carried})
+        found.append(
+            {
+                "kind": kind.strip()[:_TEXT_LIMIT],
+                "name": name.strip()[:_TEXT_LIMIT],
+                "labels": carried,
+            }
+        )
     found.sort(key=lambda entry: (entry["kind"], entry["name"]))
     return found[:_OBJECT_LIMIT], max(0, len(found) - _OBJECT_LIMIT)
 
@@ -476,10 +510,15 @@ def read_collection(directory: Path) -> tuple[dict[str, Any], tuple[Sample, ...]
     end_path = directory / "collection.end"
     end = _pairs(end_path) if end_path.is_file() else {}
     completed = _count(end, "completedSamples")
+    status_files = [
+        entry.name
+        for entry in sorted(directory.iterdir())
+        if entry.name.startswith("sample-") and entry.name.endswith(".meta")
+    ]
     written = [
         int(match.group(1))
-        for entry in sorted(directory.iterdir())
-        if (match := _SAMPLE_META.fullmatch(entry.name)) is not None
+        for name in status_files
+        if (match := _SAMPLE_META.fullmatch(name)) is not None
     ]
     last = max([requested.value, *written])
     samples = tuple(_sample(directory, index) for index in range(1, last + 1))
@@ -495,8 +534,12 @@ def read_collection(directory: Path) -> tuple[dict[str, Any], tuple[Sample, ...]
         "requestedSamples": requested.value,
         "intervalSeconds": _count(header, "intervalSeconds").as_document(),
         "completedSamples": completed.as_document(),
+        # Exactly the samples that were asked for: none absent, none beyond
+        # the count, and no status file that this module does not read.
         "complete": completed.state == REPORTED
         and completed.value == requested.value
+        and len(samples) == requested.value
+        and len(written) == len(status_files)
         and all(sample.application_state != "not-taken" for sample in samples),
     }
     return collection, samples
@@ -615,24 +658,33 @@ def _consistency(
             + ", ".join(provenance)
         )
 
+    # The provenance was read at the resolved revision, so comparing that
+    # revision with it would compare a value with itself. The two other
+    # reported commits are compared, and with neither nothing is compared.
+    others = ("operationRevision", "historyRevision")
     reported = {
         name: sample.field(name).value
-        for name in ("resolvedRevision", "operationRevision", "historyRevision")
+        for name in others
         if sample.field(name).state == REPORTED
     }
-    not_reported = [
-        name
-        for name in ("operationRevision", "historyRevision")
-        if sample.field(name).state != REPORTED
-    ]
+    not_reported = [name for name in others if name not in reported]
     result: dict[str, Any] = {
-        "state": "compared",
+        "state": "provenance-resolved",
         "releaseId": provenance.release_id,
-        "revisionFindings": _finding_documents(
-            observed_revision_findings(provenance, reported)
-        ),
-        "revisionsNotReported": not_reported,
     }
+    if reported:
+        result["revisions"] = {
+            "state": "compared",
+            "findings": _finding_documents(
+                observed_revision_findings(provenance, reported)
+            ),
+            "notReported": not_reported,
+        }
+    else:
+        result["revisions"] = _not_compared(
+            "not reported: "
+            + ", ".join(f"{n} is {sample.field(n).state}" for n in others)
+        )
 
     source_names = ("repository", "followedRevision", "chartPath", "valueFiles")
     absent = [n for n in source_names if sample.field(n).state != REPORTED]
@@ -675,9 +727,14 @@ def _consistency(
                         "detail": finding.detail,
                     }
                 )
+        # An object beyond the limit is not held, so its labels were not
+        # compared. The section then does not say that the labels agree.
         result["labels"] = {
-            "state": "compared",
+            "state": "compared"
+            if sample.objects_not_recorded == 0
+            else "compared-in-part",
             "objects": len(sample.objects),
+            "objectsNotCompared": sample.objects_not_recorded,
             "findings": label_findings,
         }
     return result
@@ -713,8 +770,12 @@ def _sample_document(
         "objectSet": _object_set_id(sample.objects)
         if sample.objects_state == "collected"
         else None,
-        "objectCount": len(sample.objects),
-        "objectsNotRecorded": sample.objects_not_recorded,
+        "objectCount": len(sample.objects)
+        if sample.objects_state == "collected"
+        else None,
+        "objectsNotRecorded": sample.objects_not_recorded
+        if sample.objects_state == "collected"
+        else None,
         "consistency": _consistency(sample, provenances),
     }
 

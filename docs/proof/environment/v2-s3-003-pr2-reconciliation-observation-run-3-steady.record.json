@@ -23,7 +23,7 @@
     },
     "procedureSha256": {
       "state": "reported",
-      "value": "03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140"
+      "value": "dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3"
     },
     "provider": {
       "state": "reported",
@@ -31,7 +31,7 @@
     },
     "repositoryRevision": {
       "state": "reported",
-      "value": "40452957d8f602357ecc512dc643cb820db57202"
+      "value": "4dfb69eba75686d2d7475a58054ead3c345b17af"
     },
     "requestedSamples": 5,
     "serverVersion": {
@@ -53,7 +53,7 @@
     "That the record holds no secret. It is built from an allowlist of fields, and a message is cut and passed through a prefix heuristic."
   ],
   "objectSets": {
-    "7bd4a6023d0b022f": [
+    "14ecbec0a791ea09": [
       {
         "kind": "ConfigMap",
         "labels": {
@@ -286,7 +286,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-74bcc74dd4-l8djb"
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
       },
       {
         "kind": "Pod",
@@ -304,7 +304,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-collector-86bfc987cf-2ww25"
+        "name": "inferops-inferops-llm-collector-86bfc987cf-52ck6"
       },
       {
         "kind": "Pod",
@@ -322,7 +322,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-runtime-67b4856f9c-qqd56"
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
       },
       {
         "kind": "ReplicaSet",
@@ -573,7 +573,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -589,7 +589,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -601,11 +601,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -629,12 +629,12 @@
       "index": 1,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:06Z"
+        "value": "2026-10-05T12:46:33Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -693,7 +693,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -709,7 +709,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -721,11 +721,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -749,12 +749,12 @@
       "index": 2,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:09Z"
+        "value": "2026-10-05T12:46:36Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -813,7 +813,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -829,7 +829,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -841,11 +841,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -869,12 +869,12 @@
       "index": 3,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:12Z"
+        "value": "2026-10-05T12:46:40Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -933,7 +933,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -949,7 +949,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -961,11 +961,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -989,12 +989,12 @@
       "index": 4,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:15Z"
+        "value": "2026-10-05T12:46:43Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -1053,7 +1053,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -1069,7 +1069,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -1081,11 +1081,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -1109,12 +1109,12 @@
       "index": 5,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:17Z"
+        "value": "2026-10-05T12:46:46Z"
       },
       "operationMessage": {
         "state": "reported",

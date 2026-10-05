@@ -306,8 +306,8 @@ The tests assert each property directly:
   names the drift check and the desired-state tool to read
   [a declared release at a Git commit](../environment/desired-state-provenance.md). It
   writes nothing. Since `V2-S3-003-PR2`, `tools/reconciliation_evidence` is listed
-  too: it does not import the package, and it names the provenance tool and the
-  drift check to compare
+  too: it does not import the package, and it names the provenance tool, the
+  drift check, and the desired-state tool to compare
   [what a controller reported](../environment/reconciliation-evidence.md) with a
   declared release. It writes nothing. Another reads every tracked file under `src`, `tools`, `scripts`,
   `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, whatever its suffix,

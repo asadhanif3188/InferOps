@@ -23,7 +23,7 @@
     },
     "procedureSha256": {
       "state": "reported",
-      "value": "03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140"
+      "value": "dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3"
     },
     "provider": {
       "state": "reported",
@@ -31,7 +31,7 @@
     },
     "repositoryRevision": {
       "state": "reported",
-      "value": "40452957d8f602357ecc512dc643cb820db57202"
+      "value": "4dfb69eba75686d2d7475a58054ead3c345b17af"
     },
     "requestedSamples": 40,
     "serverVersion": {
@@ -53,118 +53,7 @@
     "That the record holds no secret. It is built from an allowlist of fields, and a message is cut and passed through a prefix heuristic."
   ],
   "objectSets": {
-    "4f53cda18c2baa0c": [],
-    "5d55d39b7cb68852": [
-      {
-        "kind": "Deployment",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm"
-      },
-      {
-        "kind": "Deployment",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm-runtime"
-      },
-      {
-        "kind": "Pod",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm-74bcc74dd4-l8djb"
-      },
-      {
-        "kind": "Pod",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm-runtime-67b4856f9c-qqd56"
-      },
-      {
-        "kind": "ReplicaSet",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm-74bcc74dd4"
-      },
-      {
-        "kind": "ReplicaSet",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm-runtime-67b4856f9c"
-      }
-    ],
-    "7bd4a6023d0b022f": [
+    "14ecbec0a791ea09": [
       {
         "kind": "ConfigMap",
         "labels": {
@@ -397,7 +286,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-74bcc74dd4-l8djb"
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
       },
       {
         "kind": "Pod",
@@ -415,7 +304,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-collector-86bfc987cf-2ww25"
+        "name": "inferops-inferops-llm-collector-86bfc987cf-52ck6"
       },
       {
         "kind": "Pod",
@@ -433,7 +322,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-runtime-67b4856f9c-qqd56"
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
       },
       {
         "kind": "ReplicaSet",
@@ -634,7 +523,118 @@
         "name": "inferops-inferops-llm-runtime"
       }
     ],
-    "93ede85e72fdce40": [
+    "4f0a3f968808044d": [
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm"
+      },
+      {
+        "kind": "Deployment",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
+      },
+      {
+        "kind": "Pod",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-74bcc74dd4"
+      },
+      {
+        "kind": "ReplicaSet",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-runtime-67b4856f9c"
+      }
+    ],
+    "4f53cda18c2baa0c": [],
+    "a25d5dfe66371c32": [
       {
         "kind": "Deployment",
         "labels": {
@@ -705,7 +705,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-74bcc74dd4-l8djb"
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
       },
       {
         "kind": "Pod",
@@ -723,25 +723,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-collector-86bfc987cf-2ww25"
-      },
-      {
-        "kind": "Pod",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm-runtime-67b4856f9c-qqd56"
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
       },
       {
         "kind": "ReplicaSet",
@@ -797,62 +779,6 @@
         },
         "name": "inferops-inferops-llm-runtime-67b4856f9c"
       }
-    ],
-    "f94cf08f79d9ff71": [
-      {
-        "kind": "Deployment",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm"
-      },
-      {
-        "kind": "Pod",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm-74bcc74dd4-l8djb"
-      },
-      {
-        "kind": "ReplicaSet",
-        "labels": {
-          "app.kubernetes.io/version": {
-            "state": "reported",
-            "value": "0.1.0"
-          },
-          "helm.sh/chart": {
-            "state": "reported",
-            "value": "inferops-llm-0.3.0"
-          },
-          "inferops.io/workload": {
-            "state": "reported",
-            "value": "support-assistant"
-          }
-        },
-        "name": "inferops-inferops-llm-74bcc74dd4"
-      }
     ]
   },
   "samples": [
@@ -904,7 +830,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -920,7 +846,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -932,11 +858,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -960,12 +886,12 @@
       "index": 1,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:34Z"
+        "value": "2026-10-05T12:47:26Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -1024,7 +950,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -1040,7 +966,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -1052,11 +978,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -1080,12 +1006,12 @@
       "index": 2,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:37Z"
+        "value": "2026-10-05T12:47:30Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -1144,7 +1070,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -1160,7 +1086,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -1172,11 +1098,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -1200,12 +1126,12 @@
       "index": 3,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:40Z"
+        "value": "2026-10-05T12:47:35Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -1264,7 +1190,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -1280,7 +1206,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -1292,11 +1218,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -1320,12 +1246,12 @@
       "index": 4,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:43Z"
+        "value": "2026-10-05T12:47:39Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -1384,7 +1310,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -1400,7 +1326,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -1412,11 +1338,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:45:30Z"
         },
         "repository": {
           "state": "reported",
@@ -1440,12 +1366,12 @@
       "index": 5,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:46Z"
+        "value": "2026-10-05T12:47:43Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -1462,7 +1388,7 @@
       "consistency": {
         "labels": {
           "findings": [],
-          "objects": 26,
+          "objects": 8,
           "objectsNotCompared": 0,
           "state": "compared"
         },
@@ -1493,253 +1419,7 @@
         },
         "deletionTimestamp": {
           "state": "reported",
-          "value": "2026-10-05T11:49:48Z"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 6,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:49:49Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [
-          "the Application has a deletion timestamp"
-        ],
-        "value": false
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "reported",
-          "value": "2026-10-05T11:49:48Z"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 7,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:49:52Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [
-          "the Application has a deletion timestamp"
-        ],
-        "value": false
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 9,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "reported",
-          "value": "2026-10-05T11:49:48Z"
+          "value": "2026-10-05T12:47:45Z"
         },
         "followedRevision": {
           "state": "reported",
@@ -1751,7 +1431,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -1767,7 +1447,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -1779,11 +1459,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:49:47Z"
+          "value": "2026-10-05T12:47:44Z"
         },
         "repository": {
           "state": "reported",
@@ -1804,15 +1484,15 @@
           ]
         }
       },
-      "index": 8,
+      "index": 6,
       "notReported": [],
-      "objectCount": 9,
-      "objectSet": "93ede85e72fdce40",
+      "objectCount": 8,
+      "objectSet": "a25d5dfe66371c32",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:54Z"
+        "value": "2026-10-05T12:47:47Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -1864,7 +1544,7 @@
         },
         "deletionTimestamp": {
           "state": "reported",
-          "value": "2026-10-05T11:49:48Z"
+          "value": "2026-10-05T12:47:45Z"
         },
         "followedRevision": {
           "state": "reported",
@@ -1876,7 +1556,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -1892,7 +1572,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -1904,11 +1584,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:49:47Z"
+          "value": "2026-10-05T12:47:44Z"
         },
         "repository": {
           "state": "reported",
@@ -1929,15 +1609,15 @@
           ]
         }
       },
-      "index": 9,
+      "index": 7,
       "notReported": [],
       "objectCount": 6,
-      "objectSet": "5d55d39b7cb68852",
+      "objectSet": "4f0a3f968808044d",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:57Z"
+        "value": "2026-10-05T12:47:52Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -1957,10 +1637,8 @@
       "conditions": [],
       "consistency": {
         "labels": {
-          "findings": [],
-          "objects": 3,
-          "objectsNotCompared": 0,
-          "state": "compared"
+          "reason": "the object read returned no object",
+          "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
         "revisions": {
@@ -1989,7 +1667,7 @@
         },
         "deletionTimestamp": {
           "state": "reported",
-          "value": "2026-10-05T11:49:48Z"
+          "value": "2026-10-05T12:47:45Z"
         },
         "followedRevision": {
           "state": "reported",
@@ -2001,7 +1679,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -2017,7 +1695,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -2029,11 +1707,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:49:47Z"
+          "value": "2026-10-05T12:47:44Z"
         },
         "repository": {
           "state": "reported",
@@ -2054,15 +1732,15 @@
           ]
         }
       },
-      "index": 10,
+      "index": 8,
       "notReported": [],
-      "objectCount": 3,
-      "objectSet": "f94cf08f79d9ff71",
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -2073,6 +1751,190 @@
           "syncStatus is reported as OutOfSync, and not Synced",
           "healthStatus is reported as Progressing, and not Healthy",
           "the Application has a deletion timestamp"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 9,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:47:59Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "absent",
+      "conditions": [],
+      "consistency": {
+        "reason": "the Application read is absent",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "not-collected"
+        },
+        "automatedSelfHeal": {
+          "state": "not-collected"
+        },
+        "chartPath": {
+          "state": "not-collected"
+        },
+        "deletionTimestamp": {
+          "state": "not-collected"
+        },
+        "followedRevision": {
+          "state": "not-collected"
+        },
+        "healthStatus": {
+          "state": "not-collected"
+        },
+        "historyDeployedAt": {
+          "state": "not-collected"
+        },
+        "historyId": {
+          "state": "not-collected"
+        },
+        "historyRevision": {
+          "state": "not-collected"
+        },
+        "operationAutomated": {
+          "state": "not-collected"
+        },
+        "operationFinishedAt": {
+          "state": "not-collected"
+        },
+        "operationPhase": {
+          "state": "not-collected"
+        },
+        "operationRevision": {
+          "state": "not-collected"
+        },
+        "operationStartedAt": {
+          "state": "not-collected"
+        },
+        "reconciledAt": {
+          "state": "not-collected"
+        },
+        "repository": {
+          "state": "not-collected"
+        },
+        "resolvedRevision": {
+          "state": "not-collected"
+        },
+        "syncStatus": {
+          "state": "not-collected"
+        },
+        "valueFiles": {
+          "state": "not-collected"
+        }
+      },
+      "index": 10,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:48:03Z"
+      },
+      "operationMessage": {
+        "state": "not-collected"
+      },
+      "settled": {
+        "reasons": [
+          "the Application read is absent"
         ],
         "value": false
       }
@@ -2157,7 +2019,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:48:06Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2249,7 +2111,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:06Z"
+        "value": "2026-10-05T12:48:09Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2341,7 +2203,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:08Z"
+        "value": "2026-10-05T12:48:12Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2433,7 +2295,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:11Z"
+        "value": "2026-10-05T12:48:15Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2525,7 +2387,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:14Z"
+        "value": "2026-10-05T12:48:18Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2617,7 +2479,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:16Z"
+        "value": "2026-10-05T12:48:21Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2709,7 +2571,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:19Z"
+        "value": "2026-10-05T12:48:24Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2801,7 +2663,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:21Z"
+        "value": "2026-10-05T12:48:27Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2893,7 +2755,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:24Z"
+        "value": "2026-10-05T12:48:30Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -2985,7 +2847,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:27Z"
+        "value": "2026-10-05T12:48:33Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3077,7 +2939,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:29Z"
+        "value": "2026-10-05T12:48:36Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3169,7 +3031,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:32Z"
+        "value": "2026-10-05T12:48:40Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3261,7 +3123,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:35Z"
+        "value": "2026-10-05T12:48:43Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3353,7 +3215,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:37Z"
+        "value": "2026-10-05T12:48:46Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3445,7 +3307,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:40Z"
+        "value": "2026-10-05T12:48:49Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3537,7 +3399,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:42Z"
+        "value": "2026-10-05T12:48:53Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3629,7 +3491,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:45Z"
+        "value": "2026-10-05T12:48:56Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3721,7 +3583,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:48Z"
+        "value": "2026-10-05T12:49:00Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3813,7 +3675,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:50Z"
+        "value": "2026-10-05T12:49:03Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3905,7 +3767,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:53Z"
+        "value": "2026-10-05T12:49:06Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -3997,7 +3859,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:55Z"
+        "value": "2026-10-05T12:49:09Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4089,7 +3951,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:58Z"
+        "value": "2026-10-05T12:49:12Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4181,7 +4043,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:51:01Z"
+        "value": "2026-10-05T12:49:15Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4273,7 +4135,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:51:03Z"
+        "value": "2026-10-05T12:49:18Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4365,7 +4227,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:51:06Z"
+        "value": "2026-10-05T12:49:22Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4457,7 +4319,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:51:09Z"
+        "value": "2026-10-05T12:49:26Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4549,7 +4411,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:51:11Z"
+        "value": "2026-10-05T12:49:28Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4641,7 +4503,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:51:14Z"
+        "value": "2026-10-05T12:49:31Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4733,7 +4595,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:51:17Z"
+        "value": "2026-10-05T12:49:34Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4825,7 +4687,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:51:19Z"
+        "value": "2026-10-05T12:49:37Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -4841,9 +4703,9 @@
   "schema": "inferops.io/reconciliation-observation/v1alpha1",
   "summary": {
     "applicationReads": {
-      "absent": 30,
+      "absent": 32,
       "not-taken": 0,
-      "reported": 10,
+      "reported": 8,
       "unanswered": 0,
       "unreadable": 0
     },
@@ -4852,7 +4714,7 @@
     ],
     "samples": 40,
     "samplesSettled": 5,
-    "samplesWithEveryRequiredField": 10
+    "samplesWithEveryRequiredField": 8
   },
   "transitions": [
     {
@@ -4863,18 +4725,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:52Z"
+        "value": "2026-10-05T12:47:43Z"
       },
-      "fromSample": 7,
+      "fromSample": 5,
       "to": {
         "state": "reported",
         "value": "OutOfSync"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:54Z"
+        "value": "2026-10-05T12:47:47Z"
       },
-      "toSample": 8
+      "toSample": 6
     },
     {
       "field": "healthStatus",
@@ -4884,18 +4746,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:52Z"
+        "value": "2026-10-05T12:47:43Z"
       },
-      "fromSample": 7,
+      "fromSample": 5,
       "to": {
         "state": "reported",
         "value": "Progressing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:49:54Z"
+        "value": "2026-10-05T12:47:47Z"
       },
-      "toSample": 8
+      "toSample": 6
     },
     {
       "field": "applicationRead",
@@ -4905,18 +4767,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "reported",
         "value": "absent"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     },
     {
       "field": "syncStatus",
@@ -4926,17 +4788,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "not-collected"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     },
     {
       "field": "resolvedRevision",
@@ -4946,17 +4808,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "not-collected"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     },
     {
       "field": "healthStatus",
@@ -4966,17 +4828,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "not-collected"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     },
     {
       "field": "operationPhase",
@@ -4986,17 +4848,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "not-collected"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     },
     {
       "field": "operationRevision",
@@ -5006,57 +4868,57 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "not-collected"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     },
     {
       "field": "operationStartedAt",
       "from": {
         "state": "reported",
-        "value": "2026-10-05T11:44:30Z"
+        "value": "2026-10-05T12:41:18Z"
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "not-collected"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     },
     {
       "field": "operationFinishedAt",
       "from": {
         "state": "reported",
-        "value": "2026-10-05T11:44:41Z"
+        "value": "2026-10-05T12:41:49Z"
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "not-collected"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     },
     {
       "field": "historyId",
@@ -5066,17 +4928,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:00Z"
+        "value": "2026-10-05T12:47:55Z"
       },
-      "fromSample": 10,
+      "fromSample": 8,
       "to": {
         "state": "not-collected"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:50:03Z"
+        "value": "2026-10-05T12:47:59Z"
       },
-      "toSample": 11
+      "toSample": 9
     }
   ]
 }

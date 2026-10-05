@@ -996,6 +996,7 @@ OBSERVED_REVISION = "0123456789abcdef0123456789abcdef01234567"
 REPORTED_APPLICATION = json.dumps(
     {
         "kind": "Application",
+        "metadata": {"name": APPLICATION},
         "spec": {"source": {"targetRevision": "main"}},
         "status": {
             "sync": {"status": "Synced", "revision": OBSERVED_REVISION},
@@ -1160,7 +1161,10 @@ def test_observation_does_not_write_into_an_existing_directory(sandbox: Path) ->
     run = run_script(sandbox, *OBSERVE, application_json=REPORTED_APPLICATION)
     assert run.refused
     assert "observation-directory-exists" in run.output
-    assert not any("argoproj.io" in " ".join(call) for call in run.kubectl)
+    # Before the target is verified. The first version of the procedure
+    # verified the target first, which reads the cluster, and then said that
+    # nothing was read.
+    assert run.kubectl == []
     assert [entry.name for entry in existing.iterdir()] == ["kept.txt"]
 
 

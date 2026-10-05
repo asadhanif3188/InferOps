@@ -196,6 +196,10 @@ case "${operation}" in
       inferops::fail "refusing: observation-bounds-not-given: 'observe' needs --interval SECONDS, a whole number from 1 to ${OBSERVE_MAX_INTERVAL_SECONDS}. Nothing was read."
     [[ "${observe_name}" =~ ^[a-z0-9][a-z0-9-]{0,62}$ ]] ||
       inferops::fail "refusing: observation-bounds-not-given: 'observe' needs --into NAME, up to 63 lowercase letters, digits, and hyphens. It names a new directory under .artifacts/argocd-application/observations/. Nothing was read."
+    # Checked here, before the target is verified, so that this refusal reads
+    # no cluster. The operation creates the directory itself, further down.
+    [ ! -e "${INFEROPS_ARTIFACT_DIR}/argocd-application/observations/${observe_name}" ] ||
+      inferops::fail "refusing: observation-directory-exists: .artifacts/argocd-application/observations/${observe_name} exists. An observation does not write into the directory of another one. Give another name with --into. Nothing was read."
     ;;
   remove)
     [ "${digest_given}" -eq 0 ] || inferops::fail "--api-image-digest applies to 'apply' only. ${USAGE}"
@@ -676,9 +680,11 @@ observe() {
 
   inferops::section "Observation"
   gitops::report_target
-  [ ! -e "${directory}" ] ||
-    inferops::fail "refusing: observation-directory-exists: ${shown} exists. An observation does not write into the directory of another one. Give another name with --into. Nothing was read."
-  mkdir -p "${directory}"
+  # The argument check found no such directory. Creating it without -p fails
+  # when another observation of the same name created it since.
+  mkdir -p "$(dirname "${directory}")"
+  mkdir "${directory}" ||
+    inferops::fail "refusing: observation-directory-exists: ${shown} was created while this operation started. An observation does not write into the directory of another one. Give another name with --into. No sample was taken."
   {
     printf 'provider=%s\n' "${INFEROPS_TARGET_PROVIDER}"
     printf 'serverVersion=%s\n' "${INFEROPS_TARGET_SERVER_VERSION:-}"

@@ -23,7 +23,7 @@
     },
     "procedureSha256": {
       "state": "reported",
-      "value": "03951f9e0082cf35806b0e914dfe56323f8eb044c77ac1e9861acc3b6cee2140"
+      "value": "dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3"
     },
     "provider": {
       "state": "reported",
@@ -31,7 +31,7 @@
     },
     "repositoryRevision": {
       "state": "reported",
-      "value": "40452957d8f602357ecc512dc643cb820db57202"
+      "value": "4dfb69eba75686d2d7475a58054ead3c345b17af"
     },
     "requestedSamples": 80,
     "serverVersion": {
@@ -53,8 +53,7 @@
     "That the record holds no secret. It is built from an allowlist of fields, and a message is cut and passed through a prefix heuristic."
   ],
   "objectSets": {
-    "4f53cda18c2baa0c": [],
-    "7bd4a6023d0b022f": [
+    "14ecbec0a791ea09": [
       {
         "kind": "ConfigMap",
         "labels": {
@@ -287,7 +286,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-74bcc74dd4-l8djb"
+        "name": "inferops-inferops-llm-74bcc74dd4-9b8hj"
       },
       {
         "kind": "Pod",
@@ -305,7 +304,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-collector-86bfc987cf-2ww25"
+        "name": "inferops-inferops-llm-collector-86bfc987cf-52ck6"
       },
       {
         "kind": "Pod",
@@ -323,7 +322,7 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-runtime-67b4856f9c-qqd56"
+        "name": "inferops-inferops-llm-runtime-67b4856f9c-j67j5"
       },
       {
         "kind": "ReplicaSet",
@@ -524,7 +523,7 @@
         "name": "inferops-inferops-llm-runtime"
       }
     ],
-    "eb2b70bbaa3f2b88": [
+    "1e33fd429929abc0": [
       {
         "kind": "Job",
         "labels": {
@@ -559,8 +558,29 @@
             "value": "support-assistant"
           }
         },
-        "name": "inferops-inferops-llm-model-acquisition-6v9ls"
+        "name": "inferops-inferops-llm-model-acquisition-874rc"
       },
+      {
+        "kind": "ServiceAccount",
+        "labels": {
+          "app.kubernetes.io/version": {
+            "state": "reported",
+            "value": "0.1.0"
+          },
+          "helm.sh/chart": {
+            "state": "reported",
+            "value": "inferops-llm-0.3.0"
+          },
+          "inferops.io/workload": {
+            "state": "reported",
+            "value": "support-assistant"
+          }
+        },
+        "name": "inferops-inferops-llm-model-acquisition"
+      }
+    ],
+    "4f53cda18c2baa0c": [],
+    "5ed7fd38b9e95b18": [
       {
         "kind": "ServiceAccount",
         "labels": {
@@ -662,7 +682,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:43:43Z"
+        "value": "2026-10-05T12:40:05Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -754,7 +774,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:43:48Z"
+        "value": "2026-10-05T12:40:10Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -846,7 +866,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:43:51Z"
+        "value": "2026-10-05T12:40:14Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -938,7 +958,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:43:55Z"
+        "value": "2026-10-05T12:40:19Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -1030,7 +1050,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:00Z"
+        "value": "2026-10-05T12:40:23Z"
       },
       "operationMessage": {
         "state": "not-collected"
@@ -1043,69 +1063,77 @@
       }
     },
     {
-      "applicationRead": "absent",
+      "applicationRead": "reported",
       "conditions": [],
       "consistency": {
-        "reason": "the Application read is absent",
+        "reason": "resolvedRevision is missing",
         "state": "not-compared"
       },
       "fields": {
         "automatedPrune": {
-          "state": "not-collected"
+          "state": "reported",
+          "value": false
         },
         "automatedSelfHeal": {
-          "state": "not-collected"
+          "state": "reported",
+          "value": true
         },
         "chartPath": {
-          "state": "not-collected"
+          "state": "reported",
+          "value": "charts/inferops-llm"
         },
         "deletionTimestamp": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "followedRevision": {
-          "state": "not-collected"
+          "state": "reported",
+          "value": "main"
         },
         "healthStatus": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "historyDeployedAt": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "historyId": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "historyRevision": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "operationAutomated": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "operationFinishedAt": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "operationPhase": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "operationRevision": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "operationStartedAt": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "reconciledAt": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "repository": {
-          "state": "not-collected"
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
         },
         "resolvedRevision": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "syncStatus": {
-          "state": "not-collected"
+          "state": "missing"
         },
         "valueFiles": {
-          "state": "not-collected"
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
         }
       },
       "index": 6,
@@ -1122,14 +1150,18 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:28Z"
       },
       "operationMessage": {
-        "state": "not-collected"
+        "state": "missing"
       },
       "settled": {
         "reasons": [
-          "the Application read is absent"
+          "syncStatus is missing",
+          "resolvedRevision is missing",
+          "healthStatus is missing",
+          "operationPhase is missing",
+          "operationRevision is missing"
         ],
         "value": false
       }
@@ -1222,7 +1254,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:31Z"
       },
       "operationMessage": {
         "state": "missing"
@@ -1326,7 +1358,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:12Z"
+        "value": "2026-10-05T12:40:36Z"
       },
       "operationMessage": {
         "state": "missing"
@@ -1430,7 +1462,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:16Z"
+        "value": "2026-10-05T12:40:40Z"
       },
       "operationMessage": {
         "state": "missing"
@@ -1534,7 +1566,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:20Z"
+        "value": "2026-10-05T12:40:44Z"
       },
       "operationMessage": {
         "state": "missing"
@@ -1638,7 +1670,7 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:23Z"
+        "value": "2026-10-05T12:40:47Z"
       },
       "operationMessage": {
         "state": "missing"
@@ -1742,7 +1774,631 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:27Z"
+        "value": "2026-10-05T12:40:52Z"
+      },
+      "operationMessage": {
+        "state": "missing"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is missing",
+          "resolvedRevision is missing",
+          "healthStatus is missing",
+          "operationPhase is missing",
+          "operationRevision is missing"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "reason": "resolvedRevision is missing",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "missing"
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "missing"
+        },
+        "operationRevision": {
+          "state": "missing"
+        },
+        "operationStartedAt": {
+          "state": "missing"
+        },
+        "reconciledAt": {
+          "state": "missing"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "missing"
+        },
+        "syncStatus": {
+          "state": "missing"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 13,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:40:56Z"
+      },
+      "operationMessage": {
+        "state": "missing"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is missing",
+          "resolvedRevision is missing",
+          "healthStatus is missing",
+          "operationPhase is missing",
+          "operationRevision is missing"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "reason": "resolvedRevision is missing",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "missing"
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "missing"
+        },
+        "operationRevision": {
+          "state": "missing"
+        },
+        "operationStartedAt": {
+          "state": "missing"
+        },
+        "reconciledAt": {
+          "state": "missing"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "missing"
+        },
+        "syncStatus": {
+          "state": "missing"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 14,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:40:59Z"
+      },
+      "operationMessage": {
+        "state": "missing"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is missing",
+          "resolvedRevision is missing",
+          "healthStatus is missing",
+          "operationPhase is missing",
+          "operationRevision is missing"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "reason": "resolvedRevision is missing",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "missing"
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "missing"
+        },
+        "operationRevision": {
+          "state": "missing"
+        },
+        "operationStartedAt": {
+          "state": "missing"
+        },
+        "reconciledAt": {
+          "state": "missing"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "missing"
+        },
+        "syncStatus": {
+          "state": "missing"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 15,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:03Z"
+      },
+      "operationMessage": {
+        "state": "missing"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is missing",
+          "resolvedRevision is missing",
+          "healthStatus is missing",
+          "operationPhase is missing",
+          "operationRevision is missing"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "reason": "resolvedRevision is missing",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "missing"
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "missing"
+        },
+        "operationRevision": {
+          "state": "missing"
+        },
+        "operationStartedAt": {
+          "state": "missing"
+        },
+        "reconciledAt": {
+          "state": "missing"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "missing"
+        },
+        "syncStatus": {
+          "state": "missing"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 16,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:07Z"
+      },
+      "operationMessage": {
+        "state": "missing"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is missing",
+          "resolvedRevision is missing",
+          "healthStatus is missing",
+          "operationPhase is missing",
+          "operationRevision is missing"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "reason": "resolvedRevision is missing",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "missing"
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "missing"
+        },
+        "operationRevision": {
+          "state": "missing"
+        },
+        "operationStartedAt": {
+          "state": "missing"
+        },
+        "reconciledAt": {
+          "state": "missing"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "missing"
+        },
+        "syncStatus": {
+          "state": "missing"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 17,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:10Z"
+      },
+      "operationMessage": {
+        "state": "missing"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is missing",
+          "resolvedRevision is missing",
+          "healthStatus is missing",
+          "operationPhase is missing",
+          "operationRevision is missing"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "reason": "resolvedRevision is missing",
+        "state": "not-compared"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "missing"
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "missing"
+        },
+        "operationRevision": {
+          "state": "missing"
+        },
+        "operationStartedAt": {
+          "state": "missing"
+        },
+        "reconciledAt": {
+          "state": "missing"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "missing"
+        },
+        "syncStatus": {
+          "state": "missing"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 18,
+      "notReported": [
+        "syncStatus",
+        "resolvedRevision",
+        "healthStatus",
+        "operationPhase",
+        "operationRevision"
+      ],
+      "objectCount": 0,
+      "objectSet": "4f53cda18c2baa0c",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:14Z"
       },
       "operationMessage": {
         "state": "missing"
@@ -1826,11 +2482,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:05Z"
+          "value": "2026-10-05T12:40:26Z"
         },
         "repository": {
           "state": "reported",
@@ -1851,7 +2507,7 @@
           ]
         }
       },
-      "index": 13,
+      "index": 19,
       "notReported": [
         "operationRevision"
       ],
@@ -1861,7 +2517,124 @@
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:31Z"
+        "value": "2026-10-05T12:41:18Z"
+      },
+      "operationMessage": {
+        "state": "missing"
+      },
+      "settled": {
+        "reasons": [
+          "operationRevision is missing"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 1,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "reason": "not reported: operationRevision is missing, historyRevision is missing",
+          "state": "not-compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Running"
+        },
+        "operationRevision": {
+          "state": "missing"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:40:26Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "OutOfSync"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 20,
+      "notReported": [
+        "operationRevision"
+      ],
+      "objectCount": 1,
+      "objectSet": "5ed7fd38b9e95b18",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:22Z"
       },
       "operationMessage": {
         "state": "missing"
@@ -1947,11 +2720,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:05Z"
+          "value": "2026-10-05T12:40:26Z"
         },
         "repository": {
           "state": "reported",
@@ -1972,19 +2745,19 @@
           ]
         }
       },
-      "index": 14,
+      "index": 21,
       "notReported": [],
       "objectCount": 3,
-      "objectSet": "eb2b70bbaa3f2b88",
+      "objectSet": "1e33fd429929abc0",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:34Z"
+        "value": "2026-10-05T12:41:26Z"
       },
       "operationMessage": {
         "state": "reported",
-        "value": "waiting for completion of hook /ServiceAccount/inferops-inferops-llm-model-acquisition"
+        "value": "waiting for completion of hook batch/Job/inferops-inferops-llm-model-acquisition"
       },
       "settled": {
         "reasons": [
@@ -2069,11 +2842,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:05Z"
+          "value": "2026-10-05T12:40:26Z"
         },
         "repository": {
           "state": "reported",
@@ -2094,15 +2867,15 @@
           ]
         }
       },
-      "index": 15,
+      "index": 22,
       "notReported": [],
       "objectCount": 3,
-      "objectSet": "eb2b70bbaa3f2b88",
+      "objectSet": "1e33fd429929abc0",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:38Z"
+        "value": "2026-10-05T12:41:30Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -2112,6 +2885,493 @@
         "reasons": [
           "syncStatus is reported as OutOfSync, and not Synced",
           "healthStatus is reported as Missing, and not Healthy",
+          "operationPhase is reported as Running, and not Succeeded"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 3,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Running"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:40:26Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "OutOfSync"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 23,
+      "notReported": [],
+      "objectCount": 3,
+      "objectSet": "1e33fd429929abc0",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:35Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "waiting for completion of hook batch/Job/inferops-inferops-llm-model-acquisition"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is reported as OutOfSync, and not Synced",
+          "healthStatus is reported as Missing, and not Healthy",
+          "operationPhase is reported as Running, and not Succeeded"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 3,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Running"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:40:26Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "OutOfSync"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 24,
+      "notReported": [],
+      "objectCount": 3,
+      "objectSet": "1e33fd429929abc0",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:39Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "waiting for completion of hook batch/Job/inferops-inferops-llm-model-acquisition"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is reported as OutOfSync, and not Synced",
+          "healthStatus is reported as Missing, and not Healthy",
+          "operationPhase is reported as Running, and not Succeeded"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 3,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Missing"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Running"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:40:26Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "OutOfSync"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 25,
+      "notReported": [],
+      "objectCount": 3,
+      "objectSet": "1e33fd429929abc0",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:43Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "waiting for completion of hook batch/Job/inferops-inferops-llm-model-acquisition"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is reported as OutOfSync, and not Synced",
+          "healthStatus is reported as Missing, and not Healthy",
+          "operationPhase is reported as Running, and not Succeeded"
+        ],
+        "value": false
+      }
+    },
+    {
+      "applicationRead": "reported",
+      "conditions": [],
+      "consistency": {
+        "labels": {
+          "findings": [],
+          "objects": 26,
+          "objectsNotCompared": 0,
+          "state": "compared"
+        },
+        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
+        "source": {
+          "findings": [],
+          "state": "compared"
+        },
+        "state": "provenance-resolved"
+      },
+      "fields": {
+        "automatedPrune": {
+          "state": "reported",
+          "value": false
+        },
+        "automatedSelfHeal": {
+          "state": "reported",
+          "value": true
+        },
+        "chartPath": {
+          "state": "reported",
+          "value": "charts/inferops-llm"
+        },
+        "deletionTimestamp": {
+          "state": "missing"
+        },
+        "followedRevision": {
+          "state": "reported",
+          "value": "main"
+        },
+        "healthStatus": {
+          "state": "reported",
+          "value": "Healthy"
+        },
+        "historyDeployedAt": {
+          "state": "missing"
+        },
+        "historyId": {
+          "state": "missing"
+        },
+        "historyRevision": {
+          "state": "missing"
+        },
+        "operationAutomated": {
+          "state": "reported",
+          "value": true
+        },
+        "operationFinishedAt": {
+          "state": "missing"
+        },
+        "operationPhase": {
+          "state": "reported",
+          "value": "Running"
+        },
+        "operationRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "operationStartedAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:41:18Z"
+        },
+        "reconciledAt": {
+          "state": "reported",
+          "value": "2026-10-05T12:40:26Z"
+        },
+        "repository": {
+          "state": "reported",
+          "value": "https://github.com/asadhanif3188/InferOps.git"
+        },
+        "resolvedRevision": {
+          "state": "reported",
+          "value": "40452957d8f602357ecc512dc643cb820db57202"
+        },
+        "syncStatus": {
+          "state": "reported",
+          "value": "OutOfSync"
+        },
+        "valueFiles": {
+          "state": "reported",
+          "value": [
+            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+          ]
+        }
+      },
+      "index": 26,
+      "notReported": [],
+      "objectCount": 26,
+      "objectSet": "14ecbec0a791ea09",
+      "objectsNotRecorded": 0,
+      "objectsRead": "collected",
+      "observedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:48Z"
+      },
+      "operationMessage": {
+        "state": "reported",
+        "value": "waiting for completion of hook batch/Job/inferops-inferops-llm-model-acquisition"
+      },
+      "settled": {
+        "reasons": [
+          "syncStatus is reported as OutOfSync, and not Synced",
           "operationPhase is reported as Running, and not Succeeded"
         ],
         "value": false
@@ -2161,133 +3421,11 @@
         },
         "healthStatus": {
           "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:05Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "OutOfSync"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 16,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:42Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [
-          "syncStatus is reported as OutOfSync, and not Synced"
-        ],
-        "value": false
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
           "value": "Progressing"
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -2303,7 +3441,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -2315,1221 +3453,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 17,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:46Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [
-          "healthStatus is reported as Progressing, and not Healthy"
-        ],
-        "value": false
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Progressing"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 18,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:50Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [
-          "healthStatus is reported as Progressing, and not Healthy"
-        ],
-        "value": false
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Progressing"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 19,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:55Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [
-          "healthStatus is reported as Progressing, and not Healthy"
-        ],
-        "value": false
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Progressing"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 20,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:59Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [
-          "healthStatus is reported as Progressing, and not Healthy"
-        ],
-        "value": false
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Progressing"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 21,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:45:03Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [
-          "healthStatus is reported as Progressing, and not Healthy"
-        ],
-        "value": false
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 22,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:45:07Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [],
-        "value": true
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 23,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:45:10Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [],
-        "value": true
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 24,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:45:14Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [],
-        "value": true
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 25,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:45:18Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [],
-        "value": true
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
-        },
-        "repository": {
-          "state": "reported",
-          "value": "https://github.com/asadhanif3188/InferOps.git"
-        },
-        "resolvedRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "syncStatus": {
-          "state": "reported",
-          "value": "Synced"
-        },
-        "valueFiles": {
-          "state": "reported",
-          "value": [
-            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
-          ]
-        }
-      },
-      "index": 26,
-      "notReported": [],
-      "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
-      "objectsNotRecorded": 0,
-      "objectsRead": "collected",
-      "observedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:45:21Z"
-      },
-      "operationMessage": {
-        "state": "reported",
-        "value": "successfully synced (all tasks run)"
-      },
-      "settled": {
-        "reasons": [],
-        "value": true
-      }
-    },
-    {
-      "applicationRead": "reported",
-      "conditions": [],
-      "consistency": {
-        "labels": {
-          "findings": [],
-          "objects": 26,
-          "objectsNotCompared": 0,
-          "state": "compared"
-        },
-        "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisions": {
-          "findings": [],
-          "notReported": [],
-          "state": "compared"
-        },
-        "source": {
-          "findings": [],
-          "state": "compared"
-        },
-        "state": "provenance-resolved"
-      },
-      "fields": {
-        "automatedPrune": {
-          "state": "reported",
-          "value": false
-        },
-        "automatedSelfHeal": {
-          "state": "reported",
-          "value": true
-        },
-        "chartPath": {
-          "state": "reported",
-          "value": "charts/inferops-llm"
-        },
-        "deletionTimestamp": {
-          "state": "missing"
-        },
-        "followedRevision": {
-          "state": "reported",
-          "value": "main"
-        },
-        "healthStatus": {
-          "state": "reported",
-          "value": "Healthy"
-        },
-        "historyDeployedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "historyId": {
-          "state": "reported",
-          "value": 0
-        },
-        "historyRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationAutomated": {
-          "state": "reported",
-          "value": true
-        },
-        "operationFinishedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
-        },
-        "operationPhase": {
-          "state": "reported",
-          "value": "Succeeded"
-        },
-        "operationRevision": {
-          "state": "reported",
-          "value": "40452957d8f602357ecc512dc643cb820db57202"
-        },
-        "operationStartedAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
-        },
-        "reconciledAt": {
-          "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -3553,20 +3481,22 @@
       "index": 27,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:25Z"
+        "value": "2026-10-05T12:41:53Z"
       },
       "operationMessage": {
         "state": "reported",
         "value": "successfully synced (all tasks run)"
       },
       "settled": {
-        "reasons": [],
-        "value": true
+        "reasons": [
+          "healthStatus is reported as Progressing, and not Healthy"
+        ],
+        "value": false
       }
     },
     {
@@ -3613,11 +3543,11 @@
         },
         "healthStatus": {
           "state": "reported",
-          "value": "Healthy"
+          "value": "Progressing"
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -3633,7 +3563,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -3645,11 +3575,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -3673,20 +3603,22 @@
       "index": 28,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:29Z"
+        "value": "2026-10-05T12:41:58Z"
       },
       "operationMessage": {
         "state": "reported",
         "value": "successfully synced (all tasks run)"
       },
       "settled": {
-        "reasons": [],
-        "value": true
+        "reasons": [
+          "healthStatus is reported as Progressing, and not Healthy"
+        ],
+        "value": false
       }
     },
     {
@@ -3733,11 +3665,11 @@
         },
         "healthStatus": {
           "state": "reported",
-          "value": "Healthy"
+          "value": "Progressing"
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -3753,7 +3685,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -3765,11 +3697,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -3793,20 +3725,22 @@
       "index": 29,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:32Z"
+        "value": "2026-10-05T12:42:02Z"
       },
       "operationMessage": {
         "state": "reported",
         "value": "successfully synced (all tasks run)"
       },
       "settled": {
-        "reasons": [],
-        "value": true
+        "reasons": [
+          "healthStatus is reported as Progressing, and not Healthy"
+        ],
+        "value": false
       }
     },
     {
@@ -3853,11 +3787,11 @@
         },
         "healthStatus": {
           "state": "reported",
-          "value": "Healthy"
+          "value": "Progressing"
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -3873,7 +3807,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -3885,11 +3819,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -3913,20 +3847,22 @@
       "index": 30,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:36Z"
+        "value": "2026-10-05T12:42:07Z"
       },
       "operationMessage": {
         "state": "reported",
         "value": "successfully synced (all tasks run)"
       },
       "settled": {
-        "reasons": [],
-        "value": true
+        "reasons": [
+          "healthStatus is reported as Progressing, and not Healthy"
+        ],
+        "value": false
       }
     },
     {
@@ -3973,11 +3909,11 @@
         },
         "healthStatus": {
           "state": "reported",
-          "value": "Healthy"
+          "value": "Progressing"
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -3993,7 +3929,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4005,11 +3941,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4033,20 +3969,22 @@
       "index": 31,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:40Z"
+        "value": "2026-10-05T12:42:11Z"
       },
       "operationMessage": {
         "state": "reported",
         "value": "successfully synced (all tasks run)"
       },
       "settled": {
-        "reasons": [],
-        "value": true
+        "reasons": [
+          "healthStatus is reported as Progressing, and not Healthy"
+        ],
+        "value": false
       }
     },
     {
@@ -4093,11 +4031,11 @@
         },
         "healthStatus": {
           "state": "reported",
-          "value": "Healthy"
+          "value": "Progressing"
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -4113,7 +4051,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4125,11 +4063,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4153,20 +4091,22 @@
       "index": 32,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:43Z"
+        "value": "2026-10-05T12:42:15Z"
       },
       "operationMessage": {
         "state": "reported",
         "value": "successfully synced (all tasks run)"
       },
       "settled": {
-        "reasons": [],
-        "value": true
+        "reasons": [
+          "healthStatus is reported as Progressing, and not Healthy"
+        ],
+        "value": false
       }
     },
     {
@@ -4213,11 +4153,11 @@
         },
         "healthStatus": {
           "state": "reported",
-          "value": "Healthy"
+          "value": "Progressing"
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -4233,7 +4173,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4245,11 +4185,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4273,20 +4213,22 @@
       "index": 33,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:47Z"
+        "value": "2026-10-05T12:42:20Z"
       },
       "operationMessage": {
         "state": "reported",
         "value": "successfully synced (all tasks run)"
       },
       "settled": {
-        "reasons": [],
-        "value": true
+        "reasons": [
+          "healthStatus is reported as Progressing, and not Healthy"
+        ],
+        "value": false
       }
     },
     {
@@ -4337,7 +4279,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -4353,7 +4295,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4365,11 +4307,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4393,12 +4335,12 @@
       "index": 34,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:50Z"
+        "value": "2026-10-05T12:42:24Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -4457,7 +4399,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -4473,7 +4415,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4485,11 +4427,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4513,12 +4455,12 @@
       "index": 35,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:54Z"
+        "value": "2026-10-05T12:42:27Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -4577,7 +4519,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -4593,7 +4535,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4605,11 +4547,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4633,12 +4575,12 @@
       "index": 36,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:58Z"
+        "value": "2026-10-05T12:42:31Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -4697,7 +4639,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -4713,7 +4655,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4725,11 +4667,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4753,12 +4695,12 @@
       "index": 37,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:01Z"
+        "value": "2026-10-05T12:42:35Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -4817,7 +4759,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -4833,7 +4775,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4845,11 +4787,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4873,12 +4815,12 @@
       "index": 38,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:05Z"
+        "value": "2026-10-05T12:42:39Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -4937,7 +4879,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -4953,7 +4895,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -4965,11 +4907,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -4993,12 +4935,12 @@
       "index": 39,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:09Z"
+        "value": "2026-10-05T12:42:42Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -5057,7 +4999,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -5073,7 +5015,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -5085,11 +5027,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -5113,12 +5055,12 @@
       "index": 40,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:13Z"
+        "value": "2026-10-05T12:42:46Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -5177,7 +5119,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -5193,7 +5135,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -5205,11 +5147,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -5233,12 +5175,12 @@
       "index": 41,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:16Z"
+        "value": "2026-10-05T12:42:50Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -5297,7 +5239,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -5313,7 +5255,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -5325,11 +5267,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -5353,12 +5295,12 @@
       "index": 42,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:20Z"
+        "value": "2026-10-05T12:42:53Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -5417,7 +5359,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -5433,7 +5375,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -5445,11 +5387,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -5473,12 +5415,12 @@
       "index": 43,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:24Z"
+        "value": "2026-10-05T12:42:57Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -5537,7 +5479,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -5553,7 +5495,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -5565,11 +5507,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -5593,12 +5535,12 @@
       "index": 44,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:27Z"
+        "value": "2026-10-05T12:43:01Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -5657,7 +5599,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -5673,7 +5615,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -5685,11 +5627,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -5713,12 +5655,12 @@
       "index": 45,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:31Z"
+        "value": "2026-10-05T12:43:04Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -5777,7 +5719,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -5793,7 +5735,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -5805,11 +5747,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -5833,12 +5775,12 @@
       "index": 46,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:35Z"
+        "value": "2026-10-05T12:43:08Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -5897,7 +5839,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -5913,7 +5855,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -5925,11 +5867,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -5953,12 +5895,12 @@
       "index": 47,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:38Z"
+        "value": "2026-10-05T12:43:12Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6017,7 +5959,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6033,7 +5975,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -6045,11 +5987,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -6073,12 +6015,12 @@
       "index": 48,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:42Z"
+        "value": "2026-10-05T12:43:16Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6137,7 +6079,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6153,7 +6095,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -6165,11 +6107,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -6193,12 +6135,12 @@
       "index": 49,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:46Z"
+        "value": "2026-10-05T12:43:19Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6257,7 +6199,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6273,7 +6215,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -6285,11 +6227,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -6313,12 +6255,12 @@
       "index": 50,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:49Z"
+        "value": "2026-10-05T12:43:23Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6377,7 +6319,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6393,7 +6335,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -6405,11 +6347,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:42Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -6433,12 +6375,12 @@
       "index": 51,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:53Z"
+        "value": "2026-10-05T12:43:27Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6497,7 +6439,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6513,7 +6455,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -6525,11 +6467,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -6553,12 +6495,12 @@
       "index": 52,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:46:57Z"
+        "value": "2026-10-05T12:43:30Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6617,7 +6559,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6633,7 +6575,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -6645,11 +6587,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -6673,12 +6615,12 @@
       "index": 53,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:01Z"
+        "value": "2026-10-05T12:43:34Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6737,7 +6679,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6753,7 +6695,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -6765,11 +6707,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -6793,12 +6735,12 @@
       "index": 54,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:04Z"
+        "value": "2026-10-05T12:43:37Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6857,7 +6799,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6873,7 +6815,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -6885,11 +6827,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -6913,12 +6855,12 @@
       "index": 55,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:08Z"
+        "value": "2026-10-05T12:43:41Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -6977,7 +6919,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -6993,7 +6935,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7005,11 +6947,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7033,12 +6975,12 @@
       "index": 56,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:12Z"
+        "value": "2026-10-05T12:43:45Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -7097,7 +7039,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -7113,7 +7055,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7125,11 +7067,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7153,12 +7095,12 @@
       "index": 57,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:15Z"
+        "value": "2026-10-05T12:43:49Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -7217,7 +7159,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -7233,7 +7175,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7245,11 +7187,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7273,12 +7215,12 @@
       "index": 58,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:19Z"
+        "value": "2026-10-05T12:43:54Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -7337,7 +7279,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -7353,7 +7295,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7365,11 +7307,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7393,12 +7335,12 @@
       "index": 59,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:23Z"
+        "value": "2026-10-05T12:43:58Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -7457,7 +7399,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -7473,7 +7415,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7485,11 +7427,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7513,12 +7455,12 @@
       "index": 60,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:26Z"
+        "value": "2026-10-05T12:44:02Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -7577,7 +7519,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -7593,7 +7535,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7605,11 +7547,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7633,12 +7575,12 @@
       "index": 61,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:30Z"
+        "value": "2026-10-05T12:44:07Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -7697,7 +7639,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -7713,7 +7655,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7725,11 +7667,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7753,12 +7695,12 @@
       "index": 62,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:34Z"
+        "value": "2026-10-05T12:44:12Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -7817,7 +7759,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -7833,7 +7775,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7845,11 +7787,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7873,12 +7815,12 @@
       "index": 63,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:37Z"
+        "value": "2026-10-05T12:44:16Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -7937,7 +7879,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -7953,7 +7895,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -7965,11 +7907,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -7993,12 +7935,12 @@
       "index": 64,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:41Z"
+        "value": "2026-10-05T12:44:21Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -8057,7 +7999,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -8073,7 +8015,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -8085,11 +8027,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -8113,12 +8055,12 @@
       "index": 65,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:45Z"
+        "value": "2026-10-05T12:44:25Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -8177,7 +8119,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -8193,7 +8135,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -8205,11 +8147,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -8233,12 +8175,12 @@
       "index": 66,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:48Z"
+        "value": "2026-10-05T12:44:29Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -8297,7 +8239,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -8313,7 +8255,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -8325,11 +8267,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -8353,12 +8295,12 @@
       "index": 67,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:52Z"
+        "value": "2026-10-05T12:44:33Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -8417,7 +8359,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -8433,7 +8375,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -8445,11 +8387,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -8473,12 +8415,12 @@
       "index": 68,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:47:56Z"
+        "value": "2026-10-05T12:44:36Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -8537,7 +8479,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -8553,7 +8495,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -8565,11 +8507,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -8593,12 +8535,12 @@
       "index": 69,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:00Z"
+        "value": "2026-10-05T12:44:40Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -8657,7 +8599,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -8673,7 +8615,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -8685,11 +8627,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -8713,12 +8655,12 @@
       "index": 70,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:03Z"
+        "value": "2026-10-05T12:44:44Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -8777,7 +8719,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -8793,7 +8735,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -8805,11 +8747,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -8833,12 +8775,12 @@
       "index": 71,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:07Z"
+        "value": "2026-10-05T12:44:48Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -8897,7 +8839,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -8913,7 +8855,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -8925,11 +8867,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -8953,12 +8895,12 @@
       "index": 72,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:11Z"
+        "value": "2026-10-05T12:44:52Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9017,7 +8959,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -9033,7 +8975,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -9045,11 +8987,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -9073,12 +9015,12 @@
       "index": 73,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:14Z"
+        "value": "2026-10-05T12:44:55Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9137,7 +9079,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -9153,7 +9095,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -9165,11 +9107,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -9193,12 +9135,12 @@
       "index": 74,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:19Z"
+        "value": "2026-10-05T12:44:59Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9257,7 +9199,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -9273,7 +9215,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -9285,11 +9227,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -9313,12 +9255,12 @@
       "index": 75,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:22Z"
+        "value": "2026-10-05T12:45:03Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9377,7 +9319,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -9393,7 +9335,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -9405,11 +9347,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -9433,12 +9375,12 @@
       "index": 76,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:26Z"
+        "value": "2026-10-05T12:45:06Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9497,7 +9439,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -9513,7 +9455,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -9525,11 +9467,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -9553,12 +9495,12 @@
       "index": 77,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:30Z"
+        "value": "2026-10-05T12:45:10Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9617,7 +9559,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -9633,7 +9575,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -9645,11 +9587,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -9673,12 +9615,12 @@
       "index": 78,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:33Z"
+        "value": "2026-10-05T12:45:14Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9737,7 +9679,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -9753,7 +9695,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -9765,11 +9707,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -9793,12 +9735,12 @@
       "index": 79,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:37Z"
+        "value": "2026-10-05T12:45:17Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9857,7 +9799,7 @@
         },
         "historyDeployedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "historyId": {
           "state": "reported",
@@ -9873,7 +9815,7 @@
         },
         "operationFinishedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:41Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "operationPhase": {
           "state": "reported",
@@ -9885,11 +9827,11 @@
         },
         "operationStartedAt": {
           "state": "reported",
-          "value": "2026-10-05T11:44:30Z"
+          "value": "2026-10-05T12:41:18Z"
         },
         "reconciledAt": {
           "state": "reported",
-          "value": "2026-10-05T11:46:54Z"
+          "value": "2026-10-05T12:41:49Z"
         },
         "repository": {
           "state": "reported",
@@ -9913,12 +9855,12 @@
       "index": 80,
       "notReported": [],
       "objectCount": 26,
-      "objectSet": "7bd4a6023d0b022f",
+      "objectSet": "14ecbec0a791ea09",
       "objectsNotRecorded": 0,
       "objectsRead": "collected",
       "observedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:48:41Z"
+        "value": "2026-10-05T12:45:22Z"
       },
       "operationMessage": {
         "state": "reported",
@@ -9933,9 +9875,9 @@
   "schema": "inferops.io/reconciliation-observation/v1alpha1",
   "summary": {
     "applicationReads": {
-      "absent": 6,
+      "absent": 5,
       "not-taken": 0,
-      "reported": 74,
+      "reported": 75,
       "unanswered": 0,
       "unreadable": 0
     },
@@ -9943,8 +9885,8 @@
       "40452957d8f602357ecc512dc643cb820db57202"
     ],
     "samples": 80,
-    "samplesSettled": 59,
-    "samplesWithEveryRequiredField": 67
+    "samplesSettled": 47,
+    "samplesWithEveryRequiredField": 60
   },
   "transitions": [
     {
@@ -9955,18 +9897,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "reported",
         "value": "reported"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "syncStatus",
@@ -9975,17 +9917,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "resolvedRevision",
@@ -9994,17 +9936,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "healthStatus",
@@ -10013,17 +9955,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "operationPhase",
@@ -10032,17 +9974,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "operationRevision",
@@ -10051,17 +9993,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "operationStartedAt",
@@ -10070,17 +10012,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "operationFinishedAt",
@@ -10089,17 +10031,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "historyId",
@@ -10108,17 +10050,17 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:04Z"
+        "value": "2026-10-05T12:40:23Z"
       },
-      "fromSample": 6,
+      "fromSample": 5,
       "to": {
         "state": "missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:08Z"
+        "value": "2026-10-05T12:40:28Z"
       },
-      "toSample": 7
+      "toSample": 6
     },
     {
       "field": "syncStatus",
@@ -10127,18 +10069,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:27Z"
+        "value": "2026-10-05T12:41:14Z"
       },
-      "fromSample": 12,
+      "fromSample": 18,
       "to": {
         "state": "reported",
         "value": "OutOfSync"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:31Z"
+        "value": "2026-10-05T12:41:18Z"
       },
-      "toSample": 13
+      "toSample": 19
     },
     {
       "field": "resolvedRevision",
@@ -10147,18 +10089,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:27Z"
+        "value": "2026-10-05T12:41:14Z"
       },
-      "fromSample": 12,
+      "fromSample": 18,
       "to": {
         "state": "reported",
         "value": "40452957d8f602357ecc512dc643cb820db57202"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:31Z"
+        "value": "2026-10-05T12:41:18Z"
       },
-      "toSample": 13
+      "toSample": 19
     },
     {
       "field": "healthStatus",
@@ -10167,18 +10109,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:27Z"
+        "value": "2026-10-05T12:41:14Z"
       },
-      "fromSample": 12,
+      "fromSample": 18,
       "to": {
         "state": "reported",
         "value": "Missing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:31Z"
+        "value": "2026-10-05T12:41:18Z"
       },
-      "toSample": 13
+      "toSample": 19
     },
     {
       "field": "operationPhase",
@@ -10187,18 +10129,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:27Z"
+        "value": "2026-10-05T12:41:14Z"
       },
-      "fromSample": 12,
+      "fromSample": 18,
       "to": {
         "state": "reported",
         "value": "Running"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:31Z"
+        "value": "2026-10-05T12:41:18Z"
       },
-      "toSample": 13
+      "toSample": 19
     },
     {
       "field": "operationStartedAt",
@@ -10207,18 +10149,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:27Z"
+        "value": "2026-10-05T12:41:14Z"
       },
-      "fromSample": 12,
+      "fromSample": 18,
       "to": {
         "state": "reported",
-        "value": "2026-10-05T11:44:30Z"
+        "value": "2026-10-05T12:41:18Z"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:31Z"
+        "value": "2026-10-05T12:41:18Z"
       },
-      "toSample": 13
+      "toSample": 19
     },
     {
       "field": "operationRevision",
@@ -10227,18 +10169,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:31Z"
+        "value": "2026-10-05T12:41:22Z"
       },
-      "fromSample": 13,
+      "fromSample": 20,
       "to": {
         "state": "reported",
         "value": "40452957d8f602357ecc512dc643cb820db57202"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:34Z"
+        "value": "2026-10-05T12:41:26Z"
       },
-      "toSample": 14
+      "toSample": 21
     },
     {
       "field": "healthStatus",
@@ -10248,79 +10190,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:38Z"
+        "value": "2026-10-05T12:41:43Z"
       },
-      "fromSample": 15,
+      "fromSample": 25,
       "to": {
         "state": "reported",
         "value": "Healthy"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:42Z"
+        "value": "2026-10-05T12:41:48Z"
       },
-      "toSample": 16
-    },
-    {
-      "field": "operationPhase",
-      "from": {
-        "state": "reported",
-        "value": "Running"
-      },
-      "fromObservedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:38Z"
-      },
-      "fromSample": 15,
-      "to": {
-        "state": "reported",
-        "value": "Succeeded"
-      },
-      "toObservedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:42Z"
-      },
-      "toSample": 16
-    },
-    {
-      "field": "operationFinishedAt",
-      "from": {
-        "state": "missing"
-      },
-      "fromObservedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:38Z"
-      },
-      "fromSample": 15,
-      "to": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:41Z"
-      },
-      "toObservedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:42Z"
-      },
-      "toSample": 16
-    },
-    {
-      "field": "historyId",
-      "from": {
-        "state": "missing"
-      },
-      "fromObservedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:38Z"
-      },
-      "fromSample": 15,
-      "to": {
-        "state": "reported",
-        "value": 0
-      },
-      "toObservedAt": {
-        "state": "reported",
-        "value": "2026-10-05T11:44:42Z"
-      },
-      "toSample": 16
+      "toSample": 26
     },
     {
       "field": "syncStatus",
@@ -10330,18 +10211,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:42Z"
+        "value": "2026-10-05T12:41:48Z"
       },
-      "fromSample": 16,
+      "fromSample": 26,
       "to": {
         "state": "reported",
         "value": "Synced"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:46Z"
+        "value": "2026-10-05T12:41:53Z"
       },
-      "toSample": 17
+      "toSample": 27
     },
     {
       "field": "healthStatus",
@@ -10351,18 +10232,79 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:42Z"
+        "value": "2026-10-05T12:41:48Z"
       },
-      "fromSample": 16,
+      "fromSample": 26,
       "to": {
         "state": "reported",
         "value": "Progressing"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:44:46Z"
+        "value": "2026-10-05T12:41:53Z"
       },
-      "toSample": 17
+      "toSample": 27
+    },
+    {
+      "field": "operationPhase",
+      "from": {
+        "state": "reported",
+        "value": "Running"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:48Z"
+      },
+      "fromSample": 26,
+      "to": {
+        "state": "reported",
+        "value": "Succeeded"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:53Z"
+      },
+      "toSample": 27
+    },
+    {
+      "field": "operationFinishedAt",
+      "from": {
+        "state": "missing"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:48Z"
+      },
+      "fromSample": 26,
+      "to": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:49Z"
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:53Z"
+      },
+      "toSample": 27
+    },
+    {
+      "field": "historyId",
+      "from": {
+        "state": "missing"
+      },
+      "fromObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:48Z"
+      },
+      "fromSample": 26,
+      "to": {
+        "state": "reported",
+        "value": 0
+      },
+      "toObservedAt": {
+        "state": "reported",
+        "value": "2026-10-05T12:41:53Z"
+      },
+      "toSample": 27
     },
     {
       "field": "healthStatus",
@@ -10372,18 +10314,18 @@
       },
       "fromObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:03Z"
+        "value": "2026-10-05T12:42:20Z"
       },
-      "fromSample": 21,
+      "fromSample": 33,
       "to": {
         "state": "reported",
         "value": "Healthy"
       },
       "toObservedAt": {
         "state": "reported",
-        "value": "2026-10-05T11:45:07Z"
+        "value": "2026-10-05T12:42:24Z"
       },
-      "toSample": 22
+      "toSample": 34
     }
   ]
 }

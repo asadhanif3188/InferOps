@@ -26,9 +26,9 @@ Five things are held:
 
 What this establishes about a cluster: nothing. Every directory here is written
 by the suite. The stub suite of the procedure executes ``observe`` against stub
-tools and gives its directory to this tool. Five committed records are what the
-tool built from collections on a cluster. One test reads them as files, and it
-observes no cluster.
+tools and gives its directory to this tool. Eight committed records are what the
+tool built from collections on a cluster. Two tests read them as files, and they
+observe no cluster.
 
 The comparison tests run Git and read the commit that ``HEAD`` names.
 """
@@ -78,7 +78,7 @@ APPLICATION_PATH = (
 )
 RUN_RECORD_PREFIX = "v2-s3-003-pr2-reconciliation-observation-"
 
-# The committed records of the run of 2026-10-05, restated: the samples, the
+# The committed records of the runs of 2026-10-05, restated: the samples, the
 # reads of the Application by state, the settled samples, and whether the
 # collection is complete. A value read from a record would agree with the record
 # by construction.
@@ -88,6 +88,9 @@ RUN_RECORDS: dict[str, tuple[int, dict[str, int], int, bool]] = {
     "run-2-apply": (80, {"absent": 6, "reported": 74}, 59, True),
     "run-2-steady": (5, {"reported": 5}, 5, True),
     "run-2-remove": (40, {"absent": 30, "reported": 10}, 5, True),
+    "run-3-apply": (80, {"absent": 5, "reported": 75}, 47, True),
+    "run-3-steady": (5, {"reported": 5}, 5, True),
+    "run-3-remove": (40, {"absent": 32, "reported": 8}, 5, True),
 }
 RUN_RESOLVED_REVISION = "40452957d8f602357ecc512dc643cb820db57202"
 
@@ -593,10 +596,53 @@ def test_a_collection_that_stopped_early_is_not_complete(tmp_path: Path) -> None
     assert record["summary"]["applicationReads"]["not-taken"] == 2
 
 
-def test_a_sample_beyond_the_requested_count_is_still_read(tmp_path: Path) -> None:
+def test_a_sample_beyond_the_requested_count_is_read_and_is_not_complete(
+    tmp_path: Path,
+) -> None:
+    """Complete means exactly the samples that were asked for. The first
+    version of the tool called this collection complete."""
     record = record_of(tmp_path, [application(), application()], requested=1)
     assert len(record["samples"]) == 2
-    assert record["collection"]["complete"] is True
+    assert record["collection"]["complete"] is False
+
+
+@pytest.mark.parametrize("name", ("sample-1000.meta", "sample-\u0661\u0662\u0663.meta"))
+def test_a_status_file_the_tool_does_not_read_makes_a_collection_incomplete(
+    tmp_path: Path, name: str
+) -> None:
+    """A fourth digit, and digits that are not ASCII. Neither is a sample, and
+    neither is passed over in silence."""
+    directory = write_collection(tmp_path / "observation", [application()])
+    assert build_record(directory)["collection"]["complete"] is True
+    (directory / name).write_text("observedAt=x\n", "utf-8")
+    record = build_record(directory)
+    assert len(record["samples"]) == 1
+    assert record["collection"]["complete"] is False
+
+
+@pytest.mark.parametrize(
+    "key", ("requestedSamples", "completedSamples", "intervalSeconds")
+)
+def test_a_count_with_too_many_digits_is_not_a_count(tmp_path: Path, key: str) -> None:
+    """Python refuses to convert a very long digit string. The tool must not
+    pass that on as an error of its own."""
+    directory = write_collection(tmp_path / "observation", [application()])
+    name = "collection.end" if key == "completedSamples" else "collection.meta"
+    path = directory / name
+    lines = [
+        line
+        for line in path.read_text("utf-8").splitlines()
+        if not line.startswith(key)
+    ]
+    path.write_text("\n".join([*lines, f"{key}={'9' * 5000}"]) + "\n", "utf-8")
+    if key == "requestedSamples":
+        with pytest.raises(CollectionRefused):
+            build_record(directory)
+        return
+    collection = build_record(directory)["collection"]
+    assert collection[key] == {"state": "malformed"}
+    if key == "completedSamples":
+        assert collection["complete"] is False
 
 
 @pytest.mark.parametrize(
@@ -710,7 +756,9 @@ def test_an_object_read_that_did_not_answer_holds_no_object(tmp_path: Path) -> N
     (sample,) = record["samples"]
     assert sample["objectsRead"] == "unanswered"
     assert sample["objectSet"] is None
-    assert sample["objectCount"] == 0
+    # No count where no object was read. Zero would be a number.
+    assert sample["objectCount"] is None
+    assert sample["objectsNotRecorded"] is None
     assert record["objectSets"] == {}
 
 
@@ -773,12 +821,16 @@ def test_a_sample_that_agrees_with_the_commit_it_reports_has_no_finding(
     found = reported_at_head(tmp_path)
     consistency = found["record"]["samples"][0]["consistency"]
     assert consistency == {
-        "state": "compared",
+        "state": "provenance-resolved",
         "releaseId": found["provenance"].release_id,
-        "revisionFindings": [],
-        "revisionsNotReported": [],
+        "revisions": {"state": "compared", "findings": [], "notReported": []},
         "source": {"state": "compared", "findings": []},
-        "labels": {"state": "compared", "objects": 2, "findings": []},
+        "labels": {
+            "state": "compared",
+            "objects": 2,
+            "objectsNotCompared": 0,
+            "findings": [],
+        },
     }
 
 
@@ -794,10 +846,10 @@ def test_each_disagreement_with_the_reported_commit_is_a_finding(
         labels={"inferops.io/workload": "another-workload"},
     )
     consistency = found["record"]["samples"][0]["consistency"]
-    assert [f["rule"] for f in consistency["revisionFindings"]] == [
+    assert [f["rule"] for f in consistency["revisions"]["findings"]] == [
         "observed-revision-mismatch"
     ]
-    assert consistency["revisionFindings"][0]["subject"] == "operationRevision"
+    assert consistency["revisions"]["findings"][0]["subject"] == "operationRevision"
     assert [f["rule"] for f in consistency["source"]["findings"]] == [
         "source-not-the-release"
     ]
@@ -818,12 +870,15 @@ def test_a_comparison_that_could_not_be_made_is_not_compared(tmp_path: Path) -> 
         objects=UNANSWERED,
     )
     consistency = found["record"]["samples"][0]["consistency"]
-    assert consistency["state"] == "compared"
-    assert consistency["revisionFindings"] == []
-    assert consistency["revisionsNotReported"] == [
-        "operationRevision",
-        "historyRevision",
-    ]
+    # The provenance was read, and none of the three comparisons was made.
+    # The first version of the tool reported this sample as compared, with no
+    # revision finding: it had compared the resolved revision with itself.
+    assert consistency["state"] == "provenance-resolved"
+    assert consistency["revisions"] == {
+        "state": "not-compared",
+        "reason": "not reported: operationRevision is missing, "
+        "historyRevision is missing",
+    }
     assert consistency["source"] == {
         "state": "not-compared",
         "reason": "not reported: repository is missing",
@@ -939,7 +994,101 @@ def test_the_tool_does_not_name_the_controller() -> None:
         assert not CONTROLLER_REFERENCE.search(path.read_text(encoding="utf-8")), path
 
 
-def test_the_tool_runs_no_process_and_writes_no_file() -> None:
+def test_objects_beyond_the_limit_are_not_said_to_agree(tmp_path: Path) -> None:
+    """The record holds 200 objects of one read. The first version of the tool
+    compared those 200 and reported the labels as compared, with no finding,
+    while 50 objects with another workload label were dropped."""
+    revision = head_revision()
+    good = resolve(revision, DECLARED, REPO_ROOT).workload_labels()
+    bad = {**good, "inferops.io/workload": "another-workload"}
+    objects = [("Deployment", f"a-{n:03d}", good) for n in range(200)]
+    objects += [("Pod", f"z-{n:02d}", bad) for n in range(50)]
+    directory = write_collection(
+        tmp_path / "observation", [application(revision)], objects=objects
+    )
+    (sample,) = build_record(directory, DECLARED, REPO_ROOT)["samples"]
+    assert sample["objectCount"] == 200
+    assert sample["objectsNotRecorded"] == 50
+    assert sample["consistency"]["labels"] == {
+        "state": "compared-in-part",
+        "objects": 200,
+        "objectsNotCompared": 50,
+        "findings": [],
+    }
+
+
+def test_a_text_field_is_bounded_and_carries_no_address_user(tmp_path: Path) -> None:
+    """Every text value, and not only a message. The first version of the tool
+    copied a repository address with a credential in it into the record."""
+    token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+    document = application()
+    document["spec"]["source"]["repoURL"] = (
+        f"https://deploy:{token}@example.invalid/r.git"
+    )
+    document["status"]["reconciledAt"] = token
+    document["status"]["sync"]["status"] = "S" * 257
+    document["status"]["health"]["status"] = "H" * 256
+    document["spec"]["source"]["helm"]["valueFiles"] = ["/v.yaml"] * 21
+    directory = write_collection(
+        tmp_path / "observation",
+        [document],
+        objects=(("K" * 300, "n" * 300, {}),),
+    )
+    header = directory / "collection.meta"
+    header.write_text(
+        header.read_text("utf-8").replace(
+            "provider=docker-desktop", "provider=" + "p" * 300
+        ),
+        "utf-8",
+    )
+    record = build_record(directory)
+    (sample,) = record["samples"]
+    fields = sample["fields"]
+    assert fields["repository"] == {
+        "state": "reported",
+        "value": "https://<redacted>@example.invalid/r.git",
+    }
+    assert fields["reconciledAt"] == {"state": "malformed"}
+    assert fields["syncStatus"] == {"state": "malformed"}
+    assert fields["healthStatus"] == {"state": "reported", "value": "H" * 256}
+    assert fields["valueFiles"] == {"state": "malformed"}
+    assert record["collection"]["provider"] == {"state": "malformed"}
+    (entry,) = record["objectSets"][sample["objectSet"]]
+    assert len(entry["kind"]) == len(entry["name"]) == 256
+    assert token not in json.dumps(record)
+    assert sample["settled"]["value"] is False
+
+
+@pytest.mark.parametrize("metadata", (None, [], "x"), ids=("absent", "list", "text"))
+def test_an_object_without_metadata_is_not_settled(
+    tmp_path: Path, metadata: object
+) -> None:
+    """No metadata, no statement about a deletion. The first version of the
+    tool read an absent metadata as no deletion timestamp."""
+    document = application()
+    if metadata is None:
+        del document["metadata"]
+    else:
+        document["metadata"] = metadata
+    (sample,) = record_of(tmp_path, [document])["samples"]
+    assert sample["fields"]["deletionTimestamp"] == {"state": "malformed"}
+    assert sample["settled"]["value"] is False
+
+
+def test_a_change_of_the_objects_alone_is_not_a_transition(tmp_path: Path) -> None:
+    """A pinned limit. Transitions are over fields of the Application. A sample
+    names the list of objects that it read, and two samples that differ only
+    there give no transition."""
+    directory = write_collection(tmp_path / "observation", [application()] * 2)
+    (directory / "sample-002.objects.txt").write_text("", "utf-8")
+    record = build_record(directory)
+    assert [s["objectCount"] for s in record["samples"]] == [1, 0]
+    assert record["transitions"] == []
+
+
+def test_the_tools_own_files_import_no_process_module_and_write_no_file() -> None:
+    """The three files of the tool, and no further. The tool calls the
+    provenance tool, which runs Git, and that tool's suite holds what it runs."""
     forbidden_modules = {"subprocess", "socket", "os", "shutil", "urllib", "http"}
     forbidden_calls = {"write_text", "write_bytes", "mkdir", "unlink", "rmdir", "open"}
     for path in tool_sources():
@@ -1075,10 +1224,12 @@ def test_a_committed_record_counts_what_its_samples_hold(name: str) -> None:
         # Every comparison on the cluster agreed. A finding here would be a
         # fact that the run record does not state.
         consistency = sample["consistency"]
-        if consistency["state"] == "compared":
-            assert consistency["revisionFindings"] == []
-            assert consistency["source"]["findings"] == []
-            assert consistency["labels"].get("findings", []) == []
+        if consistency["state"] == "provenance-resolved":
+            for section in ("revisions", "source", "labels"):
+                assert consistency[section]["state"] in ("compared", "not-compared")
+                assert consistency[section].get("findings", []) == []
+        else:
+            assert consistency["state"] == "not-compared"
     taken = {s["index"] for s in samples if s["applicationRead"] != "not-taken"}
     for transition in record["transitions"]:
         assert {transition["fromSample"], transition["toSample"]} <= taken
@@ -1088,34 +1239,86 @@ def test_a_committed_record_counts_what_its_samples_hold(name: str) -> None:
         assert host_detail not in text, host_detail
 
 
-def test_the_run_reported_every_field_and_no_condition() -> None:
-    """What the run does and does not show about the paths the tool reads."""
-    records = [run_record(name) for name in RUN_RECORDS]
-    names = (*REQUIRED_FIELDS, *OPTIONAL_FIELDS, "historyId", "historyRevision")
-    for name in (*names, "historyDeployedAt"):
+def test_the_runs_reported_every_field_and_no_condition() -> None:
+    """What the runs do and do not show about the paths the tool reads."""
+    records = {name: run_record(name) for name in RUN_RECORDS}
+    names = (
+        *REQUIRED_FIELDS,
+        *OPTIONAL_FIELDS,
+        "historyId",
+        "historyRevision",
+        "historyDeployedAt",
+    )
+    assert len(names) == 19
+    for name in names:
         assert any(
             sample["fields"][name]["state"] == "reported"
-            for record in records
+            for record in records.values()
             for sample in record["samples"]
         ), name
-    assert len((*names, "historyDeployedAt")) == 19
     assert not any(
-        sample["conditions"] for record in records for sample in record["samples"]
+        sample["conditions"]
+        for record in records.values()
+        for sample in record["samples"]
     )
+    # No value of a run was refused as too long or as credential-shaped.
+    assert not any(
+        field["state"] == "malformed"
+        for record in records.values()
+        for sample in record["samples"]
+        for field in sample["fields"].values()
+    )
+
+    def indexes(name: str, wanted: Any) -> list[int]:
+        return [s["index"] for s in records[name]["samples"] if wanted(s)]
+
     # A new Application, read before the controller first wrote to it.
-    apply = run_record("run-2-apply")["samples"]
-    unreported = [
-        sample["index"]
-        for sample in apply
-        if sample["applicationRead"] == "reported"
-        and sample["notReported"] == list(REQUIRED_FIELDS)
+    def no_status(sample: dict[str, Any]) -> bool:
+        return sample["applicationRead"] == "reported" and sample[
+            "notReported"
+        ] == list(REQUIRED_FIELDS)
+
+    assert indexes("run-2-apply", no_status) == list(range(7, 13))
+    assert indexes("run-3-apply", no_status) == list(range(6, 19))
+    assert indexes("attempt-1-apply", no_status) == [6, 7, 8]
+
+    def is_settled(sample: dict[str, Any]) -> bool:
+        return bool(sample["settled"]["value"])
+
+    assert indexes("run-2-apply", is_settled) == list(range(22, 81))
+    assert indexes("run-3-apply", is_settled) == list(range(34, 81))
+
+    # A healthy state beside a sync state that is not Synced: one sample of
+    # each run, and not settled.
+    def healthy_and_out_of_sync(sample: dict[str, Any]) -> bool:
+        fields = sample["fields"]
+        return (
+            fields["healthStatus"].get("value") == "Healthy"
+            and fields["syncStatus"].get("value") == "OutOfSync"
+        )
+
+    assert indexes("run-2-apply", healthy_and_out_of_sync) == [16]
+    assert indexes("run-3-apply", healthy_and_out_of_sync) == [26]
+
+    # An Application with a deletion timestamp that still reports its last
+    # states: two samples of run 2, and none of run 3.
+    def deleting_and_reported_settled(sample: dict[str, Any]) -> bool:
+        return sample["settled"]["reasons"] == [
+            "the Application has a deletion timestamp"
+        ]
+
+    assert indexes("run-2-remove", deleting_and_reported_settled) == [6, 7]
+    assert indexes("run-3-remove", deleting_and_reported_settled) == []
+
+    # The comparisons of the observation beside the apply of run 3.
+    resolved = [
+        sample["consistency"]
+        for sample in records["run-3-apply"]["samples"]
+        if sample["consistency"]["state"] == "provenance-resolved"
     ]
-    assert unreported == [7, 8, 9, 10, 11, 12]
-    assert [s["index"] for s in apply if s["settled"]["value"]] == list(range(22, 81))
-    # An Application that is being deleted, and still reports its last states.
-    remove = run_record("run-2-remove")["samples"]
-    assert [
-        sample["index"]
-        for sample in remove
-        if sample["settled"]["reasons"] == ["the Application has a deletion timestamp"]
-    ] == [6, 7]
+    assert len(resolved) == 62
+    made = {
+        section: sum(1 for c in resolved if c[section]["state"] == "compared")
+        for section in ("revisions", "source", "labels")
+    }
+    assert made == {"revisions": 60, "source": 62, "labels": 61}

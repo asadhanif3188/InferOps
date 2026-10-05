@@ -948,19 +948,19 @@
         "labels": {
           "findings": [],
           "objects": 3,
+          "objectsNotCompared": 0,
           "state": "compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "operationRevision",
-          "historyRevision"
-        ],
+        "revisions": {
+          "reason": "not reported: operationRevision is missing, historyRevision is missing",
+          "state": "not-compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -1065,18 +1065,22 @@
         "labels": {
           "findings": [],
           "objects": 1,
+          "objectsNotCompared": 0,
           "state": "compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -1183,18 +1187,22 @@
         "labels": {
           "findings": [],
           "objects": 1,
+          "objectsNotCompared": 0,
           "state": "compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -1304,15 +1312,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -1422,15 +1433,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -1540,15 +1554,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -1658,15 +1675,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -1776,15 +1796,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -1894,15 +1917,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -2012,15 +2038,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -2130,15 +2159,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -2248,15 +2280,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -2366,15 +2401,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -2484,15 +2522,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -2602,15 +2643,18 @@
           "state": "not-compared"
         },
         "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
-        "revisionFindings": [],
-        "revisionsNotReported": [
-          "historyRevision"
-        ],
+        "revisions": {
+          "findings": [],
+          "notReported": [
+            "historyRevision"
+          ],
+          "state": "compared"
+        },
         "source": {
           "findings": [],
           "state": "compared"
         },
-        "state": "compared"
+        "state": "provenance-resolved"
       },
       "fields": {
         "automatedPrune": {
@@ -2785,9 +2829,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -2876,9 +2920,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -2967,9 +3011,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3058,9 +3102,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3149,9 +3193,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3240,9 +3284,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3331,9 +3375,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3422,9 +3466,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3513,9 +3557,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3604,9 +3648,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3695,9 +3739,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3786,9 +3830,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3877,9 +3921,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -3968,9 +4012,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4059,9 +4103,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4150,9 +4194,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4241,9 +4285,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4332,9 +4376,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4423,9 +4467,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4514,9 +4558,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4605,9 +4649,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4696,9 +4740,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4787,9 +4831,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4878,9 +4922,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -4969,9 +5013,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5060,9 +5104,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5151,9 +5195,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5242,9 +5286,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5333,9 +5377,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5424,9 +5468,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5515,9 +5559,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5606,9 +5650,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5697,9 +5741,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5788,9 +5832,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5879,9 +5923,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -5970,9 +6014,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6061,9 +6105,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6152,9 +6196,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6243,9 +6287,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6334,9 +6378,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6425,9 +6469,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6516,9 +6560,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6607,9 +6651,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6698,9 +6742,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6789,9 +6833,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6880,9 +6924,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -6971,9 +7015,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7062,9 +7106,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7153,9 +7197,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7244,9 +7288,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7335,9 +7379,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7426,9 +7470,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7517,9 +7561,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7608,9 +7652,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7699,9 +7743,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7790,9 +7834,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"
@@ -7881,9 +7925,9 @@
         "operationPhase",
         "operationRevision"
       ],
-      "objectCount": 0,
+      "objectCount": null,
       "objectSet": null,
-      "objectsNotRecorded": 0,
+      "objectsNotRecorded": null,
       "objectsRead": "not-taken",
       "observedAt": {
         "state": "missing"

@@ -130,6 +130,12 @@ Where it was run:
 | Docker Desktop | Passed twice on 2026-10-03, server `v1.34.3`: in each run three installs and two removals. An earlier attempt failed at the download and changed nothing | [The run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md) |
 | kind | Not executed | — |
 
+On 2026-10-05 the driver of
+[the reconciliation observation](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
+executed `install` three times and `remove --confirm` three times on a new
+Docker Desktop cluster, server `v1.36.1`. Each exited 0. Those executions
+prepared another procedure's run, and they repeated no refusal of this one.
+
 ## The namespace
 
 The namespace is `argocd`. The bootstrap creates it and labels it

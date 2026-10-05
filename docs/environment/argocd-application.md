@@ -68,8 +68,9 @@ of times and changes nothing.
 [The reconciliation evidence document](reconciliation-evidence.md) describes the
 record that a tool builds from those reads. A field that was not reported stays
 not reported in that record. On 2026-10-05 `observe` ran on the
-`docker-desktop` provider, beside an apply and beside a removal.
-[The record of that run](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
+`docker-desktop` provider, in two runs, beside an apply and beside a removal in
+each, and beside one apply of an attempt that was aborted.
+[The record of those runs](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
 says what Argo CD reported at each sample.
 
 ## The values
@@ -152,7 +153,7 @@ scripts/environment/argocd-application.sh remove --confirm
 |---|---|---|
 | `apply` | Applies the project and then the Application, with server-side apply. Adds the pin annotation to both, and the digest parameter to the Application. Builds both documents before it applies either. Waits up to 1,200 seconds until Argo CD reports a succeeded sync at the commit it resolved, for the digest it was given. Compares the whole live spec of both objects with the committed manifests | The two objects in `argocd`. Argo CD then creates the release objects |
 | `verify` | Checks the marker of both objects. Compares the whole live spec of each with the committed manifest, the SHA-256 that each records with the committed file, and the finalizers. Reads the digest from the live Application. Prints the revision and the states that Argo CD reports, and the workload objects by name | Nothing in the cluster |
-| `observe` | Reads the Application as JSON, and the kind, name, and labels of the release objects, `--samples` times, `--interval` seconds apart. Writes what each read returned, and records a read that did not answer as unanswered. Judges nothing. Does not require that the Application exists | Nothing in the cluster. A new directory under `.artifacts/` |
+| `observe` | Reads the Application as JSON, and the kind, name, and labels of the release objects, `--samples` times, with a wait of `--interval` seconds after each sample. Writes what each read returned, and records a read that did not answer as unanswered. Judges nothing. Does not require that the Application exists | Nothing in the cluster. A new directory under `.artifacts/` |
 | `remove` | Deletes the Application with a cascade, waits until no release object remains, and deletes the project. Confirms that the claims are unchanged | The two objects, and the release objects that Argo CD applied |
 
 `apply` on objects that this procedure created applies the same bytes again. A
@@ -163,7 +164,10 @@ manifests. It records each manifest's SHA-256 on the object it applies.
 
 ## Refusals
 
-Every refusal named here comes before the first mutation. A query that did not
+Every refusal named here comes before the first mutation. The two refusals of
+`observe` also come before the target is verified, with one exception: a
+directory that another observation creates while this one starts is refused
+after the verification. A query that did not
 answer is not read as an absence.
 
 | Refusal | Applies to | Condition |
@@ -177,15 +181,16 @@ answer is not read as an absence.
 | `application-controller-not-ready` | remove | The application controller reports no ready replica. It performs the cascade |
 | `live-application-differs` | remove | The live Application names another project, destination server, or destination namespace. A cascade deletes what the live Application manages |
 | `observation-bounds-not-given` | observe | No `--samples` from 1 to 120, no `--interval` from 1 to 30, or no `--into` name of up to 63 lowercase letters, digits, and hyphens. No default is applied |
-| `observation-directory-exists` | observe | The directory that `--into` names exists. An observation does not write into the directory of another one |
+| `observation-directory-exists` | observe | The directory that `--into` names exists, or another observation created it while this one started. An observation does not write into the directory of another one |
 
 `verify` and `apply` also fail, without a refusal identifier, when a live object
 differs from the committed manifest or records another SHA-256. `verify` fails
 when the two objects do not both exist with the marker. `remove` stops at the
 argument check without `--confirm`.
 
-Each refusal is executed against stubs. The run of 2026-10-05 executed the two
-refusals of `observe` on the host, one case of each. Each run of 2026-10-04
+Each refusal is executed against stubs. Each run of 2026-10-05 executed the two
+refusals of `observe` on the host, one case of each. The refusal of a directory
+that is created during the start was executed nowhere. Each run of 2026-10-04
 executed four of the others on the host: no provider and no digest, which stop before any cluster call, and no
 Argo CD and a recorded Helm release, which read the cluster. Of
 `argocd-not-installed-by-the-bootstrap`, only the case of no namespace ran.
@@ -254,7 +259,7 @@ paths share them.
 | An observation of a later commit of `main` being applied | The run applied one commit | A run that merges a change while the Application is applied |
 | Pruning | Disabled by decision | A bounded experiment that needs deletion to be reconciled |
 | A break-glass procedure | Self-heal reverts a manual change. [The boundary for a manual change](reconciliation-evidence.md#the-boundary-for-a-manual-change) is stated, and it decides no mechanism | A decision on how an operator suspends reconciliation |
-| The acquisition job within its memory limit on Kubernetes v1.36.1 | On 2026-10-05, one preparation that copies the artifact from a seed image was stopped as out of memory at the chart's limit of 128Mi. [The record of the run](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md) holds it. The Application's own job, which found the artifact in the claim, completed | An investigation, and a chart change under a freeze revision |
+| The acquisition job within its memory limit on Kubernetes v1.36.1 | On 2026-10-05, one preparation that copies the artifact from a seed image failed with `BackoffLimitExceeded`. The operator read the pod by hand and saw the container stopped as `OOMKilled` at the chart's limit of 128Mi. [The record of the runs](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md) holds what was kept. The same preparation completed twice at a limit of 2Gi, and the Application's own job completed after it in both runs. The cause was not investigated | An investigation, and a chart change under a freeze revision |
 | The first experiment's real-deployment part | It runs under its own frozen revision | A freeze revision that names this Application and the desired-state path |
 
 ## What this does not establish

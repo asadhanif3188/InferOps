@@ -499,8 +499,9 @@ reads the Application a bounded number of times and changes nothing. A tool,
 the sync state, and the health state that Argo CD reported at each sample, the
 fields it did not report, and the changes between two samples. A field that was
 not reported stays not reported. The record is reconciliation evidence, and it
-is not a caller outcome. Both parts ran on the `docker-desktop` provider on
-2026-10-05, on one commit, and not on `kind`.
+is not a caller outcome. The operation ran on the `docker-desktop` provider on
+2026-10-05, at one commit, and not on `kind`. The tool built records from the
+directories of those runs.
 [The reconciliation evidence document](../environment/reconciliation-evidence.md)
 states the record, its limits, and the boundary for a manual change.
 

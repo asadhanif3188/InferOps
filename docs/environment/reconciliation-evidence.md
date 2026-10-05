@@ -6,13 +6,13 @@ the tool
 [`tools/reconciliation_evidence`](../../tools/reconciliation_evidence/core.py), and
 the boundary for a manual change on this page. On 2026-10-05, on the
 `docker-desktop` provider, `observe` read one Application while the procedure
-applied it, after the apply, and while the procedure removed it.
-[The record of the run](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
+applied it, after the apply, and while the procedure removed it, in two runs.
+[The record of the runs](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
 says what ran, including one aborted attempt. The operation was not executed on
 `kind`.
 
 The suites execute the operation against stub tools and give the tool
-directories that they write. Those are `C1` and `C0`. The run is `C2`, bounded
+directories that they write. Those are `C1` and `C0`. The runs are `C2`, bounded
 to one provider, one host, one day, and one commit.
 
 > [!IMPORTANT]
@@ -63,7 +63,7 @@ uv run --locked python -m tools.reconciliation_evidence .artifacts/argocd-applic
 | Option | Bound |
 |---|---|
 | `--samples COUNT` | A whole number from 1 to 120 |
-| `--interval SECONDS` | A whole number from 1 to 30 |
+| `--interval SECONDS` | A whole number from 1 to 30. It is the wait after a sample, and not the time between two samples |
 | `--into NAME` | Up to 63 lowercase letters, digits, and hyphens. It names a directory that does not exist yet |
 
 The largest observation makes 240 reads and waits 119 times 30 seconds. The
@@ -83,12 +83,15 @@ after the last sample.
 
 `observe` does not require that the Application exists, and it does not require
 the bootstrap marker. An absent Application is an observation. On a cluster
-without the Application's resource type, the read does not answer. The run
+without the Application's resource type, the read does not answer. Each run
 observed both: three samples of an absent Application, and two unanswered
 samples on a cluster where Argo CD was not installed.
 
 The two refusals of `observe` are in
-[the refusal table of the procedure](argocd-application.md#refusals).
+[the refusal table of the procedure](argocd-application.md#refusals). Both come
+before the target is verified, so a refused `observe` reads no cluster. The
+first version of the procedure checked the directory after it had verified the
+target, and it then printed that nothing was read.
 
 ## The record
 
@@ -196,6 +199,14 @@ the empty list.
 - No function of the tool replaces a field with a default.
 - Only the state `reported` carries a value. A test reads every field of a
   record for that.
+- **A collection is complete only when it holds exactly the samples that were
+  asked for.** A sample that is absent, a sample beyond the count, a status file
+  that the tool does not read, and an absent end file each make it not complete.
+- **A count is not given where nothing was read.** `objectCount` is null for a
+  sample whose object read did not answer. Zero is a count.
+- **`settled` reads five fields and the deletion timestamp, and nothing else.**
+  It reads no condition and no queued operation, and it does not check the kind
+  or the name of the object. An object without metadata is not settled.
 - `settled` is true only when all five required fields are reported, the sync
   state is `Synced`, the health state is `Healthy`, the operation phase is
   `Succeeded`, the resolved revision is a full commit identifier, the last
@@ -221,13 +232,15 @@ Application, as `applicationRead`.
   value followed by an unanswered read is a transition to `not-collected`.
 - **A sample that was not taken is not an observation.** No transition leads to
   a `not-taken` sample or from one.
+- **A change of the objects alone is not a transition.** A sample names the list
+  of objects that it read. The tool tracks no field of an object.
 - **The interval bounds what a transition can show.** A state that began and
   ended between two samples leaves no transition. The time of a transition is
   known only as the two sample times around it.
 - **A new operation is visible as a change of `operationStartedAt`.** The
   controller starts an operation when it applies a new commit, and when
   self-heal reverts a change. `operationAutomated` says whether the controller
-  started it. The run observed the first operation of a new Application, which
+  started it. Each run observed the first operation of a new Application, which
   the controller started. No sample has shown an operation for a later commit
   or for a reverted change.
 
@@ -235,45 +248,66 @@ Application, as `applicationRead`.
 
 Given the commit that a sample reports, the tool reads
 [the provenance](desired-state-provenance.md) of the desired-state release at
-that commit and compares the sample with it.
+that commit. A sample for which it read one has the state `provenance-resolved`.
+The tool then makes three comparisons, and each has a state of its own.
 
-| Compared | With | Rule |
-|---|---|---|
-| The resolved revision, the revision of the last operation, and the revision of the last history entry | The commit the provenance was read at | `observed-revision-mismatch`, `revision-not-immutable` |
-| The repository, the chart path, and the value files that the live Application declares | The release the commit holds | `source-not-the-release` |
-| The three provenance labels of each workload object | The labels the provenance derives | `workload-metadata-mismatch` |
+| Comparison | Compared | With | Rule |
+|---|---|---|---|
+| `revisions` | The revision of the last operation, and the revision of the last history entry | The commit the provenance was read at | `observed-revision-mismatch`, `revision-not-immutable` |
+| `source` | The repository, the chart path, and the value files that the live Application declares | The release the commit holds | `source-not-the-release` |
+| `labels` | The three provenance labels of each workload object | The labels the provenance derives | `workload-metadata-mismatch` |
 
 **A comparison that could not be made is recorded as `not-compared`, with the
-reason.** That covers a sample with no reported commit, a commit that the clone
-does not hold, a source field that was not reported, an object read that did not
-answer, and an object read that returned no object. No comparison is recorded
-as consistent by default.
+reason.** No comparison is recorded as consistent by default.
 
-The comparison of the resolved revision with itself always agrees. The other two
-revisions differ from it while an operation is in progress.
+- A sample with no reported commit, and a commit that the clone does not hold,
+  make no comparison at all.
+- `revisions` is not compared when the sample reports neither of the two
+  revisions. **The resolved revision is not compared.** The provenance was read
+  at it, so that comparison would compare a value with itself. The first version
+  of the tool made it, and reported a sample with no other revision as compared
+  with no finding.
+- `source` is not compared when one of its fields, or the followed revision, was
+  not reported. The followed revision is a branch name, and it is not compared.
+- `labels` is not compared when the object read did not answer, or returned no
+  object. **When the read returned more than 200 objects, the state is
+  `compared-in-part`,** and `objectsNotCompared` counts the rest. The first
+  version of the tool reported those labels as compared.
 
-## What the run of 2026-10-05 observed
+The two revisions can be missing or different while an operation is in progress.
+In the runs of 2026-10-05 they were missing in the first samples of an operation,
+and never different.
 
-[The record of the run](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md)
-holds the samples. Four observations bear on the rules of this page.
+## What the runs of 2026-10-05 observed
 
-- **A new Application reported nothing for about 20 seconds.** In six samples
-  the object existed and held no sync state, no health state, and no operation.
-  The tool holds each as `missing`, and none of the six samples is settled.
-- **One sample reported `Healthy` beside `OutOfSync`,** before the pods of the
-  release were ready. It is not settled.
-- **An Application that was being deleted still reported `Synced` and
-  `Healthy`,** in two samples. The first build of the record counted both as
+[The record of the runs](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md) holds the samples of one aborted attempt and two
+runs. Five observations bear on the rules of this page.
+
+- **A new Application reported nothing for a time.** The object existed and held
+  no sync state, no health state, and no operation, in six samples of run 2 and
+  in thirteen samples of run 3. The first and the last of those samples are 19
+  seconds apart in run 2, and 46 seconds apart in run 3. The tool holds each
+  field as `missing`, and none of those samples is settled.
+- **One sample of each run reported `Healthy` beside `OutOfSync`,** and the
+  samples after it reported `Progressing`. The observation reads no pod state,
+  so it does not show whether a pod was ready. The sample is not settled.
+- **An Application with a deletion timestamp still reported `Synced` and
+  `Healthy`,** in two samples of run 2. The tool that ran then counted both as
   settled. The tool now reads the deletion timestamp, and it counts neither.
-- **Every comparison with the provenance agreed.** In 67 samples of the
-  observation beside the apply, the release objects carried the three labels that
-  the provenance derives, and the live Application declared the source of the
-  release. No comparison on the cluster reported a finding.
+  Run 3 has no such sample.
+- **Every comparison with the provenance agreed.** In 61 samples of the
+  observation beside the apply of run 3, the release objects carried the three
+  labels that the provenance derives. In 62, the live Application declared the
+  source of the release. No comparison on the cluster reported a finding.
+- **In the aborted attempt, no sample is settled.** Argo CD reported `OutOfSync`
+  and `Missing` beside a `Running` operation, and an operation message that
+  names what it could not apply.
 
-One caller request was sent in that run, and it was answered. It was sent after
-the reported states had stopped changing.
+One caller request was sent in each run, between the observation after the apply
+and the observation beside the removal. Each was answered, in 0.73 seconds and in
+10.85 seconds. No sample was taken while a request was sent.
 
-## Safe diagnostics
+## Bounded diagnostics
 
 **The record is built from an allowlist.** It holds the fields in the tables
 above and no other part of an object. A test plants a marker in the inline
@@ -281,14 +315,25 @@ values, the parameters, the annotations, the managed fields, and the resource
 list of an Application, and in two other labels of an object. The marker does
 not reach the record.
 
-- **A message is bounded and redacted.** A condition message and an operation
-  message are written as one line of at most 240 characters. The user part of
-  an address is replaced. A word that the release domain's prefix heuristic
-  calls credential-shaped is replaced. The heuristic knows only the prefixes it
-  was given.
-- **The collection reads no Secret, no log, and no pod specification.** It asks
-  for one object by name, and for the kind, name, and labels of the workload
-  objects.
+- **Every text value is bounded.** A text field longer than 256 characters is
+  `malformed`, and so is a list of value files with more than 20 entries. The
+  kind and the name of an object are cut to 256 characters. The first version of
+  the tool bounded a message only.
+- **The user part of an address is replaced in every text value,** and a text
+  value that the release domain's prefix heuristic calls credential-shaped is
+  `malformed`. The first version of the tool copied a repository address with a
+  credential in it into the record.
+- **A message is one line of at most 240 characters.** A condition message and an
+  operation message are cut. A word that the heuristic calls credential-shaped
+  is replaced.
+- **The redaction is a heuristic, and it has known gaps.** It knows only the
+  prefixes it was given. It does not replace the user part of an address that
+  has no `//` before it, or that holds a `/`. It does not know a value that
+  follows `password=`.
+- **The collection requests no Secret and no log.** The object read requests
+  whole objects of ten kinds, pods and ConfigMaps included, and `kubectl` writes
+  only the kind, the name, and the labels of each. No pod specification and no
+  ConfigMap content is written to the directory.
 - **The directory under `.artifacts/` is not evidence, and it is not
   committed.** The Application file in it is the whole object. It holds the
   hand-written values and the API image digest. The record is what a run
@@ -299,7 +344,8 @@ not reach the record.
 ## The boundary for a manual change
 
 On a cluster where the Application is applied, Git is the desired state, and
-self-heal reverts a change to a managed field.
+self-heal is configured. Each of the three runs of 2026-10-04 observed one change
+to a replica count reverted. The runs of 2026-10-05 made no manual change.
 [ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
 decided that an operator who must change a managed object by hand removes the
 Application first, and it decided no break-glass procedure. This section states
@@ -318,6 +364,14 @@ the change first, or a break-glass action.
 | `manual-change-returns-to-git` | After a break-glass action, the change is made in Git and accepted, or it is discarded. The procedure then applies the Application again | review |
 | `controller-state-is-not-edited` | An operator does not edit the live Application or the live project, for example to turn automated sync off | tested: against stubs. `verify` compares the whole live spec with the committed manifest, and it finds an edit only when somebody runs it |
 
+**Three rules of this table are in no decision record:**
+`experiment-mutation-is-frozen-first`, `break-glass-is-recorded`, and
+`manual-change-returns-to-git`. This document proposes them. ADR 0019 states the
+removal rule without an exception, and the exception for a frozen experiment is
+also proposed here. ADR 0019 still records that the break-glass boundary is not
+decided. A decision record has to accept or change these rules before a
+procedure depends on one.
+
 **No admission control exists.** The operator's credential is the cluster
 administrator's. The boundary is a rule for people, and review holds it. The
 table says which part a test or a run holds.
@@ -334,7 +388,7 @@ from what Argo CD reports. The collection on this page is one of its inputs.
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| An observed transition for a later commit or a reverted change | The run observed an apply and a removal of one commit, and it made no manual change | A run that merges a change, or that changes the cluster under a frozen record, during an observation |
+| An observed transition for a later commit or a reverted change | Each run observed an apply and a removal of one commit, and made no manual change | A run that merges a change, or that changes the cluster under a frozen record, during an observation |
 | An unanswered read beside a running Argo CD | Every read answered while Argo CD ran | An observation during a fault of the API server |
 | A finding on a cluster | Every comparison on the cluster agreed | An observation of a state that disagrees |
 | Records that a reader can build again | The directories that `observe` writes are not committed | A decision on which part of an Application an evidence record may hold |
@@ -342,6 +396,8 @@ from what Argo CD reports. The collection on this page is one of its inputs.
 | A sample of the hand-written values and the API image digest | They are not in the allowlist | A decision on which of them an evidence record may hold |
 | The release identifier of the release document on an applied object | The renderer and the chart are pinned by the first experiment's freeze records | A freeze revision, then a generated value and a chart label |
 | A record format for a break-glass action | Not decided | A decision record |
+| A decision on the three proposed rules of the boundary | This document proposes them | A decision record |
+| The acquisition job within its memory limit on Kubernetes v1.36.1 | One preparation of 2026-10-05 failed at the chart's limit. [The Application document](argocd-application.md#not-applied-yet) holds the row | An investigation, and a chart change under a freeze revision |
 | A way to suspend reconciliation | Not decided | A decision record |
 | `observe` on `kind` | No Application is declared for that provider | A release path for `kind` |
 
@@ -367,7 +423,9 @@ This change also does not establish:
 
 - **That `observe` works on another cluster.** It ran on one provider, on one
   Kubernetes version, against one Argo CD release.
-- **That another Argo CD release writes the fields at these paths.** In the run
+- **That a read which fails beside a running Argo CD is recorded as
+  unanswered.** That case ran against stubs only.
+- **That another Argo CD release writes the fields at these paths.** In the runs
   of 2026-10-05, Argo CD 3.5.3 reported each of the nineteen fields of the two
   tables in at least one sample. No sample held a condition, so the reading of
   a condition was executed on directories that the suite wrote, and on no
