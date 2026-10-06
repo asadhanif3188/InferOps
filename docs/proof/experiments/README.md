@@ -16,7 +16,9 @@ E01-AC10. No part of E01 ran in that change.
 **One run added by `V2-S3-004-PR2`**: [E01-D, executed once under revision 3](#the-e01-d-run)
 on the environment that revision names, with one completion request. The part PASSED.
 The same change makes the committed-run check leave an E01-D run out, which moves one
-pinned input of revisions 2 and 3.
+pinned input of revisions 2 and 3. It also publishes
+[one independent review of that run](v2-e01/reviews/20261006-e01-d-1-review-1.md), which found no defect in the verdicts.
+No register claim holds the result of E01-D yet.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -192,8 +194,9 @@ Not enforced:
   run is one a contributor names with `--run`, recorded under `runs/`.
 - **A run's refusal to start, for E01-D.** The E01 runner refuses to start E01-A, E01-B, and
   E01-C when a precondition fails, and it never runs E01-D. No runner for E01-D exists, so
-  "a part with a pending field cannot run" is, for E01-D, a procedure the next run follows
-  and no code enforces.
+  "a part with a pending field cannot run" is, for E01-D, a procedure that a run follows
+  and no code enforces. The one E01-D run followed it under revision 3, which leaves no
+  field pending.
 - **That a pinned file exists.** A pin is checked for its shape, not against the working
   tree. A file deleted after a record merged is reported by `--changes`, not refused by
   `--check`: refusing it would make a merged record fail the build for a later, legitimate
@@ -231,8 +234,9 @@ contract-to-deployment determinism, in four parts:
   capability, each with its expected refusal.
 - **E01-D, real deployment (C2).** The release rendered from the unmodified contract,
   accepted into Git, reconciled by Argo CD, and serving one real completion. Its procedure
-  and criteria are frozen. Its environment identity is pending, so it cannot run until a
-  merged revision names the environment.
+  and criteria are frozen. In revisions 1 and 2 its environment identity is pending, so
+  it could not run until a merged revision named the environment. Revision 3 names it,
+  and [E01-D ran once under revision 3](#the-e01-d-run).
 
 The record states every procedure, criterion, and limitation in full. It pins 67 inputs: the
 contract, the binding, the chart and its defaults, the compatibility matrix, the renderer's
@@ -492,7 +496,8 @@ to P7, procedure D1 to D6, and the cleanup. The run rendered the release again a
 executing commit and compared it with the release in Git, byte for byte. It applied the
 Argo CD Application with one parameter, `api.image.digest`. Argo CD reported a succeeded
 sync at the executing commit. Both rollouts completed 18 seconds after the apply returned,
-against a deadline of 600 seconds. The readiness request returned 200. The run then sent
+against a deadline of 600 seconds. It is a warm start: the preparation had started the
+same images on the same node about two minutes earlier. The readiness request returned 200. The run then sent
 one completion request and no other.
 
 **What the criteria gave.**
@@ -520,10 +525,20 @@ compared value, each rule's verdict, and the SHA-256 of every other file),
 
 **What the run does not do.**
 
-- **No code judged it, and no code judges it again.** The automated assistant session
-  that drove the run applied the registered rules. It is not independent of the run.
-  The default-lane suite holds the manifest to the files beside it and to revision 3. It
-  derives no verdict from the cluster's output.
+- **No runner judged it.** The automated assistant session that drove the run applied
+  the registered rules. It is not independent of the run. The default-lane suite applies
+  each rule again to the committed files and requires the recorded verdict. It reads
+  two rules from less than a structured file: the admission rule from the pytest summary
+  in the transcript, and the eight-character rule from the consumed static run. The
+  suite does not show that the cluster returned those files.
+- **Its files fall short of the registered form in four places.** `commands.txt` has no
+  shell quoting and lists once a command that ran twice. `transcript.txt` does not hold
+  the output of three commands of step P3, which went to ignored files. Two of the
+  thirteen compared environment attributes are literals of the driver. The manifest
+  cites step D6 for the eight-character rule and does not state the consumed run's
+  verdict. The files are evidence and are not edited.
+  [The validation record](../domain/v2-s3-004-pr2-validation.md) gives each, and the
+  weaknesses of the driver that this run did not meet.
 - **It sent one request.** It does not establish that a second request is answered.
 - **It did not observe the network.** It does not establish that the acquisition hook
   downloaded nothing. Argo CD reports that the sync operation, which holds the hook,
@@ -533,20 +548,26 @@ compared value, each rule's verdict, and the SHA-256 of every other file),
   for one image identifier, which is the one the run's build exported. That read is not
   a registered step. No E01-D criterion names the API image digest.
 - **The transcript is redacted.** Terminal colour codes are removed, the absolute path of
-  the repository on the host is replaced, and two Docker build links are replaced.
+  the repository on the host is replaced, and two Docker build links are replaced. Line
+  endings are changed to LF, and trailing whitespace is removed. The run's own files
+  name the first three only.
 - **It is one run on one provider, with one node.** The evidence is C2, bounded to the
   environment that `environment.json` records. It is not representative.
 
 **The committed-run check, changed after the run.** `tools.experiment_e01 --check` read
 every directory under `runs/` as a static run, so it refused the E01-D directory. This
-change edits one function of the runner, `committed_runs`, after the run: the listing
-leaves out a directory named as a run of E01-D. Every other directory is still listed.
+change edits one function of the runner, `committed_runs`, after the run. The listing
+leaves a directory out when its name is that of an E01-D run and its own manifest names
+part E01-D and no other. Every other directory is still listed, so a static run under
+such a name is checked. The command does not print what it left out.
 
 - **The edit moves one pinned input of revisions 2 and 3:**
   `tools/experiment_e01/core.py`. `python -m tools.experiment_freeze --changes` reports
   it for both records, and exits 1.
 - **The E01-D run executed before the edit.** Its step P2 reports no difference for
-  revision 3 at the executing commit. The E01-D steps do not run the runner.
+  revision 3 at the executing commit. The E01-D steps do not run the runner. The run
+  and the edit are in one commit, so Git history does not order them: the transcript
+  supports the order and does not prove it.
 - **A new run of any part is refused** until a merged later revision classifies the
   edit. This change registers no revision and classifies nothing.
 - **The static result is not judged again by other code.** `--check` passes over both
@@ -556,7 +577,33 @@ leaves out a directory named as a run of E01-D. Every other directory is still l
   runner in the tree and put back the two passages that the edit replaced. A test holds
   the result to the digest that both records pin. So the listing is the only difference
   between the runner in the tree and the pinned one. Another edit to the runner fails
-  that test.
+  that test. The second process of each such test, and one whole test, therefore execute
+  the pinned runner and not the runner in the tree.
+
+**The independent review.** [`v2-e01/reviews/20261006-e01-d-1-review-1.md`](v2-e01/reviews/20261006-e01-d-1-review-1.md) is the report of one independent
+review of this run, with
+[its machine-readable record](v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json). The review
+read the first commit of the change that adds the run, `2f2e1ff`, read-only, on
+2026-10-06. That commit held no register change. A review record is not evidence of the
+run, and no register claim cites it.
+
+- **The frozen run.** The reviewer applied each registered rule to the raw files. Every
+  verdict equals the one the run recorded. It found no defect in the files, the digests,
+  the freeze identity, the procedure, or the outcome, and it found that a rerun is not
+  justified.
+- **Fourteen findings, none claim-material.** They are about disclosure and prose. Six
+  are corrected in the same change. Four are in run files, which are not edited, and
+  are stated. Four are observations.
+- **What it could not verify.** That the remote named the executing commit, that the
+  cluster returned the committed files, the test result of step D6, and whether a model
+  download happened.
+- **The limits of its independence.** The reviewer is a separate session of the
+  automated assistant that drove the run. It is not a person. It also read uncommitted
+  files on the host, which the brief did not ask for.
+- **The register.** No ledger references this record yet. The claim and register
+  reconciliation of E01-D is owed by a later change, which the
+  [review gate](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
+  holds to this record: the record must describe the run's files as they are.
 
 ## Audit of the first run, 2026-10-03
 

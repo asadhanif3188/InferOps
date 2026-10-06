@@ -26,10 +26,15 @@ from `1.0.0`.
   digest, the model revision, and the model identifier are the generated ones.
   The evidence is `C2`, bounded to that environment, and it is not
   representative. The run sent one request, it did not observe the network, and
-  no code judged it: the session that drove it applied the registered rules.
+  no runner judged it: the session that drove it applied the registered rules.
+  [One independent review](docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md),
+  by another automated session, applied the rules again and found no defect in
+  the verdicts. **No claim is registered:** the register is unchanged, and the
+  reconciliation is owed by a later change that references that review.
   The cleanup returned the cluster to the namespaces it had. **The
   committed-run check changed after the run.** `tools.experiment_e01 --check`
-  now leaves out a directory named as a run of E01-D, which it cannot judge.
+  now leaves out a run of E01-D, which it cannot judge: a directory with that
+  name whose own manifest names that part and no other.
   That edit moves one pinned input of revisions 2 and 3,
   `tools/experiment_e01/core.py`, so a new run of any part is refused until a
   later revision classifies it. The suites that copy the pinned inputs rebuild

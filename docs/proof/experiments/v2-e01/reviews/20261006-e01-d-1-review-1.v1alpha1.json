@@ -1,0 +1,231 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentResultReview",
+  "metadata": {
+    "reviewId": "20261006-e01-d-1-review-1",
+    "experiment": "V2-E01",
+    "publishedBy": "V2-S3-004-PR2",
+    "page": "docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md",
+    "hashing": "SHA-256 of the file's bytes with every CRLF replaced by LF, as the freeze records and the evidence index compute it."
+  },
+  "subject": {
+    "runId": "20261006-e01-d-1",
+    "runPath": "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1",
+    "parts": [
+      "E01-D"
+    ],
+    "executingRevision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+    "freeze": {
+      "path": "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json",
+      "revision": 3,
+      "contentSha256": "b4aa013dc482a8f536395c094ab76dc2b753e04d7c139a4b0cadf17c672da739"
+    },
+    "registry": {
+      "path": "docs/proof/experiments/registry.v1alpha1.json",
+      "contentSha256": "9da8814c91b8817a2e27e94c7cc0d6addc7a9a54f4e278ac7baf69f24fcb38bc"
+    },
+    "files": {
+      "argo.json": "e5c042a7359a7bf984e79c05c904fe58ad279f9dafc37954d93e97facf328066",
+      "commands.txt": "bc46d8a9f47a1a1b82a3f3d0174551ea1f0f7c3a456fad54c66b35877139f9df",
+      "completion.json": "5e9bbba7949207295ddbe943a060b5fff372b56712326f40c96911f443d501a4",
+      "driver.txt": "ba5217262ab935dc647db024ff722996dda773563feb20b70563799bc521c194",
+      "environment.json": "a0aeee1f5a9fbc0df301d05309ad80923da54c9d1102bdf0e7de603dd4d3f56f",
+      "pods.json": "3858e4f490af8caafde76330631558de516f846e4099fe1ca4e882c2b1de6c40",
+      "provenance.json": "8308936d9f14e20ccbabf7b77cb213aac584b6144b68455f805649a41b34f2b6",
+      "reconciliation.record.json": "635aa69243c142bcc855fe0cf30ee1edb149f7cf2a27c177cdbdc0754578c9f6",
+      "release.json": "83df1557fb7e66b4fb40edae21db1e3169562e423effe3671f6a21b9e50d11c2",
+      "result.md": "36757bf257417b489aca9cd018622d6a1a4690cc475d58faf3724bea1552ac0a",
+      "run.v1alpha1.json": "62255edaa5c078f6a1f67af140b923d2ef63e8b40d24c8919691aa37653c5733",
+      "transcript.txt": "2462159aae0b04a80dc2f7a8daa40eaa19427678dc4cb176233fa643e78fba8f"
+    },
+    "outcomes": {
+      "E01-D": "PASSED"
+    }
+  },
+  "review": {
+    "reviewedRevision": "2f2e1ffcb48f26bdf6c3ec9e0723bf030eb19d9a",
+    "reviewedRevisionIs": "The first commit of the change that adds the run. It is not merged. It holds the run directory and the first form of the committed-run listing. It holds no register change, no ledger, and no review record.",
+    "treeStateBefore": "git status --porcelain --untracked-files=all printed no line",
+    "treeStateAfter": "git status --porcelain --untracked-files=all printed no line",
+    "startedAt": "2026-10-06T13:07:21Z",
+    "finishedAt": "2026-10-06T13:15:28Z",
+    "timeSource": "The reviewer's report. No repository file proves these times.",
+    "reviewer": {
+      "kind": "automated",
+      "description": "One automated reviewing session, given a written brief. The session took no part in producing the run or this record, and it received the brief and nothing else from the session that started it.",
+      "independenceLimits": [
+        "The reviewer is a separate session of the same automated assistant that drove the run, applied its verdicts, and wrote this record. It is not another tool, another model, or a person.",
+        "The maintainer asked for a second review of the change. The assistant session that drove the run wrote the brief and started the reviewing session.",
+        "The brief named the files to read and twelve items to answer. It named no expected finding. The brief is not committed, so the repository does not prove what it said.",
+        "The reviewer worked in the same checkout, on the same host, as the session that drove the run. It also read files under .artifacts/, which Git ignores: the driver as it ran, the unredacted transcript, the raw reads of step P3, and the response body. The brief did not ask for that. Those files are not committed and can be changed, and the reviewer used them as corroboration only.",
+        "This record was written by the session that drove the run, from the reviewer's report. The report itself is not committed."
+      ]
+    },
+    "access": "read-only",
+    "executed": [
+      "git read commands",
+      "sha256sum and Python passages that read files",
+      "python -m tools.experiment_freeze --check",
+      "python -m tools.experiment_freeze --changes, for revisions 2 and 3"
+    ],
+    "notExecuted": [
+      "any step of the part",
+      "kubectl, docker, or any request to a cluster or to the network",
+      "the test suites",
+      "python -m tools.experiment_e01 --check"
+    ],
+    "registerAtReviewedRevision": {
+      "statement": "The reviewed revision holds no claim, no evidence record, and no ledger that bears on this run. The register, the evidence index, and the dashboard are those of the merged commit ad725905.",
+      "claimId": null
+    }
+  },
+  "conclusions": {
+    "frozenRun": {
+      "verdict": "no-defect-found",
+      "statement": "The reviewer applied each verification rule of E01-AC8, E01-AC9, and E01-AC10 to the raw files of the run. Every verdict and every observed value in the manifest equals what the reviewer derived. The twelve files are the ones that revision 3 registers, and the ten digests in the manifest equal the files. PASSED is the outcome that revision 3 gives for these verdicts, and C2 is consistent with what executed."
+    },
+    "abortConditions": {
+      "verdict": "one-not-determinable",
+      "statement": "No abort condition is met on the evidence. One cannot be determined: whether the acquisition hook started a download. No step reads for it.",
+      "finding": "F11"
+    },
+    "orderOfRunAndRunnerEdit": {
+      "verdict": "supported-not-proven",
+      "statement": "The run and the edit to the committed-run listing are in one commit, so Git history does not order them. The transcript supports that the run came first: step P2 reports no changed material file, and the last status lists only evidence files. The transcript was written by the session that made the edit."
+    },
+    "rehearsal": {
+      "verdict": "none-found",
+      "statement": "Nothing in the repository shows an earlier attempt. An earlier attempt that was cleaned up cannot be excluded from the evidence."
+    },
+    "registerStatementCorrectness": {
+      "verdict": "not-applicable",
+      "statement": "No register statement about this run existed when the review read the repository."
+    },
+    "rerunJustified": false,
+    "rerunReason": "Every verdict reproduces from the raw files. The findings are about disclosure and prose. Revision 3 forbids a repeated run to obtain another outcome, and a new run is refused until a later revision classifies the edit to the runner."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "non-material",
+      "summary": "The validation record said that no step of the part was executed before the run. The same passage says that the two freeze commands of step P2, the check of step D1, and the reads of step P3 were run by hand first.",
+      "disposition": "corrected",
+      "where": "this change, in the validation record and the experiments page"
+    },
+    {
+      "id": "F2",
+      "severity": "non-material",
+      "summary": "The validation record said that the model was not downloaded by a registered step. The acquisition hook ran inside registered step D3, and the run does not observe whether it downloaded.",
+      "disposition": "corrected",
+      "where": "this change, in the validation record and the experiments page"
+    },
+    {
+      "id": "F3",
+      "severity": "non-material",
+      "summary": "The manifest, the result page, the experiments page, and the validation record say that three kinds of text were replaced in the transcript. Two more transformations were applied: 77 CRLF line endings were changed to LF, and trailing whitespace was removed from 7 lines. They change no content.",
+      "disposition": "corrected-outside-the-run-files",
+      "where": "The validation record and the experiments page state all five. The manifest and the result page are run files and keep their text"
+    },
+    {
+      "id": "F4",
+      "severity": "non-material",
+      "summary": "The validation record said that the driver's header lists each addition to the registered commands. It does not: among others, the sha256sum of step P2, the unset of one environment variable, repeated calls that capture output, the inline Python passages, and the reads of the cleanup are not listed.",
+      "disposition": "corrected",
+      "where": "The validation record lists them. The driver is a run file and keeps its header"
+    },
+    {
+      "id": "F5",
+      "severity": "non-material",
+      "summary": "commands.txt is not the exact commands: shell quoting is absent, a command that ran twice is listed once, and unset, sed, uname, python -c, and kill are absent.",
+      "disposition": "recorded-not-corrected",
+      "where": "The file is a run file. The validation record states the difference, and driver.txt holds the exact commands"
+    },
+    {
+      "id": "F6",
+      "severity": "non-material",
+      "summary": "transcript.txt does not hold what three commands of step P3 printed: the output was redirected to files that Git ignores. The five residue queries of step P6 carry no exit status. Revision 3 defines the transcript as what the commands printed, with each exit status.",
+      "disposition": "recorded-not-corrected",
+      "where": "Stated in the validation record. A later run should print them"
+    },
+    {
+      "id": "F7",
+      "severity": "non-material",
+      "summary": "In environment.json, the read values of provider.providerId and cluster.kubeContext are literals of the driver, so their equality is not an observation. The procedures' own target verification, in the transcript, is the evidence for both.",
+      "disposition": "recorded-not-corrected",
+      "where": "Stated in the validation record"
+    },
+    {
+      "id": "F8",
+      "severity": "observation",
+      "summary": "Four tool version strings in environment.json differ in form from the ones revision 3 recorded: helm carries a build suffix, terraform a name prefix, uv a build suffix, and the host operating system is MINGW64_NT-10.0-26200 where the record says Windows. Revision 3 attaches no refusal to these values.",
+      "disposition": "recorded",
+      "where": null
+    },
+    {
+      "id": "F9",
+      "severity": "non-material",
+      "summary": "For the eight-character rule of E01-AC10, the manifest's observed values give the outcome of E01-A and cite step D6 of the transcript. They omit the verdict of E01-AC5 in the consumed static run and that run's digest. The reviewer read both: the consumed manifest has the digest that revision 3 pins, and it records that E01-AC5 holds.",
+      "disposition": "recorded-not-corrected",
+      "where": "Stated here and in the validation record. A test now reads both values"
+    },
+    {
+      "id": "F10",
+      "severity": "observation",
+      "summary": "The committed evidence does not tie the serving API container to the image that step P4 built. The pod status names another digest, and the read of the node that reconciles the two is not in the run directory. No criterion and no abort condition names the API image.",
+      "disposition": "recorded",
+      "where": "The validation record quotes the output of that read. It was made by the author after the run, not by the reviewer"
+    },
+    {
+      "id": "F11",
+      "severity": "observation",
+      "summary": "The abort condition on a model download cannot be determined from the evidence. No step reads the hook's job or the network. Revision 3 limits that condition to a download that the operator observes by other means.",
+      "disposition": "recorded",
+      "where": null
+    },
+    {
+      "id": "F12",
+      "severity": "observation",
+      "summary": "The committed-run listing left a directory out by its name only, so the check would pass over a static run in a directory named as an E01-D run.",
+      "disposition": "corrected",
+      "where": "The listing now also requires that the directory's own manifest names part E01-D and no other. A test plants a static run under such a name"
+    },
+    {
+      "id": "F13",
+      "severity": "observation",
+      "summary": "The 18 seconds from the apply to both rollouts is accurate. Step P6 had started the same images on the same node about two minutes earlier, so it is a warm start. No statement claims a latency.",
+      "disposition": "recorded",
+      "where": "The experiments page and the validation record now say that it is a warm start"
+    },
+    {
+      "id": "F14",
+      "severity": "observation",
+      "summary": "The validation record said that every command in the transcript ended with exit status 0. That holds for every status shown. Three command lines show none.",
+      "disposition": "corrected",
+      "where": "this change, in the validation record and the experiments page"
+    }
+  ],
+  "authorNotes": [
+    "After the review, the session that wrote this record changed no file of the run directory. The digests under subject.files are those the reviewer reported, and a script compared them with the files when this record was written.",
+    "The corrections were made after the review and were not reviewed by this reviewer. They are in the commit that adds this record.",
+    "A second automated session reviewed the code, the tests, and the documents of the same commit. It is not a review of the result, and this record does not hold its findings. The validation record lists them."
+  ],
+  "notVerified": [
+    "That refs/heads/main on the remote named the executing commit when the run started. The reviewer contacted no network and read the local reference only.",
+    "That the cluster returned argo.json and pods.json as committed, and the times in them. The reviewer contacted no cluster. One session wrote every file.",
+    "That Argo CD read the repository from the remote.",
+    "The pytest result of step D6, and every suite count that the validation record states. The reviewer ran no test.",
+    "The read of the node's image store that the manifest describes. No committed file held its output when the review read the repository.",
+    "Whether the acquisition hook downloaded anything.",
+    "admit_manual_values over the live hand-written values with the parameter. Neither the run nor the reviewer ran it. The reviewer's own string comparison covers the eight-character clause only.",
+    "That no earlier attempt took place and was cleaned up.",
+    "The authenticity of the files under .artifacts/ that the reviewer read.",
+    "The install profile of Argo CD, and the node's image store after the cleanup. No file of the run shows them."
+  ],
+  "doesNotEstablish": [
+    "That a person reviewed the run. The reviewer is an automated session.",
+    "That the reviewer is independent of the assistant that drove the run. It is another session of it.",
+    "That the claim and register reconciliation of E01-D is correct. None existed.",
+    "That the corrections made after the review are correct. The reviewer did not read them.",
+    "Anything that the run itself does not establish: a second request, another environment, latency, availability, reliability under failure, or production readiness."
+  ]
+}

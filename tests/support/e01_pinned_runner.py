@@ -30,8 +30,8 @@ from tools.experiment_freeze import content_digest
 #: The pinned file that the committed-run listing changed.
 RUNNER: Final = "tools/experiment_e01/core.py"
 
-#: The record whose pin of the runner is the reference. Revision 3 pins the same
-#: digest, and :func:`pinned_runner_bytes` checks both.
+#: The records that pin the runner. Both pin the same digest, and
+#: :func:`pinned_runner_bytes` requires it of each.
 _RECORDS: Final = (
     "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json",
     "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json",
@@ -42,19 +42,37 @@ _REPLACED: Final = (
     (
         """_RUN_ID: Final = re.compile(r"^(?P<date>[0-9]{8})-e01-abc-(?P<sequence>[1-9][0-9]*)$")
 #: The identifier of a run of part E01-D. This runner does not execute that part and
-#: holds no analysis of it, so :func:`committed_runs` leaves such a directory out.
-_REAL_DEPLOYMENT_RUN_ID: Final = re.compile(r"^[0-9]{8}-e01-d-[1-9][0-9]*$")
+#: holds no analysis of it, so :func:`committed_runs` leaves such a run out.
+_REAL_DEPLOYMENT_RUN_ID: Final = re.compile(r"[0-9]{8}-e01-d-[1-9][0-9]*")
 """,
         """_RUN_ID: Final = re.compile(r"^(?P<date>[0-9]{8})-e01-abc-(?P<sequence>[1-9][0-9]*)$")
 """,
     ),
     (
-        '''def committed_runs(root: Path = REPO_ROOT) -> list[Path]:
+        '''def _is_real_deployment_run(path: Path) -> bool:
+    """Whether ``path`` is a run of part E01-D, by its name and by its own manifest.
+
+    Both must say so. A directory with that name whose manifest cannot be read, or
+    names other parts, is not left out: it is checked as a static run and fails.
+    """
+    if _REAL_DEPLOYMENT_RUN_ID.fullmatch(path.name) is None:
+        return False
+    try:
+        manifest = json.loads((path / MANIFEST).read_text(encoding="utf-8"))
+        parts = manifest["metadata"]["parts"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+    return bool(parts == ["E01-D"])
+
+
+def committed_runs(root: Path = REPO_ROOT) -> list[Path]:
     """Every run directory of the static parts under :data:`RUNS_DIR`, in name order.
 
-    A directory named as a run of part E01-D is left out. No code here judges such a
-    run: its verdicts are applied by hand from the freeze record's verification rules.
-    Every other directory is returned, so a misnamed static run is still checked.
+    A run of part E01-D is left out: a directory that is named as one and whose
+    manifest names that part and no other. No code here judges such a run: its
+    verdicts are applied by hand from the freeze record's verification rules. Every
+    other directory is returned, so a misnamed static run, and a static run under
+    an E01-D name, are still checked.
     """
     base = root / RUNS_DIR
     if not base.is_dir():
@@ -62,7 +80,7 @@ _REAL_DEPLOYMENT_RUN_ID: Final = re.compile(r"^[0-9]{8}-e01-d-[1-9][0-9]*$")
     return sorted(
         path
         for path in base.iterdir()
-        if path.is_dir() and not _REAL_DEPLOYMENT_RUN_ID.match(path.name)
+        if path.is_dir() and not _is_real_deployment_run(path)
     )
 ''',
         '''def committed_runs(root: Path = REPO_ROOT) -> list[Path]:
@@ -78,11 +96,10 @@ _REAL_DEPLOYMENT_RUN_ID: Final = re.compile(r"^[0-9]{8}-e01-d-[1-9][0-9]*$")
 
 def _pin(repo_root: Path, record: str) -> str:
     document = json.loads((repo_root / record).read_text(encoding="utf-8"))
-    return next(
-        str(item["sha256"])
-        for item in document["pinnedInputs"]
-        if item["path"] == RUNNER
-    )
+    for item in document["pinnedInputs"]:
+        if item["path"] == RUNNER:
+            return str(item["sha256"])
+    raise AssertionError(f"{record} does not pin {RUNNER}")
 
 
 def pinned_runner_bytes(repo_root: Path) -> bytes:

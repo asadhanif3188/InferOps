@@ -116,6 +116,14 @@ ARGOCD_CUSTOM_RESOURCE = re.compile(
     flags=re.MULTILINE,
 )
 
+#: Tracked files that hold an Argo CD custom resource as evidence: the object as a
+#: cluster returned it, written by a run. Nothing applies such a file. The first
+#: experiment's freeze record registers the one below as a file of a real-deployment
+#: run. A file is listed here by its exact path, so a second one fails the test.
+ARGOCD_RESOURCE_EVIDENCE = (
+    "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json",
+)
+
 CLUSTER_SCOPED_KINDS = frozenset(
     {"CustomResourceDefinition", "ClusterRole", "ClusterRoleBinding"}
 )
@@ -708,6 +716,14 @@ def test_no_application_set_and_no_cluster_registration_is_committed() -> None:
     have to quote a custom resource to test the pattern. A manifest that a
     template assembles from parts is not matched. It reads no cluster, so an
     object a person creates with kubectl is not seen.
+
+    One more tracked file matches the pattern, and it is evidence, not a
+    manifest: the Application as a cluster returned it in a recorded run. It is
+    named by its exact path. This test holds that it is under the proof records,
+    that it is JSON with a status that only a cluster writes, and that it is the
+    committed Application and no other object. It does not hold that nothing
+    applies it: no procedure reads that directory, and the procedure suite holds
+    which files the procedure applies.
     """
     quoting = {THIS_MODULE, REPO_ROOT / APPLICATION_MODULE_REL}
     files = [path for path in tracked_files() if path not in quoting]
@@ -717,7 +733,18 @@ def test_no_application_set_and_no_cluster_registration_is_committed() -> None:
         for path in files
         if ARGOCD_CUSTOM_RESOURCE.search(text_of(path))
     ]
-    assert declaring == list(ARGOCD_MANIFESTS), declaring
+    assert declaring == sorted([*ARGOCD_RESOURCE_EVIDENCE, *ARGOCD_MANIFESTS]), (
+        declaring
+    )
+    for relative in ARGOCD_RESOURCE_EVIDENCE:
+        assert relative.startswith("docs/proof/"), relative
+        observed = json.loads(text_of(REPO_ROOT / relative))
+        assert observed["kind"] == "Application", relative
+        assert observed["status"]["sync"]["revision"], relative
+        assert observed["metadata"]["uid"], relative
+        committed = yaml.safe_load(text_of(REPO_ROOT / ARGOCD_MANIFESTS[0]))
+        assert observed["metadata"]["name"] == committed["metadata"]["name"], relative
+        assert "argocd.argoproj.io/secret-type" not in text_of(REPO_ROOT / relative)
 
     kinds = []
     for relative in ARGOCD_MANIFESTS:

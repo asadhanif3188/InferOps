@@ -303,6 +303,8 @@ This register makes no such claim. The behaviour E01 is finally about, a release
 deploys and serves, did not run in these two runs; E01-D owns it. E01-D ran once on
 2026-10-06, on one provider, and PASSED. No row of this register holds that result yet:
 a register change that bears on that run must reference an independent review of it.
+The two E01 rows, and the ledgers that added them, say that E01-D has not run. Those
+are statements of 2026-10-02 and 2026-10-03, and they are kept as written.
 
 There are two E01 rows since `V2-S2-004-PR2`, one for each run, and neither replaces the
 other. The first run executed under freeze revision 1. An audit on 2026-10-03 found that
