@@ -70,8 +70,15 @@ R2 = "docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json"
 R3 = "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json"
 #: Revision 2's registered pin, written out so that a change to it is visible.
 R2_PIN = "198f60b5133338e445b1c0fef9f9171ad3e58fe3bde66ac1e7a8d1d674730ac8"
-#: The latest revision: the one every defect below is planted in.
+#: Revision 3's registered pin, written out for the same reason.
+R3_PIN = "798309f8068d65978ce8f2ca8924e42f85c7727c10dd865bb916a5b3482745c9"
+#: The next revision: a planted record that follows the latest one.
+R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
+#: The revision every content defect below is planted in. Revision 3 follows it, so
+#: a test that needs the chain to hold after an edit plants the edit in LATEST.
 E01 = R2
+#: The latest revision: the one a planted next revision supersedes.
+LATEST = R3
 README = REPO_ROOT / "docs" / "proof" / "experiments" / "README.md"
 
 
@@ -99,7 +106,7 @@ def test_every_committed_record_holds_every_rule() -> None:
 
 
 def test_the_committed_records_are_the_pinned_ones() -> None:
-    assert record_paths() == sorted(FROZEN_RECORDS) == [R1, R2]
+    assert record_paths() == sorted(FROZEN_RECORDS) == [R1, R2, R3]
     assert load_registry() == dict(FROZEN_RECORDS)
 
 
@@ -121,7 +128,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "PASSED: 2 freeze record(s)" in result.stdout
+    assert "PASSED: 3 freeze record(s)" in result.stdout
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
@@ -453,10 +460,24 @@ def test_the_copy_holds_every_rule(copy_root: Path) -> None:
 
 
 def test_an_edited_record_is_refused(copy_root: Path) -> None:
-    document = load(root=copy_root)
+    document = load(LATEST, root=copy_root)
     document["fields"]["fault"][0]["reason"] += " Edited after merge."
-    _write(copy_root, E01, document)
+    _write(copy_root, LATEST, document)
     assert {f.rule_id for f in check_repository(copy_root)} == {"freeze-record-edited"}
+
+
+def test_an_edit_to_a_superseded_record_also_breaks_the_revision_after_it(
+    copy_root: Path,
+) -> None:
+    """Revision 3 names revision 2's content digest, so an edit to revision 2 is
+    reported twice: against its pin, and against the record that supersedes it."""
+    document = load(R2, root=copy_root)
+    document["fields"]["fault"][0]["reason"] += " Edited after merge."
+    _write(copy_root, R2, document)
+    assert {(f.rule_id, f.record) for f in check_repository(copy_root)} == {
+        ("freeze-record-edited", R2),
+        ("freeze-revision-supersedes", R3),
+    }
 
 
 def test_a_crlf_checkout_of_a_record_is_not_an_edit(copy_root: Path) -> None:
@@ -477,7 +498,7 @@ def test_a_record_nobody_pinned_is_refused(copy_root: Path) -> None:
 
 
 def test_a_pinned_record_that_is_absent_is_refused(copy_root: Path) -> None:
-    (copy_root / E01).unlink()
+    (copy_root / LATEST).unlink()
     assert [f.rule_id for f in check_repository(copy_root)] == ["freeze-record-missing"]
 
 
@@ -491,13 +512,13 @@ def test_a_misnamed_record_and_a_wrong_revision_are_refused(copy_root: Path) -> 
     assert ("freeze-revision-sequence", "metadata.revision") in found
 
 
-def _revision_two(root: Path) -> dict[str, Any]:
+def _next_revision(root: Path) -> dict[str, Any]:
     """A next revision that supersedes the latest correctly and moves no input."""
-    document = load(root=root)
-    document["metadata"]["revision"] = 3
+    document = load(LATEST, root=root)
+    document["metadata"]["revision"] = 4
     document["metadata"]["supersedes"] = {
-        "path": E01,
-        "contentSha256": content_digest((root / E01).read_bytes()),
+        "path": LATEST,
+        "contentSha256": content_digest((root / LATEST).read_bytes()),
     }
     document["inputChanges"] = []
     return document
@@ -514,16 +535,16 @@ def _revision_findings(root: Path) -> set[str]:
 def test_a_revision_that_follows_the_one_before_it_holds_the_revision_rules(
     copy_root: Path,
 ) -> None:
-    _write(copy_root, R3, _revision_two(copy_root))
+    _write(copy_root, R4, _next_revision(copy_root))
     assert _revision_findings(copy_root) == set()
 
 
 def test_a_revision_that_names_the_wrong_predecessor_is_refused(
     copy_root: Path,
 ) -> None:
-    document = _revision_two(copy_root)
+    document = _next_revision(copy_root)
     document["metadata"]["supersedes"]["contentSha256"] = "0" * 64
-    _write(copy_root, R3, document)
+    _write(copy_root, R4, document)
     assert _revision_findings(copy_root) == {"freeze-revision-supersedes"}
 
 
@@ -537,29 +558,29 @@ def test_a_first_revision_that_supersedes_something_is_refused(copy_root: Path) 
 
 
 def test_a_skipped_revision_is_refused(copy_root: Path) -> None:
-    document = _revision_two(copy_root)
-    document["metadata"]["revision"] = 4
-    _write(copy_root, "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json", document)
+    document = _next_revision(copy_root)
+    document["metadata"]["revision"] = 5
+    _write(copy_root, "docs/proof/experiments/v2-e01/freeze-r5.v1alpha1.json", document)
     assert "freeze-revision-sequence" in _revision_findings(copy_root)
 
 
 def test_a_revision_must_classify_every_input_that_moved(copy_root: Path) -> None:
-    document = _revision_two(copy_root)
+    document = _next_revision(copy_root)
     moved = document["pinnedInputs"][0]
     moved["sha256"] = "f" * 64
-    _write(copy_root, R3, document)
+    _write(copy_root, R4, document)
     assert _revision_findings(copy_root) == {"freeze-input-change-unclassified"}
 
     document["inputChanges"] = [
         {"path": moved["path"], "material": "no", "reason": "x"}
     ]
-    _write(copy_root, R3, document)
+    _write(copy_root, R4, document)
     assert _revision_findings(copy_root) == {"freeze-input-change-unclassified"}
 
     document["inputChanges"] = [
         {"path": moved["path"], "material": False, "reason": "A comment changed."}
     ]
-    _write(copy_root, R3, document)
+    _write(copy_root, R4, document)
     assert _revision_findings(copy_root) == set()
 
 
@@ -567,7 +588,7 @@ def test_a_revision_must_classify_an_input_it_pins_for_the_first_time(
     copy_root: Path,
 ) -> None:
     """An added file is a change, as revision 2 classified the runner it added."""
-    document = _revision_two(copy_root)
+    document = _next_revision(copy_root)
     document["pinnedInputs"].append(
         {
             "path": "tools/new_helper.py",
@@ -575,7 +596,7 @@ def test_a_revision_must_classify_an_input_it_pins_for_the_first_time(
             "sha256": "e" * 64,
         }
     )
-    _write(copy_root, R3, document)
+    _write(copy_root, R4, document)
     assert _revision_findings(copy_root) == {"freeze-input-change-unclassified"}
 
 
@@ -667,6 +688,7 @@ def test_every_registered_record_keeps_the_pin_it_was_registered_with() -> None:
     assert FROZEN_RECORDS == {
         R1: "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9",
         R2: R2_PIN,
+        R3: R3_PIN,
     }
 
 
@@ -927,7 +949,7 @@ def test_e01_ds_environment_identity_is_pending_on_its_owner_and_nothing_else_is
     assert entry(document, "environmentIdentity", "E01-A")["status"] == "value"
 
 
-@pytest.mark.parametrize("path", [R1, R2])
+@pytest.mark.parametrize("path", [R1, R2, R3])
 def test_e01_states_why_a_fault_and_derived_bounds_do_not_apply(path: str) -> None:
     document = load(path)
     for key in ("fault", "derivedNumericBounds"):
@@ -936,7 +958,7 @@ def test_e01_states_why_a_fault_and_derived_bounds_do_not_apply(path: str) -> No
         assert entries[0]["parts"] == ["E01-A", "E01-B", "E01-C", "E01-D"]
 
 
-@pytest.mark.parametrize(("path", "count"), [(R1, 6), (R2, 7)])
+@pytest.mark.parametrize(("path", "count"), [(R1, 6), (R2, 7), (R3, 7)])
 def test_e01_c_runs_at_least_the_four_required_kinds_of_negative_case(
     path: str, count: int
 ) -> None:
@@ -959,7 +981,7 @@ def test_e01_c_runs_at_least_the_four_required_kinds_of_negative_case(
                 assert set(finding) == {"rule", "category", "code", "field"}, case["id"]
 
 
-@pytest.mark.parametrize("path", [R1, R2])
+@pytest.mark.parametrize("path", [R1, R2, R3])
 def test_e01_numbers_its_criteria_in_order_and_gives_every_part_one(path: str) -> None:
     document = load(path)
     ids = [
@@ -999,6 +1021,19 @@ def _named_paths(node: Any) -> set[str]:
                 "freeze-checker",
             ),
         ),
+        (
+            R3,
+            (
+                "workload-contract",
+                "environment-binding",
+                "product-code",
+                "runner-and-analysis",
+                "freeze-checker",
+                "desired-state-release",
+                "argocd-manifest",
+                "environment-procedure",
+            ),
+        ),
     ],
 )
 def test_every_input_a_part_names_is_pinned_and_so_are_the_ones_the_brief_names(
@@ -1014,13 +1049,13 @@ def test_every_input_a_part_names_is_pinned_and_so_are_the_ones_the_brief_names(
     assert pinned["charts/inferops-llm/values.yaml"].startswith("platform-defaults")
 
 
-@pytest.mark.parametrize("path", [R1, R2])
+@pytest.mark.parametrize("path", [R1, R2, R3])
 def test_every_pinned_input_is_a_committed_file(path: str) -> None:
     for item in load(path)["pinnedInputs"]:
         assert (REPO_ROOT / item["path"]).is_file(), item["path"]
 
 
-@pytest.mark.parametrize("path", [R1, R2])
+@pytest.mark.parametrize("path", [R1, R2, R3])
 def test_e01_names_its_preparation_revision_and_no_commit_that_merges_it(
     path: str,
 ) -> None:
@@ -1034,6 +1069,7 @@ def test_e01_names_its_preparation_revision_and_no_commit_that_merges_it(
     [
         (R1, {"V2-S2-003-PR1", "V2-S3-004-PR1"}),
         (R2, {"V2-S2-004-PR1", "V2-S3-004-PR1"}),
+        (R3, {"V2-S3-004-PR1"}),
     ],
 )
 def test_the_record_names_only_its_own_story_and_the_pending_owner(
@@ -1086,3 +1122,292 @@ def test_revision_two_defines_its_non_result_executions_before_any_run() -> None
     ]
     assert "not permitted" in definition["previewRule"]
     assert "procedure" in definition["previewRule"]
+
+
+# --------------------------------------------------------------------------
+# 6. Revision 3 names the E01-D environment and changes one clause
+# --------------------------------------------------------------------------
+
+STATIC_PARTS = ("E01-A", "E01-B", "E01-C")
+
+
+def _statements(document: dict[str, Any]) -> dict[str, str]:
+    return {
+        criterion["id"]: criterion["statement"]
+        for e in document["fields"]["acceptanceCriteria"]
+        for criterion in e["value"]
+    }
+
+
+def _part(document: dict[str, Any], part: str) -> dict[str, Any]:
+    found = next(p for p in document["parts"] if p["id"] == part)
+    assert isinstance(found, dict)
+    return found
+
+
+def test_revision_three_supersedes_revision_two_and_freezes_the_same_four_parts() -> (
+    None
+):
+    document = load(R3)
+    assert document["metadata"]["revision"] == 3
+    assert document["metadata"]["registeredBy"] == "V2-S3-004-PR1"
+    assert document["metadata"]["supersedes"] == {"path": R2, "contentSha256": R2_PIN}
+    assert [part["id"] for part in document["parts"]] == [*STATIC_PARTS, "E01-D"]
+    levels = {
+        part: entry(document, "intendedEvidenceLevel", part)["value"]
+        for part in (*STATIC_PARTS, "E01-D")
+    }
+    assert levels == {"E01-A": "C0", "E01-B": "C0", "E01-C": "C0", "E01-D": "C2"}
+
+
+def test_revision_three_leaves_nothing_pending_and_names_the_environment() -> None:
+    """The one allowance was for the field this revision answers. The checker still
+    holds the allowance, so this test is what says the latest record does not use it."""
+    document = load(R3)
+    statuses = {e["status"] for entries in document["fields"].values() for e in entries}
+    assert "pending" not in statuses
+    environment = entry(document, "environmentIdentity", "E01-D")
+    assert environment["status"] == "value"
+    identity = environment["value"]["identity"]
+    assert set(identity) >= {
+        "provider",
+        "cluster",
+        "nodes",
+        "storage",
+        "gitopsController",
+        "desiredState",
+        "application",
+        "contract",
+        "environmentBinding",
+        "runtime",
+        "model",
+        "apiImage",
+    }
+    assert identity["provider"]["providerId"] == "docker-desktop"
+    assert identity["provider"]["paid"] is False
+    assert identity["nodes"]["count"] == len(identity["nodes"]["names"]) == 1
+    version = identity["cluster"]["kubernetesServerVersion"]
+    assert re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", version)
+    assert re.fullmatch(r".+@sha256:[0-9a-f]{64}", identity["runtime"]["image"])
+    assert re.fullmatch(r"[0-9a-f]{40}", identity["model"]["revision"])
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", identity["model"]["sha256"])
+
+
+def test_revision_three_keeps_the_static_parts_as_revision_two_froze_them() -> None:
+    before, after = load(R2), load(R3)
+    for key in ("hypothesis", "scope", "outcomeStates", "repetitionRule"):
+        assert after["definition"][key] == before["definition"][key], key
+    for part in STATIC_PARTS:
+        assert _part(after, part) == _part(before, part), part
+    for key in (
+        "environmentIdentity",
+        "callerProfileRevision",
+        "topology",
+        "repetitionCount",
+        "acceptanceCriteria",
+        "evidencePaths",
+        "abortConditions",
+        "cleanupProcedure",
+        "intendedEvidenceLevel",
+    ):
+        for part in STATIC_PARTS:
+            assert entry(after, key, part) == entry(before, key, part), (key, part)
+    assert entry(after, "repetitionCount", "E01-D") == entry(
+        before, "repetitionCount", "E01-D"
+    )
+
+
+def test_revision_three_changes_one_clause_of_one_criterion_and_records_it() -> None:
+    before, after = _statements(load(R2)), _statements(load(R3))
+    assert list(after) == list(before)
+    changed = [key for key in before if before[key] != after[key]]
+    assert changed == ["E01-AC10"]
+    (change,) = load(R3)["criteriaChanges"]
+    assert change["id"] == "E01-AC10"
+    assert change["previousStatement"] == before["E01-AC10"]
+    assert change["statement"] == after["E01-AC10"]
+    assert "with no parameter override" in change["previousStatement"]
+    statement = after["E01-AC10"]
+    assert statement.startswith(
+        "No claim-relevant workload intent is written by hand after rendering: no "
+        "hand-written value and no operator-supplied parameter of the release "
+        "restates or overrides claim-relevant workload intent;"
+    )
+    assert "api.image.digest" in statement
+    assert "from no other source" in statement
+    assert "eight characters" in statement
+    assert "except the model" not in statement
+    for key in ("why", "whyTheParameterIsPermitted", "approvedBy", "whatDidNotChange"):
+        assert change[key].strip(), key
+    assert "No E01-D run had executed" in change["resultsObservedBefore"]
+
+
+def test_revision_three_keeps_every_pin_of_revision_two_and_only_adds() -> None:
+    before = {i["path"]: i["sha256"] for i in load(R2)["pinnedInputs"]}
+    document = load(R3)
+    after = {i["path"]: i["sha256"] for i in document["pinnedInputs"]}
+    assert {path: after.get(path) for path in before} == before
+    added = set(after) - set(before)
+    classified = {c["path"]: c for c in document["inputChanges"]}
+    assert set(classified) == added
+    assert len(after) == 158
+    assert len(added) == 84
+    for path, change in classified.items():
+        assert change["change"] == "added", path
+        assert change["material"] is True, path
+        assert change["materialTo"] == ["E01-D"], path
+        assert change["materialToStaticResult"] is False, path
+        assert change["sinceRevision2Merged"] in ("unchanged", "added", "changed")
+
+
+def test_revision_three_pins_exactly_its_material_scope(tmp_path: Path) -> None:
+    """As for revision 2: the scope is computed over a tree that holds each pinned
+    file, so this does not compare the pins with today's content."""
+    document = load(R3)
+    pinned = {item["path"] for item in document["pinnedInputs"]}
+    for path in pinned:
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO_ROOT / path, target)
+    assert material_files(document["materialScope"], tmp_path) == pinned
+    assert REGISTRY_PATH not in pinned
+    assert not {R1, R2, R3} & pinned
+    release = "gitops/environments/local-docker-desktop/workloads/support-assistant"
+    for path in (
+        f"{release}/values.generated.yaml",
+        f"{release}/rendered-workload-release.yaml",
+        "infra/argocd/local-docker-desktop-support-assistant.yaml",
+        "infra/argocd/workloads-project.yaml",
+        "scripts/environment/argocd-application.sh",
+        "scripts/environment/argocd-bootstrap.sh",
+        "scripts/environment/lib.sh",
+        "contracts/environment/examples/valid/local-docker-desktop.yaml",
+        "tools/gitops_desired_state/core.py",
+        "tools/desired_state_provenance/core.py",
+        "tools/reconciliation_evidence/core.py",
+        "src/inferops/api/__init__.py",
+    ):
+        assert path in pinned, path
+
+
+def test_revision_three_accounts_for_every_file_changed_since_revision_two() -> None:
+    document = load(R3)
+    changes = document["changesSinceSupersededRevision"]
+    rows = changes["files"]
+    paths = [row["path"] for row in rows]
+    assert paths == sorted(set(paths))
+    assert re.fullmatch(r"[0-9a-f]{40}", changes["from"])
+    prepared = document["fields"]["gitRevision"][0]["value"]["preparedFrom"]
+    assert changes["to"] == prepared
+    pinned = {item["path"] for item in document["pinnedInputs"]}
+    in_scope = [row for row in rows if row["inScope"]]
+    assert changes["counts"] == {
+        "files": len(rows),
+        "added": sum(1 for row in rows if row["change"] == "added"),
+        "changed": sum(1 for row in rows if row["change"] == "changed"),
+        "deleted": 0,
+        "inScope": len(in_scope),
+        "outsideScope": len(rows) - len(in_scope),
+    }
+    revision_two = {item["path"] for item in load(R2)["pinnedInputs"]}
+    for row in rows:
+        assert isinstance(row["material"], bool), row["path"]
+        assert row["reason"].strip(), row["path"]
+        assert row["inScope"] == (row["path"] in pinned), row["path"]
+        assert row["material"] == row["inScope"], row["path"]
+        assert row["path"] not in revision_two, row["path"]
+        if not row["inScope"]:
+            assert row["category"].strip(), row["path"]
+
+
+def test_revision_three_registers_the_e01_d_path_steps_and_rules() -> None:
+    document = load(R3)
+    part = _part(document, "E01-D")
+    inputs = part["inputs"]
+    assert inputs["bindingName"] == "local-docker-desktop"
+    release = inputs["desiredStateRelease"]
+    assert release["directory"] == (
+        "gitops/environments/local-docker-desktop/workloads/support-assistant"
+    )
+    for key in ("releaseId", "helmValuesSha256", "contractSha256"):
+        assert re.fullmatch(r"[0-9a-f]{64}", release[key]), key
+    application = inputs["application"]
+    assert application["name"] == "local-docker-desktop-support-assistant"
+    assert application["targetRevision"] == "main"
+    assert application["valueFiles"] == [
+        f"/{release['directory']}/values.generated.yaml"
+    ]
+    assert inputs["operatorParameter"]["name"] == "api.image.digest"
+    request = inputs["request"]
+    assert (request["method"], request["path"]) == ("POST", "/v1/chat/completions")
+    assert request["count"] == 1
+    assert request["body"]["stream"] is False
+    assert [step["step"] for step in part["preparation"]] == [
+        f"P{n}" for n in range(1, 8)
+    ]
+    assert [step["step"] for step in part["procedure"]] == [
+        f"D{n}" for n in range(1, 7)
+    ]
+    frozen = _part(load(R2), "E01-D")["procedure"]
+    for index in (3, 4, 5):
+        assert part["procedure"][index]["frozenStep"] == frozen[index], index
+    commands = [c for step in part["procedure"] for c in step["commands"]]
+    applies = [c for c in commands if "argocd-application.sh apply" in c]
+    assert applies == [
+        "bash scripts/environment/argocd-application.sh apply "
+        "--api-image-digest <api-image-digest>"
+    ]
+    assert not any("--set" in c or c.startswith("helm ") for c in commands)
+    for criterion in ("E01-AC8", "E01-AC9", "E01-AC10"):
+        assert part["verification"][criterion], criterion
+    replaced = document["procedureChanges"]["changes"]
+    assert len(replaced) == 3
+    for change in replaced:
+        assert change["revision2"].strip() and change["why"].strip()
+    assert "with no parameter override" in replaced[0]["revision2"]
+
+
+def test_revision_three_keeps_the_history_and_discloses_the_earlier_cluster_runs() -> (
+    None
+):
+    before, after = load(R2), load(R3)
+    history = after["history"]
+    earlier = history["earlierHistory"]
+    assert earlier["priorRuns"] == before["history"]["priorRuns"]
+    assert earlier["previewEvidence"] == before["history"]["previewEvidence"]
+    assert [run["runId"] for run in history["priorRuns"]] == [
+        "20261002-e01-abc-1",
+        "20261003-e01-abc-1",
+    ]
+    assert history["priorRuns"][0] == before["history"]["priorRuns"][0]
+    runs = history["environmentRunsBeforeRegistration"]["runs"]
+    assert len(runs) == 3
+    for run in runs:
+        assert (REPO_ROOT / run["record"]).is_file(), run["record"]
+    assert "one returned no response" in runs[1]["what"]
+    classes = [c["class"] for c in after["definition"]["nonResultExecutions"]]
+    assert classes == [
+        "test-suite",
+        "committed-run-check",
+        "freeze-check",
+        "registration-calibration",
+        "environment-identity-read",
+        "environment-procedure-runs-before-registration",
+        "procedure-stub-tests",
+    ]
+    consumed = after["definition"]["staticResultConsumed"]
+    assert consumed["runId"] == "20261003-e01-abc-1"
+    assert consumed["freezeRevision"] == 2
+    assert (REPO_ROOT / consumed["run"]).is_file()
+    gate = after["definition"]["reviewGate"]
+    assert (REPO_ROOT / gate["notReused"].split(" ")[0]).is_file()
+
+
+def test_revision_three_says_that_no_runner_exists_for_e01_d() -> None:
+    definition = load(R3)["definition"]
+    limitations = " ".join(definition["limitations"])
+    assert "No runner and no coded analysis exist for E01-D" in limitations
+    assert "CURRENT_REVISION is 2" in limitations
+    assert "The API image digest is not in Git" in limitations
+    for item in load(R2)["definition"]["limitations"]:
+        assert item in definition["limitations"]

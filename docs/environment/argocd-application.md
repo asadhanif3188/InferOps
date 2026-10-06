@@ -260,7 +260,7 @@ paths share them.
 | Pruning | Disabled by decision | A bounded experiment that needs deletion to be reconciled |
 | A break-glass procedure | Self-heal reverts a manual change. [The boundary for a manual change](reconciliation-evidence.md#the-boundary-for-a-manual-change) is stated, and it decides no mechanism | A decision on how an operator suspends reconciliation |
 | The acquisition job within its memory limit on Kubernetes v1.36.1 | On 2026-10-05, one preparation that copies the artifact from a seed image failed with `BackoffLimitExceeded`. The operator read the pod by hand and saw the container stopped as `OOMKilled` at the chart's limit of 128Mi. [The record of the runs](../proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md) holds what was kept. The same preparation completed twice at a limit of 2Gi, and the Application's own job completed after it in both runs. The cause was not investigated | An investigation, and a chart change under a freeze revision |
-| The first experiment's real-deployment part | It runs under its own frozen revision | A freeze revision that names this Application and the desired-state path |
+| The first experiment's real-deployment part | It runs under its own frozen revision. Since 2026-10-06 [freeze revision 3](../proof/experiments/v2-e01/freeze-r3.v1alpha1.json) names this Application and the desired-state path. The part has not run | A run under the merged revision, on the environment that it names |
 
 ## What this does not establish
 
