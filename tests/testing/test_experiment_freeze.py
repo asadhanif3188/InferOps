@@ -45,6 +45,7 @@ from typing import Any
 import pytest
 import yaml
 
+from tests.support.e01_pinned_runner import copy_pinned_input
 from tools.experiment_freeze import (
     ALWAYS_ANSWERED,
     FREEZE_FIELDS,
@@ -793,9 +794,9 @@ def pinned_root(tmp_path: Path) -> Path:
     """A root holding the E01 record and a copy of every input it pins."""
     document = load()
     for item in document["pinnedInputs"]:
-        target = tmp_path / item["path"]
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(REPO_ROOT / item["path"], target)
+        # The runner is written in its pinned content. The runner in the tree
+        # differs from its pin by the committed-run listing.
+        copy_pinned_input(REPO_ROOT, item["path"], tmp_path / item["path"])
     shutil.copytree(
         REPO_ROOT / "docs" / "proof" / "experiments",
         tmp_path / "docs" / "proof" / "experiments",

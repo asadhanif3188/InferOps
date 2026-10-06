@@ -1,0 +1,770 @@
+{
+    "apiVersion": "argoproj.io/v1alpha1",
+    "kind": "Application",
+    "metadata": {
+        "annotations": {
+            "inferops.io/argocd-application-manifest-sha256": "42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd"
+        },
+        "creationTimestamp": "2026-10-06T12:12:55Z",
+        "generation": 18,
+        "labels": {
+            "inferops.io/lifecycle": "reconciliation"
+        },
+        "name": "local-docker-desktop-support-assistant",
+        "namespace": "argocd",
+        "resourceVersion": "51735",
+        "uid": "f81804c8-f6ba-4772-bd75-903d6daaa746"
+    },
+    "spec": {
+        "destination": {
+            "namespace": "inferops-release",
+            "server": "https://kubernetes.default.svc"
+        },
+        "project": "inferops-workloads",
+        "source": {
+            "helm": {
+                "parameters": [
+                    {
+                        "name": "api.image.digest",
+                        "value": "sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+                    }
+                ],
+                "releaseName": "inferops",
+                "valueFiles": [
+                    "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+                ],
+                "valuesObject": {
+                    "api": {
+                        "image": {
+                            "pullPolicy": "Never",
+                            "repository": "localhost/inferops-api"
+                        }
+                    },
+                    "model": {
+                        "acquisition": {
+                            "enabled": true,
+                            "source": "download"
+                        },
+                        "alias": "qwen3-1.7b-q8_0",
+                        "cache": {
+                            "mountPath": "/models",
+                            "readOnly": true
+                        },
+                        "integrity": {
+                            "verifyOnStart": "sha256"
+                        },
+                        "license": {
+                            "spdx": "Apache-2.0"
+                        }
+                    },
+                    "runtime": {
+                        "image": {
+                            "pullPolicy": "IfNotPresent"
+                        }
+                    },
+                    "telemetry": {
+                        "collection": {
+                            "collector": {
+                                "deploy": true
+                            }
+                        },
+                        "scrapeAnnotations": true
+                    }
+                }
+            },
+            "path": "charts/inferops-llm",
+            "repoURL": "https://github.com/asadhanif3188/InferOps.git",
+            "targetRevision": "main"
+        },
+        "syncPolicy": {
+            "automated": {
+                "prune": false,
+                "selfHeal": true
+            }
+        }
+    },
+    "status": {
+        "controllerNamespace": "argocd",
+        "health": {
+            "lastTransitionTime": "2026-10-06T12:13:37Z",
+            "status": "Healthy"
+        },
+        "history": [
+            {
+                "deployStartedAt": "2026-10-06T12:13:07Z",
+                "deployedAt": "2026-10-06T12:13:16Z",
+                "id": 0,
+                "initiatedBy": {
+                    "automated": true
+                },
+                "revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+                "source": {
+                    "helm": {
+                        "parameters": [
+                            {
+                                "name": "api.image.digest",
+                                "value": "sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+                            }
+                        ],
+                        "releaseName": "inferops",
+                        "valueFiles": [
+                            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+                        ],
+                        "valuesObject": {
+                            "api": {
+                                "image": {
+                                    "pullPolicy": "Never",
+                                    "repository": "localhost/inferops-api"
+                                }
+                            },
+                            "model": {
+                                "acquisition": {
+                                    "enabled": true,
+                                    "source": "download"
+                                },
+                                "alias": "qwen3-1.7b-q8_0",
+                                "cache": {
+                                    "mountPath": "/models",
+                                    "readOnly": true
+                                },
+                                "integrity": {
+                                    "verifyOnStart": "sha256"
+                                },
+                                "license": {
+                                    "spdx": "Apache-2.0"
+                                }
+                            },
+                            "runtime": {
+                                "image": {
+                                    "pullPolicy": "IfNotPresent"
+                                }
+                            },
+                            "telemetry": {
+                                "collection": {
+                                    "collector": {
+                                        "deploy": true
+                                    }
+                                },
+                                "scrapeAnnotations": true
+                            }
+                        }
+                    },
+                    "path": "charts/inferops-llm",
+                    "repoURL": "https://github.com/asadhanif3188/InferOps.git",
+                    "targetRevision": "main"
+                }
+            }
+        ],
+        "operationState": {
+            "finishedAt": "2026-10-06T12:13:16Z",
+            "message": "successfully synced (all tasks run)",
+            "operation": {
+                "initiatedBy": {
+                    "automated": true
+                },
+                "retry": {
+                    "limit": 5
+                },
+                "sync": {
+                    "revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+                    "source": {
+                        "helm": {
+                            "parameters": [
+                                {
+                                    "name": "api.image.digest",
+                                    "value": "sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+                                }
+                            ],
+                            "releaseName": "inferops",
+                            "valueFiles": [
+                                "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+                            ],
+                            "valuesObject": {
+                                "api": {
+                                    "image": {
+                                        "pullPolicy": "Never",
+                                        "repository": "localhost/inferops-api"
+                                    }
+                                },
+                                "model": {
+                                    "acquisition": {
+                                        "enabled": true,
+                                        "source": "download"
+                                    },
+                                    "alias": "qwen3-1.7b-q8_0",
+                                    "cache": {
+                                        "mountPath": "/models",
+                                        "readOnly": true
+                                    },
+                                    "integrity": {
+                                        "verifyOnStart": "sha256"
+                                    },
+                                    "license": {
+                                        "spdx": "Apache-2.0"
+                                    }
+                                },
+                                "runtime": {
+                                    "image": {
+                                        "pullPolicy": "IfNotPresent"
+                                    }
+                                },
+                                "telemetry": {
+                                    "collection": {
+                                        "collector": {
+                                            "deploy": true
+                                        }
+                                    },
+                                    "scrapeAnnotations": true
+                                }
+                            }
+                        },
+                        "path": "charts/inferops-llm",
+                        "repoURL": "https://github.com/asadhanif3188/InferOps.git",
+                        "targetRevision": "main"
+                    }
+                }
+            },
+            "phase": "Succeeded",
+            "startedAt": "2026-10-06T12:13:07Z",
+            "syncResult": {
+                "resources": [
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "hookType": "PreSync",
+                        "kind": "ServiceAccount",
+                        "message": "inferops-inferops-llm-model-acquisition created",
+                        "name": "inferops-inferops-llm-model-acquisition",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "PreSync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "batch",
+                        "hookPhase": "Succeeded",
+                        "hookType": "PreSync",
+                        "images": [
+                            "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
+                        ],
+                        "kind": "Job",
+                        "message": "Reached expected number of succeeded pods",
+                        "name": "inferops-inferops-llm-model-acquisition",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "PreSync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "networking.k8s.io",
+                        "hookPhase": "Running",
+                        "kind": "NetworkPolicy",
+                        "message": "networkpolicy.networking.k8s.io/inferops-inferops-llm-default-deny created",
+                        "name": "inferops-inferops-llm-default-deny",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "networking.k8s.io",
+                        "hookPhase": "Running",
+                        "kind": "NetworkPolicy",
+                        "message": "networkpolicy.networking.k8s.io/inferops-inferops-llm-release-test created",
+                        "name": "inferops-inferops-llm-release-test",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "networking.k8s.io",
+                        "hookPhase": "Running",
+                        "kind": "NetworkPolicy",
+                        "message": "networkpolicy.networking.k8s.io/inferops-inferops-llm-model-acquisition created",
+                        "name": "inferops-inferops-llm-model-acquisition",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "networking.k8s.io",
+                        "hookPhase": "Running",
+                        "kind": "NetworkPolicy",
+                        "message": "networkpolicy.networking.k8s.io/inferops-inferops-llm-collector created",
+                        "name": "inferops-inferops-llm-collector",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "networking.k8s.io",
+                        "hookPhase": "Running",
+                        "kind": "NetworkPolicy",
+                        "message": "networkpolicy.networking.k8s.io/inferops-inferops-llm-runtime created",
+                        "name": "inferops-inferops-llm-runtime",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "networking.k8s.io",
+                        "hookPhase": "Running",
+                        "kind": "NetworkPolicy",
+                        "message": "networkpolicy.networking.k8s.io/inferops-inferops-llm-api created",
+                        "name": "inferops-inferops-llm-api",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "ServiceAccount",
+                        "message": "serviceaccount/inferops-inferops-llm-api created",
+                        "name": "inferops-inferops-llm-api",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "ServiceAccount",
+                        "message": "serviceaccount/inferops-inferops-llm-collector created",
+                        "name": "inferops-inferops-llm-collector",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "ServiceAccount",
+                        "message": "serviceaccount/inferops-inferops-llm-runtime created",
+                        "name": "inferops-inferops-llm-runtime",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "ConfigMap",
+                        "message": "configmap/inferops-inferops-llm-collector-configuration created",
+                        "name": "inferops-inferops-llm-collector-configuration",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "ConfigMap",
+                        "message": "configmap/inferops-inferops-llm-telemetry-scrape created",
+                        "name": "inferops-inferops-llm-telemetry-scrape",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "ConfigMap",
+                        "message": "configmap/inferops-inferops-llm-configuration created",
+                        "name": "inferops-inferops-llm-configuration",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "rbac.authorization.k8s.io",
+                        "hookPhase": "Running",
+                        "kind": "Role",
+                        "message": "role.rbac.authorization.k8s.io/inferops-inferops-llm-collector reconciled. reconciliation required create\n\tmissing rules added:\n\t\t{Verbs:[get list watch] APIGroups:[] Resources:[pods] ResourceNames:[] NonResourceURLs:[]}role.rbac.authorization.k8s.io/inferops-inferops-llm-collector configured. Warning: resource roles/inferops-inferops-llm-collector is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by  apply.  apply should only be used on resources created declaratively by either  create --save-config or  apply. The missing annotation will be patched automatically.",
+                        "name": "inferops-inferops-llm-collector",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "rbac.authorization.k8s.io",
+                        "hookPhase": "Running",
+                        "kind": "RoleBinding",
+                        "message": "rolebinding.rbac.authorization.k8s.io/inferops-inferops-llm-collector reconciled. reconciliation required create\n\tmissing subjects added:\n\t\t{Kind:ServiceAccount APIGroup: Name:inferops-inferops-llm-collector Namespace:inferops-release}rolebinding.rbac.authorization.k8s.io/inferops-inferops-llm-collector configured. Warning: resource rolebindings/inferops-inferops-llm-collector is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by  apply.  apply should only be used on resources created declaratively by either  create --save-config or  apply. The missing annotation will be patched automatically.",
+                        "name": "inferops-inferops-llm-collector",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "Service",
+                        "message": "service/inferops-inferops-llm created",
+                        "name": "inferops-inferops-llm",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "Service",
+                        "message": "service/inferops-inferops-llm-runtime created",
+                        "name": "inferops-inferops-llm-runtime",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Running",
+                        "kind": "Service",
+                        "message": "service/inferops-inferops-llm-collector created",
+                        "name": "inferops-inferops-llm-collector",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Running",
+                        "images": [
+                            "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+                        ],
+                        "kind": "Deployment",
+                        "message": "deployment.apps/inferops-inferops-llm-runtime created",
+                        "name": "inferops-inferops-llm-runtime",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Running",
+                        "images": [
+                            "localhost/inferops-api@sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+                        ],
+                        "kind": "Deployment",
+                        "message": "deployment.apps/inferops-inferops-llm created",
+                        "name": "inferops-inferops-llm",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Running",
+                        "images": [
+                            "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+                        ],
+                        "kind": "Deployment",
+                        "message": "deployment.apps/inferops-inferops-llm-collector created",
+                        "name": "inferops-inferops-llm-collector",
+                        "namespace": "inferops-release",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    }
+                ],
+                "revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+                "source": {
+                    "helm": {
+                        "parameters": [
+                            {
+                                "name": "api.image.digest",
+                                "value": "sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+                            }
+                        ],
+                        "releaseName": "inferops",
+                        "valueFiles": [
+                            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+                        ],
+                        "valuesObject": {
+                            "api": {
+                                "image": {
+                                    "pullPolicy": "Never",
+                                    "repository": "localhost/inferops-api"
+                                }
+                            },
+                            "model": {
+                                "acquisition": {
+                                    "enabled": true,
+                                    "source": "download"
+                                },
+                                "alias": "qwen3-1.7b-q8_0",
+                                "cache": {
+                                    "mountPath": "/models",
+                                    "readOnly": true
+                                },
+                                "integrity": {
+                                    "verifyOnStart": "sha256"
+                                },
+                                "license": {
+                                    "spdx": "Apache-2.0"
+                                }
+                            },
+                            "runtime": {
+                                "image": {
+                                    "pullPolicy": "IfNotPresent"
+                                }
+                            },
+                            "telemetry": {
+                                "collection": {
+                                    "collector": {
+                                        "deploy": true
+                                    }
+                                },
+                                "scrapeAnnotations": true
+                            }
+                        }
+                    },
+                    "path": "charts/inferops-llm",
+                    "repoURL": "https://github.com/asadhanif3188/InferOps.git",
+                    "targetRevision": "main"
+                }
+            }
+        },
+        "reconciledAt": "2026-10-06T12:13:16Z",
+        "resourceHealthSource": "appTree",
+        "resources": [
+            {
+                "kind": "ConfigMap",
+                "name": "inferops-inferops-llm-collector-configuration",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "ConfigMap",
+                "name": "inferops-inferops-llm-configuration",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "ConfigMap",
+                "name": "inferops-inferops-llm-telemetry-scrape",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "inferops-inferops-llm",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "inferops-inferops-llm-collector",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "inferops-inferops-llm-runtime",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "ServiceAccount",
+                "name": "inferops-inferops-llm-api",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "ServiceAccount",
+                "name": "inferops-inferops-llm-collector",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "ServiceAccount",
+                "name": "inferops-inferops-llm-runtime",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "Deployment",
+                "name": "inferops-inferops-llm",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "Deployment",
+                "name": "inferops-inferops-llm-collector",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "Deployment",
+                "name": "inferops-inferops-llm-runtime",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "networking.k8s.io",
+                "kind": "NetworkPolicy",
+                "name": "inferops-inferops-llm-api",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "networking.k8s.io",
+                "kind": "NetworkPolicy",
+                "name": "inferops-inferops-llm-collector",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "networking.k8s.io",
+                "kind": "NetworkPolicy",
+                "name": "inferops-inferops-llm-default-deny",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "networking.k8s.io",
+                "kind": "NetworkPolicy",
+                "name": "inferops-inferops-llm-model-acquisition",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "networking.k8s.io",
+                "kind": "NetworkPolicy",
+                "name": "inferops-inferops-llm-release-test",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "networking.k8s.io",
+                "kind": "NetworkPolicy",
+                "name": "inferops-inferops-llm-runtime",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "inferops-inferops-llm-collector",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "rbac.authorization.k8s.io",
+                "kind": "RoleBinding",
+                "name": "inferops-inferops-llm-collector",
+                "namespace": "inferops-release",
+                "status": "Synced",
+                "version": "v1"
+            }
+        ],
+        "sourceHydrator": {},
+        "sourceType": "Helm",
+        "summary": {},
+        "sync": {
+            "comparedTo": {
+                "destination": {
+                    "namespace": "inferops-release",
+                    "server": "https://kubernetes.default.svc"
+                },
+                "source": {
+                    "helm": {
+                        "parameters": [
+                            {
+                                "name": "api.image.digest",
+                                "value": "sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+                            }
+                        ],
+                        "releaseName": "inferops",
+                        "valueFiles": [
+                            "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+                        ],
+                        "valuesObject": {
+                            "api": {
+                                "image": {
+                                    "pullPolicy": "Never",
+                                    "repository": "localhost/inferops-api"
+                                }
+                            },
+                            "model": {
+                                "acquisition": {
+                                    "enabled": true,
+                                    "source": "download"
+                                },
+                                "alias": "qwen3-1.7b-q8_0",
+                                "cache": {
+                                    "mountPath": "/models",
+                                    "readOnly": true
+                                },
+                                "integrity": {
+                                    "verifyOnStart": "sha256"
+                                },
+                                "license": {
+                                    "spdx": "Apache-2.0"
+                                }
+                            },
+                            "runtime": {
+                                "image": {
+                                    "pullPolicy": "IfNotPresent"
+                                }
+                            },
+                            "telemetry": {
+                                "collection": {
+                                    "collector": {
+                                        "deploy": true
+                                    }
+                                },
+                                "scrapeAnnotations": true
+                            }
+                        }
+                    },
+                    "path": "charts/inferops-llm",
+                    "repoURL": "https://github.com/asadhanif3188/InferOps.git",
+                    "targetRevision": "main"
+                }
+            },
+            "revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+            "status": "Synced"
+        }
+    }
+}

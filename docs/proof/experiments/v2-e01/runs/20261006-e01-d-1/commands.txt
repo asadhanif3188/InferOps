@@ -1,0 +1,126 @@
+# 0. Start: the date and the tool versions
+date -u +%Y-%m-%dT%H:%M:%SZ
+kubectl version --client -o json
+helm version --short
+terraform version
+docker version --format {{.Client.Version}} {{.Server.Version}}
+uv --version
+uv run --locked python --version
+git --version
+
+# P1. The executing commit, the working tree, and the remote
+git rev-parse HEAD
+git status --porcelain --untracked-files=all
+git ls-remote origin refs/heads/main
+
+# P2. The freeze records and the material files of revision 3
+uv run --locked python -m tools.experiment_freeze --check
+uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json
+sha256sum docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json docs/proof/experiments/registry.v1alpha1.json
+
+# P3. The provider and the environment identity
+export INFEROPS_PROVIDER=docker-desktop
+kubectl --context docker-desktop version -o json > .artifacts/e01-d/20261006-e01-d-1.raw/version.json
+kubectl --context docker-desktop get nodes -o json > .artifacts/e01-d/20261006-e01-d-1.raw/nodes.json
+kubectl --context docker-desktop get storageclasses -o json > .artifacts/e01-d/20261006-e01-d-1.raw/storageclasses.json
+kubectl --context docker-desktop get namespaces -o name > .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.txt
+cat .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.txt
+kubectl --context docker-desktop get customresourcedefinitions -o name > .artifacts/e01-d/20261006-e01-d-1.raw/crds.txt
+cat .artifacts/e01-d/20261006-e01-d-1.raw/crds.txt
+# inline Python of the driver: compare the reads with fields.environmentIdentity of docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json, and write docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/environment.json
+
+# P4. The API image at the executing commit, and the model seed image
+bash scripts/environment/api-image.sh build
+bash scripts/environment/api-image.sh load
+bash scripts/environment/api-image.sh digest
+bash scripts/environment/model-seed-image.sh build
+bash scripts/environment/model-seed-image.sh load
+bash scripts/environment/model-seed-image.sh digest
+
+# P5. The platform namespace and the model cache claim
+bash scripts/environment/terraform-prerequisites.sh apply
+
+# P6. Fill the claim from the seed image with one preparation Helm release, and remove that release
+bash scripts/environment/api-image.sh values > .artifacts/api-image-values.yaml
+bash scripts/environment/model-seed-image.sh values > .artifacts/model-seed-values.yaml
+helm --kube-context docker-desktop install inferops charts/inferops-llm --namespace inferops-release --values charts/inferops-llm/ci/real-values.yaml --values .artifacts/api-image-values.yaml --values .artifacts/model-seed-values.yaml --set model.acquisition.resources.limits.memory=2Gi --wait --timeout 15m
+helm --kube-context docker-desktop uninstall inferops --namespace inferops-release --wait --timeout 600s
+kubectl --context docker-desktop get deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings -n inferops-release -l app.kubernetes.io/instance=inferops -o name
+#   repeated every 2 seconds, at most 120 times, until it prints nothing
+
+# P7. Install Argo CD with the bootstrap procedure, and verify it
+bash scripts/environment/argocd-bootstrap.sh install
+bash scripts/environment/argocd-bootstrap.sh verify
+
+# D1. Derive the release at the executing commit, and compare it with the committed release
+uv run --locked python -m tools.gitops_desired_state --check
+
+# D2. The release in the executing commit
+git ls-tree HEAD gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+sha256sum gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+# inline Python of the driver: write docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/release.json from git ls-tree HEAD and the SHA-256 of the two files
+
+# D3. Apply the project and the Application, and compare the live objects with the committed manifests
+date -u +%Y-%m-%dT%H:%M:%SZ
+bash scripts/environment/argocd-application.sh apply --api-image-digest sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+bash scripts/environment/argocd-application.sh verify
+kubectl --context docker-desktop get applications.argoproj.io local-docker-desktop-support-assistant -n argocd -o jsonpath={.status.operationState.syncResult.revision}
+
+# D4. Wait for the two rollouts, with one deadline, and request the readiness endpoint once
+kubectl --context docker-desktop rollout status deployment/inferops-inferops-llm-runtime -n inferops-release --timeout=584s
+kubectl --context docker-desktop rollout status deployment/inferops-inferops-llm -n inferops-release --timeout=583s
+kubectl --context docker-desktop get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name} phase={.status.phase} component={.metadata.labels.app\.kubernetes\.io/component}{"\n"}{end}
+kubectl --context docker-desktop port-forward service/inferops-inferops-llm 18104:8090 -n inferops-release  (in the background)
+cat .artifacts/e01-d/20261006-e01-d-1.forward.log
+mkdir -p .artifacts/e01-d
+curl --silent --show-error --max-time 30 --output .artifacts/e01-d/20261006-e01-d-1.ready-response.txt --write-out %{http_code} http://127.0.0.1:18104/health/ready
+cat .artifacts/e01-d/20261006-e01-d-1.ready-response.txt
+
+# D5. One completion request, through the same port-forward. No retry
+date -u +%Y-%m-%dT%H:%M:%SZ
+curl --silent --show-error --max-time 300 --header Content-Type: application/json --data {"model":"qwen3-1-7b-q8-0","messages":[{"role":"user","content":"Reply with the single word: ready"}],"stream":false} --output .artifacts/e01-d/20261006-e01-d-1.completion-response.json --write-out %{http_code} http://127.0.0.1:18104/v1/chat/completions
+# inline Python of the driver: write docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/completion.json from the response file and the status. The generated text is not kept
+
+# D6. The Application, the pods, the reconciliation record, and the provenance of the reported commit
+date -u +%Y-%m-%dT%H:%M:%SZ
+kubectl --context docker-desktop get applications.argoproj.io local-docker-desktop-support-assistant -n argocd -o json > docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json
+kubectl --context docker-desktop get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o json > docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/pods.json
+bash scripts/environment/argocd-application.sh observe --samples 5 --interval 2 --into 20261006-e01-d-1-steady
+uv run --locked python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/20261006-e01-d-1-steady > docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/reconciliation.record.json
+uv run --locked python -m tools.desired_state_provenance --revision ad725905a7838e8210e54a29de7913bc0c7c49e5 local-docker-desktop/support-assistant > docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json
+cat docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json
+uv run --locked pytest tests/architecture/test_argocd_application.py -k hand_written_values
+
+# Cleanup 1. Stop the port-forward
+
+# Cleanup 2. verify once more, before the removal
+bash scripts/environment/argocd-application.sh verify
+
+# Cleanup 3. Remove the Application and its project
+bash scripts/environment/argocd-application.sh remove --confirm
+kubectl --context docker-desktop get deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings -n inferops-release -l app.kubernetes.io/instance=inferops -o name
+kubectl --context docker-desktop get deployments -n inferops-release -o name
+
+# Cleanup 4. Remove Argo CD
+bash scripts/environment/argocd-bootstrap.sh remove --confirm
+
+# Cleanup 5. Remove the platform namespace and the model cache claim
+bash scripts/environment/terraform-prerequisites.sh destroy --confirm
+
+# Cleanup 6. The cluster after the run, compared with what step P3 found
+kubectl --context docker-desktop get namespaces -o name > .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.after.txt
+cat .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.after.txt
+kubectl --context docker-desktop get customresourcedefinitions -o name > .artifacts/e01-d/20261006-e01-d-1.raw/crds.after.txt
+cat .artifacts/e01-d/20261006-e01-d-1.raw/crds.after.txt
+diff .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.txt .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.after.txt
+diff .artifacts/e01-d/20261006-e01-d-1.raw/crds.txt .artifacts/e01-d/20261006-e01-d-1.raw/crds.after.txt
+
+# Cleanup 7. Git: no change except the new evidence directory
+git rev-parse HEAD
+git status --porcelain --untracked-files=all
+
+# Cleanup 8. The images that stay, and the end
+docker image ls --format {{.Repository}}:{{.Tag}} {{.ID}} localhost/inferops-api
+docker image ls --format {{.Repository}}:{{.Tag}} {{.ID}} localhost/inferops-model-seed
+sha256sum docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/completion.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/environment.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/pods.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/reconciliation.record.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/release.json
+date -u +%Y-%m-%dT%H:%M:%SZ

@@ -1,0 +1,388 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRun",
+  "metadata": {
+    "runId": "20261006-e01-d-1",
+    "experiment": "V2-E01",
+    "parts": [
+      "E01-D"
+    ],
+    "freezeRecord": "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json",
+    "freezeRevision": 3,
+    "freezeContentSha256": "b4aa013dc482a8f536395c094ab76dc2b753e04d7c139a4b0cadf17c672da739",
+    "registry": "docs/proof/experiments/registry.v1alpha1.json",
+    "registryContentSha256": "9da8814c91b8817a2e27e94c7cc0d6addc7a9a54f4e278ac7baf69f24fcb38bc",
+    "hashing": "freezeContentSha256 and registryContentSha256 are the SHA-256 of the file's bytes with every CRLF replaced by LF. Each digest under files is the SHA-256 of the file's bytes, which hold LF only.",
+    "startedAt": "2026-10-06T12:03:47Z",
+    "finishedAt": "2026-10-06T12:15:17Z",
+    "intendedEvidenceLevel": "C2"
+  },
+  "executingRevision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+  "preconditions": {
+    "mergedRef": "origin/main",
+    "remoteMain": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+    "remoteMainNamesTheExecutingCommit": true,
+    "workingTreeStatusBeforeTheRun": [],
+    "freezeCheck": "PASSED: 3 freeze record(s), every rule held",
+    "freezeChanges": "UNCHANGED: every material file of docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json matches its material scope",
+    "recordRegistered": true,
+    "environmentEqualsTheFrozenIdentity": true,
+    "everyPreparationStepExitedZero": true,
+    "findings": []
+  },
+  "executionIdentity": {
+    "executedFrom": "The checked-out tree at the executing commit. Each procedure, tool, manifest, and chart file that the steps name was read from that tree.",
+    "driver": "driver.txt. It ran from .artifacts/e01-d/, which Git ignores, so the working tree was clean in step P1.",
+    "environment": "environment.json",
+    "toolVersions": {
+      "dockerEngine": "29.8.1",
+      "helm": "v3.19.0+g3d8990f",
+      "hostOperatingSystem": "MINGW64_NT-10.0-26200",
+      "kubectlClient": "v1.36.1",
+      "python": "Python 3.12.12",
+      "terraform": "Terraform v1.15.8",
+      "uv": "uv 0.9.16 (a63e5b62e 2025-12-06)",
+      "git": "git version 2.45.1.windows.1"
+    },
+    "apiImage": {
+      "reference": "localhost/inferops-api",
+      "digest": "sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd",
+      "builtBy": "scripts/environment/api-image.sh build, in step P4, at the executing commit. Every layer of the build was taken from the build cache."
+    },
+    "modelSeedImage": {
+      "reference": "localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "digest": "sha256:1e4d76bcf7bc7c056de3c6dc1dd40ca1e9878cdb505c8436e7832f56934f3a0f",
+      "builtBy": "scripts/environment/model-seed-image.sh build, in step P4. Every layer of the build was taken from the build cache."
+    },
+    "argoReportedRevision": {
+      "status.sync.revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+      "status.operationState.syncResult.revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5"
+    }
+  },
+  "steps": {
+    "preparation": "P1 to P7 each ended with exit status 0. Step P6 repeated its residue query 5 times before it printed nothing.",
+    "D1": {
+      "exitStatus": 0
+    },
+    "D2": {
+      "evidence": "release.json"
+    },
+    "D3": {
+      "applyStartedAt": "2026-10-06T12:12:45Z",
+      "applyReturnedAt": "2026-10-06T12:13:19Z",
+      "applyExitStatus": 0,
+      "verifyExitStatus": 0,
+      "parametersSupplied": [
+        "api.image.digest"
+      ]
+    },
+    "D4": {
+      "deadlineSecondsAfterTheApplyReturned": 600,
+      "rolloutTimeouts": {
+        "runtime": "584s",
+        "api": "583s"
+      },
+      "rolloutsEndedAt": "2026-10-06T12:13:37Z",
+      "secondsFromApplyReturnToBothRollouts": 18,
+      "readinessHttpStatus": "200",
+      "readinessRequests": 1,
+      "addedWait": "Before the readiness request, the driver waited at most 30 seconds until the port-forward printed that it listened. The freeze record registers no such wait."
+    },
+    "D5": {
+      "evidence": "completion.json",
+      "requestsSent": 1,
+      "retries": 0
+    },
+    "D6": {
+      "evidence": [
+        "argo.json",
+        "pods.json",
+        "reconciliation.record.json",
+        "provenance.json"
+      ],
+      "observation": {
+        "samples": 5,
+        "samplesSettled": 5,
+        "resolvedRevisions": [
+          "ad725905a7838e8210e54a29de7913bc0c7c49e5"
+        ]
+      },
+      "pytest": "3 passed, 33 deselected"
+    }
+  },
+  "abortChecks": {
+    "conditions": [],
+    "statement": "No abort condition of the freeze record was met. Argo CD reported the executing commit. The run observed no download of the model artifact, and no registered step reads for one."
+  },
+  "cleanup": {
+    "verifyBeforeRemovalExitStatus": 0,
+    "applicationRemoveExitStatus": 0,
+    "objectsWithTheReleaseLabelAfterRemoval": 0,
+    "deploymentsInTheNamespaceAfterRemoval": 0,
+    "bootstrapRemoveExitStatus": 0,
+    "prerequisitesDestroyExitStatus": 0,
+    "namespacesEqualStepP3": true,
+    "customResourceDefinitionsEqualStepP3": true,
+    "gitStatusAfterTheRun": "Only the files of this evidence directory, untracked.",
+    "left": [
+      "localhost/inferops-api@sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd, in the node and on the host",
+      "localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077, in the node and on the host",
+      "the runtime image, the collector image, the init image, and the Argo CD images, in the node"
+    ]
+  },
+  "postRunObservations": [
+    {
+      "what": "The API container's image identity",
+      "inTheRun": {
+        "podSpecImage": "localhost/inferops-api@sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd",
+        "containerStatusImage": "localhost/inferops-api:dev",
+        "containerStatusImageID": "localhost/inferops-api@sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd",
+        "evidence": "pods.json"
+      },
+      "afterTheRun": {
+        "readAt": "2026-10-06, after the cleanup",
+        "command": "docker exec desktop-control-plane crictl inspecti -o json localhost/inferops-api@sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd",
+        "imageId": "sha256:1205e5a16bdabc784cf57b0df95c4f2ee5701298db3f368f0ad2a111252c799c",
+        "repoDigests": [
+          "localhost/inferops-api@sha256:8d2b578c4322238734890a0424a2733f6f3269a0a5d54706c8664e9f49a222cd",
+          "localhost/inferops-api@sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+        ]
+      },
+      "statement": "The pod requested the digest that the run supplied. The container status names another digest of the same repository. After the run, the node's image store listed both digests for one image identifier, and that identifier is the configuration digest that the build of step P4 exported. The earlier digest is of a build before this run, which the node still held. This read is not a registered step, and its output is not in the transcript.",
+      "bearing": "No E01-D criterion names the API image digest. The rule of E01-AC10 compares the parameter on the Application with the digest of step P4, and they are equal."
+    }
+  ],
+  "files": {
+    "argo.json": "e5c042a7359a7bf984e79c05c904fe58ad279f9dafc37954d93e97facf328066",
+    "commands.txt": "bc46d8a9f47a1a1b82a3f3d0174551ea1f0f7c3a456fad54c66b35877139f9df",
+    "completion.json": "5e9bbba7949207295ddbe943a060b5fff372b56712326f40c96911f443d501a4",
+    "driver.txt": "ba5217262ab935dc647db024ff722996dda773563feb20b70563799bc521c194",
+    "environment.json": "a0aeee1f5a9fbc0df301d05309ad80923da54c9d1102bdf0e7de603dd4d3f56f",
+    "pods.json": "3858e4f490af8caafde76330631558de516f846e4099fe1ca4e882c2b1de6c40",
+    "provenance.json": "8308936d9f14e20ccbabf7b77cb213aac584b6144b68455f805649a41b34f2b6",
+    "reconciliation.record.json": "635aa69243c142bcc855fe0cf30ee1edb149f7cf2a27c177cdbdc0754578c9f6",
+    "release.json": "83df1557fb7e66b4fb40edae21db1e3169562e423effe3671f6a21b9e50d11c2",
+    "transcript.txt": "2462159aae0b04a80dc2f7a8daa40eaa19427678dc4cb176233fa643e78fba8f"
+  },
+  "criteria": [
+    {
+      "id": "E01-AC8",
+      "statement": "The release rendered from the unmodified reference contract, accepted into Git and reconciled by Argo CD, produces at least one real successful completion: HTTP 200, with at least one choice whose assistant message is not empty.",
+      "holds": true,
+      "rules": [
+        {
+          "rule": "completion.json records HTTP status 200 for the one request of step D5.",
+          "holds": true,
+          "observed": {
+            "httpStatus": "200",
+            "curlExitStatus": 0,
+            "requestsSent": 1
+          },
+          "evidence": [
+            "completion.json",
+            "transcript.txt"
+          ]
+        },
+        {
+          "rule": "The response holds at least one choice, and the assistant message of the first choice has a length greater than 0.",
+          "holds": true,
+          "observed": {
+            "choiceCount": 1,
+            "firstChoiceMessageRole": "assistant",
+            "assistantMessageLength": 6
+          },
+          "evidence": [
+            "completion.json"
+          ]
+        },
+        {
+          "rule": "The release that served it is the one of steps D1 to D3: the rules of E01-AC9 hold.",
+          "holds": true,
+          "observed": {
+            "E01-AC9": true
+          },
+          "evidence": [
+            "the rules of E01-AC9 in this manifest"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E01-AC9",
+      "statement": "The deployed identities verify against the release: the desired-state revision Argo CD reports as synced holds the generated release; the release records the contract, binding, and values digests, and they match their sources and the values file; the running runtime container's image digest is the generated runtime.image.digest; the model revision the runtime reads is the generated model.revision; and the API serves the model under the generated model.identifier.",
+      "holds": true,
+      "rules": [
+        {
+          "rule": "Synced revision: in argo.json, status.sync.status is Synced, status.sync.revision is the executing commit, and status.operationState.phase is Succeeded with status.operationState.syncResult.revision equal to the executing commit.",
+          "holds": true,
+          "observed": {
+            "status.sync.status": "Synced",
+            "status.sync.revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+            "status.operationState.phase": "Succeeded",
+            "status.operationState.syncResult.revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+            "executingCommit": "ad725905a7838e8210e54a29de7913bc0c7c49e5"
+          },
+          "evidence": [
+            "argo.json"
+          ]
+        },
+        {
+          "rule": "Generated release at that revision: provenance.json, resolved from that commit, gives the releaseId and the values digest that this record names under inputs.desiredStateRelease.",
+          "holds": true,
+          "observed": {
+            "resolvedFrom": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+            "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+            "valuesSha256": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce",
+            "frozenReleaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+            "frozenHelmValuesSha256": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce"
+          },
+          "evidence": [
+            "provenance.json"
+          ]
+        },
+        {
+          "rule": "Recorded digests: step D1 exits 0, so the release's contract, binding, and values digests are the ones its sources and its values file derive. The SHA-256 that release.json records for values.generated.yaml equals the values digest that this record names under inputs.desiredStateRelease.",
+          "holds": true,
+          "observed": {
+            "stepD1ExitStatus": 0,
+            "valuesGeneratedSha256": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce",
+            "frozenHelmValuesSha256": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce"
+          },
+          "evidence": [
+            "release.json",
+            "transcript.txt"
+          ]
+        },
+        {
+          "rule": "Runtime image: in pods.json, the imageID that the status of the container named runtime reports ends with the generated runtime.image.digest, sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384.",
+          "holds": true,
+          "observed": {
+            "runtimeContainerImageID": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+            "generatedRuntimeImageDigest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+          },
+          "evidence": [
+            "pods.json"
+          ]
+        },
+        {
+          "rule": "Model revision: in pods.json, the model volume mount of the runtime container has a subPath that ends with the generated model.revision, 90862c4b9d2787eaed51d12237eafdfe7c5f6077, and the init container verify-model terminated with exit code 0.",
+          "holds": true,
+          "observed": {
+            "modelVolumeMountSubPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+            "generatedModelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+            "verifyModelExitCode": 0
+          },
+          "evidence": [
+            "pods.json"
+          ]
+        },
+        {
+          "rule": "Model identifier: completion.json records a response whose model is the generated model.identifier, qwen3-1-7b-q8-0.",
+          "holds": true,
+          "observed": {
+            "responseModel": "qwen3-1-7b-q8-0",
+            "generatedModelIdentifier": "qwen3-1-7b-q8-0"
+          },
+          "evidence": [
+            "completion.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E01-AC10",
+      "statement": "No claim-relevant workload intent is written by hand after rendering: no hand-written value and no operator-supplied parameter of the release restates or overrides claim-relevant workload intent; the release takes its values from the generated values file, from the hand-written values of the Argo CD Application, and from one operator-supplied Helm parameter, api.image.digest, over the chart's own defaults, and from no other source; admit_manual_values admits those hand-written values, with that parameter, beside the generated values with no finding; and no string in them contains a workload-intent generated value of eight characters or more.",
+      "holds": true,
+      "rules": [
+        {
+          "rule": "Sources of values: in argo.json, spec.source.helm.valueFiles is exactly the one generated values file, spec.source.helm.valuesObject equals the valuesObject of the committed manifest, spec.source.helm.parameters is exactly one parameter named api.image.digest whose value is the digest of step P4, and spec.source.helm holds no other member than releaseName. Step D3's verify exits 0.",
+          "holds": true,
+          "observed": {
+            "valueFiles": [
+              "/gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+            ],
+            "valuesObjectEqualsCommittedManifest": true,
+            "parameters": [
+              {
+                "name": "api.image.digest",
+                "value": "sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+              }
+            ],
+            "digestOfStepP4": "sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd",
+            "membersOfSpecSourceHelm": [
+              "parameters",
+              "releaseName",
+              "valueFiles",
+              "valuesObject"
+            ],
+            "stepD3VerifyExitStatus": 0
+          },
+          "evidence": [
+            "argo.json",
+            "infra/argocd/local-docker-desktop-support-assistant.yaml at the executing commit",
+            "transcript.txt"
+          ]
+        },
+        {
+          "rule": "Admission: the three tests of tests/architecture/test_argocd_application.py that step D6 selects pass at the executing commit. They hold that the admission check returns no finding for the Application's hand-written values, that those values set no leaf that the generated values file holds, that they carry no API image digest, and that they equal the hand-written values fixture without its API image digest. No step runs the admission check over the hand-written values with the parameter merged in: the fixture is that shape, and the consumed static result admits it.",
+          "holds": true,
+          "observed": {
+            "pytestSummary": "3 passed, 33 deselected",
+            "pytestExitStatus": 0
+          },
+          "evidence": [
+            "transcript.txt, step D6"
+          ]
+        },
+        {
+          "rule": "Eight-character clause: the consumed static result holds, in E01-AC5, that the fixture with its digest is admitted with no finding and that no string in it contains a workload-intent generated value of eight characters or more. The Application's hand-written values with the parameter are that shape. No code computes the clause over the live Application.",
+          "holds": true,
+          "observed": {
+            "consumedStaticRun": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/run.v1alpha1.json",
+            "consumedOutcomeE01A": "PASSED",
+            "computedOverTheLiveApplication": false
+          },
+          "evidence": [
+            "the consumed static result that the freeze record names",
+            "transcript.txt, step D6"
+          ]
+        }
+      ]
+    }
+  ],
+  "outcomes": {
+    "E01-D": "PASSED"
+  },
+  "evidenceLevel": {
+    "level": "C2",
+    "statement": "A real cluster, Argo CD, the real runtime, and the real model served one completion. The evidence is bounded to the environment that environment.json records. It is not representative."
+  },
+  "limitations": [
+    "No runner and no coded analysis exist for E01-D. The automated assistant session that wrote the driver started it and applied the registered verification rules to the files. A script that is not committed compared the values. This manifest states each compared value, so a reader can compare them again from the files.",
+    "The driver is not a pinned input of the freeze record. driver.txt holds it as it ran.",
+    "The run sent one completion request. It does not establish that a second request is answered.",
+    "The run did not observe the network. It does not establish that the acquisition hook downloaded nothing. Argo CD reports that the sync operation, which holds the hook, started at 2026-10-06T12:13:07Z and finished at 2026-10-06T12:13:16Z.",
+    "The eight-character clause of E01-AC10 is not computed over the live Application. It rests on the consumed static result and on three tests.",
+    "The model revision is verified by configuration and by content. Nothing reads the revision from the model file.",
+    "The pod status reports the API container's image under another digest than the one the run supplied. postRunObservations states what a later read of the node showed. No E01-D criterion names the API image digest.",
+    "transcript.txt is the driver's output with three kinds of text replaced: terminal colour codes are removed, the absolute path of the repository on the host is replaced by <repository>, and two Docker build links are replaced by <build details link>. The unredacted transcript is not committed.",
+    "The response body and the readiness body are under .artifacts/, which Git ignores. They are not committed.",
+    "sha256sum in step P2 printed the digest of the working-tree bytes of the freeze record and of the registry. On this host those bytes hold CRLF. The content digests in this manifest are computed with every CRLF replaced by LF, as the registry defines them.",
+    "The times are the host's clock and the cluster's clock. No repository file proves them.",
+    "One provider, one cluster with one node, one contract, one binding, and one run."
+  ],
+  "doesNotEstablish": [
+    "Portability to another workload shape.",
+    "Asynchronous or batch support.",
+    "Reliability under failure.",
+    "Production readiness.",
+    "That the first run, 20261002-e01-abc-1, executed under this revision's execution boundary. It did not; history.priorRuns says why.",
+    "Behaviour on another provider, another Kubernetes version, another node count, or another storage class than the environment identity names.",
+    "That Argo CD applies a later commit of main. The run observes one commit.",
+    "A caller outcome from a sync state or a health state that Argo CD reports.",
+    "Latency, throughput, capacity, or availability.",
+    "That the acquisition hook downloads the model into an empty claim.",
+    "That a second request is answered. The run sends one."
+  ],
+  "judgedBy": "The automated assistant session that drove the run. It is not independent of the run. An independent review is a separate record under reviews/."
+}

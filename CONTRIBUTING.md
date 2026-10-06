@@ -527,9 +527,12 @@ revision 2 it also refuses to run unless the runner and the `inferops` package i
 are the checkout's own: run it from the merged checkout, never from a copy outside it, and
 do not run the parts anywhere else first - a preview is not exempt. The runner
 executes revision 2, not revision 3. Its `--check` reads every directory under `runs/`
-as a static run, so the change that commits an E01-D run must change that check. No
-runner exists for E01-D, so for it the precondition is still a procedure: a person
-follows the steps that revision 3 registers. Do not edit a
+as a static run, except a directory named as a run of E01-D, which it leaves out. That
+exception was made after the E01-D run, and it moved the runner, which revisions 2 and 3
+pin: the command above lists it, and a new run of any part does not start until a merged
+revision classifies it. No runner exists for E01-D, so for it the precondition is a
+procedure: a person follows the steps that revision 3 registers. E01-D ran once that
+way, and no command judges that run again. Do not edit a
 run's evidence after it is written; a new run takes a new identifier. Nothing refuses an
 edit by itself: `--check` finds one that leaves the files disagreeing with the manifest,
 and the evidence index finds an edit to any file the run's register record cites. Every

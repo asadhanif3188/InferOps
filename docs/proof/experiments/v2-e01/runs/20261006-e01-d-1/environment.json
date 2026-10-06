@@ -1,0 +1,140 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "customResourceDefinitions": [],
+  "defaultStorageClassCount": 1,
+  "everyAttributeEqual": true,
+  "freezeRecord": "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json",
+  "frozenRecordedPerRun": {
+    "dockerEngine": "29.8.1",
+    "helm": "v3.19.0",
+    "hostOperatingSystem": "Windows",
+    "kubectlClient": "v1.36.1",
+    "nodeCapacity": {
+      "cpu": "12",
+      "memory": "10186220Ki"
+    },
+    "nodeContainerRuntime": "containerd://2.3.1",
+    "nodeKernel": "6.18.40.1-microsoft-standard-WSL2",
+    "nodeOsImage": "Debian GNU/Linux 13 (trixie)",
+    "statement": "These were read on 2026-10-06. The run records each again. A difference here is recorded and is not a refusal.",
+    "terraform": "v1.15.8",
+    "uv": "0.9.16"
+  },
+  "howRead": "Read-only kubectl requests through the docker-desktop context, before any preparation step.",
+  "identityStepP3": [
+    {
+      "attribute": "provider.providerId",
+      "equal": true,
+      "frozen": "docker-desktop",
+      "read": "docker-desktop"
+    },
+    {
+      "attribute": "cluster.kubeContext",
+      "equal": true,
+      "frozen": "docker-desktop",
+      "read": "docker-desktop"
+    },
+    {
+      "attribute": "cluster.kubernetesServerVersion",
+      "equal": true,
+      "frozen": "v1.36.1",
+      "read": "v1.36.1"
+    },
+    {
+      "attribute": "nodes.count",
+      "equal": true,
+      "frozen": 1,
+      "read": 1
+    },
+    {
+      "attribute": "nodes.names",
+      "equal": true,
+      "frozen": [
+        "desktop-control-plane"
+      ],
+      "read": [
+        "desktop-control-plane"
+      ]
+    },
+    {
+      "attribute": "nodes.role",
+      "equal": true,
+      "frozen": "control-plane",
+      "read": "control-plane"
+    },
+    {
+      "attribute": "nodes.architecture",
+      "equal": true,
+      "frozen": "amd64",
+      "read": "amd64"
+    },
+    {
+      "attribute": "nodes.operatingSystem",
+      "equal": true,
+      "frozen": "linux",
+      "read": "linux"
+    },
+    {
+      "attribute": "nodes.taints",
+      "equal": true,
+      "frozen": "none",
+      "read": "none"
+    },
+    {
+      "attribute": "storage.defaultStorageClass",
+      "equal": true,
+      "frozen": "standard",
+      "read": "standard"
+    },
+    {
+      "attribute": "storage.provisioner",
+      "equal": true,
+      "frozen": "rancher.io/local-path",
+      "read": "rancher.io/local-path"
+    },
+    {
+      "attribute": "storage.reclaimPolicy",
+      "equal": true,
+      "frozen": "Delete",
+      "read": "Delete"
+    },
+    {
+      "attribute": "storage.volumeBindingMode",
+      "equal": true,
+      "frozen": "WaitForFirstConsumer",
+      "read": "WaitForFirstConsumer"
+    }
+  ],
+  "kind": "ExperimentEnvironmentRead",
+  "namespaces": [
+    "namespace/default",
+    "namespace/kube-node-lease",
+    "namespace/kube-public",
+    "namespace/kube-system",
+    "namespace/local-path-storage"
+  ],
+  "recordedPerRun": {
+    "nodeCapacity": {
+      "cpu": "12",
+      "memory": "10186220Ki"
+    },
+    "nodeContainerRuntime": "containerd://2.3.1",
+    "nodeKernel": "6.18.40.1-microsoft-standard-WSL2",
+    "nodeKubeletVersion": "v1.36.1",
+    "nodeOsImage": "Debian GNU/Linux 13 (trixie)",
+    "toolVersions": {
+      "dockerEngine": "29.8.1",
+      "helm": "v3.19.0+g3d8990f",
+      "hostOperatingSystem": "MINGW64_NT-10.0-26200",
+      "kubectlClient": "v1.36.1",
+      "python": "Python 3.12.12",
+      "terraform": "Terraform v1.15.8",
+      "uv": "uv 0.9.16 (a63e5b62e 2025-12-06)"
+    }
+  },
+  "step": "P3",
+  "storageClasses": [
+    "hostpath",
+    "standard"
+  ]
+}

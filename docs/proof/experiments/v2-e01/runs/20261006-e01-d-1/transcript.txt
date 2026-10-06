@@ -1,0 +1,1280 @@
+
+##### 0. Start: the date and the tool versions
+$ now
+2026-10-06T12:03:47Z
+[exit 0]
+$ kubectl version --client -o json
+{
+  "clientVersion": {
+    "major": "1",
+    "minor": "36",
+    "gitVersion": "v1.36.1",
+    "gitCommit": "756939600b9a7180fc2df6550a4585b638875e67",
+    "gitTreeState": "clean",
+    "buildDate": "2026-05-12T09:54:35Z",
+    "goVersion": "go1.26.2",
+    "compiler": "gc",
+    "platform": "windows/amd64"
+  },
+  "kustomizeVersion": "v5.8.1"
+}
+[exit 0]
+$ helm version --short
+v3.19.0+g3d8990f
+[exit 0]
+$ terraform version
+Terraform v1.15.8
+on windows_386
+
+Your version of Terraform is out of date! The latest version
+is 1.16.5. You can update by downloading from https://developer.hashicorp.com/terraform/install
+[exit 0]
+$ docker version --format {{.Client.Version}} {{.Server.Version}}
+29.8.1 29.8.1
+[exit 0]
+$ uv --version
+uv 0.9.16 (a63e5b62e 2025-12-06)
+[exit 0]
+$ uv run --locked python --version
+Python 3.12.12
+[exit 0]
+$ git --version
+git version 2.45.1.windows.1
+[exit 0]
+
+##### P1. The executing commit, the working tree, and the remote
+$ git rev-parse HEAD
+ad725905a7838e8210e54a29de7913bc0c7c49e5
+[exit 0]
+$ git status --porcelain --untracked-files=all
+[exit 0]
+$ git ls-remote origin refs/heads/main
+ad725905a7838e8210e54a29de7913bc0c7c49e5	refs/heads/main
+[exit 0]
+executing commit: ad725905a7838e8210e54a29de7913bc0c7c49e5
+remote main:      ad725905a7838e8210e54a29de7913bc0c7c49e5
+
+##### P2. The freeze records and the material files of revision 3
+$ uv run --locked python -m tools.experiment_freeze --check
+PASSED: 3 freeze record(s), every rule held
+[exit 0]
+$ uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json
+UNCHANGED: every material file of docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json matches its material scope
+[exit 0]
+$ sha256sum docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json docs/proof/experiments/registry.v1alpha1.json
+0beac04f4d4c2d03533e05fe382dc07c596199df7bbdb736147a2f9e3bf55d47 *docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json
+26b5d3f90b8755d7044613add3762af0b817e8c4d98a9b870d089ddfaca135ea *docs/proof/experiments/registry.v1alpha1.json
+[exit 0]
+
+##### P3. The provider and the environment identity
+$ export INFEROPS_PROVIDER=docker-desktop
+$ kubectl --context docker-desktop version -o json > .artifacts/e01-d/20261006-e01-d-1.raw/version.json
+[exit 0]
+$ kubectl --context docker-desktop get nodes -o json > .artifacts/e01-d/20261006-e01-d-1.raw/nodes.json
+[exit 0]
+$ kubectl --context docker-desktop get storageclasses -o json > .artifacts/e01-d/20261006-e01-d-1.raw/storageclasses.json
+[exit 0]
+$ kubectl --context docker-desktop get namespaces -o name > .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.txt
+[exit 0]
+$ cat .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.txt
+namespace/default
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+[exit 0]
+$ kubectl --context docker-desktop get customresourcedefinitions -o name > .artifacts/e01-d/20261006-e01-d-1.raw/crds.txt
+[exit 0]
+$ cat .artifacts/e01-d/20261006-e01-d-1.raw/crds.txt
+[exit 0]
+$ compare the reads with fields.environmentIdentity of docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json, and write docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/environment.json
+EQUAL     provider.providerId: frozen='docker-desktop' read='docker-desktop'
+EQUAL     cluster.kubeContext: frozen='docker-desktop' read='docker-desktop'
+EQUAL     cluster.kubernetesServerVersion: frozen='v1.36.1' read='v1.36.1'
+EQUAL     nodes.count: frozen=1 read=1
+EQUAL     nodes.names: frozen=['desktop-control-plane'] read=['desktop-control-plane']
+EQUAL     nodes.role: frozen='control-plane' read='control-plane'
+EQUAL     nodes.architecture: frozen='amd64' read='amd64'
+EQUAL     nodes.operatingSystem: frozen='linux' read='linux'
+EQUAL     nodes.taints: frozen='none' read='none'
+EQUAL     storage.defaultStorageClass: frozen='standard' read='standard'
+EQUAL     storage.provisioner: frozen='rancher.io/local-path' read='rancher.io/local-path'
+EQUAL     storage.reclaimPolicy: frozen='Delete' read='Delete'
+EQUAL     storage.volumeBindingMode: frozen='WaitForFirstConsumer' read='WaitForFirstConsumer'
+[exit 0]
+
+##### P4. The API image at the executing commit, and the model seed image
+$ bash scripts/environment/api-image.sh build
+
+[inferops] === docker build ===
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.84kB 0.0s done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2.70kB 0.0s done
+#3 DONE 0.0s
+
+#4 [1/6] FROM docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+#4 resolve docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 847.86kB 0.1s done
+#5 DONE 0.2s
+
+#6 [2/6] WORKDIR /opt/inferops
+#6 CACHED
+
+#7 [3/6] COPY src/inferops /opt/inferops/src/inferops
+#7 CACHED
+
+#8 [4/6] COPY tools/__init__.py /opt/inferops/tools/__init__.py
+#8 CACHED
+
+#9 [5/6] COPY tools/api_carrier /opt/inferops/tools/api_carrier
+#9 CACHED
+
+#10 [6/6] COPY tools/api_container /opt/inferops/tools/api_container
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers 0.0s done
+#11 exporting manifest sha256:569fac6d73f88600942469a7cd8ea9fef6bd74a0489346cc5eaf3cd0237c6a36 done
+#11 exporting config sha256:1205e5a16bdabc784cf57b0df95c4f2ee5701298db3f368f0ad2a111252c799c done
+#11 exporting attestation manifest sha256:c5823b027fdcc6ce7507a5ba8234a9fdc4bf2fb55f5089811b1a0970408efb80
+#11 exporting attestation manifest sha256:c5823b027fdcc6ce7507a5ba8234a9fdc4bf2fb55f5089811b1a0970408efb80 0.1s done
+#11 exporting manifest list sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd 0.0s done
+#11 naming to localhost/inferops-api:dev done
+#11 unpacking to localhost/inferops-api:dev 0.0s done
+#11 DONE 0.2s
+
+View build details: <build details link>
+[inferops] built localhost/inferops-api:dev
+[inferops] digest sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] load it into the cluster with: scripts/environment/api-image.sh load
+[exit 0]
+$ bash scripts/environment/api-image.sh load
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+localhost/inferops api:dev              	saved
+application/vnd.oci.image.index.v1+json sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+Importing	elapsed: 4.9 s	total:   0.0 B	(0.0 B/s)
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-api@sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd' resolves inside 'desktop-control-plane'.
+[inferops] the real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched.
+[exit 0]
+$ bash scripts/environment/api-image.sh digest
+sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[exit 0]
+API image digest of this run: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+$ bash scripts/environment/model-seed-image.sh build
+
+[inferops] === verify the artifact this image will carry ===
+[inferops] artifact verified: 1834426016 bytes, SHA-256 matches docs/serving/model-source.v1.json
+
+[inferops] === docker build ===
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.29kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+#2 DONE 2.6s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/2] FROM docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+#4 resolve docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 60.44MB 5.0s
+#5 transferring context: 117.95MB 10.1s
+#5 transferring context: 161.61MB 15.1s
+#5 transferring context: 204.12MB 20.2s
+#5 transferring context: 238.66MB 25.3s
+#5 transferring context: 277.76MB 30.4s
+#5 transferring context: 318.53MB 35.5s
+#5 transferring context: 359.27MB 40.5s
+#5 transferring context: 412.49MB 45.6s
+#5 transferring context: 458.51MB 50.6s
+#5 transferring context: 506.29MB 55.7s
+#5 transferring context: 550.83MB 60.8s
+#5 transferring context: 596.59MB 65.9s
+#5 transferring context: 639.29MB 71.1s
+#5 transferring context: 683.99MB 76.2s
+#5 transferring context: 738.86MB 81.2s
+#5 transferring context: 792.93MB 86.3s
+#5 transferring context: 848.32MB 91.4s
+#5 transferring context: 908.00MB 96.5s
+#5 transferring context: 968.28MB 101.7s
+#5 transferring context: 1.03GB 106.7s
+#5 transferring context: 1.09GB 111.8s
+#5 transferring context: 1.15GB 116.9s
+#5 transferring context: 1.20GB 122.0s
+#5 transferring context: 1.26GB 127.0s
+#5 transferring context: 1.32GB 132.1s
+#5 transferring context: 1.38GB 137.2s
+#5 transferring context: 1.44GB 142.2s
+#5 transferring context: 1.50GB 147.3s
+#5 transferring context: 1.56GB 152.4s
+#5 transferring context: 1.62GB 157.5s
+#5 transferring context: 1.68GB 162.6s
+#5 transferring context: 1.74GB 167.7s
+#5 transferring context: 1.80GB 172.8s
+#5 transferring context: 1.83GB 176.0s done
+#5 DONE 176.0s
+
+#6 [2/2] COPY . /seed/
+#6 CACHED
+
+#7 exporting to image
+#7 exporting layers done
+#7 exporting manifest sha256:36fa1601de51adf1a03c4bd08cb584160f7103f1ef59ba000fb1171bfa307657 done
+#7 exporting config sha256:a00dd9e2d610e32b4f34014837f2b94b70faac0b2f66fa1edd50bb7b065cfe46 done
+#7 exporting attestation manifest sha256:7c85cfae9e5fb90b400c3d6b45e3bdd0a1c0ab43755b71557fc6f39da05ac678
+#7 exporting attestation manifest sha256:7c85cfae9e5fb90b400c3d6b45e3bdd0a1c0ab43755b71557fc6f39da05ac678 0.0s done
+#7 exporting manifest list sha256:1e4d76bcf7bc7c056de3c6dc1dd40ca1e9878cdb505c8436e7832f56934f3a0f 0.0s done
+#7 naming to localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077 done
+#7 unpacking to localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077 0.0s done
+#7 DONE 0.1s
+
+View build details: <build details link>
+[inferops] built localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077
+[inferops] digest sha256:1e4d76bcf7bc7c056de3c6dc1dd40ca1e9878cdb505c8436e7832f56934f3a0f
+[exit 0]
+$ bash scripts/environment/model-seed-image.sh load
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+localhost/inferops model seed:90862c4b9d	saved
+application/vnd.oci.image.index.v1+json sha256:1e4d76bcf7bc7c056de3c6dc1dd40ca1e9878cdb505c8436e7832f56934f3a0f
+Importing	elapsed: 192.8s	total:   0.0 B	(0.0 B/s)
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-model-seed@sha256:1e4d76bcf7bc7c056de3c6dc1dd40ca1e9878cdb505c8436e7832f56934f3a0f' resolves inside 'desktop-control-plane'.
+[inferops] WARNING: this image carries 1834426016 bytes of model weights and now occupies that much inside the node as well as the claim it fills. Reclaiming it is the operator's operation on their own cluster, and it differs by provider: deleting a kind cluster reclaims both, and on Docker Desktop neither InferOps nor this project's cleanup removes the imported image -- what resetting Kubernetes in Docker Desktop's own settings reclaims has not been observed.
+[exit 0]
+$ bash scripts/environment/model-seed-image.sh digest
+sha256:1e4d76bcf7bc7c056de3c6dc1dd40ca1e9878cdb505c8436e7832f56934f3a0f
+[exit 0]
+
+##### P5. The platform namespace and the model cache claim
+$ bash scripts/environment/terraform-prerequisites.sh apply
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+[inferops] === terraform plan ===
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # module.platform_prerequisites.kubernetes_namespace_v1.platform will be created
+  + resource "kubernetes_namespace_v1" "platform" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "platform-namespace"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache will be created
+  + resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
+      + id               = (known after apply)
+      + wait_until_bound = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+              + "inferops.io/retention"                = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "model-cache-volume-claim"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-model-cache"
+          + namespace        = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + spec {
+          + access_modes       = [
+              + "ReadWriteOnce",
+            ]
+          + storage_class_name = (known after apply)
+          + volume_mode        = (known after apply)
+          + volume_name        = (known after apply)
+
+          + resources {
+              + requests = {
+                  + "storage" = "4Gi"
+                }
+            }
+        }
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + model_cache_claim_name      = "inferops-model-cache"
+  + model_cache_size            = "4Gi"
+  + namespace                   = "inferops-release"
+  + prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+<repository>\.artifacts\terraform\prerequisites.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "<repository>\\.artifacts\\terraform\\prerequisites.tfplan"
+
+[inferops] === terraform apply ===
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Creating...
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Creation complete after 0s [id=inferops-release]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Creating...
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Creation complete after 0s [id=inferops-release/inferops-model-cache]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+model_cache_claim_name = "inferops-model-cache"
+model_cache_size = "4Gi"
+namespace = "inferops-release"
+prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+[inferops] prerequisites applied. Install a release into them with scripts/environment/helm-lifecycle.sh; never pass a flag that would let Helm create this namespace.
+[exit 0]
+
+##### P6. Fill the claim from the seed image with one preparation Helm release, and remove that release
+$ bash scripts/environment/api-image.sh values > .artifacts/api-image-values.yaml
+[exit 0]
+$ bash scripts/environment/model-seed-image.sh values > .artifacts/model-seed-values.yaml
+[exit 0]
+$ helm --kube-context docker-desktop install inferops charts/inferops-llm --namespace inferops-release --values charts/inferops-llm/ci/real-values.yaml --values .artifacts/api-image-values.yaml --values .artifacts/model-seed-values.yaml --set model.acquisition.resources.limits.memory=2Gi --wait --timeout 15m
+NAME: inferops
+LAST DEPLOYED: Tue Oct  6 17:11:19 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 1
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+[exit 0]
+$ helm --kube-context docker-desktop uninstall inferops --namespace inferops-release --wait --timeout 600s
+release "inferops" uninstalled
+[exit 0]
+$ kubectl --context docker-desktop get deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings -n inferops-release -l app.kubernetes.io/instance=inferops -o name
+  repeated every 2 seconds, at most 120 times, until it prints nothing
+queries: 5. What the preparation release left: nothing
+
+##### P7. Install Argo CD with the bootstrap procedure, and verify it
+$ bash scripts/environment/argocd-bootstrap.sh install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] container runtime: containerd://2.3.1
+[inferops] node image digest: sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+[inferops] repository revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] procedure SHA-256: 9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] Kubernetes minor 1.36 is one upstream lists as tested with Argo CD v3.5.3.
+[inferops] no namespace 'argocd' and no Argo CD cluster-scoped object exists.
+[inferops] a copy with the pinned SHA-256 is already in .artifacts/argocd-bootstrap/; no download.
+[inferops] manifest SHA-256 is the pinned value: 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448
+
+[inferops] === Namespace ===
+namespace/argocd created
+
+[inferops] === Apply ===
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io serverside-applied
+serviceaccount/argocd-application-controller serverside-applied
+serviceaccount/argocd-applicationset-controller serverside-applied
+serviceaccount/argocd-redis serverside-applied
+serviceaccount/argocd-repo-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-redis serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+configmap/argocd-cm serverside-applied
+configmap/argocd-cmd-params-cm serverside-applied
+configmap/argocd-gpg-keys-cm serverside-applied
+configmap/argocd-rbac-cm serverside-applied
+configmap/argocd-ssh-known-hosts-cm serverside-applied
+configmap/argocd-tls-certs-cm serverside-applied
+secret/argocd-secret serverside-applied
+service/argocd-applicationset-controller serverside-applied
+service/argocd-metrics serverside-applied
+service/argocd-redis serverside-applied
+service/argocd-repo-server serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+[inferops] 34 objects applied by field manager 'inferops-argocd-bootstrap'.
+
+[inferops] === Rollout ===
+Waiting for deployment "argocd-applicationset-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-applicationset-controller" successfully rolled out
+Waiting for deployment "argocd-redis" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-redis" successfully rolled out
+Waiting for deployment "argocd-repo-server" rollout to finish: 0 of 1 updated replicas are available...
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Result ===
+[inferops] Argo CD v3.5.3 is installed in 'argocd' on provider 'docker-desktop'.
+[inferops] no Application exists, so it reconciles nothing.
+[exit 0]
+$ bash scripts/environment/argocd-bootstrap.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker and pin ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] container runtime: containerd://2.3.1
+[inferops] node image digest: sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+[inferops] repository revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] procedure SHA-256: 9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] the namespace carries inferops.io/lifecycle=bootstrap and records the pinned SHA-256.
+
+[inferops] === Objects ===
+[inferops] 5 cluster-scoped objects exist, as the record lists.
+[inferops] 29 namespaced objects exist in 'argocd', as the record lists.
+
+[inferops] === Rollout ===
+deployment "argocd-applicationset-controller" successfully rolled out
+deployment "argocd-redis" successfully rolled out
+deployment "argocd-repo-server" successfully rolled out
+partitioned roll out complete: 1 new pods have been updated...
+
+[inferops] === Images ===
+[inferops] container 'argocd-application-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-applicationset-controller' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'secret-init' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'redis' runs public.ecr.aws/docker/library/redis@sha256:08ad0b1d280850169a790dba1393ff7a90aef951fc19632cf4d3ce4f78e679ba
+[inferops] container 'copyutil' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] container 'argocd-repo-server' runs quay.io/argoproj/argocd@sha256:dd3f47d5a5e4da563a7a398506e892481b358a7cec50abdf320c71aa55904bfa
+[inferops] every container runs the pinned digest of its image at this moment. A pod that restarts later resolves the tag again.
+
+[inferops] === Secrets, Leases, and ConfigMaps in the namespace, by name ===
+secret/argocd-redis
+secret/argocd-secret
+configmap/argocd-cm
+configmap/argocd-cmd-params-cm
+configmap/argocd-gpg-keys-cm
+configmap/argocd-rbac-cm
+configmap/argocd-ssh-known-hosts-cm
+configmap/argocd-tls-certs-cm
+configmap/kube-root-ca.crt
+
+[inferops] === Custom resources ===
+[inferops] no Application, ApplicationSet, or AppProject object exists, so Argo CD reconciles nothing.
+
+[inferops] === Result ===
+[inferops] the installation in 'argocd' is the pinned Argo CD v3.5.3, and every container runs its pinned digest at this moment.
+[exit 0]
+
+##### D1. Derive the release at the executing commit, and compare it with the committed release
+$ uv run --locked python -m tools.gitops_desired_state --check
+OK       local-docker-desktop/support-assistant: gitops/environments/local-docker-desktop/workloads/support-assistant
+OK       the tree holds the declared releases and nothing else
+[exit 0]
+
+##### D2. The release in the executing commit
+$ git ls-tree HEAD gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+100644 blob 6cba7f21762b22db4261e384f872f029f5951cf8	gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+100644 blob 8b91bcea78749b6a08c2fd88c6b384e004ec77a8	gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml
+[exit 0]
+$ sha256sum gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce *gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml
+3e536096255fb920b37d077785de7350598bf482399a53a96027927f675ef406 *gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+[exit 0]
+$ write docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/release.json from git ls-tree HEAD and the SHA-256 of the two files
+[
+  {
+    "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+    "gitMode": "100644",
+    "gitObjectType": "blob",
+    "gitBlob": "8b91bcea78749b6a08c2fd88c6b384e004ec77a8",
+    "sha256": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce",
+    "bytes": 1409
+  },
+  {
+    "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+    "gitMode": "100644",
+    "gitObjectType": "blob",
+    "gitBlob": "6cba7f21762b22db4261e384f872f029f5951cf8",
+    "sha256": "3e536096255fb920b37d077785de7350598bf482399a53a96027927f675ef406",
+    "bytes": 993
+  }
+]
+[exit 0]
+
+##### D3. Apply the project and the Application, and compare the live objects with the committed manifests
+$ now
+2026-10-06T12:12:45Z
+[exit 0]
+$ bash scripts/environment/argocd-application.sh apply --api-image-digest sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] API image digest: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+[inferops] the namespace 'inferops-release' and the claim 'inferops-model-cache' exist.
+[inferops] no Helm release named 'inferops' is recorded in 'inferops-release'.
+[inferops] no other Application, ApplicationSet, or AppProject object exists.
+
+[inferops] === Apply ===
+appproject.argoproj.io/inferops-workloads serverside-applied
+application.argoproj.io/local-docker-desktop-support-assistant serverside-applied
+[inferops] the generation of the Application changed across the apply: 'none' to '1'. A comparison from before the apply is not accepted.
+
+[inferops] === Sync ===
+[inferops] desired revision: main, resolved by Argo CD to nothing yet
+[inferops] revision of the last sync operation: none, phase none
+[inferops] sync state: none
+[inferops] health state: none
+[inferops] last comparison with Git: none
+[inferops] API image digest that Argo CD compared: none
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] Argo CD has not compared the Application since the apply.
+[inferops] desired revision: main, resolved by Argo CD to nothing yet
+[inferops] revision of the last sync operation: none, phase none
+[inferops] sync state: none
+[inferops] health state: none
+[inferops] last comparison with Git: none
+[inferops] API image digest that Argo CD compared: none
+[inferops] API image digest of the last sync operation: none
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[inferops] Argo CD has not compared the Application since the apply.
+[inferops] desired revision: main, resolved by Argo CD to ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] revision of the last sync operation: ad725905a7838e8210e54a29de7913bc0c7c49e5, phase Succeeded
+[inferops] sync state: Synced
+[inferops] health state: Progressing
+[inferops] last comparison with Git: 2026-10-06T12:13:16Z
+[inferops] API image digest that Argo CD compared: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] API image digest of the last sync operation: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+
+[inferops] === Live objects ===
+[inferops] project: inferops-workloads
+[inferops] source repository: https://github.com/asadhanif3188/InferOps.git
+[inferops] followed revision: main
+[inferops] source path: charts/inferops-llm
+[inferops] destination server: https://kubernetes.default.svc
+[inferops] destination namespace: inferops-release
+[inferops] automated pruning: false
+[inferops] automated self-heal: true
+[inferops] finalizers:
+[inferops] API image digest on the live Application: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] the project records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live project is the committed one.
+[inferops] the Application records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live Application is the committed one.
+
+[inferops] === Result ===
+[inferops] Argo CD reports that it applied revision ad725905a7838e8210e54a29de7913bc0c7c49e5 of 'main' to 'inferops-release' on provider 'docker-desktop'.
+[inferops] This does not establish that the workload serves a request.
+[exit 0]
+The apply returned at 2026-10-06T12:13:19Z (epoch 1791288799).
+$ bash scripts/environment/argocd-application.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+[inferops] the project and the Application exist, and each carries inferops.io/lifecycle=reconciliation and a recorded manifest SHA-256.
+
+[inferops] === Live objects ===
+[inferops] project: inferops-workloads
+[inferops] source repository: https://github.com/asadhanif3188/InferOps.git
+[inferops] followed revision: main
+[inferops] source path: charts/inferops-llm
+[inferops] destination server: https://kubernetes.default.svc
+[inferops] destination namespace: inferops-release
+[inferops] automated pruning: false
+[inferops] automated self-heal: true
+[inferops] finalizers:
+[inferops] API image digest on the live Application: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] the project records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live project is the committed one.
+[inferops] the Application records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live Application is the committed one.
+
+[inferops] === What Argo CD reports ===
+[inferops] desired revision: main, resolved by Argo CD to ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] revision of the last sync operation: ad725905a7838e8210e54a29de7913bc0c7c49e5, phase Succeeded
+[inferops] sync state: Synced
+[inferops] health state: Progressing
+[inferops] last comparison with Git: 2026-10-06T12:13:16Z
+[inferops] API image digest that Argo CD compared: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] API image digest of the last sync operation: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+
+[inferops] === Workload objects in the destination namespace, by name ===
+deployment.apps/inferops-inferops-llm
+deployment.apps/inferops-inferops-llm-collector
+deployment.apps/inferops-inferops-llm-runtime
+replicaset.apps/inferops-inferops-llm-85d844cb98
+replicaset.apps/inferops-inferops-llm-collector-86bfc987cf
+replicaset.apps/inferops-inferops-llm-runtime-67b4856f9c
+pod/inferops-inferops-llm-85d844cb98-4jz77
+pod/inferops-inferops-llm-collector-86bfc987cf-5q5mp
+pod/inferops-inferops-llm-runtime-67b4856f9c-gqvbc
+service/inferops-inferops-llm
+service/inferops-inferops-llm-collector
+service/inferops-inferops-llm-runtime
+configmap/inferops-inferops-llm-collector-configuration
+configmap/inferops-inferops-llm-configuration
+configmap/inferops-inferops-llm-telemetry-scrape
+serviceaccount/inferops-inferops-llm-api
+serviceaccount/inferops-inferops-llm-collector
+serviceaccount/inferops-inferops-llm-runtime
+networkpolicy.networking.k8s.io/inferops-inferops-llm-api
+networkpolicy.networking.k8s.io/inferops-inferops-llm-collector
+networkpolicy.networking.k8s.io/inferops-inferops-llm-default-deny
+networkpolicy.networking.k8s.io/inferops-inferops-llm-model-acquisition
+networkpolicy.networking.k8s.io/inferops-inferops-llm-release-test
+networkpolicy.networking.k8s.io/inferops-inferops-llm-runtime
+role.rbac.authorization.k8s.io/inferops-inferops-llm-collector
+rolebinding.rbac.authorization.k8s.io/inferops-inferops-llm-collector
+
+[inferops] === Result ===
+[inferops] the live project and the live Application 'local-docker-desktop-support-assistant' have the committed spec: automated sync, self-heal, and no pruning.
+[inferops] This does not establish that the workload serves a request.
+[exit 0]
+$ kubectl --context docker-desktop get applications.argoproj.io local-docker-desktop-support-assistant -n argocd -o jsonpath={.status.operationState.syncResult.revision}
+[exit 0]
+The revision that Argo CD reports that it applied: ad725905a7838e8210e54a29de7913bc0c7c49e5
+
+##### D4. Wait for the two rollouts, with one deadline, and request the readiness endpoint once
+The deadline is epoch 1791289399: 600 seconds after the apply returned.
+seconds that remain to the deadline: 584
+$ k rollout status deployment/inferops-inferops-llm-runtime -n inferops-release --timeout=584s
+Waiting for deployment "inferops-inferops-llm-runtime" rollout to finish: 0 of 1 updated replicas are available...
+deployment "inferops-inferops-llm-runtime" successfully rolled out
+[exit 0]
+seconds that remain to the deadline: 583
+$ k rollout status deployment/inferops-inferops-llm -n inferops-release --timeout=583s
+Waiting for deployment "inferops-inferops-llm" rollout to finish: 0 of 1 updated replicas are available...
+deployment "inferops-inferops-llm" successfully rolled out
+[exit 0]
+The rollouts ended at 2026-10-06T12:13:37Z (epoch 1791288817), 18 seconds after the apply returned: complete.
+$ k get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name} phase={.status.phase} component={.metadata.labels.app\.kubernetes\.io/component}{"\n"}{end}
+inferops-inferops-llm-85d844cb98-4jz77 phase=Running component=platform-api
+inferops-inferops-llm-collector-86bfc987cf-5q5mp phase=Running component=telemetry-collector
+inferops-inferops-llm-runtime-67b4856f9c-gqvbc phase=Running component=serving-runtime
+[exit 0]
+$ kubectl --context docker-desktop port-forward service/inferops-inferops-llm 18104:8090 -n inferops-release  (in the background)
+$ cat .artifacts/e01-d/20261006-e01-d-1.forward.log
+Forwarding from 127.0.0.1:18104 -> 8090
+Forwarding from [::1]:18104 -> 8090
+[exit 0]
+$ mkdir -p .artifacts/e01-d
+[exit 0]
+$ curl --silent --show-error --max-time 30 --output .artifacts/e01-d/20261006-e01-d-1.ready-response.txt --write-out %{http_code} http://127.0.0.1:18104/health/ready
+200
+[exit 0]
+$ cat .artifacts/e01-d/20261006-e01-d-1.ready-response.txt
+{"status":"ready","adapterKind":"real","state":"serving"}[exit 0]
+
+
+##### D5. One completion request, through the same port-forward. No retry
+$ now
+2026-10-06T12:13:39Z
+[exit 0]
+$ curl --silent --show-error --max-time 300 --header Content-Type: application/json --data {"model":"qwen3-1-7b-q8-0","messages":[{"role":"user","content":"Reply with the single word: ready"}],"stream":false} --output .artifacts/e01-d/20261006-e01-d-1.completion-response.json --write-out %{http_code} http://127.0.0.1:18104/v1/chat/completions
+200
+[exit 0]
+$ write docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/completion.json from the response file and the status. The generated text is not kept
+{
+  "httpStatus": "200",
+  "curlExitStatus": 0,
+  "response": {
+    "bodyState": "json-object",
+    "bodyBytes": 502,
+    "model": "qwen3-1-7b-q8-0",
+    "object": "chat.completion",
+    "choiceCount": 1,
+    "firstChoice": {
+      "finishReason": "stop",
+      "messageRole": "assistant",
+      "assistantMessageLength": 6
+    },
+    "usage": {
+      "prompt_tokens": 19,
+      "completion_tokens": 3,
+      "total_tokens": 22
+    },
+    "topLevelMembers": [
+      "choices",
+      "created",
+      "id",
+      "model",
+      "object",
+      "usage",
+      "x_inferops"
+    ]
+  }
+}
+[exit 0]
+
+##### D6. The Application, the pods, the reconciliation record, and the provenance of the reported commit
+$ now
+2026-10-06T12:13:41Z
+[exit 0]
+$ kubectl --context docker-desktop get applications.argoproj.io local-docker-desktop-support-assistant -n argocd -o json > docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json
+[exit 0]
+$ kubectl --context docker-desktop get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o json > docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/pods.json
+[exit 0]
+$ bash scripts/environment/argocd-application.sh observe --samples 5 --interval 2 --into 20261006-e01-d-1-steady
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Observation ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] samples: 5, one every 2s, into .artifacts/argocd-application/observations/20261006-e01-d-1-steady
+[inferops] sample 1 of 5 at 2026-10-06T12:13:48Z: Application read answered, object read answered
+[inferops] sample 2 of 5 at 2026-10-06T12:13:51Z: Application read answered, object read answered
+[inferops] sample 3 of 5 at 2026-10-06T12:13:53Z: Application read answered, object read answered
+[inferops] sample 4 of 5 at 2026-10-06T12:13:56Z: Application read answered, object read answered
+[inferops] sample 5 of 5 at 2026-10-06T12:13:58Z: Application read answered, object read answered
+
+[inferops] === Result ===
+[inferops] 5 sample(s) were written into .artifacts/argocd-application/observations/20261006-e01-d-1-steady. This operation judged none of them.
+[inferops] A read that is recorded as unanswered returned no state. It is not a healthy state.
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+[exit 0]
+$ uv run --locked python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/20261006-e01-d-1-steady > docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/reconciliation.record.json
+[exit 0]
+The commit that Argo CD reports in status.sync.revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+$ uv run --locked python -m tools.desired_state_provenance --revision ad725905a7838e8210e54a29de7913bc0c7c49e5 local-docker-desktop/support-assistant > docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json
+[exit 0]
+$ cat docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json
+[
+  {
+    "chart": {
+      "appVersion": "0.1.0",
+      "name": "inferops-llm",
+      "path": "charts/inferops-llm",
+      "version": "0.3.0"
+    },
+    "desiredState": {
+      "directory": "gitops/environments/local-docker-desktop/workloads/support-assistant",
+      "key": "local-docker-desktop/support-assistant",
+      "releasePath": "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+      "valuesPath": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+    },
+    "git": {
+      "revision": "ad725905a7838e8210e54a29de7913bc0c7c49e5"
+    },
+    "release": {
+      "contractSha256": "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d",
+      "environmentBinding": {
+        "environment": "local",
+        "name": "local-docker-desktop",
+        "sha256": "afaabe71a3b8cd83f4b19dd076341b611a184b02c8ad7a4eb0ed3e16054f1251"
+      },
+      "platformDefaultsRevision": "c056b9772a3de391fd61589649b1d3ed1c5ac7c4",
+      "releaseId": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae",
+      "rendererRevision": "c056b9772a3de391fd61589649b1d3ed1c5ac7c4",
+      "valuesSha256": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce",
+      "workloadId": "support-assistant",
+      "workloadVersion": "0.1.0"
+    },
+    "schema": "inferops.io/desired-state-provenance/v1alpha1",
+    "workloadLabels": {
+      "app.kubernetes.io/version": "0.1.0",
+      "helm.sh/chart": "inferops-llm-0.3.0",
+      "inferops.io/workload": "support-assistant"
+    }
+  }
+]
+[exit 0]
+$ uv run --locked pytest tests/architecture/test_argocd_application.py -k hand_written_values
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-8.4.2, pluggy-1.6.0
+rootdir: <repository>
+configfile: pytest.ini
+plugins: asyncio-0.24.0
+asyncio: mode=Mode.AUTO, default_loop_scope=None
+collected 36 items / 33 deselected / 3 selected
+
+tests\architecture\test_argocd_application.py ...                        [100%]
+
+====================== 3 passed, 33 deselected in 0.40s =======================
+[exit 0]
+
+##### Cleanup 1. Stop the port-forward
+The port-forward was stopped.
+
+##### Cleanup 2. verify once more, before the removal
+$ bash scripts/environment/argocd-application.sh verify
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Marker ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+[inferops] the project and the Application exist, and each carries inferops.io/lifecycle=reconciliation and a recorded manifest SHA-256.
+
+[inferops] === Live objects ===
+[inferops] project: inferops-workloads
+[inferops] source repository: https://github.com/asadhanif3188/InferOps.git
+[inferops] followed revision: main
+[inferops] source path: charts/inferops-llm
+[inferops] destination server: https://kubernetes.default.svc
+[inferops] destination namespace: inferops-release
+[inferops] automated pruning: false
+[inferops] automated self-heal: true
+[inferops] finalizers:
+[inferops] API image digest on the live Application: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] the project records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live project is the committed one.
+[inferops] the Application records the SHA-256 of the committed manifest.
+[inferops] the whole spec of the live Application is the committed one.
+
+[inferops] === What Argo CD reports ===
+[inferops] desired revision: main, resolved by Argo CD to ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] revision of the last sync operation: ad725905a7838e8210e54a29de7913bc0c7c49e5, phase Succeeded
+[inferops] sync state: Synced
+[inferops] health state: Healthy
+[inferops] last comparison with Git: 2026-10-06T12:13:16Z
+[inferops] API image digest that Argo CD compared: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] API image digest of the last sync operation: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+[inferops] These are the states that Argo CD reports. They are not a caller outcome.
+
+[inferops] === Workload objects in the destination namespace, by name ===
+deployment.apps/inferops-inferops-llm
+deployment.apps/inferops-inferops-llm-collector
+deployment.apps/inferops-inferops-llm-runtime
+replicaset.apps/inferops-inferops-llm-85d844cb98
+replicaset.apps/inferops-inferops-llm-collector-86bfc987cf
+replicaset.apps/inferops-inferops-llm-runtime-67b4856f9c
+pod/inferops-inferops-llm-85d844cb98-4jz77
+pod/inferops-inferops-llm-collector-86bfc987cf-5q5mp
+pod/inferops-inferops-llm-runtime-67b4856f9c-gqvbc
+service/inferops-inferops-llm
+service/inferops-inferops-llm-collector
+service/inferops-inferops-llm-runtime
+configmap/inferops-inferops-llm-collector-configuration
+configmap/inferops-inferops-llm-configuration
+configmap/inferops-inferops-llm-telemetry-scrape
+serviceaccount/inferops-inferops-llm-api
+serviceaccount/inferops-inferops-llm-collector
+serviceaccount/inferops-inferops-llm-runtime
+networkpolicy.networking.k8s.io/inferops-inferops-llm-api
+networkpolicy.networking.k8s.io/inferops-inferops-llm-collector
+networkpolicy.networking.k8s.io/inferops-inferops-llm-default-deny
+networkpolicy.networking.k8s.io/inferops-inferops-llm-model-acquisition
+networkpolicy.networking.k8s.io/inferops-inferops-llm-release-test
+networkpolicy.networking.k8s.io/inferops-inferops-llm-runtime
+role.rbac.authorization.k8s.io/inferops-inferops-llm-collector
+rolebinding.rbac.authorization.k8s.io/inferops-inferops-llm-collector
+
+[inferops] === Result ===
+[inferops] the live project and the live Application 'local-docker-desktop-support-assistant' have the committed spec: automated sync, self-heal, and no pruning.
+[inferops] This does not establish that the workload serves a request.
+[exit 0]
+
+##### Cleanup 3. Remove the Application and its project
+$ bash scripts/environment/argocd-application.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] repository revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] procedure SHA-256: dc35b9ac0e81d0ae94456c7e50bfec7450e987a138632e90dc13d46e0830f0a3
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] project manifest SHA-256: 34048090184f9bb3721b823266e1be3d0478b331ca4e66c15a0948a4742dfc39
+[inferops] Application manifest SHA-256: 42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd
+[inferops] the namespace 'argocd' carries the bootstrap marker and records manifest SHA-256 1a87025d8eb2eae621653fd312fb9ca51df1b4b3b6992a030e3a9ef38e45c448.
+
+[inferops] === Deleting the Application, with a cascade ===
+Warning: metadata.finalizers: "resources-finalizer.argocd.argoproj.io": prefer a domain-qualified finalizer name including a path (/) to avoid accidental conflicts with other finalizer writers
+application.argoproj.io/local-docker-desktop-support-assistant patched
+application.argoproj.io "local-docker-desktop-support-assistant" deleted from argocd namespace
+
+[inferops] === Workload residue ===
+[inferops] no object carrying 'app.kubernetes.io/instance=inferops' remains in 'inferops-release'.
+
+[inferops] === Deleting the project ===
+appproject.argoproj.io "inferops-workloads" deleted from argocd namespace
+
+[inferops] === Prerequisites ===
+[inferops] the namespace 'inferops-release' and its claims are unchanged: persistentvolumeclaim/inferops-model-cache
+
+[inferops] === Result ===
+[inferops] no Application and no project of this procedure remains. The Argo CD installation, the namespace, and the claim were not touched.
+[exit 0]
+$ k get deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings -n inferops-release -l app.kubernetes.io/instance=inferops -o name
+[exit 0]
+$ k get deployments -n inferops-release -o name
+[exit 0]
+
+##### Cleanup 4. Remove Argo CD
+$ bash scripts/environment/argocd-bootstrap.sh remove --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Refusals ===
+[inferops] provider: docker-desktop
+[inferops] server version: v1.36.1
+[inferops] container runtime: containerd://2.3.1
+[inferops] node image digest: sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+[inferops] repository revision: ad725905a7838e8210e54a29de7913bc0c7c49e5
+[inferops] procedure SHA-256: 9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25
+[inferops] library SHA-256: b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+[inferops] no Application, ApplicationSet, or AppProject object exists (before the controllers stop).
+
+[inferops] === Stopping the controllers ===
+statefulset.apps "argocd-application-controller" deleted from argocd namespace
+deployment.apps "argocd-applicationset-controller" deleted from argocd namespace
+deployment.apps "argocd-redis" deleted from argocd namespace
+deployment.apps "argocd-repo-server" deleted from argocd namespace
+[inferops] no pod remains in 'argocd'.
+
+[inferops] === Second check ===
+[inferops] no Application, ApplicationSet, or AppProject object exists (after the controllers stopped).
+
+[inferops] === Deleting the cluster-scoped objects ===
+customresourcedefinition.apiextensions.k8s.io "applications.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "applicationsets.argoproj.io" deleted
+customresourcedefinition.apiextensions.k8s.io "appprojects.argoproj.io" deleted
+clusterrolebinding.rbac.authorization.k8s.io "argocd-application-controller" deleted
+clusterrole.rbac.authorization.k8s.io "argocd-application-controller" deleted
+
+[inferops] === Deleting the namespace ===
+namespace "argocd" deleted
+
+[inferops] === Residue ===
+
+[inferops] === Result ===
+[inferops] no Argo CD definition, cluster role, cluster role binding, or namespace 'argocd' remains.
+[inferops] the cluster, the platform namespace, and every release were not touched. Images that the node pulled stay in its image store.
+[exit 0]
+
+##### Cleanup 5. Remove the platform namespace and the model cache claim
+$ bash scripts/environment/terraform-prerequisites.sh destroy --confirm
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+[inferops] WARNING: terraform destroy removes the namespace 'inferops-release' and the model cache claim. Deleting a namespace cascades: anything still inside it goes too.
+[inferops] WARNING: This reclaims the model weights -- roughly 1.71 GiB -- and so does deleting the cluster, because the claim is backed by local-path storage inside the kind node container. The next release re-downloads them over a transport whose certificate this project does not validate.
+
+[inferops] === terraform destroy ===
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Refreshing state... [id=inferops-release]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Refreshing state... [id=inferops-release/inferops-model-cache]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  - destroy
+
+Terraform will perform the following actions:
+
+  # module.platform_prerequisites.kubernetes_namespace_v1.platform will be destroyed
+  - resource "kubernetes_namespace_v1" "platform" {
+      - id                               = "inferops-release" -> null
+      - wait_for_default_service_account = false -> null
+
+      - metadata {
+          - annotations      = {
+              - "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              - "inferops.io/removed-by"               = "terraform destroy"
+            } -> null
+          - generation       = 0 -> null
+          - labels           = {
+              - "app.kubernetes.io/component"  = "platform-namespace"
+              - "app.kubernetes.io/managed-by" = "Terraform"
+              - "app.kubernetes.io/part-of"    = "inferops"
+              - "inferops.io/lifecycle"        = "prerequisite"
+            } -> null
+          - name             = "inferops-release" -> null
+          - resource_version = "50967" -> null
+          - uid              = "c6f2de79-bc29-4d77-ac33-d8f511ba7c43" -> null
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache will be destroyed
+  - resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
+      - id               = "inferops-release/inferops-model-cache" -> null
+      - wait_until_bound = false -> null
+
+      - metadata {
+          - annotations      = {
+              - "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              - "inferops.io/removed-by"               = "terraform destroy"
+              - "inferops.io/retention"                = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
+            } -> null
+          - generation       = 0 -> null
+          - labels           = {
+              - "app.kubernetes.io/component"  = "model-cache-volume-claim"
+              - "app.kubernetes.io/managed-by" = "Terraform"
+              - "app.kubernetes.io/part-of"    = "inferops"
+              - "inferops.io/lifecycle"        = "prerequisite"
+            } -> null
+          - name             = "inferops-model-cache" -> null
+          - namespace        = "inferops-release" -> null
+          - resource_version = "51012" -> null
+          - uid              = "518be950-501a-4b76-a3d6-16c487f9e28f" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+      - spec {
+          - access_modes       = [
+              - "ReadWriteOnce",
+            ] -> null
+          - storage_class_name = "standard" -> null
+          - volume_mode        = "Filesystem" -> null
+          - volume_name        = "pvc-518be950-501a-4b76-a3d6-16c487f9e28f" -> null
+
+          - resources {
+              - limits   = {} -> null
+              - requests = {
+                  - "storage" = "4Gi"
+                } -> null
+            }
+        }
+    }
+
+Plan: 0 to add, 0 to change, 2 to destroy.
+
+Changes to Outputs:
+  - model_cache_claim_name      = "inferops-model-cache" -> null
+  - model_cache_size            = "4Gi" -> null
+  - namespace                   = "inferops-release" -> null
+  - prerequisite_label_selector = "inferops.io/lifecycle=prerequisite" -> null
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Destroying... [id=inferops-release/inferops-model-cache]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Destruction complete after 1s
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Destroying... [id=inferops-release]
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Destruction complete after 6s
+
+Destroy complete! Resources: 2 destroyed.
+[inferops] prerequisites destroyed. The cluster is untouched: removing it is scripts/environment/cluster-down.sh, and neither Terraform nor Helm may do it.
+[exit 0]
+
+##### Cleanup 6. The cluster after the run, compared with what step P3 found
+$ kubectl --context docker-desktop get namespaces -o name > .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.after.txt
+[exit 0]
+$ cat .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.after.txt
+namespace/default
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+[exit 0]
+$ kubectl --context docker-desktop get customresourcedefinitions -o name > .artifacts/e01-d/20261006-e01-d-1.raw/crds.after.txt
+[exit 0]
+$ cat .artifacts/e01-d/20261006-e01-d-1.raw/crds.after.txt
+[exit 0]
+$ diff .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.txt .artifacts/e01-d/20261006-e01-d-1.raw/namespaces.after.txt
+[exit 0]
+$ diff .artifacts/e01-d/20261006-e01-d-1.raw/crds.txt .artifacts/e01-d/20261006-e01-d-1.raw/crds.after.txt
+[exit 0]
+
+##### Cleanup 7. Git: no change except the new evidence directory
+$ git rev-parse HEAD
+ad725905a7838e8210e54a29de7913bc0c7c49e5
+[exit 0]
+$ git status --porcelain --untracked-files=all
+?? docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json
+?? docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/completion.json
+?? docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/environment.json
+?? docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/pods.json
+?? docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json
+?? docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/reconciliation.record.json
+?? docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/release.json
+[exit 0]
+
+##### Cleanup 8. The images that stay, and the end
+API image digest of this run: sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd
+Model seed image digest of this run: sha256:1e4d76bcf7bc7c056de3c6dc1dd40ca1e9878cdb505c8436e7832f56934f3a0f
+$ docker image ls --format {{.Repository}}:{{.Tag}} {{.ID}} localhost/inferops-api
+localhost/inferops-api:dev dfb772f2e0cc
+[exit 0]
+$ docker image ls --format {{.Repository}}:{{.Tag}} {{.ID}} localhost/inferops-model-seed
+localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077 1e4d76bcf7bc
+[exit 0]
+$ sha256sum docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/completion.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/environment.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/pods.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/reconciliation.record.json docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/release.json
+e5c042a7359a7bf984e79c05c904fe58ad279f9dafc37954d93e97facf328066 *docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json
+5e9bbba7949207295ddbe943a060b5fff372b56712326f40c96911f443d501a4 *docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/completion.json
+a0aeee1f5a9fbc0df301d05309ad80923da54c9d1102bdf0e7de603dd4d3f56f *docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/environment.json
+3858e4f490af8caafde76330631558de516f846e4099fe1ca4e882c2b1de6c40 *docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/pods.json
+8308936d9f14e20ccbabf7b77cb213aac584b6144b68455f805649a41b34f2b6 *docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json
+635aa69243c142bcc855fe0cf30ee1edb149f7cf2a27c177cdbdc0754578c9f6 *docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/reconciliation.record.json
+83df1557fb7e66b4fb40edae21db1e3169562e423effe3671f6a21b9e50d11c2 *docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/release.json
+[exit 0]
+$ now
+2026-10-06T12:15:17Z
+[exit 0]

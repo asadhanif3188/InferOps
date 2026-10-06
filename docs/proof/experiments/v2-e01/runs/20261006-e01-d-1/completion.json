@@ -1,0 +1,56 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "curlExitStatus": 0,
+  "endedAt": "2026-10-06T12:13:40Z",
+  "generatedTextKept": false,
+  "httpStatus": "200",
+  "kind": "ExperimentCompletionObservation",
+  "request": {
+    "body": {
+      "messages": [
+        {
+          "content": "Reply with the single word: ready",
+          "role": "user"
+        }
+      ],
+      "model": "qwen3-1-7b-q8-0",
+      "stream": false
+    },
+    "clientTimeoutSeconds": 300,
+    "count": 1,
+    "method": "POST",
+    "path": "/v1/chat/completions",
+    "retry": "None.",
+    "through": "A kubectl port-forward to port 8090 of the Service inferops-inferops-llm in the namespace inferops-release."
+  },
+  "requestsSent": 1,
+  "response": {
+    "bodyBytes": 502,
+    "bodyState": "json-object",
+    "choiceCount": 1,
+    "firstChoice": {
+      "assistantMessageLength": 6,
+      "finishReason": "stop",
+      "messageRole": "assistant"
+    },
+    "model": "qwen3-1-7b-q8-0",
+    "object": "chat.completion",
+    "topLevelMembers": [
+      "choices",
+      "created",
+      "id",
+      "model",
+      "object",
+      "usage",
+      "x_inferops"
+    ],
+    "usage": {
+      "completion_tokens": 3,
+      "prompt_tokens": 19,
+      "total_tokens": 22
+    }
+  },
+  "startedAt": "2026-10-06T12:13:39Z",
+  "statement": "The response file is under .artifacts/, which Git ignores. It is not committed. This file holds the length of the assistant message and not its text.",
+  "step": "D5"
+}

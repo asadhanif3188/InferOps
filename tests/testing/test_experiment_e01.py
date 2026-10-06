@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import copy
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -49,6 +50,11 @@ from typing import Any
 
 import pytest
 
+from tests.support.e01_pinned_runner import (
+    RUNNER,
+    copy_pinned_input,
+    pinned_runner_bytes,
+)
 from tools.experiment_e01 import (
     CRITERIA,
     CURRENT_REVISION,
@@ -73,12 +79,14 @@ from tools.experiment_e01 import (
 from tools.experiment_e01 import core as e01_core
 from tools.experiment_e01.__main__ import _shown
 from tools.experiment_e01.core import MANIFEST, REFUSALS, RESULT
-from tools.experiment_freeze import REGISTRY_PATH
+from tools.experiment_freeze import REGISTRY_PATH, changed_inputs, content_digest
 
 pytestmark = pytest.mark.docs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNS = committed_runs(REPO_ROOT)
+#: The one committed run of part E01-D. The runner's listing leaves it out.
+E01_D_RUN = "20261006-e01-d-1"
 #: The freeze revision the committed run was registered under.
 R1 = FREEZE_RECORDS[1]
 
@@ -102,6 +110,52 @@ def test_there_are_two_committed_runs_of_the_static_parts() -> None:
         "20261003-e01-abc-1",
     ]
     assert [_manifest(run)["metadata"]["freezeRevision"] for run in RUNS] == [1, 2]
+
+
+def test_the_run_of_the_real_deployment_is_not_listed_as_a_static_run() -> None:
+    """The runs directory holds one run of part E01-D. The listing leaves it out,
+    because this runner holds no analysis of that part. Nothing here judges it."""
+    held = sorted(path.name for path in (REPO_ROOT / RUNS_DIR).iterdir())
+    assert held == [*(run.name for run in RUNS), E01_D_RUN]
+
+
+def test_only_a_real_deployment_identifier_is_left_out(tmp_path: Path) -> None:
+    """A directory with any other name is still listed, so a misnamed static run is
+    checked and is not passed over."""
+    names = [
+        "20261006-e01-abc-1",
+        "20261006-e01-d-1",
+        "20261006-e01-d-12",
+        "20261006-e01-d-0",
+        "20261006-e01-d",
+        "x20261006-e01-d-1",
+        "20261006-e01-d-1-copy",
+    ]
+    for name in names:
+        (tmp_path / RUNS_DIR / name).mkdir(parents=True)
+    (tmp_path / RUNS_DIR / "20261006-e01-d-2").write_text("", encoding="utf-8")
+    assert [path.name for path in committed_runs(tmp_path)] == [
+        "20261006-e01-abc-1",
+        "20261006-e01-d",
+        "20261006-e01-d-0",
+        "20261006-e01-d-1-copy",
+        "x20261006-e01-d-1",
+    ]
+
+
+def test_the_runner_differs_from_its_pin_by_the_committed_run_listing_only() -> None:
+    """The listing changed after the E01-D run. The runner without that change has
+    the digest that revisions 2 and 3 pin, so the change is the only difference.
+    Both records therefore report the runner as changed, and a new run of any part
+    is refused until a later revision classifies the change."""
+    assert content_digest(pinned_runner_bytes(REPO_ROOT)) != content_digest(
+        (REPO_ROOT / RUNNER).read_bytes()
+    )
+    for revision in (2, 3):
+        path = f"docs/proof/experiments/v2-e01/freeze-r{revision}.v1alpha1.json"
+        record = json.loads((REPO_ROOT / path).read_text(encoding="utf-8"))
+        moved = {c.path: c.kind for c in changed_inputs(record, REPO_ROOT)}
+        assert moved.get(RUNNER) == "changed", revision
 
 
 @pytest.mark.parametrize("run", RUNS, ids=lambda run: run.name)
@@ -707,10 +761,12 @@ GOVERNANCE = (REGISTRY_PATH, *FREEZE_RECORDS.values())
 
 
 def _populate(root: Path) -> None:
+    """Copy the governance files and every pinned input. The runner is written in
+    the content the record pins: the runner in the tree differs from its pin by the
+    committed-run listing, and a run refuses a tree that holds a moved input."""
     freeze = load_freeze(REPO_ROOT)
     for relative in [*GOVERNANCE, *(pin["path"] for pin in freeze["pinnedInputs"])]:
-        (root / relative).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(REPO_ROOT / relative, root / relative)
+        copy_pinned_input(REPO_ROOT, relative, root / relative)
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", "-A")
     _git(root, "commit", "-q", "-m", "inputs")
@@ -1083,3 +1139,177 @@ def test_the_recorded_command_line_withholds_host_paths(
     argv: list[str], expected: str
 ) -> None:
     assert _shown(argv) == expected
+
+
+# --------------------------------------------------------------------------
+# The committed run of part E01-D
+# --------------------------------------------------------------------------
+#
+# No code judges this run. These tests hold the run's manifest to the files beside
+# it and to the freeze record it names. They do not derive a verdict again from the
+# cluster's output, and they do not show that the cluster returned those files.
+
+E01_D_DIR = REPO_ROOT / RUNS_DIR / E01_D_RUN
+E01_D_FREEZE = "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json"
+#: The files that revision 3 registers for an E01-D run.
+E01_D_FILES = {
+    "run.v1alpha1.json",
+    "commands.txt",
+    "driver.txt",
+    "transcript.txt",
+    "environment.json",
+    "release.json",
+    "argo.json",
+    "pods.json",
+    "reconciliation.record.json",
+    "provenance.json",
+    "completion.json",
+    "result.md",
+}
+
+
+def _e01_d(name: str) -> Any:
+    return json.loads((E01_D_DIR / name).read_text(encoding="utf-8"))
+
+
+def _e01_d_record() -> dict[str, Any]:
+    record = json.loads((REPO_ROOT / E01_D_FREEZE).read_text(encoding="utf-8"))
+    assert isinstance(record, dict)
+    return record
+
+
+def _e01_d_part() -> dict[str, Any]:
+    part = next(item for item in _e01_d_record()["parts"] if item["id"] == "E01-D")
+    assert isinstance(part, dict)
+    return part
+
+
+def test_the_real_deployment_run_holds_the_registered_files_and_no_other() -> None:
+    held = {
+        path.relative_to(E01_D_DIR).as_posix()
+        for path in E01_D_DIR.rglob("*")
+        if path.is_file()
+    }
+    assert held == E01_D_FILES
+    registered = next(
+        entry["value"]["files"]
+        for entry in _e01_d_record()["fields"]["evidencePaths"]
+        if entry["parts"] == ["E01-D"]
+    )
+    assert set(registered) == E01_D_FILES
+
+
+def test_the_real_deployment_manifest_records_the_digest_of_every_other_file() -> None:
+    manifest = _e01_d(MANIFEST)
+    assert set(manifest["files"]) == E01_D_FILES - {MANIFEST, RESULT}
+    for name, digest in manifest["files"].items():
+        data = (E01_D_DIR / name).read_bytes().replace(b"\r\n", b"\n")
+        assert hashlib.sha256(data).hexdigest() == digest, name
+
+
+def test_the_real_deployment_run_names_revision_three_as_registered() -> None:
+    manifest = _e01_d(MANIFEST)
+    metadata = manifest["metadata"]
+    assert metadata["runId"] == E01_D_RUN
+    assert metadata["parts"] == ["E01-D"]
+    assert metadata["freezeRecord"] == E01_D_FREEZE
+    assert metadata["freezeRevision"] == 3
+    registry = json.loads((REPO_ROOT / REGISTRY_PATH).read_text(encoding="utf-8"))
+    pins = {row["path"]: row["contentSha256"] for row in registry["records"]}
+    assert metadata["freezeContentSha256"] == pins[E01_D_FREEZE]
+    assert metadata["freezeContentSha256"] == content_digest(
+        (REPO_ROOT / E01_D_FREEZE).read_bytes()
+    )
+    assert re.fullmatch(r"[0-9a-f]{40}", manifest["executingRevision"])
+    assert manifest["preconditions"]["remoteMain"] == manifest["executingRevision"]
+    assert manifest["preconditions"]["findings"] == []
+
+
+def test_the_real_deployment_outcome_follows_from_its_recorded_rules() -> None:
+    """The outcome is PASSED only when every rule of every criterion is recorded as
+    held. The criteria and the rules are the ones revision 3 states, word for word."""
+    manifest = _e01_d(MANIFEST)
+    part = _e01_d_part()
+    statements = {
+        criterion["id"]: criterion["statement"]
+        for entry in _e01_d_record()["fields"]["acceptanceCriteria"]
+        if entry["parts"] == ["E01-D"]
+        for criterion in entry["value"]
+    }
+    assert [c["id"] for c in manifest["criteria"]] == list(statements)
+    for criterion in manifest["criteria"]:
+        assert criterion["statement"] == statements[criterion["id"]]
+        assert [rule["rule"] for rule in criterion["rules"]] == (
+            part["verification"][criterion["id"]]
+        )
+        assert criterion["holds"] is all(rule["holds"] for rule in criterion["rules"])
+    every = all(criterion["holds"] for criterion in manifest["criteria"])
+    assert manifest["outcomes"] == {"E01-D": "PASSED" if every else "FAILED"}
+    assert manifest["abortChecks"]["conditions"] == []
+    assert manifest["evidenceLevel"]["level"] == "C2"
+
+
+def test_the_real_deployment_files_give_the_values_the_manifest_compares() -> None:
+    """Each identity that the manifest states is the one in the file it cites. This
+    reads committed files only: it is not a second judgement of the cluster."""
+    manifest = _e01_d(MANIFEST)
+    commit = manifest["executingRevision"]
+    part = _e01_d_part()
+    frozen = part["inputs"]["desiredStateRelease"]
+    argo = _e01_d("argo.json")
+    assert argo["status"]["sync"]["status"] == "Synced"
+    assert argo["status"]["sync"]["revision"] == commit
+    operation = argo["status"]["operationState"]
+    assert operation["phase"] == "Succeeded"
+    assert operation["syncResult"]["revision"] == commit
+    helm = argo["spec"]["source"]["helm"]
+    assert sorted(helm) == ["parameters", "releaseName", "valueFiles", "valuesObject"]
+    assert helm["valueFiles"] == part["inputs"]["application"]["valueFiles"]
+    assert helm["parameters"] == [
+        {
+            "name": "api.image.digest",
+            "value": manifest["executionIdentity"]["apiImage"]["digest"],
+        }
+    ]
+    (provenance,) = _e01_d("provenance.json")
+    assert provenance["git"]["revision"] == commit
+    assert provenance["release"]["releaseId"] == frozen["releaseId"]
+    assert provenance["release"]["valuesSha256"] == frozen["helmValuesSha256"]
+    release = _e01_d("release.json")
+    assert release["executingCommit"] == commit
+    assert release["copied"] is False
+    digests = {item["path"]: item["sha256"] for item in release["files"]}
+    assert digests[frozen["files"][0]] == frozen["helmValuesSha256"]
+    completion = _e01_d("completion.json")
+    assert completion["requestsSent"] == 1
+    assert completion["httpStatus"] == "200"
+    assert completion["response"]["choiceCount"] >= 1
+    assert completion["response"]["firstChoice"]["assistantMessageLength"] > 0
+    assert completion["request"]["body"] == part["inputs"]["request"]["body"]
+    assert _e01_d("environment.json")["everyAttributeEqual"] is True
+
+
+def test_the_real_deployment_run_keeps_no_generated_text_and_no_host_path() -> None:
+    completion = _e01_d("completion.json")
+    assert completion["generatedTextKept"] is False
+    assert "choices" not in completion["response"]
+    assert "content" not in json.dumps(completion["response"])
+    host_path = re.compile(
+        r"(?<![A-Za-z0-9])[A-Za-z]:\\[A-Za-z0-9._ -]{2,}\\|/(?:home|Users)/"
+    )
+    for name in sorted(E01_D_FILES):
+        text = (E01_D_DIR / name).read_text(encoding="utf-8")
+        assert "\x1b" not in text, name
+        assert host_path.search(text) is None, name
+
+
+def test_the_real_deployment_result_page_states_limitations_before_criteria() -> None:
+    manifest = _e01_d(MANIFEST)
+    page = (E01_D_DIR / RESULT).read_text(encoding="utf-8")
+    assert page.index("## Limitations") < page.index("## Criteria")
+    assert f"**Outcome: {manifest['outcomes']['E01-D']}.**" in page
+    for item in manifest["limitations"]:
+        assert item in page
+    for criterion in manifest["criteria"]:
+        verdict = "holds" if criterion["holds"] else "does not hold"
+        assert f"### {criterion['id']}: {verdict}" in page

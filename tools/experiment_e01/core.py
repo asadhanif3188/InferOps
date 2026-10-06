@@ -200,6 +200,9 @@ RENDERED_FILES: Final[tuple[str, ...]] = (str(VALUES_FILE_NAME), RELEASE_FILE_NA
 
 #: A run identifier: the run's UTC date, the parts it executes, and a sequence number.
 _RUN_ID: Final = re.compile(r"^(?P<date>[0-9]{8})-e01-abc-(?P<sequence>[1-9][0-9]*)$")
+#: The identifier of a run of part E01-D. This runner does not execute that part and
+#: holds no analysis of it, so :func:`committed_runs` leaves such a directory out.
+_REAL_DEPLOYMENT_RUN_ID: Final = re.compile(r"^[0-9]{8}-e01-d-[1-9][0-9]*$")
 
 #: The binding version every committed binding declares, as E01-AC3 names it.
 BINDING_API_VERSION: Final = "inferops.io/v1alpha1"
@@ -1673,11 +1676,20 @@ def result_page(
 
 
 def committed_runs(root: Path = REPO_ROOT) -> list[Path]:
-    """Every run directory under :data:`RUNS_DIR`, in name order."""
+    """Every run directory of the static parts under :data:`RUNS_DIR`, in name order.
+
+    A directory named as a run of part E01-D is left out. No code here judges such a
+    run: its verdicts are applied by hand from the freeze record's verification rules.
+    Every other directory is returned, so a misnamed static run is still checked.
+    """
     base = root / RUNS_DIR
     if not base.is_dir():
         return []
-    return sorted(path for path in base.iterdir() if path.is_dir())
+    return sorted(
+        path
+        for path in base.iterdir()
+        if path.is_dir() and not _REAL_DEPLOYMENT_RUN_ID.match(path.name)
+    )
 
 
 def check_run(evidence: Path, root: Path = REPO_ROOT) -> list[RunFinding]:

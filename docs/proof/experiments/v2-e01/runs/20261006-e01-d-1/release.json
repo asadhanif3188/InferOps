@@ -1,0 +1,27 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "copied": false,
+  "desiredStateCheckExitStatus": 0,
+  "executingCommit": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+  "files": [
+    {
+      "bytes": 1409,
+      "gitBlob": "8b91bcea78749b6a08c2fd88c6b384e004ec77a8",
+      "gitMode": "100644",
+      "gitObjectType": "blob",
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+      "sha256": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce"
+    },
+    {
+      "bytes": 993,
+      "gitBlob": "6cba7f21762b22db4261e384f872f029f5951cf8",
+      "gitMode": "100644",
+      "gitObjectType": "blob",
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+      "sha256": "3e536096255fb920b37d077785de7350598bf482399a53a96027927f675ef406"
+    }
+  ],
+  "kind": "ExperimentReleaseIdentity",
+  "statement": "The two generated files are read at the executing commit. They are not copied into this directory.",
+  "step": "D2"
+}
