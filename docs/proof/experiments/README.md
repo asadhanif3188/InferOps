@@ -13,6 +13,12 @@ and a register change that bears on a run now needs a review artifact of that ru
 **Revision 3 added by `V2-S3-004-PR1`**: it [names the environment of E01-D](#revision-3),
 the Git desired-state path, and the Argo CD Application, and it changes one clause of
 E01-AC10. No part of E01 ran in that change.
+**One run added by `V2-S3-004-PR2`**: [E01-D, executed once under revision 3](#the-e01-d-run)
+on the environment that revision names, with one completion request. The part PASSED.
+The same change makes the committed-run check leave an E01-D run out, which moves one
+pinned input of revisions 2 and 3. It also publishes
+[one independent review of that run](v2-e01/reviews/20261006-e01-d-1-review-1.md), which found no defect in the verdicts.
+No register claim holds the result of E01-D yet.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -21,7 +27,7 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 |---|---|---|---|---|
 | V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Superseded by revision 2 on 2026-10-03, and kept unchanged. E01-A, E01-B, and E01-C ran once under it, in [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md), and each PASSED under its criteria. That run carries an [audit limitation](#audit-of-the-first-run-2026-10-03) |
 | V2-E01, contract-to-deployment determinism | 2 | [`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. E01-A, E01-B, and E01-C ran once under it, in [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md), and each PASSED under its criteria. Superseded by revision 3 on 2026-10-06, and kept unchanged. Its E01-D environment identity is pending |
-| V2-E01, contract-to-deployment determinism | 3 | [`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. It names the E01-D environment. No part ran under it. E01-D has not run |
+| V2-E01, contract-to-deployment determinism | 3 | [`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. It names the E01-D environment. E01-D ran once under it, in [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md), and PASSED under its criteria. No static part ran under it. Since that run, one pinned input differs from its pin: [the runner's committed-run listing](#the-e01-d-run) |
 
 ## Why a freeze comes first
 
@@ -188,8 +194,9 @@ Not enforced:
   run is one a contributor names with `--run`, recorded under `runs/`.
 - **A run's refusal to start, for E01-D.** The E01 runner refuses to start E01-A, E01-B, and
   E01-C when a precondition fails, and it never runs E01-D. No runner for E01-D exists, so
-  "a part with a pending field cannot run" is, for E01-D, a procedure the next run follows
-  and no code enforces.
+  "a part with a pending field cannot run" is, for E01-D, a procedure that a run follows
+  and no code enforces. The one E01-D run followed it under revision 3, which leaves no
+  field pending.
 - **That a pinned file exists.** A pin is checked for its shape, not against the working
   tree. A file deleted after a record merged is reported by `--changes`, not refused by
   `--check`: refusing it would make a merged record fail the build for a later, legitimate
@@ -227,8 +234,9 @@ contract-to-deployment determinism, in four parts:
   capability, each with its expected refusal.
 - **E01-D, real deployment (C2).** The release rendered from the unmodified contract,
   accepted into Git, reconciled by Argo CD, and serving one real completion. Its procedure
-  and criteria are frozen. Its environment identity is pending, so it cannot run until a
-  merged revision names the environment.
+  and criteria are frozen. In revisions 1 and 2 its environment identity is pending, so
+  it could not run until a merged revision named the environment. Revision 3 names it,
+  and [E01-D ran once under revision 3](#the-e01-d-run).
 
 The record states every procedure, criterion, and limitation in full. It pins 67 inputs: the
 contract, the binding, the chart and its defaults, the compatibility matrix, the renderer's
@@ -337,14 +345,14 @@ What revision 3 does not do:
 - **The E01 runner still executes revision 2.** Its `CURRENT_REVISION` is 2. It is a
   pinned input, and this change does not edit it. A new static run would execute under
   revision 2.
-- **The committed-run check will refuse an E01-D run, and this change does not fix
-  that.** `tools.experiment_e01 --check` reads every directory under `runs/` as a static
-  run and knows revisions 1 and 2. Revision 3 puts an E01-D run under `runs/`, because
-  the review gate reads runs there. So the change that commits an E01-D run must change
-  that check, after the run. The edit moves a pinned input, and the static suite builds
-  its temporary repositories from the runner's current bytes and revision 2's pins. The
-  edit was tried in this change: 13 tests of the default lane failed, and it was taken
-  back out. A run of any part after that edit needs a later revision.
+- **The committed-run check refused an E01-D run, and the change that registered
+  revision 3 did not fix that.** `tools.experiment_e01 --check` read every directory under
+  `runs/` as a static run and knows revisions 1 and 2. Revision 3 puts an E01-D run
+  under `runs/`, because the review gate reads runs there. So the change that commits an
+  E01-D run had to change that check, after the run. The edit was tried when revision 3
+  was registered: 13 tests of the default lane failed, and it was taken back out.
+  `V2-S3-004-PR2` made the edit after the run. [The E01-D run](#the-e01-d-run) says what
+  it moved. A run of any part after that edit needs a later revision.
 - **No command judges a committed E01-D run again.** The evidence index binds each
   cited file by SHA-256, and the review gate compares the review's digests with the
   run's files.
@@ -409,7 +417,8 @@ commit, preconditions, host, runner file digests, observations, abort checks, th
 of every file, each criterion's verdict, and each part's outcome), `commands.txt`,
 `render-a/`, `render-b/`, `mutation/`, `refusals.json`, and `result.md`.
 
-**The check.** `--check` reads every directory under `runs/` as a static run. It derives every verdict again from the committed renders, the
+**The check.** `--check` reads every directory under `runs/` as a static run, except a
+directory named as a run of E01-D, `YYYYMMDD-e01-d-N`, which it leaves out. It derives every verdict again from the committed renders, the
 recorded refusals, and the observations the manifest records: the two renders compared,
 the release fields read from the files, the mutation's differences listed again, and every
 refusal compared with the record's expected one. It does not recompute the contract,
@@ -469,6 +478,132 @@ the ones that ran, and the first commit of that change holds the ones that did. 
 changed no verdict of the run. Nothing compares a committed run with today's code: a later change to the
 renderer leaves the run as it was, and a new run needs a new identifier. Nothing here
 deploys the release input, reconciles it, or serves a completion; that is E01-D.
+
+## The E01-D run
+
+[`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md) is the one run of part E01-D. It executed on
+2026-10-06 under revision 3, at the merged commit
+`ad725905a7838e8210e54a29de7913bc0c7c49e5`, which merged revision 3 and which `main` named
+on the remote when the run started. Its [validation record](../domain/v2-s3-004-pr2-validation.md)
+says what was checked before it and after it.
+
+| Run | Freeze revision | Executing revision | Environment | E01-D |
+|---|---|---|---|---|
+| [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md) | 3 | `ad725905` | `docker-desktop`, Kubernetes v1.36.1, one node | PASSED |
+
+**What executed.** A driver ran the steps that revision 3 registers, once: preparation P1
+to P7, procedure D1 to D6, and the cleanup. The run rendered the release again at the
+executing commit and compared it with the release in Git, byte for byte. It applied the
+Argo CD Application with one parameter, `api.image.digest`. Argo CD reported a succeeded
+sync at the executing commit. Both rollouts completed 18 seconds after the apply returned,
+against a deadline of 600 seconds. It is a warm start: the preparation had started the
+same images on the same node about two minutes earlier. The readiness request returned 200. The run then sent
+one completion request and no other.
+
+**What the criteria gave.**
+
+- **E01-AC8 holds.** The one request returned HTTP 200, with one choice whose assistant
+  message has a length of 6 characters. The generated text is not kept.
+- **E01-AC9 holds.** Argo CD reports the executing commit as synced and as applied. The
+  provenance tool resolves that commit to the release identifier and the values digest
+  that revision 3 names. The runtime container's image identity ends with the generated
+  runtime image digest. The runtime mounts the generated model revision, and the init
+  container that verifies the artifact ended with exit code 0. The response names the
+  generated model identifier.
+- **E01-AC10 holds.** The live Application takes its values from the one generated values
+  file, from hand-written values equal to those of the committed manifest, and from the
+  one parameter, whose value is the digest that the run's build printed. The three
+  admission tests passed at the executing commit. The eight-character clause rests on
+  the consumed static result, as revision 3 registers. No code computes it over the live
+  Application.
+
+**What the run holds.** Twelve files: `run.v1alpha1.json` (the manifest, with each
+compared value, each rule's verdict, and the SHA-256 of every other file),
+`commands.txt`, `driver.txt`, `transcript.txt`, `environment.json`, `release.json`,
+`argo.json`, `pods.json`, `reconciliation.record.json`, `provenance.json`,
+`completion.json`, and `result.md`.
+
+**What the run does not do.**
+
+- **No runner judged it.** The automated assistant session that drove the run applied
+  the registered rules. It is not independent of the run. The default-lane suite applies
+  each rule again to the committed files and requires the recorded verdict. It reads
+  two rules from less than a structured file: the admission rule from the pytest summary
+  in the transcript, and the eight-character rule from the consumed static run. The
+  suite does not show that the cluster returned those files.
+- **Its files fall short of the registered form in four places.** `commands.txt` has no
+  shell quoting and lists once a command that ran twice. `transcript.txt` does not hold
+  the output of three commands of step P3, which went to ignored files. Two of the
+  thirteen compared environment attributes are literals of the driver. The manifest
+  cites step D6 for the eight-character rule and does not state the consumed run's
+  verdict. The files are evidence and are not edited.
+  [The validation record](../domain/v2-s3-004-pr2-validation.md) gives each, and the
+  weaknesses of the driver that this run did not meet.
+- **It sent one request.** It does not establish that a second request is answered.
+- **It did not observe the network.** It does not establish that the acquisition hook
+  downloaded nothing. Argo CD reports that the sync operation, which holds the hook,
+  lasted 9 seconds.
+- **The pod status names another digest for the API image than the run supplied.** The
+  pod requested the supplied digest. After the run, a read of the node listed both digests
+  for one image identifier, which is the one the run's build exported. That read is not
+  a registered step. No E01-D criterion names the API image digest.
+- **The transcript is redacted.** Terminal colour codes are removed, the absolute path of
+  the repository on the host is replaced, and two Docker build links are replaced. Line
+  endings are changed to LF, and trailing whitespace is removed. The run's own files
+  name the first three only.
+- **It is one run on one provider, with one node.** The evidence is C2, bounded to the
+  environment that `environment.json` records. It is not representative.
+
+**The committed-run check, changed after the run.** `tools.experiment_e01 --check` read
+every directory under `runs/` as a static run, so it refused the E01-D directory. This
+change edits one function of the runner, `committed_runs`, after the run. The listing
+leaves a directory out when its name is that of an E01-D run and its own manifest names
+part E01-D and no other. Every other directory is still listed, so a static run under
+such a name is checked. The command does not print what it left out.
+
+- **The edit moves one pinned input of revisions 2 and 3:**
+  `tools/experiment_e01/core.py`. `python -m tools.experiment_freeze --changes` reports
+  it for both records, and exits 1.
+- **The E01-D run executed before the edit.** Its step P2 reports no difference for
+  revision 3 at the executing commit. The E01-D steps do not run the runner. The run
+  and the edit are in one commit, so Git history does not order them: the transcript
+  supports the order and does not prove it.
+- **A new run of any part is refused** until a merged later revision classifies the
+  edit. This change registers no revision and classifies nothing.
+- **The static result is not judged again by other code.** `--check` passes over both
+  static runs with the edited runner. The edit changes which directories are listed, and
+  no line of the analysis.
+- **The suites that copy the pinned inputs rebuild the pinned runner.** They take the
+  runner in the tree and put back the two passages that the edit replaced. A test holds
+  the result to the digest that both records pin. So the listing is the only difference
+  between the runner in the tree and the pinned one. Another edit to the runner fails
+  that test. The second process of each such test, and one whole test, therefore execute
+  the pinned runner and not the runner in the tree.
+
+**The independent review.** [`v2-e01/reviews/20261006-e01-d-1-review-1.md`](v2-e01/reviews/20261006-e01-d-1-review-1.md) is the report of one independent
+review of this run, with
+[its machine-readable record](v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json). The review
+read the first commit of the change that adds the run, `2f2e1ff`, read-only, on
+2026-10-06. That commit held no register change. A review record is not evidence of the
+run, and no register claim cites it.
+
+- **The frozen run.** The reviewer applied each registered rule to the raw files. Every
+  verdict equals the one the run recorded. It found no defect in the files, the digests,
+  the freeze identity, the procedure, or the outcome, and it found that a rerun is not
+  justified.
+- **Fourteen findings, none claim-material.** They are about disclosure and prose. Six
+  are corrected in the same change. Four are in run files, which are not edited, and
+  are stated. Four are observations.
+- **What it could not verify.** That the remote named the executing commit, that the
+  cluster returned the committed files, the test result of step D6, and whether a model
+  download happened.
+- **The limits of its independence.** The reviewer is a separate session of the
+  automated assistant that drove the run. It is not a person. It also read uncommitted
+  files on the host, which the brief did not ask for.
+- **The register.** No ledger references this record yet. The claim and register
+  reconciliation of E01-D is owed by a later change, which the
+  [review gate](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
+  holds to this record: the record must describe the run's files as they are.
 
 ## Audit of the first run, 2026-10-03
 
@@ -621,6 +756,7 @@ and the gate accepts that reference. The review record is unchanged since it mer
   earlier ledgers, together with a ledger passes the check. A test holds that list to
   its two entries, so such an edit shows in review as a changed test.
 
-E01-D has not run. Its register change is to reference a review of the E01-D run: the
-review record of the static run names another run, and the gate would refuse it for a
-record that names a file under another run directory.
+E01-D ran once, in [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md). A register change that
+bears on that run is to reference a review of that run: the review record of the static
+run names another run, and the gate would refuse it for a record that names a file under
+another run directory.

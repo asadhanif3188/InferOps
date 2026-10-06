@@ -1,0 +1,628 @@
+#!/usr/bin/env bash
+# Drives one E01-D run on the docker-desktop provider, and prints one transcript.
+# Run it from the repository root, at the commit that origin/main names, with the
+# run identifier as the one argument.
+#
+# It transcribes the steps that revision 3 of the E01 freeze record registers for
+# part E01-D: preparation P1 to P7, procedure D1 to D6, and the cleanup. It is not
+# a pinned input of that record. It computes no verdict. A person applies the
+# registered verification rules to the files it writes.
+#
+# What it adds to the registered commands, and why:
+#   - It prints the date and the tool versions, which the execution identity names.
+#   - It reads the custom resource definitions in step P3, because the cleanup
+#     compares the cluster with what step P3 found.
+#   - It prints the digest of the model seed image, which the execution identity
+#     names.
+#   - Before the one readiness request, it waits at most 30 seconds until the
+#     port-forward prints that it listens. It sends the request once in any case.
+#   - It reads the revision that Argo CD reports after the apply, because two
+#     abort conditions name that revision.
+#   - A Python tool that prints a record is redirected to a file. On this host the
+#     redirect writes CRLF, so the carriage returns are removed from that file.
+#   - It prints the labels and the phases of the release's pods after the two
+#     rollouts.
+#
+# Outcome rules that it follows:
+#   - A precondition or a preparation step that fails ends the run before the
+#     Application is applied. Nothing after it runs, and nothing is cleaned up:
+#     the operator reads the state of the cluster first.
+#   - From step D3 on, nothing ends the driver early. A step that fails is
+#     printed with its exit status, and the cleanup runs.
+#   - One completion request is sent, with no retry. When the release is not
+#     ready at the deadline, or the readiness request does not return 200, no
+#     completion is requested.
+set -u
+
+RUN="${1:?give the run identifier: YYYYMMDD-e01-d-N}"
+FREEZE="docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json"
+REGISTRY="docs/proof/experiments/registry.v1alpha1.json"
+EVIDENCE="docs/proof/experiments/v2-e01/runs/${RUN}"
+WORK=".artifacts/e01-d"
+APPLICATION_SCRIPT="scripts/environment/argocd-application.sh"
+BOOTSTRAP="scripts/environment/argocd-bootstrap.sh"
+PREREQUISITES="scripts/environment/terraform-prerequisites.sh"
+NAMESPACE="inferops-release"
+APPLICATION="local-docker-desktop-support-assistant"
+API_SERVICE="inferops-inferops-llm"
+API_DEPLOYMENT="inferops-inferops-llm"
+RUNTIME_DEPLOYMENT="inferops-inferops-llm-runtime"
+RELEASE_DIRECTORY="gitops/environments/local-docker-desktop/workloads/support-assistant"
+VALUES_FILE="${RELEASE_DIRECTORY}/values.generated.yaml"
+RELEASE_FILE="${RELEASE_DIRECTORY}/rendered-workload-release.yaml"
+KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings"
+OBSERVATIONS=".artifacts/argocd-application/observations"
+LOCAL_PORT=18104
+STARTUP_BUDGET_SECONDS=600
+
+step() { printf '\n##### %s\n' "$*"; }
+now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+# Runs one command, prints it, and prints its exit status. The status is also
+# left in LAST.
+run() {
+  printf '$ %s\n' "$*"
+  "$@"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+}
+
+# Ends the run before the Application is applied.
+refuse() {
+  printf '\nREFUSED: %s. Nothing after it was run, and nothing was cleaned up.\n' "$1"
+  printf 'The operator reads the state of the cluster first, and then runs what applies, in this order:\n'
+  printf '  helm --kube-context docker-desktop uninstall inferops --namespace %s\n' "${NAMESPACE}"
+  printf '  bash %s remove --confirm\n' "${BOOTSTRAP}"
+  printf '  bash %s destroy --confirm\n' "${PREREQUISITES}"
+  run now
+  exit 1
+}
+
+# Runs one precondition or preparation command. A failure ends the run.
+prepare() {
+  run "$@"
+  [ "${LAST}" -eq 0 ] || refuse "a precondition or a preparation step failed: $*"
+}
+
+k() { kubectl --context docker-desktop "$@"; }
+
+step "0. Start: the date and the tool versions"
+run now
+run kubectl version --client -o json
+run helm version --short
+run terraform version
+run docker version --format '{{.Client.Version}} {{.Server.Version}}'
+run uv --version
+run uv run --locked python --version
+run git --version
+
+step "P1. The executing commit, the working tree, and the remote"
+prepare git rev-parse HEAD
+HEAD_COMMIT="$(git rev-parse HEAD)"
+prepare git status --porcelain --untracked-files=all
+STATUS="$(git status --porcelain --untracked-files=all)"
+[ -z "${STATUS}" ] || refuse "the working tree is not clean"
+prepare git ls-remote origin refs/heads/main
+REMOTE_COMMIT="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
+printf 'executing commit: %s\nremote main:      %s\n' "${HEAD_COMMIT}" "${REMOTE_COMMIT}"
+[ "${HEAD_COMMIT}" = "${REMOTE_COMMIT}" ] ||
+  refuse "refs/heads/main on the remote does not name the executing commit"
+[ ! -e "${EVIDENCE}" ] || refuse "the evidence directory exists"
+
+step "P2. The freeze records and the material files of revision 3"
+prepare uv run --locked python -m tools.experiment_freeze --check
+prepare uv run --locked python -m tools.experiment_freeze --changes "${FREEZE}"
+run sha256sum "${FREEZE}" "${REGISTRY}"
+
+step "P3. The provider and the environment identity"
+printf '$ export INFEROPS_PROVIDER=docker-desktop\n'
+export INFEROPS_PROVIDER=docker-desktop
+unset INFEROPS_KIND_CLUSTER_NAME
+mkdir -p "${WORK}/${RUN}.raw"
+RAW="${WORK}/${RUN}.raw"
+printf '$ kubectl --context docker-desktop version -o json > %s/version.json\n' "${RAW}"
+k version -o json >"${RAW}/version.json"
+LAST=$?
+printf '[exit %s]\n' "${LAST}"
+[ "${LAST}" -eq 0 ] || refuse "the server version was not read"
+printf '$ kubectl --context docker-desktop get nodes -o json > %s/nodes.json\n' "${RAW}"
+k get nodes -o json >"${RAW}/nodes.json"
+LAST=$?
+printf '[exit %s]\n' "${LAST}"
+[ "${LAST}" -eq 0 ] || refuse "the nodes were not read"
+printf '$ kubectl --context docker-desktop get storageclasses -o json > %s/storageclasses.json\n' "${RAW}"
+k get storageclasses -o json >"${RAW}/storageclasses.json"
+LAST=$?
+printf '[exit %s]\n' "${LAST}"
+[ "${LAST}" -eq 0 ] || refuse "the storage classes were not read"
+printf '$ kubectl --context docker-desktop get namespaces -o name > %s/namespaces.txt\n' "${RAW}"
+k get namespaces -o name >"${RAW}/namespaces.txt"
+LAST=$?
+printf '[exit %s]\n' "${LAST}"
+[ "${LAST}" -eq 0 ] || refuse "the namespaces were not read"
+run cat "${RAW}/namespaces.txt"
+printf '$ kubectl --context docker-desktop get customresourcedefinitions -o name > %s/crds.txt\n' "${RAW}"
+k get customresourcedefinitions -o name >"${RAW}/crds.txt"
+LAST=$?
+printf '[exit %s]\n' "${LAST}"
+[ "${LAST}" -eq 0 ] || refuse "the custom resource definitions were not read"
+run cat "${RAW}/crds.txt"
+{
+  printf 'kubectlClient=%s\n' "$(kubectl version --client -o json | uv run --locked python -c 'import json,sys; print(json.load(sys.stdin)["clientVersion"]["gitVersion"])')"
+  printf 'helm=%s\n' "$(helm version --short)"
+  printf 'terraform=%s\n' "$(terraform version | head -n 1)"
+  printf 'dockerEngine=%s\n' "$(docker version --format '{{.Server.Version}}')"
+  printf 'uv=%s\n' "$(uv --version)"
+  printf 'python=%s\n' "$(uv run --locked python --version)"
+  printf 'hostOperatingSystem=%s\n' "$(uname -s)"
+} >"${RAW}/versions.txt"
+mkdir -p "${EVIDENCE}"
+printf '$ compare the reads with fields.environmentIdentity of %s, and write %s/environment.json\n' "${FREEZE}" "${EVIDENCE}"
+uv run --locked python - "${FREEZE}" "${RAW}" "${EVIDENCE}/environment.json" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+
+freeze_path, raw, out = sys.argv[1], Path(sys.argv[2]), sys.argv[3]
+freeze = json.loads(Path(freeze_path).read_text(encoding="utf-8"))
+entry = next(
+    item
+    for item in freeze["fields"]["environmentIdentity"]
+    if item["parts"] == ["E01-D"]
+)["value"]
+frozen = entry["identity"]
+
+
+def load(name):
+    return json.loads((raw / name).read_text(encoding="utf-8"))
+
+
+def lines(name):
+    return [line for line in (raw / name).read_text(encoding="utf-8").split() if line]
+
+
+version = load("version.json")
+nodes = load("nodes.json")["items"]
+classes = load("storageclasses.json")["items"]
+defaults = [
+    item
+    for item in classes
+    if item["metadata"].get("annotations", {}).get(
+        "storageclass.kubernetes.io/is-default-class"
+    )
+    == "true"
+]
+node = nodes[0] if nodes else {}
+info = node.get("status", {}).get("nodeInfo", {})
+labels = node.get("metadata", {}).get("labels", {})
+roles = sorted(
+    label.split("/", 1)[1]
+    for label in labels
+    if label.startswith("node-role.kubernetes.io/")
+)
+taints = [n.get("spec", {}).get("taints") or [] for n in nodes]
+default = defaults[0] if len(defaults) == 1 else {}
+
+read = {
+    "provider.providerId": "docker-desktop",
+    "cluster.kubeContext": "docker-desktop",
+    "cluster.kubernetesServerVersion": version.get("serverVersion", {}).get("gitVersion"),
+    "nodes.count": len(nodes),
+    "nodes.names": [n["metadata"]["name"] for n in nodes],
+    "nodes.role": ",".join(roles),
+    "nodes.architecture": info.get("architecture"),
+    "nodes.operatingSystem": info.get("operatingSystem"),
+    "nodes.taints": "none" if not any(taints) else taints,
+    "storage.defaultStorageClass": default.get("metadata", {}).get("name"),
+    "storage.provisioner": default.get("provisioner"),
+    "storage.reclaimPolicy": default.get("reclaimPolicy"),
+    "storage.volumeBindingMode": default.get("volumeBindingMode"),
+}
+expected = {
+    "provider.providerId": frozen["provider"]["providerId"],
+    "cluster.kubeContext": frozen["cluster"]["kubeContext"],
+    "cluster.kubernetesServerVersion": frozen["cluster"]["kubernetesServerVersion"],
+    "nodes.count": frozen["nodes"]["count"],
+    "nodes.names": frozen["nodes"]["names"],
+    "nodes.role": frozen["nodes"]["role"],
+    "nodes.architecture": frozen["nodes"]["architecture"],
+    "nodes.operatingSystem": frozen["nodes"]["operatingSystem"],
+    "nodes.taints": frozen["nodes"]["taints"],
+    "storage.defaultStorageClass": frozen["storage"]["defaultStorageClass"],
+    "storage.provisioner": frozen["storage"]["provisioner"],
+    "storage.reclaimPolicy": frozen["storage"]["reclaimPolicy"],
+    "storage.volumeBindingMode": frozen["storage"]["volumeBindingMode"],
+}
+compared = [
+    {
+        "attribute": name,
+        "frozen": expected[name],
+        "read": read[name],
+        "equal": expected[name] == read[name],
+    }
+    for name in expected
+]
+versions = dict(
+    line.split("=", 1)
+    for line in (raw / "versions.txt").read_text(encoding="utf-8").splitlines()
+    if "=" in line
+)
+capacity = node.get("status", {}).get("capacity", {})
+document = {
+    "apiVersion": "inferops.io/v1alpha1",
+    "kind": "ExperimentEnvironmentRead",
+    "step": "P3",
+    "freezeRecord": freeze_path,
+    "howRead": "Read-only kubectl requests through the docker-desktop context, before any preparation step.",
+    "identityStepP3": compared,
+    "everyAttributeEqual": all(item["equal"] for item in compared),
+    "defaultStorageClassCount": len(defaults),
+    "storageClasses": sorted(item["metadata"]["name"] for item in classes),
+    "namespaces": lines("namespaces.txt"),
+    "customResourceDefinitions": lines("crds.txt"),
+    "recordedPerRun": {
+        "nodeOsImage": info.get("osImage"),
+        "nodeKernel": info.get("kernelVersion"),
+        "nodeContainerRuntime": info.get("containerRuntimeVersion"),
+        "nodeKubeletVersion": info.get("kubeletVersion"),
+        "nodeCapacity": {
+            "cpu": capacity.get("cpu"),
+            "memory": capacity.get("memory"),
+        },
+        "toolVersions": versions,
+    },
+    "frozenRecordedPerRun": entry["observedAndRecordedPerRun"],
+}
+Path(out).write_text(
+    json.dumps(document, indent=2, sort_keys=True) + "\n",
+    encoding="utf-8",
+    newline="\n",
+)
+for item in compared:
+    print(
+        f"{'EQUAL    ' if item['equal'] else 'DIFFERENT'} {item['attribute']}:"
+        f" frozen={item['frozen']!r} read={item['read']!r}"
+    )
+sys.exit(0 if document["everyAttributeEqual"] else 1)
+PYTHON
+LAST=$?
+printf '[exit %s]\n' "${LAST}"
+[ "${LAST}" -eq 0 ] || refuse "the environment differs from the one that revision 3 names"
+
+step "P4. The API image at the executing commit, and the model seed image"
+prepare bash scripts/environment/api-image.sh build
+prepare bash scripts/environment/api-image.sh load
+prepare bash scripts/environment/api-image.sh digest
+API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)" ||
+  refuse "api-image.sh digest failed"
+printf 'API image digest of this run: %s\n' "${API_IMAGE_DIGEST}"
+prepare bash scripts/environment/model-seed-image.sh build
+prepare bash scripts/environment/model-seed-image.sh load
+prepare bash scripts/environment/model-seed-image.sh digest
+SEED_IMAGE_DIGEST="$(bash scripts/environment/model-seed-image.sh digest)" ||
+  refuse "model-seed-image.sh digest failed"
+
+step "P5. The platform namespace and the model cache claim"
+prepare bash "${PREREQUISITES}" apply
+
+step "P6. Fill the claim from the seed image with one preparation Helm release, and remove that release"
+printf '$ bash scripts/environment/api-image.sh values > .artifacts/api-image-values.yaml\n'
+bash scripts/environment/api-image.sh values >.artifacts/api-image-values.yaml
+LAST=$?
+printf '[exit %s]\n' "${LAST}"
+[ "${LAST}" -eq 0 ] || refuse "api-image.sh values failed"
+printf '$ bash scripts/environment/model-seed-image.sh values > .artifacts/model-seed-values.yaml\n'
+bash scripts/environment/model-seed-image.sh values >.artifacts/model-seed-values.yaml
+LAST=$?
+printf '[exit %s]\n' "${LAST}"
+[ "${LAST}" -eq 0 ] || refuse "model-seed-image.sh values failed"
+prepare helm --kube-context docker-desktop install inferops charts/inferops-llm \
+  --namespace "${NAMESPACE}" \
+  --values charts/inferops-llm/ci/real-values.yaml \
+  --values .artifacts/api-image-values.yaml \
+  --values .artifacts/model-seed-values.yaml \
+  --set model.acquisition.resources.limits.memory=2Gi \
+  --wait --timeout 15m
+prepare helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --wait --timeout 600s
+printf '$ kubectl --context docker-desktop get %s -n %s -l app.kubernetes.io/instance=inferops -o name\n' "${KINDS}" "${NAMESPACE}"
+printf '  repeated every 2 seconds, at most 120 times, until it prints nothing\n'
+left="unread"
+queries=0
+for _ in $(seq 1 120); do
+  queries=$((queries + 1))
+  left="$(k get "${KINDS}" -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o name)" ||
+    refuse "the query for what the preparation release left did not answer"
+  [ -n "${left}" ] || break
+  sleep 2
+done
+printf 'queries: %s. What the preparation release left: %s\n' "${queries}" "${left:-nothing}"
+[ -z "${left}" ] || refuse "the preparation release left an object"
+
+step "P7. Install Argo CD with the bootstrap procedure, and verify it"
+prepare bash "${BOOTSTRAP}" install
+prepare bash "${BOOTSTRAP}" verify
+
+step "D1. Derive the release at the executing commit, and compare it with the committed release"
+run uv run --locked python -m tools.gitops_desired_state --check
+D1_EXIT="${LAST}"
+
+step "D2. The release in the executing commit"
+run git ls-tree HEAD "${VALUES_FILE}" "${RELEASE_FILE}"
+run sha256sum "${VALUES_FILE}" "${RELEASE_FILE}"
+printf '$ write %s/release.json from git ls-tree HEAD and the SHA-256 of the two files\n' "${EVIDENCE}"
+uv run --locked python - "${EVIDENCE}/release.json" "${HEAD_COMMIT}" "${D1_EXIT}" "${VALUES_FILE}" "${RELEASE_FILE}" <<'PYTHON'
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+out, commit, d1_exit, paths = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4:]
+files = []
+for path in paths:
+    listed = subprocess.run(
+        ["git", "ls-tree", "HEAD", path], capture_output=True, text=True, check=True
+    ).stdout.split()
+    files.append(
+        {
+            "path": path,
+            "gitMode": listed[0] if listed else None,
+            "gitObjectType": listed[1] if listed else None,
+            "gitBlob": listed[2] if listed else None,
+            "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
+            "bytes": len(Path(path).read_bytes()),
+        }
+    )
+document = {
+    "apiVersion": "inferops.io/v1alpha1",
+    "kind": "ExperimentReleaseIdentity",
+    "step": "D2",
+    "executingCommit": commit,
+    "desiredStateCheckExitStatus": d1_exit,
+    "files": files,
+    "copied": False,
+    "statement": "The two generated files are read at the executing commit. They are not copied into this directory.",
+}
+Path(out).write_text(
+    json.dumps(document, indent=2, sort_keys=True) + "\n",
+    encoding="utf-8",
+    newline="\n",
+)
+print(json.dumps(files, indent=2))
+PYTHON
+printf '[exit %s]\n' "$?"
+
+step "D3. Apply the project and the Application, and compare the live objects with the committed manifests"
+run now
+run bash "${APPLICATION_SCRIPT}" apply --api-image-digest "${API_IMAGE_DIGEST}"
+D3_APPLY_EXIT="${LAST}"
+APPLY_RETURNED_EPOCH="$(date -u +%s)"
+printf 'The apply returned at %s (epoch %s).\n' "$(now)" "${APPLY_RETURNED_EPOCH}"
+run bash "${APPLICATION_SCRIPT}" verify
+D3_VERIFY_EXIT="${LAST}"
+printf '$ kubectl --context docker-desktop get applications.argoproj.io %s -n argocd -o jsonpath={.status.operationState.syncResult.revision}\n' "${APPLICATION}"
+ARGO_REVISION="$(k get applications.argoproj.io "${APPLICATION}" -n argocd -o 'jsonpath={.status.operationState.syncResult.revision}')"
+printf '[exit %s]\n' "$?"
+printf 'The revision that Argo CD reports that it applied: %s\n' "${ARGO_REVISION:-<none>}"
+PROCEED="yes"
+if [ "${D3_APPLY_EXIT}" -ne 0 ]; then
+  PROCEED="no"
+  printf 'STEP D3 DID NOT SUCCEED: the apply ended with exit status %s. Steps D4 and D5 are not run.\n' "${D3_APPLY_EXIT}"
+elif [ -z "${ARGO_REVISION}" ]; then
+  PROCEED="no"
+  printf 'ABORT CONDITION: the desired-state revision Argo CD applies cannot be determined. Steps D4 and D5 are not run.\n'
+elif [ "${ARGO_REVISION}" != "${HEAD_COMMIT}" ]; then
+  PROCEED="no"
+  printf 'ABORT CONDITION: Argo CD reports that it applied a commit other than the executing commit. Steps D4 and D5 are not run.\n'
+fi
+
+READY="no"
+FORWARD=""
+if [ "${PROCEED}" = "yes" ]; then
+  step "D4. Wait for the two rollouts, with one deadline, and request the readiness endpoint once"
+  DEADLINE=$((APPLY_RETURNED_EPOCH + STARTUP_BUDGET_SECONDS))
+  printf 'The deadline is epoch %s: %s seconds after the apply returned.\n' "${DEADLINE}" "${STARTUP_BUDGET_SECONDS}"
+  ROLLOUTS="complete"
+  for deployment in "${RUNTIME_DEPLOYMENT}" "${API_DEPLOYMENT}"; do
+    remaining=$((DEADLINE - $(date -u +%s)))
+    printf 'seconds that remain to the deadline: %s\n' "${remaining}"
+    if [ "${remaining}" -lt 1 ]; then
+      ROLLOUTS="not complete"
+      printf 'NOT WAITED: no time remains for deployment/%s.\n' "${deployment}"
+      continue
+    fi
+    run k rollout status "deployment/${deployment}" -n "${NAMESPACE}" --timeout="${remaining}s"
+    [ "${LAST}" -eq 0 ] || ROLLOUTS="not complete"
+  done
+  printf 'The rollouts ended at %s (epoch %s), %s seconds after the apply returned: %s.\n' \
+    "$(now)" "$(date -u +%s)" "$(($(date -u +%s) - APPLY_RETURNED_EPOCH))" "${ROLLOUTS}"
+  run k get pods -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops \
+    -o 'jsonpath={range .items[*]}{.metadata.name} phase={.status.phase} component={.metadata.labels.app\.kubernetes\.io/component}{"\n"}{end}'
+  if [ "${ROLLOUTS}" = "complete" ]; then
+    printf '$ kubectl --context docker-desktop port-forward service/%s %s:8090 -n %s  (in the background)\n' "${API_SERVICE}" "${LOCAL_PORT}" "${NAMESPACE}"
+    kubectl --context docker-desktop port-forward "service/${API_SERVICE}" "${LOCAL_PORT}:8090" \
+      -n "${NAMESPACE}" >"${WORK}/${RUN}.forward.log" 2>&1 &
+    FORWARD=$!
+    for _ in $(seq 1 30); do
+      grep -q 'Forwarding from' "${WORK}/${RUN}.forward.log" 2>/dev/null && break
+      sleep 1
+    done
+    run cat "${WORK}/${RUN}.forward.log"
+    run mkdir -p .artifacts/e01-d
+    printf '$ curl --silent --show-error --max-time 30 --output %s/%s.ready-response.txt --write-out %%{http_code} http://127.0.0.1:%s/health/ready\n' "${WORK}" "${RUN}" "${LOCAL_PORT}"
+    READY_STATUS="$(curl --silent --show-error --max-time 30 \
+      --output "${WORK}/${RUN}.ready-response.txt" --write-out '%{http_code}' \
+      "http://127.0.0.1:${LOCAL_PORT}/health/ready")"
+    READY_EXIT=$?
+    printf '%s\n[exit %s]\n' "${READY_STATUS}" "${READY_EXIT}"
+    run cat "${WORK}/${RUN}.ready-response.txt"
+    printf '\n'
+    if [ "${READY_EXIT}" -eq 0 ] && [ "${READY_STATUS}" = "200" ]; then
+      READY="yes"
+    else
+      printf 'NOT READY: the readiness request did not return 200. No completion is requested.\n'
+    fi
+  else
+    printf 'NOT READY: a rollout did not complete before the deadline. No readiness request and no completion is sent.\n'
+  fi
+fi
+
+if [ "${READY}" = "yes" ]; then
+  step "D5. One completion request, through the same port-forward. No retry"
+  run now
+  printf '$ curl --silent --show-error --max-time 300 --header Content-Type: application/json --data {"model":"qwen3-1-7b-q8-0","messages":[{"role":"user","content":"Reply with the single word: ready"}],"stream":false} --output %s/%s.completion-response.json --write-out %%{http_code} http://127.0.0.1:%s/v1/chat/completions\n' "${WORK}" "${RUN}" "${LOCAL_PORT}"
+  COMPLETION_STARTED="$(now)"
+  COMPLETION_STATUS="$(curl --silent --show-error --max-time 300 \
+    --header 'Content-Type: application/json' \
+    --data '{"model":"qwen3-1-7b-q8-0","messages":[{"role":"user","content":"Reply with the single word: ready"}],"stream":false}' \
+    --output "${WORK}/${RUN}.completion-response.json" --write-out '%{http_code}' \
+    "http://127.0.0.1:${LOCAL_PORT}/v1/chat/completions")"
+  COMPLETION_EXIT=$?
+  COMPLETION_ENDED="$(now)"
+  printf '%s\n[exit %s]\n' "${COMPLETION_STATUS}" "${COMPLETION_EXIT}"
+  printf '$ write %s/completion.json from the response file and the status. The generated text is not kept\n' "${EVIDENCE}"
+  uv run --locked python - "${EVIDENCE}/completion.json" "${WORK}/${RUN}.completion-response.json" \
+    "${COMPLETION_STATUS}" "${COMPLETION_EXIT}" "${COMPLETION_STARTED}" "${COMPLETION_ENDED}" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+
+out, response_path, status, curl_exit, started, ended = sys.argv[1:7]
+request = {
+    "method": "POST",
+    "path": "/v1/chat/completions",
+    "body": {
+        "model": "qwen3-1-7b-q8-0",
+        "messages": [{"role": "user", "content": "Reply with the single word: ready"}],
+        "stream": False,
+    },
+    "through": "A kubectl port-forward to port 8090 of the Service inferops-inferops-llm in the namespace inferops-release.",
+    "clientTimeoutSeconds": 300,
+    "count": 1,
+    "retry": "None.",
+}
+response = {"bodyState": "absent"}
+path = Path(response_path)
+if path.is_file():
+    data = path.read_bytes()
+    response = {"bodyState": "not-json", "bodyBytes": len(data)}
+    try:
+        body = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        body = None
+    if isinstance(body, dict):
+        choices = body.get("choices")
+        first = choices[0] if isinstance(choices, list) and choices else {}
+        message = first.get("message") if isinstance(first, dict) else None
+        content = message.get("content") if isinstance(message, dict) else None
+        response = {
+            "bodyState": "json-object",
+            "bodyBytes": len(data),
+            "model": body.get("model"),
+            "object": body.get("object"),
+            "choiceCount": len(choices) if isinstance(choices, list) else None,
+            "firstChoice": {
+                "finishReason": first.get("finish_reason") if isinstance(first, dict) else None,
+                "messageRole": message.get("role") if isinstance(message, dict) else None,
+                "assistantMessageLength": len(content) if isinstance(content, str) else None,
+            },
+            "usage": body.get("usage"),
+            "topLevelMembers": sorted(body),
+        }
+document = {
+    "apiVersion": "inferops.io/v1alpha1",
+    "kind": "ExperimentCompletionObservation",
+    "step": "D5",
+    "request": request,
+    "requestsSent": 1,
+    "startedAt": started,
+    "endedAt": ended,
+    "httpStatus": status,
+    "curlExitStatus": int(curl_exit),
+    "response": response,
+    "generatedTextKept": False,
+    "statement": "The response file is under .artifacts/, which Git ignores. It is not committed. This file holds the length of the assistant message and not its text.",
+}
+Path(out).write_text(
+    json.dumps(document, indent=2, sort_keys=True) + "\n",
+    encoding="utf-8",
+    newline="\n",
+)
+print(json.dumps({k: document[k] for k in ("httpStatus", "curlExitStatus", "response")}, indent=2))
+PYTHON
+  printf '[exit %s]\n' "$?"
+fi
+
+step "D6. The Application, the pods, the reconciliation record, and the provenance of the reported commit"
+run now
+printf '$ kubectl --context docker-desktop get applications.argoproj.io %s -n argocd -o json > %s/argo.json\n' "${APPLICATION}" "${EVIDENCE}"
+k get applications.argoproj.io "${APPLICATION}" -n argocd -o json >"${EVIDENCE}/argo.json"
+printf '[exit %s]\n' "$?"
+printf '$ kubectl --context docker-desktop get pods -n %s -l app.kubernetes.io/instance=inferops -o json > %s/pods.json\n' "${NAMESPACE}" "${EVIDENCE}"
+k get pods -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o json >"${EVIDENCE}/pods.json"
+printf '[exit %s]\n' "$?"
+run bash "${APPLICATION_SCRIPT}" observe --samples 5 --interval 2 --into "${RUN}-steady"
+printf '$ uv run --locked python -m tools.reconciliation_evidence %s/%s-steady > %s/reconciliation.record.json\n' "${OBSERVATIONS}" "${RUN}" "${EVIDENCE}"
+uv run --locked python -m tools.reconciliation_evidence "${OBSERVATIONS}/${RUN}-steady" >"${EVIDENCE}/reconciliation.record.json"
+printf '[exit %s]\n' "$?"
+sed -i 's/\r$//' "${EVIDENCE}/reconciliation.record.json"
+REPORTED="$(uv run --locked python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); print(d.get("status", {}).get("sync", {}).get("revision", ""))' "${EVIDENCE}/argo.json")"
+printf 'The commit that Argo CD reports in status.sync.revision: %s\n' "${REPORTED:-<none>}"
+if [ -n "${REPORTED}" ]; then
+  printf '$ uv run --locked python -m tools.desired_state_provenance --revision %s local-docker-desktop/support-assistant > %s/provenance.json\n' "${REPORTED}" "${EVIDENCE}"
+  uv run --locked python -m tools.desired_state_provenance --revision "${REPORTED}" \
+    local-docker-desktop/support-assistant >"${EVIDENCE}/provenance.json"
+  printf '[exit %s]\n' "$?"
+  sed -i 's/\r$//' "${EVIDENCE}/provenance.json"
+  run cat "${EVIDENCE}/provenance.json"
+else
+  printf 'NOT RESOLVED: Argo CD reports no revision, so no provenance was resolved.\n'
+fi
+run uv run --locked pytest tests/architecture/test_argocd_application.py -k hand_written_values
+
+step "Cleanup 1. Stop the port-forward"
+if [ -n "${FORWARD}" ]; then
+  kill "${FORWARD}" 2>/dev/null
+  wait "${FORWARD}" 2>/dev/null
+  printf 'The port-forward was stopped.\n'
+else
+  printf 'No port-forward was started.\n'
+fi
+
+step "Cleanup 2. verify once more, before the removal"
+run bash "${APPLICATION_SCRIPT}" verify
+
+step "Cleanup 3. Remove the Application and its project"
+run bash "${APPLICATION_SCRIPT}" remove --confirm
+run k get "${KINDS}" -n "${NAMESPACE}" -l app.kubernetes.io/instance=inferops -o name
+run k get deployments -n "${NAMESPACE}" -o name
+
+step "Cleanup 4. Remove Argo CD"
+run bash "${BOOTSTRAP}" remove --confirm
+
+step "Cleanup 5. Remove the platform namespace and the model cache claim"
+run bash "${PREREQUISITES}" destroy --confirm
+
+step "Cleanup 6. The cluster after the run, compared with what step P3 found"
+printf '$ kubectl --context docker-desktop get namespaces -o name > %s/namespaces.after.txt\n' "${RAW}"
+k get namespaces -o name >"${RAW}/namespaces.after.txt"
+printf '[exit %s]\n' "$?"
+run cat "${RAW}/namespaces.after.txt"
+printf '$ kubectl --context docker-desktop get customresourcedefinitions -o name > %s/crds.after.txt\n' "${RAW}"
+k get customresourcedefinitions -o name >"${RAW}/crds.after.txt"
+printf '[exit %s]\n' "$?"
+run cat "${RAW}/crds.after.txt"
+run diff "${RAW}/namespaces.txt" "${RAW}/namespaces.after.txt"
+run diff "${RAW}/crds.txt" "${RAW}/crds.after.txt"
+
+step "Cleanup 7. Git: no change except the new evidence directory"
+run git rev-parse HEAD
+run git status --porcelain --untracked-files=all
+
+step "Cleanup 8. The images that stay, and the end"
+printf 'API image digest of this run: %s\n' "${API_IMAGE_DIGEST}"
+printf 'Model seed image digest of this run: %s\n' "${SEED_IMAGE_DIGEST}"
+run docker image ls --format '{{.Repository}}:{{.Tag}} {{.ID}}' localhost/inferops-api
+run docker image ls --format '{{.Repository}}:{{.Tag}} {{.ID}}' localhost/inferops-model-seed
+run sha256sum "${EVIDENCE}"/*
+run now

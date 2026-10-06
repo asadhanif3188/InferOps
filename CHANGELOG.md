@@ -10,8 +10,39 @@ from `1.0.0`.
 
 ### Added
 
-- **The first experiment's real-deployment part has a frozen environment. It has
-  not run.** `V2-S3-004-PR1` adds
+- **The first experiment's real-deployment part ran once, and it passed. One
+  provider, one node, one request.** `V2-S3-004-PR2` adds
+  [run `20261006-e01-d-1`](docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/result.md)
+  of part E01-D of V2-E01, executed on 2026-10-06 under
+  [freeze revision 3](docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json), at
+  the merged commit `ad725905`, on the `docker-desktop` provider. A driver ran
+  the registered steps once. The run rendered the release again and compared it
+  with the release in Git, applied the Argo CD Application with the one
+  parameter `api.image.digest`, waited for both rollouts under one deadline of
+  600 seconds, and sent one completion request with no retry. **E01-AC8,
+  E01-AC9, and E01-AC10 each hold, and the part is PASSED.** The request
+  returned HTTP 200 with one choice whose assistant message is not empty. Argo
+  CD reports the executing commit as synced and applied. The runtime image
+  digest, the model revision, and the model identifier are the generated ones.
+  The evidence is `C2`, bounded to that environment, and it is not
+  representative. The run sent one request, it did not observe the network, and
+  no runner judged it: the session that drove it applied the registered rules.
+  [One independent review](docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md),
+  by another automated session, applied the rules again and found no defect in
+  the verdicts. **No claim is registered:** the register is unchanged, and the
+  reconciliation is owed by a later change that references that review.
+  The cleanup returned the cluster to the namespaces it had. **The
+  committed-run check changed after the run.** `tools.experiment_e01 --check`
+  now leaves out a run of E01-D, which it cannot judge: a directory with that
+  name whose own manifest names that part and no other.
+  That edit moves one pinned input of revisions 2 and 3,
+  `tools/experiment_e01/core.py`, so a new run of any part is refused until a
+  later revision classifies it. The suites that copy the pinned inputs rebuild
+  the pinned runner, and a test holds that the listing is the only difference.
+  [The validation record](docs/proof/domain/v2-s3-004-pr2-validation.md) gives
+  the commands and what they printed.
+- **The first experiment's real-deployment part has a frozen environment. It had
+  not run when this was written.** `V2-S3-004-PR1` adds
   [freeze revision 3](docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json) of
   the V2-E01 family and registers it. It supersedes revision 2, and revisions 1
   and 2 are unchanged. Revision 3 names the environment of E01-D: the

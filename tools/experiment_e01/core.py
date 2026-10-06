@@ -200,6 +200,9 @@ RENDERED_FILES: Final[tuple[str, ...]] = (str(VALUES_FILE_NAME), RELEASE_FILE_NA
 
 #: A run identifier: the run's UTC date, the parts it executes, and a sequence number.
 _RUN_ID: Final = re.compile(r"^(?P<date>[0-9]{8})-e01-abc-(?P<sequence>[1-9][0-9]*)$")
+#: The identifier of a run of part E01-D. This runner does not execute that part and
+#: holds no analysis of it, so :func:`committed_runs` leaves such a run out.
+_REAL_DEPLOYMENT_RUN_ID: Final = re.compile(r"[0-9]{8}-e01-d-[1-9][0-9]*")
 
 #: The binding version every committed binding declares, as E01-AC3 names it.
 BINDING_API_VERSION: Final = "inferops.io/v1alpha1"
@@ -1672,12 +1675,39 @@ def result_page(
 # --------------------------------------------------------------------------
 
 
+def _is_real_deployment_run(path: Path) -> bool:
+    """Whether ``path`` is a run of part E01-D, by its name and by its own manifest.
+
+    Both must say so. A directory with that name whose manifest cannot be read, or
+    names other parts, is not left out: it is checked as a static run and fails.
+    """
+    if _REAL_DEPLOYMENT_RUN_ID.fullmatch(path.name) is None:
+        return False
+    try:
+        manifest = json.loads((path / MANIFEST).read_text(encoding="utf-8"))
+        parts = manifest["metadata"]["parts"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+    return bool(parts == ["E01-D"])
+
+
 def committed_runs(root: Path = REPO_ROOT) -> list[Path]:
-    """Every run directory under :data:`RUNS_DIR`, in name order."""
+    """Every run directory of the static parts under :data:`RUNS_DIR`, in name order.
+
+    A run of part E01-D is left out: a directory that is named as one and whose
+    manifest names that part and no other. No code here judges such a run: its
+    verdicts are applied by hand from the freeze record's verification rules. Every
+    other directory is returned, so a misnamed static run, and a static run under
+    an E01-D name, are still checked.
+    """
     base = root / RUNS_DIR
     if not base.is_dir():
         return []
-    return sorted(path for path in base.iterdir() if path.is_dir())
+    return sorted(
+        path
+        for path in base.iterdir()
+        if path.is_dir() and not _is_real_deployment_run(path)
+    )
 
 
 def check_run(evidence: Path, root: Path = REPO_ROOT) -> list[RunFinding]:
