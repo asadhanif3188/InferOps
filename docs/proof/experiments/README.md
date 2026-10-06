@@ -72,7 +72,7 @@ refused. It is never read as "not applicable".
   `environmentIdentity`, owned by `V2-S3-004-PR1`, the change that will name E01-D's real
   environment. A part with a pending field cannot run. Revision 3 answers that field with a
 value, and no field of it is pending. The allowance stays in the checker, which revision 3
-pins and does not change, so a test, not the checker, holds that revision 3 uses none.
+pins and which was not edited, so a test, not the checker, holds that revision 3 uses none.
 
 An entry may add a `note`, which must not be empty. Beside the fields, a record states its
 definition, its parts with their inputs and procedures, and its pinned inputs.
@@ -287,7 +287,10 @@ nothing, and no completion was sent. The environment was read with read-only req
 - **The steps and the rules.** Seven preparation steps and six run steps, each with its
   commands, and for each E01-D criterion the comparisons that judge it. One request is
   sent, with no retry. A preparation step that fails ends the run before the Application
-  is applied.
+  is applied. A release that is not ready 600 seconds after Argo CD reported the sync
+  makes the part FAILED. The record separates the identity attributes that the run reads
+  before it prepares anything from the ones a preparation step establishes, and names
+  the step that verifies each.
 - **One criterion clause changed.** Revision 2's E01-AC10 said that the release is
   installed "from the generated values file and one hand-written values file only, with no
   parameter override". [ADR 0019](../../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
@@ -298,20 +301,27 @@ nothing, and no completion was sent. The environment was read with read-only req
   operator-supplied parameter restates or overrides claim-relevant workload intent. The
   parameter is permitted because no contract, binding, platform default, or renderer owns
   it. `criteriaChanges` holds both statements, the reason, and who approved the change.
-  E01-AC1 to E01-AC9 are those of revision 2, character for character. Three statements
-  of the E01-D procedure and inputs carried the same mechanism or predate the Git layout,
-  and `procedureChanges` lists each replacement.
+  E01-AC1 to E01-AC9 are those of revision 2, character for character.
+- **Every other difference from revision 2 is listed.** Three statements of the E01-D
+  procedure and inputs carried the same mechanism or predate the Git layout, and
+  `procedureChanges` lists each replacement. `fieldChanges` lists twelve more, each with
+  revision 2's text: the environment, the topology, the evidence paths, two added abort
+  conditions, the cleanup, the preconditions, and the outcome rules. The cleanup of
+  revision 2 was written for an environment it could not name, and four of its items
+  have no subject on this one.
 - **The change was written after runs of the same path.** No E01-D run had executed. But
   between 2026-10-03 and 2026-10-05 the Argo CD procedures ran on this provider, applied
   this release with this parameter, and sent caller requests: five of six were answered
   in one set of runs. They are not E01-D runs. The record lists them in `history`, and
   says that the criterion change was written with knowledge of them.
-- **The pins.** 158 inputs: the 74 of revision 2, each with the content revision 2
-  pinned, and 84 added for the E01-D path. The 84 are the rest of the `inferops` package
-  that the API image copies, the three tools the steps run, the API container's entry
-  module, the desired-state tree, the two Argo CD manifests, six procedures, the
-  Terraform prerequisite layer, the image build files, the model source record, the
-  `local-docker-desktop` binding, and one test module. `inputChanges` classifies each.
+- **The pins.** 160 inputs: the 74 of revision 2, and 86 added for the E01-D path. The
+  86 are the rest of the `inferops` package that the API image copies, the three tools
+  the steps run, the API container's entry module and the carrier it imports, the
+  desired-state tree, the two Argo CD manifests, five procedures and the library they
+  source, the Terraform prerequisite layer, the image build files, the model source
+  record, the `local-docker-desktop` binding, one test module, and the two pytest
+  configuration files. `inputChanges` classifies each.
+- **No pin of revision 2 moved.** Each of the 74 has the content revision 2 pinned.
   `changesSinceSupersededRevision` lists all 132 files that changed between the merge of
   revision 2 and the commit revision 3 was prepared from: 18 are on the E01-D path, 114
   are not, and none is a pinned input of revision 2.
@@ -325,8 +335,23 @@ What revision 3 does not do:
   registered steps and applies the registered rules. A driver that transcribes the steps
   is committed with the run and is not a pinned input.
 - **The E01 runner still executes revision 2.** Its `CURRENT_REVISION` is 2. It is a
-  pinned input, and revision 3 does not change it. A new static run would execute under
+  pinned input, and this change does not edit it. A new static run would execute under
   revision 2.
+- **The committed-run check will refuse an E01-D run, and this change does not fix
+  that.** `tools.experiment_e01 --check` reads every directory under `runs/` as a static
+  run and knows revisions 1 and 2. Revision 3 puts an E01-D run under `runs/`, because
+  the review gate reads runs there. So the change that commits an E01-D run must change
+  that check, after the run. The edit moves a pinned input, and the static suite builds
+  its temporary repositories from the runner's current bytes and revision 2's pins. The
+  edit was tried in this change: 13 tests of the default lane failed, and it was taken
+  back out. A run of any part after that edit needs a later revision.
+- **No command judges a committed E01-D run again.** The evidence index binds each
+  cited file by SHA-256, and the review gate compares the review's digests with the
+  run's files.
+- **No step observes whether the model was downloaded.** The claim is filled before
+  the Application is applied, so the acquisition hook is expected to download nothing.
+  No step reads the hook's job, and Argo CD deletes it when it succeeds.
+- **The cleanup leaves images in the node and on the host.**
 - **The eight-character clause of E01-AC10 is not computed over the live Application.**
   It rests on the static result's verdict for the hand-written values fixture, and on a
   test that holds the Application's hand-written values equal to that fixture without its
@@ -384,7 +409,7 @@ commit, preconditions, host, runner file digests, observations, abort checks, th
 of every file, each criterion's verdict, and each part's outcome), `commands.txt`,
 `render-a/`, `render-b/`, `mutation/`, `refusals.json`, and `result.md`.
 
-**The check.** `--check` derives every verdict again from the committed renders, the
+**The check.** `--check` reads every directory under `runs/` as a static run. It derives every verdict again from the committed renders, the
 recorded refusals, and the observations the manifest records: the two renders compared,
 the release fields read from the files, the mutation's differences listed again, and every
 refusal compared with the record's expected one. It does not recompute the contract,

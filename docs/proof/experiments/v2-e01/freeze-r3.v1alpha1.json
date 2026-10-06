@@ -30,7 +30,7 @@
       "E01-A, E01-B, and E01-C only: the runner module and the inferops package the run imports are the ones in the checked-out tree: tools/experiment_e01/core.py and src/inferops. A run that imports either from elsewhere is REFUSED.",
       "E01-D only: every procedure, tool, manifest, and chart file that the E01-D steps name is the one in the checked-out tree at the executing commit. The run executes no copy from another location.",
       "E01-D only: origin/main on the Git remote names the executing commit when the run starts. Argo CD follows main, so a remote main that names another commit is another desired state, and the run is REFUSED.",
-      "E01-D only: the environment that the run reads equals every attribute under identity in fields.environmentIdentity for E01-D. A difference in one attribute is another environment, and the run is REFUSED.",
+      "E01-D only: the environment equals every attribute under identity in fields.environmentIdentity for E01-D. identityVerification in that entry names the step that reads or establishes each attribute. A difference in one attribute that step P3 reads is another environment, and the run is REFUSED. An attribute that a preparation step establishes is verified by the step named for it, and a failed verification also REFUSES the run.",
       "E01-D only: every preparation step of parts E01-D ends with exit status 0. A preparation step that fails ends the run before the Application is applied, and the part is REFUSED."
     ],
     "repetitionRule": "No run is repeated to obtain a different outcome. After an INCONCLUSIVE, REFUSED, or ABORTED run, a new run may follow. Every run stays recorded with its outcome state, under its own run identifier.",
@@ -46,13 +46,17 @@
       "E01-A, E01-B, and E01-C use one contract on one binding.",
       "No runner and no coded analysis exist for E01-D. A person executes the registered steps and applies the registered verification rules. A driver that transcribes the steps is committed with the run as evidence, and it is not a pinned input of this record. No code computes an E01-D verdict.",
       "tools/experiment_e01 executes revision 2: its CURRENT_REVISION is 2, and it is a pinned input that this revision does not change. A new run of E01-A, E01-B, and E01-C would therefore execute under revision 2 and not under this revision. This revision plans no such run.",
+      "python -m tools.experiment_e01 --check reads every directory under runs/ as a static run, and it knows revisions 1 and 2 only. It will refuse the manifest of an E01-D run, which this record puts under runs/ because the review gate reads runs there. The default lane runs that check. So the change that commits an E01-D run must also change the runner's check, after the run. That edit moves a pinned input of this revision and of revision 2, and the repository's static suite builds its temporary repositories from the runner's current bytes and revision 2's pins. A later run of any part therefore needs a later revision that classifies the edit, and the suite needs the runner to know that revision. This was found in review and tried: the edit was made, 13 tests of the default lane failed, and it was taken back out. It is left to the change that commits the run, on purpose.",
+      "No command judges a committed E01-D run again from its evidence. The evidence index binds each file that a register record cites by SHA-256, and the review gate compares the review's file digests with the run's files.",
       "The API image digest is not in Git. No InferOps API image is published. The run builds the image at the executing commit and records its digest. Two builds of one commit can have two digests.",
-      "The run fills the model cache claim before Argo CD applies the release, from a seed image built on the host from a cached artifact whose SHA-256 the build verifies. The Application's acquisition hook then verifies the artifact and downloads nothing. The run does not establish that the hook can fill an empty claim.",
+      "The run fills the model cache claim before Argo CD applies the release, from a seed image built on the host from a cached artifact whose SHA-256 the build verifies. The Application's values select the download source, so its acquisition hook is expected to verify the artifact that the claim holds and to download nothing. No registered step reads the hook's job or its log, and Argo CD deletes the job when it succeeds. The run therefore does not observe whether a download happened, and it does not establish that the hook can fill an empty claim.",
       "The preparation release that fills the claim sets the acquisition job's memory limit to 2Gi. On 2026-10-05, on this Kubernetes version, one preparation job was stopped at the chart's limit of 128Mi. The chart is unchanged. The Application sets no such value.",
       "E01-AC9 verifies the model revision by configuration and by content: the runtime mounts the revision directory of the claim, and an init container verifies the artifact's SHA-256 before the runtime starts. A GGUF file does not carry the revision of the repository it came from, so nothing reads the revision from the file.",
       "Argo CD reads the repository from the Git remote without a credential, and verifies no commit signature. Nothing in the run verifies that the commit was reviewed.",
-      "The kubectl, helm, terraform, and docker programs, the Argo CD install manifest, the base images of the two image builds, and the Python packages installed into the API image are not pinned by content in this record. The bootstrap procedure pins the manifest by SHA-256, the Dockerfiles pin their base images by digest, and the run records the tool versions.",
+      "The kubectl, helm, terraform, and docker programs, the Argo CD install manifest, the Argo CD images, the Terraform provider, and the base images of the two image builds are not pinned by content in this record. The bootstrap procedure pins the manifest by SHA-256, the Dockerfiles pin their base images by digest, and the run records the tool versions.",
       "The material scope lists each shell procedure by path. A file that a pinned procedure starts to read is in the scope only when a path or pattern of the scope names it.",
+      "The cleanup removes the Application, Argo CD, the namespace, and the claim. It does not remove images from the node or from the host: the API image, the model seed image, the runtime image, and the Argo CD images stay.",
+      "The verification rules of E01-AC10 are the measure of 'restates or overrides': the admission check and the eight-character comparison. A hand-written value that names the same thing in other characters, such as the runtime's model alias, is not a finding of either rule.",
       "E01-D uses one contract, one binding, one cluster with one node, and one run."
     ],
     "doesNotEstablish": [
@@ -91,7 +95,7 @@
       },
       {
         "class": "environment-identity-read",
-        "what": "On 2026-10-06, before this record was registered, read-only kubectl requests through the docker-desktop context read the server version, the node, the storage classes, and the namespaces. docker, helm, terraform, and uv printed their versions.",
+        "what": "On 2026-10-06, before this record was registered, read-only kubectl requests through the docker-desktop context read the server version, the node, the storage classes, and the namespaces. docker, helm, terraform, and uv printed their versions, and docker listed the images on the host.",
         "whyNotResult": "The reads name the environment. They deployed nothing, synchronized nothing, and sent no completion."
       },
       {
@@ -108,9 +112,10 @@
     "previewRule": "No full execution of E01-A, E01-B, and E01-C is exempt from being an attempt. A development preview, a dry run, or a run in a throwaway repository is not permitted under this revision. If one happens, it is reported in the next run's validation record with what it executed and what it showed, and it is never presented as preregistered. This rule is a procedure: no code can stop a run outside this repository, and this record does not claim that one does. For E01-D, from the registration of this record: an execution on the named environment that applies the Application and sends a completion, before the first E01-D run of record, is an E01-D attempt. It is recorded under its own run identifier with its outcome state. A rehearsal is not permitted. This is also a procedure, and no code enforces it.",
     "executionIdentity": "The run records the merged commit it executes and the origin/main revision it checked against; the content digests of this record and of the registry; where the runner and the inferops package were imported from, and the inferops distribution version; and every repository module file the run and its second process loaded, with its content digest. A loaded file that is not a pinned input with its pinned content is an abort condition. An E01-D run records: the executing commit and the commit that origin/main names on the remote; the content digests of this record and of the registry; the output of python -m tools.experiment_freeze --changes for this record; each attribute of the environment identity as the run read it; the versions of kubectl, helm, terraform, docker, uv, and Python; the digest of the API image and of the model seed image that the run built; and the commit that Argo CD reports that it resolved and applied.",
     "selfReference": "A record cannot contain the digest of a file that contains the record's digest, and it cannot name the commit that merges it. So this record does not pin the registry, which pins this record; the registry is data, not code, so the freeze checker that the run imports is pinned here without a cycle. The run records the registry's digest and the merged commit it executes instead. pinnedInputs fixes the experiment path; gitRevision.preparedFrom names the commit the record was prepared from, not the commit that merges it.",
-    "revisionPurpose": "This revision names the environment of E01-D, the Git desired-state path, and the Argo CD Application, and it registers the steps and the verification rules of E01-D. It pins the files of that path. It changes one clause of one criterion, E01-AC10, and criteriaChanges states the change. It changes nothing of E01-A, E01-B, and E01-C: their parts, criteria, and fields are those of revision 2, and their pinned inputs have the content revision 2 pinned.",
+    "revisionPurpose": "This revision names the environment of E01-D, the Git desired-state path, and the Argo CD Application, and it registers the steps and the verification rules of E01-D. It pins the files of that path. It changes one clause of one criterion, E01-AC10, and criteriaChanges states the change. procedureChanges and fieldChanges list every other statement about E01-D that differs from revision 2. For E01-A, E01-B, and E01-C the parts and the criteria are those of revision 2, and so is every field entry except two that cover all four parts: experimentIdVersion, which now names revision 3, and gitRevision, which names the commit this record was prepared from. Every pinned input of revision 2 has the content revision 2 pinned.",
     "staticResultConsumed": {
       "run": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/run.v1alpha1.json",
+      "runContentSha256": "ae2e005b5f68bc3ed017c9c3e4c2c0508390306a784c2860b6c59ed5dafb5461",
       "runId": "20261003-e01-abc-1",
       "freezeRevision": 2,
       "outcomes": {
@@ -119,7 +124,7 @@
         "E01-C": "PASSED"
       },
       "statement": "This revision consumes the second run of the static parts as the static result of E01. It does not run them again, and it does not judge that run again. That run answers revision 2.",
-      "whyStillValid": "No pinned input of revision 2 has other content at the commit this record was prepared from: python -m tools.experiment_freeze --changes for revision 2 reported no difference. inputChanges lists no changed input and no removed input. Every entry is a file this revision pins for the first time.",
+      "whyStillValid": "No pinned input of revision 2 has other content at the commit this record was prepared from, and the change that registers this revision edits none: python -m tools.experiment_freeze --changes for revision 2 reports no difference. inputChanges lists no changed input and no removed input. Every entry is a file this revision pins for the first time.",
       "whatE01DTakesFromIt": "E01-AC5 of that run holds that admit_manual_values admits the hand-written values fixture, tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml, with no finding, and that no string in the fixture contains a workload-intent generated value of eight characters or more. The verification rule of E01-AC10 uses that verdict together with a test that holds the Application's hand-written values equal to the fixture without its API image digest."
     },
     "reviewGate": {
@@ -448,6 +453,7 @@
       "question": "Does the release rendered from the unmodified contract deploy through Git and Argo CD and serve a real completion?",
       "inputs": {
         "workloadContract": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+        "workloadContractStatement": "The unmodified reference contract, as revision 2 registered.",
         "environmentBindings": [
           "contracts/environment/examples/valid/local-docker-desktop.yaml"
         ],
@@ -526,7 +532,7 @@
         {
           "step": "D1",
           "frozenStep": "Render the release.",
-          "action": "Derive the release from the contract, the binding, and the platform defaults at the executing commit, and compare it with the committed desired-state release, byte for byte. Copy the two committed files to release/ in the evidence directory.",
+          "action": "Derive the release from the contract, the binding, and the platform defaults at the executing commit, and compare it with the committed desired-state release, byte for byte.",
           "commands": [
             "uv run --locked python -m tools.gitops_desired_state --check"
           ],
@@ -535,9 +541,10 @@
         {
           "step": "D2",
           "frozenStep": "Accept the release into Git.",
-          "action": "The release is in the executing commit, which origin/main names. The run commits no release and changes no file under gitops/. Record the blob identifiers of the two files at the executing commit.",
+          "action": "The release is in the executing commit, which origin/main names. The run commits no release and changes no file under gitops/. Record the blob identifier and the SHA-256 of each of the two files at the executing commit in release.json.",
           "commands": [
-            "git ls-tree HEAD gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml"
+            "git ls-tree HEAD gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+            "sha256sum gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml"
           ],
           "expected": "Both files are listed."
         },
@@ -554,23 +561,25 @@
         {
           "step": "D4",
           "frozenStep": "Wait until the API's readiness endpoint answers 200 and the runtime pod is Ready. The wait is bounded by the startup budget the chart renders for the runtime, counted from the moment Argo CD reports the desired revision synced.",
-          "action": "Wait for the rollout of the runtime Deployment and of the API Deployment. Each wait starts when step D3 returned and is bounded by 600 seconds, the startup budget that the chart renders for the runtime. Then request the API's readiness endpoint once, through a port-forward to the API Service.",
+          "action": "Record the time at which the apply of step D3 returned: the procedure returns when Argo CD reports a succeeded sync operation at the commit that main names. One deadline applies to both waits: 600 seconds after that time, the startup budget that the chart renders for the runtime. Wait for the rollout of the runtime Deployment, and then for the rollout of the API Deployment, each with the seconds that remain to the deadline as its timeout. Then request the API's readiness endpoint once, through a port-forward to the API Service.",
           "commands": [
-            "kubectl --context docker-desktop rollout status deployment/inferops-inferops-llm-runtime -n inferops-release --timeout=600s",
-            "kubectl --context docker-desktop rollout status deployment/inferops-inferops-llm -n inferops-release --timeout=600s",
+            "kubectl --context docker-desktop rollout status deployment/inferops-inferops-llm-runtime -n inferops-release --timeout=<seconds-remaining>s",
+            "kubectl --context docker-desktop rollout status deployment/inferops-inferops-llm -n inferops-release --timeout=<seconds-remaining>s",
             "kubectl --context docker-desktop port-forward service/inferops-inferops-llm <local-port>:8090 -n inferops-release",
-            "curl --silent --show-error --max-time 30 --output /dev/null --write-out '%{http_code}' http://127.0.0.1:<local-port>/health/ready"
+            "mkdir -p .artifacts/e01-d",
+            "curl --silent --show-error --max-time 30 --output .artifacts/e01-d/<run-id>.ready-response.txt --write-out '%{http_code}' http://127.0.0.1:<local-port>/health/ready"
           ],
-          "expected": "Both rollouts complete, and the readiness request returns 200. A wait that ends at its bound is recorded, and the part is then INCONCLUSIVE: no completion was requested."
+          "expected": "Both rollouts complete before the deadline, and the readiness request returns 200.",
+          "whenNot": "A rollout that does not complete before the deadline, or a readiness request that does not return 200, is recorded. No completion is requested, E01-AC8 does not hold, and the part is FAILED, unless an abort condition applies."
         },
         {
           "step": "D5",
           "frozenStep": "Send one request to the API Service: POST /v1/chat/completions, with model set to the generated model.identifier, one user message, and stream false.",
-          "action": "Send the registered request once, through the same port-forward. Write the HTTP status, the response's model, the number of choices, the finish reason and the length of the assistant message of the first choice, and the usage counts to completion.json, with the request. Do not keep the generated text.",
+          "action": "Send the registered request once, through the same port-forward. The command writes the response body to a file under .artifacts/, which Git ignores, and prints the HTTP status. From that file and that status, write to completion.json: the request, the HTTP status, the response's model, the number of choices, the finish reason and the length of the assistant message of the first choice, and the usage counts. The response file is not committed, and the generated text is not kept.",
           "commands": [
-            "curl --silent --show-error --max-time 300 --header 'Content-Type: application/json' --data '{\"model\":\"qwen3-1-7b-q8-0\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word: ready\"}],\"stream\":false}' http://127.0.0.1:<local-port>/v1/chat/completions"
+            "curl --silent --show-error --max-time 300 --header 'Content-Type: application/json' --data '{\"model\":\"qwen3-1-7b-q8-0\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word: ready\"}],\"stream\":false}' --output .artifacts/e01-d/<run-id>.completion-response.json --write-out '%{http_code}' http://127.0.0.1:<local-port>/v1/chat/completions"
           ],
-          "expected": "One response. Its content is the observation that E01-AC8 judges."
+          "expected": "One HTTP status, and one response body or none. They are the observation that E01-AC8 judges. A request that returns no response is recorded with the status that curl prints and with curl's exit status."
         },
         {
           "step": "D6",
@@ -582,9 +591,9 @@
             "bash scripts/environment/argocd-application.sh observe --samples 5 --interval 2 --into <run-id>-steady",
             "uv run --locked python -m tools.reconciliation_evidence .artifacts/argocd-application/observations/<run-id>-steady",
             "uv run --locked python -m tools.desired_state_provenance --revision <the commit Argo CD reports> local-docker-desktop/support-assistant",
-            "uv run --locked pytest tests/architecture/test_argocd_application.py"
+            "uv run --locked pytest tests/architecture/test_argocd_application.py -k hand_written_values"
           ],
-          "expected": "Each exits 0. The outputs are argo.json, pods.json, reconciliation.record.json, and provenance.json in the evidence directory. The pytest summary is in the transcript."
+          "expected": "Each exits 0. The outputs are argo.json, pods.json, reconciliation.record.json, and provenance.json in the evidence directory. The pytest command selects three tests, and its summary is in the transcript."
         }
       ],
       "preparation": [
@@ -617,7 +626,7 @@
             "kubectl --context docker-desktop get storageclasses -o json",
             "kubectl --context docker-desktop get namespaces -o name"
           ],
-          "expected": "Every identity attribute is equal. The run writes what it read to environment.json."
+          "expected": "Each attribute that identityVerification assigns to step P3 is equal: the provider, the cluster, the nodes, and the default storage class. The run writes what it read to environment.json."
         },
         {
           "step": "P4",
@@ -649,7 +658,7 @@
             "helm --kube-context docker-desktop uninstall inferops --namespace inferops-release --wait --timeout 600s",
             "kubectl --context docker-desktop get deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings -n inferops-release -l app.kubernetes.io/instance=inferops -o name"
           ],
-          "expected": "Each exits 0, and the last command prints nothing. A query that does not answer is not read as no object.",
+          "expected": "Each exits 0. The last command is repeated every 2 seconds, at most 120 times, until it prints nothing. A query that does not answer is not read as no object, and it ends the run.",
           "statement": "The preparation release is not the release under test. It is installed by Helm from the V1 values and removed before Argo CD applies anything. It exists to put the pinned artifact into the claim without a download."
         },
         {
@@ -663,7 +672,7 @@
         }
       ],
       "verification": {
-        "statement": "How each E01-D criterion is judged. A rule that does not hold makes its criterion not hold. An observation that is missing makes the part INCONCLUSIVE, and nothing is inferred in its place.",
+        "statement": "How each E01-D criterion is judged. A rule that does not hold makes its criterion not hold, and the part is FAILED. When a step was executed and its evidence file is absent or cannot be read, the part is INCONCLUSIVE, and nothing is inferred in place of the observation. Step D4 states its own outcome rule.",
         "E01-AC8": [
           "completion.json records HTTP status 200 for the one request of step D5.",
           "The response holds at least one choice, and the assistant message of the first choice has a length greater than 0.",
@@ -672,14 +681,14 @@
         "E01-AC9": [
           "Synced revision: in argo.json, status.sync.status is Synced, status.sync.revision is the executing commit, and status.operationState.phase is Succeeded with status.operationState.syncResult.revision equal to the executing commit.",
           "Generated release at that revision: provenance.json, resolved from that commit, gives the releaseId and the values digest that this record names under inputs.desiredStateRelease.",
-          "Recorded digests: step D1 exits 0, so the release's contract, binding, and values digests are the ones its sources and its values file derive. The SHA-256 of the bytes of release/values.generated.yaml equals output.helmValues.sha256 of release/rendered-workload-release.yaml.",
+          "Recorded digests: step D1 exits 0, so the release's contract, binding, and values digests are the ones its sources and its values file derive. The SHA-256 that release.json records for values.generated.yaml equals the values digest that this record names under inputs.desiredStateRelease.",
           "Runtime image: in pods.json, the imageID that the status of the container named runtime reports ends with the generated runtime.image.digest, sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384.",
           "Model revision: in pods.json, the model volume mount of the runtime container has a subPath that ends with the generated model.revision, 90862c4b9d2787eaed51d12237eafdfe7c5f6077, and the init container verify-model terminated with exit code 0.",
           "Model identifier: completion.json records a response whose model is the generated model.identifier, qwen3-1-7b-q8-0."
         ],
         "E01-AC10": [
           "Sources of values: in argo.json, spec.source.helm.valueFiles is exactly the one generated values file, spec.source.helm.valuesObject equals the valuesObject of the committed manifest, spec.source.helm.parameters is exactly one parameter named api.image.digest whose value is the digest of step P4, and spec.source.helm holds no other member than releaseName. Step D3's verify exits 0.",
-          "Admission: tests/architecture/test_argocd_application.py passes at the executing commit. It holds that the admission check returns no finding for the Application's hand-written values, that they set no leaf that the generated values file holds, and that they equal the hand-written values fixture without its API image digest.",
+          "Admission: the three tests of tests/architecture/test_argocd_application.py that step D6 selects pass at the executing commit. They hold that the admission check returns no finding for the Application's hand-written values, that those values set no leaf that the generated values file holds, that they carry no API image digest, and that they equal the hand-written values fixture without its API image digest. No step runs the admission check over the hand-written values with the parameter merged in: the fixture is that shape, and the consumed static result admits it.",
           "Eight-character clause: the consumed static result holds, in E01-AC5, that the fixture with its digest is admitted with no finding and that no string in it contains a workload-intent generated value of eight characters or more. The Application's hand-written values with the parameter are that shape. No code computes the clause over the live Application."
         ]
       }
@@ -690,7 +699,7 @@
       "id": "E01-AC10",
       "part": "E01-D",
       "previousStatement": "No claim-relevant workload intent is written by hand after rendering: the release is installed from the generated values file and one hand-written values file only, with no parameter override; admit_manual_values admits that hand-written file beside the generated values with no finding; and no string in it contains a workload-intent generated value of eight characters or more.",
-      "statement": "No claim-relevant workload intent is written by hand after rendering: no hand-written value and no operator-supplied parameter of the release restates or overrides claim-relevant workload intent; the release takes its values from the generated values file, from the hand-written values of the Argo CD Application, and from one operator-supplied Helm parameter, api.image.digest, and from no other source; admit_manual_values admits those hand-written values, with that parameter, beside the generated values with no finding; and no string in them contains a workload-intent generated value of eight characters or more.",
+      "statement": "No claim-relevant workload intent is written by hand after rendering: no hand-written value and no operator-supplied parameter of the release restates or overrides claim-relevant workload intent; the release takes its values from the generated values file, from the hand-written values of the Argo CD Application, and from one operator-supplied Helm parameter, api.image.digest, over the chart's own defaults, and from no other source; admit_manual_values admits those hand-written values, with that parameter, beside the generated values with no finding; and no string in them contains a workload-intent generated value of eight characters or more.",
       "whatChanged": "The delivery-mechanism clause. Revision 2 said that the release is installed from the generated values file and one hand-written values file only, with no parameter override. This revision states the ownership property in its place: no hand-written value and no operator-supplied parameter restates or overrides claim-relevant workload intent. It then names the three sources that the accepted delivery uses. The admission clause and the eight-character clause now name the Application's hand-written values and the one parameter. The governing rule is unchanged: no claim-relevant workload intent is written by hand again after rendering.",
       "why": "Revision 2 was registered on 2026-10-03, before an Application existed. On 2026-10-04, docs/architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md accepted in D5 generated values read from Git, hand-written values inside the Application that set nothing the generated values hold, and one operator-supplied Helm parameter, api.image.digest. On that delivery the revision 2 clause cannot hold, whatever a run observes.",
       "whyTheParameterIsPermitted": "No contract, EnvironmentBinding, platform default, or renderer owns api.image.digest, and it is not claim-relevant workload intent. No InferOps API image is published, so the digest names a build on the operator's host.",
@@ -700,7 +709,7 @@
     }
   ],
   "procedureChanges": {
-    "statement": "Revision 2 registered the E01-D inputs and procedure before the Git layout and the Application existed. This revision names them exactly, as its purpose is. Three statements of revision 2 are replaced, and each is listed so that the replacement is visible. No E01-D run had executed.",
+    "statement": "Revision 2 registered the E01-D inputs and procedure before the Git layout and the Application existed. This revision names them exactly, as its purpose is. Three statements of the revision 2 procedure and inputs are replaced, and each is listed so that the replacement is visible. fieldChanges lists the other differences. No E01-D run had executed.",
     "changes": [
       {
         "where": "E01-D procedure, step 3",
@@ -721,10 +730,137 @@
         "why": "Revision 2 gave the E01-D renderer as E01-A's: constructed with the executing commit as its revision. A release cannot name the commit that adds it to Git, so a release that is accepted into Git never records the commit that Argo CD applies. The run derives the release again at the executing commit, with the declared revision, and compares it with the committed release byte for byte. No criterion of E01-D names the renderer revision. E01-AC4 names it for E01-A only."
       }
     ],
-    "kept": "Steps 4, 5, and 6 of revision 2 are steps D4, D5, and D6, each quoted in frozenStep. The request, the count of one request, and the bound of the wait are those of revision 2."
+    "kept": "Steps 4, 5, and 6 of revision 2 are steps D4, D5, and D6, each quoted in frozenStep. The request and the count of one request are those of revision 2. fieldChanges says how step D4 applies the bound of the wait."
+  },
+  "fieldChanges": {
+    "statement": "Every statement about E01-D, outside the criteria and the procedure, that differs from revision 2. Each row gives what revision 2 said and why this revision says something else. No E01-D run had executed.",
+    "changes": [
+      {
+        "where": "fields.environmentIdentity, E01-D",
+        "revision2": {
+          "parts": [
+            "E01-D"
+          ],
+          "status": "pending",
+          "owner": "V2-S3-004-PR1",
+          "reason": "E01-D needs a real cluster with Argo CD reconciling from Git, and that environment does not exist yet. The freeze revision that names it is owned by V2-S3-004-PR1. E01-D is REFUSED while this entry is pending."
+        },
+        "why": "The entry was pending. This revision answers it."
+      },
+      {
+        "where": "fields.topology, E01-D",
+        "revision2": {
+          "runtimeReplicas": "1, from spec.scaling of the unmodified reference contract",
+          "apiReplicas": "The spec.platform.apiReplicas of the binding the environment identity names: 1 in both committed local bindings",
+          "namespace": "The spec.destination.namespace of that binding",
+          "delivery": "Argo CD reconciles the release from the Git desired state at that binding's spec.gitops.destinationPath"
+        },
+        "why": "Revision 2 gave the replica counts and the namespace by reference to a binding that it did not name, and the delivery as 'at' the destination path. This revision names the binding, the values, the exact path, the node, and the other workloads on it. The counts are the same: one runtime replica and one API replica."
+      },
+      {
+        "where": "fields.evidencePaths, E01-D",
+        "revision2": {
+          "directory": "docs/proof/experiments/v2-e01/runs/<run-id>/, named as for E01-A",
+          "files": {
+            "run.v1alpha1.json": "The run manifest, as for E01-A, with the environment identity.",
+            "commands.txt": "The exact commands, in order.",
+            "release/": "The two generated files as committed to the Git desired state.",
+            "argo.json": "The Argo CD application status at verification, with credentials removed.",
+            "pods.json": "The API and runtime pods, with their image digests.",
+            "completion.json": "The request, and the response's status, model, and text length. The generated text is not kept.",
+            "result.md": "Each criterion, its verdict, and the evidence it rests on, with the limitations first."
+          }
+        },
+        "why": "The run identifier now names the part. Six files are added: driver.txt, transcript.txt, environment.json, reconciliation.record.json, provenance.json, and a review artifact path. release/, a copy of the two generated files, is replaced by release.json, their blob identifiers and digests: the release drift check accounts for every generated release file in the repository, and a copy would be a second release. argo.json was to have its credentials removed, and the Application object holds none. pods.json holds every pod of the release, which includes the API and runtime pods that revision 2 named. completion.json adds the number of choices, the finish reason, and the usage counts."
+      },
+      {
+        "where": "fields.abortConditions, E01-D",
+        "revision2": {
+          "parts": [
+            "E01-D"
+          ],
+          "status": "value",
+          "value": [
+            "The run affects a workload or resource outside the release's namespace.",
+            "The run puts the model cache's contents at risk.",
+            "The desired-state revision Argo CD applies cannot be determined.",
+            "A deployed runtime image digest, model revision, or model identifier differs from the rendered one.",
+            "The cleanup path becomes unsafe.",
+            "A provider or cluster incident dominates the run.",
+            "Where the environment identity names a paid provider: spend exceeds, or is projected to exceed, the authorized budget."
+          ],
+          "note": "No condition is about a lost caller stream or an injected fault: E01-D runs no caller workload and injects no fault."
+        },
+        "why": "The seven conditions of revision 2 are kept in their words. Two are added: Argo CD applied another commit than the executing one, and the acquisition hook started a download. The note says that no step observes the second."
+      },
+      {
+        "where": "fields.cleanupProcedure, E01-D",
+        "revision2": [
+          "Restore the known-good Git desired state that preceded the run, or, where none did, remove the release from the desired state.",
+          "Wait for Argo CD to reconcile it.",
+          "Verify the expected API and runtime replica counts.",
+          "Where a release remains, verify that a request to the API succeeds.",
+          "Remove every experiment-only resource.",
+          "Keep the evidence directory.",
+          "Verify that Argo CD reports no drift and that no manual change remains.",
+          "Where the environment identity names a paid provider: destroy the authorized experiment resources, verify the provider's inventory, and record the cleanup and the cost basis."
+        ],
+        "why": "Revision 2 stated the cleanup for an environment it could not name: restore an earlier desired state or remove the release from it, verify replica counts and a request where a release remains, remove experiment-only resources, and destroy paid resources. On this environment the run changes no desired state, no release remains after the cleanup, and no paid provider is named. This revision states the removals as the procedures that perform them. The drift check of revision 2 is the verify before the removal. One resource is left on purpose and is named: the images in the node and on the host."
+      },
+      {
+        "where": "fields.intendedEvidenceLevel, E01-D, note",
+        "revision2": "Runtime: a real cluster, Argo CD, the real runtime, and the real model serve one completion. One environment and one run; not representative.",
+        "why": "The level is C2, as before. The note adds that the evidence is bounded to the named environment."
+      },
+      {
+        "where": "definition.preconditions",
+        "revision2": [
+          "The runner module and the inferops package the run imports are the ones in the checked-out tree: tools/experiment_e01/core.py and src/inferops. A run that imports either from elsewhere is REFUSED.",
+          "E01-D only: a merged revision of this record names the environment identity. While the environment identity is pending, E01-D is REFUSED."
+        ],
+        "why": "The fifth precondition named the static runner, and it now says that it applies to the static parts. The sixth refused E01-D while its environment was pending. Four preconditions for E01-D replace it: the checked-out tree, the remote main, the environment identity, and the preparation steps."
+      },
+      {
+        "where": "definition.doesNotEstablish",
+        "revision2": [
+          "That E01-D can run before its environment identity is frozen."
+        ],
+        "why": "The environment identity is now frozen, so the sentence has no subject. Six boundaries of E01-D are added."
+      },
+      {
+        "where": "definition.notResultEvidence, definition.previewRule, definition.executionIdentity, definition.nonResultExecutions",
+        "revision2": {
+          "notResultEvidence": "An E01 part counts only when it runs, after this record merges, as registered here, through python -m tools.experiment_e01 --run in the checked-out tree. nonResultExecutions lists every other execution that is allowed and why it is not result evidence. It was fixed when this record was registered, before any run under it.",
+          "registrationCalibration": {
+            "class": "registration-calibration",
+            "what": "Before this record merged, the test suite compared each expected refusal below with the refusal the published rule tables assign, in a temporary repository.",
+            "whyNotResult": "It fixes the registration, not the result. It ran before this record merged and is disclosed in the V2-S2-004-PR1 validation record."
+          }
+        },
+        "why": "Each is extended with a sentence for E01-D, and three classes of execution that are not result evidence are added. The preview rule and the execution identity of revision 2 are kept in their words, with one addition each. The calibration entry is reworded to say that it concerns revision 2, and names that revision's validation record by path."
+      },
+      {
+        "where": "parts E01-D, inputs.workloadContract and inputs.environmentBinding",
+        "revision2": {
+          "workloadContract": "The unmodified reference contract, contracts/workload/examples/valid/synchronous-llm-local.yaml",
+          "environmentBinding": "The binding the environment identity names."
+        },
+        "why": "The contract is given as its path, and workloadContractStatement keeps the word unmodified. The binding is named."
+      },
+      {
+        "where": "parts E01-D: outcome rules",
+        "revision2": "Revision 2 stated no rule for a wait that ends at its bound, and none for a missing observation.",
+        "why": "Step D4 registers that a release that is not ready at the deadline makes the part FAILED: E01-AC8 does not hold. The verification statement registers that a missing evidence file makes the part INCONCLUSIVE. Both rules were written after the runs that history lists."
+      },
+      {
+        "where": "parts E01-D: the wait of step D4",
+        "revision2": "Wait until the API's readiness endpoint answers 200 and the runtime pod is Ready. The wait is bounded by the startup budget the chart renders for the runtime, counted from the moment Argo CD reports the desired revision synced.",
+        "why": "The bound is the same: the runtime's startup budget, 600 seconds, counted from the moment Argo CD reports the revision synced. This revision takes that moment as the return of the apply procedure, which returns on that report, and applies one deadline to both rollouts. The readiness request and the checks of step D3's verify are outside the deadline."
+      }
+    ]
   },
   "materialScope": {
-    "description": "The experiment path. For E01-A, E01-B, and E01-C: the static import closure of the runner's entry module, and the data files the parts read, as revision 2 declared. For E01-D: the import closure of the three tools that its steps run and of the API container's entry module, the whole inferops package that the API image copies, the chart, the desired-state tree, the two Argo CD manifests, the six procedures that prepare, apply, and remove, the Terraform prerequisite layer, the two image build files and the build's ignore file, the model source record, and the test module that step D6 runs.",
+    "description": "The experiment path. For E01-A, E01-B, and E01-C: the static import closure of the runner's entry module, and the data files the parts read, as revision 2 declared. For E01-D: the import closure of the three tools that its steps run and of the API container's entry module, the whole inferops package that the API image copies, the chart, the desired-state tree, the two Argo CD manifests, the six procedures that prepare, apply, and remove, the Terraform prerequisite layer, the two image build files and the build's ignore file, the model source record, the test module that step D6 selects three tests from, and the pytest configuration that the command loads.",
     "entryModules": [
       "tools.experiment_e01.__main__",
       "tools.gitops_desired_state.__main__",
@@ -768,7 +904,9 @@
       ".dockerignore",
       "docs/serving/model-source.v1.json",
       "src/inferops/**/*",
-      "tests/architecture/test_argocd_application.py"
+      "tests/architecture/test_argocd_application.py",
+      "pytest.ini",
+      "conftest.py"
     ],
     "exclusions": []
   },
@@ -872,6 +1010,11 @@
       "path": "charts/inferops-llm/values.yaml",
       "role": "platform-defaults and chart defaults",
       "sha256": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9"
+    },
+    {
+      "path": "conftest.py",
+      "role": "test-configuration",
+      "sha256": "7912e6860112d3de0e0c1e52fcd19b68992432c3f2a4b97865c29f3df42424b2"
     },
     {
       "path": "contracts/environment/examples/valid/local-docker-desktop.yaml",
@@ -992,6 +1135,11 @@
       "path": "pyproject.toml",
       "role": "project-metadata",
       "sha256": "58b45d56c5c77a526e4ce3c779ae96173f5088742d2d679987597133de936ab0"
+    },
+    {
+      "path": "pytest.ini",
+      "role": "test-configuration",
+      "sha256": "6f3cb1670ab1b7159738c141ed3be90774000c5c449e4fe380eeb922f2ae5ccd"
     },
     {
       "path": "scripts/environment/api-image.sh",
@@ -1577,6 +1725,17 @@
       "reason": "Added to the pins: It decides the content of the API image that the run builds at the executing commit. The file has the content it had when revision 2 merged. No static part reads or imports it, so it is not material to the consumed static result."
     },
     {
+      "path": "conftest.py",
+      "change": "added",
+      "sinceRevision2Merged": "unchanged",
+      "material": true,
+      "materialTo": [
+        "E01-D"
+      ],
+      "materialToStaticResult": false,
+      "reason": "Added to the pins: The pytest command of step D6 loads it. The file has the content it had when revision 2 merged. The static runner is not started by pytest, so it is not material to the consumed static result."
+    },
+    {
       "path": "contracts/environment/examples/valid/local-docker-desktop.yaml",
       "change": "added",
       "sinceRevision2Merged": "changed",
@@ -1773,6 +1932,17 @@
       ],
       "materialToStaticResult": false,
       "reason": "Added to the pins: The Terraform layer that creates the platform namespace and the model cache claim before the run. The file has the content it had when revision 2 merged. No static part reads or imports it, so it is not material to the consumed static result."
+    },
+    {
+      "path": "pytest.ini",
+      "change": "added",
+      "sinceRevision2Merged": "unchanged",
+      "material": true,
+      "materialTo": [
+        "E01-D"
+      ],
+      "materialToStaticResult": false,
+      "reason": "Added to the pins: The pytest command of step D6 loads it. The file has the content it had when revision 2 merged. The static runner is not started by pytest, so it is not material to the consumed static result."
     },
     {
       "path": "scripts/environment/api-image.sh",
@@ -2344,7 +2514,7 @@
         "E01-D"
       ],
       "materialToStaticResult": false,
-      "reason": "Added to the pins: Step D6 runs this test module, and the verification rule of E01-AC10 rests on three of its tests. The file was added after revision 2 merged. No static part reads or imports it, so it is not material to the consumed static result."
+      "reason": "Added to the pins: Step D6 selects three tests of this module, and the verification rule of E01-AC10 rests on them. The file was added after revision 2 merged. No static part reads or imports it, so it is not material to the consumed static result."
     },
     {
       "path": "tools/api_carrier/__init__.py",
@@ -2504,7 +2674,8 @@
       "inScope": 18,
       "outsideScope": 114
     },
-    "staticResult": "No file among them is a pinned input of revision 2. No change is material to the consumed static result.",
+    "staticResult": "No file among them is a pinned input of revision 2. No change between the two commits is material to the consumed static result.",
+    "thisChange": "The change that registers this revision is not in this list, because a record cannot list the commit that adds it. That change edits no file on the experiment path. Its files are this record, the registry, tests, and documentation.",
     "files": [
       {
         "path": ".gitattributes",
@@ -2520,7 +2691,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "CONTRIBUTING.md",
@@ -2528,7 +2699,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "README.md",
@@ -2536,7 +2707,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "SECURITY.md",
@@ -2544,7 +2715,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "contracts/environment/examples/README.md",
@@ -2552,7 +2723,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "contracts/environment/examples/valid/local-docker-desktop.yaml",
@@ -2567,7 +2738,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/architecture/boundary-review-checklist.md",
@@ -2575,7 +2746,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md",
@@ -2583,7 +2754,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/architecture/decisions/ADR-0008-v1-security-baseline.md",
@@ -2591,7 +2762,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md",
@@ -2599,7 +2770,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/architecture/decisions/ADR-0018-git-desired-state-layout.md",
@@ -2607,7 +2778,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md",
@@ -2615,7 +2786,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. The test module that step D6 selects three tests from holds other tests that read this file. The three selected tests do not read it, and no step reads it."
       },
       {
         "path": "docs/architecture/resource-ownership.md",
@@ -2623,7 +2794,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/architecture/resource-ownership.v1alpha1.json",
@@ -2631,7 +2802,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. The test module that step D6 selects three tests from holds other tests that read this file. The three selected tests do not read it, and no step reads it."
       },
       {
         "path": "docs/architecture/system-architecture.md",
@@ -2639,7 +2810,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/contracts/README.md",
@@ -2647,7 +2818,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/contracts/environment-binding.md",
@@ -2655,7 +2826,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/contracts/rendered-workload-release.md",
@@ -2663,7 +2834,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/domain/helm-values-renderer.md",
@@ -2671,7 +2842,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/domain/renderer-input-boundary.md",
@@ -2679,7 +2850,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/environment/argocd-application.md",
@@ -2687,7 +2858,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. The test module that step D6 selects three tests from holds other tests that read this file. The three selected tests do not read it, and no step reads it."
       },
       {
         "path": "docs/environment/argocd-bootstrap.md",
@@ -2695,7 +2866,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/environment/argocd-bootstrap.v1alpha1.json",
@@ -2703,7 +2874,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/environment/desired-state-provenance.md",
@@ -2711,7 +2882,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/environment/git-desired-state.md",
@@ -2719,7 +2890,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/environment/local-cluster-provider-contract.md",
@@ -2727,7 +2898,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/environment/reconciliation-evidence.md",
@@ -2735,7 +2906,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. The test module that step D6 selects three tests from holds other tests that read this file. The three selected tests do not read it, and no step reads it."
       },
       {
         "path": "docs/governance/decision-authority.md",
@@ -2743,7 +2914,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/governance/decision-authority.v1alpha1.json",
@@ -2751,7 +2922,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/proof/README.md",
@@ -2759,7 +2930,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/architecture/v2-s3-001-pr1-validation.md",
@@ -2767,7 +2938,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/dashboard.md",
@@ -2775,7 +2946,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/domain/v2-s2-004-pr2-validation.md",
@@ -2783,7 +2954,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/domain/v2-s2-005-pr1-validation.md",
@@ -2791,7 +2962,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/domain/v2-s2-005-pr2-validation.md",
@@ -2799,7 +2970,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run-1-transcript.txt",
@@ -2807,7 +2978,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run-2-transcript.txt",
@@ -2815,7 +2986,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run-3-transcript.txt",
@@ -2823,7 +2994,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run-driver.txt",
@@ -2831,7 +3002,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
@@ -2839,7 +3010,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-002-pr1-validation.md",
@@ -2847,7 +3018,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-002-pr2-argocd-application-run-1-transcript.txt",
@@ -2855,7 +3026,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-002-pr2-argocd-application-run-2-transcript.txt",
@@ -2863,7 +3034,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-002-pr2-argocd-application-run-3-transcript.txt",
@@ -2871,7 +3042,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-002-pr2-argocd-application-run-driver.txt",
@@ -2879,7 +3050,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-002-pr2-argocd-application-run.md",
@@ -2887,7 +3058,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr1-validation.md",
@@ -2895,7 +3066,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-attempt-1-after-abort.record.json",
@@ -2903,7 +3074,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-attempt-1-apply.record.json",
@@ -2911,7 +3082,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-attempt-1-transcript.txt",
@@ -2919,7 +3090,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-2-apply.record.json",
@@ -2927,7 +3098,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-2-remove.record.json",
@@ -2935,7 +3106,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-2-steady.record.json",
@@ -2943,7 +3114,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-2-transcript.txt",
@@ -2951,7 +3122,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-3-apply.record.json",
@@ -2959,7 +3130,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-3-remove.record.json",
@@ -2967,7 +3138,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-3-steady.record.json",
@@ -2975,7 +3146,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-3-transcript.txt",
@@ -2983,7 +3154,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run-driver.txt",
@@ -2991,7 +3162,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-run.md",
@@ -2999,7 +3170,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/environment/v2-s3-003-pr2-validation.md",
@@ -3007,7 +3178,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/README.md",
@@ -3015,7 +3186,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.md",
@@ -3023,7 +3194,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json",
@@ -3031,7 +3202,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/commands.txt",
@@ -3039,7 +3210,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/mutation/rendered-workload-release.yaml",
@@ -3047,7 +3218,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/mutation/values.generated.yaml",
@@ -3055,7 +3226,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/refusals.json",
@@ -3063,7 +3234,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/render-a/rendered-workload-release.yaml",
@@ -3071,7 +3242,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/render-a/values.generated.yaml",
@@ -3079,7 +3250,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/render-b/rendered-workload-release.yaml",
@@ -3087,7 +3258,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/render-b/values.generated.yaml",
@@ -3095,7 +3266,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/result.md",
@@ -3103,7 +3274,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/run.v1alpha1.json",
@@ -3111,7 +3282,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json",
@@ -3119,7 +3290,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json",
@@ -3127,7 +3298,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/v1-evidence-index.md",
@@ -3135,7 +3306,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/proof/v1-evidence-index.v1alpha1.json",
@@ -3143,7 +3314,7 @@
         "inScope": false,
         "category": "evidence-or-validation-record",
         "material": false,
-        "reason": "A record of an earlier change or run. No step reads it."
+        "reason": "A record of an earlier change or run. No registered step reads it."
       },
       {
         "path": "docs/security/README.md",
@@ -3151,7 +3322,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/security/control-matrix.md",
@@ -3159,7 +3330,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/security/deferred-risks.md",
@@ -3167,7 +3338,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/security/security-baseline.v1alpha1.json",
@@ -3175,7 +3346,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/security/security-method.md",
@@ -3183,7 +3354,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/security/security-method.v1alpha1.json",
@@ -3191,7 +3362,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/security/threat-model.md",
@@ -3199,7 +3370,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/testing/claim-evidence-matrix.md",
@@ -3207,7 +3378,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
@@ -3215,7 +3386,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/testing/claim-test-matrix.md",
@@ -3223,7 +3394,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/testing/test-inventory.md",
@@ -3231,7 +3402,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "docs/testing/test-inventory.v1alpha1.json",
@@ -3239,7 +3410,7 @@
         "inScope": false,
         "category": "documentation",
         "material": false,
-        "reason": "Prose and published records. No step reads it."
+        "reason": "Prose and published records. No registered step reads it."
       },
       {
         "path": "gitops/README.md",
@@ -3596,7 +3767,7 @@
         {
           "date": "2026-10-03",
           "record": "docs/proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md",
-          "what": "Three runs of the bootstrap procedure. The first failed at the download three times and changed nothing in the cluster. The second and the third installed and removed Argo CD. No Application existed."
+          "what": "Three executions of the bootstrap procedure. The first failed at the download three times and changed nothing in the cluster. The second and the third installed and removed Argo CD. No Application existed."
         },
         {
           "date": "2026-10-04",
@@ -3750,6 +3921,22 @@
               "digest": "Recorded by the run. It is not in Git, and this record cannot name it before the image is built."
             }
           },
+          "identityVerification": {
+            "statement": "Which step reads or establishes each attribute of identity. On 2026-10-06 only the attributes of step P3 were read from the cluster. The others are named from the committed files that fix them.",
+            "provider": "Step P3 selects it. Step P4 verifies it, in the first procedure that calls inferops::resolve_target.",
+            "cluster": "Step P3 reads it.",
+            "nodes": "Step P3 reads it.",
+            "storage.defaultStorageClass": "Step P3 reads the class, its provisioner, its reclaim policy, and its binding mode.",
+            "storage.modelCacheClaim": "Step P5 creates it. The Application procedure refuses in step D3 when the destination is not prepared.",
+            "gitopsController": "Step P7 installs it and verifies the manifest SHA-256 and the image identities.",
+            "desiredState": "Step P1, step D1, and step D2.",
+            "application": "Step D3 applies it and compares the live object with the committed manifest.",
+            "contract": "Step P2: it is a pinned input.",
+            "environmentBinding": "Step P2: it is a pinned input.",
+            "runtime": "Step D6, under E01-AC9.",
+            "model": "Step P4 verifies the cached artifact. Step D6, under E01-AC9.",
+            "apiImage": "Step P4 builds it and prints its digest."
+          },
           "stateWhenObserved": {
             "namespaces": [
               "default",
@@ -3778,7 +3965,7 @@
             "dockerEngine": "29.8.1",
             "uv": "0.9.16"
           },
-          "network": "The Argo CD repository server reads the repository from the Git remote. The node pulls the runtime image by digest when it does not hold it. The API image is never pulled. No model artifact is downloaded: the claim is filled from a seed image on the host."
+          "network": "The Argo CD repository server reads the repository from the Git remote. The bootstrap procedure downloads the pinned install manifest, and the node pulls the Argo CD images. Terraform fetches its provider when it is not cached. An image build pulls its base image when the host does not hold it. The node pulls the runtime image by digest when it does not hold it. The API image is never pulled. The model artifact is expected not to be downloaded: the claim is filled from a seed image on the host. No step observes the network."
         }
       }
     ],
@@ -3936,7 +4123,7 @@
           },
           {
             "id": "E01-AC10",
-            "statement": "No claim-relevant workload intent is written by hand after rendering: no hand-written value and no operator-supplied parameter of the release restates or overrides claim-relevant workload intent; the release takes its values from the generated values file, from the hand-written values of the Argo CD Application, and from one operator-supplied Helm parameter, api.image.digest, and from no other source; admit_manual_values admits those hand-written values, with that parameter, beside the generated values with no finding; and no string in them contains a workload-intent generated value of eight characters or more."
+            "statement": "No claim-relevant workload intent is written by hand after rendering: no hand-written value and no operator-supplied parameter of the release restates or overrides claim-relevant workload intent; the release takes its values from the generated values file, from the hand-written values of the Argo CD Application, and from one operator-supplied Helm parameter, api.image.digest, over the chart's own defaults, and from no other source; admit_manual_values admits those hand-written values, with that parameter, beside the generated values with no finding; and no string in them contains a workload-intent generated value of eight characters or more."
           }
         ]
       }
@@ -3986,7 +4173,7 @@
             "driver.txt": "The driver that ran the commands, as it ran, when one was used.",
             "transcript.txt": "What the commands printed, with each exit status.",
             "environment.json": "Each attribute of the environment identity as the run read it, and the tool versions.",
-            "release/": "The two generated files as committed to the Git desired state at the executing commit.",
+            "release.json": "The path, the Git blob identifier, and the SHA-256 of each of the two generated files at the executing commit. The files are not copied.",
             "argo.json": "The Argo CD Application at verification. It holds no credential.",
             "pods.json": "The pods of the release, with their image identities.",
             "reconciliation.record.json": "The record that tools/reconciliation_evidence builds from the observation of step D6.",
@@ -4030,7 +4217,7 @@
           "Argo CD reports that it applied a commit other than the executing commit.",
           "The acquisition hook of the Application starts a download of the model artifact."
         ],
-        "note": "No condition is about a lost caller stream or an injected fault: E01-D runs no caller workload and injects no fault."
+        "note": "No condition is about a lost caller stream or an injected fault: E01-D runs no caller workload and injects no fault. No registered step reads the acquisition hook's job or the network, so the last condition applies when the operator observes a download by other means. The run does not establish that none happened."
       }
     ],
     "cleanupProcedure": [
@@ -4054,12 +4241,14 @@
         "status": "value",
         "value": [
           "Stop the port-forward.",
-          "Remove the Application and its project: bash scripts/environment/argocd-application.sh remove --confirm. Argo CD deletes the objects it applied. The namespace and the claim stay.",
+          "Before the removal, run bash scripts/environment/argocd-application.sh verify once more, and record what it prints: the comparison of the live objects with the committed manifests, and the states that Argo CD reports. The run makes no manual change to an object that the Application manages.",
+          "Remove the Application and its project: bash scripts/environment/argocd-application.sh remove --confirm. Argo CD deletes the objects it applied. The namespace and the claim stay. Then confirm that no object with the release label remains: the expected count of API and runtime replicas after the cleanup is zero, and no release remains to send a request to.",
           "Remove Argo CD: bash scripts/environment/argocd-bootstrap.sh remove --confirm.",
           "Remove the platform namespace and the model cache claim: bash scripts/environment/terraform-prerequisites.sh destroy --confirm. The claim holds a copy of the artifact that the run's preparation put there. The seed image and the host cache keep the artifact.",
           "Read the namespaces and the custom resource definitions, and confirm that the cluster holds what the run found in step P3.",
           "The run changed no Git desired state, so no desired state is restored. Confirm that git status shows no change except the new evidence directory.",
           "Keep the evidence directory. Remove nothing from it.",
+          "The images that the preparation loaded stay in the node and on the host. They are the only experiment resources that the cleanup leaves, and the run records their references.",
           "The environment names no paid provider, so no provider resource is destroyed and no cost is recorded."
         ],
         "note": "After an aborted run, the operator reads the state of the cluster first and then runs the removals that apply, in this order. A removal that does not finish is recorded with the state it left."

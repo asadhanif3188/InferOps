@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from tools.experiment_freeze import (
     ALWAYS_ANSWERED,
@@ -71,7 +72,7 @@ R3 = "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json"
 #: Revision 2's registered pin, written out so that a change to it is visible.
 R2_PIN = "198f60b5133338e445b1c0fef9f9171ad3e58fe3bde66ac1e7a8d1d674730ac8"
 #: Revision 3's registered pin, written out for the same reason.
-R3_PIN = "798309f8068d65978ce8f2ca8924e42f85c7727c10dd865bb916a5b3482745c9"
+R3_PIN = "b4aa013dc482a8f536395c094ab76dc2b753e04d7c139a4b0cadf17c672da739"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so
@@ -1069,7 +1070,8 @@ def test_e01_names_its_preparation_revision_and_no_commit_that_merges_it(
     [
         (R1, {"V2-S2-003-PR1", "V2-S3-004-PR1"}),
         (R2, {"V2-S2-004-PR1", "V2-S3-004-PR1"}),
-        (R3, {"V2-S3-004-PR1"}),
+        # Revision 3 quotes revision 2's text where it says what it replaces.
+        (R3, {"V2-S2-004-PR1", "V2-S3-004-PR1"}),
     ],
 )
 def test_the_record_names_only_its_own_story_and_the_pending_owner(
@@ -1250,8 +1252,8 @@ def test_revision_three_keeps_every_pin_of_revision_two_and_only_adds() -> None:
     added = set(after) - set(before)
     classified = {c["path"]: c for c in document["inputChanges"]}
     assert set(classified) == added
-    assert len(after) == 158
-    assert len(added) == 84
+    assert len(after) == 160
+    assert len(added) == 86
     for path, change in classified.items():
         assert change["change"] == "added", path
         assert change["material"] is True, path
@@ -1290,7 +1292,81 @@ def test_revision_three_pins_exactly_its_material_scope(tmp_path: Path) -> None:
         assert path in pinned, path
 
 
-def test_revision_three_accounts_for_every_file_changed_since_revision_two() -> None:
+def test_revision_three_lists_the_files_git_reports_between_the_two_commits() -> None:
+    """Read from Git, where the checkout holds both commits. A shallow clone does
+    not, and the test is then skipped: the listing is not checked there."""
+    changes = load(R3)["changesSinceSupersededRevision"]
+
+    def git(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    for revision in (changes["from"], changes["to"]):
+        if git("cat-file", "-e", f"{revision}^{{commit}}").returncode != 0:
+            pytest.skip(f"this checkout does not hold the commit {revision}")
+    listed = git("diff", "--name-status", f"{changes['from']}..{changes['to']}")
+    assert listed.returncode == 0, listed.stderr
+    expected = {}
+    for line in listed.stdout.splitlines():
+        code, path = line.split("\t", 1)
+        expected[path] = {"A": "added", "M": "changed"}[code]
+    assert {row["path"]: row["change"] for row in changes["files"]} == expected
+
+
+def test_revision_three_names_what_the_files_it_pins_hold() -> None:
+    """The record repeats values from the release, the Application, and the generated
+    values. They are compared with those files while the files have their pinned
+    content. After a later change to one of them the record still names the content
+    it pinned, the comparison has no subject, and the test is skipped."""
+    document = load(R3)
+    release_dir = "gitops/environments/local-docker-desktop/workloads/support-assistant"
+    sources = (
+        f"{release_dir}/rendered-workload-release.yaml",
+        f"{release_dir}/values.generated.yaml",
+        "infra/argocd/local-docker-desktop-support-assistant.yaml",
+    )
+    pins = {item["path"]: item["sha256"] for item in document["pinnedInputs"]}
+    for path in sources:
+        if content_digest((REPO_ROOT / path).read_bytes()) != pins[path]:
+            pytest.skip(f"{path} changed after revision 3 pinned it")
+    release, values, application = (
+        yaml.safe_load((REPO_ROOT / path).read_text(encoding="utf-8"))
+        for path in sources
+    )
+    inputs = _part(document, "E01-D")["inputs"]
+    named = inputs["desiredStateRelease"]
+    assert named["releaseId"] == release["metadata"]["releaseId"]
+    assert named["helmValuesSha256"] == release["output"]["helmValues"]["sha256"]
+    assert named["contractSha256"] == release["source"]["contract"]["sha256"]
+    assert (
+        named["environmentBindingSha256"]
+        == release["source"]["environmentBinding"]["sha256"]
+    )
+    assert (
+        inputs["rendererRevision"]["value"] == release["source"]["renderer"]["revision"]
+    )
+    spec = application["spec"]
+    assert inputs["application"]["name"] == application["metadata"]["name"]
+    assert inputs["application"]["project"] == spec["project"]
+    assert inputs["application"]["repoURL"] == spec["source"]["repoURL"]
+    assert inputs["application"]["targetRevision"] == spec["source"]["targetRevision"]
+    assert inputs["application"]["valueFiles"] == spec["source"]["helm"]["valueFiles"]
+    assert inputs["application"]["syncPolicy"] == spec["syncPolicy"]
+    assert inputs["request"]["body"]["model"] == values["model"]["identifier"]
+    identity = entry(document, "environmentIdentity", "E01-D")["value"]["identity"]
+    image = values["runtime"]["image"]
+    assert identity["runtime"]["image"] == f"{image['repository']}@{image['digest']}"
+    assert identity["model"]["revision"] == values["model"]["revision"]
+    assert identity["model"]["sha256"] == values["model"]["artifact"]["sha256"]
+    assert identity["model"]["identifier"] == values["model"]["identifier"]
+
+
+def test_revision_three_classifies_every_file_it_lists_as_changed() -> None:
     document = load(R3)
     changes = document["changesSinceSupersededRevision"]
     rows = changes["files"]
@@ -1358,10 +1434,18 @@ def test_revision_three_registers_the_e01_d_path_steps_and_rules() -> None:
         "--api-image-digest <api-image-digest>"
     ]
     assert not any("--set" in c or c.startswith("helm ") for c in commands)
+    (selected,) = [c for c in commands if "pytest" in c]
+    assert selected.endswith(
+        "tests/architecture/test_argocd_application.py -k hand_written_values"
+    )
+    (completion,) = [c for c in commands if "/v1/chat/completions" in c]
+    assert "--write-out '%{http_code}'" in completion
+    assert "--output .artifacts/" in completion
     for criterion in ("E01-AC8", "E01-AC9", "E01-AC10"):
         assert part["verification"][criterion], criterion
     replaced = document["procedureChanges"]["changes"]
     assert len(replaced) == 3
+    assert len(document["fieldChanges"]["changes"]) == 12
     for change in replaced:
         assert change["revision2"].strip() and change["why"].strip()
     assert "with no parameter override" in replaced[0]["revision2"]
@@ -1408,6 +1492,53 @@ def test_revision_three_says_that_no_runner_exists_for_e01_d() -> None:
     limitations = " ".join(definition["limitations"])
     assert "No runner and no coded analysis exist for E01-D" in limitations
     assert "CURRENT_REVISION is 2" in limitations
+    assert "It will refuse the manifest of an E01-D run" in limitations
     assert "The API image digest is not in Git" in limitations
     for item in load(R2)["definition"]["limitations"]:
         assert item in definition["limitations"]
+
+
+def test_revision_three_lists_every_e01_d_statement_that_differs_from_revision_two() -> (
+    None
+):
+    """Each E01-D field entry that is not revision 2's is named in fieldChanges, with
+    revision 2's own text."""
+    before, after = load(R2), load(R3)
+    rows = {row["where"]: row for row in after["fieldChanges"]["changes"]}
+    for row in rows.values():
+        assert row["revision2"], row["where"]
+        assert row["why"].strip(), row["where"]
+    differing = [
+        key
+        for key in before["fields"]
+        if any(
+            "E01-D" in e["parts"] and len(e["parts"]) == 1 for e in after["fields"][key]
+        )
+        and entry(after, key, "E01-D") != entry(before, key, "E01-D")
+    ]
+    assert differing == [
+        "environmentIdentity",
+        "topology",
+        "acceptanceCriteria",
+        "evidencePaths",
+        "abortConditions",
+        "cleanupProcedure",
+        "intendedEvidenceLevel",
+    ]
+    for key in differing:
+        if key == "acceptanceCriteria":
+            continue
+        where = next(w for w in rows if w.startswith(f"fields.{key}, E01-D"))
+        earlier = entry(before, key, "E01-D")
+        assert rows[where]["revision2"] in (
+            earlier,
+            earlier.get("value"),
+            earlier.get("note"),
+        ), key
+    kept = entry(before, "abortConditions", "E01-D")["value"]
+    now = entry(after, "abortConditions", "E01-D")["value"]
+    assert now[: len(kept)] == kept
+    assert len(now) == len(kept) + 2
+    assert _part(after, "E01-D")["inputs"]["workloadContractStatement"].startswith(
+        "The unmodified reference contract"
+    )

@@ -20,9 +20,10 @@ from `1.0.0`.
   the model by revision and SHA-256. It names the desired-state directory, the
   Application, the contract, and the binding, and it registers the preparation
   steps, the run steps, one request with no retry, the comparisons that judge
-  each criterion, the abort conditions, and the cleanup. It pins 158 inputs: the
-  74 of revision 2, unchanged, and 84 for the E01-D path. It lists all 132 files
-  that changed since revision 2 merged, and classifies each.
+  each criterion, the abort conditions, and the cleanup. It pins 160 inputs: the
+  74 of revision 2 and 86 for the E01-D path. It lists all 132 files that
+  changed since revision 2 merged, and classifies each. It lists every other
+  statement about E01-D that differs from revision 2, with the earlier text.
   **One criterion clause changed, before any E01-D run.** Revision 2's E01-AC10
   required one hand-written values file and no parameter override. ADR 0019 D5,
   accepted later, supplies the API image digest as one Helm parameter, so that
@@ -670,6 +671,11 @@ from `1.0.0`.
 
 ### Changed
 
+- **`V2-S3-004-PR1`: one test of the published review no longer compares with the registry
+  file as it is today.** The review of the second static run names the
+  registry's digest as that run recorded it. Registering a third record adds a
+  row, and the file's digest moves. The test now rebuilds the registry of two
+  rows from today's file and compares with that.
 - **`a-v1-release-has-been-published` is certified, at `C0`, on `main`.** Through the
   post-release ledger, on the record above; its statement is unchanged, and the pack the
   release was cut over still lists it as not claimed. The register's reasons for
