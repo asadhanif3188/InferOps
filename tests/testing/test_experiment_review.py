@@ -174,9 +174,20 @@ def test_the_review_names_the_freeze_record_the_run_executed_under() -> None:
 
 
 def test_the_review_names_the_registry_the_run_recorded() -> None:
+    """A later freeze revision adds a row to the registry, so the file's digest moves.
+    The review names the registry as the run recorded it: today's file without the
+    rows that were registered after the run, in the form the file is written in."""
     registry = SUBJECT["registry"]
     assert registry == MANIFEST["executionIdentity"]["registry"]
-    assert registry["contentSha256"] == content_sha256(REPO_ROOT / registry["path"])
+    document = json.loads((REPO_ROOT / registry["path"]).read_text(encoding="utf-8"))
+    rows = document["records"]
+    assert [row["registeredBy"] for row in rows[:2]] == [
+        "V2-S2-003-PR1",
+        "V2-S2-004-PR1",
+    ]
+    document["records"] = rows[:2]
+    as_recorded = (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode()
+    assert registry["contentSha256"] == hashlib.sha256(as_recorded).hexdigest()
 
 
 def test_the_review_names_the_revision_and_outcomes_the_run_recorded() -> None:

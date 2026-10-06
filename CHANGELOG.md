@@ -10,6 +10,32 @@ from `1.0.0`.
 
 ### Added
 
+- **The first experiment's real-deployment part has a frozen environment. It has
+  not run.** `V2-S3-004-PR1` adds
+  [freeze revision 3](docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json) of
+  the V2-E01 family and registers it. It supersedes revision 2, and revisions 1
+  and 2 are unchanged. Revision 3 names the environment of E01-D: the
+  `docker-desktop` provider, one cluster at Kubernetes v1.36.1 with one node,
+  its default storage class, Argo CD v3.5.3, the runtime image by digest, and
+  the model by revision and SHA-256. It names the desired-state directory, the
+  Application, the contract, and the binding, and it registers the preparation
+  steps, the run steps, one request with no retry, the comparisons that judge
+  each criterion, the abort conditions, and the cleanup. It pins 160 inputs: the
+  74 of revision 2 and 86 for the E01-D path. It lists all 132 files that
+  changed since revision 2 merged, and classifies each. It lists every other
+  statement about E01-D that differs from revision 2, with the earlier text.
+  **One criterion clause changed, before any E01-D run.** Revision 2's E01-AC10
+  required one hand-written values file and no parameter override. ADR 0019 D5,
+  accepted later, supplies the API image digest as one Helm parameter, so that
+  clause could not hold on the accepted delivery. Revision 3 states the
+  ownership property in its place: no hand-written value and no
+  operator-supplied parameter restates or overrides claim-relevant workload
+  intent. The record holds both statements and the reason. It also says that
+  runs of the same Argo CD path preceded the change, and that those runs are
+  not E01-D runs. **Nothing was deployed, synchronized, or requested in this
+  change.** The environment was read with read-only requests. No runner and no
+  coded analysis exist for E01-D, and the E01 runner still executes revision 2.
+  No claim is registered, and a freeze record is not evidence.
 - **What Argo CD reports about the Application can be collected, and a field
   that was not reported stays not reported. Executed on one provider.**
   `V2-S3-003-PR2` adds an `observe` operation to
@@ -645,6 +671,11 @@ from `1.0.0`.
 
 ### Changed
 
+- **`V2-S3-004-PR1`: one test of the published review no longer compares with the registry
+  file as it is today.** The review of the second static run names the
+  registry's digest as that run recorded it. Registering a third record adds a
+  row, and the file's digest moves. The test now rebuilds the registry of two
+  rows from today's file and compares with that.
 - **`a-v1-release-has-been-published` is certified, at `C0`, on `main`.** Through the
   post-release ledger, on the record above; its statement is unchanged, and the pack the
   release was cut over still lists it as not claimed. The register's reasons for

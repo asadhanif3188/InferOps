@@ -135,6 +135,10 @@ topology. This record reads that as the workload's directory beneath that path.
 No freeze revision names the exact path yet. A later revision for the
 real-deployment part must name it before a result-bearing run.
 
+**Added 2026-10-06:** [freeze revision 3](../../proof/experiments/v2-e01/freeze-r3.v1alpha1.json) names the exact
+directory, beneath the destination path, and records the earlier wording
+that it replaces.
+
 The same record says that a hand-written values file is admitted "beside" the
 generated values. That is the admission rule's term: the two files are given to
 Helm together. It does not place the file in the release directory, and D3 keeps
@@ -351,6 +355,6 @@ or whether the release serves a request: **nothing**. No claim is registered.
 | R1 | The generated values do not install the chart alone | Open | Four hand-written values are required. The API image is a contributor's local build, published to no registry. The change that adds the first Application must say where those values come from. **Added 2026-10-04:** ADR 0019 D5 says it. Three of the four are inside the Application. The API image digest is a parameter that the operator supplies, and it is not in Git |
 | R2 | The recorded revision is a declaration | Accepted | A contributor can declare a commit at which the renderer differed, or a string that names no commit. The defaults at that commit are compared in a full clone, and not in the hosted lane. The renderer's source is not compared |
 | R3 | Nothing verifies that a merge was reviewed | Open | The promotion boundary is a rule that review holds. Branch protection is not claimed as configured |
-| R4 | The path rule reads "at the destination path" as "beneath it" | Open | The freeze record says "at" in its procedure and in its topology. A later freeze revision must name the exact path before a result-bearing run. None does yet |
+| R4 | The path rule reads "at the destination path" as "beneath it" | Open | The freeze record says "at" in its procedure and in its topology. A later freeze revision must name the exact path before a result-bearing run. None does yet. **Added 2026-10-06:** [freeze revision 3](../../proof/experiments/v2-e01/freeze-r3.v1alpha1.json) names it |
 | R5 | A release committed for one provider says nothing about another | Accepted | The one path is for `local-docker-desktop`. `kind` has no path and no bootstrap run |
 | R6 | The check reports a file the operating system created | Accepted | The walk reads the working tree, so a stray file in `gitops/` fails the suite locally. It is removed, not exempted |

@@ -10,6 +10,9 @@ under revision 2 from the merged checkout. **One independent review published by
 register claim. **One correction and one gate added by `V2-S2-005-PR2`**: the claim's
 statement is [narrowed to the frozen criterion](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03),
 and a register change that bears on a run now needs a review artifact of that run.
+**Revision 3 added by `V2-S3-004-PR1`**: it [names the environment of E01-D](#revision-3),
+the Git desired-state path, and the Argo CD Application, and it changes one clause of
+E01-AC10. No part of E01 ran in that change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -17,7 +20,8 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | Experiment | Revision | Record | Parts and intended level | State |
 |---|---|---|---|---|
 | V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Superseded by revision 2 on 2026-10-03, and kept unchanged. E01-A, E01-B, and E01-C ran once under it, in [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md), and each PASSED under its criteria. That run carries an [audit limitation](#audit-of-the-first-run-2026-10-03) |
-| V2-E01, contract-to-deployment determinism | 2 | [`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. E01-A, E01-B, and E01-C ran once under it, in [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md), and each PASSED under its criteria. E01-D's environment identity is still pending, so E01-D cannot start |
+| V2-E01, contract-to-deployment determinism | 2 | [`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. E01-A, E01-B, and E01-C ran once under it, in [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md), and each PASSED under its criteria. Superseded by revision 3 on 2026-10-06, and kept unchanged. Its E01-D environment identity is pending |
+| V2-E01, contract-to-deployment determinism | 3 | [`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. It names the E01-D environment. No part ran under it. E01-D has not run |
 
 ## Why a freeze comes first
 
@@ -66,7 +70,9 @@ refused. It is never read as "not applicable".
   [`tools/experiment_freeze`](../../../tools/experiment_freeze/core.py) names the
   experiment, the field, and the part. One allowance exists: E01-D's
   `environmentIdentity`, owned by `V2-S3-004-PR1`, the change that will name E01-D's real
-  environment. A part with a pending field cannot run.
+  environment. A part with a pending field cannot run. Revision 3 answers that field with a
+value, and no field of it is pending. The allowance stays in the checker, which revision 3
+pins and which was not edited, so a test, not the checker, holds that revision 3 uses none.
 
 An entry may add a `note`, which must not be empty. Beside the fields, a record states its
 definition, its parts with their inputs and procedures, and its pinned inputs.
@@ -255,6 +261,110 @@ the record avoids pinning itself; and, in `history`, the first run's audit limit
 what is and is not available of the earlier previews. E01-D's environment identity stays
 pending, with the same owner.
 
+### Revision 3
+
+[`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json), registered by
+`V2-S3-004-PR1` on 2026-10-06, supersedes revision 2. Revision 2 left the environment
+identity of E01-D pending. Revision 3 answers it, and no field of it is pending. Revisions 1
+and 2 are unchanged.
+
+**No part of E01 ran in this change.** Nothing was deployed, Argo CD synchronized
+nothing, and no completion was sent. The environment was read with read-only requests on
+2026-10-06. A freeze record is not evidence.
+
+- **The environment.** One provider, `docker-desktop`: one cluster at Kubernetes v1.36.1
+  with one node, the default storage class `standard`, Argo CD v3.5.3 from the pinned
+  install manifest, the runtime image by digest, and the model by repository, revision,
+  file, and SHA-256. The API image digest is not in Git: the run builds the image and
+  records the digest. When the environment was read, Argo CD, the platform namespace, and
+  the model cache claim were absent. The preparation steps create them.
+- **The Git and Argo CD path.** The release is the one committed at
+  `gitops/environments/local-docker-desktop/workloads/support-assistant/`, derived from the
+  reference contract and the `local-docker-desktop` binding. The Application is
+  `local-docker-desktop-support-assistant`, in the project `inferops-workloads`, and it
+  follows `main`. The run commits no release: it derives the release again at the
+  executing commit and compares the bytes.
+- **The steps and the rules.** Seven preparation steps and six run steps, each with its
+  commands, and for each E01-D criterion the comparisons that judge it. One request is
+  sent, with no retry. A preparation step that fails ends the run before the Application
+  is applied. A release that is not ready 600 seconds after Argo CD reported the sync
+  makes the part FAILED. The record separates the identity attributes that the run reads
+  before it prepares anything from the ones a preparation step establishes, and names
+  the step that verifies each.
+- **One criterion clause changed.** Revision 2's E01-AC10 said that the release is
+  installed "from the generated values file and one hand-written values file only, with no
+  parameter override". [ADR 0019](../../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
+  D5, accepted after revision 2, delivers the values as the generated values file,
+  hand-written values inside the Application, and one operator-supplied Helm parameter,
+  `api.image.digest`. On that delivery the clause cannot hold, whatever a run observes.
+  Revision 3 states the ownership property in its place: no hand-written value and no
+  operator-supplied parameter restates or overrides claim-relevant workload intent. The
+  parameter is permitted because no contract, binding, platform default, or renderer owns
+  it. `criteriaChanges` holds both statements, the reason, and who approved the change.
+  E01-AC1 to E01-AC9 are those of revision 2, character for character.
+- **Every other difference from revision 2 is listed.** Three statements of the E01-D
+  procedure and inputs carried the same mechanism or predate the Git layout, and
+  `procedureChanges` lists each replacement. `fieldChanges` lists twelve more, each with
+  revision 2's text: the environment, the topology, the evidence paths, two added abort
+  conditions, the cleanup, the preconditions, and the outcome rules. The cleanup of
+  revision 2 was written for an environment it could not name, and four of its items
+  have no subject on this one.
+- **The change was written after runs of the same path.** No E01-D run had executed. But
+  between 2026-10-03 and 2026-10-05 the Argo CD procedures ran on this provider, applied
+  this release with this parameter, and sent caller requests: five of six were answered
+  in one set of runs. They are not E01-D runs. The record lists them in `history`, and
+  says that the criterion change was written with knowledge of them.
+- **The pins.** 160 inputs: the 74 of revision 2, and 86 added for the E01-D path. The
+  86 are the rest of the `inferops` package that the API image copies, the three tools
+  the steps run, the API container's entry module and the carrier it imports, the
+  desired-state tree, the two Argo CD manifests, five procedures and the library they
+  source, the Terraform prerequisite layer, the image build files, the model source
+  record, the `local-docker-desktop` binding, one test module, and the two pytest
+  configuration files. `inputChanges` classifies each.
+- **No pin of revision 2 moved.** Each of the 74 has the content revision 2 pinned.
+  `changesSinceSupersededRevision` lists all 132 files that changed between the merge of
+  revision 2 and the commit revision 3 was prepared from: 18 are on the E01-D path, 114
+  are not, and none is a pinned input of revision 2.
+- **The static result is consumed, not repeated.** Run `20261003-e01-abc-1` under
+  revision 2 is the static result. No pinned input of revision 2 moved, so no change is
+  material to it.
+
+What revision 3 does not do:
+
+- **No runner exists for E01-D, and no code computes its verdicts.** A person executes the
+  registered steps and applies the registered rules. A driver that transcribes the steps
+  is committed with the run and is not a pinned input.
+- **The E01 runner still executes revision 2.** Its `CURRENT_REVISION` is 2. It is a
+  pinned input, and this change does not edit it. A new static run would execute under
+  revision 2.
+- **The committed-run check will refuse an E01-D run, and this change does not fix
+  that.** `tools.experiment_e01 --check` reads every directory under `runs/` as a static
+  run and knows revisions 1 and 2. Revision 3 puts an E01-D run under `runs/`, because
+  the review gate reads runs there. So the change that commits an E01-D run must change
+  that check, after the run. The edit moves a pinned input, and the static suite builds
+  its temporary repositories from the runner's current bytes and revision 2's pins. The
+  edit was tried in this change: 13 tests of the default lane failed, and it was taken
+  back out. A run of any part after that edit needs a later revision.
+- **No command judges a committed E01-D run again.** The evidence index binds each
+  cited file by SHA-256, and the review gate compares the review's digests with the
+  run's files.
+- **No step observes whether the model was downloaded.** The claim is filled before
+  the Application is applied, so the acquisition hook is expected to download nothing.
+  No step reads the hook's job, and Argo CD deletes it when it succeeds.
+- **The cleanup leaves images in the node and on the host.**
+- **The eight-character clause of E01-AC10 is not computed over the live Application.**
+  It rests on the static result's verdict for the hand-written values fixture, and on a
+  test that holds the Application's hand-written values equal to that fixture without its
+  digest.
+- **Nothing here blocks a merge that changes a pinned file.** As before, the run that
+  follows refuses to start until a merged revision classifies the change.
+
+An E01-D result enters the register only through
+[the review gate](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03): a
+ledger that bears on the run names one independent review artifact of that run. The
+review of the second static run is not a review of an E01-D run, and the gate refuses it
+for one.
+
 ## The E01 static run
 
 `tools/experiment_e01` runs E01-A, E01-B, and E01-C once, as the freeze record registers
@@ -278,8 +388,8 @@ freeze record is in it, `git status --porcelain --untracked-files=all` prints no
 every pinned input has its pinned content, and the `inferops` package it imported is the
 one under the checkout's `src`. If one fails, it writes a run with every part REFUSED and
 runs nothing. `origin/main` is read as the clone holds it, so a clone that has not fetched
-refuses a commit that is merged; the reverse cannot happen. A new run executes the latest
-revision, revision 2; a committed run is judged by the analysis of the revision it names,
+refuses a commit that is merged; the reverse cannot happen. A new run executes
+revision 2, the runner's `CURRENT_REVISION`, and not [revision 3](#revision-3); a committed run is judged by the analysis of the revision it names,
 so the first run is still judged by revision 1's criteria and page, byte for byte. It refuses an identifier whose date is not today's UTC date, and an
 evidence directory that already exists. It starts only with `PYTHONHASHSEED=1`; the second
 E01-A render runs in its own process with `PYTHONHASHSEED=2`.
@@ -299,7 +409,7 @@ commit, preconditions, host, runner file digests, observations, abort checks, th
 of every file, each criterion's verdict, and each part's outcome), `commands.txt`,
 `render-a/`, `render-b/`, `mutation/`, `refusals.json`, and `result.md`.
 
-**The check.** `--check` derives every verdict again from the committed renders, the
+**The check.** `--check` reads every directory under `runs/` as a static run. It derives every verdict again from the committed renders, the
 recorded refusals, and the observations the manifest records: the two renders compared,
 the release fields read from the files, the mutation's differences listed again, and every
 refusal compared with the record's expected one. It does not recompute the contract,

@@ -511,15 +511,25 @@ pinned file the scope no longer names. The record's preconditions say the run do
 start while one is listed and no merged revision classifies it:
 
 ```sh
-uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r2.v1alpha1.json
+uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json
 ```
+
+Revision 3 is the latest E01 record. It pins the path of E01-D: the chart, the
+`inferops` package, the desired-state tree, the two Argo CD manifests, five environment
+procedures and `lib.sh`, the Terraform prerequisite layer, the tools its steps run, and
+`pytest.ini` and `conftest.py`. A change to
+one of them is listed by this command, and E01-D does not start until a merged revision
+classifies it.
 
 For E01-A, E01-B, and E01-C the runner enforces that precondition itself, with the merged
 commit and the clean tree, and writes a run with every part REFUSED when one fails. Under
 revision 2 it also refuses to run unless the runner and the `inferops` package it imported
 are the checkout's own: run it from the merged checkout, never from a copy outside it, and
-do not run the parts anywhere else first - a preview is not exempt. No
-runner exists for E01-D, so for it the precondition is still a procedure. Do not edit a
+do not run the parts anywhere else first - a preview is not exempt. The runner
+executes revision 2, not revision 3. Its `--check` reads every directory under `runs/`
+as a static run, so the change that commits an E01-D run must change that check. No
+runner exists for E01-D, so for it the precondition is still a procedure: a person
+follows the steps that revision 3 registers. Do not edit a
 run's evidence after it is written; a new run takes a new identifier. Nothing refuses an
 edit by itself: `--check` finds one that leaves the files disagreeing with the manifest,
 and the evidence index finds an edit to any file the run's register record cites. Every
