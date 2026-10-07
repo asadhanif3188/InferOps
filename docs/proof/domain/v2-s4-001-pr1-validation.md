@@ -5,8 +5,9 @@ installed.** This change makes the chart state the API Deployment's rolling-upda
 strategy, gives the platform defaults the two bounds of that strategy, and makes the
 reference binding state two API replicas. The evidence level of everything below is
 C0: committed files were read, the render path ran in memory, and `helm template` and
-`helm lint` ran on a workstation. No cluster was contacted, no release was installed,
-no rollout ran, and no request was sent.
+`helm lint` ran on a workstation. One cluster was read once, read-only, to learn
+whether a controller there follows `main`. Nothing was written to it. No release was
+installed, no rollout ran, and no request was sent.
 
 | Property | Value |
 |---|---|
@@ -24,7 +25,7 @@ no rollout ran, and no request was sent.
 | Tag `v1.0.0` | Tag object `17c9bbd7…`, commit `718ad2e0…`, as before |
 | `tools.experiment_freeze --check` | Exit 0: 3 freeze records, every rule held |
 | `tools.experiment_freeze --changes`, revisions 2 and 3, at the base | Exit 1 for each, with 1 moved file: the runner, as the earlier records state |
-| The local cluster | Read once, read-only: the `docker-desktop` context answered, and it holds no Argo CD Application resource type. So no controller on that cluster follows `main`, and merging this change applies nothing there |
+| The local cluster | Read once, read-only, on 2026-10-07, with `kubectl --context docker-desktop get applications.argoproj.io -A`. The server answered that it has no resource type `applications`. So no Argo CD Application exists on that cluster, and merging this change applies nothing there. No transcript of the read is committed |
 
 **The requirement is not a decision record of this repository.** Two API replicas and
 the two rollout bounds were given to this change as a requirement. No decision record
@@ -73,7 +74,7 @@ are listed under [decisions](#decisions-taken-in-this-change), because each is a
 | 1 | The binding owns the API replica count. No new owner was added | `spec.platform.apiReplicas` already owned it, and the ownership table already refused the count from any other layer | The reference count is a fact of one binding. Another binding states its own |
 | 2 | The platform defaults own the two rollout bounds | A rollout policy is the same for every workload and environment, and neither the contract nor the binding has a field for it | The defaults are still read from the chart's `api` block. No defaults file exists |
 | 3 | The two bounds joined `v1alpha1` in place. No `v1alpha2` | No defaults file is committed at any revision, so no stored document changed its meaning | A caller that built a three-setting set no longer constructs one. Every caller in this repository was changed |
-| 4 | Whole pods only. A percentage is refused | A percentage rounds to a different number of pods at each replica count | A policy that should scale with the replica count cannot be stated |
+| 4 | Whole pods only. A percentage is refused | The number of pods a percentage resolves to depends on the replica count. Whole pods keep the bounds fixed when the count changes | A policy that should scale with the replica count cannot be stated |
 | 5 | The chart version moved to `0.4.0` | The render changed, and `0.3.0` is the version `v1.0.0` released. One version for two renders would hide the change | The chart is no longer the released one. The V1 compatibility record is amended, and the release suite names the moved pin |
 | 6 | No PodDisruptionBudget | A budget bounds a voluntary eviction. Nothing in this change evicts a pod, and no test here could state what a budget would bound | An eviction is not bounded. A test fails when the chart first renders a budget |
 | 7 | The runtime Deployment is not changed | Its replica count and its rollout are another topology decision | The Kubernetes default still applies to it. A test fails when a runtime rollout value first appears |
@@ -88,7 +89,7 @@ change edits files in each of them.
 | Command | At the base | With this change |
 |---|---|---|
 | `tools.experiment_freeze --changes …/freeze-r2.v1alpha1.json` | Exit 1, 1 file | Exit 1, 13 files |
-| `tools.experiment_freeze --changes …/freeze-r3.v1alpha1.json` | Exit 1, 1 file | Exit 1, 16 files |
+| `tools.experiment_freeze --changes …/freeze-r3.v1alpha1.json` | Exit 1, 1 file | Exit 1, 17 files. It was 16 at the first commit: the second commit edits `tools/gitops_desired_state/core.py`, which revision 3 pins |
 | `tools.experiment_freeze --check` | Exit 0 | Exit 0: no record was edited |
 | `tools.experiment_e01 --check` | Exit 0 | Exit 0: 2 runs, each agrees with its own evidence |
 
@@ -136,10 +137,10 @@ released pin at the tag in a checkout that holds the tag.
 | The reference API replica count is 2 | Reached as configuration. The `local-docker-desktop` binding states 2, the committed desired-state values state 2, and the chart renders 2 from them. **Not reached as an observation**: no release with two API replicas was installed |
 | The API rollout uses `maxUnavailable` 0 and `maxSurge` 1 | Reached as a rendered policy. The platform defaults own both bounds, the renderer writes them, and the API Deployment states them. **No rollout ran** |
 | The configuration comes from an owner and not from an override | Reached for a file admitted beside generated values: a hand-written file that sets, replaces, or removes the replica count or a bound is refused. **Not reached for any other route**: a values file passed to Helm by hand is not checked, as the renderer page already states |
-| Service, correlation, and error behaviour are kept | Reached as a render property: at one replica and at two, the render differs in one line, the API Deployment's `replicas`. No source file under `src/inferops/api` changed. **Not observed**: no request was sent to two replicas |
+| The rendered Service, pod template, and configuration are the same at one replica and at two | Reached as a render property: the two renders differ in one line, the API Deployment's `replicas`. No source file under `src/inferops/api` changed. **Not observed**: no request was sent to two replicas, so nothing here shows what a caller, a correlation identifier, or an error response does there |
 | The API's readiness reflects what the API itself can do | **Not in this change.** The readiness answer is unchanged: it is still false whenever the selected adapter is unable |
 | The API Service's Ready endpoints are observable | **Not in this change.** Nothing here reads an endpoint |
-| No path-level resilience claim | Held. No claim was added, and every page this change edits says that a replica count and a rollout policy are configuration |
+| No path-level resilience claim | Held. No claim was added. The chart README, the chart values, the binding fixture, the binding contract page, the renderer page, the boundary page, the desired-state page, the README, and the CHANGELOG each say that a replica count and a rollout policy are configuration |
 | A bounded disruption budget, where appropriate | **Not added**: decision 6 |
 
 ## Results at the first commit
@@ -181,7 +182,126 @@ statement is false for that one commit, and four tests say so:
   still names the earlier release identifier.
 
 The second commit declares the first commit as the revision, regenerates the release,
-and corrects the page. The four tests are run again there.
+and corrects the page.
+
+## The releases, by commit
+
+| Commit | Release identifier in `gitops/` | Both revisions | Chart |
+|---|---|---|---|
+| The base, `2c180ead…` | `eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae` | `c056b9772a3de391fd61589649b1d3ed1c5ac7c4` | `0.3.0` |
+| The first commit, `9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0` | `901c4a5ae968d135624c21c8cf118512df8dc3bfa77ece5bffa3cfb87f7f762f` | `c056b9772a3de391fd61589649b1d3ed1c5ac7c4`, which is false for that commit | `0.4.0` |
+| The second commit | `f23c37d81fbb297643af9e6005cffd805ac05bc98847a6360894fdd238b41d8c` | `9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0` | `0.4.0` |
+
+The values file is the same at the first and the second commit: SHA-256
+`62c677a778cc12388c8070073542bbfbe62d5f9c6faf7908262cdc0fcd897dfc`. The second commit
+moves the two revisions and the identifier in the release file, and nothing else in
+`gitops/`. The reference release in the test fixtures has the values digest
+`0c3cd4cc9f7462f1964d3832c6a7415bdb72dc78cccb5be8a83bd78101212cdd` and keeps its
+placeholder revisions.
+
+The second commit edits comments in the chart's values, schema, and templates, and
+docstrings in the render package. `helm template` of both fixtures gives the committed
+renders after those edits, and the chart's `api` block parses to the same values. So
+the release still names a commit whose renderer and defaults derive it.
+
+## What merging this change does
+
+- **It must be merged with a merge commit.** The release names the first commit as its
+  revision. A squash or a rebase would leave that commit off `main`, and the release
+  would then name a commit that `main` does not hold. The test that reads the defaults
+  at the declared revision would skip, not fail.
+- **On a cluster where the Argo CD Application is applied, the merge changes the live
+  release.** `infra/argocd/local-docker-desktop-support-assistant.yaml` follows `main`
+  with automated sync and self-heal. Read from the render: the pod template of the API,
+  runtime, and collector Deployments each carries the chart version label, which
+  changes, and the API Deployment declares two replicas. So that controller would
+  replace the pods of all three Deployments. The runtime is one replica with no stated
+  strategy. None of this was observed. The one cluster that was read holds no
+  Application.
+- **The self-heal check needs another count.** The earlier runs scaled the API
+  Deployment from one replica to two as their manual change. Two is now the declared
+  count, so that step changes nothing. The Application page says so.
+
+## What the independent review found
+
+Two automated reviewing sessions read the first commit and the staged second commit,
+read-only. Neither ran a test. One read the code, the chart, and the tests. One
+compared every changed page with the repository. Neither is a person.
+
+**What the first commit got wrong.**
+
+| # | The first commit said | What is true | Corrected |
+|---|---|---|---|
+| 1 | A percentage "rounds differently at each replica count", in the chart README, the values file, the schema, the template, a test docstring, the CHANGELOG, and this record | Kubernetes documents that it rounds `maxUnavailable` down and `maxSurge` up. At one, two, and three replicas, 25% resolves to 0 and 1, the bounds the chart now states. They first differ at four. So at the replica counts the two bindings state, chart `0.4.0` changes what the Deployment says and not the bounds in effect. This is arithmetic on the documented rule. It was not observed | Every place now states the rule and the counts |
+| 2 | This record said "No cluster was contacted", and also that the local cluster was read | One cluster was read once, read-only | The opening paragraph and the eligibility row, with the command |
+| 3 | This record gave 16 moved files for freeze revision 3 | 16 at the first commit and 17 at the second | The freeze table |
+| 4 | `Chart.yaml` said a values file written against `0.3.0` "still installs" | It passes the schema and renders. Nothing was installed | `Chart.yaml` |
+| 5 | The chart README, the values file, the template header, and the CHANGELOG stated what a rollout does under the bounds as a fact | It is what Kubernetes documents. No rollout ran | Each place |
+| 6 | The renderer page still said the chart, its templates, and its schema are unchanged | This change adds `api.rollout` to all three | The renderer page |
+| 7 | The renderer suite's description still said both bindings render the same bytes, and the refusal suite's still said 44 values | They differ in `api.replicaCount`, and the context has 46 values | Both descriptions |
+| 8 | The defaults module said each default is the value "every environment the repository describes runs with" | No environment has run with the rollout bounds. It is the value every values file the repository renders with uses | The module's description |
+| 9 | This record said every page the change edits calls the count and the policy configuration | Two edited pages gained a table cell or a row and carry no such sentence | The row names the pages that do |
+| 10 | The desired-state page said the second commit regenerated the release | The first commit regenerated the values. The second moved the two revisions and the identifier | The page, with the intermediate identifier |
+| 11 | Two tests were named or described with "availability-first" | That is a label, not a measurement | The test name and the docstring state the two bounds |
+| 12 | The acceptance row was labelled "Service, correlation, and error behaviour are kept" | The evidence is a render difference of one line | The row's label and its limit |
+| 13 | The support module said both that it classifies each moved pin and that it classifies nothing | It writes rows the freeze rules require, each `material: false` with a reason that says a test wrote it | The module's description. A pin new in a revision is now written as `added` |
+| 14 | A test was named `…moved_nothing` after the harness change made that true by construction | It shows that a tree and a record re-pinned to it list nothing | The test is renamed and says what it does not show |
+
+**What was missing.** This record did not state the merge style the release depends on,
+what the merge does on a cluster that follows `main`, or the consequence for the
+self-heal check. The section above states them. It did not name the first commit, the
+three release identifiers, or the fifteen tests. Those are stated now.
+
+**The fifteen tests, by name.** In `tests/testing/test_experiment_e01.py`:
+`test_a_run_writes_evidence_the_judge_agrees_with`,
+`test_a_moved_pinned_input_refuses_the_run`,
+`test_an_added_material_file_refuses_the_run`,
+`test_a_loaded_module_that_is_not_pinned_aborts_the_run`,
+`test_a_second_process_from_another_checkout_aborts_the_run`,
+one case of `test_check_finds_an_execution_identity_the_record_does_not_support`,
+`test_a_step_that_raises_is_recorded_and_answers_nothing`,
+`test_a_tracked_file_changed_during_the_run_aborts_it`, and
+`test_the_command_run_from_a_merged_checkout_imports_only_pinned_code`. In
+`tests/testing/test_experiment_freeze.py`: the test now named
+`test_a_copy_that_agrees_with_its_repinned_record_lists_nothing`,
+`test_a_changed_and_an_absent_input_are_listed_and_a_crlf_one_is_not`,
+`test_an_added_material_file_is_listed`,
+`test_a_new_local_helper_the_runner_imports_is_listed`,
+`test_a_pinned_file_the_scope_no_longer_names_is_listed`, and
+`test_the_command_reports_moved_inputs_and_an_edited_record`. They were read from one
+run of the two suites before the harness change. That run's output is not committed.
+
+**Measured, and left as it is.**
+
+- **The schema is the only refusal of a bad bound.** With `--skip-schema-validation`,
+  `helm template` turns `api.rollout.maxSurge=25%` into `maxSurge: 0` and reports
+  nothing, and a null `api.rollout` ends in a template error that is not the guard's
+  message. The chart README states the first. The template still coerces with `int`.
+- **Two rows of the V1 compatibility record say `chart-default` for a value V1 never
+  had.** The rows are read against chart `0.4.0`, as the record's amendment says. The
+  row format has no member that could say so per row.
+
+**Suggested, and not done.**
+
+- **A test that lists which pins the harness moved.** The reviewer of the code noted
+  that `repin_record` returns the moved paths and no test reads them, so the set can
+  grow without a test changing. Such a test would compare the committed pins with the
+  tree, which the freeze suite's description says no test does. `tools.experiment_freeze
+  --changes` lists the set, and this record states it: 13 files for revision 2 and 17
+  for revision 3.
+
+## Results at the second commit
+
+| Check | Result |
+|---|---|
+| `ruff check`, `ruff format --check` | Clean |
+| `mypy`, and `mypy --platform linux` | No type error in 356 source files, on each platform |
+| `helm template`, both committed fixtures | Each render is the committed render, byte for byte, after the comment edits |
+| `tools.generated_release --check`, `tools.gitops_desired_state --check` | Exit 0 for each |
+| `tools.experiment_freeze --check`, `tools.experiment_e01 --check` | Exit 0 for each |
+| `tools.evidence_index --check` and `--gate`, `tools.proof_dashboard --check` | Exit 0 for each, with the evidence set and pack unchanged |
+| The chart suite, five domain suites, the freeze suite, `tests/security`, the link suite, and the inventory suite, with the second commit staged | 3,712 passed, 7 skipped |
+| The four tests that failed at the first commit, and the default lane | Run on the committed tree. The results are in the next section |
 
 ## Privacy and publicability
 
@@ -206,4 +326,5 @@ documented placeholder, as before.
   check was run.
 - **That chart `0.4.0` installs.** It was rendered and linted. It was installed nowhere.
 - **That the first experiment's results hold for this tree.** Those runs read the files
-  their freeze revisions pinned. Thirteen of the files revision 2 pins differ now.
+  their freeze revisions pinned. Thirteen of the files revision 2 pins differ now,
+  and seventeen of the files revision 3 pins.

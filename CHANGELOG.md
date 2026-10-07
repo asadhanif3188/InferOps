@@ -14,10 +14,14 @@ from `1.0.0`.
   rollout. It is configuration. Nothing was installed.** `V2-S4-001-PR1` makes
   three changes that belong together. **The chart states the API Deployment's
   rolling-update strategy.** Chart `0.4.0` adds `api.rollout`, two bounds in whole
-  pods, with the defaults `maxUnavailable: 0` and `maxSurge: 1`: a rollout adds
-  one API pod and takes an existing one away only after the new one is Ready.
-  Chart `0.3.0` stated no strategy, so the Kubernetes default applied, a
-  percentage that rounds differently at each replica count. The schema refuses a
+  pods, with the defaults `maxUnavailable: 0` and `maxSurge: 1`. Under those
+  bounds Kubernetes documents that a rollout adds one pod and removes an
+  existing one only after the new one is available; no rollout was run.
+  Chart `0.3.0` stated no strategy, so the Kubernetes default applied: 25% for
+  both bounds, the first rounded down and the second rounded up. At one to
+  three replicas that resolves to 0 and 1, so at the two replica counts the
+  committed bindings state, the stated bounds equal what the default resolved
+  to. From four replicas they differ. The schema refuses a
   percentage, and the template refuses two zero bounds, which Kubernetes refuses.
   **The platform defaults own the two bounds.** A `v1alpha1` `PlatformDefaults`
   set now carries five API settings instead of three; the two bounds joined it in
@@ -30,7 +34,11 @@ from `1.0.0`.
   [desired-state release](docs/environment/git-desired-state.md) was rendered
   again, and its render differs from the reference release's render in one
   line, the API Deployment's `replicas`. The `local-kind` binding still states
-  one. **What this does not establish:** chart `0.4.0` was not installed, no
+  one. Merge this change with a merge commit: the release names the
+  change's first commit as its revision, and a squash or a rebase would leave
+  that commit off `main`. On a cluster where the Argo CD Application is
+  applied, the merge changes the live release, because that Application
+  follows `main`. **What this does not establish:** chart `0.4.0` was not installed, no
   release with two API replicas was installed from the binding, no rollout ran,
   and no request was sent. A replica count and a rollout policy do not establish
   that a caller is served while an API pod is replaced, deleted, or evicted, or

@@ -45,7 +45,9 @@ contract is the only place the workload's intent is written.
 It extends the chart's values contract rather than defining a format beside it. Every value
 it writes is one [`values.schema.json`](../../charts/inferops-llm/values.schema.json)
 already defines; every value it does not write keeps the chart's own default or comes from
-a hand-written file. The chart, its templates, and its schema are unchanged.
+a hand-written file. Introducing the renderer changed nothing in the chart. Since
+`V2-S4-001-PR1` the chart also defines `api.rollout`, in its values, its schema, and the
+API Deployment template, and the renderer writes it.
 
 ## What it produces
 
@@ -103,7 +105,7 @@ telemetry:
 
 The two local bindings differ in the cluster provider, the GitOps destination, and the API
 replica count. The first two are not chart values and move nothing. The replica count is
-one: the [`local-docker-desktop` binding](../../contracts/environment/examples/valid/local-docker-desktop.yaml)
+a chart value: the [`local-docker-desktop` binding](../../contracts/environment/examples/valid/local-docker-desktop.yaml)
 states two API replicas, so its render differs from the file above in `api.replicaCount`
 and in no other value. That render is the committed
 [desired-state values file](../../gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml),

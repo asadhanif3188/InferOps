@@ -14,8 +14,9 @@ superseded record, as the freeze rules require, and registers the rewritten copy
 the temporary registry. It writes under the root it is given and nowhere else.
 
 **What this is not.** The rewritten record is a test fixture. It is not a freeze
-revision, it is never committed, and it classifies nothing: its reasons say that a
-test wrote them. The committed records are not read as changed by any of this.
+revision, and it is never committed. Its added ``inputChanges`` rows are not a
+classification of any change: each is written ``material: false`` with a reason
+that says a test wrote it. The committed records are not read as changed by any of this.
 ``python -m tools.experiment_freeze --changes <record>`` still lists every file in
 this tree that differs from a committed pin, and a real run is still refused until
 a merged freeze revision classifies each one. So these suites test how the runner
@@ -88,7 +89,7 @@ def repin_record(root: Path, record: str) -> list[str]:
                 document.setdefault("inputChanges", []).append(
                     {
                         "path": path,
-                        "change": "changed",
+                        "change": "changed" if path in previous else "added",
                         "material": False,
                         "reason": _REASON,
                     }

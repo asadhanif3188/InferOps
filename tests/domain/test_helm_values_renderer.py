@@ -6,8 +6,9 @@ cluster, only by the tests that say so, and they skip when it is not on PATH.
 
 Seven things are asserted:
 
-1. **Golden output.** The reference workload on each local binding renders the
-   committed golden file byte for byte, and both bindings render the same bytes.
+1. **Golden output.** The reference workload on each local binding renders that
+   binding's committed file byte for byte, and the two renders differ in
+   ``api.replicaCount`` and in no other value.
 2. **Deterministic and pure.** Equal inputs give equal values and text, whatever
    order the bindings arrive in, under two hash seeds, and with every clock,
    random source, and environment read patched to fail.
@@ -395,7 +396,7 @@ def test_the_golden_file_is_lf_only_and_parses_to_the_values() -> None:
 
 def test_two_bindings_render_values_that_differ_only_in_the_rendered_fact() -> None:
     """Provider and GitOps destination are not chart values, so they move nothing.
-    The API replica count is one, so it moves that value and no other."""
+    The API replica count is a chart value, so it moves that value and no other."""
     kind, desktop = binding("local-kind"), binding("local-docker-desktop")
     differing = dotted(
         {

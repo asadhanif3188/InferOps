@@ -11,7 +11,7 @@ upstream request timeout, the drain timeout on shutdown, the output-token ceilin
 the API enforces, and the two bounds of the API's rolling update. Each was chosen
 for three properties together: the chart exposes it, neither the WorkloadContract
 nor the EnvironmentBinding has a field for it, and the chart's default is the
-value every environment the repository describes runs with. The bounds are the
+value every values file the repository renders with uses. The bounds are the
 chart's own, and a test reads the chart's values schema and fails if any of them
 differs. Nothing else is here yet, on purpose: a setting enters the defaults when
 a change needs it rendered, not in advance.

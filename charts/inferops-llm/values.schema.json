@@ -910,7 +910,7 @@
       }
     },
     "rollout": {
-      "description": "The rolling-update bounds of one Deployment, in whole pods. A percentage is refused: it rounds differently at each replica count. The template refuses two zeros, which Kubernetes refuses. A bound is a rollout policy; it is not evidence that a rollout, a pod deletion, or an eviction leaves a caller served.",
+      "description": "The rolling-update bounds of one Deployment, in whole pods. A percentage is refused: the number of pods it resolves to depends on the replica count. The template refuses two zeros, which Kubernetes refuses. A bound is a rollout policy; it is not evidence that a rollout, a pod deletion, or an eviction leaves a caller served.",
       "type": "object",
       "additionalProperties": false,
       "required": [

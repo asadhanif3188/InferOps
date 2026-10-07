@@ -19,7 +19,7 @@ Six things are asserted:
    sorted by category, field, and rule; the refusal's code is the first finding's;
    every refusal is non-retryable, carries the request context, and repeats no
    value read out of a document.
-4. **No value has two owners.** For each of the 44 render values and each layer
+4. **No value has two owners.** For each of the 46 render values and each layer
    that does not own it, an input of that layer supplying it is refused as an
    ownership conflict naming the owner - neither value is chosen - and an input
    supplying a value nobody owns is refused rather than dropped. No committed

@@ -641,10 +641,9 @@ def test_the_charts_defaults_construct_a_valid_set() -> None:
     }
 
 
-def test_the_charts_rollout_default_is_the_availability_first_policy() -> None:
-    """The platform default for the API tier: no existing pod is taken away before
-    its replacement is Ready, and one pod may be added to do that. This is the
-    value of a setting. It is not a measurement of a rollout."""
+def test_the_charts_rollout_default_is_zero_unavailable_and_one_surge() -> None:
+    """The platform default for the API tier: `maxUnavailable` 0 and `maxSurge` 1.
+    This is the value of a setting. It is not a measurement of a rollout."""
     assert chart_api_defaults()["rollout"] == {"maxUnavailable": 0, "maxSurge": 1}
     assert defaults().api.rollout == ApiRolloutDefaults(max_unavailable=0, max_surge=1)
 

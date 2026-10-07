@@ -151,16 +151,23 @@ the API Deployment's rolling update, in whole pods:
 | Value | Default | Meaning |
 |---|---|---|
 | `api.replicaCount` | `1` | API pods the Deployment runs |
-| `api.rollout.maxUnavailable` | `0` | API pods a rollout may take away before their replacements are Ready |
+| `api.rollout.maxUnavailable` | `0` | API pods a rollout may take away before their replacements are available |
 | `api.rollout.maxSurge` | `1` | API pods a rollout may add above `replicaCount` |
 
 The template states the strategy on the API Deployment. Until chart `0.4.0` it stated
-none, and the Kubernetes default applied: 25% for both bounds, which rounds to a
-different number of pods at each replica count. The schema takes whole pods only and
-refuses a percentage. The template refuses two zeros, which Kubernetes refuses.
+none, and the Kubernetes default applied: 25% for both bounds, with `maxUnavailable`
+rounded down and `maxSurge` rounded up. At one to three replicas that resolves to 0
+and 1, the bounds this chart now states. From four replicas it resolves to other
+numbers. So at the replica counts the two committed bindings state, one and two, the
+stated bounds equal what the default resolved to, and chart `0.4.0` changes what the
+Deployment says and not the bounds in effect. Whole pods keep the bounds fixed when
+the count changes. The rounding rule is the one Kubernetes documents; it was not
+observed on a cluster. The schema takes whole pods only and refuses a percentage. The
+template refuses two zeros, which Kubernetes refuses.
 
-With the defaults, a rollout adds one API pod and removes an existing one only after
-the new one is Ready. So a rollout needs room for one more API pod than `replicaCount`.
+Under the default bounds Kubernetes documents that a rollout adds one API pod and
+removes an existing one only after the new one is available. No rollout was run. Such
+a rollout needs room for one more API pod than `replicaCount`.
 At the chart's API requests, 100m CPU and 128Mi each, two replicas request 200m and
 256Mi, and a rollout requests 300m and 384Mi while it runs. These are sums of the
 chart's values. No capacity check was run for them.
@@ -169,6 +176,9 @@ In a generated release neither value is written by hand. The EnvironmentBinding 
 the replica count, the platform defaults own the two bounds, and the
 [renderer](../../docs/domain/helm-values-renderer.md) refuses a hand-written values
 file that sets any of the three.
+
+The schema is what refuses a bad bound. With `--skip-schema-validation` the template
+turns a percentage into 0 and gives no refusal, as measured with `helm template`.
 
 **What this is not.** A replica count and a rollout policy are configuration. Chart
 `0.4.0` has not been installed. Nothing here establishes that two API pods run, that a

@@ -1579,9 +1579,9 @@ def _deployments(component: str) -> list[tuple[str, dict]]:
 def test_the_api_deployment_states_the_rollout_the_values_configure() -> None:
     """Both profiles render an API Deployment, and each states the two bounds.
 
-    The Kubernetes default is 25% for both bounds, and a percentage rounds to a
-    different number of pods at each replica count. The chart states whole pods,
-    so the rendered policy does not move when the replica count does.
+    The Kubernetes default is 25% for both bounds, and the number of pods a
+    percentage resolves to depends on the replica count. The chart states whole
+    pods, so the rendered bounds do not move when the replica count does.
     """
     rollout = VALUES["api"]["rollout"]
     assert rollout == {"maxUnavailable": 0, "maxSurge": 1}
@@ -1708,8 +1708,7 @@ def test_a_second_api_replica_changes_the_replica_count_and_nothing_else() -> No
 
     The Service, its selector, the pod template, the probes, the configuration,
     the network policies, and the runtime are the same bytes at one replica and
-    at two. So the request path a caller uses is rendered the same way, and each
-    replica is given the same configuration. Whether two pods then serve, and
+    at two. This compares rendered text. Whether two pods then serve, and
     whether a caller is served when one stops, is not something a render shows.
     """
     one = _render("api.replicaCount=1")
@@ -2333,7 +2332,7 @@ def test_the_desired_state_release_renders_two_api_replicas_and_one_changed_line
     The two generated files differ in the API replica count, so the two renders
     differ in one line: the API Deployment's `replicas`. The Service, the pod
     template, and the runtime are rendered the same. The API Deployment states
-    the availability-first rollout in both.
+    `maxUnavailable` 0 and `maxSurge` 1 in both.
 
     This renders files. No cluster was asked, and no release with two API
     replicas has been installed, so this establishes the rendered topology and

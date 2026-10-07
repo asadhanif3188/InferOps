@@ -143,8 +143,8 @@ The two rollout settings are the bounds of the API Deployment's rolling update, 
 pods: how many API pods a rollout may take away before their replacements are Ready, and
 how many it may add above the replica count. A percentage is a string and is refused. Two
 zeros are refused at construction, and by the chart, because Kubernetes refuses a rolling
-update that may neither remove a pod nor add one. The defaults keep every existing API pod
-until its replacement is Ready. They are a rollout policy: they do not establish what a
+update that may neither remove a pod nor add one. The defaults allow no existing API pod
+to be taken away before its replacement is available. They are a rollout policy: they do not establish what a
 caller observes during a rollout, and they do not bound a pod deletion, a node loss, or an
 eviction.
 

@@ -812,7 +812,12 @@ def pinned_root(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_a_copy_of_the_pinned_inputs_moved_nothing(pinned_root: Path) -> None:
+def test_a_copy_that_agrees_with_its_repinned_record_lists_nothing(
+    pinned_root: Path,
+) -> None:
+    """The listing over a tree and the record re-pinned to it is empty: no file
+    is added, absent, or out of scope, and line endings alone move nothing. It
+    does not show that the tree holds what the committed record pinned."""
     assert changed_inputs(load(root=pinned_root), pinned_root) == []
 
 
