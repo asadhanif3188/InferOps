@@ -559,9 +559,8 @@ whose changes bear on a run must reference the review artifact of that run in
 index without it. Merge the review first, in a change of its own: the check reads one
 repository state and cannot see which of two files was committed first. Plan the
 register change when you plan the run. The E01-D run and its review merged in one change,
-and no change was planned for the register; a review of the sprint found the claim
-missing, and it was registered a day later, by a change of its own. The register states
-both dates.
+which left the register change to a later one. The claim was registered a day later, by
+a change of its own, and the register states both dates.
 
 ### Serving adapters
 

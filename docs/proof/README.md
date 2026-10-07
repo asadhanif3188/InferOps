@@ -103,7 +103,8 @@ found it broader, and it is the first ledger to reference the review its changes
 record, at `C2`: [the one run of part E01-D](experiments/v2-e01/runs/20261006-e01-d-1/result.md), bounded to one
 provider, one cluster with one node, and one completion request. That run executed on
 2026-10-06 and its change registered no claim; the ledger is dated 2026-10-07, and it
-references the independent review of the run. It also appends a dated note to two
+references the review of the run, by an automated session of the assistant that drove
+it. It also appends a dated note to two
 planned claims, which stay planned.
 Each moves the current pack again; none moves the released one. (Until `V2-S2-003-PR2`
 this paragraph called the release record the only one the register had gained.)

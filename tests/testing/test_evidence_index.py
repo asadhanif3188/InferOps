@@ -50,6 +50,7 @@ from tools.evidence_index import (
     load_ledger,
     load_ledgers,
     recorded_date,
+    released_pack,
     render_index,
     restore_migrated_register,
     states_authorisation,
@@ -964,13 +965,12 @@ def _with_registration(mutate: Any) -> list[dict[str, Any]]:
 
 
 def test_a_later_ledger_cannot_read_a_record_twice_or_leave_one_unread() -> None:
-    """A record's code identity is read once. A later ledger that reads a record the
-    released ledgers already read is refused, and so is an identity outside the
-    published kinds, and an executed record that no ledger reads."""
-    already_read = COMPLETENESS["codeIdentity"][0]
+    """A record's code identity is read once. A later ledger that reads its own
+    record twice is refused, and so is an identity outside the published kinds, and
+    an executed record that no ledger reads."""
 
     def read_again(ledger: dict[str, Any]) -> None:
-        ledger["codeIdentity"].append({**already_read, "identity": "stated-revision"})
+        ledger["codeIdentity"].append(dict(ledger["codeIdentity"][0]))
 
     with pytest.raises(ValueError, match="read twice for their code identity"):
         build_index(REGISTER, _with_registration(read_again))
@@ -992,3 +992,88 @@ def test_a_later_ledger_cannot_read_a_record_twice_or_leave_one_unread() -> None
 
     with pytest.raises(ValueError, match="no ledger reads the code revision"):
         build_index(REGISTER, _with_registration(no_revision))
+
+
+def test_a_later_ledger_reads_only_a_record_that_it_adds() -> None:
+    """A row for a record that no ledger adds is refused, and so is a row in one
+    ledger for the record that another ledger adds: the ledger before the
+    registration cannot state the identity of the E01-D record, with or without the
+    registration ledger's own row. A row in an earlier post-release ledger for a
+    record the released pack holds is refused too."""
+
+    def ghost(ledger: dict[str, Any]) -> None:
+        ledger["codeIdentity"].append(
+            {**ledger["codeIdentity"][0], "recordId": "a-record-nobody-added"}
+        )
+
+    with pytest.raises(ValueError, match="not a record that ledger adds"):
+        build_index(REGISTER, _with_registration(ghost))
+
+    (row,) = LEDGERS[REGISTRATION_INDEX]["codeIdentity"]
+    for keep_the_own_row in (True, False):
+        ledgers = json.loads(json.dumps(LEDGERS))
+        ledgers[REGISTRATION_INDEX - 1]["codeIdentity"] = [dict(row)]
+        if not keep_the_own_row:
+            ledgers[REGISTRATION_INDEX]["codeIdentity"] = []
+        with pytest.raises(ValueError, match="not a record that ledger adds"):
+            build_index(REGISTER, ledgers)
+
+    ledgers = json.loads(json.dumps(LEDGERS))
+    ledgers[REGISTRATION_INDEX - 1]["codeIdentity"] = [
+        dict(COMPLETENESS["codeIdentity"][0])
+    ]
+    with pytest.raises(ValueError, match="not a record that ledger adds"):
+        build_index(REGISTER, ledgers)
+
+
+def _no_record(row: dict[str, Any]) -> None:
+    del row["recordId"]
+
+
+def _no_identity(row: dict[str, Any]) -> None:
+    del row["identity"]
+
+
+def _no_components(row: dict[str, Any]) -> None:
+    del row["repositoryCodeAmongThem"]
+
+
+def _components_as_text(row: dict[str, Any]) -> None:
+    row["repositoryCodeAmongThem"] = "inferops-api"
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [_no_record, _no_identity, _no_components, _components_as_text],
+    ids=lambda mutate: mutate.__name__.strip("_"),
+)
+def test_a_malformed_code_identity_row_is_refused_and_not_a_traceback(
+    mutate: Any,
+) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        mutate(ledger["codeIdentity"][0])
+
+    with pytest.raises(ValueError, match="a codeIdentity row is not an object"):
+        build_index(REGISTER, _with_registration(edit))
+
+
+@pytest.mark.parametrize("stated", [None, {}, "a row"])
+def test_code_identity_that_is_not_a_list_of_rows_is_refused(stated: Any) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        ledger["codeIdentity"] = stated
+
+    with pytest.raises(ValueError, match="codeIdentity"):
+        build_index(REGISTER, _with_registration(edit))
+
+
+def test_the_released_pack_does_not_read_a_later_ledgers_code_identity() -> None:
+    """The released pack is recomputed from the four released ledgers and the
+    register as released. A later ledger's rows are not among its inputs: with the
+    registration ledger's row removed, the index is refused and the released pack
+    is still the one the committed index states."""
+
+    def no_identity(ledger: dict[str, Any]) -> None:
+        ledger["codeIdentity"] = []
+
+    ledgers = _with_registration(no_identity)
+    assert released_pack(REGISTER, ledgers) == INDEX["summary"]["releasedPack"]

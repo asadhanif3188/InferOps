@@ -15,8 +15,10 @@ register, through
 > record.
 >
 > **The registration is late, and the record says so.** `V2-S3-004-PR2` ran E01-D and
-> published its independent review. It registered no claim. A collective review of
-> Sprint 3 on 2026-10-06 found the omission. This change adds the claim on 2026-10-07.
+> published its independent review. It registered no claim, and its validation record
+> says that the reconciliation was owed by a later change. A review of the sprint on
+> 2026-10-06 reported the claim as missing; it was reported to the author, and no file
+> in this repository records that review. This change adds the claim on 2026-10-07.
 > The register does not state that the registration happened on the day of the run.
 >
 > **The evidence is `C2`, and it is bounded.** One run, on the `docker-desktop` provider,
@@ -25,16 +27,22 @@ register, through
 
 ## Why this change exists
 
-The story that ran E01-D requires a claim and register reconciliation of its result.
-[The validation record of that change](v2-s3-004-pr2-validation.md) states that the
-reconciliation was not done there. The contribution rules ask that the review of a
-result merges before the register change for it, in a separate change, because the review
-gate reads one repository state. The review merged with the run, so the register change
-had to be a later change, and none was planned. The collective review of Sprint 3 found
-that the reconciliation was therefore missing from the sprint. It found the freeze inputs, the raw
-run, the result classification, and the review record sound, and it stated that the
-finding justifies no repeated run. This change is the reconciliation, and it is nothing
-else.
+[The validation record of the change that ran E01-D](v2-s3-004-pr2-validation.md)
+states that the claim and register reconciliation of the result was not done there and
+was owed by a later change. The contribution rules ask that the review of a result
+merges before the register change for it, in a separate change, because the review gate
+reads one repository state. The review merged with the run, so the register change had
+to be a later change.
+
+Three statements in this record rest on something outside the repository. A review of
+the sprint, on 2026-10-06, reported that the reconciliation was a required part of the
+work and was missing. It reported no defect in the freeze inputs, the raw run, the
+result classification, or the review record. It reported that the finding justifies no
+repeated run. That review was reported to the author, and no file in this repository
+records that review. What the repository does record is the deferral in the earlier
+validation record, and that the register held no claim for the run.
+
+This change is the reconciliation, and it is nothing else.
 
 ## Eligibility, checked before the change
 
@@ -57,9 +65,10 @@ else.
   builds the index only when the gate passes. It built the index with the new ledger.
   The gate was not changed.
 - **No claim-material defect was found in the run, its evidence, or its review while the
-  record was written.** The limits that the review record and the earlier validation
-  record state are carried into the new record's limitations. None of them changes a
-  verdict.
+  record was written.** The limits that bear on a criterion or on how the verdicts were
+  reached are carried into the new record's limitations. The others stay in the review
+  record and in the earlier validation record, which the new record cites. None of them
+  changes a verdict.
 
 ## The identities this change consumes
 
@@ -74,7 +83,7 @@ else.
 | Freeze registry, content digest | `9da8814c91b8817a2e27e94c7cc0d6addc7a9a54f4e278ac7baf69f24fcb38bc` |
 | Review record | `docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json`, content digest `46d2b99abc3b09391a56dd652ec0980cda61538dd0c80f05dc8129dba9e55080` |
 | Provider and cluster | `docker-desktop`, one node, `desktop-control-plane`, Kubernetes `v1.36.1` |
-| GitOps controller | Argo CD `v3.5.3`, core install |
+| GitOps controller | Argo CD `v3.5.3`, installed from the pinned manifest that freeze revision 3 names as the core install. No file of the run shows the install profile |
 | Contract and binding | `contracts/workload/examples/valid/synchronous-llm-local.yaml` on `local-docker-desktop` |
 | Release | `releaseId` `eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae`, generated values digest `1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce` |
 | Runtime image | `ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384` |
@@ -113,7 +122,7 @@ the five before it, to recompute the pack that the release was cut over.
 
 > In one run on 2026-10-06, on the docker-desktop provider, on one cluster with one node,
 > the release rendered from the unmodified V1 synchronous reference contract on the
-> local-docker-desktop binding was accepted into Git at commit
+> local-docker-desktop binding was accepted into Git, was read by the run at commit
 > ad725905a7838e8210e54a29de7913bc0c7c49e5, was reconciled by Argo CD into Kubernetes,
 > and answered one completion request through the InferOps API with HTTP 200 and one
 > choice whose assistant message is not empty, with the real runtime and the real model
@@ -156,15 +165,16 @@ change.
   differs from what executed or from what the freeze record defines: the manifest and the
   result page name three of the five transformations of the transcript, `commands.txt`
   is not the exact commands, and the driver's header does not list every added command.
-  The new register record states these in its limitations.
+  One limitation of the new register record states the three.
 - **The committed-run check still leaves E01-D out.** `python -m tools.experiment_e01
   --check` judges the two static runs. It does not judge the E01-D run, and its exit
   status says nothing about that run. No runner and no coded analysis exist for E01-D.
   The tests of `tests/testing/test_experiment_e01.py` apply the registered rules to the
   run's files.
 - **A new run of any part of E01 is still refused.** `tools/experiment_e01/core.py`, which
-  revisions 2 and 3 pin, changed after the E01-D run. This change does not edit that file
-  and registers no freeze revision.
+  revisions 2 and 3 pin, differs from its pin. The change that added the run also made
+  that edit, in one commit; the review record calls the order, run first, supported and
+  not proven. This change does not edit that file and registers no freeze revision.
 
 ## One dated note in the earlier validation record
 
@@ -217,7 +227,9 @@ Run on one Windows host, from Git Bash, on 2026-10-07. Each module command has t
 | `tools.evidence_index --gate` | Exit 0. Released `v1.0.0` set `1d40b33f...` and pack `652e9051...`, recomputed by undoing the six post-release ledgers. The current pair is another, after 22 post-release register changes |
 | `tools.proof_dashboard --check` | Exit 0 |
 | `git diff --check` | Exit 0 |
-| `pytest tests/testing tests/architecture/test_argocd_bootstrap.py tests/security` | 9,083 passed |
+| `pytest tests/testing tests/architecture/test_argocd_bootstrap.py tests/security`, in the first commit | 9,083 passed |
+| `pytest tests/testing tests/security tests/architecture`, after the corrections of the independent review | 12,485 passed, 3 skipped |
+| The default lane, `pytest -q`, second run, after the corrections of the independent review | **0 failed**, 18,946 passed, 36 skipped, 14 deselected, in 29 min 8 s |
 | The default lane, `pytest -q`, first run | **3 failed**, 18,929 passed, 36 skipped, 14 deselected, in 27 min 49 s. The next paragraph says what failed |
 
 **The three failures, and what they found.** Each was a defect of this change, and each
@@ -235,9 +247,14 @@ is corrected.
   each page.
 
 The default lane was not run again after these two corrections in the first commit of
-this change. The suites named in the table above were.
+this change. The suites named in the table above were. The second run of the lane is
+over the tree after the corrections of the independent review. After that run, this
+Results section was written, the evidence index was regenerated, because the new record
+cites this page, and the two digests on the index page were updated. The `tests/testing`
+and `tests/security` suites, which read those files, then ran again and passed. The
+skipped and deselected tests are not passes.
 
-**What the suites hold for this change.** The review-gate module has 74 tests, 11 of
+**What the suites hold for this change.** The review-gate module has 75 tests, 12 of
 them new. They plant, for the E01-D run, each refusal that the gate makes: no review
 reference, an absent artifact, the review of another run, a run file edited, added, or
 removed, and a changed freeze record. The E01 module replaces the test that required the
@@ -247,6 +264,36 @@ revision 3, to the review record, and to its boundary.
 **Not run.** No step of E01. No request to a cluster, a registry, or the network. The
 hosted checks are read after the change is pushed, and this record does not state their
 result.
+
+## What the independent review of this change found
+
+Two automated reviewing sessions read the first commit of this change, `aa57a58`,
+read-only. One compared the new claim and record with the files of the run and with its
+review record. One read the code and the tests. Each is another session of the automated
+assistant that wrote the change. Neither is a person, and their reports are not
+committed. The second commit of this change holds the corrections.
+
+| Finding | What the first commit said | Correction |
+|---|---|---|
+| Statements about a review outside the repository had no marker | The claim, the record, the ledger, and five pages said that a collective review "found the omission", and that it found the run and its review "sound". No committed file records that review, and an earlier record retired "sound" as an undefined word | Each place now says that the review was reported and that no file in this repository records it, and states what the repository does record: the deferral in the earlier validation record |
+| A component note was stronger than its source | The record said that Argo CD "read the release directory from the remote repository". The review record lists that as not verified, and Argo CD reads the chart path and one values file | The note states what the Application names and what Argo CD reported, and that the run does not verify the read |
+| A component note stated a tie that the evidence does not hold | The record said that the API replica ran "from an image that step P4 built". The review record says that the committed evidence does not tie the serving container to that image | The note states what the pod requested and what the container status reports. The code-revision note says what the tie rests on |
+| The claim did not say that its review never read it | The claim and the record cite the review of the result. That review read a commit with no register statement | The claim's limitation and one record limitation say so |
+| The record carried fewer limits than this page said | This page said that the limits of the earlier records "are carried". Ten were not, among them: an uncommitted script compared the values, one session wrote every file, no file proves that no earlier attempt took place, and the driver does not check the port-forward | Four limitations are added and three are extended, which carry eight of the ten. Two stay in the cited records: the digest that `sha256sum` printed in step P2, and the order of the run and the runner edit, which this page now states. This page now says which kind of limit is carried |
+| The statement named the wrong event for the commit | "was accepted into Git at commit ad725905". The release files entered Git in an earlier change; the run read them at that commit | "was accepted into Git, was read by the run at commit ad725905" |
+| The ledger description contradicted the change | "edits no dated record", while the change adds a dated note to one | The description names the one note |
+| Two current pages were stale | The Application page and one sentence of the experiments page still said that no register claim holds or cites the result | Both corrected |
+| "Independent review" had no qualifier in three new passages | Three pages said "the independent review of the run" | Each says that the reviewer is an automated session of the same assistant |
+| A malformed code-identity row was a traceback | A row with a missing member raised `KeyError`, and the command did not report a refusal | Each row is checked, and a malformed one is a refusal |
+| A ledger could read a record that it did not add | A row for a record of another ledger, or for no record, was accepted | A ledger written after the release reads only a record that it adds. Tests plant each case |
+| Three tests could check the wrong thing | A test read the manifest's rules by position, split file names on spaces, and compared a count with a number that had no source | The rules are read by member name, the names by line, and the count against the manifest |
+
+One finding is not acted on. The reviewer of the code noted that the earlier tests of the
+review gate assert the text of a refusal and not the ledger that refused. Those tests are
+unchanged in what they assert. The new tests for the registration ledger assert its name.
+
+The reviewers ran no step of E01, contacted no cluster, and did not verify the figures of
+the default lane.
 
 ## Privacy and publicability
 
@@ -260,6 +307,9 @@ content digests, and a model revision. Each was already in the run directory.
 - That the review of the result was independent of the assistant that drove the run. The
   reviewer is another session of the same automated assistant, and the review record
   states its limits. No person and no outside party reviewed the result.
+- That the review of the result covered this claim. The review read a commit that held
+  no register statement about the run, and its record says that it does not establish
+  that a reconciliation is correct.
 - That the review preceded the register change. The review gate reads one repository
   state. Git history shows that the review record merged in pull request 124, before
   this change began; the gate does not read history.

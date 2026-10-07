@@ -13,13 +13,15 @@ from `1.0.0`.
 - **The real-deployment run of the first experiment is now in the register, one
   day late. Nothing ran again.** `V2-S3-004-PR2` ran part E01-D of V2-E01 on
   2026-10-06 and published its independent review, and it registered no claim.
-  A collective review of the sprint found the omission. `V2-S3-005-PR1` adds
+  A review of the sprint reported the claim as missing; no file in this
+  repository records that review. `V2-S3-005-PR1` adds
   the claim on 2026-10-07, through
   [a tenth ledger of register changes](docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json),
   the sixth after `v1.0.0`. **One claim, certified at `C2` on one record:** in
   one run, on the `docker-desktop` provider, on one cluster with one node, the
   release rendered from the unmodified reference contract was accepted into
-  Git, was reconciled by Argo CD, and answered one completion request with
+  Git, was read by the run at one commit, was reconciled by Argo CD, and
+  answered one completion request with
   HTTP 200 and a non-empty assistant message, under E01-AC8, E01-AC9, and
   E01-AC10 of freeze revision 3. The claim is in the past tense and names that
   one run. It does not establish a second request, another provider,

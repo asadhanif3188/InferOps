@@ -31,8 +31,8 @@
   "packSources": [
     {
       "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
-      "sha256": "fbd84a2629eea7b78d090200290099d5748a99171935f5555c6b1ff3037363e4",
-      "gitBlob": "0c7bb0601a81af3b442920aafe71c571b76905b8"
+      "sha256": "ade1235e3fe00f589841f8d8f20ba514016b7bfd93355b11b6baee612e61ca3a",
+      "gitBlob": "709593cb923028087a35da573be419be4a8a1570"
     },
     {
       "path": "docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
@@ -81,8 +81,8 @@
     },
     {
       "path": "docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json",
-      "sha256": "4784b6588746e3a53ef194de8479860bcd18e60f515872fe1a313b1e02c88d72",
-      "gitBlob": "1f20b16b600062c140eec2e5fdbb122388a8ff76"
+      "sha256": "9cf34ee2a40c436fd439f66b5f0af4b9c2768c7ee8d90554d41a045ca109e374",
+      "gitBlob": "41250c8ac6776706f3b05c9ac241a64307546953"
     }
   ],
   "summary": {
@@ -154,8 +154,8 @@
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
     "postReleaseRegisterChanges": 22,
-    "evidenceSetSha256": "fa75a1e95a1686b252a2db05c0b49f9127b14796dad4fa325ba081d7f00e415d",
-    "evidencePackSha256": "54e14a7f3eac5dcb5978f410d4e4bbb8a793d5b46984b322cea6a9b9d4934697",
+    "evidenceSetSha256": "79380211e935867289f5a5a3194efd9ae37a12fb96ddbf8e9303b9e389b076d2",
+    "evidencePackSha256": "f84faf200a541499ff29071e09e9372fb3a30816772f6e5567d9e58c12eeae0f",
     "releasedPack": {
       "tag": "v1.0.0",
       "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
@@ -329,7 +329,7 @@
       "status": "planned",
       "assertsRealBehaviour": false,
       "statement": "Deployment values are derived only from a document that has passed validation.",
-      "limitation": "Deterministic deployment-value rendering exists, checked statically at C0: validated, typed inputs render the chart's values, and a RenderedWorkloadRelease binds the generated values file to the digests and revisions of what it was rendered from. No supported deployment or GitOps path consumes the generated files yet, so no executed release shows deployment values derived only from a validated document. The platform-defaults revision a release records is the one its caller states: nothing yet reconstructs the defaults from a committed source bound to that revision, so defaults content changed under the same stated revision changes the values and not the release identifier. A hand-written values file is checked against the generated values only when it is one the repository supports, one named with the .manual-values.yaml suffix; any other values file given to Helm is not checked. Update, 2026-10-07: since V2-S3-002 one supported GitOps path consumes the generated values file, and one run, 20261006-e01-d-1, deployed a release that took its values from that file, from the hand-written values of the Argo CD Application, and from one operator-supplied parameter. A claim of its own holds that run at C2. The sentence above that says no supported path consumes the generated files describes the state before that change. This claim stays planned. One run does not establish that deployment values are derived only from a validated document: the admission check was not computed over the live Application's hand-written values with the parameter, the operator supplies the API image digest, and a values file or a parameter given to Helm or to Argo CD outside the committed Application is not checked.",
+      "limitation": "Deterministic deployment-value rendering exists, checked statically at C0: validated, typed inputs render the chart's values, and a RenderedWorkloadRelease binds the generated values file to the digests and revisions of what it was rendered from. No supported deployment or GitOps path consumes the generated files yet, so no executed release shows deployment values derived only from a validated document. The platform-defaults revision a release records is the one its caller states: nothing yet reconstructs the defaults from a committed source bound to that revision, so defaults content changed under the same stated revision changes the values and not the release identifier. A hand-written values file is checked against the generated values only when it is one the repository supports, one named with the .manual-values.yaml suffix; any other values file given to Helm is not checked. Update, 2026-10-07: since V2-S3-002-PR2 one committed Argo CD Application names the generated values file, and one run, 20261006-e01-d-1, deployed a release that took its values from that file, from the hand-written values of the Argo CD Application, and from one operator-supplied parameter. A claim of its own holds that run at C2. The sentence above that says no supported path consumes the generated files describes the state before that change. This claim stays planned. One run does not establish that deployment values are derived only from a validated document: the admission check was not computed over the live Application's hand-written values with the parameter, the operator supplies the API image digest, and a values file or a parameter given to Helm or to Argo CD outside the committed Application is not checked.",
       "doesNotEstablish": "Anything. It is an intention and cites no record.",
       "claimMaterialComponents": null,
       "levels": [],
@@ -1514,8 +1514,8 @@
       "area": "kubernetes",
       "status": "certified",
       "assertsRealBehaviour": true,
-      "statement": "In one run on 2026-10-06, on the docker-desktop provider, on one cluster with one node, the release rendered from the unmodified V1 synchronous reference contract on the local-docker-desktop binding was accepted into Git at commit ad725905a7838e8210e54a29de7913bc0c7c49e5, was reconciled by Argo CD into Kubernetes, and answered one completion request through the InferOps API with HTTP 200 and one choice whose assistant message is not empty, with the real runtime and the real model that the generated values name. The run answers the criteria E01-AC8, E01-AC9, and E01-AC10 that freeze revision 3 registers for E01-D, and each holds.",
-      "limitation": "Runtime, C2, about one run, 20261006-e01-d-1, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one contract, one binding, one API replica, one runtime replica, and one completion request. The model cache was filled from a seed image before the deployment. The API image was built on the host, and the operator supplied its digest as one Helm parameter and applied the Application and its project. The same images had started on the node about two minutes earlier, so the deployment is a warm start. No runner and no coded analysis exist for E01-D: the automated assistant session that drove the run applied the registered rules. The review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. The run did not observe the network. The clause of E01-AC10 about strings of eight characters or more rests on the second static run and on three tests, and is not computed over the live Application. The pod status reports the API container's image under another digest than the one the run supplied, and the read of the node that reconciles the two is not a registered step. Registration, 2026-10-07: the run executed and was reviewed on 2026-10-06 in V2-S3-004, and that change registered no claim. The first Sprint 3 collective review found the omission, and V2-S3-005 added this claim after the review record had merged. The run, its files, its outcome, its evidence level, and its review record are unchanged, and no part of E01 ran again.",
+      "statement": "In one run on 2026-10-06, on the docker-desktop provider, on one cluster with one node, the release rendered from the unmodified V1 synchronous reference contract on the local-docker-desktop binding was accepted into Git, was read by the run at commit ad725905a7838e8210e54a29de7913bc0c7c49e5, was reconciled by Argo CD into Kubernetes, and answered one completion request through the InferOps API with HTTP 200 and one choice whose assistant message is not empty, with the real runtime and the real model that the generated values name. The run answers the criteria E01-AC8, E01-AC9, and E01-AC10 that freeze revision 3 registers for E01-D, and each holds.",
+      "limitation": "Runtime, C2, about one run, 20261006-e01-d-1, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one contract, one binding, one API replica, one runtime replica, and one completion request. The model cache was filled from a seed image before the deployment. The API image was built on the host, and the operator supplied its digest as one Helm parameter and applied the Application and its project. The same images had started on the node about two minutes earlier, so the deployment is a warm start. No runner and no coded analysis exist for E01-D: the automated assistant session that drove the run applied the registered rules. The review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. That review read no register statement about this run, and it does not establish that this claim is correct. The run did not observe the network. The clause of E01-AC10 about strings of eight characters or more rests on the second static run and on three tests, and is not computed over the live Application. The pod status reports the API container's image under another digest than the one the run supplied, and the read of the node that reconciles the two is not a registered step. Registration, 2026-10-07: the run executed and was reviewed on 2026-10-06 in V2-S3-004, and that change registered no claim. Its validation record says that the reconciliation was owed by a later change. A review of the sprint reported the claim as missing; no file in this repository records that review. V2-S3-005 added this claim after the review record of the run had merged. The run, its files, its outcome, its evidence level, and its review record are unchanged, and no part of E01 ran again.",
       "doesNotEstablish": "That a second request is answered; behaviour on another provider, Kubernetes version, node count, storage class, workload shape, contract, or binding; that Argo CD applies a later commit of main; a caller outcome from a sync state, a health state, pod readiness, or a replica count; that the acquisition hook downloads the model into an empty claim; latency, throughput, capacity, availability, or behaviour under overload; reliability under failure, high availability, or tolerance of the loss of a pod, a node, a zone, or a region; that a service-level objective is met; representative evidence, C3, or operational evidence, C4; a cost, a saving, a return on investment, or a business effect; that a person reviewed the result; or production readiness.",
       "claimMaterialComponents": [
         "helm-values-renderer",
@@ -11171,7 +11171,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/61/evidenceRecords/0",
-      "registerEntrySha256": "320818601ffdee9f0a525320adadaa95bfc184150ce2e4332822987b0c3366f8",
+      "registerEntrySha256": "2f8a219c371ac723d539a86daa1eebdc82e5d016df034b4eaefd453ad567a1aa",
       "summary": "On 2026-10-06 part E01-D of V2-E01 ran once, as freeze revision 3 registers it, at the merged commit ad725905a7838e8210e54a29de7913bc0c7c49e5, on the docker-desktop provider. Argo CD reconciled the generated release of that commit into one cluster of one node, the run sent one completion request through the InferOps API, and the response was HTTP 200 with one choice and an assistant message of six characters. E01-AC8, E01-AC9, and E01-AC10 hold, and the outcome is PASSED. The run was registered on 2026-10-07, after its independent review merged.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -11293,7 +11293,7 @@
           }
         ],
         "statedRevision": true,
-        "note": "The run manifest names the commit it executed. It records that git status printed no line before the run, that refs/heads/main on the remote named that commit, and that Argo CD reported the same commit as the synced revision. The API image was built at that commit, with every layer taken from the build cache."
+        "note": "The run manifest names the commit it executed. It records that git status printed no line before the run, that refs/heads/main on the remote named that commit, and that Argo CD reported the same commit as the synced revision. The API image was built at that commit, with every layer taken from the build cache. That the serving API container ran that image rests on a read of the node that is not a registered step and is not in the run directory."
       },
       "codeIdentity": {
         "identity": "stated-revision",
@@ -11364,8 +11364,12 @@
       ],
       "limitations": [
         "One run, on one provider, on one cluster with one node, with one contract, one binding, one API replica, one runtime replica, and one completion request.",
-        "No runner and no coded analysis exist for E01-D. The automated assistant session that wrote the driver started it and applied the registered verification rules to the files. The run manifest states each compared value.",
-        "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. The review record states its own limits.",
+        "No runner and no coded analysis exist for E01-D. The automated assistant session that wrote the driver started it and applied the registered verification rules to the files. A script that is not committed compared the values. The run manifest states each compared value.",
+        "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. The review record states its own limits. The review read no register statement about this run, and it does not establish that this record or its claim is correct.",
+        "One session wrote every file of the run. No reviewer contacted the cluster, so no record verifies that the cluster returned argo.json and pods.json as committed.",
+        "That no earlier attempt preceded the run is the statement of the session that drove it, and no file proves it. Before the driver started, the two freeze commands of step P2, the reads of step P3, and the check of step D1 were run by hand, once each.",
+        "The driver does not check that the port-forward process is alive, so another listener on the port could have answered, and it writes requestsSent: 1 whatever curl returned. Before the readiness request the driver waited at most 30 seconds for the port-forward, a wait that the freeze record does not register.",
+        "The abort condition on a model download cannot be determined from the evidence. No step reads the hook's job or the network.",
         "The driver is not a pinned input of the freeze record. driver.txt holds it as it ran.",
         "The model cache claim was filled from a seed image in step P6, before the deployment. The run did not observe the network, and it does not establish whether the acquisition hook downloaded anything.",
         "The API image was built on the host and loaded into the node. The operator supplied its digest as one Helm parameter, and the operator applied the Application and its project.",
@@ -11373,10 +11377,10 @@
         "The clause of E01-AC10 about strings of eight characters or more is not computed over the live Application. It rests on the second static run, 20261003-e01-abc-1, and on three tests. No step ran the admission check over the hand-written values with the parameter merged in.",
         "The model revision is verified by configuration and by content. Nothing reads the revision from the model file.",
         "The pod status reports the API container's image under another digest than the one the run supplied. A read of the node after the cleanup listed both digests for one image identifier. That read is not a registered step, and its output is not in the run directory.",
-        "transcript.txt is the driver's output after five transformations, which the review record and the validation record list. commands.txt is not the exact commands, and driver.txt holds them. The output of three commands of step P3, the response body, and the readiness body are under a directory that Git ignores, and they are not committed.",
+        "transcript.txt is the driver's output after five transformations, which the review record and the validation record list, and the unredacted transcript is not committed. commands.txt is not the exact commands, and driver.txt holds them; the header of the driver does not list each command that it adds to the registered ones. The procedure of this record quotes eight commands and not the whole list. The output of three commands of step P3, the response body, and the readiness body are under a directory that Git ignores, and they are not committed.",
         "In environment.json, the read values of the provider and of the kube context are literals of the driver. The target verification of the procedures, in the transcript, is the evidence for both.",
         "The times are the host's clock and the cluster's clock. No repository file proves them.",
-        "The run executed and was reviewed on 2026-10-06 in V2-S3-004. That change registered no claim and no record. This record was added on 2026-10-07 in V2-S3-005, after the first Sprint 3 collective review found the omission. No file of the run changed, and no part of E01 ran again."
+        "The run executed and was reviewed on 2026-10-06 in V2-S3-004. That change registered no claim and no record, and its validation record says that the reconciliation was owed by a later change. This record was added on 2026-10-07 in V2-S3-005, after a review of the sprint reported the claim as missing; no file in this repository records that review. No file of the run changed, and no part of E01 ran again."
       ],
       "doesNotEstablish": [
         "That a second request is answered. The run sent one.",
@@ -11538,8 +11542,8 @@
         },
         {
           "path": "docs/proof/domain/v2-s3-005-pr1-validation.md",
-          "sha256": "88f703d53eae206b5d22db840522437eb5a89ebb3da18dbe93211092682fbf7a",
-          "gitBlob": "c79830d190b4d48511ca6ce4c40809292b7b3ab5",
+          "sha256": "2457f389b41bb7ca20d2dce3c5768d2ca2ad19142a7acbfeb31d2f1b6481ff6d",
+          "gitBlob": "dbfed2607eedcbf5c960d2b1ce9b16923dbc95ce",
           "recordedDate": {
             "label": "Date",
             "value": "2026-10-07"

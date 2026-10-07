@@ -1071,6 +1071,51 @@ def _summary(
     }
 
 
+def _added_record_ids(ledger: Mapping[str, Any]) -> set[str]:
+    """The identifier of every record a ledger adds, alone or inside an added claim."""
+    added: set[str] = set()
+    for change in ledger["registerChanges"]:
+        if change.get("operation") == "add-record":
+            added.add(change["record"]["recordId"])
+        elif change.get("operation") == "add-claim":
+            added |= {held["recordId"] for held in change["claim"]["evidenceRecords"]}
+    return added
+
+
+def _later_identity_rows(ledger: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """The ``codeIdentity`` rows of a ledger written after the release, checked.
+
+    Each row is an object with a record identifier, one of the published identities,
+    and a list of the repository components among those that executed. It names a
+    record that this ledger adds: a ledger does not read a record of another ledger,
+    and it does not read a record that does not exist. Anything else raises
+    ``ValueError``, so the command reports a refusal and not a traceback.
+    """
+    stated = ledger.get("codeIdentity", [])
+    if not isinstance(stated, list):
+        raise ValueError("a ledger's codeIdentity is not a list")
+    added = _added_record_ids(ledger)
+    for row in stated:
+        if (
+            not isinstance(row, Mapping)
+            or not isinstance(row.get("recordId"), str)
+            or not isinstance(row.get("identity"), str)
+            or not isinstance(row.get("repositoryCodeAmongThem"), list)
+        ):
+            raise ValueError(
+                "a codeIdentity row is not an object with a recordId, an identity, "
+                "and a repositoryCodeAmongThem list"
+            )
+        if row["identity"] not in CODE_IDENTITIES:
+            raise ValueError(f"no code identity {row['identity']!r}")
+        if row["recordId"] not in added:
+            raise ValueError(
+                f"a ledger reads the code identity of {row['recordId']}, which is "
+                "not a record that ledger adds"
+            )
+    return stated
+
+
 def _entries(
     register: Mapping[str, Any],
     ledgers: Sequence[Mapping[str, Any]],
@@ -1091,16 +1136,15 @@ def _entries(
     )
     identities, claim_identity = merged_identities(completeness, closure)
     # A ledger written after the release reads the code identity of a record it
-    # adds. The two ledgers above read every record the released pack holds, and
-    # neither can change. A record is still read once: a second reading raises.
+    # adds, and of no other record. The two ledgers above read every record the
+    # released pack holds, and neither can change. A record is still read once: a
+    # second reading raises.
     for one in ledgers[len(RELEASED_LEDGER_PATHS) :]:
-        for row in one.get("codeIdentity", []):
+        for row in _later_identity_rows(one):
             if row["recordId"] in identities:
                 raise ValueError(
                     f"records read twice for their code identity: {[row['recordId']]}"
                 )
-            if row["identity"] not in CODE_IDENTITIES:
-                raise ValueError(f"no code identity {row['identity']!r}")
             identities[row["recordId"]] = dict(row)
     blockers: dict[str, list[str]] = {}
     for blocker in open_blockers(completeness, closure):

@@ -122,10 +122,11 @@ be an advertisement.
 > status.** [The E01-D registration ledger](../proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json)
 > adds `the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git`,
 > which holds [the one run of part E01-D](../proof/experiments/v2-e01/runs/20261006-e01-d-1/result.md).
-> That run executed on 2026-10-06 in `V2-S3-004-PR2`, which registered no claim. A
-> collective review of the sprint found the omission, and the registration is dated
+> That run executed on 2026-10-06 in `V2-S3-004-PR2`, which registered no claim and
+> said that the reconciliation was owed by a later change. The registration is dated
 > 2026-10-07. No part of E01 ran again, and no file of the run changed. The ledger
-> references [the independent review of the run](../proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md),
+> references [the review of the run](../proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md),
+> by an automated session of the assistant that drove the run,
 > which merged with the run, and the review of the second static run, which one E01-D
 > rule consumes. The same ledger appends a dated note to the limitation of the two
 > planned rows about deployment from a contract, which stay planned with no record, and
@@ -326,8 +327,9 @@ This register makes no such claim. The behaviour E01 is finally about, a release
 deploys and serves, did not run in these two runs; E01-D owns it. E01-D ran once on
 2026-10-06, on one provider, and PASSED. The change that ran it registered no claim.
 Since `V2-S3-005-PR1`, dated 2026-10-07, one row holds that result, at `C2`, under
-Kubernetes deployment and lifecycle, through a ledger that references the independent
-review of the run.
+Kubernetes deployment and lifecycle, through a ledger that references the review of the
+run. The reviewer is an automated session of the assistant that drove the run, and the
+review read no register statement.
 The ledgers that added the two E01 rows, and the evidence record of each row, say that
 E01-D has not run. Those are statements of 2026-10-02 and 2026-10-03, and they are kept
 as written. The second row's claim no longer says so: `V2-S3-005-PR1` replaced that one

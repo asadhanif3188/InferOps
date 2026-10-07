@@ -440,7 +440,9 @@ def _ledgers(mutate: Callable[[dict[str, Any]], None]) -> list[dict[str, Any]]:
     the second static run. In each of them that reference is the first row. One
     artifact of a run satisfies every ledger that bears on the run, so a defect planted
     in the artifact, or in the reference to it, is stated the same way in each. The
-    gate reads the ledgers in order and refuses at the first of them."""
+    gate reads the ledgers in order and refuses at the first of them, the correction
+    ledger, so the tests that use this helper prove the refusal for that ledger. The
+    registration ledger has tests of its own below, which name it in the refusal."""
     ledgers = copy.deepcopy(LEDGERS)
     for index in SECOND_RUN_REVIEW_LEDGERS:
         assert ledgers[index]["resultReviews"][0]["runPath"] == SECOND_RUN
@@ -916,7 +918,7 @@ def test_the_review_of_the_real_deployment_run_merged_before_the_registration() 
     assert _git("rev-parse", f"{merge}:{REGISTRATION_NAME}") is None
     tracked = _git("ls-tree", "-r", "--name-only", merge, "--", E01_D_RUN)
     assert tracked is not None
-    for relative in tracked.split():
+    for relative in tracked.splitlines():
         was = _git("rev-parse", f"{merge}:{relative}")
         held = _git("hash-object", "--", relative)
         assert was is not None and held is not None, relative
@@ -954,6 +956,31 @@ def test_the_review_of_the_static_run_does_not_stand_for_the_real_deployment_run
     with pytest.raises(ValueError, match="reviews the run") as refusal:
         review_gate(REGISTER, _registration(reuse), _tree(tmp_path))
     assert REGISTRATION_NAME in str(refusal.value)
+
+
+def test_the_registration_with_another_digest_or_a_second_review_is_refused(
+    tmp_path: Path,
+) -> None:
+    def another_digest(ledger: dict[str, Any]) -> None:
+        ledger["resultReviews"][1]["reviewSha256"] = "0" * 64
+
+    with pytest.raises(ValueError, match="has the content digest") as refusal:
+        review_gate(REGISTER, _registration(another_digest), _tree(tmp_path / "a"))
+    assert REGISTRATION_NAME in str(refusal.value)
+    assert E01_D_REVIEW_REF in str(refusal.value)
+
+    def twice(ledger: dict[str, Any]) -> None:
+        ledger["resultReviews"].append(dict(ledger["resultReviews"][1]))
+
+    with pytest.raises(ValueError, match="two reviews are referenced") as refusal:
+        review_gate(REGISTER, _registration(twice), _tree(tmp_path / "b"))
+    assert REGISTRATION_NAME in str(refusal.value)
+
+    def malformed(ledger: dict[str, Any]) -> None:
+        del ledger["resultReviews"][1]["reviewSha256"]
+
+    with pytest.raises(ValueError, match="a resultReviews row is not exactly"):
+        review_gate(REGISTER, _registration(malformed), _tree(tmp_path / "c"))
 
 
 def _edit_a_real_deployment_file(root: Path) -> None:

@@ -1733,14 +1733,16 @@ def test_the_register_record_names_the_identities_the_run_recorded() -> None:
     assert record["versionsRecordedIn"] == f"{E01_D_RUN_PATH}/{MANIFEST}"
     values = {row["value"] for row in record["versions"]}
     criteria = {row["id"]: row for row in manifest["criteria"]}
-    observed = [rule["observed"] for rule in criteria["E01-AC9"]["rules"]]
+    observed: dict[str, Any] = {}
+    for rule in criteria["E01-AC9"]["rules"]:
+        observed.update(rule["observed"])
     for value in (
         manifest["executingRevision"],
         manifest["metadata"]["freezeContentSha256"],
-        observed[1]["releaseId"],
-        observed[1]["valuesSha256"],
-        observed[3]["runtimeContainerImageID"],
-        observed[4]["generatedModelRevision"],
+        observed["releaseId"],
+        observed["valuesSha256"],
+        observed["runtimeContainerImageID"],
+        observed["generatedModelRevision"],
         f"{manifest['executionIdentity']['apiImage']['reference']}"
         f"@{manifest['executionIdentity']['apiImage']['digest']}",
     ):
@@ -1832,7 +1834,17 @@ def test_the_claim_is_bounded_to_the_one_run_and_says_what_it_does_not_establish
         "freeze revision 3",
     ):
         assert phrase in statement, phrase
-    for word in ("every", "always", "any ", "guarantee", "reliabl", "production"):
+    for word in (
+        "every",
+        "always",
+        "any ",
+        "all ",
+        "guarantee",
+        "reliabl",
+        "robust",
+        "stable",
+        "production",
+    ):
         assert word not in statement.lower(), word
     limitation = claim["limitation"]
     for phrase in (
@@ -1860,7 +1872,16 @@ def test_the_claim_is_bounded_to_the_one_run_and_says_what_it_does_not_establish
         "production readiness",
     ):
         assert phrase in boundary, phrase
-    assert len(record["doesNotEstablish"]) >= 13
+    for phrase in (
+        "A script that is not committed compared the values.",
+        "does not establish that this record or its claim is correct",
+        "One session wrote every file of the run.",
+        "no file proves it",
+        "does not check that the port-forward process is alive",
+    ):
+        assert any(phrase in item for item in record["limitations"]), phrase
+    manifest = json.loads((E01_D_DIR / MANIFEST).read_text(encoding="utf-8"))
+    assert len(record["doesNotEstablish"]) >= len(manifest["doesNotEstablish"])
     assert any("registered no claim" in item for item in record["limitations"])
 
 

@@ -587,7 +587,9 @@ review of this run, with
 [its machine-readable record](v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json). The review
 read the first commit of the change that adds the run, `2f2e1ff`, read-only, on
 2026-10-06. That commit held no register change. A review record is not evidence of the
-run, and no register claim cites it.
+run. When it was published no register claim cited it; since `V2-S3-005-PR1` one
+register record cites it, as the review of the run. The review read no register
+statement about the run, and it does not establish that the claim is correct.
 
 - **The frozen run.** The reviewer applied each registered rule to the raw files. Every
   verdict equals the one the run recorded. It found no defect in the files, the digests,
@@ -780,10 +782,10 @@ consumed.
 2. On 2026-10-06, `V2-S3-004-PR2` ran E01-D once, published the independent review of
    the run, and merged. It registered no claim and no evidence record. Its validation
    record says that the reconciliation was owed by a later change.
-3. On 2026-10-06, a collective review of the sprint found that the reconciliation the
-   story requires was missing. It found the freeze inputs, the raw run, the result
-   classification, and the review record sound, and it stated that the finding
-   justifies no repeated run.
+3. On 2026-10-06, a review of the sprint reported that the reconciliation was missing.
+   It reported no defect in the freeze inputs, the raw run, the result classification,
+   or the review record, and it reported that the finding justifies no repeated run.
+   That review was reported to the author, and no file in this repository records it.
 4. On 2026-10-07, `V2-S3-005-PR1` added the claim, through
    [the E01-D registration ledger](../testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json),
    the tenth ledger of register changes and the sixth after `v1.0.0`.
@@ -794,8 +796,8 @@ claim's limitation and the record's limitations each carry the two dates.
 **The claim.** `the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git`
 is `certified` on one record at `C2`. It says, in the past tense, what one run showed: on
 the `docker-desktop` provider, on one cluster with one node, the release rendered from
-the unmodified reference contract was accepted into Git at one commit, was reconciled by
-Argo CD, and answered one completion request with HTTP 200 and a non-empty assistant
+the unmodified reference contract was accepted into Git, was read by the run at one
+commit, was reconciled by Argo CD, and answered one completion request with HTTP 200 and a non-empty assistant
 message, under E01-AC8, E01-AC9, and E01-AC10 of revision 3.
 
 **The review reference.** The ledger names two review artifacts in `resultReviews`, each

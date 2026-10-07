@@ -90,7 +90,8 @@ Then `V2-S3-005-PR1` added a third claim,
 certified at `C2` on the record of the one run of part E01-D, through a sixth
 post-release ledger, the E01-D registration ledger. That run executed on 2026-10-06 in
 `V2-S3-004-PR2`, which registered no claim; the registration is dated 2026-10-07. The
-ledger references [the independent review of that run](experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md).
+ledger references [the review of that run](experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md),
+by an automated session of the assistant that drove the run.
 It also appended a dated note to the limitation of two planned claims, which stay
 planned with no record, replaced one clause of what the second static run's claim does
 not establish, and replaced this page's reason again. It is the first post-release
@@ -145,7 +146,7 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after the six post-release ledgers, which no release quotes | `fa75a1e95a1686b252a2db05c0b49f9127b14796dad4fa325ba081d7f00e415d` | `54e14a7f3eac5dcb5978f410d4e4bbb8a793d5b46984b322cea6a9b9d4934697` |
+| **Current:** `main` after the six post-release ledgers, which no release quotes | `79380211e935867289f5a5a3194efd9ae37a12fb96ddbf8e9303b9e389b076d2` | `f84faf200a541499ff29071e09e9372fb3a30816772f6e5567d9e58c12eeae0f` |
 
 The released pair is not read from a ledger. The index undoes the six post-release
 ledgers' changes, last first, renders the register as it was, and takes both digests
