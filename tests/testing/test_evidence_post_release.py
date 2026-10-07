@@ -25,6 +25,10 @@ result page; it moves no status and edits no dated record.
 dated correction to its limitation. `tests/testing/test_result_review_gate.py` holds
 that ledger; this module only undoes it where it rebuilds an earlier register.
 
+`V2-S3-005-PR1` wrote a sixth, which records the reviewed result of part E01-D.
+`tests/testing/test_experiment_e01.py` and `tests/testing/test_result_review_gate.py`
+hold that ledger; this module only undoes it where it rebuilds an earlier register.
+
 What it does not establish is that the release is still published as the record read
 it, or that the private reporting setting still reads enabled: those are state on the
 hosting service, and this module reads only files and, where the clone has it, the tag.
@@ -45,6 +49,7 @@ from tools.evidence_index import (
     CLAIM_RECONCILIATION_PATH,
     E01_CLAIM_CORRECTION_PATH,
     E01_CORRECTED_PROOF_PATH,
+    E01_D_REGISTRATION_PATH,
     E01_STATIC_PROOF_PATH,
     INDEX_PATH,
     LEDGER_PATHS,
@@ -79,8 +84,10 @@ E01 = load_ledger(E01_STATIC_PROOF_PATH)
 CORRECTED = load_ledger(E01_CORRECTED_PROOF_PATH)
 #: The fifth post-release ledger, written after the fourth.
 CORRECTION = load_ledger(E01_CLAIM_CORRECTION_PATH)
+#: The sixth post-release ledger, written after the fifth.
+REGISTRATION = load_ledger(E01_D_REGISTRATION_PATH)
 #: Every post-release ledger written after this one, in the order applied.
-LATER_LEDGERS = [LATER, E01, CORRECTED, CORRECTION]
+LATER_LEDGERS = [LATER, E01, CORRECTED, CORRECTION, REGISTRATION]
 AS_RELEASED = released_register(REGISTER, load_ledgers(POST_RELEASE_LEDGER_PATHS))
 #: The register as this ledger left it, before the later ones.
 AFTER_THIS_LEDGER = restore_migrated_register(REGISTER, LATER_LEDGERS)
@@ -256,24 +263,34 @@ def test_main_holds_another_pack_and_says_so() -> None:
     )
 
 
-def test_the_released_counts_differ_from_main_by_the_three_records_added_since() -> (
-    None
-):
-    """The release's own record, which moved one claim from not claimed, and the two
-    E01 static runs', each of which came with a claim of its own. All three are C0,
-    and nothing else moved a count."""
+def test_the_released_counts_differ_from_main_by_the_four_records_added_since() -> None:
+    """The release's own record, which moved one claim from not claimed, the two
+    E01 static runs', and the E01-D run's, each of the last three with a claim of its
+    own. The first three are C0 and the E01-D record is C2. Nothing else moved a
+    count."""
     released = SUMMARY["releasedPack"]
-    assert released["records"] == SUMMARY["records"] - 3
+    assert released["records"] == SUMMARY["records"] - 4
     assert released["recordsByLevel"]["C0"] == SUMMARY["recordsByLevel"]["C0"] - 3
-    assert released["claims"] == SUMMARY["claims"] - 2
+    assert released["recordsByLevel"]["C2"] == SUMMARY["recordsByLevel"]["C2"] - 1
+    for level in ("C1", "C3", "C4"):
+        assert released["recordsByLevel"][level] == SUMMARY["recordsByLevel"][level]
+    assert released["claims"] == SUMMARY["claims"] - 3
     certified = SUMMARY["claimsByStatus"]["certified"]
-    assert released["claimsByStatus"]["certified"] == certified - 3
+    assert released["claimsByStatus"]["certified"] == certified - 4
     not_claimed = SUMMARY["claimsByStatus"]["not-claimed"]
     assert released["claimsByStatus"]["not-claimed"] == not_claimed + 1
+    (registered,) = [
+        change["claim"]
+        for change in REGISTRATION["registerChanges"]
+        if change["operation"] == "add-claim"
+    ]
+    (registered_record,) = registered["evidenceRecords"]
+    assert registered_record["evidenceLevel"] == "C2"
     added_files = (
         set(ADDED["evidenceRefs"])
         | set(E01_RECORD["evidenceRefs"])
         | set(CORRECTED_RECORD["evidenceRefs"])
+        | set(registered_record["evidenceRefs"])
     )
     assert released["evidenceFiles"] == SUMMARY["evidenceFiles"] - len(added_files)
 
@@ -363,7 +380,9 @@ def _edit_the_audit_limitation(register: dict, ledgers: list) -> None:
         (_declare_a_freeze, "declares a freeze"),
         (_raise_a_blocker, "raises or closes a blocker"),
         (_state_a_release_later, "only the first post-release ledger"),
-        (_edit_the_reconciled_limitation, "c01-rendering-limitation"),
+        # The E01-D registration ledger appended a dated note to this limitation, so
+        # it is the last ledger that wrote the field and the first whose undo refuses.
+        (_edit_the_reconciled_limitation, "d03-deployment-values-claim-dated-note"),
         (_edit_the_added_claim, "e01-static-claim"),
         (_edit_the_corrected_claim, "k01-corrected-run-claim"),
         (_edit_the_audit_limitation, "k02-first-run-audit-limitation"),
@@ -495,6 +514,8 @@ def test_the_released_register_cannot_be_rebuilt_without_the_later_ledgers() -> 
         released_register(REGISTER, [LEDGER, LATER, E01])
     with pytest.raises(ValueError, match="k03-index-surface-reason"):
         released_register(REGISTER, [LEDGER, LATER, E01, CORRECTED])
+    with pytest.raises(ValueError, match="q03-index-surface-reason"):
+        released_register(REGISTER, [LEDGER, LATER, E01, CORRECTED, CORRECTION])
 
 
 # ------------------------------------------------------------------ the record
@@ -590,13 +611,17 @@ E01_FINDINGS = {row["findingId"]: row for row in E01["findings"]}
 (E01_RECORD,) = E01_ADDED["claim"]["evidenceRecords"]
 E01_RUN = "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1"
 #: The register as the E01 ledger left it, before the corrected one.
-AFTER_THE_E01_LEDGER = restore_migrated_register(REGISTER, [CORRECTED, CORRECTION])
+AFTER_THE_E01_LEDGER = restore_migrated_register(
+    REGISTER, [CORRECTED, CORRECTION, REGISTRATION]
+)
 #: The register as the reconciliation ledger left it, before the E01 ledger.
 AFTER_THIS_LEDGER_AND_RECONCILIATION = restore_migrated_register(
-    REGISTER, [E01, CORRECTED, CORRECTION]
+    REGISTER, [E01, CORRECTED, CORRECTION, REGISTRATION]
 )
 #: The register as the corrected ledger left it, before the claim correction.
-AFTER_THE_CORRECTED_LEDGER = restore_migrated_register(REGISTER, CORRECTION)
+AFTER_THE_CORRECTED_LEDGER = restore_migrated_register(
+    REGISTER, [CORRECTION, REGISTRATION]
+)
 
 
 def test_the_e01_ledger_follows_the_reconciliation_and_states_no_release() -> None:
@@ -769,15 +794,19 @@ def test_every_corrected_finding_is_answered_by_changes_that_exist() -> None:
 
 def test_the_second_claim_is_appended_and_is_not_in_any_earlier_register() -> None:
     claims = [row["claimId"] for row in REGISTER["claims"]]
-    assert CORRECTED_ADDED["position"] == len(claims) - 1
-    assert claims[-1] == CORRECTED_CLAIM_ID
+    assert claims[CORRECTED_ADDED["position"]] == CORRECTED_CLAIM_ID
+    # The one claim after it is the one the E01-D registration ledger appended.
+    assert CORRECTED_ADDED["position"] == len(claims) - 2
     # As the corrected ledger left it. The claim correction ledger narrowed the
-    # statement and appended a dated correction since, and changed nothing else.
+    # statement and appended a dated correction since. The E01-D registration
+    # ledger then replaced one clause of what the claim does not establish. No
+    # ledger changed another field.
     assert AFTER_THE_CORRECTED_LEDGER["claims"][-1] == CORRECTED_ADDED["claim"]
-    held = REGISTER["claims"][-1]
+    held = REGISTER["claims"][CORRECTED_ADDED["position"]]
     assert [key for key in held if held[key] != CORRECTED_ADDED["claim"][key]] == [
         "statement",
         "limitation",
+        "doesNotEstablish",
     ]
     for earlier in (AS_RELEASED, AFTER_THIS_LEDGER, AFTER_THE_E01_LEDGER):
         assert CORRECTED_CLAIM_ID not in {row["claimId"] for row in earlier["claims"]}

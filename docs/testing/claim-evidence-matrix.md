@@ -2,8 +2,8 @@
 
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json).
-It holds 61 claims: 44 certified, 7 planned,
-1 deferred, and 9 not claimed, supported by 67 evidence records. The not-claimed
+It holds 62 claims: 45 certified, 7 planned,
+1 deferred, and 9 not claimed, supported by 68 evidence records. The not-claimed
 group is the point of the document. A register that listed only what worked would
 be an advertisement.
 
@@ -116,6 +116,23 @@ be an advertisement.
 > ledger also replaces the evidence index's reason here, which named eight ledgers. The
 > evidence index undoes it, with the other four post-release ledgers, to recompute the
 > released pack.
+>
+> **Since `V2-S3-005-PR1` a tenth ledger, the sixth after the release, has added a third
+> claim, certified at `C2` on the one record it adds with it, and moved no existing
+> status.** [The E01-D registration ledger](../proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json)
+> adds `the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git`,
+> which holds [the one run of part E01-D](../proof/experiments/v2-e01/runs/20261006-e01-d-1/result.md).
+> That run executed on 2026-10-06 in `V2-S3-004-PR2`, which registered no claim. A
+> collective review of the sprint found the omission, and the registration is dated
+> 2026-10-07. No part of E01 ran again, and no file of the run changed. The ledger
+> references [the independent review of the run](../proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md),
+> which merged with the run, and the review of the second static run, which one E01-D
+> rule consumes. The same ledger appends a dated note to the limitation of the two
+> planned rows about deployment from a contract, which stay planned with no record, and
+> replaces one clause of what the second static run's claim does not establish. It also
+> replaces the evidence index's reason here, which named nine ledgers. The evidence
+> index undoes it, with the other five post-release ledgers, to recompute the released
+> pack.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -282,12 +299,18 @@ refusal is.
 The two planned rows here are the ones to read first, because they are the
 distance between what this project publishes and what it does. A contract is
 published, parsed, and refused with a reason, and since `V2-S2-001-PR2` it renders the
-chart's values and a release that records their sources. **Nothing deploys from one
-yet**: no supported deployment path consumes the generated files, so
-`the-platform-serves-a-workload-the-contract-describes` is an intention, and it cites
-no record on purpose. (Until `V2-S2-003-PR2` this paragraph said the chart's values are
-written by an operator and that deployment rendering does not exist; both had been out of
-date since `V2-S2-001-PR2`.)
+chart's values and a release that records their sources. Since `V2-S3-002-PR2` one
+supported GitOps path consumes the generated values file, and **one run has deployed
+from one contract**: the E01-D run, on one provider, with one completion request. That
+run has a row of its own, under Kubernetes deployment and lifecycle. It does not move
+these two rows. One run with one contract does not establish that the platform serves
+the workload a contract describes, or that deployment values are derived only from a
+validated document, so each row is still an intention and cites no record on purpose.
+Each carries a note dated 2026-10-07 that says so. (Until `V2-S2-003-PR2` this paragraph
+said the chart's values are written by an operator and that deployment rendering does
+not exist; both had been out of date since `V2-S2-001-PR2`. Until `V2-S3-005-PR1` it
+said that nothing deploys from a contract yet and that no supported deployment path
+consumes the generated files; that had been out of date since `V2-S3-002-PR2`.)
 
 The first E01 row is the static half of that distance. The first run of the frozen E01 procedure
 rendered the reference contract twice, in two processes, to byte-identical release input,
@@ -301,10 +324,16 @@ record registers for these parts. The renderer that wrote the evidence is produc
 would be about `src/` doing what it says, as the parser row above is, and would be `C2`.
 This register makes no such claim. The behaviour E01 is finally about, a release that
 deploys and serves, did not run in these two runs; E01-D owns it. E01-D ran once on
-2026-10-06, on one provider, and PASSED. No row of this register holds that result yet:
-a register change that bears on that run must reference an independent review of it.
-The two E01 rows, and the ledgers that added them, say that E01-D has not run. Those
-are statements of 2026-10-02 and 2026-10-03, and they are kept as written.
+2026-10-06, on one provider, and PASSED. The change that ran it registered no claim.
+Since `V2-S3-005-PR1`, dated 2026-10-07, one row holds that result, at `C2`, under
+Kubernetes deployment and lifecycle, through a ledger that references the independent
+review of the run.
+The ledgers that added the two E01 rows, and the evidence record of each row, say that
+E01-D has not run. Those are statements of 2026-10-02 and 2026-10-03, and they are kept
+as written. The second row's claim no longer says so: `V2-S3-005-PR1` replaced that one
+clause. The first row's claim still says so. A change to that claim bears on the first
+run, no review record of the first run exists, and the review gate refuses the change
+without one.
 
 There are two E01 rows since `V2-S2-004-PR2`, one for each run, and neither replaces the
 other. The first run executed under freeze revision 1. An audit on 2026-10-03 found that
@@ -421,11 +450,12 @@ it claims no cold-start effect at all.
 | `a-helm-release-installs-and-uninstalls-without-residue` | certified | `C2` `a-helm-release-installs-and-uninstalls-without-residue-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md)<br>`C2` `a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C2` `a-helm-release-installs-and-uninstalls-without-residue-c2-rerun` — local-kubernetes, `docker-desktop` — [v1-s5-013-pr1-scoped-cleanup.md](../proof/environment/v1-s5-013-pr1-scoped-cleanup.md), [v1-s5-013-pr1-scoped-cleanup-transcript.txt](../proof/environment/v1-s5-013-pr1-scoped-cleanup-transcript.txt), [v1-s5-013-pr1-cluster-prepare-transcript.txt](../proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt) | 2 module(s) |
 | `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating` | certified | `C2` `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating-c2-docker-desktop` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C0` `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating-c0-contract` — repository-only — [v1-s3-010-pr1-validation.md](../proof/architecture/v1-s3-010-pr1-validation.md) | 4 module(s) |
 | `kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed` | certified | `C0` `kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed-c0` — repository-only — [v1-s3-009-pr1-validation.md](../proof/environment/v1-s3-009-pr1-validation.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) | 1 module(s) |
+| `the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git` | certified | `C2` `the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git-c2` — local-kubernetes, `docker-desktop` — [result.md](../proof/experiments/v2-e01/runs/20261006-e01-d-1/result.md), [run.v1alpha1.json](../proof/experiments/v2-e01/runs/20261006-e01-d-1/run.v1alpha1.json), [completion.json](../proof/experiments/v2-e01/runs/20261006-e01-d-1/completion.json), [argo.json](../proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json), [pods.json](../proof/experiments/v2-e01/runs/20261006-e01-d-1/pods.json), [provenance.json](../proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json), [reconciliation.record.json](../proof/experiments/v2-e01/runs/20261006-e01-d-1/reconciliation.record.json), [release.json](../proof/experiments/v2-e01/runs/20261006-e01-d-1/release.json), [environment.json](../proof/experiments/v2-e01/runs/20261006-e01-d-1/environment.json), [transcript.txt](../proof/experiments/v2-e01/runs/20261006-e01-d-1/transcript.txt), [commands.txt](../proof/experiments/v2-e01/runs/20261006-e01-d-1/commands.txt), [driver.txt](../proof/experiments/v2-e01/runs/20261006-e01-d-1/driver.txt), [freeze-r3.v1alpha1.json](../proof/experiments/v2-e01/freeze-r3.v1alpha1.json), [20261006-e01-d-1-review-1.v1alpha1.json](../proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json), [20261006-e01-d-1-review-1.md](../proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md), [run.v1alpha1.json](../proof/experiments/v2-e01/runs/20261003-e01-abc-1/run.v1alpha1.json), [v2-s3-004-pr2-validation.md](../proof/domain/v2-s3-004-pr2-validation.md), [v2-s3-005-pr1-validation.md](../proof/domain/v2-s3-005-pr1-validation.md) | 3 module(s) |
 | `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | certified | `C2` `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2` — local-kubernetes, `docker-desktop` — [v1-s3-003-pr2-kubernetes-pod-restart.md](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md)<br>`C2` `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2-rerun` — local-kubernetes, `docker-desktop` — [v1-s5-013-pr1-kubernetes-pod-restart.md](../proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.md), [v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json](../proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json), [v1-s5-013-pr1-kubernetes-pod-restart-transcript.txt](../proof/serving/v1-s5-013-pr1-kubernetes-pod-restart-transcript.txt), [v1-s5-013-pr1-cluster-prepare-transcript.txt](../proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt) | 1 module(s) |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | certified | `C2` `the-selected-runtime-serves-a-real-completion-in-a-cluster-c2-paved-road` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C1` `the-selected-runtime-serves-a-real-completion-in-a-cluster-c1-feasibility` — local-kubernetes, `docker-desktop` — [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) | 3 module(s) |
 | `multi-replica-serving-is-certified` | not-claimed | `C0` `multi-replica-serving-is-certified-c0` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 1 module(s) |
 
-Six certified rows and one refusal. Five of the six ran on `docker-desktop`, and one
+Seven certified rows and one refusal. Six of the seven ran on `docker-desktop`, and one
 is a `C0` check over the troubleshooting guide. `docker-desktop` is the executed V1
 reference provider and **certifies nothing about `kind`** — the only `kind` result in
 this matrix is the 2026-08-23 cluster smoke, whose workload was a static-text HTTP
@@ -439,6 +469,15 @@ over the provider contract that contacted no cluster. The in-cluster completion
 row's feasibility trial is `C1` for that statement: it served a real completion
 through hand-written trial manifests rather than the Helm release and the
 Terraform-owned claim the statement names.
+
+The E01-D row is the only row here whose release came through Git and Argo CD. Its
+statement is in the past tense and names one run: the release rendered from the
+reference contract was reconciled from one commit and answered one completion request.
+It is `C2`, as the run's own manifest records, and it is not representative. It was
+registered on 2026-10-07, one day after the run, and its limitation says so. It does
+not establish a second request, another provider, availability, behaviour under
+failure or overload, or anything about a caller from what Argo CD reports. The earlier
+rows here that install a release installed it with Helm.
 
 The `not-claimed` row is the one that matters most here. Multi-replica serving
 was attempted on the reference host and refused at the capacity gate, 165 MiB
@@ -646,7 +685,7 @@ compare against and the exclusion list cannot quietly grow.
 | [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) | Interim conduct expectations, with a formal policy deferred. |
 | [LICENSE](../../LICENSE) | The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does. |
 | [docs/proof/dashboard.md](../proof/dashboard.md) | A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them. |
-| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the nine ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
+| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the ten ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
 | [docs/case-study/v1-engineering-case-study.md](../case-study/v1-engineering-case-study.md) | The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it. |
 | [docs/testing/evidence-levels.md](evidence-levels.md) | The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it. |
 

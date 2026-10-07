@@ -1618,7 +1618,8 @@ E01_D_REVIEW = (
 def test_the_review_record_describes_the_real_deployment_run_as_it_is() -> None:
     """The review record names this run, revision 3 by its digest, and every file of
     the run directory with the content digest the file has now. These are the checks
-    the review gate makes when a ledger references the record. No ledger does yet.
+    the review gate makes when a ledger references the record. Since `V2-S3-005-PR1`
+    one ledger does, and the tests below hold it.
     The test does not show that a review took place or what it read."""
     review = json.loads(E01_D_REVIEW.read_text(encoding="utf-8"))
     subject = review["subject"]
@@ -1657,10 +1658,223 @@ def test_the_review_record_describes_the_real_deployment_run_as_it_is() -> None:
         assert f"| {finding['id']} | {finding['severity']} |" in page
 
 
-def test_no_register_record_cites_the_real_deployment_run_or_its_review() -> None:
-    """The register holds no claim for the E01-D run. A register change that bears on
-    the run must reference the review record, in a ledger, and none does yet."""
-    register = (
-        REPO_ROOT / "docs/testing/claim-evidence-matrix.v1alpha2.json"
-    ).read_text(encoding="utf-8")
-    assert E01_D_RUN not in register
+# --------------------------------------------------------------------------
+# The register claim of the E01-D run
+# --------------------------------------------------------------------------
+#
+# `V2-S3-004-PR2` ran E01-D and registered no claim, and this module then required
+# that absence. `V2-S3-005-PR1` added the claim, through a ledger of its own. The tests
+# below replace the absence check. They bind the claim to the run, to revision 3, and
+# to the review record, and they hold the boundary the claim travels with. They read
+# committed files. They do not show that the claim's wording is complete.
+
+E01_D_CLAIM_ID = (
+    "the-e01-real-deployment-run-served-one-completion-from-the-release-"
+    "reconciled-from-git"
+)
+E01_D_LEDGER = "docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json"
+E01_D_RUN_PATH = f"{RUNS_DIR}/{E01_D_RUN}"
+
+
+def _register_claims() -> list[dict[str, Any]]:
+    register = json.loads(
+        (REPO_ROOT / "docs/testing/claim-evidence-matrix.v1alpha2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    claims: list[dict[str, Any]] = register["claims"]
+    return claims
+
+
+def _real_deployment_claim() -> dict[str, Any]:
+    (claim,) = [row for row in _register_claims() if row["claimId"] == E01_D_CLAIM_ID]
+    return claim
+
+
+def test_one_register_claim_holds_the_real_deployment_run_at_c2() -> None:
+    """Exactly one claim cites a file of the run. It is certified on one record at
+    C2, which is the level and the outcome the run's own manifest records."""
+    manifest = json.loads((E01_D_DIR / MANIFEST).read_text(encoding="utf-8"))
+    citing = [
+        row["claimId"]
+        for row in _register_claims()
+        if any(
+            ref.startswith(f"{E01_D_RUN_PATH}/")
+            for record in row["evidenceRecords"]
+            for ref in record["evidenceRefs"]
+        )
+    ]
+    assert citing == [E01_D_CLAIM_ID]
+    claim = _real_deployment_claim()
+    assert claim["status"] == "certified"
+    assert claim["assertsRealBehaviour"] is True
+    (record,) = claim["evidenceRecords"]
+    assert record["evidenceLevel"] == manifest["evidenceLevel"]["level"] == "C2"
+    assert manifest["outcomes"] == {"E01-D": "PASSED"}
+    assert record["execution"]["targetBehaviourExecuted"] is True
+    assert record["execution"]["substitutions"] == []
+    executed = {row["componentId"] for row in record["execution"]["executedComponents"]}
+    assert set(claim["claimMaterialComponents"]) <= executed
+
+
+def test_the_register_record_names_the_identities_the_run_recorded() -> None:
+    """The run, the commit, revision 3, the review record, the environment, the
+    runtime image, the model revision, the release, and the one request."""
+    manifest = json.loads((E01_D_DIR / MANIFEST).read_text(encoding="utf-8"))
+    review = json.loads(E01_D_REVIEW.read_text(encoding="utf-8"))
+    (record,) = _real_deployment_claim()["evidenceRecords"]
+    refs = record["evidenceRefs"]
+    for name in E01_D_FILES:
+        assert f"{E01_D_RUN_PATH}/{name}" in refs, name
+    assert manifest["metadata"]["freezeRecord"] == E01_D_FREEZE
+    assert E01_D_FREEZE in refs
+    assert E01_D_REVIEW.relative_to(REPO_ROOT).as_posix() in refs
+    assert review["metadata"]["page"] in refs
+    assert record["versionsRecordedIn"] == f"{E01_D_RUN_PATH}/{MANIFEST}"
+    values = {row["value"] for row in record["versions"]}
+    criteria = {row["id"]: row for row in manifest["criteria"]}
+    observed = [rule["observed"] for rule in criteria["E01-AC9"]["rules"]]
+    for value in (
+        manifest["executingRevision"],
+        manifest["metadata"]["freezeContentSha256"],
+        observed[1]["releaseId"],
+        observed[1]["valuesSha256"],
+        observed[3]["runtimeContainerImageID"],
+        observed[4]["generatedModelRevision"],
+        f"{manifest['executionIdentity']['apiImage']['reference']}"
+        f"@{manifest['executionIdentity']['apiImage']['digest']}",
+    ):
+        assert value in values, value
+    environment = json.loads((E01_D_DIR / "environment.json").read_text("utf-8"))
+    frozen = {row["attribute"]: row["frozen"] for row in environment["identityStepP3"]}
+    assert record["environment"]["environmentId"] == "local-kubernetes"
+    assert record["environment"]["provider"] == frozen["provider.providerId"]
+    assert frozen["cluster.kubernetesServerVersion"] in record["environment"]["note"]
+    assert frozen["nodes.count"] == 1
+    assert "one node" in record["environment"]["note"]
+    assert record["workload"]["source"] == "operator-issued"
+    assert (
+        record["workload"]["shape"]["requestCount"]
+        == (manifest["steps"]["D5"]["requestsSent"])
+    )
+    period = record["measurement"]["observationPeriod"]
+    assert period["start"] == manifest["metadata"]["startedAt"]
+    assert period["end"] == manifest["metadata"]["finishedAt"]
+
+
+def test_the_register_record_states_the_frozen_criteria_and_their_outcomes() -> None:
+    """Each criterion is quoted from the run's manifest, which quotes revision 3, and
+    each outcome is the verdict the manifest records."""
+    manifest = json.loads((E01_D_DIR / MANIFEST).read_text(encoding="utf-8"))
+    (record,) = _real_deployment_claim()["evidenceRecords"]
+    assert [
+        (row["criterionId"], row["statement"], row["declaredBefore"], row["outcome"])
+        for row in record["acceptanceCriteria"]
+    ] == [
+        (
+            row["id"].lower(),
+            row["statement"],
+            True,
+            "met" if row["holds"] else "not-met",
+        )
+        for row in manifest["criteria"]
+    ]
+    assert [row["id"] for row in manifest["criteria"]] == [
+        "E01-AC8",
+        "E01-AC9",
+        "E01-AC10",
+    ]
+    assert {row["criterionId"] for row in record["results"]} == {
+        row["criterionId"] for row in record["acceptanceCriteria"]
+    }
+
+
+def test_the_ledger_that_registers_the_run_references_its_review_record() -> None:
+    """The ledger names the review record of this run by its content digest. The
+    review gate in tools/evidence_index makes the binding checks, and
+    tests/testing/test_result_review_gate.py plants each refusal."""
+    ledger = json.loads((REPO_ROOT / E01_D_LEDGER).read_text(encoding="utf-8"))
+    rows = {row["runPath"]: row for row in ledger["resultReviews"]}
+    row = rows[E01_D_RUN_PATH]
+    assert row["reviewRef"] == E01_D_REVIEW.relative_to(REPO_ROOT).as_posix()
+    assert row["reviewSha256"] == content_digest(E01_D_REVIEW.read_bytes())
+    (added,) = [
+        change
+        for change in ledger["registerChanges"]
+        if change["operation"] == "add-claim"
+    ]
+    assert added["claim"] == _real_deployment_claim()
+    assert [
+        change["operation"]
+        for change in ledger["registerChanges"]
+        if change["operation"] != "add-claim"
+    ] == ["set-claim-field"] * 3 + ["set-register-field"]
+    assert not [
+        change
+        for change in ledger["registerChanges"]
+        if change.get("field") == "status"
+    ]
+
+
+def test_the_claim_is_bounded_to_the_one_run_and_says_what_it_does_not_establish() -> (
+    None
+):
+    """The claim names one run, one provider, one node, and one request, and it names
+    each thing a reader might take it for. A claim edited to drop one fails here."""
+    claim = _real_deployment_claim()
+    (record,) = claim["evidenceRecords"]
+    statement = claim["statement"]
+    for phrase in (
+        "In one run on 2026-10-06",
+        "on the docker-desktop provider",
+        "on one cluster with one node",
+        "one completion request",
+        "freeze revision 3",
+    ):
+        assert phrase in statement, phrase
+    for word in ("every", "always", "any ", "guarantee", "reliabl", "production"):
+        assert word not in statement.lower(), word
+    limitation = claim["limitation"]
+    for phrase in (
+        "Runtime, C2, about one run, 20261006-e01-d-1",
+        "one API replica, one runtime replica, and one completion request",
+        "warm start",
+        "no person and no outside party reviewed the result",
+        "is not computed over the live Application",
+        "Registration, 2026-10-07: the run executed and was reviewed on 2026-10-06 "
+        "in V2-S3-004, and that change registered no claim.",
+        "no part of E01 ran again",
+    ):
+        assert phrase in limitation, phrase
+    boundary = claim["doesNotEstablish"]
+    for phrase in (
+        "That a second request is answered",
+        "another provider",
+        "a sync state, a health state, pod readiness, or a replica count",
+        "latency, throughput, capacity, availability, or behaviour under overload",
+        "high availability",
+        "a node, a zone, or a region",
+        "service-level objective",
+        "representative evidence, C3, or operational evidence, C4",
+        "a cost, a saving, a return on investment, or a business effect",
+        "production readiness",
+    ):
+        assert phrase in boundary, phrase
+    assert len(record["doesNotEstablish"]) >= 13
+    assert any("registered no claim" in item for item in record["limitations"])
+
+
+def test_the_two_planned_claims_stay_planned_beside_the_real_deployment_claim() -> None:
+    """One run does not establish the general statements. Each planned claim keeps its
+    status, cites no record, and carries a dated note that names the run."""
+    claims = {row["claimId"]: row for row in _register_claims()}
+    for claim_id in (
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document",
+    ):
+        claim = claims[claim_id]
+        assert claim["status"] == "planned", claim_id
+        assert claim["evidenceRecords"] == [], claim_id
+        assert "Update, 2026-10-07: " in claim["limitation"], claim_id
+        assert E01_D_RUN in claim["limitation"], claim_id
+        assert "This claim stays planned." in claim["limitation"], claim_id

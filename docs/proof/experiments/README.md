@@ -18,7 +18,9 @@ on the environment that revision names, with one completion request. The part PA
 The same change makes the committed-run check leave an E01-D run out, which moves one
 pinned input of revisions 2 and 3. It also publishes
 [one independent review of that run](v2-e01/reviews/20261006-e01-d-1-review-1.md), which found no defect in the verdicts.
-No register claim holds the result of E01-D yet.
+That change registered no claim for the result.
+**One claim added by `V2-S3-005-PR1`**: [the register claim of the E01-D run](#registration-of-the-e01-d-result-2026-10-07),
+at `C2`, bounded to the one run and dated 2026-10-07. No part of E01 ran in that change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -600,10 +602,12 @@ run, and no register claim cites it.
 - **The limits of its independence.** The reviewer is a separate session of the
   automated assistant that drove the run. It is not a person. It also read uncommitted
   files on the host, which the brief did not ask for.
-- **The register.** No ledger references this record yet. The claim and register
-  reconciliation of E01-D is owed by a later change, which the
-  [review gate](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
-  holds to this record: the record must describe the run's files as they are.
+- **The register.** When the review was published, no ledger referenced this record,
+  and the claim and register reconciliation of E01-D was owed by a later change.
+  `V2-S3-005-PR1` is that change:
+  [its ledger](#registration-of-the-e01-d-result-2026-10-07) references this record, and
+  the [review gate](#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
+  holds the ledger to it: the record must describe the run's files as they are.
 
 ## Audit of the first run, 2026-10-03
 
@@ -759,4 +763,96 @@ and the gate accepts that reference. The review record is unchanged since it mer
 E01-D ran once, in [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md). A register change that
 bears on that run is to reference a review of that run: the review record of the static
 run names another run, and the gate would refuse it for a record that names a file under
-another run directory.
+another run directory. [The registration of the E01-D result](#registration-of-the-e01-d-result-2026-10-07)
+is the first such change.
+
+## Registration of the E01-D result, 2026-10-07
+
+`V2-S3-005-PR1` added the result of [the E01-D run](#the-e01-d-run) to the claim and
+evidence register. No part of E01 ran in that change. No file of a run, of a freeze
+record, or of a review record changed. Its
+[validation record](../domain/v2-s3-005-pr1-validation.md) lists each identity it
+consumed.
+
+**The order of events.** The history is kept as it happened:
+
+1. On 2026-10-06, `V2-S3-004-PR1` merged revision 3.
+2. On 2026-10-06, `V2-S3-004-PR2` ran E01-D once, published the independent review of
+   the run, and merged. It registered no claim and no evidence record. Its validation
+   record says that the reconciliation was owed by a later change.
+3. On 2026-10-06, a collective review of the sprint found that the reconciliation the
+   story requires was missing. It found the freeze inputs, the raw run, the result
+   classification, and the review record sound, and it stated that the finding
+   justifies no repeated run.
+4. On 2026-10-07, `V2-S3-005-PR1` added the claim, through
+   [the E01-D registration ledger](../testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json),
+   the tenth ledger of register changes and the sixth after `v1.0.0`.
+
+The register does not state that the registration happened on the day of the run. The
+claim's limitation and the record's limitations each carry the two dates.
+
+**The claim.** `the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git`
+is `certified` on one record at `C2`. It says, in the past tense, what one run showed: on
+the `docker-desktop` provider, on one cluster with one node, the release rendered from
+the unmodified reference contract was accepted into Git at one commit, was reconciled by
+Argo CD, and answered one completion request with HTTP 200 and a non-empty assistant
+message, under E01-AC8, E01-AC9, and E01-AC10 of revision 3.
+
+**The review reference.** The ledger names two review artifacts in `resultReviews`, each
+with its content digest:
+
+- [the review of the E01-D run](v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json),
+  because the claim and its record cite the run's files;
+- [the review of the second static run](v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json),
+  because one rule of E01-AC10 rests on that run, so the record cites its manifest, and
+  because the ledger changes one clause of that run's claim.
+
+The gate was not changed. It checked each artifact against the run it names: the files
+of the run directory have the digests the review states, and the review names the freeze
+record that the run's manifest names. For the E01-D run, Git history also shows the
+order: the review record has had its present content since the merge of
+`V2-S3-004-PR2`, and the ledger is not in that commit. The gate does not read history.
+A test does, and it skips in a clone that lacks that commit.
+
+**What else the ledger changes.**
+
+- **Two planned claims gain a dated note and stay planned.**
+  `the-platform-serves-a-workload-the-contract-describes` and
+  `deployment-values-derive-only-from-a-validated-document` each said something that the
+  E01-D run made out of date. Each keeps its earlier text, gains sentences dated
+  2026-10-07 that name the run, and cites no record. One run, with one contract, on one
+  provider, does not establish either general statement.
+- **One clause of the second static run's claim is replaced.** The clause said that
+  E01-D "has not run".
+- **One surface reason is replaced.** It named nine ledgers.
+
+**What it does not correct.**
+
+- **The first static run's claim still says that E01-D "has not run".** A change to that
+  claim bears on run `20261002-e01-abc-1`. No review record of that run exists, so the
+  gate refuses the change, and `V2-S3-005-PR1` creates no review. The clause is a
+  statement of 2026-10-02.
+- **The evidence records of the two static runs say the same.** Each is a dated record,
+  and neither is changed.
+- **The files of the E01-D run keep their text.** The review record lists where a run
+  file says less than what executed. The register record states those limits.
+
+**What the claim does not establish.** A second request. Another provider, Kubernetes
+version, node count, storage class, workload shape, contract, or binding. That Argo CD
+applies a later commit. A caller outcome from a sync state, a health state, pod
+readiness, or a replica count. That the acquisition hook downloads the model into an
+empty claim. Latency, throughput, capacity, availability, or behaviour under overload.
+Reliability under failure, high availability, or tolerance of the loss of a pod, a node,
+a zone, or a region. That a service-level objective is met. Representative evidence,
+`C3`, or operational evidence, `C4`. A cost, a saving, a return on investment, or a
+business effect. That a person reviewed the result. Production readiness.
+
+**What stays open.**
+
+- No command judges the committed E01-D run again. `python -m tools.experiment_e01
+  --check` judges the two static runs and leaves the E01-D run out, so its exit status
+  says nothing about E01-D. Tests apply the registered rules to the run's files.
+- A new run of any part of E01 is refused until a later freeze revision classifies the
+  edit to the committed-run listing.
+- The review of the result is a record of an automated session. No person and no
+  outside party reviewed it.

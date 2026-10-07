@@ -78,9 +78,19 @@ correction is appended to its limitation, and one surface reason is replaced. It
 no claim and no record. It is the fifth post-release ledger, and the first to state
 the result review its changes rest on.
 
-The nine ledgers are applied in order, and undone in reverse, so the register's
-history since the migration is the nine of them together. The first four are the
-ones the `v1.0.0` pack covers; the five after them are the post-release ledgers.
+**The E01-D registration ledger** is
+`docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json`, the record of
+what `V2-S3-005-PR1` changed to record the result of part E01-D, which ran and was
+reviewed in `V2-S3-004` and was not registered there: one claim, with its one record
+at `C2`, added by an ``add-claim`` change, a dated note appended to the limitation of
+two planned claims, one clause replaced in the second static run's claim, and one
+surface reason replaced. It is the sixth post-release ledger, and the first to add an
+executed record, so it is the first post-release ledger to state how a record it adds
+identifies the code that ran.
+
+The ten ledgers are applied in order, and undone in reverse, so the register's
+history since the migration is the ten of them together. The first four are the
+ones the `v1.0.0` pack covers; the six after them are the post-release ledgers.
 
 **The result review gate.** A register change bears on an experiment run when the
 claim or record it adds, or the claim or record it changes, names a file under that
@@ -150,6 +160,7 @@ __all__ = [
     "DISPOSITIONS",
     "E01_CLAIM_CORRECTION_PATH",
     "E01_CORRECTED_PROOF_PATH",
+    "E01_D_REGISTRATION_PATH",
     "E01_STATIC_PROOF_PATH",
     "FINAL_STATES",
     "FREEZE_DECISIONS",
@@ -271,6 +282,16 @@ E01_CLAIM_CORRECTION_PATH: Final = (
     / "v2-s2-005-pr2-e01-claim-correction.v1alpha1.json"
 )
 
+#: What V2-S3-005-PR1 changed in the register to record the reviewed result of part
+#: E01-D, which V2-S3-004 ran and did not register.
+E01_D_REGISTRATION_PATH: Final = (
+    REPO_ROOT
+    / "docs"
+    / "proof"
+    / "testing"
+    / "v2-s3-005-pr1-e01-d-registration.v1alpha1.json"
+)
+
 #: The ledgers the v1.0.0 evidence pack covers, in the order applied.
 RELEASED_LEDGER_PATHS: Final = (
     LEDGER_PATH,
@@ -288,6 +309,7 @@ POST_RELEASE_LEDGER_PATHS: Final = (
     E01_STATIC_PROOF_PATH,
     E01_CORRECTED_PROOF_PATH,
     E01_CLAIM_CORRECTION_PATH,
+    E01_D_REGISTRATION_PATH,
 )
 
 #: Every ledger of register changes since the migration, in the order applied.
@@ -655,6 +677,11 @@ def _code_revision(
     """
     if not record.get("execution", {}).get("targetBehaviourExecuted"):
         return None
+    if record["recordId"] not in revisions:
+        raise ValueError(
+            f"no ledger reads the code revision of the executed record "
+            f"{record['recordId']}"
+        )
     reading = revisions[record["recordId"]]
     entries = [
         {"value": entry["value"], "relation": entry["relation"], "path": entry["path"]}
@@ -672,9 +699,19 @@ def _code_revision(
 def _code_identity(
     record: Mapping[str, Any], identities: Mapping[str, Mapping[str, Any]]
 ) -> dict[str, Any] | None:
-    """How the completeness ledger reads the code an executed record ran, or None."""
+    """How a ledger reads the code an executed record ran, or None.
+
+    The completeness and closure ledgers read every record the released pack holds.
+    A ledger written after the release reads a record it adds. An executed record
+    that no ledger reads raises: the index does not state an identity nobody read.
+    """
     if not record.get("execution", {}).get("targetBehaviourExecuted"):
         return None
+    if record["recordId"] not in identities:
+        raise ValueError(
+            f"no ledger reads the code identity of the executed record "
+            f"{record['recordId']}"
+        )
     reading = identities[record["recordId"]]
     return {
         "identity": reading["identity"],
@@ -1053,6 +1090,18 @@ def _entries(
         [finding for one in ledgers for finding in one["findings"]], "findingId"
     )
     identities, claim_identity = merged_identities(completeness, closure)
+    # A ledger written after the release reads the code identity of a record it
+    # adds. The two ledgers above read every record the released pack holds, and
+    # neither can change. A record is still read once: a second reading raises.
+    for one in ledgers[len(RELEASED_LEDGER_PATHS) :]:
+        for row in one.get("codeIdentity", []):
+            if row["recordId"] in identities:
+                raise ValueError(
+                    f"records read twice for their code identity: {[row['recordId']]}"
+                )
+            if row["identity"] not in CODE_IDENTITIES:
+                raise ValueError(f"no code identity {row['identity']!r}")
+            identities[row["recordId"]] = dict(row)
     blockers: dict[str, list[str]] = {}
     for blocker in open_blockers(completeness, closure):
         blockers.setdefault(blocker["claimId"], []).append(blocker["blockerId"])
@@ -1441,7 +1490,7 @@ def build_index(
     ledgers: Sequence[Mapping[str, Any]] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
-    """The evidence index the register and the nine ledgers produce today.
+    """The evidence index the register and the ten ledgers produce today.
 
     The pack sources are read from the committed files, not from the arguments: the
     pack digest binds what is on disk, which is what a release ships. The released
@@ -1478,8 +1527,8 @@ def build_index(
             "register, the normalization ledger, the completeness ledger, the "
             "closure ledger, the publication ledger, the post-release ledger, the "
             "claim reconciliation ledger, the E01 static proof ledger, the "
-            "corrected E01 static proof ledger, and the E01 claim correction "
-            "ledger; it states nothing they do not."
+            "corrected E01 static proof ledger, the E01 claim correction ledger, "
+            "and the E01-D registration ledger; it states nothing they do not."
         ),
         "generatedBy": "python -m tools.evidence_index --write",
         "registerRef": REGISTER_PATH.relative_to(REPO_ROOT).as_posix(),
@@ -1497,6 +1546,9 @@ def build_index(
             REPO_ROOT
         ).as_posix(),
         "e01ClaimCorrectionRef": E01_CLAIM_CORRECTION_PATH.relative_to(
+            REPO_ROOT
+        ).as_posix(),
+        "e01DRegistrationRef": E01_D_REGISTRATION_PATH.relative_to(
             REPO_ROOT
         ).as_posix(),
         "documentRef": "docs/proof/v1-evidence-index.md",
