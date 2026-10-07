@@ -44,7 +44,10 @@ from `1.0.0`.
   record of the run gains one dated note. `tools/evidence_index` now reads how
   a record added after the release identifies the code that ran, from the
   ledger that adds it; until now no ledger after the release had added an
-  executed record. A test that required the register to hold no record of the
+  executed record. A ledger written after the release states a code revision
+  and a code identity only for an executed record that it adds, and a reading
+  that is missing, repeated, without the members the index reads, or of a
+  record of another ledger is a refusal. A test that required the register to hold no record of the
   run is replaced by tests that bind the claim to the run, to revision 3, and
   to the review record. [The validation record](docs/proof/domain/v2-s3-005-pr1-validation.md)
   lists the checks. `python -m tools.experiment_e01 --check` still leaves the

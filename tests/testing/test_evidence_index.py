@@ -41,6 +41,7 @@ from tools.evidence_index import (
     LEVEL_ORDER,
     POST_RELEASE_PATH,
     PUBLICATION_PATH,
+    RELEASED_DIGESTS,
     RELEASED_LEDGER_PATHS,
     apply_register_changes,
     build_index,
@@ -51,9 +52,15 @@ from tools.evidence_index import (
     load_ledgers,
     recorded_date,
     released_pack,
+    released_register,
     render_index,
     restore_migrated_register,
     states_authorisation,
+)
+from tools.evidence_index.core import (
+    _entries,
+    _later_identity_rows,
+    _later_revision_rows,
 )
 from tools.evidence_model import (
     CONTRACT_VERSION,
@@ -1077,3 +1084,353 @@ def test_the_released_pack_does_not_read_a_later_ledgers_code_identity() -> None
 
     ledgers = _with_registration(no_identity)
     assert released_pack(REGISTER, ledgers) == INDEX["summary"]["releasedPack"]
+
+
+# --- the code revision of a record added after the release --------------------------
+
+NOT_ADDED = "not a record that ledger adds"
+
+
+def test_the_registration_ledger_states_the_revision_of_the_record_it_adds() -> None:
+    """The one post-release ledger with a revision reading is the registration
+    ledger, the reading is of the E01-D record, and the committed index is built
+    with it."""
+    (row,) = LEDGERS[REGISTRATION_INDEX]["codeRevisions"]
+    assert row["recordId"] == E01_D_RECORD_ID
+    stating = [
+        index
+        for index, ledger in enumerate(LEDGERS)
+        if index >= len(RELEASED_LEDGER_PATHS) and ledger["codeRevisions"]
+    ]
+    assert stating == [REGISTRATION_INDEX]
+    built = build_index(REGISTER, LEDGERS)
+    (entry,) = [e for e in built["records"] if e["recordId"] == E01_D_RECORD_ID]
+    assert entry["codeRevision"] == {
+        "entries": [
+            {key: one[key] for key in ("value", "relation", "path")}
+            for one in row["entries"]
+        ],
+        "statedRevision": True,
+        "note": row["note"],
+    }
+
+
+@pytest.mark.parametrize("offset", [-1, -2], ids=["the-ledger-before", "two-before"])
+@pytest.mark.parametrize("keep_the_own_row", [True, False])
+def test_another_ledger_cannot_state_the_revision_of_the_e01_d_record(
+    offset: int, keep_the_own_row: bool
+) -> None:
+    """The registration ledger is the last ledger, so each other post-release
+    ledger is an earlier one. The refusal does not depend on the position: it
+    names the ledger's own added records."""
+    (row,) = LEDGERS[REGISTRATION_INDEX]["codeRevisions"]
+    ledgers = json.loads(json.dumps(LEDGERS))
+    assert REGISTRATION_INDEX + offset >= len(RELEASED_LEDGER_PATHS)
+    ledgers[REGISTRATION_INDEX + offset]["codeRevisions"] = [dict(row)]
+    if not keep_the_own_row:
+        ledgers[REGISTRATION_INDEX]["codeRevisions"] = []
+    with pytest.raises(ValueError, match=NOT_ADDED):
+        build_index(REGISTER, ledgers)
+
+
+def test_a_ledger_placed_after_the_registration_cannot_state_its_revision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No committed ledger follows the registration ledger, so this test plants
+    one: a copy of an earlier post-release ledger with no register change, placed
+    last, that carries the row. The index build refuses it."""
+    (row,) = LEDGERS[REGISTRATION_INDEX]["codeRevisions"]
+    planted = json.loads(json.dumps(LEDGERS[REGISTRATION_INDEX - 1]))
+    planted["registerChanges"] = []
+    planted["codeRevisions"] = [dict(row)]
+    planted.pop("codeIdentity", None)
+    ledgers = json.loads(json.dumps(LEDGERS))
+    ledgers[REGISTRATION_INDEX]["codeRevisions"] = []
+    with pytest.raises(ValueError, match=NOT_ADDED) as refusal:
+        _entries(REGISTER, [*ledgers, planted], REPO_ROOT)
+    assert E01_D_RECORD_ID in str(refusal.value)
+    with pytest.raises(ValueError, match="read twice for their code revision"):
+        _entries(
+            REGISTER,
+            [*LEDGERS, {**planted, "codeRevisions": []}, LEDGERS[REGISTRATION_INDEX]],
+            REPO_ROOT,
+        )
+
+
+def test_the_registration_cannot_state_a_revision_for_another_ledgers_record() -> None:
+    """Not for a record of a released ledger, not for a record that an earlier
+    post-release ledger added, and not for a record that nobody added."""
+    released_row = COMPLETENESS["codeRevisions"][0]
+    static_record = next(
+        change["claim"]["evidenceRecords"][0]["recordId"]
+        for ledger in LEDGERS[len(RELEASED_LEDGER_PATHS) : REGISTRATION_INDEX]
+        for change in ledger["registerChanges"]
+        if change["operation"] == "add-claim"
+    )
+    (own,) = LEDGERS[REGISTRATION_INDEX]["codeRevisions"]
+    for foreign in (
+        dict(released_row),
+        {**own, "recordId": static_record},
+        {**own, "recordId": "a-record-nobody-added"},
+    ):
+
+        def add(ledger: dict[str, Any], row: dict[str, Any] = foreign) -> None:
+            ledger["codeRevisions"].append(row)
+
+        with pytest.raises(ValueError, match=NOT_ADDED):
+            build_index(REGISTER, _with_registration(add))
+
+
+def test_a_revision_reading_of_an_added_record_that_executed_nothing_is_refused() -> (
+    None
+):
+    (own,) = LEDGERS[REGISTRATION_INDEX]["codeRevisions"]
+
+    def not_executed(ledger: dict[str, Any]) -> None:
+        (change,) = [
+            c for c in ledger["registerChanges"] if c["operation"] == "add-claim"
+        ]
+        (record,) = change["claim"]["evidenceRecords"]
+        record["execution"]["targetBehaviourExecuted"] = False
+
+    with pytest.raises(ValueError, match="not an executed record"):
+        _later_revision_rows(_with_registration(not_executed)[REGISTRATION_INDEX])
+    assert _later_revision_rows(LEDGERS[REGISTRATION_INDEX]) == [own]
+
+
+def test_a_missing_or_repeated_revision_reading_is_refused() -> None:
+    def none(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"] = []
+
+    with pytest.raises(ValueError, match="no ledger reads the code revision") as no:
+        build_index(REGISTER, _with_registration(none))
+    assert E01_D_RECORD_ID in str(no.value)
+
+    def twice(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"].append(dict(ledger["codeRevisions"][0]))
+
+    with pytest.raises(ValueError, match="read twice for their code revision") as two:
+        build_index(REGISTER, _with_registration(twice))
+    assert E01_D_RECORD_ID in str(two.value)
+
+
+@pytest.mark.parametrize("stated", [None, {}, "a row", 1])
+def test_code_revisions_that_is_not_a_list_of_rows_is_refused(stated: Any) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"] = stated
+
+    with pytest.raises(ValueError, match="codeRevisions is not a list"):
+        build_index(REGISTER, _with_registration(edit))
+
+
+def test_a_post_release_ledger_without_code_revisions_is_refused() -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        del ledger["codeRevisions"]
+
+    with pytest.raises(ValueError, match="codeRevisions is not a list"):
+        build_index(REGISTER, _with_registration(edit))
+
+
+def _row_as_text(rows: list[Any]) -> None:
+    rows[0] = "a row"
+
+
+def _row_as_list(rows: list[Any]) -> None:
+    rows[0] = [rows[0]]
+
+
+def _row_without_a_record(rows: list[Any]) -> None:
+    del rows[0]["recordId"]
+
+
+def _row_with_a_record_that_is_not_text(rows: list[Any]) -> None:
+    rows[0]["recordId"] = 7
+
+
+def _row_without_a_note(rows: list[Any]) -> None:
+    del rows[0]["note"]
+
+
+def _row_without_entries(rows: list[Any]) -> None:
+    del rows[0]["entries"]
+
+
+def _row_with_entries_as_an_object(rows: list[Any]) -> None:
+    rows[0]["entries"] = rows[0]["entries"][0]
+
+
+def _row_with_entries_as_text(rows: list[Any]) -> None:
+    rows[0]["entries"] = "ad725905"
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        _row_as_text,
+        _row_as_list,
+        _row_without_a_record,
+        _row_with_a_record_that_is_not_text,
+        _row_without_a_note,
+        _row_without_entries,
+        _row_with_entries_as_an_object,
+        _row_with_entries_as_text,
+    ],
+    ids=lambda mutate: mutate.__name__.strip("_"),
+)
+def test_a_malformed_code_revision_row_is_refused_and_not_a_traceback(
+    mutate: Any,
+) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        mutate(ledger["codeRevisions"])
+
+    with pytest.raises(ValueError, match="a codeRevisions row is not an object"):
+        build_index(REGISTER, _with_registration(edit))
+
+
+def _entry_as_text(entries: list[Any]) -> None:
+    entries[0] = "ad725905"
+
+
+def _entry_with_an_empty_value(entries: list[Any]) -> None:
+    entries[0]["value"] = ""
+
+
+def _entry_with_a_value_that_is_not_text(entries: list[Any]) -> None:
+    entries[0]["value"] = 725905
+
+
+def _entry_without_a_value(entries: list[Any]) -> None:
+    del entries[0]["value"]
+
+
+def _entry_without_a_relation(entries: list[Any]) -> None:
+    del entries[0]["relation"]
+
+
+def _entry_without_a_path(entries: list[Any]) -> None:
+    del entries[0]["path"]
+
+
+def _entry_without_a_quote(entries: list[Any]) -> None:
+    del entries[0]["quote"]
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        _entry_as_text,
+        _entry_with_an_empty_value,
+        _entry_with_a_value_that_is_not_text,
+        _entry_without_a_value,
+        _entry_without_a_relation,
+        _entry_without_a_path,
+        _entry_without_a_quote,
+    ],
+    ids=lambda mutate: mutate.__name__.strip("_"),
+)
+def test_a_malformed_code_revision_entry_is_refused_and_not_a_traceback(
+    mutate: Any,
+) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        mutate(ledger["codeRevisions"][0]["entries"])
+
+    with pytest.raises(ValueError, match="a codeRevisions entry of") as refusal:
+        build_index(REGISTER, _with_registration(edit))
+    assert E01_D_RECORD_ID in str(refusal.value)
+
+
+@pytest.mark.parametrize("relation", ["reviewed", "Stated-Revision", "stated"])
+def test_a_relation_outside_the_published_ones_is_refused(relation: str) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"][0]["entries"][0]["relation"] = relation
+
+    with pytest.raises(ValueError, match="no code revision relation"):
+        build_index(REGISTER, _with_registration(edit))
+
+
+@pytest.mark.parametrize("relation", CODE_REVISION_RELATIONS)
+def test_each_published_relation_is_accepted(relation: str) -> None:
+    def edit(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"][0]["entries"][0]["relation"] = relation
+
+    build_index(REGISTER, _with_registration(edit))
+
+
+def test_the_released_pack_does_not_read_a_later_ledgers_code_revisions() -> None:
+    """The released pack is recomputed from the four released ledgers and the
+    register as released. The registration ledger's revision reading is not among
+    its inputs: with the reading removed, changed, or malformed, the released pack
+    is still the one the committed index states, with the digests written for the
+    tag."""
+    quoted = RELEASED_DIGESTS["v1.0.0"]
+
+    def none(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"] = []
+
+    def another_value(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"][0]["entries"][0]["value"] = "0" * 40
+
+    def malformed(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"] = "a row"
+
+    for mutate in (none, another_value, malformed):
+        pack = released_pack(REGISTER, _with_registration(mutate))
+        assert pack == INDEX["summary"]["releasedPack"]
+        assert pack["evidenceSetSha256"] == quoted["evidenceSetSha256"]
+        assert pack["evidencePackSha256"] == quoted["evidencePackSha256"]
+    assert E01_D_RECORD_ID not in json.dumps(
+        released_register(REGISTER, LEDGERS[len(RELEASED_LEDGER_PATHS) :])
+    )
+
+
+def test_the_check_does_not_read_the_released_ledgers() -> None:
+    """The first released ledger reads records that the migration held and that it
+    does not add, so the new check would refuse it. The index is built with it all
+    the same, and each of its readings is in the index as the ledger states it."""
+    first = LEDGERS[0]
+    with pytest.raises(ValueError, match=NOT_ADDED):
+        _later_revision_rows(first)
+    built = {
+        entry["recordId"]: entry for entry in build_index(REGISTER, LEDGERS)["records"]
+    }
+    assert first["codeRevisions"]
+    for row in first["codeRevisions"]:
+        assert built[row["recordId"]]["codeRevision"]["note"] == row["note"]
+        assert [
+            e["value"] for e in built[row["recordId"]]["codeRevision"]["entries"]
+        ] == [e["value"] for e in row["entries"]]
+
+
+def test_a_reading_with_no_entry_needs_a_note() -> None:
+    """A record may name no revision, and the note then says why. A row with no
+    entry and no note states nothing, and is refused."""
+
+    def no_entry(ledger: dict[str, Any]) -> None:
+        ledger["codeRevisions"][0]["entries"] = []
+
+    built = build_index(REGISTER, _with_registration(no_entry))
+    (entry,) = [e for e in built["records"] if e["recordId"] == E01_D_RECORD_ID]
+    assert entry["codeRevision"]["statedRevision"] is False
+
+    for note in ("", "  "):
+
+        def nothing(ledger: dict[str, Any], note: str = note) -> None:
+            ledger["codeRevisions"][0]["entries"] = []
+            ledger["codeRevisions"][0]["note"] = note
+
+        with pytest.raises(ValueError, match="a codeRevisions row is not an object"):
+            build_index(REGISTER, _with_registration(nothing))
+
+
+def test_a_code_identity_row_of_an_added_record_that_executed_nothing_is_refused() -> (
+    None
+):
+    def not_executed(ledger: dict[str, Any]) -> None:
+        (change,) = [
+            c for c in ledger["registerChanges"] if c["operation"] == "add-claim"
+        ]
+        (record,) = change["claim"]["evidenceRecords"]
+        record["execution"]["targetBehaviourExecuted"] = False
+
+    with pytest.raises(ValueError, match=r"code identity .* not an executed record"):
+        _later_identity_rows(_with_registration(not_executed)[REGISTRATION_INDEX])

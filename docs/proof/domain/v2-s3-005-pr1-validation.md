@@ -196,6 +196,10 @@ executed, with a clean working tree before the run.
 
 The review gate, the released-pack recomputation, and the register rules are unchanged.
 
+The third commit of this change applies the same rule to the `codeRevisions` rows of
+such a ledger. [The hardening before the merge](#the-hardening-before-the-merge) says
+what was open and what is refused now.
+
 ## What changed
 
 | Area | Files |
@@ -203,7 +207,7 @@ The review gate, the released-pack recomputation, and the register rules are unc
 | Ledger | `docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json`, new |
 | Register | `docs/testing/claim-evidence-matrix.v1alpha2.json`: the five changes the ledger names |
 | Generated | `docs/proof/v1-evidence-index.v1alpha1.json`, `docs/proof/dashboard.md` |
-| Tools | `tools/evidence_index`: the ledger path, the code identity rows of a later ledger. `tools/proof_dashboard/core.py`: the new claim in the Kubernetes deployment group |
+| Tools | `tools/evidence_index`: the ledger path, the code identity rows and, in the third commit, the code revision rows of a later ledger. `tools/proof_dashboard/core.py`: the new claim in the Kubernetes deployment group |
 | Tests | `tests/testing/test_experiment_e01.py`, `test_result_review_gate.py`, `test_evidence_post_release.py`, `test_evidence_index.py` |
 | Pages | `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `docs/proof/README.md`, `docs/proof/experiments/README.md`, `docs/proof/v1-evidence-index.md`, `docs/testing/claim-evidence-matrix.md`, the test inventory, this record, and the one note in the earlier validation record |
 
@@ -294,6 +298,104 @@ unchanged in what they assert. The new tests for the registration ledger assert 
 
 The reviewers ran no step of E01, contacted no cluster, and did not verify the figures of
 the default lane.
+
+## The hardening before the merge
+
+Date: 2026-10-07, after the two commits above. Before the merge, the maintainer asked for
+one more check in the index tool. No file in this repository records that request. The
+third commit of this change holds the check. It changes no register statement, no
+ledger, no claim, and no file of a run, of a freeze record, or of a review record.
+
+**What was open.** The second commit made the index check each `codeIdentity` row of a
+ledger written after the release. It did not check the `codeRevisions` rows of the same
+ledgers. The index read every `codeRevisions` row of every ledger into one table. So a
+ledger written after the release could state a revision for a record of another ledger,
+a second row for one record replaced the first with no refusal, and a row with a missing
+member was a `KeyError` and not a refusal.
+
+**The rule now.** For each ledger written after the release, the index build refuses,
+with a `ValueError` that the command reports:
+
+| Case | Refusal |
+|---|---|
+| `codeRevisions` is absent or is not a list | `a ledger's codeRevisions is not a list` |
+| A row is not an object with a `recordId`, a `note` that is not empty, and an `entries` list. The list may be empty: the note then says why the record names no revision | `a codeRevisions row is not an object ...` |
+| An entry is not an object with a `value`, a `relation`, a `path`, and a `quote`, each a text that is not empty | `a codeRevisions entry of <record> is not an object ...` |
+| A relation is not one of the five published relations | `no code revision relation ...` |
+| The row names a record that the same ledger does not add: a record of another ledger, or no record | `... which is not a record that ledger adds` |
+| The row names a record that the ledger adds and that did not execute its target behaviour | `... which is not an executed record` |
+| A record is read a second time | `records read twice for their code revision` |
+| An executed record has no reading | `no ledger reads the code revision of the executed record ...`, which the tool already made |
+
+The same check now refuses a `codeIdentity` row for a record that the ledger adds and
+that did not execute its target behaviour. The second commit checked that the ledger
+adds the record, and not that the record executed.
+
+The four ledgers inside the released pack are read as before, and the new check does not
+read them. The first of them reads 31 records that the migration held and that it does
+not add, so the ownership rule cannot apply to it. The released pack is recomputed from
+those four ledgers only, and a test changes, removes, and breaks the new ledger's
+revision reading and requires the same released pair each time.
+
+**What the check does not do.** It does not check the shape of a ledger's register
+changes, which it reads to find the records that the ledger adds: the register rules
+check that shape when the changes are applied, and a ledger whose changes are malformed
+can still end this check with an error that is not a refusal. It reads
+`targetBehaviourExecuted` as the rest of the tool does, as true or false, and does not
+require the JSON value `true`. It does not read the cited file. That each quote is in
+the file that the row names, and that the record cites that file, is still a test of the
+committed ledgers and not a refusal of the build. Among the four released ledgers a
+second reading of one record is still not a refusal of the build; a test holds that each
+executed record has one reading.
+
+**Tests.** `tests/testing/test_evidence_index.py` gains 41 tests, and the module has 580 with them.
+They plant each case of the table on the E01-D registration ledger: the row moved to the
+ledger before and to the one two before, with and without the registration ledger's own
+row; a row in the registration ledger for a record of a released ledger, for the record
+of an earlier post-release ledger, and for no record; the reading removed and repeated;
+eight malformed rows; seven malformed entries; three relations outside the published
+five; a ledger planted after the registration ledger; a row with no entry and no note;
+a reading of an added record that executed nothing. Each of the five published relations
+is still accepted, and so is a row with no entry and a note. Run against the tool as the
+second commit left it, 34 of these tests fail.
+
+**The review of the third commit.** One automated reviewing session read the staged
+change read-only before it was committed. It is another session of the automated
+assistant that wrote the change, it is not a person, and its report is not committed.
+It found no behaviour change for the released ledgers or the released pack. It found
+these, and each is corrected in the same commit:
+
+| Finding | What the draft said or did | Correction |
+|---|---|---|
+| This section overstated the released ledgers | It said that the four released ledgers read records "that no ledger added". That is true of the first only; the second and third read records that they add | The paragraph names the first ledger and its 31 records |
+| A sentence in the tool and in the changelog overstated the identity check | "only for an executed record that it adds", while the `codeIdentity` check did not require that the record executed | The check requires it, and a test plants the case |
+| A reading that stated nothing was accepted | A row with no entry and an empty note | The note must not be empty |
+| Two tests did not prove their names | One named a ledger after the registration and used the ledger before it; one named the released ledgers and did not build the index with them | The first plants a ledger after the registration; the second builds the index and compares each reading |
+
+The reviewer also listed the unchecked shape of the register changes, which the
+paragraph above now states.
+
+**Checks of the third commit.** Run on the same host, from Git Bash, on 2026-10-07.
+
+| Check | Result |
+|---|---|
+| `ruff format --check .`, `ruff check .`, `mypy` | Exit 0: 653 files, 355 source files |
+| `pytest tests/testing/test_evidence_index.py -q` | 580 passed |
+| `pytest tests/testing/test_result_review_gate.py -q` | 75 passed |
+| `pytest tests/testing/test_evidence_post_release.py -q` | 61 passed |
+| `pytest tests/testing/test_experiment_e01.py -q` | 128 passed |
+| `tools.evidence_index --check` and `--gate` | Exit 0. Released `v1.0.0` set `1d40b33f...` and pack `652e9051...`, as before |
+| `tools.proof_dashboard --check` | Exit 0 |
+| `tools.experiment_freeze --check` | Exit 0: 3 freeze records |
+| `git diff main -- docs/proof/experiments/v2-e01` | No output: no run, freeze, registry, or review file differs from `main` |
+| `git diff --check` | Exit 0 |
+| The default lane, `pytest -q`, third run | **0 failed**, 18,987 passed, 36 skipped, 14 deselected, in 48 min 47 s. The skipped and deselected tests are not passes |
+
+After the lane ran, its figures were written into this table, the evidence index was
+regenerated, because the new record cites this page, and the two digests on the index
+page were updated. The `tests/testing` and `tests/security` suites then ran again and
+passed. The hosted checks ran on the second commit before this hardening, and they run
+again on the third; this record does not state their result.
 
 ## Privacy and publicability
 

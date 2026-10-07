@@ -86,7 +86,11 @@ at `C2`, added by an ``add-claim`` change, a dated note appended to the limitati
 two planned claims, one clause replaced in the second static run's claim, and one
 surface reason replaced. It is the sixth post-release ledger, and the first to add an
 executed record, so it is the first post-release ledger to state how a record it adds
-identifies the code that ran.
+identifies the code that ran. A post-release ledger states a code revision and a code
+identity only for an executed record that it adds. A reading that is missing,
+repeated, of a row that does not have the members the index reads, or of a record of
+another ledger is a refusal. The shape of a ledger's register changes is not checked
+there: the register rules check it when the changes are applied.
 
 The ten ledgers are applied in order, and undone in reverse, so the register's
 history since the migration is the ten of them together. The first four are the
@@ -1071,30 +1075,99 @@ def _summary(
     }
 
 
-def _added_record_ids(ledger: Mapping[str, Any]) -> set[str]:
-    """The identifier of every record a ledger adds, alone or inside an added claim."""
-    added: set[str] = set()
+def _added_records(ledger: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    """Every record a ledger adds, alone or inside an added claim, by identifier."""
+    added: dict[str, Mapping[str, Any]] = {}
     for change in ledger["registerChanges"]:
         if change.get("operation") == "add-record":
-            added.add(change["record"]["recordId"])
+            added[change["record"]["recordId"]] = change["record"]
         elif change.get("operation") == "add-claim":
-            added |= {held["recordId"] for held in change["claim"]["evidenceRecords"]}
+            for held in change["claim"]["evidenceRecords"]:
+                added[held["recordId"]] = held
     return added
+
+
+def _added_record_ids(ledger: Mapping[str, Any]) -> set[str]:
+    """The identifier of every record a ledger adds, alone or inside an added claim."""
+    return set(_added_records(ledger))
+
+
+def _refuse_unless_added_and_executed(
+    added: Mapping[str, Mapping[str, Any]], record_id: str, reading: str
+) -> None:
+    """Refuse a reading of a record the ledger does not add, or that executed nothing."""
+    if record_id not in added:
+        raise ValueError(
+            f"a ledger reads the {reading} of {record_id}, which is "
+            "not a record that ledger adds"
+        )
+    execution = added[record_id].get("execution")
+    if not isinstance(execution, Mapping) or not execution.get(
+        "targetBehaviourExecuted"
+    ):
+        raise ValueError(
+            f"a ledger reads the {reading} of {record_id}, which is "
+            "not an executed record"
+        )
+
+
+def _later_revision_rows(ledger: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """The ``codeRevisions`` rows of a ledger written after the release, checked.
+
+    Each row is an object with a record identifier, a note that is not empty, and
+    a list of entries, which may be empty: the note then says why the record names
+    no revision. Each entry is an object with a value, one of the published relations, the path
+    of the file that states the value, and the quote that holds it. A row names an
+    executed record that this ledger adds: a ledger does not read a record of
+    another ledger, a record that does not exist, or a record that executed
+    nothing. Anything else raises ``ValueError``, so the command reports a refusal
+    and not a traceback. That the quote is in the file is a test, not this check.
+    """
+    stated = ledger.get("codeRevisions")
+    if not isinstance(stated, list):
+        raise ValueError("a ledger's codeRevisions is not a list")
+    added = _added_records(ledger)
+    for row in stated:
+        if (
+            not isinstance(row, Mapping)
+            or not isinstance(row.get("recordId"), str)
+            or not isinstance(row.get("note"), str)
+            or not row["note"].strip()
+            or not isinstance(row.get("entries"), list)
+        ):
+            raise ValueError(
+                "a codeRevisions row is not an object with a recordId, a note "
+                "that is not empty, and an entries list"
+            )
+        for entry in row["entries"]:
+            if not isinstance(entry, Mapping) or not all(
+                isinstance(entry.get(field), str) and entry[field]
+                for field in ("value", "relation", "path", "quote")
+            ):
+                raise ValueError(
+                    f"a codeRevisions entry of {row['recordId']} is not an object "
+                    "with a value, a relation, a path, and a quote"
+                )
+            if entry["relation"] not in CODE_REVISION_RELATIONS:
+                raise ValueError(f"no code revision relation {entry['relation']!r}")
+        _refuse_unless_added_and_executed(added, row["recordId"], "code revision")
+    return stated
 
 
 def _later_identity_rows(ledger: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     """The ``codeIdentity`` rows of a ledger written after the release, checked.
 
     Each row is an object with a record identifier, one of the published identities,
-    and a list of the repository components among those that executed. It names a
-    record that this ledger adds: a ledger does not read a record of another ledger,
-    and it does not read a record that does not exist. Anything else raises
+    and a list of the repository components among those that executed. It names an
+    executed record that this ledger adds: a ledger does not read a record of
+    another ledger, a record that does not exist, or a record that executed
+    nothing. Anything else raises
     ``ValueError``, so the command reports a refusal and not a traceback.
     """
     stated = ledger.get("codeIdentity", [])
     if not isinstance(stated, list):
         raise ValueError("a ledger's codeIdentity is not a list")
-    added = _added_record_ids(ledger)
+    added = _added_records(ledger)
     for row in stated:
         if (
             not isinstance(row, Mapping)
@@ -1108,11 +1181,7 @@ def _later_identity_rows(ledger: Mapping[str, Any]) -> list[Mapping[str, Any]]:
             )
         if row["identity"] not in CODE_IDENTITIES:
             raise ValueError(f"no code identity {row['identity']!r}")
-        if row["recordId"] not in added:
-            raise ValueError(
-                f"a ledger reads the code identity of {row['recordId']}, which is "
-                "not a record that ledger adds"
-            )
+        _refuse_unless_added_and_executed(added, row["recordId"], "code identity")
     return stated
 
 
@@ -1123,9 +1192,24 @@ def _entries(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """One entry per claim and one per record, read with the ledgers given."""
     completeness, closure = ledgers[1], ledgers[2]
+    released, later = (
+        ledgers[: len(RELEASED_LEDGER_PATHS)],
+        ledgers[len(RELEASED_LEDGER_PATHS) :],
+    )
     revisions = {
-        entry["recordId"]: entry for one in ledgers for entry in one["codeRevisions"]
+        entry["recordId"]: entry for one in released for entry in one["codeRevisions"]
     }
+    # A ledger written after the release reads the code revision of an executed
+    # record it adds, and of no other record. The released ledgers read every
+    # executed record the released pack holds, and none of them can change. A
+    # record is read once: a second reading raises.
+    for one in later:
+        for row in _later_revision_rows(one):
+            if row["recordId"] in revisions:
+                raise ValueError(
+                    f"records read twice for their code revision: {[row['recordId']]}"
+                )
+            revisions[row["recordId"]] = row
     corrections: dict[str, list[str]] = {}
     for correction in (item for one in ledgers for item in one["recordCorrections"]):
         corrections.setdefault(correction["path"], []).append(
@@ -1139,7 +1223,7 @@ def _entries(
     # adds, and of no other record. The two ledgers above read every record the
     # released pack holds, and neither can change. A record is still read once: a
     # second reading raises.
-    for one in ledgers[len(RELEASED_LEDGER_PATHS) :]:
+    for one in later:
         for row in _later_identity_rows(one):
             if row["recordId"] in identities:
                 raise ValueError(
