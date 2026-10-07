@@ -6,8 +6,9 @@ cluster, only by the tests that say so, and they skip when it is not on PATH.
 
 Seven things are asserted:
 
-1. **Golden output.** The reference workload on each local binding renders the
-   committed golden file byte for byte, and both bindings render the same bytes.
+1. **Golden output.** The reference workload on each local binding renders that
+   binding's committed file byte for byte, and the two renders differ in
+   ``api.replicaCount`` and in no other value.
 2. **Deterministic and pure.** Equal inputs give equal values and text, whatever
    order the bindings arrive in, under two hash seeds, and with every clock,
    random source, and environment read patched to fail.
@@ -75,9 +76,11 @@ from inferops.domain.render import (
     RENDER_RULES,
     AdmittedHelmValues,
     ApiDefaults,
+    ApiRolloutDefaults,
     Disposition,
     GeneratedHelmValues,
     HelmValuesRenderer,
+    Layer,
     PlatformDefaults,
     RefusalCategory,
     RenderContext,
@@ -123,6 +126,16 @@ BINDING_VALID_DIR = REPO_ROOT / "contracts" / "environment" / "examples" / "vali
 FIXTURES = REPO_ROOT / "tests" / "domain" / "fixtures" / "helm-values"
 GOLDEN = FIXTURES / "support-assistant-local-kind" / "values.generated.yaml"
 MANUAL = FIXTURES / "support-assistant-local.manual-values.yaml"
+#: The desired-state release the second local binding's destination holds.
+DESIRED_STATE_VALUES = (
+    REPO_ROOT
+    / "gitops"
+    / "environments"
+    / "local-docker-desktop"
+    / "workloads"
+    / "support-assistant"
+    / "values.generated.yaml"
+)
 DOC = REPO_ROOT / "docs" / "domain" / "helm-values-renderer.md"
 
 DEFAULTS_REVISION = "b" * 40
@@ -192,10 +205,17 @@ def bindings_for(workload: WorkloadContract) -> list[EnvironmentBinding]:
 def defaults(**overrides: int) -> PlatformDefaults:
     """The chart's own API defaults, read at a placeholder revision."""
     chart = load(CHART_VALUES)["api"]
+    rollout = ApiRolloutDefaults(
+        max_unavailable=overrides.pop(
+            "max_unavailable", chart["rollout"]["maxUnavailable"]
+        ),
+        max_surge=overrides.pop("max_surge", chart["rollout"]["maxSurge"]),
+    )
     settings = {
         "request_timeout_ms": chart["requestTimeoutMs"],
         "drain_timeout_ms": chart["drainTimeoutMs"],
         "max_output_tokens": chart["maxOutputTokens"],
+        "rollout": rollout,
         **overrides,
     }
     return PlatformDefaults(
@@ -354,11 +374,18 @@ def at(document: Mapping[str, Any], path: tuple[str, ...] | str) -> Any:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", ["local-kind", "local-docker-desktop"])
-def test_the_reference_workload_renders_the_committed_golden_file(name: str) -> None:
+@pytest.mark.parametrize(
+    ("name", "golden"),
+    [("local-kind", GOLDEN), ("local-docker-desktop", DESIRED_STATE_VALUES)],
+)
+def test_the_reference_workload_renders_the_committed_golden_file(
+    name: str, golden: Path
+) -> None:
+    """Each local binding has a committed render: the fixture release, and the
+    desired-state release the second binding's destination holds."""
     bindings = [binding("local-kind"), binding("local-docker-desktop")]
     values = render(bindings=bindings, binding_name=name)
-    assert values.to_yaml() == GOLDEN.read_bytes().decode("utf-8")
+    assert values.to_yaml() == golden.read_bytes().decode("utf-8")
 
 
 def test_the_golden_file_is_lf_only_and_parses_to_the_values() -> None:
@@ -367,10 +394,9 @@ def test_the_golden_file_is_lf_only_and_parses_to_the_values() -> None:
     assert yaml.safe_load(raw) == render().as_document()
 
 
-def test_two_bindings_that_differ_only_in_unrendered_facts_render_the_same_bytes() -> (
-    None
-):
-    """Provider and GitOps destination are not chart values, so they move nothing."""
+def test_two_bindings_render_values_that_differ_only_in_the_rendered_fact() -> None:
+    """Provider and GitOps destination are not chart values, so they move nothing.
+    The API replica count is a chart value, so it moves that value and no other."""
     kind, desktop = binding("local-kind"), binding("local-docker-desktop")
     differing = dotted(
         {
@@ -383,11 +409,18 @@ def test_two_bindings_that_differ_only_in_unrendered_facts_render_the_same_bytes
         "metadata.name",
         "spec.destination.clusterProvider",
         "spec.gitops.destinationPath",
+        "spec.platform.apiReplicas",
     }
     both = [kind, desktop]
+    assert moved(
+        render(bindings=both, binding_name="local-kind"),
+        render(bindings=both, binding_name="local-docker-desktop"),
+    ) == {"api.replicaCount"}
+    same_count = binding_document("local-docker-desktop")
+    same_count["spec"]["platform"]["apiReplicas"] = kind.spec.platform.api_replicas
     assert (
-        render(bindings=both, binding_name="local-kind").to_yaml()
-        == render(bindings=both, binding_name="local-docker-desktop").to_yaml()
+        render(bindings=[kind]).to_yaml()
+        == render(bindings=[parse_environment_binding(same_count)]).to_yaml()
     )
 
 
@@ -406,6 +439,10 @@ def test_every_generated_value_is_the_inputs_own() -> None:
             "requestTimeoutMs": chart_api["requestTimeoutMs"],
             "drainTimeoutMs": chart_api["drainTimeoutMs"],
             "maxOutputTokens": chart_api["maxOutputTokens"],
+            "rollout": {
+                "maxUnavailable": chart_api["rollout"]["maxUnavailable"],
+                "maxSurge": chart_api["rollout"]["maxSurge"],
+            },
         },
         "runtime": {
             "replicaCount": workload["spec"]["scaling"]["minimumReplicas"],
@@ -503,6 +540,74 @@ def test_one_contract_change_moves_exactly_the_values_it_owns(
 ) -> None:
     """A controlled intent mutation moves its own generated values and nothing else."""
     assert moved(render(), render(changed(mutate))) == expected
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected"),
+    [
+        ({"max_unavailable": 1}, {"api.rollout.maxUnavailable"}),
+        ({"max_surge": 2}, {"api.rollout.maxSurge"}),
+        (
+            {"max_unavailable": 1, "max_surge": 0},
+            {"api.rollout.maxUnavailable", "api.rollout.maxSurge"},
+        ),
+    ],
+)
+def test_a_rollout_default_change_moves_exactly_its_own_values(
+    overrides: dict[str, int], expected: set[str]
+) -> None:
+    """The rollout bounds are the platform defaults' and reach two chart values."""
+    assert moved(render(), render(platform_defaults=defaults(**overrides))) == expected
+
+
+def test_the_rollout_bounds_are_read_from_the_platform_defaults_and_nowhere_else() -> (
+    None
+):
+    """The context names the platform defaults as the owner of both bounds, and the
+    reference contract and binding state neither. The boundary suite holds the wider
+    fact: no schema field of a contract or a binding has either name."""
+    context = reference_context()
+    for name in ("api.rollout.maxUnavailable", "api.rollout.maxSurge"):
+        entry = context.entry(name)
+        assert entry.layer is Layer.PLATFORM_DEFAULTS
+        assert entry.source == name
+    values = render().as_document()
+    assert values["api"]["rollout"] == {"maxUnavailable": 0, "maxSurge": 1}
+    for document in (contract_document(), binding_document()):
+        assert "rollout" not in json.dumps(document)
+        assert "maxSurge" not in json.dumps(document)
+        assert "maxUnavailable" not in json.dumps(document)
+
+
+@pytest.mark.parametrize(
+    ("manual", "field"),
+    [
+        ({"api": {"replicaCount": 1}}, "manualValues.api.replicaCount"),
+        ({"api": {"replicaCount": None}}, "manualValues.api.replicaCount"),
+        (
+            {"api": {"rollout": {"maxUnavailable": 1}}},
+            "manualValues.api.rollout.maxUnavailable",
+        ),
+        ({"api": {"rollout": {"maxSurge": 0}}}, "manualValues.api.rollout.maxSurge"),
+        # A null or a scalar above both bounds replaces the whole block.
+        ({"api": {"rollout": None}}, "manualValues.api.rollout"),
+        ({"api": {"rollout": "Recreate"}}, "manualValues.api.rollout"),
+    ],
+)
+def test_a_hand_written_file_may_not_set_the_api_topology(
+    manual: dict[str, Any], field: str
+) -> None:
+    """The replica count is the binding's and the rollout bounds are the platform
+    defaults'. A hand-written file installed beside the generated values may not
+    set, replace, or remove any of the three, so the topology a release states is
+    not changed by a file no input owns. A values file passed to Helm by another
+    route is not checked here: see the module's own limitation."""
+    assert [finding.field for finding in manual_value_findings(manual)] == [field]
+    with pytest.raises(RenderRefused) as refused:
+        admit_manual_values(render(), manual)
+    assert [finding.rule_id for finding in refused.value.findings] == [
+        "render-manual-value-generated"
+    ]
 
 
 def test_one_binding_change_moves_exactly_the_values_it_owns() -> None:
@@ -614,7 +719,7 @@ def test_the_disposition_counts_are_the_published_ones() -> None:
         for disposition in Disposition
     }
     assert counts == {
-        Disposition.RENDERED: 24,
+        Disposition.RENDERED: 26,
         Disposition.CONSTRAINED: 8,
         Disposition.NOT_RENDERED: 12,
     }
@@ -627,11 +732,11 @@ def test_only_a_rendered_value_names_a_target_and_every_target_is_constrained() 
     for row in HELM_VALUE_DISPOSITIONS.values():
         assert bool(row.targets) == (row.disposition is Disposition.RENDERED)
         assert row.reason
-    assert len(targets) == len(set(targets)) == 25
+    assert len(targets) == len(set(targets)) == 27
     # The derived values are the only chart values no disposition row targets.
     assert set(targets).isdisjoint(DERIVED_HELM_VALUES)
     assert set(targets) | set(DERIVED_HELM_VALUES) == set(CHART_VALUE_CONSTRAINTS)
-    assert len(CHART_VALUE_CONSTRAINTS) == 27
+    assert len(CHART_VALUE_CONSTRAINTS) == 29
     assert {".".join(path) for path in GENERATED_VALUE_PATHS} == set(
         CHART_VALUE_CONSTRAINTS
     )

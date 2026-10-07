@@ -148,7 +148,7 @@ spec:
     claimName: inferops-model-cache # an existing claim; referenced, not created
 
   platform:
-    apiReplicas: 1                  # 1..16, the chart's own bounds
+    apiReplicas: 2                  # 1..16, the chart's own bounds
 
   gitops:
     destinationPath: gitops/environments/local-docker-desktop
@@ -167,7 +167,10 @@ artifact exists to replace.
   class behind the claim is the prerequisite layer's input and is deliberately not a
   binding field — two owners of one value is what this boundary is for preventing.
 - **`platform.apiReplicas`** uses the bounds the chart's values schema accepts for the
-  API tier, one to sixteen. A test holds the two schemas to the same bounds.
+  API tier, one to sixteen. A test holds the two schemas to the same bounds. The
+  `local-docker-desktop` binding states two since `V2-S4-001-PR1`, and the `local-kind`
+  binding states one. The count is a declared fact of one environment. It does not
+  establish that the pods run or that a caller is served when one of them stops.
 - **`gitops.destinationPath`** is repository-relative and written as lowercase segments.
   It is a declared location. Since `V2-S3-002-PR2` one Argo CD Application reads
   the generated values beneath the `local-docker-desktop` binding's path, on a

@@ -1,4 +1,4 @@
-# Generated Helm values for the inferops-llm chart, version 0.3.0.
+# Generated Helm values for the inferops-llm chart, version 0.4.0.
 # Do not edit by hand: change the WorkloadContract, the EnvironmentBinding, or
 # the platform defaults they were rendered from, and render them again.
 api:
@@ -6,6 +6,9 @@ api:
   maxOutputTokens: 128
   replicaCount: 1
   requestTimeoutMs: 120000
+  rollout:
+    maxSurge: 1
+    maxUnavailable: 0
 model:
   artifact:
     fileName: "Qwen3-1.7B-Q8_0.gguf"

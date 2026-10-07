@@ -51,6 +51,7 @@ from inferops.domain.render import (
     RELEASE_FILE_NAME,
     VALUES_FILE_NAME,
     ApiDefaults,
+    ApiRolloutDefaults,
     GeneratedRelease,
     HelmValuesRenderer,
     PlatformDefaults,
@@ -305,8 +306,18 @@ def _chart_api_defaults(path: Path, revision: str) -> PlatformDefaults:
             "drain_timeout_ms": api["drainTimeoutMs"],
             "max_output_tokens": api["maxOutputTokens"],
         }
+        rollout = api["rollout"]
     except KeyError as missing:
         raise ValueError(f"{path.name} sets no api.{missing.args[0]}") from None
+    if not isinstance(rollout, dict):
+        raise ValueError(f"{path.name} has no api.rollout mapping")
+    try:
+        settings["rollout"] = ApiRolloutDefaults(
+            max_unavailable=rollout["maxUnavailable"],
+            max_surge=rollout["maxSurge"],
+        )
+    except KeyError as missing:
+        raise ValueError(f"{path.name} sets no api.rollout.{missing.args[0]}") from None
     return PlatformDefaults("v1alpha1", GitRevision(revision), ApiDefaults(**settings))
 
 

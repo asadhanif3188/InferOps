@@ -32,6 +32,8 @@ from __future__ import annotations
 import copy
 import json
 import re
+import shutil
+import subprocess
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from typing import Any
@@ -258,7 +260,13 @@ def test_every_file_the_record_names_exists() -> None:
     record = load_record()
     for section in ("target", "v2"):
         for key, value in record[section].items():
-            if key in {"description", "release", "chartVersion"}:
+            if key in {
+                "description",
+                "release",
+                "chartVersion",
+                "releasedChartVersion",
+                "chartChangeSinceRelease",
+            }:
                 continue
             assert (REPO_ROOT / value).exists(), f"{section}.{key}: {value}"
 
@@ -267,6 +275,46 @@ def test_the_target_is_the_chart_version_the_record_names() -> None:
     record = load_record()
     chart = _load_yaml(REPO_ROOT / record["target"]["chart"] / "Chart.yaml")
     assert chart["version"] == record["target"]["chartVersion"]
+
+
+def test_the_record_says_the_chart_is_not_the_one_the_release_shipped() -> None:
+    """The chart moved after `v1.0.0`, and the record states both versions.
+
+    The comparison on this page is made over the chart in this tree. It is not made
+    over the chart `v1.0.0` released, so the record names the released version and
+    says what the chart renders differently. The first half reads committed files.
+    The second half reads the tag, and skips in a checkout that does not hold it.
+    """
+    target = load_record()["target"]
+    assert target["chartVersion"] != target["releasedChartVersion"]
+    assert "0.4.0" in target["chartChangeSinceRelease"]
+    assert target["releasedChartVersion"] in target["chartChangeSinceRelease"]
+    template = (
+        REPO_ROOT / target["chart"] / "templates" / "api-deployment.yaml"
+    ).read_text(encoding="utf-8")
+    assert "  strategy:\n    type: RollingUpdate\n" in template
+
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("git is not on PATH")
+
+    def show(path: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [git, "show", f"{target['release']}:{path}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+
+    released = show(f"{target['chart']}/Chart.yaml")
+    if released.returncode != 0:
+        pytest.skip(f"this checkout does not hold the tag {target['release']}")
+    assert yaml.safe_load(released.stdout)["version"] == target["releasedChartVersion"]
+    released_template = show(f"{target['chart']}/templates/api-deployment.yaml")
+    assert released_template.returncode == 0, released_template.stderr
+    assert "strategy:" not in released_template.stdout
 
 
 def test_the_v2_inputs_are_the_declared_reference_release() -> None:
@@ -300,13 +348,13 @@ def test_every_value_either_release_sets_has_exactly_one_row() -> None:
 
 
 def test_the_record_measures_the_migration_it_publishes() -> None:
-    """The counts the page states, from the record: 40 values, 27 of them generated,
+    """The counts the page states, from the record: 42 values, 29 of them generated,
     2 of those derived."""
     rows = load_record()["rows"]
     generated = [row for row in rows if row["v2"] == "generated"]
-    assert len(rows) == 40
-    assert len(generated) == 27
-    assert len(FILES.generated_leaves) == 27
+    assert len(rows) == 42
+    assert len(generated) == 29
+    assert len(FILES.generated_leaves) == 29
     assert sorted(row["chartValue"] for row in generated if "derivedFrom" in row) == [
         "model.artifact.sourceUrl",
         "model.license.reference",
@@ -318,7 +366,7 @@ def test_the_record_measures_the_migration_it_publishes() -> None:
     assert by_owner == {
         "workload-intent": 22,
         "environment-binding": 2,
-        "platform-defaults": 3,
+        "platform-defaults": 5,
     }
     from_values_file = [row for row in generated if row["v1"] == "values-file"]
     assert len(from_values_file) == 19

@@ -10,6 +10,53 @@ from `1.0.0`.
 
 ### Added
 
+- **The API tier's reference topology is declared: two replicas and a stated
+  rollout. It is configuration. Nothing was installed.** `V2-S4-001-PR1` makes
+  three changes that belong together. **The chart states the API Deployment's
+  rolling-update strategy.** Chart `0.4.0` adds `api.rollout`, two bounds in whole
+  pods, with the defaults `maxUnavailable: 0` and `maxSurge: 1`. Under those
+  bounds Kubernetes documents that a rollout adds one pod and removes an
+  existing one only after the new one is available; no rollout was run.
+  Chart `0.3.0` stated no strategy, so the Kubernetes default applied: 25% for
+  both bounds, the first rounded down and the second rounded up. At one to
+  three replicas that resolves to 0 and 1, so at the two replica counts the
+  committed bindings state, the stated bounds equal what the default resolved
+  to. From four replicas they differ. The schema refuses a
+  percentage, and the template refuses two zero bounds, which Kubernetes refuses.
+  **The platform defaults own the two bounds.** A `v1alpha1` `PlatformDefaults`
+  set now carries five API settings instead of three; the two bounds joined it in
+  place, because no defaults file is committed at any revision. The render
+  context has 46 values instead of 44, and the renderer writes 29 chart values
+  instead of 27. A hand-written values file admitted beside generated values
+  may not set, replace, or remove the API replica count or either bound. **The
+  reference binding states two API replicas.** `local-docker-desktop` now states
+  `spec.platform.apiReplicas: 2`, the
+  [desired-state release](docs/environment/git-desired-state.md) was rendered
+  again, and its render differs from the reference release's render in one
+  line, the API Deployment's `replicas`. The `local-kind` binding still states
+  one. Merge this change with a merge commit: the release names the
+  change's first commit as its revision, and a squash or a rebase would leave
+  that commit off `main`. On a cluster where the Argo CD Application is
+  applied, the merge changes the live release, because that Application
+  follows `main`. **What this does not establish:** chart `0.4.0` was not installed, no
+  release with two API replicas was installed from the binding, no rollout ran,
+  and no request was sent. A replica count and a rollout policy do not establish
+  that a caller is served while an API pod is replaced, deleted, or evicted, or
+  when a node is lost. The API's readiness answer is unchanged and still follows
+  the selected adapter. The chart renders no PodDisruptionBudget, and the runtime
+  Deployment still states no strategy. No claim was added or changed, and the
+  register, the index, and the dashboard are as they were.
+  [The V1 compatibility record](docs/domain/v1-synchronous-compatibility.md) is
+  amended: the chart is no longer the one `v1.0.0` released, and rendered with
+  the V1 values file it differs from chart `0.3.0` in the five lines of the
+  strategy and in the chart version label. The release that the first
+  experiment's real-deployment run reconciled is in Git history, at the commit
+  that run recorded; the release in the tree is another one. The files that the
+  experiment's freeze records pin moved again, so a new run of any part is still
+  refused until a later freeze revision.
+  [The validation record](docs/proof/domain/v2-s4-001-pr1-validation.md) lists
+  the checks.
+
 - **The real-deployment run of the first experiment is now in the register, one
   day late. Nothing ran again.** `V2-S3-004-PR2` ran part E01-D of V2-E01 on
   2026-10-06 and published its independent review, and it registered no claim.

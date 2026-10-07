@@ -73,6 +73,7 @@ from inferops.domain.render import (
     RELEASE_PROVENANCE,
     RENDER_FIELD_OWNERSHIP,
     ApiDefaults,
+    ApiRolloutDefaults,
     PlatformDefaults,
     ProvenanceOrigin,
     ProvenanceTrust,
@@ -184,7 +185,12 @@ def platform_defaults() -> PlatformDefaults:
         "v1alpha1",
         GitRevision("b" * 40),
         ApiDefaults(
-            api["requestTimeoutMs"], api["drainTimeoutMs"], api["maxOutputTokens"]
+            api["requestTimeoutMs"],
+            api["drainTimeoutMs"],
+            api["maxOutputTokens"],
+            ApiRolloutDefaults(
+                api["rollout"]["maxUnavailable"], api["rollout"]["maxSurge"]
+            ),
         ),
     )
 

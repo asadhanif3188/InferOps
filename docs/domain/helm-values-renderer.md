@@ -25,8 +25,8 @@ about an installed render, and it is not this page's.
 | Module | [`src/inferops/domain/render/helm_values.py`](../../src/inferops/domain/render/helm_values.py), with the YAML form in [`values_yaml.py`](../../src/inferops/domain/render/values_yaml.py) |
 | Entry points | `HelmValuesRenderer(revision).render(context)`, or `render_with(renderer, ...)` on documents; `generate_release(renderer, ...)` for the values and their release, and `write_release(generated, directory)` to write both; `admit_manual_values(values, manual)` to pair a hand-written file with them, and `manual_value_findings(manual)` for its findings |
 | Input | A `RenderContext` from [the renderer input boundary](renderer-input-boundary.md), for a `synchronous-llm` contract |
-| Output | `GeneratedHelmValues`: 27 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
-| Chart | `inferops-llm` `0.3.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
+| Output | `GeneratedHelmValues`: 29 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
+| Chart | `inferops-llm` `0.4.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
 | Refusal | `RenderRefused`, under the boundary's vocabulary; four rules are the renderer's own |
 | Golden output | The release directory [`support-assistant-local-kind/`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/): [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the release naming it, [`rendered-workload-release.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/rendered-workload-release.yaml) |
 | Drift check | [`tools/generated_release`](../../tools/generated_release/core.py): `python -m tools.generated_release --check`, and `--write NAME` to regenerate |
@@ -45,16 +45,18 @@ contract is the only place the workload's intent is written.
 It extends the chart's values contract rather than defining a format beside it. Every value
 it writes is one [`values.schema.json`](../../charts/inferops-llm/values.schema.json)
 already defines; every value it does not write keeps the chart's own default or comes from
-a hand-written file. The chart, its templates, and its schema are unchanged.
+a hand-written file. Introducing the renderer changed nothing in the chart. Since
+`V2-S4-001-PR1` the chart also defines `api.rollout`, in its values, its schema, and the
+API Deployment template, and the renderer writes it.
 
 ## What it produces
 
 For the reference workload - the [`synchronous-llm` contract fixture](../../contracts/workload/examples/valid/synchronous-llm-local.yaml)
-on either [local binding](../../contracts/environment/examples/valid/local-kind.yaml), with
+on the [`local-kind` binding](../../contracts/environment/examples/valid/local-kind.yaml), with
 the chart's API defaults - the output is the committed golden file, byte for byte:
 
 ```yaml
-# Generated Helm values for the inferops-llm chart, version 0.3.0.
+# Generated Helm values for the inferops-llm chart, version 0.4.0.
 # Do not edit by hand: change the WorkloadContract, the EnvironmentBinding, or
 # the platform defaults they were rendered from, and render them again.
 api:
@@ -62,6 +64,9 @@ api:
   maxOutputTokens: 128
   replicaCount: 1
   requestTimeoutMs: 120000
+  rollout:
+    maxSurge: 1
+    maxUnavailable: 0
 model:
   artifact:
     fileName: "Qwen3-1.7B-Q8_0.gguf"
@@ -98,15 +103,24 @@ telemetry:
   enabled: true
 ```
 
-The two local bindings render the same bytes. They differ only in the cluster provider and
-the GitOps destination, and neither is a chart value. A test asserts both facts.
+The two local bindings differ in the cluster provider, the GitOps destination, and the API
+replica count. The first two are not chart values and move nothing. The replica count is
+a chart value: the [`local-docker-desktop` binding](../../contracts/environment/examples/valid/local-docker-desktop.yaml)
+states two API replicas, so its render differs from the file above in `api.replicaCount`
+and in no other value. That render is the committed
+[desired-state values file](../../gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml),
+byte for byte. A test asserts each of these facts.
+
+The two rollout values and the replica count are configuration. No release with two API
+replicas has been installed, and nothing here establishes what a caller observes while an
+API pod is replaced, deleted, or evicted.
 
 ## Where every value goes
 
-Every one of the context's 44 values has one disposition, and a test fails if the context
+Every one of the context's 46 values has one disposition, and a test fails if the context
 gains a value this table does not name:
 
-- **`rendered`** - written to the chart values named. 24 values, written to 25 chart values:
+- **`rendered`** - written to the chart values named. 26 values, written to 27 chart values:
   the runtime image reference is split at its digest.
 - **`constrained`** - not written, because the chart has no setting for it, and refused
   unless it asks for what the chart already does. 8 values.
@@ -157,6 +171,8 @@ A test compares this table with the code, row for row.
 | `api.requestTimeoutMs` | `rendered` | `api.requestTimeoutMs` | The chart value of the same meaning |
 | `api.drainTimeoutMs` | `rendered` | `api.drainTimeoutMs` | The chart value of the same meaning |
 | `api.maxOutputTokens` | `rendered` | `api.maxOutputTokens` | The chart value of the same meaning |
+| `api.rollout.maxUnavailable` | `rendered` | `api.rollout.maxUnavailable` | The chart value of the same meaning |
+| `api.rollout.maxSurge` | `rendered` | `api.rollout.maxSurge` | The chart value of the same meaning |
 | `destination.clusterProvider` | `not-rendered` | - | Selects the cluster a release is installed into; not a chart value |
 | `destination.namespace` | `not-rendered` | - | The release namespace is an install argument, not a value, and the chart checks its prefix itself |
 | `modelCache.class` | `not-rendered` | - | The chart mounts an existing claim, the one class this binding version has |
@@ -253,7 +269,7 @@ metadata:
 output:
   helmValues:
     path: "values.generated.yaml"
-    sha256: "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce"
+    sha256: "0c3cd4cc9f7462f1964d3832c6a7415bdb72dc78cccb5be8a83bd78101212cdd"
 source:
   contract:
     apiVersion: "inferops.io/v1alpha1"
@@ -497,7 +513,7 @@ and never quotes a value. Every finding is reported at once, in the boundary's o
 | `render-profile-unsupported`, `render-contract-version-unsupported`, `render-binding-version-unsupported` | as published | as published | A context outside the renderer's support. `render_with` refuses it before calling the renderer; `render` refuses it again for a context built without that check |
 
 **The chart is narrower than the contract.** `CHART_VALUE_CONSTRAINTS` copies the chart
-schema's constraint for each of the 27 values written, and a test reads the schema and fails
+schema's constraint for each of the 29 values written, and a test reads the schema and fails
 if one keyword differs. The contract accepts more than the chart in these places, and each
 is refused here rather than by Helm. A test refuses an example of each through
 `render_with`, except the last row's, which no accepted input reaches today:
@@ -569,7 +585,7 @@ with a `null` - and nothing would say so. `manual_value_findings` refuses, with
 
 An empty mapping above a generated value merges nothing and is accepted, and so is a
 sibling: `model.license.spdx` beside the generated `model.license.reference`. A test
-sets each of the 27 generated values in the committed file and gets exactly one finding for
+sets each of the 29 generated values in the committed file and gets exactly one finding for
 each; the committed file gets none. A hand-written copy of a derived value is refused
 whether it agrees with the contract or not: a second copy of contract intent is the defect,
 and a copy that agrees today is stale after the next pin change.

@@ -56,6 +56,7 @@ from tests.support.e01_pinned_runner import (
     copy_pinned_input,
     pinned_runner_bytes,
 )
+from tests.support.e01_repinned_record import repin_record
 from tools.experiment_e01 import (
     CRITERIA,
     CURRENT_REVISION,
@@ -792,10 +793,16 @@ GOVERNANCE = (REGISTRY_PATH, *FREEZE_RECORDS.values())
 def _populate(root: Path) -> None:
     """Copy the governance files and every pinned input. The runner is written in
     the content the record pins: the runner in the tree differs from its pin by the
-    committed-run listing, and a run refuses a tree that holds a moved input."""
+    committed-run listing, and a run refuses a tree that holds a moved input.
+
+    Other pinned inputs have changed in the tree since the record was registered,
+    so the copy of the record is then re-pinned to the copied files. The run in
+    this repository is a test of the runner on a tree that agrees with its record.
+    It does not show that the tree holds what the committed record pinned."""
     freeze = load_freeze(REPO_ROOT)
     for relative in [*GOVERNANCE, *(pin["path"] for pin in freeze["pinnedInputs"])]:
         copy_pinned_input(REPO_ROOT, relative, root / relative)
+    repin_record(root, FREEZE_PATH)
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", "-A")
     _git(root, "commit", "-q", "-m", "inputs")

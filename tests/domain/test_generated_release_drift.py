@@ -330,7 +330,7 @@ PROVENANCE_EDITS: dict[str, tuple[str, str, list[tuple[str, str]]]] = {
         [("generated-release-field-drifted", "output.helmValues.path")],
     ),
     "values-digest": (
-        'sha256: "1849af0c88c2',
+        'sha256: "0c3cd4cc9f74',
         'sha256: "2849af0c88c2',
         [
             ("generated-release-values-unrecorded", VALUES),
@@ -381,7 +381,7 @@ def test_values_and_a_release_forged_to_agree_are_still_drift(root: Path) -> Non
     forged = hashlib.sha256(values.read_bytes()).hexdigest()
     edit(
         release_path(root, RELEASE),
-        "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce",
+        "0c3cd4cc9f7462f1964d3832c6a7415bdb72dc78cccb5be8a83bd78101212cdd",
         forged,
     )
     assert found(verify(REFERENCE, root)) == [

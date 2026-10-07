@@ -90,8 +90,12 @@ TREE_DOCUMENT: Final = f"{DESIRED_STATE_ROOT}/README.md"
 
 #: The commit the reference desired-state release was rendered at. The renderer and
 #: the chart's ``api`` defaults were read at this commit. A release cannot name the
-#: commit that adds it, so this is the commit the adding change was based on.
-_REFERENCE_RENDER_REVISION: Final = "c056b9772a3de391fd61589649b1d3ed1c5ac7c4"
+#: commit that adds it. The release was rendered again when the chart's ``api``
+#: defaults gained the two rollout bounds and the binding stated two API replicas:
+#: this is the commit that made those edits, and the release was regenerated in the
+#: commit after it. The first release named ``c056b977``, the commit its adding
+#: change was based on, and is in Git history.
+_REFERENCE_RENDER_REVISION: Final = "9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0"
 
 #: Every desired-state release, and the inputs each is derived from.
 #:

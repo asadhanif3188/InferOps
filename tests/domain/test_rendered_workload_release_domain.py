@@ -753,8 +753,8 @@ def test_a_binding_digest_is_of_its_value_not_its_bytes(name: str):
     original = binding_digest(parse_environment_binding(yaml.safe_load(text)))
     reflowed = yaml.safe_dump(reversed_keys(yaml.safe_load(text)), sort_keys=False)
     # An integral float is an integer to JSON Schema, and the parser reads it as one.
-    as_float = text.replace("apiReplicas: 1", "apiReplicas: 1.0")
-    assert as_float != text
+    as_float = re.sub(r"(apiReplicas: \d+)\n", r"\1.0\n", text)
+    assert as_float != text and "apiReplicas: " in text
     for variant in (reflowed, as_float):
         assert binding_digest(parse_environment_binding(yaml.safe_load(variant))) == (
             original

@@ -19,8 +19,8 @@ describes.
 
 | Fixture | Environment | Provider | What it demonstrates |
 |---|---|---|---|
-| [`valid/local-docker-desktop.yaml`](valid/local-docker-desktop.yaml) | `local` | `docker-desktop` | The facts of the V1 reference environment, each copied from the record that owns it |
-| [`valid/local-kind.yaml`](valid/local-kind.yaml) | `local` | `kind` | A second binding for the same environment, differing only in provider and GitOps destination |
+| [`valid/local-docker-desktop.yaml`](valid/local-docker-desktop.yaml) | `local` | `docker-desktop` | The facts of the reference environment. The namespace, the claim, and the provider are each copied from the record that owns it. The API replica count, two, is the binding's own |
+| [`valid/local-kind.yaml`](valid/local-kind.yaml) | `local` | `kind` | A second binding for the same environment, differing in provider, GitOps destination, and API replica count, which is one |
 
 Each valid fixture is held to the records it copies: the namespace to the release
 lifecycle's namespace and the prerequisite layer's default, the claim name to the

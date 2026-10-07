@@ -61,24 +61,51 @@ One release is declared.
 
 | Key | Directory | Contract | Binding | Platform defaults | Revisions |
 |---|---|---|---|---|---|
-| `local-docker-desktop/support-assistant` | `gitops/environments/local-docker-desktop/workloads/support-assistant` | `contracts/workload/examples/valid/synchronous-llm-local.yaml` | `local-docker-desktop`, the only binding offered | The `api` block of `charts/inferops-llm/values.yaml` | Both are `c056b9772a3de391fd61589649b1d3ed1c5ac7c4` |
+| `local-docker-desktop/support-assistant` | `gitops/environments/local-docker-desktop/workloads/support-assistant` | `contracts/workload/examples/valid/synchronous-llm-local.yaml` | `local-docker-desktop`, the only binding offered | The `api` block of `charts/inferops-llm/values.yaml` | Both are `9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0` |
 
 Its release identifier is
-`eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae`.
+`f23c37d81fbb297643af9e6005cffd805ac05bc98847a6360894fdd238b41d8c`.
 
 **Why this binding.** `local-docker-desktop` names the one provider on which the
 Argo CD bootstrap was executed. No release is committed for `local-kind`.
 
-**What the revisions are.** A release cannot name the commit that adds it. Both
-revisions are the commit that the generating change was based on. That change edited
-neither the renderer nor the chart's `api` defaults, so both were the files at that
-commit. A change that edits either must record a commit of its own that already holds
-the new files, which takes two commits and a merge that keeps them.
+**What the revisions are.** A release cannot name the commit that adds it. A change
+that edits the renderer or the chart's `api` defaults must record a commit of its own
+that already holds the new files, which takes two commits and a merge that keeps them.
+`V2-S4-001-PR1` is such a change: its first commit edited the renderer, the chart's
+`api` defaults, and the binding, and regenerated the values. Its second commit recorded
+the first commit as both revisions, which moved the release identifier. At the first
+commit itself the tree holds a release,
+`901c4a5ae968d135624c21c8cf118512df8dc3bfa77ece5bffa3cfb87f7f762f`, whose two revisions
+still name the earlier commit; that statement is false for that one commit. The change
+must be merged with a merge commit: a squash or a rebase would leave the first commit
+off `main`, and the release would name a commit that `main` does not hold. A later commit of the same change may edit the
+renderer's source without moving a rendered byte; no test compares the renderer's
+source at the recorded revision.
 
-**What the values are.** The values file is byte for byte the values file of the
-reference release in the test fixtures. The two local bindings render the same chart
-values, and a test asserts it. The two releases differ in the binding they name, the
-binding's digest, the two revisions, and the release identifier.
+**The release this one replaced.** Until `V2-S4-001-PR1` the tree held the release
+`eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae`, rendered at
+`c056b9772a3de391fd61589649b1d3ed1c5ac7c4` for chart `0.3.0`, with one API replica. That
+release is the one every recorded Argo CD run reconciled, the real-deployment run of
+the first experiment included. It is in Git history at the commits those runs
+recorded. **No run reconciled the release that the tree holds now.**
+
+**What the values are.** The values file differs from the values file of the reference
+release in the test fixtures in one value: `api.replicaCount` is 2 here and 1 there.
+The `local-docker-desktop` binding states two API replicas and the `local-kind`
+binding states one. Both files carry the same two rollout bounds, which the platform
+defaults own: `api.rollout.maxUnavailable` 0 and `api.rollout.maxSurge` 1. A test
+asserts each of these facts. The two releases differ in the binding they name, the
+binding's digest, the values digest, the two revisions, and the release identifier.
+
+**What two replicas establishes.** A declared count and a rendered Deployment. Chart
+`0.4.0` was installed nowhere, and no release with two API replicas was installed from
+this tree. The count does not establish that two API pods run, that a rollout leaves a
+caller served, or what a caller observes when an API pod is deleted or a node is lost.
+On a cluster where the Application is applied, a merge of this release changes the
+live release. The pod template of each Deployment carries the chart version label, and
+that label changes with chart `0.4.0`, so the render gives every Deployment a new pod
+template. That is read from the render. It was not observed on a cluster.
 
 ## The promotion boundary
 

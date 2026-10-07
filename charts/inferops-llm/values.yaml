@@ -39,6 +39,26 @@ namespacePrefixCheck: true
 api:
   replicaCount: 1
 
+  # The bounds the Deployment controller is given for a rollout of API pods.
+  # `maxUnavailable: 0` allows no existing API pod to be taken away before its
+  # replacement is available. `maxSurge: 1` allows one pod above `replicaCount`,
+  # so a rollout needs room for one more API pod than the tier runs. That is
+  # the behaviour Kubernetes documents for these bounds. No rollout was run.
+  #
+  # Whole pods only. Until chart 0.4.0 the Kubernetes default applied: 25% for
+  # both bounds, the first rounded down and the second rounded up. At one to
+  # three replicas that resolves to 0 and 1, the bounds stated here. From four
+  # replicas it resolves to other numbers, and whole pods keep the bounds fixed
+  # when the count changes. The template refuses two zeros, because Kubernetes
+  # refuses a rolling update that may neither remove a pod nor add one.
+  #
+  # This is a rollout policy and not an availability result. It bounds what the
+  # Deployment controller does on a template change. It does not bound what
+  # happens when a pod is deleted, a node is lost, or a pod is evicted.
+  rollout:
+    maxUnavailable: 0
+    maxSurge: 1
+
   image:
     # No InferOps image is published. `platform-api-container-image` is
     # `planned` in the ownership inventory, and an image built from
