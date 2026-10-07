@@ -159,7 +159,7 @@ released pin at the tag in a checkout that holds the tag.
 | `tools.proof_dashboard --check` | Exit 0: the dashboard is what the register produces |
 | `tests/testing/test_experiment_e01.py` and `test_experiment_freeze.py` | 279 passed, 1 skipped |
 | `tests/domain`, `tests/contracts`, `tests/security`, the chart suite, and the Application suite | 3,748 passed, 4 failed, 31 skipped. The four failures are stated in the next section |
-| The default lane | **Not run at the first commit.** It is run on the final tree, and the result is recorded below when it exists |
+| The default lane | **Not run at the first commit.** It ran on the second commit, and [the result is below](#the-default-lane-on-the-second-commit) |
 | `gitleaks` | Not run: it is not installed on this host. The hosted CI job runs it |
 | Hosted CI | Not read: no pull request existed when this record was written |
 
@@ -302,6 +302,41 @@ run of the two suites before the harness change. That run's output is not commit
 | `tools.evidence_index --check` and `--gate`, `tools.proof_dashboard --check` | Exit 0 for each, with the evidence set and pack unchanged |
 | The chart suite, five domain suites, the freeze suite, `tests/security`, the link suite, and the inventory suite, with the second commit staged | 3,712 passed, 7 skipped |
 | The four tests that failed at the first commit, and the default lane | Run on the committed tree. The results are in the next section |
+
+## The default lane, on the second commit
+
+The lane ran once, on the committed second commit, `4c4e0f0`, with a clean working tree:
+`uv run --locked python -m pytest -q -rs`.
+
+| Result | Count |
+|---|---|
+| Passed | 19,043 |
+| Failed | 2 |
+| Skipped | 37 |
+| Deselected | 14 |
+| Duration | 48 minutes 13 seconds |
+
+**The four tests that failed at the first commit passed.**
+
+**Two tests failed, and the third commit corrects them.** Both are cases of
+`test_a_planted_defect_is_refused_under_the_rules_it_breaks` in
+`tests/domain/test_desired_state_provenance.py`. Each planted its defect by replacing
+text of the earlier release: its identifier, and a renderer revision that begins with
+`c`. The release in the tree holds neither, so the edit found nothing to replace. The
+tool under test was not at fault. The two cases now read the identifier and the
+revision from the committed release. After that change the suite was run alone: 80
+passed, none skipped. `ruff` and `mypy`, on both platforms, are clean.
+
+**The lane was not run again after the third commit.** The third commit changes that
+one test module and this record. Every other result above is the lane's.
+
+**One skip is new, and it is a consequence of this change.**
+`test_revision_three_names_what_the_files_it_pins_hold` in
+`tests/testing/test_experiment_freeze.py` compares freeze revision 3 with the release
+files while they have their pinned content. The release changed, so the test reports
+that and skips, as it was written to. It no longer checks anything. The other 36
+skips are host limits and fixtures that a layer does not read: symbolic links that this
+Windows host cannot create, one POSIX signal case, and the schema-only fixtures.
 
 ## Privacy and publicability
 

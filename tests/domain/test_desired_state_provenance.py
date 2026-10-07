@@ -446,6 +446,19 @@ def _write(relative: str, content: str) -> Callable[[Path], None]:
     return apply
 
 
+def _other(identifier: str) -> str:
+    """The same identifier with another first character, so its form still holds."""
+    return ("0" if identifier[0] != "0" else "1") + identifier[1:]
+
+
+#: The release the tree holds, read from the committed file. Two planted defects
+#: below edit these values, whichever release is committed.
+_COMMITTED_RELEASE = yaml.safe_load(
+    (REPO_ROOT / RELEASE_REL).read_text(encoding="utf-8")
+)
+COMMITTED_RELEASE_ID: str = _COMMITTED_RELEASE["metadata"]["releaseId"]
+COMMITTED_RENDERER_REVISION: str = _COMMITTED_RELEASE["source"]["renderer"]["revision"]
+
 PLANTED: tuple[tuple[str, Callable[[Path], None], set[str]], ...] = (
     (
         "an edited value",
@@ -464,13 +477,15 @@ PLANTED: tuple[tuple[str, Callable[[Path], None], set[str]], ...] = (
     ),
     (
         "an edited release identifier",
-        _edit(RELEASE_REL, RECORDED_RELEASE_ID, "f" + RECORDED_RELEASE_ID[1:]),
+        _edit(RELEASE_REL, COMMITTED_RELEASE_ID, _other(COMMITTED_RELEASE_ID)),
         {"release-not-accepted"},
     ),
     (
         "a release that records another renderer revision",
         _edit(
-            RELEASE_REL, 'renderer:\n    revision: "c', 'renderer:\n    revision: "d'
+            RELEASE_REL,
+            f'renderer:\n    revision: "{COMMITTED_RENDERER_REVISION}',
+            f'renderer:\n    revision: "{_other(COMMITTED_RENDERER_REVISION)}',
         ),
         {"release-not-accepted"},
     ),
