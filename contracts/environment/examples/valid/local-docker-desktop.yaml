@@ -1,8 +1,13 @@
-# The facts the V1 reference environment supplies to a release: the Docker Desktop
+# The facts the reference environment supplies to a release: the Docker Desktop
 # provider, the namespace the release lifecycle installs into, the model cache
-# claim the prerequisite layer creates, and one platform API replica. Each value is
-# copied from the record that owns it, and a test compares them, so a drift between
-# this fixture and the environment it describes fails the build.
+# claim the prerequisite layer creates, and two platform API replicas. The first
+# three values are copied from the record that owns each, and a test compares them,
+# so a drift between this fixture and the environment it describes fails the build.
+#
+# The replica count is this binding's own decision: the V2 reference topology runs
+# two API replicas. The V1 release ran one, and no release with two API replicas
+# has been installed from this binding. A replica count is configuration. It does
+# not establish that a caller is served while one API pod is lost.
 #
 # This is a contract example. The platform domain parses it, and one generated
 # release is derived from it. The GitOps destination below is the directory that
@@ -28,7 +33,7 @@ spec:
     claimName: inferops-model-cache
 
   platform:
-    apiReplicas: 1
+    apiReplicas: 2
 
   gitops:
     destinationPath: gitops/environments/local-docker-desktop

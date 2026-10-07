@@ -23,7 +23,13 @@ type: application
 # reason: it rendered resources 0.1.0 did not and changed the shape of
 # `security.serviceAccount`. Only 0.3.0 has been installed anywhere, so no upgrade
 # path from 0.1.0 or 0.2.0 is owed to anyone.)
-version: 0.3.0
+#
+# 0.4.0 rather than 0.3.1: the API Deployment now states its rollout strategy, and
+# `api.rollout` joins the values contract. A values file written against 0.3.0
+# still installs, because the new member has a default. The render is not the same
+# one: 0.3.0 left the strategy to the Kubernetes default, a percentage. No 0.4.0
+# release has been installed anywhere.
+version: 0.4.0
 
 # What this chart installs. `platform-api-container-image` is `implemented` in the
 # ownership inventory: `deploy/api/Dockerfile` builds one and `V1-S3-011` loaded it

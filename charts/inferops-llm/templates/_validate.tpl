@@ -376,6 +376,16 @@ HTTP liveness probe on a loading endpoint wearing different clothes.
 {{- end -}}
 {{- end -}}
 
+{{/*
+The API rollout bounds. Kubernetes refuses a rolling update whose two bounds are
+both zero: the controller could then neither remove a pod nor add one. The schema
+cannot say so, because it sees one value at a time. The refusal is here, so the
+render fails before a cluster is asked.
+*/}}
+{{- if and (eq (int .Values.api.rollout.maxUnavailable) 0) (eq (int .Values.api.rollout.maxSurge) 0) -}}
+{{- fail "api.rollout.maxUnavailable and api.rollout.maxSurge must not both be 0. A rolling update that may neither remove a pod nor add one cannot proceed, and Kubernetes refuses the Deployment." -}}
+{{- end -}}
+
 {{/* -- the identities, and the escape hatch that defeated the control ---- */}}
 
 {{/*

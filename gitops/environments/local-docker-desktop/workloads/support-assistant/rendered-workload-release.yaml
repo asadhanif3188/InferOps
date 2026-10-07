@@ -3,13 +3,13 @@
 apiVersion: "inferops.io/v1alpha1"
 kind: "RenderedWorkloadRelease"
 metadata:
-  releaseId: "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae"
+  releaseId: "901c4a5ae968d135624c21c8cf118512df8dc3bfa77ece5bffa3cfb87f7f762f"
   workloadId: "support-assistant"
   workloadVersion: "0.1.0"
 output:
   helmValues:
     path: "values.generated.yaml"
-    sha256: "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce"
+    sha256: "62c677a778cc12388c8070073542bbfbe62d5f9c6faf7908262cdc0fcd897dfc"
 source:
   contract:
     apiVersion: "inferops.io/v1alpha1"
@@ -18,7 +18,7 @@ source:
     apiVersion: "inferops.io/v1alpha1"
     environment: "local"
     name: "local-docker-desktop"
-    sha256: "afaabe71a3b8cd83f4b19dd076341b611a184b02c8ad7a4eb0ed3e16054f1251"
+    sha256: "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
   platformDefaults:
     revision: "c056b9772a3de391fd61589649b1d3ed1c5ac7c4"
   renderer:

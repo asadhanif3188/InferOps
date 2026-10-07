@@ -85,6 +85,7 @@ from inferops.domain.render import (
     STAGING_SUFFIX,
     VALUES_FILE_NAME,
     ApiDefaults,
+    ApiRolloutDefaults,
     GeneratedRelease,
     HelmValuesRenderer,
     PlatformDefaults,
@@ -183,10 +184,17 @@ def changed_binding(mutate: Callable[[dict[str, Any]], None]) -> EnvironmentBind
 def defaults(revision: str = DEFAULTS_REVISION, **overrides: int) -> PlatformDefaults:
     """The chart's own API defaults, read at a placeholder revision."""
     chart = load(CHART_VALUES)["api"]
+    rollout = ApiRolloutDefaults(
+        max_unavailable=overrides.pop(
+            "max_unavailable", chart["rollout"]["maxUnavailable"]
+        ),
+        max_surge=overrides.pop("max_surge", chart["rollout"]["maxSurge"]),
+    )
     settings = {
         "request_timeout_ms": chart["requestTimeoutMs"],
         "drain_timeout_ms": chart["drainTimeoutMs"],
         "max_output_tokens": chart["maxOutputTokens"],
+        "rollout": rollout,
         **overrides,
     }
     return PlatformDefaults("v1alpha1", GitRevision(revision), ApiDefaults(**settings))
@@ -287,13 +295,24 @@ def test_the_golden_release_holds_the_placeholder_revisions_the_suite_states() -
     assert document["source"]["platformDefaults"]["revision"] == DEFAULTS_REVISION
 
 
-def test_the_second_local_binding_writes_the_same_values_and_another_release() -> None:
+def test_the_second_local_binding_writes_its_replica_count_and_another_release() -> (
+    None
+):
+    """The two local bindings differ in one rendered fact, the API replica count.
+
+    So the values differ in that one value, and the release records another values
+    digest beside the binding's own name and digest."""
     kind = generate()
     desktop = generate(bindings=[binding("local-docker-desktop")])
-    assert desktop.values_bytes == kind.values_bytes
-    assert desktop.values_sha256 == kind.values_sha256
+    assert moved(
+        yaml.safe_load(kind.values_bytes), yaml.safe_load(desktop.values_bytes)
+    ) == {"api.replicaCount"}
+    assert yaml.safe_load(kind.values_bytes)["api"]["replicaCount"] == 1
+    assert yaml.safe_load(desktop.values_bytes)["api"]["replicaCount"] == 2
+    assert desktop.values_sha256 != kind.values_sha256
     assert moved(kind.release.as_document(), desktop.release.as_document()) == {
         "metadata.releaseId",
+        "output.helmValues.sha256",
         "source.environmentBinding.name",
         "source.environmentBinding.sha256",
     }

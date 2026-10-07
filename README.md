@@ -184,7 +184,11 @@ document. Since `V2-S3-003-PR2` the procedure can
 bounded number of reads, and a tool builds a record in which a field that was not
 reported stays not reported. That collection ran on one provider on one day, in
 two runs and one aborted attempt, and what Argo CD reports is not a caller
-outcome.
+outcome. Since `V2-S4-001-PR1` the committed release declares two API replicas, and
+the chart states the API Deployment's rolling-update bounds, which the platform
+defaults own. That is configuration and not a result: the two-replica release was
+rendered and not installed, and it establishes nothing about what a caller observes
+when an API pod is lost.
 
 ## Prerequisites
 

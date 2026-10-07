@@ -11,8 +11,8 @@ value it does not write keeps the chart's own default or comes from a hand-writt
 **Every context value is accounted for.** :data:`HELM_VALUE_DISPOSITIONS` names each of
 the context's values once, and says what the renderer does with it:
 
-- **rendered** - written to the chart values it names. Twenty-four values, written to
-  twenty-five chart values: the runtime image reference is split into its repository
+- **rendered** - written to the chart values it names. Twenty-six values, written to
+  twenty-seven chart values: the runtime image reference is split into its repository
   and its digest, as the chart pins them;
 - **constrained** - not written, because the chart has no setting for it, and refused
   unless it asks for what the chart already does: a fixed replica count, no
@@ -106,7 +106,7 @@ from .values_yaml import canonical_yaml
 #: compares both with ``charts/inferops-llm/Chart.yaml``, so a chart change fails the
 #: build until somebody reads this mapping against it.
 CHART_NAME: Final = "inferops-llm"
-CHART_VERSION: Final = "0.3.0"
+CHART_VERSION: Final = "0.4.0"
 
 #: What the renderer takes: today's input versions and the synchronous profile only.
 HELM_VALUES_SUPPORT: Final = RendererSupport(
@@ -281,6 +281,10 @@ HELM_VALUE_DISPOSITIONS: Final[Mapping[str, ValueDisposition]] = MappingProxyTyp
         "api.requestTimeoutMs": _rendered("api.requestTimeoutMs", reason=_SAME),
         "api.drainTimeoutMs": _rendered("api.drainTimeoutMs", reason=_SAME),
         "api.maxOutputTokens": _rendered("api.maxOutputTokens", reason=_SAME),
+        "api.rollout.maxUnavailable": _rendered(
+            "api.rollout.maxUnavailable", reason=_SAME
+        ),
+        "api.rollout.maxSurge": _rendered("api.rollout.maxSurge", reason=_SAME),
         "destination.clusterProvider": _not_rendered(
             "selects the cluster a release is installed into; not a chart value"
         ),
@@ -422,6 +426,8 @@ CHART_VALUE_CONSTRAINTS: Final[Mapping[str, ChartValueConstraint]] = MappingProx
         "api.maxOutputTokens": _integer(1, 32_768),
         "api.replicaCount": _integer(1, 16),
         "api.requestTimeoutMs": _integer(1, 3_600_000),
+        "api.rollout.maxSurge": _integer(0, 16),
+        "api.rollout.maxUnavailable": _integer(0, 16),
         "model.artifact.fileName": _string(
             "^$|^[A-Za-z0-9][A-Za-z0-9._-]*$", max_length=253
         ),

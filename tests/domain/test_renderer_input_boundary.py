@@ -82,8 +82,11 @@ from inferops.domain.render import (
     OVERRIDES,
     PROFILE_CONDITIONS,
     RENDER_FIELD_OWNERSHIP,
+    ROLLOUT_PODS_CEILING,
+    ROLLOUT_PODS_FLOOR,
     SUPPORTED_PLATFORM_DEFAULTS_VERSIONS,
     ApiDefaults,
+    ApiRolloutDefaults,
     Layer,
     PlatformDefaults,
     RefusalCategory,
@@ -198,6 +201,8 @@ def defaults(
     request_timeout_ms: int | None = None,
     drain_timeout_ms: int | None = None,
     max_output_tokens: int | None = None,
+    max_unavailable: int | None = None,
+    max_surge: int | None = None,
     revision: str = DEFAULTS_REVISION,
 ) -> PlatformDefaults:
     """The chart's own defaults, read at a placeholder revision."""
@@ -220,6 +225,16 @@ def defaults(
                 chart["maxOutputTokens"]
                 if max_output_tokens is None
                 else max_output_tokens
+            ),
+            rollout=ApiRolloutDefaults(
+                max_unavailable=(
+                    chart["rollout"]["maxUnavailable"]
+                    if max_unavailable is None
+                    else max_unavailable
+                ),
+                max_surge=(
+                    chart["rollout"]["maxSurge"] if max_surge is None else max_surge
+                ),
             ),
         ),
     )
@@ -601,6 +616,15 @@ def test_the_defaults_bounds_are_the_charts() -> None:
         OUTPUT_TOKENS_FLOOR,
         OUTPUT_TOKENS_CEILING,
     )
+    rollout = resolve(schema, api["rollout"])
+    assert set(rollout["properties"]) == {"maxUnavailable", "maxSurge"}
+    assert rollout["additionalProperties"] is False
+    for bound in rollout["properties"].values():
+        assert (bound["type"], bound["minimum"], bound["maximum"]) == (
+            "integer",
+            ROLLOUT_PODS_FLOOR,
+            ROLLOUT_PODS_CEILING,
+        )
 
 
 def test_the_charts_defaults_construct_a_valid_set() -> None:
@@ -610,23 +634,45 @@ def test_the_charts_defaults_construct_a_valid_set() -> None:
         "requestTimeoutMs": chart["requestTimeoutMs"],
         "drainTimeoutMs": chart["drainTimeoutMs"],
         "maxOutputTokens": chart["maxOutputTokens"],
+        "rollout": {
+            "maxUnavailable": chart["rollout"]["maxUnavailable"],
+            "maxSurge": chart["rollout"]["maxSurge"],
+        },
     }
+
+
+def test_the_charts_rollout_default_is_the_availability_first_policy() -> None:
+    """The platform default for the API tier: no existing pod is taken away before
+    its replacement is Ready, and one pod may be added to do that. This is the
+    value of a setting. It is not a measurement of a rollout."""
+    assert chart_api_defaults()["rollout"] == {"maxUnavailable": 0, "maxSurge": 1}
+    assert defaults().api.rollout == ApiRolloutDefaults(max_unavailable=0, max_surge=1)
 
 
 def test_no_ci_values_file_overrides_a_default() -> None:
     """The chart's default is what every values file the repository renders with uses."""
     for path in sorted((CHART_DIR / "ci").glob("*.yaml")):
         api = (load(path) or {}).get("api", {})
-        assert {"requestTimeoutMs", "drainTimeoutMs", "maxOutputTokens"}.isdisjoint(
-            api
-        ), path.name
+        assert {
+            "requestTimeoutMs",
+            "drainTimeoutMs",
+            "maxOutputTokens",
+            "rollout",
+        }.isdisjoint(api), path.name
 
 
 def test_no_default_is_a_field_the_contract_or_the_binding_has() -> None:
-    names = {"requestTimeoutMs", "drainTimeoutMs", "maxOutputTokens"}
+    names = {
+        "requestTimeoutMs",
+        "drainTimeoutMs",
+        "maxOutputTokens",
+        "rollout.maxUnavailable",
+        "rollout.maxSurge",
+    }
     for schema in (workload_schema(), binding_schema()):
         leaves = {path.rsplit(".", 1)[-1] for path in schema_fields(schema)}
-        assert names.isdisjoint(leaves)
+        assert {name.rsplit(".", 1)[-1] for name in names}.isdisjoint(leaves)
+        assert "rollout" not in leaves
     assert {row.source for row in rows(Layer.PLATFORM_DEFAULTS)} == {
         f"api.{name}" for name in names
     }
@@ -644,6 +690,16 @@ def test_no_default_is_a_field_the_contract_or_the_binding_has() -> None:
         ("max_output_tokens", True),
         ("drain_timeout_ms", 15000.0),
         ("request_timeout_ms", "120000"),
+        ("max_unavailable", ROLLOUT_PODS_FLOOR - 1),
+        ("max_unavailable", ROLLOUT_PODS_CEILING + 1),
+        ("max_surge", ROLLOUT_PODS_FLOOR - 1),
+        ("max_surge", ROLLOUT_PODS_CEILING + 1),
+        ("max_surge", True),
+        ("max_surge", 1.0),
+        ("max_unavailable", "0"),
+        ("max_unavailable", "25%"),
+        # Two zeros: Kubernetes refuses a rolling update that can do nothing.
+        ("max_surge", 0),
     ],
 )
 def test_a_default_outside_its_bounds_or_type_is_refused(
@@ -660,11 +716,33 @@ def test_a_default_outside_its_bounds_or_type_is_refused(
         ("request_timeout_ms", MILLISECONDS_CEILING),
         ("max_output_tokens", OUTPUT_TOKENS_FLOOR),
         ("max_output_tokens", OUTPUT_TOKENS_CEILING),
+        ("max_unavailable", ROLLOUT_PODS_FLOOR),
+        ("max_unavailable", ROLLOUT_PODS_CEILING),
+        ("max_surge", ROLLOUT_PODS_CEILING),
     ],
 )
 def test_a_default_on_its_bound_is_accepted(setting: str, value: int) -> None:
     arguments: dict[str, Any] = {setting: value}
     assert defaults(**arguments)
+
+
+def test_a_rollout_with_no_surge_is_accepted_when_a_pod_may_be_unavailable() -> None:
+    """Only two zeros are refused. One zero is a policy somebody may choose."""
+    built = defaults(max_unavailable=1, max_surge=0)
+    assert built.api.rollout.as_document() == {"maxUnavailable": 1, "maxSurge": 0}
+    with pytest.raises(InvalidValueError, match="must not both be 0"):
+        ApiRolloutDefaults(max_unavailable=0, max_surge=0)
+
+
+def test_the_api_defaults_take_only_typed_rollout_defaults() -> None:
+    api = defaults().api
+    with pytest.raises(InvalidValueError, match="ApiRolloutDefaults"):
+        ApiDefaults(
+            api.request_timeout_ms,
+            api.drain_timeout_ms,
+            api.max_output_tokens,
+            api.rollout.as_document(),  # type: ignore[arg-type]
+        )
 
 
 @pytest.mark.parametrize("version", ["v1alpha2", "v1", "", "inferops.io/v1alpha1"])
@@ -918,6 +996,8 @@ def test_each_layer_supplies_only_what_it_owns() -> None:
         "api.drainTimeoutMs",
         "api.maxOutputTokens",
         "api.requestTimeoutMs",
+        "api.rollout.maxSurge",
+        "api.rollout.maxUnavailable",
     }
 
 

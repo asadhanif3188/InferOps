@@ -46,6 +46,7 @@ import pytest
 import yaml
 
 from tests.support.e01_pinned_runner import copy_pinned_input
+from tests.support.e01_repinned_record import repin_record
 from tools.experiment_freeze import (
     ALWAYS_ANSWERED,
     FREEZE_FIELDS,
@@ -791,7 +792,12 @@ def test_material_files_add_paths_and_patterns_and_drop_exclusions(
 
 @pytest.fixture
 def pinned_root(tmp_path: Path) -> Path:
-    """A root holding the E01 record and a copy of every input it pins."""
+    """A root holding the E01 record and a copy of every input it pins.
+
+    Pinned inputs have changed in the tree since the record was registered, so the
+    copy of the record is re-pinned to the copied files. Each test below then plants
+    one difference and reads the listing. None of them compares the committed pins
+    with today's files: ``--changes`` does that, and it is not a test."""
     document = load()
     for item in document["pinnedInputs"]:
         # The runner is written in its pinned content. The runner in the tree
@@ -802,17 +808,18 @@ def pinned_root(tmp_path: Path) -> Path:
         tmp_path / "docs" / "proof" / "experiments",
         dirs_exist_ok=True,
     )
+    repin_record(tmp_path, E01)
     return tmp_path
 
 
 def test_a_copy_of_the_pinned_inputs_moved_nothing(pinned_root: Path) -> None:
-    assert changed_inputs(load(), pinned_root) == []
+    assert changed_inputs(load(root=pinned_root), pinned_root) == []
 
 
 def test_a_changed_and_an_absent_input_are_listed_and_a_crlf_one_is_not(
     pinned_root: Path,
 ) -> None:
-    document = load()
+    document = load(root=pinned_root)
     contract = "contracts/workload/examples/valid/synchronous-llm-local.yaml"
     defaults = "charts/inferops-llm/values.schema.json"
     chart = "charts/inferops-llm/Chart.yaml"
@@ -835,7 +842,10 @@ def test_an_added_material_file_is_listed(pinned_root: Path) -> None:
     """The F2 gap: a file the record never listed is a change, not invisible."""
     added = "charts/inferops-llm/templates/extra.yaml"
     (pinned_root / added).write_text("kind: ConfigMap\n", encoding="utf-8")
-    changes = [(c.path, c.kind, c.pinned) for c in changed_inputs(load(), pinned_root)]
+    changes = [
+        (c.path, c.kind, c.pinned)
+        for c in changed_inputs(load(root=pinned_root), pinned_root)
+    ]
     assert changes == [(added, "added", None)]
 
 
@@ -846,7 +856,9 @@ def test_a_new_local_helper_the_runner_imports_is_listed(pinned_root: Path) -> N
         encoding="utf-8",
     )
     (runner.parent / "helper.py").write_text("x = 1\n", encoding="utf-8")
-    changes = {c.path: c.kind for c in changed_inputs(load(), pinned_root)}
+    changes = {
+        c.path: c.kind for c in changed_inputs(load(root=pinned_root), pinned_root)
+    }
     assert changes == {
         "tools/experiment_e01/core.py": "changed",
         "tools/experiment_e01/helper.py": "added",
@@ -859,7 +871,9 @@ def test_a_pinned_file_the_scope_no_longer_names_is_listed(pinned_root: Path) ->
     line = "from tools.generated_release.core import _chart_api_defaults\n"
     assert line in text
     runner.write_text(text.replace(line, ""), encoding="utf-8")
-    changes = {c.path: c.kind for c in changed_inputs(load(), pinned_root)}
+    changes = {
+        c.path: c.kind for c in changed_inputs(load(root=pinned_root), pinned_root)
+    }
     assert changes["tools/experiment_e01/core.py"] == "changed"
     assert changes["tools/generated_release/core.py"] == "unscoped"
     assert changes["tools/generated_release/__init__.py"] == "unscoped"

@@ -143,6 +143,41 @@ here because they are refusals rather than shapes:
   a literal would carry it into the rendered manifest, the release history, and
   whatever reads either.
 
+### The API tier's replicas and rollout
+
+`api.replicaCount` is the number of API pods, and `api.rollout` holds the two bounds of
+the API Deployment's rolling update, in whole pods:
+
+| Value | Default | Meaning |
+|---|---|---|
+| `api.replicaCount` | `1` | API pods the Deployment runs |
+| `api.rollout.maxUnavailable` | `0` | API pods a rollout may take away before their replacements are Ready |
+| `api.rollout.maxSurge` | `1` | API pods a rollout may add above `replicaCount` |
+
+The template states the strategy on the API Deployment. Until chart `0.4.0` it stated
+none, and the Kubernetes default applied: 25% for both bounds, which rounds to a
+different number of pods at each replica count. The schema takes whole pods only and
+refuses a percentage. The template refuses two zeros, which Kubernetes refuses.
+
+With the defaults, a rollout adds one API pod and removes an existing one only after
+the new one is Ready. So a rollout needs room for one more API pod than `replicaCount`.
+At the chart's API requests, 100m CPU and 128Mi each, two replicas request 200m and
+256Mi, and a rollout requests 300m and 384Mi while it runs. These are sums of the
+chart's values. No capacity check was run for them.
+
+In a generated release neither value is written by hand. The EnvironmentBinding owns
+the replica count, the platform defaults own the two bounds, and the
+[renderer](../../docs/domain/helm-values-renderer.md) refuses a hand-written values
+file that sets any of the three.
+
+**What this is not.** A replica count and a rollout policy are configuration. Chart
+`0.4.0` has not been installed. Nothing here establishes that two API pods run, that a
+rollout leaves a caller served, or what a caller observes when an API pod is deleted
+or a node is lost. A rollout policy bounds a template change. It does not bound a pod
+deletion, and the chart renders no PodDisruptionBudget, so it does not bound an
+eviction either. The runtime Deployment states no strategy: the Kubernetes default
+applies to it, and this chart decides nothing about it.
+
 Two committed values files under [`ci/`](ci/) are the render fixtures. Both carry
 a **placeholder API image digest** that resolves to no image, for the reason
 [`ci/real-values.yaml`](ci/real-values.yaml) states: no InferOps image is

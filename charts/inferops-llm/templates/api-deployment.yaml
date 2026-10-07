@@ -12,6 +12,11 @@ Shutdown is the order src/inferops/api/lifecycle.py fixes -- readiness false,
 drain, exit -- with a preStop pause in front of it for the endpoint race, and a
 grace period the template refuses unless it covers both.
 
+The rollout strategy is stated, not left to the Kubernetes default. `api.rollout`
+holds the two bounds in whole pods, and the default keeps every existing pod
+until its replacement is Ready. That is a policy for a template change. It says
+nothing about a deleted pod, a lost node, or an eviction.
+
 Nothing here is evidence that this deployment runs. No InferOps API image is
 published, and this chart has not been installed.
 */}}
@@ -30,6 +35,13 @@ metadata:
 spec:
   replicas: {{ .Values.api.replicaCount }}
   progressDeadlineSeconds: {{ .Values.api.lifecycle.progressDeadlineSeconds }}
+  {{- /* Stated rather than left to the Kubernetes default, which is a
+         percentage: 25% rounds to a different bound at each replica count. */}}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ int .Values.api.rollout.maxUnavailable }}
+      maxSurge: {{ int .Values.api.rollout.maxSurge }}
   selector:
     matchLabels:
       {{- include "inferops-llm.api.selectorLabels" . | nindent 6 }}

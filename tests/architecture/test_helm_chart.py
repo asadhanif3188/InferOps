@@ -1557,6 +1557,186 @@ def test_the_rollout_deadline_is_outside_the_startup_budget(name: str) -> None:
 
 
 # --------------------------------------------------------------------------
+# The API rollout strategy, which is stated and not left to a default
+# --------------------------------------------------------------------------
+#
+# Everything in this section is about a rendered file or a schema. A stated
+# strategy and a replica count are configuration. None of these tests installs
+# the chart, replaces a pod, deletes one, or sends a request, so none of them
+# establishes what a caller observes while an API pod is unavailable.
+
+
+def _deployments(component: str) -> list[tuple[str, dict]]:
+    return [
+        (profile, document)
+        for profile, document in ALL_INSTALLED
+        if document["kind"] == "Deployment"
+        and _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
+        == component
+    ]
+
+
+def test_the_api_deployment_states_the_rollout_the_values_configure() -> None:
+    """Both profiles render an API Deployment, and each states the two bounds.
+
+    The Kubernetes default is 25% for both bounds, and a percentage rounds to a
+    different number of pods at each replica count. The chart states whole pods,
+    so the rendered policy does not move when the replica count does.
+    """
+    rollout = VALUES["api"]["rollout"]
+    assert rollout == {"maxUnavailable": 0, "maxSurge": 1}
+    rendered = _deployments("platform-api")
+    assert {profile for profile, _ in rendered} == {"mock", "real"}
+    for profile, document in rendered:
+        assert _mapping(document, "spec.strategy") == {
+            "type": "RollingUpdate",
+            "rollingUpdate": {
+                "maxUnavailable": rollout["maxUnavailable"],
+                "maxSurge": rollout["maxSurge"],
+            },
+        }, profile
+        bounds = _mapping(document, "spec.strategy.rollingUpdate")
+        for name, value in bounds.items():
+            assert type(value) is int, f"{profile}: {name} is not a whole number"
+
+
+def test_the_rollout_values_are_the_api_tiers_and_no_other_deployments() -> None:
+    """The change that added `api.rollout` decided the API tier's policy only.
+
+    The runtime Deployment and the collector state no strategy, so the Kubernetes
+    default applies to each, and the values contract has no rollout setting for
+    either. A change that gives one of them a policy fails this test, and has to
+    restate what is decided here.
+    """
+    assert "rollout" not in VALUES["runtime"]
+    assert "rollout" not in SCHEMA["properties"]["runtime"]["properties"]
+    others = [
+        document
+        for _profile, document in ALL_INSTALLED
+        if document["kind"] == "Deployment"
+        and _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
+        != "platform-api"
+    ]
+    assert others, "the real profile renders a runtime Deployment"
+    for document in others:
+        assert "strategy" not in _mapping(document, "spec"), _subject(document)
+
+
+def test_the_chart_renders_no_disruption_budget() -> None:
+    """A PodDisruptionBudget bounds a voluntary eviction and nothing else.
+
+    This chart renders none, for either tier. Two replicas and a rollout policy
+    do not bound an eviction, and a later change that adds a budget has to say
+    what it bounds. It would not bound a pod deletion either.
+    """
+    kinds = {document["kind"] for _profile, document in ALL_RENDERED}
+    assert "PodDisruptionBudget" not in kinds
+
+
+@pytest.mark.parametrize(
+    "rollout,accepted",
+    [
+        ({"maxUnavailable": 0, "maxSurge": 1}, True),
+        ({"maxUnavailable": 1, "maxSurge": 0}, True),
+        ({"maxUnavailable": 16, "maxSurge": 16}, True),
+        # Two zeros satisfy the schema, which sees one value at a time. The
+        # template refuses them; the test after this one holds that.
+        ({"maxUnavailable": 0, "maxSurge": 0}, True),
+        ({"maxUnavailable": -1, "maxSurge": 1}, False),
+        ({"maxUnavailable": 0, "maxSurge": 17}, False),
+        ({"maxUnavailable": "25%", "maxSurge": 1}, False),
+        ({"maxUnavailable": 0, "maxSurge": "1"}, False),
+        ({"maxUnavailable": 0, "maxSurge": 1.5}, False),
+        ({"maxUnavailable": 0, "maxSurge": True}, False),
+        ({"maxUnavailable": 0}, False),
+        ({"maxSurge": 1}, False),
+        ({}, False),
+        ({"maxUnavailable": 0, "maxSurge": 1, "type": "Recreate"}, False),
+    ],
+)
+def test_a_rollout_block_is_two_whole_pod_bounds_and_nothing_else(
+    rollout: dict, accepted: bool
+) -> None:
+    """Checked by validating documents rather than by reading the schema as text."""
+    jsonschema = pytest.importorskip("jsonschema")
+    validator = jsonschema.Draft202012Validator(
+        {**SCHEMA["$defs"]["rollout"], "$defs": SCHEMA["$defs"]}
+    )
+    errors = list(validator.iter_errors(rollout))
+    assert (not errors) == accepted, (rollout, [e.message for e in errors])
+
+
+def test_the_api_block_requires_a_rollout() -> None:
+    """A values file that removes the block is refused, not given a default."""
+    jsonschema = pytest.importorskip("jsonschema")
+    assert "rollout" in SCHEMA["properties"]["api"]["required"]
+    assert SCHEMA["properties"]["api"]["properties"]["rollout"] == {
+        "$ref": "#/$defs/rollout"
+    }
+    without = _merge(VALUES, {})
+    del without["api"]["rollout"]
+    errors = list(jsonschema.Draft202012Validator(SCHEMA).iter_errors(without))
+    assert any("rollout" in error.message for error in errors)
+
+
+def test_a_rollout_that_can_do_nothing_is_refused_by_the_render() -> None:
+    """Two zeros: the controller may neither remove a pod nor add one.
+
+    Kubernetes refuses that Deployment. The render refuses it first, and names
+    both values, so the failure is read before a cluster is asked.
+    """
+    refused = _render("api.rollout.maxSurge=0")
+    assert refused.returncode != 0, "two zero bounds rendered and should not have"
+    assert (
+        "api.rollout.maxUnavailable and api.rollout.maxSurge must not both be 0"
+        in refused.stderr
+    )
+    assert (
+        _render("api.rollout.maxSurge=0", "api.rollout.maxUnavailable=1").returncode
+        == 0
+    )
+
+
+def test_a_rollout_percentage_is_refused_by_the_schema_at_render() -> None:
+    refused = _render("api.rollout.maxSurge=25%")
+    assert refused.returncode != 0
+    assert "/api/rollout/maxSurge" in refused.stderr
+
+
+def test_a_second_api_replica_changes_the_replica_count_and_nothing_else() -> None:
+    """Two API replicas are one field of one object.
+
+    The Service, its selector, the pod template, the probes, the configuration,
+    the network policies, and the runtime are the same bytes at one replica and
+    at two. So the request path a caller uses is rendered the same way, and each
+    replica is given the same configuration. Whether two pods then serve, and
+    whether a caller is served when one stops, is not something a render shows.
+    """
+    one = _render("api.replicaCount=1")
+    two = _render("api.replicaCount=2")
+    assert one.returncode == 0, one.stderr
+    assert two.returncode == 0, two.stderr
+    before = one.stdout.replace("\r\n", "\n").splitlines()
+    after = two.stdout.replace("\r\n", "\n").splitlines()
+    assert len(before) == len(after)
+    changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
+    assert changed == [("  replicas: 1", "  replicas: 2")]
+
+    documents = [d for d in yaml.safe_load_all(two.stdout) if isinstance(d, dict)]
+    [deployment] = [
+        d
+        for d in documents
+        if d["kind"] == "Deployment"
+        and d["metadata"]["labels"].get("app.kubernetes.io/component") == "platform-api"
+    ]
+    assert deployment["spec"]["replicas"] == 2
+    assert deployment["spec"]["strategy"]["rollingUpdate"] == {
+        "maxUnavailable": 0,
+        "maxSurge": 1,
+    }
+
+
+# --------------------------------------------------------------------------
 # The test hook, which is not a resource
 # --------------------------------------------------------------------------
 
@@ -2130,6 +2310,56 @@ def test_the_generated_release_and_its_hand_written_values_render_the_v1_workloa
         overrides=("telemetry.deploymentEnvironment=local",),
     )
     lint = _lint(GENERATED_VALUES, HAND_WRITTEN_VALUES)
+    assert lint.returncode == 0, lint.stdout + lint.stderr
+    assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
+
+
+DESIRED_STATE_VALUES = (
+    REPO_ROOT
+    / "gitops"
+    / "environments"
+    / "local-docker-desktop"
+    / "workloads"
+    / "support-assistant"
+    / "values.generated.yaml"
+)
+
+
+def test_the_desired_state_release_renders_two_api_replicas_and_one_changed_line() -> (
+    None
+):
+    """The desired-state release, as the chart reads it, beside the fixture release.
+
+    The two generated files differ in the API replica count, so the two renders
+    differ in one line: the API Deployment's `replicas`. The Service, the pod
+    template, and the runtime are rendered the same. The API Deployment states
+    the availability-first rollout in both.
+
+    This renders files. No cluster was asked, and no release with two API
+    replicas has been installed, so this establishes the rendered topology and
+    not what a caller observes when one API pod is unavailable.
+    """
+    desired = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    fixture = _template(GENERATED_VALUES, HAND_WRITTEN_VALUES)
+    before, after = fixture.splitlines(), desired.splitlines()
+    assert len(before) == len(after)
+    changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
+    assert changed == [("  replicas: 1", "  replicas: 2")]
+
+    documents = [d for d in yaml.safe_load_all(desired) if isinstance(d, dict)]
+    deployments = {
+        d["metadata"]["labels"]["app.kubernetes.io/component"]: d
+        for d in documents
+        if d["kind"] == "Deployment"
+    }
+    api = deployments["platform-api"]
+    assert api["spec"]["replicas"] == 2
+    assert api["spec"]["strategy"] == {
+        "type": "RollingUpdate",
+        "rollingUpdate": {"maxUnavailable": 0, "maxSurge": 1},
+    }
+    assert deployments["serving-runtime"]["spec"]["replicas"] == 1
+    lint = _lint(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
     assert lint.returncode == 0, lint.stdout + lint.stderr
     assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
 

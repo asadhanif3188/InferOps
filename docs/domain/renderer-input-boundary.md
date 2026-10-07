@@ -20,7 +20,7 @@ static, at evidence level C0.
 | Package | [`src/inferops/domain/render/`](../../src/inferops/domain/render/__init__.py) |
 | Entry points | `prepare_render`, the canonical path, or its two steps `validate_for_render` and `build_render_context`; `render_with` calls a `Renderer` on the result; `record_release` builds the release a renderer records |
 | Inputs | A parsed [WorkloadContract](../contracts/workload-contract.md), one set of platform defaults, and the parsed [EnvironmentBindings](../contracts/environment-binding.md) supplied together |
-| Output | A `RenderContext`: 44 named values, each with its one owner and its source, and the identity and digest of every input |
+| Output | A `RenderContext`: 46 named values, each with its one owner and its source, and the identity and digest of every input |
 | Refusal | A `RenderRefused` carrying every finding at once, each with a category, a canonical code, and a rule identifier, before any output |
 | Renderer | The interface, and one implementation: `HelmValuesRenderer`, published in [the Helm values renderer](helm-values-renderer.md) |
 | Tests | [`tests/domain/test_renderer_input_boundary.py`](../../tests/domain/test_renderer_input_boundary.py), [`tests/domain/test_renderer_refusals.py`](../../tests/domain/test_renderer_refusals.py), [`tests/domain/test_provenance_input_trust.py`](../../tests/domain/test_provenance_input_trust.py), and, for the renderer's own rules, [`tests/domain/test_helm_values_renderer.py`](../../tests/domain/test_helm_values_renderer.py) |
@@ -122,8 +122,8 @@ A release takes workload intent from a WorkloadContract and environment facts fr
 EnvironmentBinding. A third kind of input belongs to neither: a setting InferOps fixes for
 every workload in every environment. `PlatformDefaults` holds one versioned set of them.
 
-A `v1alpha1` set carries three settings of the platform API tier. Each was chosen because
-the chart already exposes it, neither the WorkloadContract nor the EnvironmentBinding has a
+A `v1alpha1` set carries five settings of the platform API tier. Each was chosen because
+the chart exposes it, neither the WorkloadContract nor the EnvironmentBinding has a
 field for it, and the chart's default is the value every values file the repository renders
 with uses - no file under `charts/inferops-llm/ci/` overrides any of them:
 
@@ -132,10 +132,25 @@ with uses - no file under `charts/inferops-llm/ci/` overrides any of them:
 | `api.requestTimeoutMs` | `api.requestTimeoutMs` | 120000 | 1 to 3600000 |
 | `api.drainTimeoutMs` | `api.drainTimeoutMs` | 15000 | 1 to 3600000 |
 | `api.maxOutputTokens` | `api.maxOutputTokens` | 128 | 1 to 32768 |
+| `api.rollout.maxUnavailable` | `api.rollout.maxUnavailable` | 0 | 0 to 16 |
+| `api.rollout.maxSurge` | `api.rollout.maxSurge` | 1 | 0 to 16 |
 
 The bounds are the chart's values schema, and a test fails if they differ. A value outside
 them, a boolean, a float, or a string is refused at construction, and so is a version other
 than `v1alpha1`. No attribute has a default.
+
+The two rollout settings are the bounds of the API Deployment's rolling update, in whole
+pods: how many API pods a rollout may take away before their replacements are Ready, and
+how many it may add above the replica count. A percentage is a string and is refused. Two
+zeros are refused at construction, and by the chart, because Kubernetes refuses a rolling
+update that may neither remove a pod nor add one. The defaults keep every existing API pod
+until its replacement is Ready. They are a rollout policy: they do not establish what a
+caller observes during a rollout, and they do not bound a pod deletion, a node loss, or an
+eviction.
+
+**The two rollout settings joined `v1alpha1` in place.** The first sets carried three
+settings. No defaults file is committed at any revision, so no stored document changed its
+meaning. A caller that constructs a set states the two bounds, or construction fails.
 
 A set is identified by the full Git revision its values were read at, which a release
 records in `source.platformDefaults.revision`. **No platform-defaults file exists yet, and
@@ -207,6 +222,8 @@ owner left it out, and nothing fills it in.
 | `api.requestTimeoutMs` | `platform-defaults` | `api.requestTimeoutMs` | yes |
 | `api.drainTimeoutMs` | `platform-defaults` | `api.drainTimeoutMs` | yes |
 | `api.maxOutputTokens` | `platform-defaults` | `api.maxOutputTokens` | yes |
+| `api.rollout.maxUnavailable` | `platform-defaults` | `api.rollout.maxUnavailable` | yes |
+| `api.rollout.maxSurge` | `platform-defaults` | `api.rollout.maxSurge` | yes |
 | `destination.clusterProvider` | `environment-binding` | `spec.destination.clusterProvider` | yes |
 | `destination.namespace` | `environment-binding` | `spec.destination.namespace` | yes |
 | `modelCache.class` | `environment-binding` | `spec.modelCache.class` | yes |
@@ -214,8 +231,8 @@ owner left it out, and nothing fills it in.
 | `api.replicas` | `environment-binding` | `spec.platform.apiReplicas` | yes |
 | `gitops.destinationPath` | `environment-binding` | `spec.gitops.destinationPath` | yes |
 
-That is 44 values: 35 of workload intent (21 always present, 14 present only when the
-contract carries them), 3 platform defaults, and 6 environment facts. The six binding rows
+That is 46 values: 35 of workload intent (21 always present, 14 present only when the
+contract carries them), 5 platform defaults, and 6 environment facts. The six binding rows
 are [the binding's published ownership table](../contracts/environment-binding.md#ownership-what-a-binding-owns-and-what-it-may-not-touch)
 less `spec.environment`, and each of the ten contract blocks that table says a binding may
 not carry is read here as workload intent and never as a binding value. A test compares
@@ -485,9 +502,9 @@ which selection has already required to equal the contract's. A binding carrying
 binding, not a claim on the workload's values. A test asserts these three are the only
 shared paths.
 
-**What the tests reach, and what reaches it today.** For each of the 44 values and each of
+**What the tests reach, and what reaches it today.** For each of the 46 values and each of
 the two layers that do not own it, an input of that layer supplying the value by its name is
-refused as an ownership conflict naming the owner: 88 cases. Each of the 41 values the
+refused as an ownership conflict naming the owner: 92 cases. Each of the 41 values the
 contract or the binding owns is also supplied at its owner's source path from the other of
 the two: 38 are refused and the three shared paths are not. **No parsed input reaches the
 check today.** Each parser refuses a field its schema does not define, so a binding writing
@@ -550,14 +567,16 @@ column is the value the reference inputs give it, in the JSON form the context h
 | `api.requestTimeoutMs` | refused | **owns** `api.requestTimeoutMs` | refused | `120000` |
 | `api.drainTimeoutMs` | refused | **owns** `api.drainTimeoutMs` | refused | `15000` |
 | `api.maxOutputTokens` | refused | **owns** `api.maxOutputTokens` | refused | `128` |
+| `api.rollout.maxUnavailable` | refused | **owns** `api.rollout.maxUnavailable` | refused | `0` |
+| `api.rollout.maxSurge` | refused | **owns** `api.rollout.maxSurge` | refused | `1` |
 | `destination.clusterProvider` | refused | refused | **owns** `spec.destination.clusterProvider` | `"docker-desktop"` |
 | `destination.namespace` | refused | refused | **owns** `spec.destination.namespace` | `"inferops-release"` |
 | `modelCache.class` | refused | refused | **owns** `spec.modelCache.class` | `"existing-claim"` |
 | `modelCache.claimName` | refused | refused | **owns** `spec.modelCache.claimName` | `"inferops-model-cache"` |
-| `api.replicas` | refused | refused | **owns** `spec.platform.apiReplicas` | `1` |
+| `api.replicas` | refused | refused | **owns** `spec.platform.apiReplicas` | `2` |
 | `gitops.destinationPath` | refused | refused | **owns** `spec.gitops.destinationPath` | `"gitops/environments/local-docker-desktop"` |
 
-37 values are present and 7 absent: the two optional integrations the contract does not
+39 values are present and 7 absent: the two optional integrations the contract does not
 declare, and the mock profile's three. A test builds the context from those inputs through
 the canonical path and fails if one cell of this table differs. The values are a committed
 fixture's, not a deployment's: nothing was rendered from them.
@@ -579,7 +598,7 @@ is refused with `ReleaseNotRecordedError` before anything is returned, without q
 it. A caller that imports the private sentinel can still build a context of well-formed
 values the boundary never saw; that limit is the context's own, recorded above.
 
-The policy - every release field and every one of the 44 context values classified as a
+The policy - every release field and every one of the 46 context values classified as a
 public-safe identity, a derived digest or revision, or excluded, each with its reason - is
 published with the release, under
 [Provenance input trust](../contracts/rendered-workload-release.md#provenance-input-trust),

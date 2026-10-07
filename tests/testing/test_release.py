@@ -253,6 +253,16 @@ def test_the_notes_state_the_counts_the_data_holds() -> None:
 # --------------------------------------------------------------- the components
 
 
+#: Released component pins that `main` has moved since the tag: the component, the
+#: pinning file, and the pin that file carries now. `V2-S4-001-PR1` moved the chart
+#: to `0.4.0`, which states the API Deployment's rollout strategy. The release was
+#: cut with chart `0.3.0`, and the release data still says so. No release quotes
+#: chart `0.4.0`, and no record of an installed release names it.
+MOVED_SINCE_THE_RELEASE: dict[str, dict[str, str]] = {
+    "chart": {"charts/inferops-llm/Chart.yaml": "version: 0.4.0"},
+}
+
+
 def _index_values(kind: str, names: list[str]) -> list[str]:
     return [
         row["value"]
@@ -266,11 +276,47 @@ def _index_values(kind: str, names: list[str]) -> list[str]:
     "component", RELEASE["components"], ids=lambda row: row["componentId"]
 )
 def test_every_component_is_pinned_where_the_data_says(component: dict) -> None:
+    """The tree still carries each released pin, except where `main` has moved one.
+
+    A pin that moved is named in :data:`MOVED_SINCE_THE_RELEASE` with the pin the
+    file carries now. The release data is not edited for it: that file states what
+    the release was cut with."""
+    moved = MOVED_SINCE_THE_RELEASE.get(component["componentId"], {})
+    assert set(moved) <= set(component["pinnedIn"])
     for relative in component["pinnedIn"]:
+        if relative in moved:
+            assert component["pinnedAs"] not in read(relative), relative
+            assert moved[relative] in read(relative), (relative, moved[relative])
+            continue
         assert component["pinnedAs"] in read(relative), (
             relative,
             component["pinnedAs"],
         )
+
+
+def test_a_pin_that_moved_since_the_release_was_the_released_pin_at_the_tag() -> None:
+    """Each moved pin is read at the tag, in a checkout that holds the tag.
+
+    A shallow checkout does not hold it, and this test skips there. The test above
+    still requires the tree to carry the pin this table names and not the released
+    one."""
+    assert set(MOVED_SINCE_THE_RELEASE) == {"chart"}
+    components = {row["componentId"]: row for row in RELEASE["components"]}
+    for component_id, files in MOVED_SINCE_THE_RELEASE.items():
+        for relative in files:
+            try:
+                at_the_tag = subprocess.run(
+                    ["git", "show", f"{RELEASE['tag']}:{relative}"],
+                    cwd=REPO_ROOT,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                ).stdout
+            except (OSError, subprocess.CalledProcessError):
+                pytest.skip("the release tag is not in this clone")
+            assert components[component_id]["pinnedAs"] in at_the_tag, relative
+            assert files[relative] not in at_the_tag, relative
 
 
 @pytest.mark.parametrize(

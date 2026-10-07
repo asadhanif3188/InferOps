@@ -288,24 +288,26 @@ def test_the_declared_revision_names_a_commit_that_holds_the_defaults_read_today
     assert shown.returncode == 0, shown.stderr
     then = yaml.safe_load(shown.stdout)["api"]
     now = load(declared.platform_defaults)["api"]
-    for setting in ("requestTimeoutMs", "drainTimeoutMs", "maxOutputTokens"):
-        assert then[setting] == now[setting], setting
+    for setting in ("requestTimeoutMs", "drainTimeoutMs", "maxOutputTokens", "rollout"):
+        assert then.get(setting) == now[setting], setting
 
 
-def test_the_values_are_the_reference_release_values_and_only_provenance_differs() -> (
+def test_the_values_differ_from_the_reference_release_values_in_the_replica_count() -> (
     None
 ):
-    """The two local bindings render the same chart values.
+    """The two local bindings render chart values that differ in one value.
 
-    So what the chart suite establishes about the reference release's values file
-    holds for this one: the chart's guards still require four hand-written values,
-    and the pair renders the V1 workload. The releases differ only in the binding
-    they name, its digest, the two revisions, and the identifier derived from them.
+    This binding states two API replicas, and the fixture's binding states one.
+    Every other generated value is the same. So what the chart suite establishes
+    about the reference release's values file holds for this one, but for the API
+    replica count: the chart's guards still require four hand-written values. The
+    releases differ in the binding they name, its digest, the values digest, the
+    two revisions, and the identifier derived from them.
+
+    Two replicas here is a declared count. This test reads two files. It does not
+    establish that two API pods run, or what a caller observes when one stops.
     """
     fixture = DECLARED_RELEASES[0]
-    assert (REPO_ROOT / REFERENCE.directory / VALUES).read_bytes() == (
-        REPO_ROOT / fixture.directory / VALUES
-    ).read_bytes()
 
     def leaves(document: dict, prefix: str = "") -> dict[str, object]:
         flat: dict[str, object] = {}
@@ -316,10 +318,26 @@ def test_the_values_are_the_reference_release_values_and_only_provenance_differs
                 flat[f"{prefix}{key}"] = value
         return flat
 
+    our_values = leaves(load(f"{REFERENCE.directory}/{VALUES}"))
+    their_values = leaves(load(f"{fixture.directory}/{VALUES}"))
+    assert set(our_values) == set(their_values)
+    assert {path for path in our_values if our_values[path] != their_values[path]} == {
+        "api.replicaCount"
+    }
+    assert (our_values["api.replicaCount"], their_values["api.replicaCount"]) == (2, 1)
+    assert (
+        our_values["api.rollout.maxUnavailable"],
+        our_values["api.rollout.maxSurge"],
+    ) == (
+        0,
+        1,
+    )
+
     ours = leaves(load(f"{REFERENCE.directory}/{RELEASE}"))
     theirs = leaves(load(f"{fixture.directory}/{RELEASE}"))
     assert {path for path in ours if ours[path] != theirs[path]} == {
         "metadata.releaseId",
+        "output.helmValues.sha256",
         "source.environmentBinding.name",
         "source.environmentBinding.sha256",
         "source.platformDefaults.revision",

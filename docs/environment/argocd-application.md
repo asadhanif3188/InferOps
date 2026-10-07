@@ -139,6 +139,9 @@ by `verify`.
 Each run made one manual change: it scaled the API Deployment from one replica
 to two. The Deployment declared one replica again within 2 to 4 seconds, read
 once a second. That is a check of the setting and not the drift experiment.
+The desired state declared one API replica at each of those runs. Since
+`V2-S4-001-PR1` it declares two, so a scale to two is no longer a change, and the
+same check needs another count. No run was made against the two-replica state.
 
 ## The procedure
 
