@@ -78,9 +78,23 @@ correction is appended to its limitation, and one surface reason is replaced. It
 no claim and no record. It is the fifth post-release ledger, and the first to state
 the result review its changes rest on.
 
-The nine ledgers are applied in order, and undone in reverse, so the register's
-history since the migration is the nine of them together. The first four are the
-ones the `v1.0.0` pack covers; the five after them are the post-release ledgers.
+**The E01-D registration ledger** is
+`docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json`, the record of
+what `V2-S3-005-PR1` changed to record the result of part E01-D, which ran and was
+reviewed in `V2-S3-004` and was not registered there: one claim, with its one record
+at `C2`, added by an ``add-claim`` change, a dated note appended to the limitation of
+two planned claims, one clause replaced in the second static run's claim, and one
+surface reason replaced. It is the sixth post-release ledger, and the first to add an
+executed record, so it is the first post-release ledger to state how a record it adds
+identifies the code that ran. A post-release ledger states a code revision and a code
+identity only for an executed record that it adds. A reading that is missing,
+repeated, of a row that does not have the members the index reads, or of a record of
+another ledger is a refusal. The shape of a ledger's register changes is not checked
+there: the register rules check it when the changes are applied.
+
+The ten ledgers are applied in order, and undone in reverse, so the register's
+history since the migration is the ten of them together. The first four are the
+ones the `v1.0.0` pack covers; the six after them are the post-release ledgers.
 
 **The result review gate.** A register change bears on an experiment run when the
 claim or record it adds, or the claim or record it changes, names a file under that
@@ -150,6 +164,7 @@ __all__ = [
     "DISPOSITIONS",
     "E01_CLAIM_CORRECTION_PATH",
     "E01_CORRECTED_PROOF_PATH",
+    "E01_D_REGISTRATION_PATH",
     "E01_STATIC_PROOF_PATH",
     "FINAL_STATES",
     "FREEZE_DECISIONS",
@@ -271,6 +286,16 @@ E01_CLAIM_CORRECTION_PATH: Final = (
     / "v2-s2-005-pr2-e01-claim-correction.v1alpha1.json"
 )
 
+#: What V2-S3-005-PR1 changed in the register to record the reviewed result of part
+#: E01-D, which V2-S3-004 ran and did not register.
+E01_D_REGISTRATION_PATH: Final = (
+    REPO_ROOT
+    / "docs"
+    / "proof"
+    / "testing"
+    / "v2-s3-005-pr1-e01-d-registration.v1alpha1.json"
+)
+
 #: The ledgers the v1.0.0 evidence pack covers, in the order applied.
 RELEASED_LEDGER_PATHS: Final = (
     LEDGER_PATH,
@@ -288,6 +313,7 @@ POST_RELEASE_LEDGER_PATHS: Final = (
     E01_STATIC_PROOF_PATH,
     E01_CORRECTED_PROOF_PATH,
     E01_CLAIM_CORRECTION_PATH,
+    E01_D_REGISTRATION_PATH,
 )
 
 #: Every ledger of register changes since the migration, in the order applied.
@@ -655,6 +681,11 @@ def _code_revision(
     """
     if not record.get("execution", {}).get("targetBehaviourExecuted"):
         return None
+    if record["recordId"] not in revisions:
+        raise ValueError(
+            f"no ledger reads the code revision of the executed record "
+            f"{record['recordId']}"
+        )
     reading = revisions[record["recordId"]]
     entries = [
         {"value": entry["value"], "relation": entry["relation"], "path": entry["path"]}
@@ -672,9 +703,19 @@ def _code_revision(
 def _code_identity(
     record: Mapping[str, Any], identities: Mapping[str, Mapping[str, Any]]
 ) -> dict[str, Any] | None:
-    """How the completeness ledger reads the code an executed record ran, or None."""
+    """How a ledger reads the code an executed record ran, or None.
+
+    The completeness and closure ledgers read every record the released pack holds.
+    A ledger written after the release reads a record it adds. An executed record
+    that no ledger reads raises: the index does not state an identity nobody read.
+    """
     if not record.get("execution", {}).get("targetBehaviourExecuted"):
         return None
+    if record["recordId"] not in identities:
+        raise ValueError(
+            f"no ledger reads the code identity of the executed record "
+            f"{record['recordId']}"
+        )
     reading = identities[record["recordId"]]
     return {
         "identity": reading["identity"],
@@ -1034,6 +1075,116 @@ def _summary(
     }
 
 
+def _added_records(ledger: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    """Every record a ledger adds, alone or inside an added claim, by identifier."""
+    added: dict[str, Mapping[str, Any]] = {}
+    for change in ledger["registerChanges"]:
+        if change.get("operation") == "add-record":
+            added[change["record"]["recordId"]] = change["record"]
+        elif change.get("operation") == "add-claim":
+            for held in change["claim"]["evidenceRecords"]:
+                added[held["recordId"]] = held
+    return added
+
+
+def _added_record_ids(ledger: Mapping[str, Any]) -> set[str]:
+    """The identifier of every record a ledger adds, alone or inside an added claim."""
+    return set(_added_records(ledger))
+
+
+def _refuse_unless_added_and_executed(
+    added: Mapping[str, Mapping[str, Any]], record_id: str, reading: str
+) -> None:
+    """Refuse a reading of a record the ledger does not add, or that executed nothing."""
+    if record_id not in added:
+        raise ValueError(
+            f"a ledger reads the {reading} of {record_id}, which is "
+            "not a record that ledger adds"
+        )
+    execution = added[record_id].get("execution")
+    if not isinstance(execution, Mapping) or not execution.get(
+        "targetBehaviourExecuted"
+    ):
+        raise ValueError(
+            f"a ledger reads the {reading} of {record_id}, which is "
+            "not an executed record"
+        )
+
+
+def _later_revision_rows(ledger: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """The ``codeRevisions`` rows of a ledger written after the release, checked.
+
+    Each row is an object with a record identifier, a note that is not empty, and
+    a list of entries, which may be empty: the note then says why the record names
+    no revision. Each entry is an object with a value, one of the published relations, the path
+    of the file that states the value, and the quote that holds it. A row names an
+    executed record that this ledger adds: a ledger does not read a record of
+    another ledger, a record that does not exist, or a record that executed
+    nothing. Anything else raises ``ValueError``, so the command reports a refusal
+    and not a traceback. That the quote is in the file is a test, not this check.
+    """
+    stated = ledger.get("codeRevisions")
+    if not isinstance(stated, list):
+        raise ValueError("a ledger's codeRevisions is not a list")
+    added = _added_records(ledger)
+    for row in stated:
+        if (
+            not isinstance(row, Mapping)
+            or not isinstance(row.get("recordId"), str)
+            or not isinstance(row.get("note"), str)
+            or not row["note"].strip()
+            or not isinstance(row.get("entries"), list)
+        ):
+            raise ValueError(
+                "a codeRevisions row is not an object with a recordId, a note "
+                "that is not empty, and an entries list"
+            )
+        for entry in row["entries"]:
+            if not isinstance(entry, Mapping) or not all(
+                isinstance(entry.get(field), str) and entry[field]
+                for field in ("value", "relation", "path", "quote")
+            ):
+                raise ValueError(
+                    f"a codeRevisions entry of {row['recordId']} is not an object "
+                    "with a value, a relation, a path, and a quote"
+                )
+            if entry["relation"] not in CODE_REVISION_RELATIONS:
+                raise ValueError(f"no code revision relation {entry['relation']!r}")
+        _refuse_unless_added_and_executed(added, row["recordId"], "code revision")
+    return stated
+
+
+def _later_identity_rows(ledger: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """The ``codeIdentity`` rows of a ledger written after the release, checked.
+
+    Each row is an object with a record identifier, one of the published identities,
+    and a list of the repository components among those that executed. It names an
+    executed record that this ledger adds: a ledger does not read a record of
+    another ledger, a record that does not exist, or a record that executed
+    nothing. Anything else raises
+    ``ValueError``, so the command reports a refusal and not a traceback.
+    """
+    stated = ledger.get("codeIdentity", [])
+    if not isinstance(stated, list):
+        raise ValueError("a ledger's codeIdentity is not a list")
+    added = _added_records(ledger)
+    for row in stated:
+        if (
+            not isinstance(row, Mapping)
+            or not isinstance(row.get("recordId"), str)
+            or not isinstance(row.get("identity"), str)
+            or not isinstance(row.get("repositoryCodeAmongThem"), list)
+        ):
+            raise ValueError(
+                "a codeIdentity row is not an object with a recordId, an identity, "
+                "and a repositoryCodeAmongThem list"
+            )
+        if row["identity"] not in CODE_IDENTITIES:
+            raise ValueError(f"no code identity {row['identity']!r}")
+        _refuse_unless_added_and_executed(added, row["recordId"], "code identity")
+    return stated
+
+
 def _entries(
     register: Mapping[str, Any],
     ledgers: Sequence[Mapping[str, Any]],
@@ -1041,9 +1192,24 @@ def _entries(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """One entry per claim and one per record, read with the ledgers given."""
     completeness, closure = ledgers[1], ledgers[2]
+    released, later = (
+        ledgers[: len(RELEASED_LEDGER_PATHS)],
+        ledgers[len(RELEASED_LEDGER_PATHS) :],
+    )
     revisions = {
-        entry["recordId"]: entry for one in ledgers for entry in one["codeRevisions"]
+        entry["recordId"]: entry for one in released for entry in one["codeRevisions"]
     }
+    # A ledger written after the release reads the code revision of an executed
+    # record it adds, and of no other record. The released ledgers read every
+    # executed record the released pack holds, and none of them can change. A
+    # record is read once: a second reading raises.
+    for one in later:
+        for row in _later_revision_rows(one):
+            if row["recordId"] in revisions:
+                raise ValueError(
+                    f"records read twice for their code revision: {[row['recordId']]}"
+                )
+            revisions[row["recordId"]] = row
     corrections: dict[str, list[str]] = {}
     for correction in (item for one in ledgers for item in one["recordCorrections"]):
         corrections.setdefault(correction["path"], []).append(
@@ -1053,6 +1219,17 @@ def _entries(
         [finding for one in ledgers for finding in one["findings"]], "findingId"
     )
     identities, claim_identity = merged_identities(completeness, closure)
+    # A ledger written after the release reads the code identity of a record it
+    # adds, and of no other record. The two ledgers above read every record the
+    # released pack holds, and neither can change. A record is still read once: a
+    # second reading raises.
+    for one in later:
+        for row in _later_identity_rows(one):
+            if row["recordId"] in identities:
+                raise ValueError(
+                    f"records read twice for their code identity: {[row['recordId']]}"
+                )
+            identities[row["recordId"]] = dict(row)
     blockers: dict[str, list[str]] = {}
     for blocker in open_blockers(completeness, closure):
         blockers.setdefault(blocker["claimId"], []).append(blocker["blockerId"])
@@ -1441,7 +1618,7 @@ def build_index(
     ledgers: Sequence[Mapping[str, Any]] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
-    """The evidence index the register and the nine ledgers produce today.
+    """The evidence index the register and the ten ledgers produce today.
 
     The pack sources are read from the committed files, not from the arguments: the
     pack digest binds what is on disk, which is what a release ships. The released
@@ -1478,8 +1655,8 @@ def build_index(
             "register, the normalization ledger, the completeness ledger, the "
             "closure ledger, the publication ledger, the post-release ledger, the "
             "claim reconciliation ledger, the E01 static proof ledger, the "
-            "corrected E01 static proof ledger, and the E01 claim correction "
-            "ledger; it states nothing they do not."
+            "corrected E01 static proof ledger, the E01 claim correction ledger, "
+            "and the E01-D registration ledger; it states nothing they do not."
         ),
         "generatedBy": "python -m tools.evidence_index --write",
         "registerRef": REGISTER_PATH.relative_to(REPO_ROOT).as_posix(),
@@ -1497,6 +1674,9 @@ def build_index(
             REPO_ROOT
         ).as_posix(),
         "e01ClaimCorrectionRef": E01_CLAIM_CORRECTION_PATH.relative_to(
+            REPO_ROOT
+        ).as_posix(),
+        "e01DRegistrationRef": E01_D_REGISTRATION_PATH.relative_to(
             REPO_ROOT
         ).as_posix(),
         "documentRef": "docs/proof/v1-evidence-index.md",

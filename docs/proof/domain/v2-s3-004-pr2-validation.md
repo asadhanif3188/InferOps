@@ -34,6 +34,14 @@ run.
 > independent review record of this run, and the contribution rules ask that the review
 > merges first. The claim and register reconciliation of E01-D is owed by a later change.
 
+> [!NOTE]
+> **Added on 2026-10-07.** `V2-S3-005-PR1` is that later change. It added one register
+> claim for this run, at `C2`, through a ledger that references the review record of this
+> run. [Its validation record](v2-s3-005-pr1-validation.md) says what it changed. Each
+> statement on this page that the reconciliation is pending, or that the register is
+> unchanged, describes 2026-10-06. No other text of this page changed, and no file of
+> the run changed.
+
 ## Evidence levels on this page
 
 | Evidence | Level | What executed |

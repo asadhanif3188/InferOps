@@ -1,0 +1,542 @@
+{
+  "$id": "https://inferops.io/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Register changes that record the reviewed E01-D result, V2-S3-005-PR1",
+  "description": "What V2-S3-005-PR1 changed in the register to record the result of part E01-D of V2-E01: every register change with its value before and after, the finding each answers, and the review artifacts the changes rest on. The run, 20261006-e01-d-1, executed on 2026-10-06 in V2-S3-004-PR2, and its independent review merged with that change. That change registered no claim, and its validation record says that the reconciliation was owed by a later change. A review of the sprint reported the claim as missing; no file in this repository records that review. This ledger is the correction, written on 2026-10-07. It is the sixth ledger written after v1.0.0 was released, and like the five before it, it is not part of the pack that release was cut over: the evidence index undoes it, with the other post-release ledgers, to recompute that pack. It adds one claim, certified at C2 on the one record it adds with it. It appends a dated note to the limitation of two planned claims and moves neither status. It replaces one clause in what the second static run's claim does not establish, and it replaces one surface reason. It runs no part of E01, changes no file of a run, a freeze record, or a review record, raises and closes no blocker, declares no freeze, states no release, and edits no earlier ledger. The change that adds it edits one dated record: it adds one dated note to the validation record of the run.",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "priorLedgerRef": "docs/proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json",
+  "reportRef": "docs/proof/domain/v2-s3-005-pr1-validation.md",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "resultReviews": [
+    {
+      "runPath": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1",
+      "reviewRef": "docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json",
+      "reviewSha256": "b8fd1f281f56301504cf91267121a1e9b1aab70e0755a6e14c86c9ab84cf8464"
+    },
+    {
+      "runPath": "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1",
+      "reviewRef": "docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json",
+      "reviewSha256": "46d2b99abc3b09391a56dd652ec0980cda61538dd0c80f05dc8129dba9e55080"
+    }
+  ],
+  "registerChanges": [
+    {
+      "changeId": "d01-real-deployment-claim",
+      "findingId": "d-f01-the-register-holds-no-claim-for-the-reviewed-e01-d-run",
+      "operation": "add-claim",
+      "position": 61,
+      "claim": {
+        "claimId": "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git",
+        "area": "kubernetes",
+        "statement": "In one run on 2026-10-06, on the docker-desktop provider, on one cluster with one node, the release rendered from the unmodified V1 synchronous reference contract on the local-docker-desktop binding was accepted into Git, was read by the run at commit ad725905a7838e8210e54a29de7913bc0c7c49e5, was reconciled by Argo CD into Kubernetes, and answered one completion request through the InferOps API with HTTP 200 and one choice whose assistant message is not empty, with the real runtime and the real model that the generated values name. The run answers the criteria E01-AC8, E01-AC9, and E01-AC10 that freeze revision 3 registers for E01-D, and each holds.",
+        "status": "certified",
+        "notClaimedReason": null,
+        "assertsRealBehaviour": true,
+        "limitation": "Runtime, C2, about one run, 20261006-e01-d-1, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one contract, one binding, one API replica, one runtime replica, and one completion request. The model cache was filled from a seed image before the deployment. The API image was built on the host, and the operator supplied its digest as one Helm parameter and applied the Application and its project. The same images had started on the node about two minutes earlier, so the deployment is a warm start. No runner and no coded analysis exist for E01-D: the automated assistant session that drove the run applied the registered rules. The review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. That review read no register statement about this run, and it does not establish that this claim is correct. The run did not observe the network. The clause of E01-AC10 about strings of eight characters or more rests on the second static run and on three tests, and is not computed over the live Application. The pod status reports the API container's image under another digest than the one the run supplied, and the read of the node that reconciles the two is not a registered step. Registration, 2026-10-07: the run executed and was reviewed on 2026-10-06 in V2-S3-004, and that change registered no claim. Its validation record says that the reconciliation was owed by a later change. A review of the sprint reported the claim as missing; no file in this repository records that review. V2-S3-005 added this claim after the review record of the run had merged. The run, its files, its outcome, its evidence level, and its review record are unchanged, and no part of E01 ran again.",
+        "doesNotEstablish": "That a second request is answered; behaviour on another provider, Kubernetes version, node count, storage class, workload shape, contract, or binding; that Argo CD applies a later commit of main; a caller outcome from a sync state, a health state, pod readiness, or a replica count; that the acquisition hook downloads the model into an empty claim; latency, throughput, capacity, availability, or behaviour under overload; reliability under failure, high availability, or tolerance of the loss of a pod, a node, a zone, or a region; that a service-level objective is met; representative evidence, C3, or operational evidence, C4; a cost, a saving, a return on investment, or a business effect; that a person reviewed the result; or production readiness.",
+        "claimMaterialComponents": [
+          "helm-values-renderer",
+          "argo-cd",
+          "inferops-llm-chart",
+          "docker-desktop-cluster",
+          "inferops-api",
+          "llama-cpp-server",
+          "qwen3-1-7b-q8-0"
+        ],
+        "evidenceRecords": [
+          {
+            "recordId": "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git-c2",
+            "claimId": "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git",
+            "migrationState": "migrated",
+            "evidenceLevel": "C2",
+            "summary": "On 2026-10-06 part E01-D of V2-E01 ran once, as freeze revision 3 registers it, at the merged commit ad725905a7838e8210e54a29de7913bc0c7c49e5, on the docker-desktop provider. Argo CD reconciled the generated release of that commit into one cluster of one node, the run sent one completion request through the InferOps API, and the response was HTTP 200 with one choice and an assistant message of six characters. E01-AC8, E01-AC9, and E01-AC10 hold, and the outcome is PASSED. The run was registered on 2026-10-07, after its independent review merged.",
+            "execution": {
+              "targetBehaviourExecuted": true,
+              "executedComponents": [
+                {
+                  "componentId": "helm-values-renderer",
+                  "role": "tool",
+                  "note": "src/inferops/domain/render at the executing commit, run in step D1 by python -m tools.gitops_desired_state --check. The check derived the release again from the reference contract and the local-docker-desktop binding and found the committed files equal. The committed release was rendered before the run, in an earlier change, and it records the renderer revision c056b9772a3de391fd61589649b1d3ed1c5ac7c4, which is a declared value and not the executing commit."
+                },
+                {
+                  "componentId": "argo-cd",
+                  "role": "other",
+                  "note": "Argo CD v3.5.3, installed in step P7 by scripts/environment/argocd-bootstrap.sh from the pinned manifest. Its Application names the remote repository, the chart path, and the generated values file of the release directory. Argo CD reported the executing commit as the synced revision and as the revision of the sync operation. The run does not verify that the read came from the remote."
+                },
+                {
+                  "componentId": "inferops-llm-chart",
+                  "role": "chart",
+                  "note": "charts/inferops-llm 0.3.0 at the executing commit, rendered by Argo CD with the generated values file, the hand-written values of the Application, and one operator-supplied parameter, api.image.digest."
+                },
+                {
+                  "componentId": "docker-desktop-cluster",
+                  "role": "cluster",
+                  "note": "The Docker Desktop cluster, one node, desktop-control-plane, Kubernetes v1.36.1, with the default storage class standard."
+                },
+                {
+                  "componentId": "terraform-prerequisites",
+                  "role": "other",
+                  "note": "Step P5 created the namespace inferops-release and the model cache claim. The cleanup destroyed both."
+                },
+                {
+                  "componentId": "inferops-api",
+                  "role": "api",
+                  "note": "One replica of the API Deployment. The pod requested the digest of the image that step P4 built on the host at the executing commit and loaded into the node. The container status reports another digest of the same repository; the limitations say what a later read showed. The readiness request and the one completion request went through a kubectl port-forward to its Service."
+                },
+                {
+                  "componentId": "llama-cpp-server",
+                  "role": "inference-runtime",
+                  "note": "One replica of the runtime Deployment. The container status reports the image digest that the generated values name."
+                },
+                {
+                  "componentId": "qwen3-1-7b-q8-0",
+                  "role": "model",
+                  "note": "Qwen3-1.7B-Q8_0.gguf, mounted at the generated model revision. The verify-model init container ended with exit code 0, and the response names the generated model identifier. Step P6 filled the model cache claim from a seed image before the deployment."
+                },
+                {
+                  "componentId": "reconciliation-evidence-tool",
+                  "role": "tool",
+                  "note": "tools/reconciliation_evidence and tools/desired_state_provenance, run in step D6. They wrote the reconciliation record over five samples and the provenance of the reported commit."
+                }
+              ],
+              "substitutions": []
+            },
+            "workload": {
+              "source": "operator-issued",
+              "description": "One fixed chat completion request, with the one user message 'Reply with the single word: ready', sent once by the driver with no retry. The generated text is not kept. The run records its length.",
+              "shape": {
+                "concurrency": 1,
+                "requestCount": 1
+              }
+            },
+            "environment": {
+              "environmentId": "local-kubernetes",
+              "provider": "docker-desktop",
+              "hardwareClass": "cpu",
+              "note": "One Windows host. Docker Engine 29.8.1. One Kubernetes cluster of one node, desktop-control-plane, server v1.36.1, node kernel 6.18.40.1-microsoft-standard-WSL2, 12 processors and 10186220Ki of memory, CPU only. One API replica, one runtime replica, and one telemetry collector pod in the namespace inferops-release. Argo CD v3.5.3 in the namespace argocd, installed from the pinned manifest that freeze revision 3 names as the core install. 2026-10-06. Freeze revision 3 names this environment, and step P3 read the thirteen attributes that the run compares with it."
+            },
+            "versions": [
+              {
+                "component": "inferops repository",
+                "kind": "commit",
+                "value": "ad725905a7838e8210e54a29de7913bc0c7c49e5"
+              },
+              {
+                "component": "llama-cpp-server",
+                "kind": "image-digest",
+                "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+              },
+              {
+                "component": "qwen3-1-7b-q8-0",
+                "kind": "model-revision",
+                "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+              },
+              {
+                "component": "inferops-api, the digest the run supplied",
+                "kind": "image-digest",
+                "value": "localhost/inferops-api@sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd"
+              },
+              {
+                "component": "model seed image, localhost/inferops-model-seed",
+                "kind": "image-digest",
+                "value": "sha256:1e4d76bcf7bc7c056de3c6dc1dd40ca1e9878cdb505c8436e7832f56934f3a0f"
+              },
+              {
+                "component": "inferops-llm-chart",
+                "kind": "chart-version",
+                "value": "inferops-llm-0.3.0"
+              },
+              {
+                "component": "generated values file",
+                "kind": "artifact-hash",
+                "value": "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce"
+              },
+              {
+                "component": "rendered workload release, releaseId",
+                "kind": "artifact-hash",
+                "value": "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae"
+              },
+              {
+                "component": "freeze revision 3, content digest",
+                "kind": "artifact-hash",
+                "value": "b4aa013dc482a8f536395c094ab76dc2b753e04d7c139a4b0cadf17c672da739"
+              },
+              {
+                "component": "Argo CD",
+                "kind": "package-version",
+                "value": "v3.5.3"
+              }
+            ],
+            "versionsRecordedIn": "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/run.v1alpha1.json",
+            "procedure": {
+              "commands": [
+                "bash scripts/environment/api-image.sh build",
+                "bash scripts/environment/terraform-prerequisites.sh apply",
+                "bash scripts/environment/argocd-bootstrap.sh install",
+                "uv run --locked python -m tools.gitops_desired_state --check",
+                "bash scripts/environment/argocd-application.sh apply --api-image-digest sha256:dfb772f2e0cc36e343ef95cd16718e9e9330898685e579b34de15a8ceb6a24dd",
+                "bash scripts/environment/argocd-application.sh verify",
+                "uv run --locked python -m tools.desired_state_provenance --revision ad725905a7838e8210e54a29de7913bc0c7c49e5 local-docker-desktop/support-assistant",
+                "bash scripts/environment/argocd-application.sh remove --confirm"
+              ],
+              "scriptRefs": [
+                "scripts/environment/api-image.sh",
+                "scripts/environment/model-seed-image.sh",
+                "scripts/environment/terraform-prerequisites.sh",
+                "scripts/environment/argocd-bootstrap.sh",
+                "scripts/environment/argocd-application.sh",
+                "tools/gitops_desired_state",
+                "tools/desired_state_provenance",
+                "tools/reconciliation_evidence"
+              ]
+            },
+            "measurement": {
+              "method": "The driver wrote the HTTP status that curl printed, the number of choices, and the length of the first assistant message to completion.json, and wrote the Application and the pods as kubectl returned them. The session that drove the run then applied the verification rules that freeze revision 3 registers to those files.",
+              "instrument": "curl, kubectl, and the driver that driver.txt holds.",
+              "observationPeriod": {
+                "start": "2026-10-06T12:03:47Z",
+                "end": "2026-10-06T12:15:17Z",
+                "durationSeconds": 690
+              }
+            },
+            "acceptanceCriteria": [
+              {
+                "criterionId": "e01-ac8",
+                "statement": "The release rendered from the unmodified reference contract, accepted into Git and reconciled by Argo CD, produces at least one real successful completion: HTTP 200, with at least one choice whose assistant message is not empty.",
+                "declaredBefore": true,
+                "outcome": "met"
+              },
+              {
+                "criterionId": "e01-ac9",
+                "statement": "The deployed identities verify against the release: the desired-state revision Argo CD reports as synced holds the generated release; the release records the contract, binding, and values digests, and they match their sources and the values file; the running runtime container's image digest is the generated runtime.image.digest; the model revision the runtime reads is the generated model.revision; and the API serves the model under the generated model.identifier.",
+                "declaredBefore": true,
+                "outcome": "met"
+              },
+              {
+                "criterionId": "e01-ac10",
+                "statement": "No claim-relevant workload intent is written by hand after rendering: no hand-written value and no operator-supplied parameter of the release restates or overrides claim-relevant workload intent; the release takes its values from the generated values file, from the hand-written values of the Argo CD Application, and from one operator-supplied Helm parameter, api.image.digest, over the chart's own defaults, and from no other source; admit_manual_values admits those hand-written values, with that parameter, beside the generated values with no finding; and no string in them contains a workload-intent generated value of eight characters or more.",
+                "declaredBefore": true,
+                "outcome": "met"
+              }
+            ],
+            "results": [
+              {
+                "resultId": "e01-ac8",
+                "statement": "The one request of step D5 returned HTTP status 200. The response holds one choice, and its assistant message has a length of 6. The run sent one request and no retry.",
+                "criterionId": "e01-ac8"
+              },
+              {
+                "resultId": "e01-ac9",
+                "statement": "Argo CD reported Synced and Succeeded at the executing commit. The provenance resolved from that commit gives the release identifier and the values digest that freeze revision 3 names. The runtime container's image identity ends with the generated digest, the model volume is mounted at the generated revision with verify-model at exit code 0, and the response names the model qwen3-1-7b-q8-0.",
+                "criterionId": "e01-ac9"
+              },
+              {
+                "resultId": "e01-ac10",
+                "statement": "The Application named exactly the one generated values file, the hand-written values of the committed manifest, and one parameter, api.image.digest, with the digest of step P4. The three selected tests passed. The clause about strings of eight characters or more rests on the second static run and was not computed over the live Application.",
+                "criterionId": "e01-ac10"
+              }
+            ],
+            "evidenceRefs": [
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/result.md",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/run.v1alpha1.json",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/completion.json",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/pods.json",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/provenance.json",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/reconciliation.record.json",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/release.json",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/environment.json",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/transcript.txt",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/commands.txt",
+              "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/driver.txt",
+              "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json",
+              "docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json",
+              "docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md",
+              "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/run.v1alpha1.json",
+              "docs/proof/domain/v2-s3-004-pr2-validation.md",
+              "docs/proof/domain/v2-s3-005-pr1-validation.md"
+            ],
+            "limitations": [
+              "One run, on one provider, on one cluster with one node, with one contract, one binding, one API replica, one runtime replica, and one completion request.",
+              "No runner and no coded analysis exist for E01-D. The automated assistant session that wrote the driver started it and applied the registered verification rules to the files. A script that is not committed compared the values. The run manifest states each compared value.",
+              "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. The review record states its own limits. The review read no register statement about this run, and it does not establish that this record or its claim is correct.",
+              "One session wrote every file of the run. No reviewer contacted the cluster, so no record verifies that the cluster returned argo.json and pods.json as committed.",
+              "That no earlier attempt preceded the run is the statement of the session that drove it, and no file proves it. Before the driver started, the two freeze commands of step P2, the reads of step P3, and the check of step D1 were run by hand, once each.",
+              "The driver does not check that the port-forward process is alive, so another listener on the port could have answered, and it writes requestsSent: 1 whatever curl returned. Before the readiness request the driver waited at most 30 seconds for the port-forward, a wait that the freeze record does not register.",
+              "The abort condition on a model download cannot be determined from the evidence. No step reads the hook's job or the network.",
+              "The driver is not a pinned input of the freeze record. driver.txt holds it as it ran.",
+              "The model cache claim was filled from a seed image in step P6, before the deployment. The run did not observe the network, and it does not establish whether the acquisition hook downloaded anything.",
+              "The API image was built on the host and loaded into the node. The operator supplied its digest as one Helm parameter, and the operator applied the Application and its project.",
+              "The same images had started on the same node in step P6, about two minutes before the deployment. The 18 seconds from the apply to both rollouts is a warm start.",
+              "The clause of E01-AC10 about strings of eight characters or more is not computed over the live Application. It rests on the second static run, 20261003-e01-abc-1, and on three tests. No step ran the admission check over the hand-written values with the parameter merged in.",
+              "The model revision is verified by configuration and by content. Nothing reads the revision from the model file.",
+              "The pod status reports the API container's image under another digest than the one the run supplied. A read of the node after the cleanup listed both digests for one image identifier. That read is not a registered step, and its output is not in the run directory.",
+              "transcript.txt is the driver's output after five transformations, which the review record and the validation record list, and the unredacted transcript is not committed. commands.txt is not the exact commands, and driver.txt holds them; the header of the driver does not list each command that it adds to the registered ones. The procedure of this record quotes eight commands and not the whole list. The output of three commands of step P3, the response body, and the readiness body are under a directory that Git ignores, and they are not committed.",
+              "In environment.json, the read values of the provider and of the kube context are literals of the driver. The target verification of the procedures, in the transcript, is the evidence for both.",
+              "The times are the host's clock and the cluster's clock. No repository file proves them.",
+              "The run executed and was reviewed on 2026-10-06 in V2-S3-004. That change registered no claim and no record, and its validation record says that the reconciliation was owed by a later change. This record was added on 2026-10-07 in V2-S3-005, after a review of the sprint reported the claim as missing; no file in this repository records that review. No file of the run changed, and no part of E01 ran again."
+            ],
+            "doesNotEstablish": [
+              "That a second request is answered. The run sent one.",
+              "Behaviour on another provider, another Kubernetes version, another node count, or another storage class than the environment identity names.",
+              "Portability to another workload shape, another contract, or another binding, or asynchronous or batch support.",
+              "That Argo CD applies a later commit of main. The run observed one commit.",
+              "A caller outcome from a sync state or a health state that Argo CD reports, from pod readiness, or from a replica count.",
+              "That the acquisition hook downloads the model into an empty claim, or that no model download happened in the run.",
+              "Latency, throughput, capacity, availability, or behaviour under overload.",
+              "Reliability under failure, high availability, or tolerance of the loss of a pod, a node, a zone, or a region.",
+              "That a service-level objective is met.",
+              "Representative evidence, C3, or operational evidence, C4.",
+              "A cost, a saving, a return on investment, or a business effect.",
+              "That the verdicts are independent of the session that drove the run, or that a person reviewed them.",
+              "Production readiness."
+            ]
+          }
+        ],
+        "strategyClaimIds": [],
+        "implementationRefs": [
+          "src/inferops/domain/render",
+          "gitops/environments/local-docker-desktop/workloads/support-assistant",
+          "infra/argocd",
+          "charts/inferops-llm",
+          "scripts/environment/argocd-application.sh"
+        ],
+        "automatedTestRefs": [
+          "tests/testing/test_experiment_e01.py",
+          "tests/testing/test_experiment_freeze.py",
+          "tests/testing/test_result_review_gate.py"
+        ],
+        "recordedCoverageGaps": [],
+        "ciGateIds": [
+          "default-lane-tests"
+        ],
+        "readmeRefs": [
+          "docs/proof/experiments/README.md"
+        ]
+      },
+      "reason": "Part E01-D ran once under the merged freeze revision 3, each of its three criteria held, and a review record of the result is merged. The register states what that one run shows, at C2, in a claim of its own, bounded to the environment the run records. The claim is appended to the register, so no existing pointer into it moves. The status is certified: one executed record supports the statement inside the boundary that the limitation states."
+    },
+    {
+      "changeId": "d02-serving-claim-dated-note",
+      "findingId": "d-f02-two-planned-claims-describe-the-state-before-the-e01-d-run",
+      "operation": "set-claim-field",
+      "claimId": "the-platform-serves-a-workload-the-contract-describes",
+      "field": "limitation",
+      "before": "Every real run so far deployed the runtime from a feasibility manifest or from the Helm chart, not from a generated `WorkloadContract`. The mock layers show the API maps the call; they cannot show a document drove the deployment.",
+      "after": "Every real run so far deployed the runtime from a feasibility manifest or from the Helm chart, not from a generated `WorkloadContract`. The mock layers show the API maps the call; they cannot show a document drove the deployment. Update, 2026-10-07: one run, 20261006-e01-d-1, deployed a release whose runtime, model, and scaling values were generated from a WorkloadContract, and the platform answered one completion request. A claim of its own holds that run at C2. This claim stays planned. One run with one contract, on one provider, with one request, does not establish the general statement, and no record tests a second contract or a contract change through the deployed path.",
+      "reason": "The limitation says that every real run so far deployed the runtime from a feasibility manifest or from the Helm chart. Since the E01-D run that is no longer the whole state. The dated sentences are appended, and the text the claim had is kept word for word in front of them. The claim's statement and status are unchanged, and it cites no record."
+    },
+    {
+      "changeId": "d03-deployment-values-claim-dated-note",
+      "findingId": "d-f02-two-planned-claims-describe-the-state-before-the-e01-d-run",
+      "operation": "set-claim-field",
+      "claimId": "deployment-values-derive-only-from-a-validated-document",
+      "field": "limitation",
+      "before": "Deterministic deployment-value rendering exists, checked statically at C0: validated, typed inputs render the chart's values, and a RenderedWorkloadRelease binds the generated values file to the digests and revisions of what it was rendered from. No supported deployment or GitOps path consumes the generated files yet, so no executed release shows deployment values derived only from a validated document. The platform-defaults revision a release records is the one its caller states: nothing yet reconstructs the defaults from a committed source bound to that revision, so defaults content changed under the same stated revision changes the values and not the release identifier. A hand-written values file is checked against the generated values only when it is one the repository supports, one named with the .manual-values.yaml suffix; any other values file given to Helm is not checked.",
+      "after": "Deterministic deployment-value rendering exists, checked statically at C0: validated, typed inputs render the chart's values, and a RenderedWorkloadRelease binds the generated values file to the digests and revisions of what it was rendered from. No supported deployment or GitOps path consumes the generated files yet, so no executed release shows deployment values derived only from a validated document. The platform-defaults revision a release records is the one its caller states: nothing yet reconstructs the defaults from a committed source bound to that revision, so defaults content changed under the same stated revision changes the values and not the release identifier. A hand-written values file is checked against the generated values only when it is one the repository supports, one named with the .manual-values.yaml suffix; any other values file given to Helm is not checked. Update, 2026-10-07: since V2-S3-002-PR2 one committed Argo CD Application names the generated values file, and one run, 20261006-e01-d-1, deployed a release that took its values from that file, from the hand-written values of the Argo CD Application, and from one operator-supplied parameter. A claim of its own holds that run at C2. The sentence above that says no supported path consumes the generated files describes the state before that change. This claim stays planned. One run does not establish that deployment values are derived only from a validated document: the admission check was not computed over the live Application's hand-written values with the parameter, the operator supplies the API image digest, and a values file or a parameter given to Helm or to Argo CD outside the committed Application is not checked.",
+      "reason": "The limitation says that no supported deployment or GitOps path consumes the generated files yet. One does, and one run used it. The dated sentences are appended, and the text the claim had is kept word for word in front of them. The claim's statement and status are unchanged, and it cites no record."
+    },
+    {
+      "changeId": "d04-second-static-claim-e01-d-clause",
+      "findingId": "d-f03-the-static-claims-say-e01-d-has-not-run",
+      "operation": "set-claim-field",
+      "claimId": "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal",
+      "field": "doesNotEstablish",
+      "before": "That the release input deploys or serves, which E01-D owns and has not run; that the first run's execution was governed by its freeze; that the renderer gives the same result at another revision, or for another workload shape, contract, or binding; that either derived URL resolves; that any invalid input beyond the seven registered cases is refused; reliability under failure; or production readiness.",
+      "after": "That the release input deploys or serves: E01-D owns that question, ran once on 2026-10-06 after this run, and is held by a claim of its own; that the first run's execution was governed by its freeze; that the renderer gives the same result at another revision, or for another workload shape, contract, or binding; that either derived URL resolves; that any invalid input beyond the seven registered cases is refused; reliability under failure; or production readiness.",
+      "reason": "The clause said that E01-D 'has not run'. E01-D ran once on 2026-10-06. The clause is replaced, and no other word of the field changes. The static run still does not establish that the release input deploys or serves. The claim's statement, limitation, status, and record are unchanged."
+    },
+    {
+      "changeId": "d05-index-surface-reason",
+      "findingId": "d-f04-the-index-surface-reason-names-nine-ledgers",
+      "operation": "set-register-field",
+      "field": "nonClaimSurfaces",
+      "before": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the nine ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "after": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the ten ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "reason": "The evidence index is projected from this register and ten ledgers now, and the released pack is recomputed by undoing all six ledgers written after the release."
+    }
+  ],
+  "recordCorrections": [],
+  "findings": [
+    {
+      "findingId": "d-f01-the-register-holds-no-claim-for-the-reviewed-e01-d-run",
+      "source": "a-review-of-the-sprint-reported-to-the-author",
+      "observation": "V2-S3-004 produced the frozen E01-D run and its review record and did not reconcile the register: its validation record says that the reconciliation was owed by a later change. The register held no claim and no evidence record for 20261006-e01-d-1, and a test required that absence. A review of the sprint, on 2026-10-06, reported that absence as a missing part of the sprint, reported no defect in the freeze inputs, the raw run, the result classification, or the review record, and reported that the finding justifies no repeated run. That review was reported to the author, and no file in this repository records it.",
+      "resolution": "One claim, with one record at C2, is added. The ledger references the review record of the run, which merged before this change. No part of E01 ran again, and no file of the run, of a freeze record, or of a review record changed.",
+      "resolvedBy": [
+        "d01-real-deployment-claim"
+      ],
+      "recordIds": [
+        "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git-c2"
+      ],
+      "claimIds": [
+        "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git"
+      ]
+    },
+    {
+      "findingId": "d-f02-two-planned-claims-describe-the-state-before-the-e01-d-run",
+      "source": "this-change",
+      "observation": "Two planned claims carry a limitation that describes the state before the E01-D run: one says that every real run deployed from a feasibility manifest or from the Helm chart, and the other says that no supported deployment or GitOps path consumes the generated files. Beside the new claim, each would contradict the register.",
+      "resolution": "A dated note is appended to each limitation. Both claims stay planned and cite no record: one run on one provider with one contract does not establish either general statement.",
+      "resolvedBy": [
+        "d02-serving-claim-dated-note",
+        "d03-deployment-values-claim-dated-note"
+      ],
+      "recordIds": [],
+      "claimIds": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document"
+      ]
+    },
+    {
+      "findingId": "d-f03-the-static-claims-say-e01-d-has-not-run",
+      "source": "this-change",
+      "observation": "The claims of the two static runs each say, in what they do not establish, that E01-D 'has not run'. The evidence record of each says the same. E01-D ran once on 2026-10-06.",
+      "resolution": "The clause is replaced in the second static run's claim. The review gate allows that change, because a review record of that run exists and this ledger references it. The same clause in the first static run's claim is not changed: no review record of run 20261002-e01-abc-1 exists, the review gate refuses a change to that claim without one, and this change creates no review. The two evidence records are dated records of their runs and are not changed. The first claim's clause and both records' sentences therefore still say that E01-D has not run, and they describe the state when each run was recorded.",
+      "resolvedBy": [
+        "d04-second-static-claim-e01-d-clause"
+      ],
+      "recordIds": [],
+      "claimIds": [
+        "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal"
+      ]
+    },
+    {
+      "findingId": "d-f04-the-index-surface-reason-names-nine-ledgers",
+      "source": "this-change",
+      "observation": "The register's reason for the evidence index, a surface that claims nothing, named nine ledgers of register changes. This ledger is a tenth, and the released pack is recomputed by undoing it too.",
+      "resolution": "The reason is replaced; the surface claims nothing.",
+      "resolvedBy": [
+        "d05-index-surface-reason"
+      ],
+      "recordIds": [],
+      "claimIds": []
+    }
+  ],
+  "codeRevisions": [
+    {
+      "recordId": "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git-c2",
+      "entries": [
+        {
+          "value": "ad725905a7838e8210e54a29de7913bc0c7c49e5",
+          "relation": "stated-revision",
+          "path": "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/run.v1alpha1.json",
+          "quote": "\"executingRevision\": \"ad725905a7838e8210e54a29de7913bc0c7c49e5\""
+        }
+      ],
+      "note": "The run manifest names the commit it executed. It records that git status printed no line before the run, that refs/heads/main on the remote named that commit, and that Argo CD reported the same commit as the synced revision. The API image was built at that commit, with every layer taken from the build cache. That the serving API container ran that image rests on a read of the node that is not a registered step and is not in the run directory."
+    }
+  ],
+  "codeIdentity": [
+    {
+      "recordId": "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git-c2",
+      "claimId": "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "helm-values-renderer",
+        "argo-cd",
+        "inferops-llm-chart",
+        "docker-desktop-cluster",
+        "inferops-api",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "helm-values-renderer",
+        "inferops-llm-chart",
+        "inferops-api"
+      ]
+    }
+  ]
+}

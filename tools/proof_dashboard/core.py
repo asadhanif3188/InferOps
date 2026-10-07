@@ -158,6 +158,7 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
         claim_ids=(
             "inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating",
             "a-helm-release-installs-and-uninstalls-without-residue",
+            "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git",
             "a-local-cluster-is-created-and-removed-without-residue",
             "kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed",
             "a-v1-operator-runbook-covers-every-incident-class-and-every-alert-links-into-it",

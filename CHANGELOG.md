@@ -10,6 +10,50 @@ from `1.0.0`.
 
 ### Added
 
+- **The real-deployment run of the first experiment is now in the register, one
+  day late. Nothing ran again.** `V2-S3-004-PR2` ran part E01-D of V2-E01 on
+  2026-10-06 and published its independent review, and it registered no claim.
+  A review of the sprint reported the claim as missing; no file in this
+  repository records that review. `V2-S3-005-PR1` adds
+  the claim on 2026-10-07, through
+  [a tenth ledger of register changes](docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json),
+  the sixth after `v1.0.0`. **One claim, certified at `C2` on one record:** in
+  one run, on the `docker-desktop` provider, on one cluster with one node, the
+  release rendered from the unmodified reference contract was accepted into
+  Git, was read by the run at one commit, was reconciled by Argo CD, and
+  answered one completion request with
+  HTTP 200 and a non-empty assistant message, under E01-AC8, E01-AC9, and
+  E01-AC10 of freeze revision 3. The claim is in the past tense and names that
+  one run. It does not establish a second request, another provider,
+  availability, behaviour under failure or overload, a caller outcome from
+  what Argo CD reports, representative or operational evidence, or production
+  readiness. The ledger references
+  [the review record of the run](docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.md),
+  which merged with the run, and the review gate was not changed. The reviewer
+  is an automated session, not a person. **Two planned claims stay planned.**
+  `the-platform-serves-a-workload-the-contract-describes` and
+  `deployment-values-derive-only-from-a-validated-document` each gain a note
+  dated 2026-10-07 that names the run and says why one run does not establish
+  the general statement. One clause of the second static run's claim, which
+  said that E01-D "has not run", is replaced. **The same clause in the first
+  static run's claim is not corrected:** no review record of that run exists,
+  and the review gate refuses a change to its claim without one. The register
+  now holds 62 claims, 45 certified, and 68 evidence records; the released
+  `v1.0.0` pack is unchanged, and the gate recomputes it. No file of a run, of
+  a freeze record, or of a review record changed, except that the validation
+  record of the run gains one dated note. `tools/evidence_index` now reads how
+  a record added after the release identifies the code that ran, from the
+  ledger that adds it; until now no ledger after the release had added an
+  executed record. A ledger written after the release states a code revision
+  and a code identity only for an executed record that it adds, and a reading
+  that is missing, repeated, without the members the index reads, or of a
+  record of another ledger is a refusal. A test that required the register to hold no record of the
+  run is replaced by tests that bind the claim to the run, to revision 3, and
+  to the review record. [The validation record](docs/proof/domain/v2-s3-005-pr1-validation.md)
+  lists the checks. `python -m tools.experiment_e01 --check` still leaves the
+  E01-D run out, and a new run of any part is still refused until a later
+  freeze revision.
+
 - **The first experiment's real-deployment part ran once, and it passed. One
   provider, one node, one request.** `V2-S3-004-PR2` adds
   [run `20261006-e01-d-1`](docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/result.md)

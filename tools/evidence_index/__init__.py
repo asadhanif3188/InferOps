@@ -10,7 +10,8 @@ The index is generated from
 [the claim reconciliation ledger](../../docs/proof/testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
 [the E01 static proof ledger](../../docs/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json),
 [the corrected E01 static proof ledger](../../docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json),
-and [the E01 claim correction ledger](../../docs/proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json),
+[the E01 claim correction ledger](../../docs/proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json),
+and [the E01-D registration ledger](../../docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json),
 and it says nothing they do not. A ledger whose changes bear on an experiment run
 must reference a review artifact of that run, and the index is not built without one.
 The check does not show that the review was independent, or that it came first. See
@@ -29,6 +30,7 @@ from .core import (
     DISPOSITIONS,
     E01_CLAIM_CORRECTION_PATH,
     E01_CORRECTED_PROOF_PATH,
+    E01_D_REGISTRATION_PATH,
     E01_STATIC_PROOF_PATH,
     FINAL_STATES,
     FREEZE_DECISIONS,
@@ -80,6 +82,7 @@ __all__ = [
     "DISPOSITIONS",
     "E01_CLAIM_CORRECTION_PATH",
     "E01_CORRECTED_PROOF_PATH",
+    "E01_D_REGISTRATION_PATH",
     "E01_STATIC_PROOF_PATH",
     "FINAL_STATES",
     "FREEZE_DECISIONS",
