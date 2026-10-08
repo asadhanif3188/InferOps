@@ -517,7 +517,7 @@ def wait_api_ready(
             raise CompositionError(
                 "the InferOps API did not become ready within its budget"
             )
-        sleeper(min(1.0, deadline - clock()))
+        sleeper(max(0.0, min(1.0, deadline - clock())))
 
 
 def status(

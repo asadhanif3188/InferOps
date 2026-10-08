@@ -9,7 +9,8 @@ caller of the inference endpoint received.
 - a runtime that is ready;
 - a runtime that cannot be reached;
 - a runtime that answers and whose model is still loading;
-- a runtime that does not answer inside the readiness budget;
+- a runtime that does not answer inside the readiness budget, for one
+  readiness request and for several;
 - an API that is starting, draining, or stopped.
 
 **What a result here establishes, and what it does not.** The adapter is the real
@@ -367,18 +368,22 @@ async def test_an_api_that_is_not_accepting_work_is_counted_as_the_api() -> None
 
 
 class SilentAdapter(RecordingAdapter):
-    """An adapter whose readiness answer never arrives."""
+    """An adapter whose readiness answer arrives only when a test releases it."""
 
-    cancelled = False
+    def __init__(self) -> None:
+        super().__init__()
+        self.release = asyncio.Event()
+        self.cancelled = False
+        self.answer = True
 
     async def is_ready(self, context: RequestContext) -> bool:
         self.ready_calls.append(context)
         try:
-            await asyncio.Event().wait()
+            await self.release.wait()
         except asyncio.CancelledError:
             self.cancelled = True
             raise
-        return True
+        return self.answer
 
 
 def api_with_budget(adapter: object, budget_ms: int) -> InferOpsApi:
@@ -395,7 +400,7 @@ def api_with_budget(adapter: object, budget_ms: int) -> InferOpsApi:
 
 
 async def test_an_adapter_that_does_not_answer_cannot_delay_readiness() -> None:
-    """A late readiness answer is a failed probe, so the ask is bounded.
+    """A late readiness answer is a failed probe, so the wait is bounded.
 
     The outer wait is the assertion: without the budget this request would not
     return, and the test would fail on the outer timeout.
@@ -409,8 +414,117 @@ async def test_an_adapter_that_does_not_answer_cannot_delay_readiness() -> None:
     assert response.status == 200
     assert response.json()["status"] == "ready"
     assert response.json()["adapterStatus"] == ADAPTER_STATUS_NOT_READY
-    assert adapter.cancelled is True
     assert readiness_failures(await scrape(api), names.COMPONENT_ADAPTER) == 1
+    await api.shutdown()
+
+
+async def test_one_ask_is_in_flight_however_many_readiness_requests_arrive() -> None:
+    """A runtime that does not answer holds one ask, and not one for each probe.
+
+    The ask is not cancelled when a request's budget runs out. The real
+    transport runs each exchange in a worker thread, and a cancelled exchange
+    can leave that thread blocked, so one ask for each probe would be one
+    blocked thread for each probe.
+    """
+    adapter = SilentAdapter()
+    api = api_with_budget(adapter, budget_ms=30)
+    await api.startup()
+
+    first = await asyncio.wait_for(ready(api), timeout=5)
+    together = await asyncio.wait_for(
+        asyncio.gather(ready(api), ready(api), ready(api)), timeout=5
+    )
+
+    assert [r.json()["adapterStatus"] for r in (first, *together)] == [
+        ADAPTER_STATUS_NOT_READY
+    ] * 4
+    assert len(adapter.ready_calls) == 1
+    assert adapter.cancelled is False
+    await api.shutdown()
+
+
+async def test_an_ask_that_outlives_its_budget_still_finishes_and_a_new_one_follows() -> (
+    None
+):
+    """The late answer is not lost, and the next request asks again."""
+    adapter = SilentAdapter()
+    api = api_with_budget(adapter, budget_ms=30)
+    await api.startup()
+    assert (await ready(api)).json()["adapterStatus"] == ADAPTER_STATUS_NOT_READY
+
+    adapter.release.set()
+    response = await asyncio.wait_for(ready(api), timeout=5)
+
+    assert response.json()["adapterStatus"] == ADAPTER_STATUS_READY
+    assert adapter.cancelled is False
+    assert len(adapter.ready_calls) == 1, "the request joined the ask in flight"
+    assert (await ready(api)).json()["adapterStatus"] == ADAPTER_STATUS_READY
+    assert len(adapter.ready_calls) == 2, "a finished ask is followed by a new one"
+
+
+async def test_a_late_ask_that_raises_leaves_nothing_unretrieved() -> None:
+    """An ask can fail after every request that waited for it has answered."""
+    adapter = SilentAdapter()
+
+    async def explode(context: RequestContext) -> bool:
+        await adapter.release.wait()
+        raise RuntimeError("connection refused by 10.0.0.7:8080")
+
+    adapter.is_ready = explode  # type: ignore[method-assign]
+    api = api_with_budget(adapter, budget_ms=30)
+    await api.startup()
+    assert (await ready(api)).json()["adapterStatus"] == ADAPTER_STATUS_NOT_READY
+
+    adapter.release.set()
+    response = await asyncio.wait_for(ready(api), timeout=5)
+
+    assert response.status == 200
+    assert response.json()["adapterStatus"] == ADAPTER_STATUS_NOT_READY
+    assert "10.0.0.7" not in response.text()
+
+
+async def test_shutdown_stops_an_ask_that_is_still_in_flight() -> None:
+    adapter = SilentAdapter()
+    api = api_with_budget(adapter, budget_ms=30)
+    await api.startup()
+    assert (await ready(api)).json()["adapterStatus"] == ADAPTER_STATUS_NOT_READY
+    cancelled_before = adapter.cancelled
+
+    await asyncio.wait_for(api.shutdown(), timeout=5)
+
+    assert (cancelled_before, adapter.cancelled) == (False, True)
+    assert adapter.shutdown_calls == 1
+
+
+async def test_a_shutdown_that_begins_during_the_ask_is_what_readiness_answers() -> (
+    None
+):
+    """One response does not say 200 beside a draining state.
+
+    The lifecycle is read again after the ask. The adapter was asked, so the
+    body reports what it said and not ``not-asked``.
+    """
+    adapter = SilentAdapter()
+    api = api_with_budget(adapter, budget_ms=5_000)
+    await api.startup()
+
+    pending = asyncio.ensure_future(ready(api))
+    while not adapter.ready_calls:
+        await asyncio.sleep(0)
+    api.lifecycle.begin_shutdown()
+    adapter.release.set()
+    response = await asyncio.wait_for(pending, timeout=5)
+
+    assert response.status == 503
+    assert response.json() == {
+        "status": "not-ready",
+        "adapterKind": "mock",
+        "state": "draining",
+        "adapterStatus": ADAPTER_STATUS_READY,
+    }
+    text = await scrape(api)
+    assert readiness_failures(text, names.COMPONENT_API) == 1
+    assert readiness_failures(text, names.COMPONENT_ADAPTER) == 0
 
 
 @pytest.mark.parametrize("budget_ms", [0, -1])

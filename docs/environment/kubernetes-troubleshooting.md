@@ -366,8 +366,8 @@ reason.
 **The API's readiness probe answers for the API.** Since
 [ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md), `/health/ready` is
 `200` while the API accepts work, whatever the runtime reports. An API pod that is
-`Ready` beside a runtime pod that is not is the expected state while a model
-loads. On an API image built from an earlier revision, the API pod is not `Ready`
+`Ready` beside a runtime pod that is not is what that rule produces while a model
+loads. That state is derived from the rule, and no release was observed in it. On an API image built from an earlier revision, the API pod is not `Ready`
 in that state.
 
 Until a startup probe succeeds the kubelet runs neither of the other two. That is

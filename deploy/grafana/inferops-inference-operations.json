@@ -261,7 +261,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The API's own readiness refusals, counted since each API process that is publishing now started, summed across replicas: the only readiness signal the platform emits. A count rather than a rate, because a rate cannot see the first refusal of a new component -- the recovery run's single refusal would have read 0 per second. A restarted process starts its count again.",
+      "description": "The readiness checks in which a component said no, as the API counted them since each API process that is publishing now started, summed across replicas: the only readiness signal the platform emits. Only an api count is a readiness answer of 503 on an API image that holds ADR 0020. A count rather than a rate, because a rate cannot see the first refusal of a new component -- the recovery run's single refusal would have read 0 per second. A restarted process starts its count again.",
       "fieldConfig": {
         "defaults": {
           "color": {

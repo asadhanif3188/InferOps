@@ -22,8 +22,8 @@
 > separate member, `adapterStatus`, and the API counts each answer that is not
 > `ready`.
 >
-> **The evidence is static.** Tests drive the application in process, with the
-> real adapter type over a controlled transport. No API image was built from this
+> **The evidence is substituted execution, C1.** Tests drive the application in
+> process, with the real adapter type over a controlled transport. No API image was built from this
 > change, no release was installed, and no cluster was contacted. No record shows
 > what a Kubernetes Service does with an API pod under this rule.
 >
@@ -35,9 +35,9 @@
 
 | ID | Decision | Status | What supports it |
 |---|---|---|---|
-| D1 | The status of `/health/ready` is `200` if, and only if, the API lifecycle state is `serving` | **Accepted** | Tests read the status in each lifecycle state, with a ready adapter and with an adapter that is not ready |
-| D2 | While the API accepts work, each readiness request asks the selected adapter. The body reports the answer in `adapterStatus`, which is one of `ready`, `not-ready`, and `not-asked` | **Accepted** | Tests read the body with a runtime that is ready, one that is unreachable, one that is loading, and one that does not answer |
-| D3 | The ask is bounded by a budget. The default is 3,000 ms. An ask that does not finish inside the budget is cancelled and reported as `not-ready` | **Accepted**, with a stated limit | One test holds that a readiness request returns while the adapter never answers. One test compares the default with the chart's default probe timeout. The chart does not refuse a shorter probe timeout |
+| D1 | The status of `/health/ready` is `200` if, and only if, the API lifecycle state is `serving` | **Accepted** | Tests read the status in each of the four lifecycle states. In the `serving` state they read it with an adapter that is ready and with one that is not. In the other three states the adapter is ready or not initialized, and it is not asked |
+| D2 | While the API accepts work, each readiness request asks the selected adapter. The body reports the answer in `adapterStatus`, which is one of `ready`, `not-ready`, and `not-asked` | **Accepted** | Tests read the body with the real adapter type over a controlled transport whose runtime is ready, unreachable, or loading, and with an adapter double that does not answer |
+| D3 | A readiness request waits for the adapter's answer inside a budget. The default is 3,000 ms. An answer that does not arrive inside the budget is reported as `not-ready`. One ask is in flight at a time, and it is not cancelled when a budget runs out | **Accepted**, with a stated limit | Tests hold that a readiness request returns while the adapter never answers, that several requests share one ask, and that a late answer is kept. One test compares the default with the chart's default probe timeout. The chart does not refuse a shorter probe timeout |
 | D4 | `inferops_readiness_check_failures_total` keeps its name, its labels, and its two component values. A count for `serving-adapter` no longer means that the readiness status was `503` | **Accepted** | Tests read the counter and the status together. The catalog, the alert record, and the runbook state the new meaning |
 | D5 | A consumer that needs to know whether inference can be served reads both `status` and `adapterStatus` | **Accepted** for two repository tools. **Not applied** to the V1 experiment tools that read the status only | Tests of the load generator and of the local composition. R4 lists the tools that were not changed |
 | D6 | Liveness, the five routes, their paths, and the canonical error contract are not changed | **Accepted** | The existing suites of those surfaces pass without a change to what they assert about them |
@@ -63,9 +63,11 @@ error only from an API endpoint that is still in the Service.
 
 [The unready-model experiment](../../serving/unready-model-recovery.md) recorded
 the V1 behaviour on one provider: while the model was not ready, the API's
-readiness path answered `503` at every ask, and the API pod's `Ready` condition
-agreed. That run read the canonical error through a forward to the API pod. It
-did not send a request through the Service.
+readiness path answered `503` at every ask. The run also sampled the API pod's
+`Ready` condition, and its record reports the samples. That run read the
+canonical error through a forward to the API pod. It did not send a request
+through the Service, and its document says why: a caller that arrived through
+the API Service in that state met no endpoint.
 
 V2 declares two API replicas and plans experiments that remove pods and read what
 a caller receives. Those experiments need the API's readiness and the runtime's
@@ -117,8 +119,12 @@ The readiness body has four members.
 `adapterStatus` is `ready` when the adapter said it can accept an inference
 request now. It is `not-ready` when the adapter said no, raised an error, or did
 not answer inside the budget of D3. It is `not-asked` when the API does not
-accept work: an API that is starting has an adapter that is not initialized, and
-an API that is draining is about to release it.
+accept work when the request arrives: an API that is starting has an adapter
+that is not initialized, and an API that is draining is about to release it.
+
+The API reads its lifecycle again after the adapter answers. If a shutdown began
+while the request waited, the status is `503` and `state` is `draining`, and
+`adapterStatus` still reports what the adapter said, because it was asked.
 
 **The ask is kept for a functional reason.** The real adapter refuses inference
 until one of its own probes has seen the runtime ready, and it learns that the
@@ -143,9 +149,22 @@ does not answer would therefore make the readiness answer late, and Kubernetes
 documents that a probe that times out has failed. The API would leave the
 Service because of its dependency, which is the coupling D1 removes.
 
-The API therefore gives the ask a budget of its own. The default is 3,000 ms. An
-ask that does not finish inside the budget is cancelled, and the body reports
-`not-ready`.
+The API therefore gives each readiness request a budget of its own to wait for
+the adapter. The default is 3,000 ms. If the answer does not arrive inside the
+budget, the body reports `not-ready`.
+
+**One ask is in flight at a time, and it is not cancelled.** A readiness request
+that finds an ask in flight waits for that ask and starts no second one. An ask
+that outlives a budget runs on, so the adapter records what the runtime finally
+said. The next request that finds the ask finished starts a new one. A shutdown
+stops an ask that is still in flight, after the drain and before the adapter is
+released.
+
+The first draft of this change cancelled the ask when the budget ran out. The
+independent review rejected that. The real transport runs each exchange in a
+worker thread, a cancelled exchange can leave that thread blocked on the runtime,
+and one cancelled ask for each probe would be one blocked thread for each probe.
+With one ask in flight, a runtime that does not answer holds one ask.
 
 **Limits of D3.**
 
@@ -155,8 +174,11 @@ ask that does not finish inside the budget is cancelled, and the body reports
 - The chart does not refuse `api.probes.readiness.timeoutSeconds` of 3 or less.
   An installation that sets one makes a slow dependency a failed API probe again.
   A test compares the two default values and nothing else.
-- A cancelled ask does not update the adapter's last observed state. The next
-  readiness request asks again.
+- While one ask is in flight, the adapter's last observed state is not updated.
+  The real adapter bounds that ask by the request budget plus one second, so by
+  the chart's defaults the state can be up to 121 seconds old.
+- An ask carries the request context of the readiness request that started it.
+  A request that joins the ask is not named in what the adapter records.
 
 ## D4 — The readiness counter
 
@@ -174,9 +196,13 @@ catalog's question said the platform was refusing traffic. Both now say what the
 counter counts.
 
 The alert `InferOpsReadinessRefusalsSustained` keeps its expression. For the
-component `serving-adapter` it now reports that the dependency has not been
-ready for five minutes while the API pods stay in the Service. For the component
-`api` it reports what it reported before.
+component `serving-adapter` it now reports that the adapter has said no on more
+than half the readiness checks for five minutes. On an API image built from a
+revision that holds this record, each of those checks was answered `200`. That the
+API pods then stay in the Service follows from the rule and from what Kubernetes
+documents, and it was not observed. For the component `api` it reports what it
+reported before. The alert's scenario fixtures were not changed, and they still
+describe the earlier rule.
 [The alert record](../../telemetry/inference-alerts.md) states both meanings.
 
 ## D5 — Consumers read both members
@@ -213,6 +239,7 @@ Two repository tools needed that answer, and both were changed.
 | Change the status and leave the body with three members | A `200` whose `status` member says `not-ready` contradicts itself, and a `200` whose `status` says `ready` hides the dependency |
 | Stop asking the adapter on a readiness request | The real adapter would not observe that a model finished loading. The readiness counter and its alert would go silent for the adapter |
 | Ask the adapter without a budget | A dependency that does not answer would fail the API's readiness probe by timeout |
+| Cancel the ask when the budget runs out | One blocked worker thread for each probe that timed out, and an adapter that never records a slow answer. This was the first draft |
 
 ## Consequences
 
@@ -248,7 +275,10 @@ authentication on this surface in V1, and this record does not change that.
 
 ## Evidence
 
-Evidence level: **C0, static.**
+Evidence level: **C1, substituted execution, for the rule inside the application.**
+The application ran in process. The runtime was replaced by a controlled
+transport, and no HTTP server, kubelet, or Service was involved. **For a deployed
+release there is no evidence above C0:** the chart was rendered and not installed.
 [The validation record](../../proof/serving/v2-s4-001-pr2-validation.md) lists
 the commands and their results. No claim was added or changed.
 
@@ -260,7 +290,8 @@ the commands and their results. No claim was added or changed.
 | R2 | The API image is built outside Git and pinned by digest | Open | Merging this record changes no running API. ADR 0019 R1 records the same gap for the image in general |
 | R3 | The chart does not refuse a readiness probe timeout at or below the budget | Open | D3 states the limit. A chart rule is a chart change and was not made here |
 | R4 | Three V1 experiment tools read the readiness status only: the Kubernetes certification, the pod-restart experiment, and the upgrade and rollback experiment | Accepted | Each waits for the runtime Deployment's own rollout and asserts a real completion. Against an image built from this record, their readiness step shows that the API accepts work, and no more |
-| R5 | The descriptor of the unready-model experiment expects `503` on the API's readiness path and an API pod that is not `Ready` | Open | Against an image built from this record, those two expectations are not met. The descriptor and its tool are not changed here. A rerun needs a revised descriptor |
+| R5 | The descriptor of the unready-model experiment registers `503` as the expected answer of the API's readiness path in the unready window, and it describes the API Service as having no ready endpoint in that state | Open | Against an image built from a revision that holds this record, the registered answer is not met, and the description is not what this rule produces. The descriptor and its tool are not changed here. A rerun needs a revised descriptor |
 | R6 | The upgrade and rollback experiment records the readiness status as what a caller saw | Open | Against an image built from this record, that probe reads the API's own state. Its earlier records are not affected |
 | R7 | The readiness body does not distinguish an unreachable runtime from a loading model | Accepted | D2. The adapter interface is not changed |
-| R8 | A cancelled ask leaves the adapter's last observed state in place | Accepted | D3. An adapter that last saw the runtime ready attempts the next completion, and the inference path then reports what it finds |
+| R8 | While an ask is in flight, the adapter's last observed state can be stale, for as long as the adapter's own bound | Accepted | D3. An adapter that last saw the runtime ready attempts the next completion, and the inference path then reports what it finds |
+| R9 | A worker thread of the real transport can stay blocked on a runtime that does not answer | Open | The independent review observed it on one Windows host: after a cancelled exchange with a peer that accepts and does not reply, the worker thread was still alive. The transport's own description says that closing the connection ends the blocked call. The transport is not changed here. D3 limits the readiness path to one such thread. The inference path is not limited, and it was the same before this record |

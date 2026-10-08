@@ -45,8 +45,8 @@ ordering is in :mod:`inferops.api.lifecycle` rather than here.
 **Readiness is this API's own answer, and the adapter's answer is beside it.**
 `ADR 0020` decides it. The status of ``/health/ready`` is 200 while this API
 accepts work and 503 while it does not. The selected adapter is still asked, under
-a budget, and the body reports what it said in ``adapterStatus``. An adapter that
-says no does not change the status: this API can still answer an inference
+a budget, one ask at a time, and the body reports what it said in
+``adapterStatus``. An adapter that says no does not change the status: this API can still answer an inference
 request with the canonical error for that condition, and a caller can only
 receive that error from an endpoint that is still in the Service.
 
@@ -228,6 +228,8 @@ class InferOpsApi:
         )
         self._started_at = 0
         self._drained: bool | None = None
+        # The one readiness ask in flight, if any. See `_adapter_status`.
+        self._adapter_ask: asyncio.Task[bool] | None = None
 
     @property
     def lifecycle(self) -> ApplicationLifecycle:
@@ -341,6 +343,7 @@ class InferOpsApi:
             telemetry_names.EVENT_DEPLOYMENT_DRAINING, correlation_id=correlation_id
         )
         self._drained = await self._lifecycle.drain()
+        await self._cancel_adapter_ask()
         await self._adapter.shutdown(self._new_context())
         self._telemetry.deployment_event(
             telemetry_names.EVENT_DEPLOYMENT_STOPPED, correlation_id=correlation_id
@@ -420,20 +423,26 @@ class InferOpsApi:
         The adapter is asked only while this API accepts work. An API that is
         starting has an adapter that is not initialized, and an API that is
         draining is about to release it.
+
+        The lifecycle is read again after the ask, because the ask can take the
+        whole budget and a shutdown can begin inside it. The status and the
+        state in the body come from that second read, so one response cannot say
+        200 beside ``draining``. ``adapterStatus`` then still reports what the
+        adapter said, because it was asked.
         """
-        accepting = self._lifecycle.is_accepting_work
-        if accepting:
+        adapter_status = ADAPTER_STATUS_NOT_ASKED
+        if self._lifecycle.is_accepting_work:
             adapter_status = await self._adapter_status(context)
-            if adapter_status != ADAPTER_STATUS_READY:
-                self._telemetry.readiness_failed(
-                    correlation_id=answer.correlation_id,
-                    component=telemetry_names.COMPONENT_ADAPTER,
-                )
-        else:
-            adapter_status = ADAPTER_STATUS_NOT_ASKED
+        accepting = self._lifecycle.is_accepting_work
+        if not accepting:
             self._telemetry.readiness_failed(
                 correlation_id=answer.correlation_id,
                 component=telemetry_names.COMPONENT_API,
+            )
+        elif adapter_status != ADAPTER_STATUS_READY:
+            self._telemetry.readiness_failed(
+                correlation_id=answer.correlation_id,
+                component=telemetry_names.COMPONENT_ADAPTER,
             )
         body = ready_body(
             ready=accepting,
@@ -445,27 +454,48 @@ class InferOpsApi:
         await answer.send_json(send, status, body)
 
     async def _adapter_status(self, context: RequestContext) -> str:
-        """Ask the adapter whether it is ready, inside the readiness budget.
+        """Wait for the adapter's readiness answer, inside the readiness budget.
 
         Three outcomes are one answer here: the adapter said no, the adapter
         raised, and the adapter did not answer inside the budget. In each one
-        the adapter did not say it is ready. The ask is still made on every
-        readiness request, because the real adapter refuses inference until one
-        of its own probes has seen the runtime ready.
+        the adapter did not say it is ready. The adapter is still asked while
+        this API accepts work, because the real adapter refuses inference until
+        one of its own probes has seen the runtime ready.
 
-        An ask that runs out of budget is cancelled. The adapter then keeps the
-        last state it observed, and the next readiness request asks again.
+        **One ask is in flight at a time, and it is not cancelled.** A readiness
+        request that finds an ask in flight waits for that one, with its own
+        budget, and starts no second ask. An ask that outlives the budget runs
+        on, so the adapter still records what the runtime finally said, and the
+        next request that finds it finished starts a new one. Cancelling instead
+        would leave the real transport's worker thread blocked on the runtime
+        for each probe that timed out. So a runtime that does not answer holds
+        one ask, and not one for each probe.
+
+        The ask carries the context of the request that started it.
         """
+        ask = self._adapter_ask
+        if ask is None or ask.done():
+            ask = asyncio.ensure_future(self._adapter.is_ready(context))
+            ask.add_done_callback(_retrieve_outcome)
+            self._adapter_ask = ask
         budget = self._configuration.adapter_readiness_timeout_ms / 1000
-        try:
-            ready = await asyncio.wait_for(
-                self._adapter.is_ready(context), timeout=budget
-            )
-        except Exception:
-            # `TimeoutError` is an `Exception`, so the budget running out is
-            # handled here with every other way of not answering.
+        finished, _ = await asyncio.wait({ask}, timeout=budget)
+        if not finished or ask.cancelled() or ask.exception() is not None:
             return ADAPTER_STATUS_NOT_READY
-        return ADAPTER_STATUS_READY if ready else ADAPTER_STATUS_NOT_READY
+        return ADAPTER_STATUS_READY if ask.result() else ADAPTER_STATUS_NOT_READY
+
+    async def _cancel_adapter_ask(self) -> None:
+        """Stop a readiness ask that is still in flight, before the adapter goes.
+
+        The wait is bounded by the readiness budget. An ask that does not stop
+        inside it is left behind, so that it cannot hold a shutdown.
+        """
+        ask, self._adapter_ask = self._adapter_ask, None
+        if ask is None or ask.done():
+            return
+        ask.cancel()
+        budget = self._configuration.adapter_readiness_timeout_ms / 1000
+        await asyncio.wait({ask}, timeout=budget)
 
     async def _models(
         self, send: Send, answer: _Answer, context: RequestContext
@@ -762,6 +792,17 @@ class _Answer:
             }
         )
         await send({"type": "http.response.body", "body": payload})
+
+
+def _retrieve_outcome(ask: asyncio.Task[bool]) -> None:
+    """Read a finished ask's outcome, so that an unread exception is not reported.
+
+    An ask can finish after every request that waited for it has answered. The
+    event loop logs an exception that nothing retrieved, and that log line would
+    carry the adapter's own words.
+    """
+    if not ask.cancelled():
+        ask.exception()
 
 
 def _request_headers(scope: Scope) -> dict[str, str]:

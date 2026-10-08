@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Accepted; amended 2026-09-01** |
+| Status | **Accepted; amended 2026-09-01, and on 2026-10-08 by [ADR 0020](ADR-0020-api-readiness-is-the-apis-own-answer.md)** |
 | Date proposed | 2026-08-27 |
 | Date accepted | 2026-08-27; D3 narrowed and D9 accepted 2026-09-01 |
 | Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |

@@ -2,8 +2,10 @@
 
 Status: **the API's readiness status answers for the API, and the adapter's answer
 is reported beside it. Nothing was built into an image and nothing was installed.**
-The evidence level of everything below is C0: tests drove the application in
-process, committed files were read, and `helm template` ran on a workstation. No
+The evidence level of the rule inside the application is C1, substituted execution:
+tests drove the application in process, with the runtime replaced by a controlled
+transport. Everything else below is C0: committed files were read, and
+`helm template` ran on a workstation. No
 API image was built from this change. No cluster was contacted. No request crossed
 a Kubernetes Service.
 
@@ -13,7 +15,7 @@ a Kubernetes Service.
 | Base | `e7852bb`, the merge of pull request #126 |
 | Branch | `test/v2-s4-001-api-readiness-semantics` |
 | Host | One Windows workstation, Git Bash; Python 3.12 from `uv`; Helm `v3.19.0` |
-| Evidence level | C0, static. No claim was added or changed |
+| Evidence level | C1 for the rule inside the application; C0 for the chart and the records. Nothing was observed in a deployed release. No claim was added or changed |
 | Decision record | [ADR 0020](../../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md) |
 
 ## What the V1 behaviour was
@@ -25,8 +27,9 @@ whenever the runtime was unreachable or the model was loading.
 
 [The unready-model run](v1-s4-007-pr1-unready-model-recovery.md) recorded that
 behaviour on one provider. Its record tool asserts that the API's readiness path
-answered `503` at every ask in the unready window, and that the API pod's `Ready`
-condition agreed. That run asked the API through a forward to the pod.
+answered `503` at every ask in the unready window. The tool counts the ready API
+pods and does not assert the count; the published record reports the count. That
+run asked the API through a forward to the pod.
 
 ## What changed
 
@@ -38,7 +41,9 @@ condition agreed. That run asked the API through a forward to the pod.
   reports the answer in a new member, `adapterStatus`: `ready`, `not-ready`, or
   `not-asked`.
 - The ask has a budget. `ApiConfiguration.adapter_readiness_timeout_ms` defaults to
-  3,000. An ask that does not finish is cancelled and reported as `not-ready`. No
+  3,000. An answer that does not arrive inside it is reported as `not-ready`. One
+  ask is in flight at a time, a request that finds one waits for it, and an ask
+  that outlives a budget is not cancelled. A shutdown stops a pending ask. No
   environment variable sets the budget.
 - The readiness counter is incremented as before, once for each readiness request
   in which a component said no. Its help text changed.
@@ -84,7 +89,7 @@ rendered object changed. The chart version stays `0.4.0`.
 |---|---|
 | The reference API replica count is 2 | Reached by the earlier change, as configuration. Not touched here |
 | The API rollout uses `maxUnavailable: 0` and `maxSurge: 1` | Reached by the earlier change, as configuration. Not touched here |
-| API readiness reflects the API's ability to honor its contract, and does not mirror runtime readiness | **Reached in the application, at C0.** Not observed in a deployed release |
+| API readiness reflects the API's ability to honor its contract, and does not mirror runtime readiness | **Reached in the application, at C1.** Not observed in a deployed release |
 | The Ready endpoints of the API Service are observable | **Not reached, and not attempted.** No collector of endpoint state exists, and no endpoint was read |
 | No path-level resilience claim precedes the experiment that tests it | Held. No claim was added or changed |
 
@@ -98,7 +103,7 @@ rendered object changed. The chart version stays `0.4.0`.
 | `mypy`, and `mypy --platform linux` | No type error in 357 source files, on each platform |
 | `tests/api/test_api_readiness_semantics.py`, the new suite | 24 passed |
 | `tests/api`, the whole directory | 402 passed |
-| The load-generator suite, the two suites that use its identity probe, `tests/telemetry`, the runbook suite, the decision-authority suite, the inventory suite, and the two API surface suites | 3,564 passed, 1 failed. The failure was a placeholder in this record, which this section replaces |
+| The load-generator suite, the two suites that use its identity probe, `tests/telemetry`, the runbook suite, the decision-authority suite, the inventory suite, and the two API surface suites | 3,564 passed, 1 failed. The failure was `test_no_committed_evidence_record_still_holds_a_placeholder`: this record held a placeholder where this section is. With the section written, that suite passed: 1,343 passed across it, the link suite, and the evidence-index suite |
 | `tests/architecture/test_helm_chart.py` | 225 passed |
 | `helm template`, both committed fixtures | Each render is the committed render, byte for byte, after the comment edits |
 | `helm template`, real fixture, with `api.livenessPath=/health/ready` | Refused by the template, with the reworded message |
@@ -109,9 +114,85 @@ rendered object changed. The chart version stays `0.4.0`.
 | `tools.experiment_freeze --check`, `tools.experiment_e01 --check` | Exit 0 for each |
 | `tools.evidence_index --check` and `--gate`, `tools.proof_dashboard --check` | Exit 0 for each. The evidence pack is `06e214dc…3d0720`, as before |
 | `git diff --check` | Clean |
-| The default lane | Started on the working tree before the first commit, and not finished when the first commit was made. Its result is recorded with the second commit |
+| The default lane | Started on the working tree before the first commit, and not finished when the first commit was made. It is not a result for that commit: files changed under it while it ran. It ended with 6 failed and 19,094 passed. The six were two alert suites and two dashboard tests that compare a rendered file with its record, and they ran while the record had been corrected and the file had not yet been regenerated. [The lane of the second commit](#at-the-second-commit) is the result |
 | `gitleaks` | Not run: it is not installed on this host. The hosted CI job runs it |
 | Hosted CI | Not read: no pull request existed when this record was written |
+
+### At the second commit
+
+Each check ran on the tree of the second commit, staged, before the commit was made.
+This section is the only text that was added after them.
+
+| Check | Result |
+|---|---|
+| `ruff check`, `ruff format --check` | Clean: 658 files formatted, no lint finding |
+| `mypy`, and `mypy --platform linux` | No type error in 357 source files, on each platform |
+| `tests/api`, with warnings as errors | 408 passed. The new suite holds 29 tests, and the composition suite gained one |
+| `helm template`, both committed fixtures | Each render is the committed render, byte for byte |
+| `tools.evidence_index --check` and `--gate`, `tools.proof_dashboard --check` | Exit 0 for each. The evidence pack is `06e214dc…3d0720`, as before |
+| The rule files and the Grafana JSON | Regenerated from the corrected records with the repository's own commands. The lane compares each with its record |
+| `git diff --check` | Clean |
+
+**The default lane**, `uv run --locked python -m pytest -q -rs`, ran once on that tree,
+with no other test run beside it.
+
+| Result | Count |
+|---|---|
+| Passed | 19,106 |
+| Failed | 0 |
+| Skipped | 37 |
+| Deselected | 14 |
+| Duration | 28 minutes 45 seconds |
+
+The 37 skips are the ones the earlier change recorded: symbolic links that this
+Windows host cannot create, one POSIX signal case, the schema-only fixtures, and the
+freeze test that reports the changed release and skips. The 14 deselected tests are
+the lanes that need a runtime or a cluster. `gitleaks` was not run and hosted CI was
+not read, for the reasons the first table gives.
+
+## What the independent review found
+
+Two reviews read the first commit, `bd9511d`, before anything was pushed. Each was an
+automated session that had not written the change. One read the code and the tests,
+and one compared the documents and records with the code. The second commit holds
+the corrections.
+
+**What the first draft got wrong in the code.**
+
+| Finding | Correction |
+|---|---|
+| The ask was cancelled when its budget ran out. The real transport runs each exchange in a worker thread. On this host the reviewer cancelled five exchanges with a peer that accepts and does not reply, and four worker threads were still alive afterwards. One cancelled ask for each probe would be one blocked thread for each probe, in an API that now stays in the Service | One ask is in flight at a time and is not cancelled. A request that finds one waits for it. Four tests hold the count of asks, the late answer, a late failure, and the stop at shutdown |
+| The lifecycle was read before the ask and the state in the body after it, so a shutdown that began during the ask produced `200` beside `draining` | The lifecycle is read again after the ask, and the status and the state come from that read. A test holds it |
+| `wait_api_ready` in the local composition could pass a negative interval to its sleep. The defect was older than this change | The interval is clamped at zero. A test holds it |
+
+The transport is not changed. Its own description says that closing the connection
+ends a blocked exchange, and the reviewer's observation on this host disagrees. ADR
+0020 R9 records that as open.
+
+**What the first draft got wrong in the documents.**
+
+| Finding | Correction |
+|---|---|
+| The alert record, both rule files, the alert document, the runbook, and ADR 0020 D4 said that for `serving-adapter` the API "stays in the Service" and a caller "receives a canonical dependency error". No Service was observed, and for every API image that exists today the statement is false | Each place now says that the outcome depends on the API image, and that on a new image it is derived and was not observed |
+| This record said the unready-model tool asserts the API pod's `Ready` condition. It counts the ready API pods and does not assert the count. ADR 0020 R5 and the experiment's note said the descriptor expects an API pod that is not `Ready`. It registers `503` and describes the Service | Corrected in all three places |
+| A second dashboard panel, and its row in the operator guide, still said "readiness refusals" | Both were reworded, and the Grafana JSON was regenerated |
+| Five places still described the readiness answer as a conjunction or as "refusing traffic": a comment in `telemetry/names.py`, a chart comment, the telemetry-collection document and its record, and two sentences on what the alert sees first | Corrected, with one exception that the next paragraph states |
+| Two cells of ADR 0020 said what tests hold in broader words than the tests | Each cell now names what its tests do |
+| The evidence level was written as "C0, static" for tests that execute the application | It is C1, substituted execution, for the rule inside the application, and C0 for the chart and the records |
+| The alert threshold was explained for one API replica, and the reference release declares two | The explanation states both |
+| ADR 0010's status line and its row in the index did not name the new amendment | Both do |
+
+**One stale text was left, on purpose.**
+`docs/telemetry/telemetry-correlation-queries.v1alpha1.json` still asks "Which
+readiness component is refusing traffic". A committed V1 evidence document is
+generated from that record and compared with it by a test, so changing the words
+changes a V1 evidence document. The record is unchanged.
+
+**What the review confirmed.** The decision-record counts, the inventory counts, the
+freeze table, the regenerated rule files and Grafana JSON, the adapter's own bound,
+the chart defaults, and the statement that the three V1 experiment tools read the
+status only. The added lines hold no local path, no private planning name, and no
+identifier of unstarted work.
 
 ## The first experiment's freeze
 
@@ -126,8 +207,8 @@ when each record was registered. This change edits files that those records pin.
 
 The other chart files this change edits had already moved before it. No freeze
 revision was written here, and no committed freeze record was edited.
-`tools.experiment_freeze --changes` exits 1 for revisions 2 and 3, as it did at the
-base, and it lists each moved file. A result-bearing run of that experiment is
+`tools.experiment_freeze --changes` exits 1 for each of the three revisions, as it
+did at the base, and it lists each moved file. A result-bearing run of that experiment is
 refused until a merged freeze revision classifies each one. The four API sources
 are what an API image is built from, so a later revision must classify them as a
 change to the code the experiment ran.
@@ -152,3 +233,12 @@ transport's message does not reach a response.
 - That two API replicas stay available when a pod is lost. Replica count and a
   readiness rule are configuration and code, and neither is an availability result.
 - Anything about the runtime's own readiness, which is not changed.
+- That the bounded wait works through the real adapter and the real transport. The
+  tests of the wait use an adapter double.
+- That the readiness alert behaves as described on a release under this rule. No
+  alert was evaluated against one, and the alert's scenario fixtures still describe
+  the earlier rule.
+- That the two changed tools work against a real API. Each was tested against
+  controlled answers.
+- What the unchanged V1 experiment tools report against an API image built from
+  this change. None was run.

@@ -398,15 +398,17 @@ code to an incident.
 ### InferOpsReadinessRefusalsSustained
 
 Critical. Owner: the serving path. One component has said no on more than half
-the readiness checks for five minutes. **This is the only alert that fires
-before a caller notices**, and it fires on a release nobody is sending traffic to.
+the readiness checks for five minutes. **This is the only alert that reads no
+caller request**, so it fires on a release nobody is sending traffic to.
 Its `inferops_component` label says which component said no. With `api`, the
 readiness answer was `503` and the API pod leaves the Service. With
-`serving-adapter`, the readiness answer was `200` on an API image built from a
+`serving-adapter`, the answer depends on the API image. On an image built from a
 revision that holds
-[ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md):
-the API pod stays in the Service and answers inference with a canonical dependency
-error. On an image built from an earlier revision both were `503`.
+[ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md)
+the readiness answer was `200`. By that rule the API pod is not removed from the
+Service and answers inference with a canonical dependency error; that outcome is
+derived and was not observed, so read the API Service's endpoints. On an image
+built from an earlier revision both answers were `503`.
 
 ```text
 # read-only

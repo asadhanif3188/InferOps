@@ -51,7 +51,7 @@ is built.
 | `scrape-targets-answering-by-tier` | Did the collector reach each tier's pods at the last scrape? | "100% means the tier can serve." Reachability is not readiness: a pod still loading its model, or already deleted, can answer a scrape |
 | `scrape-jobs-that-discovered-no-pod` | Does a tier have no pod at all? | "No absence recorded means pods are ready." It only means at least one pod exists |
 | `api-identity-not-published` | Is no API process publishing its identity? | "It reads 1, so an API target answered without an identity." It also reads 1 when there is no API pod at all |
-| `readiness-checks-failed-since-start` | How many readiness refusals have the running API processes counted? | "0 means no readiness trouble recently." The count starts again when an API process restarts: 20 went to 0 after a pod replacement |
+| `readiness-checks-failed-since-start` | In how many readiness checks have the running API processes counted a component saying no? Since [ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md), a count for `serving-adapter` is not a `503` | "0 means no readiness trouble recently." The count starts again when an API process restarts: 20 went to 0 after a pod replacement |
 | `readiness-refusals-by-component` | Which component the API names when it refuses? | "A flat 0 means no refusals." It read 0 beside 3 counted startup refusals, and a rate never sees events before a series' first scrape |
 | `model-readiness` | Nothing. It is not emitted | "Not emitted, so the model is fine." It read the same while the serving runtime had zero replicas |
 | `pod-container-and-runtime-readiness` | Nothing. It is not answerable | Any conclusion about pod or container readiness |

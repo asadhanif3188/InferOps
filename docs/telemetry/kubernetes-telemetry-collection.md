@@ -135,8 +135,8 @@ real runtime's identifier, or the reverse.
 `k8s_namespace` and `k8s_component` carry a prefix so that a label the collector
 attached is never read as an attribute an emitter placed. `k8s_component` is the
 workload tier — `platform-api` or `serving-runtime` — and it is a different thing
-from `inferops.component`, which is the readiness component the API names when it
-refuses traffic. Two labels that mean roughly the same thing get used
+from `inferops.component`, which is the component a readiness check of the API
+found unable. Two labels that mean roughly the same thing get used
 inconsistently within a month; two labels that mean different things and are spelled
 the same get used wrongly on the first day.
 

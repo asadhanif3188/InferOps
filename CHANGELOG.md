@@ -794,8 +794,8 @@ from `1.0.0`.
 ### Changed
 
 - **`V2-S4-001-PR2`: the API's readiness status answers for the API, and no longer
-  for its dependency. It is static evidence. No image was built and nothing was
-  installed.** [ADR 0020](docs/architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md)
+  for its dependency. The evidence is in-process tests over a controlled transport, C1.
+  No image was built and nothing was installed.** [ADR 0020](docs/architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md)
   amends one sentence of ADR 0010. Until this change, `GET /health/ready` answered
   `200` only when the API accepted work **and** its adapter reported itself ready,
   so an API pod failed its readiness probe whenever the runtime was unreachable or
@@ -803,8 +803,10 @@ from `1.0.0`.
   `serving` state, and `503` while the API is starting, draining, or stopped.
   **The adapter is still asked, and its answer is a separate member.** The body
   gains `adapterStatus`, which is `ready`, `not-ready`, or `not-asked`. The ask
-  has a budget of 3,000 ms by default, so a runtime that does not answer cannot
-  make the readiness answer late. **The canonical dependency errors are
+  is waited for inside a budget of 3,000 ms by default, and one ask is in flight
+  at a time. A runtime that does not answer therefore cannot make the readiness
+  answer later than the budget; whether that is in time depends on the probe
+  timeout, which the chart defaults to 5 seconds and does not bound. **The canonical dependency errors are
   unchanged:** an unreachable runtime is `capability-unavailable` with the
   condition `runtime-unreachable`, and a loading model is `model-not-ready` with
   the condition `model-loading`. The readiness body does not tell those two

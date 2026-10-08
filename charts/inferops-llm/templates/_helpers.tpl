@@ -943,8 +943,8 @@ still refuses one that tries.
 **The Kubernetes context labels carry a `k8s_` prefix** so that a label the collector
 attached is never read as an attribute an emitter placed. `k8s_component` is the
 workload tier -- `platform-api` or `serving-runtime` -- and is a different thing from
-`inferops.component`, which is the readiness component the API names when it refuses
-traffic.
+`inferops.component`, which is the component a readiness check of the API found
+unable.
 */}}
 {{- define "inferops-llm.telemetryScrapeConfig" -}}
 {{- $interval := printf "%ds" (int .Values.telemetry.collection.scrapeIntervalSeconds) -}}

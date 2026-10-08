@@ -65,9 +65,9 @@ groups:
       summary: |-
         A component has said no on more than half the readiness checks for five minutes.
       impact: |-
-        It depends on the component label. For api, the API is not accepting work and its endpoint is about to leave the Service, or already has. For serving-adapter, the API stays in the Service and answers an inference request with a canonical dependency error, because its adapter is not ready. This alert reads a probe and not a caller, so it fires on a release nobody is sending traffic to.
+        It depends on the component label. For api, the API is not accepting work and its endpoint is about to leave the Service, or already has. For serving-adapter, the adapter is not ready, and what follows depends on the API image. On an image built from a revision that holds ADR 0020 the readiness answer was 200, so by that rule the endpoint is not removed and a caller receives a canonical dependency error; that outcome is derived and was not observed. On an earlier image the answer was 503 and the endpoint is removed. This alert reads a probe and not a caller, so it fires on a release nobody is sending traffic to.
       action: |-
-        The component label says which component answered no -- api or serving-adapter. For api, check the API pod's lifecycle and its endpoint. For serving-adapter, the API endpoint is expected to be present: read the runtime pod's readiness and the runtime log.
+        The component label says which component answered no -- api or serving-adapter. For api, check the API pod's lifecycle and its endpoint. For serving-adapter, read the runtime pod's readiness and the runtime log, and read the API Service's endpoints instead of assuming them: whether the API endpoint is present depends on the API image.
       blind_spot: |-
         Which of the several things the adapter checks said no. The counter names the component and not the reason, and the reason is in the log rather than in a metric.
       evidence_query: sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m]))

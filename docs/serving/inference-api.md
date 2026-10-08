@@ -294,6 +294,7 @@ the two.
 | `serving` | says it is ready | `200` | `ready` | `ready` |
 | `serving` | says no, raises, or does not answer inside the budget | `200` | `ready` | `not-ready` |
 | `starting`, `draining`, or `stopped` | not asked | `503` | `not-ready` | `not-asked` |
+| a shutdown began while the request waited for the adapter | was asked | `503` | `not-ready` | what the adapter said |
 
 The body has four members: `status`, `adapterKind`, `state`, and `adapterStatus`.
 
@@ -309,9 +310,10 @@ not change the readiness status.
 answers with a boolean, so an unreachable runtime and a loading model are one value
 in this body. The inference path is where the two canonical errors differ.
 
-**The adapter is asked inside a budget.** The default is 3,000 ms, and no
-environment variable sets it. An ask that does not finish is cancelled and
-reported as `not-ready`. The chart's default readiness probe timeout is 5 seconds.
+**A readiness request waits for the adapter inside a budget.** The default is
+3,000 ms, and no environment variable sets it. An answer that does not arrive is
+reported as `not-ready`. One ask is in flight at a time: a request that finds one
+waits for it, and an ask that outlives a budget is not cancelled. The chart's default readiness probe timeout is 5 seconds.
 The chart does not refuse a shorter one.
 
 **A consumer that needs to know whether inference can be served reads both

@@ -369,3 +369,23 @@ def test_api_wait_refuses_a_ready_answer_that_is_not_the_real_identity(
             clock=lambda: 0.0,
             sleeper=lambda _seconds: None,
         )
+
+
+def test_api_wait_never_sleeps_a_negative_interval() -> None:
+    """The deadline can pass between the check and the sleep."""
+    composition = core.load_composition()
+    budget = composition.response_budget_ms / 1000
+    # Four clock reads in one pass: the start, the request timeout, the
+    # deadline check, and the sleep. The last one is past the deadline.
+    readings = iter([0.0, 0.0, 0.0, budget + 5, budget + 5, budget + 5, budget + 5])
+    sleeps: list[float] = []
+
+    with pytest.raises(core.CompositionError, match="did not become ready"):
+        core.wait_api_ready(
+            composition,
+            get=_answers(HttpResponse(503, None)),
+            clock=lambda: next(readings),
+            sleeper=sleeps.append,
+        )
+
+    assert sleeps == [0.0]
