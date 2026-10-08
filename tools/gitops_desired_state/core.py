@@ -89,13 +89,13 @@ WORKLOADS_SEGMENT: Final = "workloads"
 TREE_DOCUMENT: Final = f"{DESIRED_STATE_ROOT}/README.md"
 
 #: The commit the reference desired-state release was rendered at. The renderer and
-#: the chart's ``api`` defaults were read at this commit. A release cannot name the
-#: commit that adds it. The release was rendered again when the chart's ``api``
-#: defaults gained the two rollout bounds and the binding stated two API replicas:
-#: this is the commit that made those edits, and the release was regenerated in the
-#: commit after it. The first release named ``c056b977``, the commit its adding
-#: change was based on, and is in Git history.
-_REFERENCE_RENDER_REVISION: Final = "9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0"
+#: the chart's platform defaults, the ``api`` defaults and the ``runtime.rollout``
+#: bounds, were read at this commit. A release cannot name the commit that adds it.
+#: The release was rendered again when the chart gained the runtime's two rollout
+#: bounds and the release took the two-replica contract: this is the commit that
+#: made those edits, and the release was regenerated in the commit after it. The
+#: earlier releases named ``c056b977`` and then ``9bc07a57``, and are in Git history.
+_REFERENCE_RENDER_REVISION: Final = "40803f2fe9a95753da6480de1e5321efafb3cbf0"
 
 #: Every desired-state release, and the inputs each is derived from.
 #:

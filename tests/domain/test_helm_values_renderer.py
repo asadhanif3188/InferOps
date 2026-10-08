@@ -703,25 +703,50 @@ def test_a_replica_range_of_two_numbers_is_refused_and_no_count_is_chosen(
     ]
 
 
-@pytest.mark.parametrize("count", [0, 17, 100])
-def test_a_replica_count_the_chart_cannot_carry_is_refused(count: int) -> None:
+_COUNT_UNSUPPORTED = (
+    "render-value-unsupported",
+    "contract.spec.scaling.minimumReplicas",
+)
+_RANGE_UNSUPPORTED = (
+    "render-capability-unsupported",
+    "contract.spec.scaling.maximumReplicas",
+)
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum", "expected"),
+    [
+        (17, 17, [_COUNT_UNSUPPORTED]),
+        (100, 100, [_COUNT_UNSUPPORTED]),
+        # The contract's schema takes no maximum below 1, so a minimum of 0 is
+        # also a range of two numbers. Each refusal is reported, and both are named.
+        (0, 1, [_RANGE_UNSUPPORTED, _COUNT_UNSUPPORTED]),
+    ],
+)
+def test_a_replica_count_the_chart_cannot_carry_is_refused(
+    minimum: int, maximum: int, expected: list[tuple[str, str]]
+) -> None:
     """The contract's schema takes 0 to 100. The chart takes 1 to 16."""
     refused = refusal_of(
         two_replicas(
             lambda d: d["spec"].__setitem__(
-                "scaling", {"minimumReplicas": count, "maximumReplicas": max(count, 1)}
+                "scaling", {"minimumReplicas": minimum, "maximumReplicas": maximum}
             )
         )
     )
-    rules = {(f.rule_id, f.field) for f in refused.findings}
-    assert (
-        "render-value-unsupported",
-        "contract.spec.scaling.minimumReplicas",
-    ) in rules
-    assert {rule for rule, _ in rules} <= {
-        "render-value-unsupported",
-        "render-capability-unsupported",
-    }
+    assert sorted((f.rule_id, f.field) for f in refused.findings) == sorted(expected)
+
+
+def test_an_inverted_replica_range_is_refused_before_the_renderer() -> None:
+    """A minimum above the maximum is the contract's own semantic rule."""
+    refused = refusal_of(
+        two_replicas(
+            lambda d: d["spec"].__setitem__(
+                "scaling", {"minimumReplicas": 3, "maximumReplicas": 2}
+            )
+        )
+    )
+    assert [f.rule_id for f in refused.findings] == ["replica-range-inverted"]
 
 
 @pytest.mark.parametrize("count", [1, 2, 16])
@@ -747,6 +772,7 @@ def test_a_fixed_replica_count_within_the_charts_bounds_is_rendered(count: int) 
         ("memory", "2047Mi"),
         # A form the chart's schema does not take.
         ("memory", "3Pi"),
+        ("cpu", "6k"),
     ],
 )
 def test_a_resource_ceiling_the_chart_cannot_carry_is_refused_at_two_replicas(

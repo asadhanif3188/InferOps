@@ -614,7 +614,7 @@ is refused with `ReleaseNotRecordedError` before anything is returned, without q
 it. A caller that imports the private sentinel can still build a context of well-formed
 values the boundary never saw; that limit is the context's own, recorded above.
 
-The policy - every release field and every one of the 46 context values classified as a
+The policy - every release field and every one of the 48 context values classified as a
 public-safe identity, a derived digest or revision, or excluded, each with its reason - is
 published with the release, under
 [Provenance input trust](../contracts/rendered-workload-release.md#provenance-input-trust),

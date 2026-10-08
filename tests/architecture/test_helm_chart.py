@@ -1792,23 +1792,29 @@ def test_a_rollout_percentage_is_refused_by_the_schema_at_render(tier: str) -> N
 
 
 @pytest.mark.parametrize(
-    "override",
+    ("override", "location"),
     (
-        "runtime.replicaCount=0",
-        "runtime.replicaCount=17",
-        "runtime.replicaCount=-1",
-        "runtime.replicaCount=2.5",
-        "runtime.rollout.maxUnavailable=-1",
-        "runtime.rollout.maxSurge=17",
+        ("runtime.replicaCount=0", "/runtime/replicaCount"),
+        ("runtime.replicaCount=17", "/runtime/replicaCount"),
+        ("runtime.replicaCount=-1", "/runtime/replicaCount"),
+        ("runtime.replicaCount=2.5", "/runtime/replicaCount"),
+        ("runtime.replicaCount=two", "/runtime/replicaCount"),
+        ("runtime.rollout.maxUnavailable=-1", "/runtime/rollout/maxUnavailable"),
+        ("runtime.rollout.maxUnavailable=17", "/runtime/rollout/maxUnavailable"),
+        ("runtime.rollout.maxSurge=-1", "/runtime/rollout/maxSurge"),
+        ("runtime.rollout.maxSurge=17", "/runtime/rollout/maxSurge"),
+        ("runtime.rollout.maxSurge=1.5", "/runtime/rollout/maxSurge"),
+        ("runtime.rollout.type=Recreate", "/runtime/rollout"),
     ),
 )
 def test_a_runtime_topology_value_outside_its_bounds_is_refused_at_render(
-    override: str,
+    override: str, location: str
 ) -> None:
-    """The schema refuses a count outside 1 to 16 and a bound outside 0 to 16."""
+    """The schema refuses a count outside 1 to 16, a bound outside 0 to 16, a value
+    that is not a whole number, and a member the rollout block does not define."""
     refused = _render(override)
     assert refused.returncode != 0, override
-    assert "/runtime/" in refused.stderr, refused.stderr
+    assert location in refused.stderr, refused.stderr
 
 
 def test_a_runtime_request_above_its_limit_renders_and_nothing_here_refuses_it() -> (
@@ -1817,7 +1823,8 @@ def test_a_runtime_request_above_its_limit_renders_and_nothing_here_refuses_it()
     """A limitation, stated as a test so that closing it has to change this file.
 
     The chart's schema checks the form of each quantity and does not compare a
-    request with a limit. Kubernetes refuses such a container. The platform
+    request with a limit. Kubernetes documents that it refuses a pod whose
+    request is above its limit; that was not observed here. The platform
     renderer refuses a contract ceiling below the chart's runtime request, and
     `tests/domain` holds that. A values file given to Helm directly is not checked.
     """
@@ -1842,8 +1849,10 @@ def test_a_second_runtime_replica_changes_the_replica_count_and_nothing_else() -
 
     The Service, its selector, the pod template, the probes, the model mount, the
     integrity check, the network policies, and the API are the same bytes at one
-    replica and at two. So both replicas are created from one pod template: one
+    replica and at two. The render holds one pod template for the runtime: one
     image digest, one model revision, one artifact digest, one read-only claim.
+    Kubernetes documents that a Deployment creates each replica from that
+    template.
 
     This compares rendered text. Whether two runtime pods then start, whether
     one claim serves both, and whether a caller is served when one stops, is not
@@ -1873,17 +1882,17 @@ def test_the_runtime_service_selects_every_replica_and_names_none() -> None:
     """What the rendered objects say about each replica behind the Service.
 
     The Service's selector is the Deployment's selector, and the pod template
-    carries those labels, so the Service selects each pod the Deployment creates.
-    The selector has no member that names one replica. The Service does not
-    publish a pod that is not Ready, so a pod is an endpoint only while its own
-    readiness probe passes. Each pod has its own probes: readiness and the
-    startup gate ask the health endpoint, which answers 503 while the model
-    loads, and each pod's init container verifies the artifact before its
-    runtime starts.
+    carries those labels. The selector has no member that names one replica.
+    The Service sets no `publishNotReadyAddresses`, and Kubernetes documents
+    that such a Service routes to a pod only while the pod is Ready. The probes
+    are in the pod template: readiness and the startup gate ask the health
+    endpoint, and liveness is a TCP connect. The V1 records observed that
+    endpoint answer 503 while one runtime loaded the model. The template also
+    holds the init container that verifies the artifact.
 
-    This reads a render. It does not establish that an endpoint is removed when
-    a runtime pod stops, how quickly it is removed, or that a request reaches
-    the other pod.
+    This reads a render. It does not establish that each of two pods is probed
+    as the template says, that an endpoint is removed when a runtime pod stops,
+    how quickly it is removed, or that a request reaches the other pod.
     """
     _, documents = _runtime_render(2)
     [deployment] = [
@@ -1922,8 +1931,16 @@ def test_the_runtime_service_selects_every_replica_and_names_none() -> None:
     assert runtime["startupProbe"]["httpGet"]["path"] == health
     assert "tcpSocket" in runtime["livenessProbe"]
     assert [c["name"] for c in pod["initContainers"]] == ["verify-model"]
-    # Nothing in the pod specification names a replica or pins one to a node.
-    for absent in ("hostname", "subdomain", "nodeName", "affinity"):
+    # The pod specification names no replica, and states nothing about where a
+    # replica is scheduled: both pods may be placed on one node.
+    for absent in (
+        "hostname",
+        "subdomain",
+        "nodeName",
+        "nodeSelector",
+        "affinity",
+        "topologySpreadConstraints",
+    ):
         assert absent not in pod, absent
     [claim] = [v for v in pod["volumes"] if "persistentVolumeClaim" in v]
     assert claim["persistentVolumeClaim"] == {
@@ -2561,9 +2578,10 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     The two generated files differ in three values: the API replica count, the
     runtime replica count, and the workload version. So the two renders differ
     in the `replicas` line of each Deployment and in the lines that carry the
-    workload version: its label on each object, the API's environment variable,
-    and the configuration checksum derived from it. Nothing else differs. The
-    Services, the probes, the model mount, and the pins are rendered the same.
+    workload version: one ConfigMap value, and the configuration checksum
+    annotations derived from it. The workload version is not a label. Nothing
+    else differs. The Services, the probes, the model mount, and the pins are
+    rendered the same.
 
     This renders files. No cluster was asked, and no release with two replicas
     of either tier has been installed, so this establishes the rendered topology
@@ -2576,13 +2594,13 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
     replicas = [pair for pair in changed if "replicas:" in pair[0]]
     assert replicas == [("  replicas: 1", "  replicas: 2")] * 2
-    for old, new in changed:
-        if (old, new) in replicas:
-            continue
-        if "configuration-checksum" in old:
-            assert "configuration-checksum" in new
-            continue
-        assert "0.1.0" in old and new == old.replace("0.1.0", "0.2.0"), (old, new)
+    others = [pair for pair in changed if pair not in replicas]
+    checksums = [pair for pair in others if "configuration-checksum" in pair[0]]
+    assert len(checksums) == 2
+    assert all("configuration-checksum" in new for _old, new in checksums)
+    assert [pair for pair in others if pair not in checksums] == [
+        ('  INFEROPS_WORKLOAD_VERSION: "0.1.0"', '  INFEROPS_WORKLOAD_VERSION: "0.2.0"')
+    ]
 
     documents = [d for d in yaml.safe_load_all(desired) if isinstance(d, dict)]
     deployments = {

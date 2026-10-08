@@ -201,11 +201,21 @@ whole pods:
 
 The bounds are the opposite of the API tier's, on purpose. An API pod is small. A
 runtime pod reserves the CPU and memory of a loaded model, so a surge pod is one more
-loaded model than the tier runs. With `maxSurge: 0` a rollout adds none. The cost is that
-a rollout runs one runtime pod fewer than `replicaCount` until each replacement is Ready,
-and a replacement loads the model before it is Ready. At one replica that is no Ready
-runtime pod for the whole of that load. At two replicas it is one. That is the behaviour
-Kubernetes documents for these bounds. No rollout of a runtime pod was run.
+loaded model than the tier runs. Under `maxSurge: 0` Kubernetes documents that a rollout
+adds none. The cost it documents is that a rollout may run one runtime pod fewer than
+`replicaCount` until each replacement is Ready, and a replacement loads the model before
+it is Ready. At one replica, which is the chart's default, that is no Ready runtime pod
+for the whole of that load, and a replacement that never becomes Ready leaves none. At
+two replicas it is one. No rollout of a runtime pod was run under these bounds.
+
+**This changes what the V1 procedures describe.** The
+[upgrade and rollback experiment](../../docs/environment/helm-upgrade-rollback.md), the
+[unready-model recovery](../../docs/serving/unready-model-recovery.md), and the
+[operator runbook](../../docs/environment/operator-runbook.md) were recorded with chart
+`0.3.0` and one runtime replica. Under the bounds that applied then, a failing candidate
+was started beside the serving pod. Under the default bounds of chart `0.5.0` the serving
+pod may be removed first. Each of those pages carries a dated note. No procedure was run
+again.
 
 Until chart `0.5.0` the template stated no strategy for the runtime, and the Kubernetes
 default applied: 25% for both bounds, which resolves to 0 unavailable and 1 surge at one
@@ -215,19 +225,31 @@ pod first, and `0.5.0` removes one first. The rounding rule is the one Kubernete
 documents; it was not observed on a cluster. The schema takes whole pods only and
 refuses a percentage, and the template refuses two zeros, under either profile.
 
-Every replica is created from one pod template. So each runtime pod runs the same pinned
-image, mounts the same claim read only at the same revision directory, verifies the same
-pinned artifact in its own init container before `llama-server` starts, and has its own
-startup, readiness, and liveness probes. The runtime Service selects pods by the
-Deployment's selector labels and names no replica. Kubernetes documents that a Service
-does not route to a pod that is not Ready. That is read from the render and from the
-Kubernetes documentation. It was not observed for two runtime pods.
+The render holds one pod template for the runtime, whatever the replica count, and
+Kubernetes documents that a Deployment creates each replica from it. The template names
+the pinned image, mounts the claim read only at the revision directory, verifies the
+pinned artifact in an init container before `llama-server` starts, and states startup,
+readiness, and liveness probes. The runtime Service selects pods by the Deployment's
+selector labels and names no replica. Kubernetes documents that a Service does not route
+to a pod that is not Ready. That is read from the render and from the Kubernetes
+documentation. It was not observed for two runtime pods.
 
-At the chart's runtime requests, 1 CPU and 2Gi each, two replicas request 2 CPU and 4Gi,
-and a rollout under the default bounds requests no more than that. At the limits a
-reference contract declares, 6 CPU and 3Gi each, two replicas may use 12 CPU and 6Gi.
-These are sums of values. No capacity check was run for them, and nothing here refuses an
-environment that cannot schedule two runtime pods.
+The template states no node selector, no affinity, and no topology spread, so both
+runtime pods may be placed on one node. The model cache claim the prerequisite layer
+creates is `ReadWriteOnce`. Kubernetes documents that such a claim can be mounted by
+several pods on one node and not by pods on two nodes. The acquisition hook mounts the
+same claim on every install and upgrade.
+
+At the chart's runtime requests, 1 CPU and 2Gi each, two replicas request 2 CPU and 4Gi.
+At the limits a reference contract declares, 6 CPU and 3Gi each, two replicas may use 12
+CPU and 6Gi. Each runtime pod runs `runtime.threads` inference threads, six by default,
+so two pods run twelve. These are sums of values. This change ran no capacity check for
+them, and nothing in the chart refuses an environment that cannot schedule two runtime
+pods. One earlier record bears on it: the V1
+[multi-replica certification](../../docs/serving/kubernetes-multi-replica-certification.md)
+ran a capacity gate for two API replicas and two runtime replicas on `docker-desktop`,
+and the gate refused that host. The startup budget and the rollout deadline were set
+from loads of one runtime. Two concurrent model loads were not timed.
 
 In a generated release none of the three values is written by hand. The WorkloadContract
 owns the replica count: its `spec.scaling` range must be one number, because the chart
@@ -241,8 +263,8 @@ start, that one model cache claim can be mounted by two runtime pods on the sele
 storage, that a rollout leaves a caller served, or what a caller observes when a runtime
 pod is deleted or a node is lost. The chart's schema does not compare a request with a
 limit, so a values file given to Helm directly can state a runtime limit below the
-runtime request; Kubernetes refuses that container, and the renderer refuses a contract
-that asks for it.
+runtime request. Kubernetes documents that it refuses such a pod; that was not observed.
+The renderer refuses a contract that asks for it.
 
 Two committed values files under [`ci/`](ci/) are the render fixtures. Both carry
 a **placeholder API image digest** that resolves to no image, for the reason

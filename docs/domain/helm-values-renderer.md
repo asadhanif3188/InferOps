@@ -126,9 +126,9 @@ byte for byte.
 
 The runtime's replica count is the contract's, because it is workload intent. The
 runtime's two rollout bounds are the platform defaults', as the API's are: `maxUnavailable`
-1 and `maxSurge` 0. So a rendered release adds no runtime pod above the replica count
-during a rollout. A hand-written values file admitted beside the generated values may not
-set the count or either bound.
+1 and `maxSurge` 0. So a rendered release states a policy that allows no runtime pod above
+the replica count during a rollout. A hand-written values file admitted beside the
+generated values may not set the count or either bound.
 
 The four rollout values and the two replica counts are configuration. No release with two
 replicas of either tier has been installed, and nothing here establishes what a caller
@@ -537,7 +537,7 @@ and never quotes a value. Every finding is reported at once, in the boundary's o
 | `render-profile-unsupported`, `render-contract-version-unsupported`, `render-binding-version-unsupported` | as published | as published | A context outside the renderer's support. `render_with` refuses it before calling the renderer; `render` refuses it again for a context built without that check |
 
 **The chart is narrower than the contract.** `CHART_VALUE_CONSTRAINTS` copies the chart
-schema's constraint for each of the 29 values written, and a test reads the schema and fails
+schema's constraint for each of the 31 values written, and a test reads the schema and fails
 if one keyword differs. The contract accepts more than the chart in these places, and each
 is refused here rather than by Helm. A test refuses an example of each through
 `render_with`, except the last row's, which no accepted input reaches today:

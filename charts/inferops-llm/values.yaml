@@ -176,19 +176,25 @@ runtime:
   # its replacement is available. That is the behaviour Kubernetes documents for
   # these bounds. No rollout was run.
   #
-  # The cost is stated, not hidden. A rollout under these bounds runs one runtime
-  # pod fewer than `replicaCount` until each replacement is Ready, and a
-  # replacement loads the model before it is Ready. At `replicaCount: 1` that is
-  # no Ready runtime pod for the whole of that load. At `replicaCount: 2` it is
-  # one. The bounds are the opposite of the API tier's on purpose: an API pod is
-  # small, and a runtime pod reserves the CPU and memory of a loaded model.
+  # The cost is stated, not hidden. Under these bounds Kubernetes documents that
+  # a rollout may run one runtime pod fewer than `replicaCount` until each
+  # replacement is Ready, and a replacement loads the model before it is Ready.
+  # At `replicaCount: 1`, which is this file's default, that is no Ready runtime
+  # pod for the whole of that load, and a replacement that never becomes Ready
+  # leaves none. At `replicaCount: 2` it is one. The bounds are the opposite of
+  # the API tier's on purpose: an API pod is small, and a runtime pod reserves
+  # the CPU and memory of a loaded model. None of this was observed.
   #
   # Whole pods only, as for `api.rollout`. Until chart 0.5.0 the Kubernetes
-  # default applied: 25% for both bounds, which resolves to 0 unavailable and 1
-  # surge at one to three replicas. So this changes the effective bounds at the
-  # replica counts the repository renders: 0.4.0 added a pod first, and 0.5.0
-  # removes one first. The template refuses two zeros, because Kubernetes refuses
-  # a rolling update that may neither remove a pod nor add one.
+  # default applied: 25% for both bounds. Kubernetes documents that it rounds
+  # the first down and the second up, which gives 0 unavailable and 1 surge at
+  # one to three replicas. So this changes the bounds a cluster is given at the
+  # replica counts the repository renders: under 0.4.0 they allowed a pod to be
+  # added first, and under 0.5.0 they allow one to be removed first. Neither
+  # chart version was installed. The V1 upgrade and recovery procedures were
+  # recorded with chart 0.3.0 and one replica, under the earlier bounds. The
+  # template refuses two zeros: Kubernetes documents that it refuses a rolling
+  # update that may neither remove a pod nor add one.
   #
   # This is a rollout policy and not an availability result. It bounds what the
   # Deployment controller does on a template change. It does not bound what

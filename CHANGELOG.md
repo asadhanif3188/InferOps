@@ -22,8 +22,15 @@ from `1.0.0`.
   model than the tier runs. Chart `0.4.0` stated no strategy for the runtime, so
   the Kubernetes default applied, which resolves to 0 unavailable and 1 surge at
   one to three replicas. So this change moves the bounds in effect at the replica
-  counts the repository renders. The schema refuses a percentage, and the
-  template refuses two zero bounds under either profile. **The platform
+  counts the repository renders. **That includes one replica, which is the
+  chart's default.** Under the new bounds Kubernetes documents that a rollout
+  of a one-replica release may remove its one runtime pod before the
+  replacement is Ready. The V1 upgrade and rollback experiment, the
+  unready-model recovery, and the operator runbook were recorded with chart
+  `0.3.0`, where a candidate was started beside the serving pod. Each of those
+  pages now carries a dated note, and none of those procedures was run again.
+  The schema refuses a percentage, and the template refuses two zero bounds
+  under either profile. **The platform
   defaults own the two bounds.** A `v1alpha1` `PlatformDefaults` set now carries
   seven settings instead of five; the two runtime bounds joined it in place,
   because no defaults file is committed at any revision. The render context has
@@ -46,9 +53,12 @@ from `1.0.0`.
   claim. **What this does not establish:** chart `0.5.0` was not installed, no
   release with two runtime replicas was installed, no rollout ran, and no
   request was sent. Nothing here establishes that two runtime pods start, that
-  one model cache claim can be mounted by both on the selected storage, that an
-  environment has room for two runtime pods, or that a caller is served while a
-  runtime pod is replaced, deleted, or evicted. The chart renders no
+  the one model cache claim, which the prerequisite layer creates as
+  `ReadWriteOnce`, is mounted by both, that an environment has room for two
+  runtime pods, or that a caller is served while a runtime pod is replaced,
+  deleted, or evicted. This change ran no capacity check. An earlier record
+  holds one for two API and two runtime replicas on `docker-desktop`, and that
+  gate refused the host. The chart renders no
   PodDisruptionBudget and no autoscaler. No claim was added or changed, and the
   register, the index, and the dashboard are as they were.
   [The V1 compatibility record](docs/domain/v1-synchronous-compatibility.md) is
@@ -57,7 +67,8 @@ from `1.0.0`.
   The files that the first experiment's freeze records pin moved again, so a new
   run of any part is still refused until a later freeze revision.
   [The validation record](docs/proof/domain/v2-s4-002-pr1-validation.md) lists
-  the checks.
+  the checks, the two defects the default lane found in the first commit, and
+  what an independent review corrected.
 
 - **The API tier's reference topology is declared: two replicas and a stated
   rollout. It is configuration. Nothing was installed.** `V2-S4-001-PR1` makes

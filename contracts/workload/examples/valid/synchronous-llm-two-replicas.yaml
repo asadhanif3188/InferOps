@@ -60,7 +60,7 @@ spec:
   evidence:
     runbookRef: docs/serving/feasibility-workflow.md
     proofRefs:
-      # The record of one runtime. No record of two runtime replicas exists yet.
+      # The record of one runtime. No record of two runtime replicas running exists.
       - docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md
 
   synchronousLlm:

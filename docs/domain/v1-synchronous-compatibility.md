@@ -11,7 +11,7 @@ installed, and nothing here establishes that a generated release serves a reques
 |---|---|
 | Record | [`v1-synchronous-compatibility.v1alpha1.json`](v1-synchronous-compatibility.v1alpha1.json) |
 | Target | The V1 real workload's values: the V1 [real values file](../../charts/inferops-llm/ci/real-values.yaml) over the [defaults](../../charts/inferops-llm/values.yaml) of the [`inferops-llm`](../../charts/inferops-llm/Chart.yaml) chart at its current version, `0.5.0`. `v1.0.0` released chart `0.3.0`: see the amendments of 2026-10-07 and 2026-10-08 |
-| V2 inputs | The [reference contract](../../contracts/workload/examples/valid/synchronous-llm-local.yaml), the [`local-kind` binding](../../contracts/environment/examples/valid/local-kind.yaml), and the chart's `api` defaults: the [declared reference release](helm-values-renderer.md#verifying-a-committed-release) |
+| V2 inputs | The [reference contract](../../contracts/workload/examples/valid/synchronous-llm-local.yaml), the [`local-kind` binding](../../contracts/environment/examples/valid/local-kind.yaml), and the chart's `api` defaults and runtime rollout bounds: the [declared reference release](helm-values-renderer.md#verifying-a-committed-release) |
 | V2 release input | The generated [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the hand-written [`support-assistant-local.manual-values.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml) installed after it |
 | Tests | [`tests/domain/test_v1_sync_compatibility.py`](../../tests/domain/test_v1_sync_compatibility.py) for the record; the Helm lint and render in [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py) |
 | Validation records | [`v2-s2-003-pr1-validation.md`](../proof/domain/v2-s2-003-pr1-validation.md); the amendments, [`v2-s2-004-pr1-validation.md`](../proof/domain/v2-s2-004-pr1-validation.md), [`v2-s4-001-pr1-validation.md`](../proof/domain/v2-s4-001-pr1-validation.md), and [`v2-s4-002-pr1-validation.md`](../proof/domain/v2-s4-002-pr1-validation.md) |
@@ -52,6 +52,11 @@ installed, and nothing here establishes that a generated release serves a reques
 > contract on this page still declares one runtime replica. The two-replica version of
 > the workload is another contract document, and it is not compared here. The rows,
 > counts, and prose below are the amended state. Nothing was installed with chart `0.5.0`.
+> **The runtime's bounds are not the bounds V1 ran under.** The one-replica workload on
+> this page now renders `maxUnavailable` 1 and `maxSurge` 0 for the runtime. With chart
+> `0.3.0` the Kubernetes default applied, which Kubernetes documents as 0 and 1 at one
+> replica. So a rollout of the V1 workload on chart `0.5.0` may remove the one runtime
+> pod before its replacement is Ready. No rollout was run on either chart for this page.
 
 ## The question
 

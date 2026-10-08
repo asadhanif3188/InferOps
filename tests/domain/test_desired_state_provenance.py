@@ -507,7 +507,7 @@ PLANTED: tuple[tuple[str, Callable[[Path], None], set[str]], ...] = (
     ),
     (
         "a contract that changed after the release was rendered",
-        _edit(DECLARED.contract, "version: 0.1.0", "version: 0.1.1"),
+        _edit(DECLARED.contract, "minimumReplicas: 2", "minimumReplicas: 1"),
         {"release-sources-mismatch"},
     ),
     (

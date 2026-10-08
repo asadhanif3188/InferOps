@@ -671,6 +671,48 @@ def test_defaults_the_chart_does_not_set_are_a_refusal(root: Path) -> None:
         derive(REFERENCE, root)
 
 
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ("  rollout:\n    maxUnavailable: 1\n", "", r"sets no runtime\.rollout$"),
+        (
+            "  rollout:\n    maxUnavailable: 1\n    maxSurge: 0\n",
+            "  rollout: Recreate\n",
+            r"has no runtime\.rollout mapping",
+        ),
+        (
+            "    maxUnavailable: 1\n    maxSurge: 0\n",
+            "    maxUnavailable: 1\n",
+            r"sets no runtime\.rollout\.maxSurge",
+        ),
+        (
+            "    maxUnavailable: 1\n    maxSurge: 0\n",
+            "    maxUnavailable: 0\n    maxSurge: 0\n",
+            "must not both be 0",
+        ),
+        (
+            "    maxUnavailable: 1\n    maxSurge: 0\n",
+            "    maxUnavailable: 50%\n    maxSurge: 0\n",
+            "unavailable-pod bound",
+        ),
+    ],
+)
+def test_runtime_rollout_defaults_the_chart_does_not_state_are_a_refusal(
+    root: Path, old: str, new: str, message: str
+) -> None:
+    """The runtime bounds are read from the chart's values file. A file that leaves
+    one out, or states one the defaults refuse, derives no release."""
+    path = root / REFERENCE.platform_defaults
+    text = path.read_text(encoding="utf-8")
+    if new == "":
+        # Remove the whole block: the key, both bounds, and nothing else.
+        old = "  rollout:\n    maxUnavailable: 1\n    maxSurge: 0\n"
+    edit(path, old, new)
+    assert text != path.read_text(encoding="utf-8")
+    with pytest.raises(SourcesRefused, match=message):
+        derive(REFERENCE, root)
+
+
 def test_every_rule_is_listed_once() -> None:
     order = [rule.rule_id for rule in RULES]
     assert len(set(order)) == len(order)

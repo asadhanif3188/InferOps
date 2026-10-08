@@ -693,7 +693,7 @@ records, which is evidence bound to the commit that ran it and is not derived ag
 | The values file exists beside the release, for a release read back from a directory that is not a declared committed release | The drift check applies it to every declared committed release directory, as `generated-release-file-missing`; a document check still cannot see a directory | A check that takes any release directory |
 | The renderer and platform-defaults revisions name commits that exist | A document check has no repository | A check against the repository the release is committed in |
 | A lowercase credential with no published prefix is refused | It has the shape of a name, and the heuristic's other branch needs mixed case; see [Secrets](#secrets). Since `V2-S1-004-PR1` this is stated as the policy's [input-trust limitation](#provenance-input-trust), not a pending rule: no rule over syntax can close it | Nothing syntactic: identities are public by policy, and a test asserts the gap on the supported path too |
-| A revision a release records is the revision its inputs were read at | The drift check takes both revisions from a release's declaration and the platform defaults from the chart's `api` block at the checked-out commit; nothing reconstructs either input at a recorded revision | A change that reads each input at the revision a release records |
+| A revision a release records is the revision its inputs were read at | The drift check takes both revisions from a release's declaration and the platform defaults from the chart's `api` block and its `runtime.rollout` block at the checked-out commit; nothing reconstructs either input at a recorded revision | A change that reads each input at the revision a release records |
 
 ## Fixtures
 
