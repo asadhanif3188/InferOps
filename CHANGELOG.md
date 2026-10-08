@@ -10,6 +10,30 @@ from `1.0.0`.
 
 ### Added
 
+- **What two serving runtime replicas read from the model cache can be observed
+  and recorded. The storage design is not changed.** `V2-S4-002-PR2` adds
+  `tools/runtime_model_cache`, static tests, and one page. The V1 storage boundary
+  stays as it is: Terraform owns the one claim, the acquisition hook is the one
+  writer, and each runtime replica mounts the claim read only at the
+  repository-and-revision subdirectory and verifies the pinned artifact before it
+  serves. No chart file, contract, binding, or Terraform file is edited.
+  **The tool reads files and contacts no cluster.** A run driver writes a bounded
+  set of cluster reads into one directory. `python -m tools.runtime_model_cache
+  DIRECTORY` prints one record from it: the model identity each replica was
+  given, how each replica mounts the claim, what each verification container
+  reported, and the state of 17 rules. The expected identity is read from the
+  committed desired-state release and compared with the model source record and
+  the runtime package record. A read that was not made is `not-observed` and is
+  never read as agreement, and one pod is never compared with itself. The result
+  is `PASSED`, `FAILED`, `INCONCLUSIVE`, or `REFUSED`. **The chart suite gains two
+  checks on the desired-state render**: the one runtime pod template carries each
+  member of that identity, with no environment variable and no host path; and
+  the three figures of the V1 multi-replica capacity preflight are the sums over
+  this release's three Deployments plus one pod with the resources of the V1
+  request driver. **No capacity gate for the V2 topology is added.** A run uses
+  the V1 preflight as it is, and a refusal ends the run before the release is
+  applied. See
+  [the observation page](docs/environment/runtime-model-cache-observation.md).
 - **The serving runtime tier's reference topology is declared: two replicas and a
   stated rollout. It is configuration. Nothing was installed.** `V2-S4-002-PR1`
   makes three changes that belong together. **The chart states the runtime
