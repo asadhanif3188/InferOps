@@ -1,12 +1,13 @@
 # Architecture and decision records
 
-Status: entry point established. Nineteen records: twelve accepted in part, five
+Status: entry point established. Twenty records: twelve accepted in part, six
 accepted, one accepted with a recorded exception, and one accepted and later
 amended. Every one of them names an accountable decision owner, and none is
 unassigned. (This sentence described eleven records until 2026-09-21; it was not
 machine-checked and had not been updated since ADR 0011. It described sixteen
 until 2026-10-03, when ADR 0017 was added, and seventeen until 2026-10-04, when
-ADR 0018 was added. ADR 0019 was added the same day.)
+ADR 0018 was added. ADR 0019 was added the same day. It described nineteen until
+2026-10-08, when ADR 0020 was added.)
 
 Accepted architecture decisions are indexed here with their status, date, decision
 owner, alternatives, consequences, compatibility impact, and supporting evidence.
@@ -73,6 +74,7 @@ generated values, on a cluster where an operator applied it.
 | [0017](decisions/ADR-0017-argocd-bootstrap-and-ownership.md) | Argo CD is installed by a pinned bootstrap that has one owner | Accepted in part | 2026-10-03 | [Change validation](../proof/architecture/v2-s3-001-pr1-validation.md); it amends ADR 0004 D3 by adding one owner, one lifecycle, and six rows to the ownership inventory, and moves no existing row. The pins and the object-to-row map are machine-checked for form and for agreement with the inventory, the Terraform defaults, and the committed renders. As accepted, nothing was installed. **Amended 2026-10-03:** a procedure implements it and ran on the `docker-desktop` provider ([the run](../proof/environment/v2-s3-001-pr2-argocd-bootstrap-run.md)); it was not executed on `kind`. The four bootstrap rows and the upstream-release row are `implemented`, the apply mechanism (D8) and the image-digest mechanism (D6) are accepted for that provider, the choice of the core profile (D5) stays proposed, and the pins were read from upstream without verifying a signature |
 | [0018](decisions/ADR-0018-git-desired-state-layout.md) | Generated releases are the Git desired state, one directory for one binding and one workload | Accepted in part | 2026-10-04 | [Change validation](../proof/environment/v2-s3-002-pr1-validation.md); the path of a release is derived from its EnvironmentBinding and WorkloadContract and machine-checked, every entry in `gitops/` is accounted for, and the one release is compared byte for byte with what its declared sources derive. When it was accepted nothing reconciled the tree; ADR 0019 added the Application that reads it. The promotion boundary is held by review alone, and the recorded revision is a declaration |
 | [0019](decisions/ADR-0019-argocd-application-and-sync-policy.md) | One Argo CD Application reconciles the generated release, with self-heal and without pruning | Accepted in part | 2026-10-04 | [Three runs on `docker-desktop`](../proof/environment/v2-s3-002-pr2-argocd-application-run.md): Argo CD applied the release six times at the commit `main` named, five of six caller requests were answered and one returned no response, one manual change was reverted in each run, and each removal left no workload object. A static suite and a suite that executes the procedure against stubs hold the manifests and the procedure. Not executed on `kind`. No later commit of `main` was observed being applied, and the API image digest is not in Git. No claim is registered |
+| [0020](decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md) | API readiness is the API's own answer, and the adapter's answer is reported beside it | Accepted | 2026-10-08 | [Change validation](../proof/serving/v2-s4-001-pr2-validation.md); tests drive the application in process with the real adapter type over a controlled transport. Evidence level C0: no API image was built from the change, and no deployed release was observed under the rule |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -333,6 +335,15 @@ decisions are accepted. The other two, the procedure and the removal, are
 accepted for `docker-desktop`, where three runs executed them, and proposed for
 `kind`. **What
 Argo CD reports is not a caller outcome**, and the record says so as a decision.
+
+0020 amends one sentence of 0010. The status of `/health/ready` was the conjunction
+of the API accepting work and its adapter reporting itself ready, so an API pod
+failed its readiness probe whenever its dependency was not ready. Under 0020 the
+status is the API's own answer, and the adapter's answer is a separate member of
+the body that the API still asks for, inside a budget, and still counts. The five
+routes and the error contract are unchanged. The evidence is static: no API image
+was built from the change, and no record shows what a Service does with an API
+pod under the rule.
 
 ## Conventions
 

@@ -1180,7 +1180,15 @@ def probe_identity(
             "the load target did not answer its identity probe"
         ) from error
     ready_body = ready.body if isinstance(ready.body, dict) else {}
-    if ready.status != 200 or ready_body.get("status") != "ready":
+    # The status and ``status`` answer for the API alone. ``adapterStatus`` is the
+    # adapter's own answer, and a load against an adapter that is not ready
+    # measures refusals. A body without the member is refused for the same
+    # reason: nothing in it says the adapter is ready.
+    if (
+        ready.status != 200
+        or ready_body.get("status") != "ready"
+        or ready_body.get("adapterStatus") != "ready"
+    ):
         raise LoadRefused("the load target is not ready")
     ready_adapter = ready_body.get("adapterKind")
     if ready_adapter == ADAPTER_MOCK or ready_adapter != profile.required_adapter_kind:

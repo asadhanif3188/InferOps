@@ -129,8 +129,8 @@ API_METRICS: tuple[MetricSpec, ...] = (
         instrument=COUNTER,
         unit="1",
         help_text=(
-            "Which component is failing its readiness check, when the platform "
-            "is refusing traffic."
+            "Which component a readiness check found unable, whatever the "
+            "readiness answer was."
         ),
         labels=(names.WORKLOAD_ID, names.COMPONENT),
     ),

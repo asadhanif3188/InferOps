@@ -241,7 +241,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "cps",
-      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. Three refusals counted during startup have been observed beside this rate reading 0. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Which component a readiness check found unable: api or serving-adapter. Only an api count is a readiness answer of 503. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. Three refusals counted during startup have been observed beside this rate reading 0. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "whenMissing": "Missing: no readiness check has failed since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
       "zeroMeans": null,
       "valueText": {},

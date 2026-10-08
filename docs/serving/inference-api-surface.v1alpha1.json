@@ -81,10 +81,10 @@
       "method": "GET",
       "path": "/health/ready",
       "origin": "inferops-native",
-      "purpose": "Whether the selected adapter can accept an inference request now.",
+      "purpose": "Whether the InferOps API accepts work now. The body also reports what the selected adapter said, in a separate member.",
       "servingContractRole": "readiness",
       "v1Status": "in-scope",
-      "servedBy": "inferops.api. It is the conjunction of the API accepting work and the selected adapter reporting itself able, and it is false when either half is.",
+      "servedBy": "inferops.api. Amended 2026-10-08 by ADR 0020: the status is 200 while the API accepts work and 503 while it is starting, draining, or stopped. The selected adapter is asked on each request, inside a budget, and the body reports its answer in adapterStatus without changing the status. Before that amendment the status was the conjunction of the API accepting work and the adapter reporting itself able.",
       "runtimeCounterpart": "GET /health",
       "runtimeCounterpartObserved": true
     },

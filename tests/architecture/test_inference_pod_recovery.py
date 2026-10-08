@@ -152,7 +152,13 @@ def refusal_answer() -> HttpAnswer:
 
 IDENTITY = {
     "/health/ready": HttpAnswer(
-        200, {"status": "ready", "adapterKind": "real", "state": "ready"}
+        200,
+        {
+            "status": "ready",
+            "adapterKind": "real",
+            "state": "serving",
+            "adapterStatus": "ready",
+        },
     ),
     "/v1/models": HttpAnswer(
         200,

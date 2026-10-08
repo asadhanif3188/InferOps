@@ -52,7 +52,7 @@ the load-bearing half of this record. They are in the data and summarised under
 
 ## Every decision record, and who owns it
 
-Nineteen records. All of them are owned by `repository-maintainer`, and none is
+Twenty records. All of them are owned by `repository-maintainer`, and none is
 unassigned. The `basis` column is the part worth reading.
 
 | Decision | Basis | Assigned |
@@ -76,15 +76,16 @@ unassigned. The `basis` column is the part worth reading.
 | [ADR 0017](../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md) | `assigned-at-acceptance` | 2026-10-03 |
 | [ADR 0018](../architecture/decisions/ADR-0018-git-desired-state-layout.md) | `assigned-at-acceptance` | 2026-10-04 |
 | [ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md) | `assigned-at-acceptance` | 2026-10-04 |
+| [ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md) | `assigned-at-acceptance` | 2026-10-08 |
 
 | `basis` | What it means |
 |---|---|
 | `assigned-retrospectively` | The record was accepted before this ownership model existed. The role takes accountability for it going forward. **Nobody re-read the historical evidence as part of the assignment**, and the assignment is not a review of it |
 | `assigned-at-acceptance` | The record was accepted under this model, and its owner was named when it was accepted |
 
-Fourteen of the nineteen carry the first basis. That is the honest shape of a
+Fourteen of the twenty carry the first basis. That is the honest shape of a
 governance gap closed after the fact, and writing it into the data is what stops a
-later reader taking fourteen fresh owner rows as fourteen fresh reviews. The five that
+later reader taking fourteen fresh owner rows as fourteen fresh reviews. The six that
 do not are [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md),
 which established this model,
 [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md), the
@@ -92,12 +93,14 @@ first record accepted under it,
 [ADR 0017](../architecture/decisions/ADR-0017-argocd-bootstrap-and-ownership.md), the
 first decision record that decides a V2 design,
 [ADR 0018](../architecture/decisions/ADR-0018-git-desired-state-layout.md), which
-decides the Git desired-state layout, and
+decides the Git desired-state layout,
 [ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md), which
-decides the Argo CD Application. (This paragraph said sixteen and two
+decides the Argo CD Application, and
+[ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md), which
+decides what API readiness answers. (This paragraph said sixteen and two
 until 2026-10-03, and the heading above said "V1 decision". It said seventeen and
 three until 2026-10-04, and eighteen and four until ADR 0019 was added the same
-day.)
+day. It said nineteen and five until 2026-10-08.)
 
 ## How this changes when a second maintainer arrives
 

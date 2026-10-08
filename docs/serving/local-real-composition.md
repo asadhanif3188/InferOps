@@ -48,17 +48,20 @@ Startup is deliberately ordered:
 2. wait for runtime `GET /health` to return `200`;
 3. start the InferOps API with `INFEROPS_SERVING_ADAPTER=real` and the runtime
    package's loopback endpoint;
-4. wait for API `GET /health/ready` to return the exact real-adapter identity.
+4. wait for API `GET /health/ready` to return the exact real-adapter identity,
+   with `adapterStatus` reported as `ready`.
 
-There is no mock fallback. Runtime `503` while the model loads keeps API readiness
-false; it is not promoted to ready and does not start a mock. Once both components
-are ready, the command stays attached in the foreground.
+There is no mock fallback. While the model loads, the runtime answers `503` and the
+API reports `adapterStatus` as `not-ready`. The API's own status is `200` in that
+state, so the composition reads the body and keeps waiting; it is not promoted to
+ready and does not start a mock. Once both components are ready, the command stays
+attached in the foreground.
 
 In another terminal, inspect the composed state or call the API:
 
 ```text
 uv run --locked python -m tools.local_composition status --confirm-real-runtime
-curl --fail http://127.0.0.1:8090/health/ready
+curl --fail http://127.0.0.1:8090/health/ready   # 200 says the API accepts work; read adapterStatus
 curl --fail http://127.0.0.1:8090/v1/models
 ```
 

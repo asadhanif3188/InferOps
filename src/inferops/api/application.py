@@ -42,6 +42,14 @@ traceable as a success.
 That is the graceful-shutdown equivalent the accepted record chose, and the
 ordering is in :mod:`inferops.api.lifecycle` rather than here.
 
+**Readiness is this API's own answer, and the adapter's answer is beside it.**
+`ADR 0020` decides it. The status of ``/health/ready`` is 200 while this API
+accepts work and 503 while it does not. The selected adapter is still asked, under
+a budget, and the body reports what it said in ``adapterStatus``. An adapter that
+says no does not change the status: this API can still answer an inference
+request with the canonical error for that condition, and a caller can only
+receive that error from an endpoint that is still in the Service.
+
 **The inference endpoint is instrumented; the other four are not.** A request to
 ``/v1/chat/completions`` that reached a matched route is counted in flight,
 timed, and closed with an outcome, and one structured record is written when it
@@ -49,13 +57,16 @@ arrives and one when it closes. Liveness, readiness, the model list, and the
 metrics scrape are deliberately outside that: they are not inference requests,
 and counting a readiness probe in the same counter would make the success rate a
 figure about a probe loop. What readiness contributes instead is
-``inferops_readiness_check_failures_total``, which names the half that said no.
+``inferops_readiness_check_failures_total``, which names the component that said
+no. A count against the adapter is a dependency observation: it does not mean
+the readiness answer was 503.
 The instruments themselves are in :mod:`inferops.api.observability`, and the
 names they use are the accepted catalog's.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -97,6 +108,9 @@ from .lifecycle import (
 )
 from .observability import ApiTelemetry, outcome_for
 from .responses import (
+    ADAPTER_STATUS_NOT_ASKED,
+    ADAPTER_STATUS_NOT_READY,
+    ADAPTER_STATUS_READY,
     completion_body,
     error_body,
     live_body,
@@ -125,6 +139,16 @@ MAX_REQUEST_BYTES = 1_048_576
 
 JSON_CONTENT_TYPE = "application/json; charset=utf-8"
 
+#: The default budget, in milliseconds, the readiness answer gives the adapter to
+#: say whether it is ready. The adapter bounds its own probe by the inference
+#: request budget, which is far longer than a probe timeout. Without this bound a
+#: runtime that does not answer would make the readiness answer late, a late
+#: answer is a failed probe, and this API would leave the Service because of its
+#: dependency. The chart's default ``api.probes.readiness.timeoutSeconds`` is
+#: longer than this budget, and a test compares the two. It is a default and not
+#: a measurement: no probe latency was observed to derive it from.
+DEFAULT_ADAPTER_READINESS_TIMEOUT_MS = 3_000
+
 #: The path segment that names a version in the compatibility target's shape.
 #: A first segment matching this pattern and naming a version other than the one
 #: :data:`~inferops.api.surface.PATH_PREFIX` publishes is what makes
@@ -146,10 +170,14 @@ class ApiConfiguration:
             produces, so a deployment that labelled itself wrongly fails loudly
             instead of serving mislabelled responses.
         drain_timeout_ms: The budget a graceful shutdown gives in-flight work.
+        adapter_readiness_timeout_ms: The budget the readiness answer gives the
+            adapter to report its own readiness. No environment variable sets
+            it, so a deployment composed from configuration uses the default.
     """
 
     adapter_kind: str
     drain_timeout_ms: int = DEFAULT_DRAIN_TIMEOUT_MS
+    adapter_readiness_timeout_ms: int = DEFAULT_ADAPTER_READINESS_TIMEOUT_MS
 
     def __post_init__(self) -> None:
         if self.adapter_kind not in ACCEPTED_ADAPTER_KINDS:
@@ -158,6 +186,8 @@ class ApiConfiguration:
             )
         if self.drain_timeout_ms <= 0:
             raise InvalidValueError("drain_timeout_ms must be positive")
+        if self.adapter_readiness_timeout_ms <= 0:
+            raise InvalidValueError("adapter_readiness_timeout_ms must be positive")
 
 
 class InferOpsApi:
@@ -381,32 +411,61 @@ class InferOpsApi:
     async def _ready(
         self, send: Send, answer: _Answer, context: RequestContext
     ) -> None:
-        """Readiness: this API willing, and the selected adapter able.
+        """Readiness: whether this API accepts work. The adapter is reported beside it.
 
-        Both halves have to be yes. An adapter that raises while being asked is
-        not ready — the question was whether it can serve, and a backend that
-        cannot answer it has answered it.
+        The status is this API's own answer. It is 200 while the lifecycle is
+        serving and 503 in every other state. The adapter's answer is published
+        in the body and counted, and it does not change the status.
+
+        The adapter is asked only while this API accepts work. An API that is
+        starting has an adapter that is not initialized, and an API that is
+        draining is about to release it.
         """
-        ready = self._lifecycle.is_accepting_work
-        failed_component = telemetry_names.COMPONENT_API if not ready else None
-        if ready:
-            try:
-                ready = await self._adapter.is_ready(context)
-            except Exception:
-                ready = False
-            if not ready:
-                failed_component = telemetry_names.COMPONENT_ADAPTER
-        if failed_component is not None:
+        accepting = self._lifecycle.is_accepting_work
+        if accepting:
+            adapter_status = await self._adapter_status(context)
+            if adapter_status != ADAPTER_STATUS_READY:
+                self._telemetry.readiness_failed(
+                    correlation_id=answer.correlation_id,
+                    component=telemetry_names.COMPONENT_ADAPTER,
+                )
+        else:
+            adapter_status = ADAPTER_STATUS_NOT_ASKED
             self._telemetry.readiness_failed(
-                correlation_id=answer.correlation_id, component=failed_component
+                correlation_id=answer.correlation_id,
+                component=telemetry_names.COMPONENT_API,
             )
         body = ready_body(
-            ready=ready,
+            ready=accepting,
             adapter_kind=self._configuration.adapter_kind,
             lifecycle_state=str(self._lifecycle.state),
+            adapter_status=adapter_status,
         )
-        status = HTTPStatus.OK if ready else HTTPStatus.SERVICE_UNAVAILABLE
+        status = HTTPStatus.OK if accepting else HTTPStatus.SERVICE_UNAVAILABLE
         await answer.send_json(send, status, body)
+
+    async def _adapter_status(self, context: RequestContext) -> str:
+        """Ask the adapter whether it is ready, inside the readiness budget.
+
+        Three outcomes are one answer here: the adapter said no, the adapter
+        raised, and the adapter did not answer inside the budget. In each one
+        the adapter did not say it is ready. The ask is still made on every
+        readiness request, because the real adapter refuses inference until one
+        of its own probes has seen the runtime ready.
+
+        An ask that runs out of budget is cancelled. The adapter then keeps the
+        last state it observed, and the next readiness request asks again.
+        """
+        budget = self._configuration.adapter_readiness_timeout_ms / 1000
+        try:
+            ready = await asyncio.wait_for(
+                self._adapter.is_ready(context), timeout=budget
+            )
+        except Exception:
+            # `TimeoutError` is an `Exception`, so the budget running out is
+            # handled here with every other way of not answering.
+            return ADAPTER_STATUS_NOT_READY
+        return ADAPTER_STATUS_READY if ready else ADAPTER_STATUS_NOT_READY
 
     async def _models(
         self, send: Send, answer: _Answer, context: RequestContext

@@ -313,9 +313,9 @@ async def test_a_failing_deployment_still_answers_liveness() -> None:
     assert response.json()["status"] == "alive"
 
 
-async def test_readiness_follows_the_selected_backend() -> None:
+async def test_readiness_reports_the_selected_backend() -> None:
     """The mock reports itself ready once initialized, and this is that answer
-    read through the API rather than from the adapter."""
+    read through the API, in the member that carries it."""
     api = await started()
 
     response = await asgi_client.request(api, "GET", READY_PATH)
@@ -325,4 +325,5 @@ async def test_readiness_follows_the_selected_backend() -> None:
         "status": "ready",
         "adapterKind": "mock",
         "state": "serving",
+        "adapterStatus": "ready",
     }

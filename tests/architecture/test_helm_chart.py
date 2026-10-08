@@ -1374,10 +1374,10 @@ def test_the_api_probes_ask_the_paths_the_surface_record_assigns() -> None:
     """Liveness and readiness are different questions with published answers.
 
     `/health/live` answers while the model is loading and while the API is
-    draining; `/health/ready` is false whenever either the API or the selected
-    adapter is unable. Pointing liveness at the readiness path would restart a
-    pod for being not-ready, which is the runtime's defect written in the other
-    workload.
+    draining; `/health/ready` is 503 while the API does not accept work, and it
+    does not follow the selected adapter. Pointing liveness at the readiness
+    path would restart a pod for being not-ready, which is the runtime's defect
+    written in the other workload.
     """
     api = _workload_containers()["api"]
     live = API_PATH_FOR_ROLE["liveness"]

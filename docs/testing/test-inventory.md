@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are seventy-three, and they are listed in their own section rather than
+empty list. There are seventy-four, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -204,9 +204,9 @@ check that the set of adapters covered is the set of adapters shipped.
 
 ### `mock-integration` — [`tests/api/`](../../tests/api/)
 
-Ten modules. The API driven against the committed mock and controlled doubles:
-the success shape, canonical errors, configuration-driven adapter selection, and
-drain order. The local-composition module also crosses a loopback socket into the
+Eleven modules. The API driven against the committed mock and controlled doubles:
+the success shape, canonical errors, configuration-driven adapter selection,
+drain order, and the readiness rule of ADR 0020. The local-composition module also crosses a loopback socket into the
 real adapter type over a synthetic transport; it loads no model, contacts no real
 runtime, and remains `C1` evidence.
 
@@ -343,7 +343,7 @@ the twenty-eighth, and `V1-S4-006-PR1` the twenty-ninth. It drifted again: by
 change added the thirty-second and thirty-third and corrected it. `V1-S5-003-PR1` added the
 thirty-fourth, and `V1-S5-004-PR1` the thirty-fifth. It drifted once more: the table held
 thirty-nine rows while this sentence said thirty-four, until `V1-S5-012-PR2` added the fortieth
-and corrected it, `V1-S5-006-PR1` added the forty-first, `V1-S5-006-PR2` the forty-second, `V1-S5-007-PR1` the forty-third, `V1-S5-013-PR1` the forty-fourth, `V1-S5-013-PR2` the forty-fifth, `V1-S5-008-PR1` the forty-sixth, `V1-S5-009-PR1` the forty-seventh and the forty-eighth, `V2-S0-001-PR1` the forty-ninth, `V2-S1-001-PR1` the fiftieth, `V2-S1-001-PR2` the fifty-first, and `V2-S1-002-PR1` the fifty-second, the change accepting `EX-07` the fifty-third, `V2-S1-002-PR2` the fifty-fourth, `V2-S1-003-PR1` the fifty-fifth, `V2-S1-003-PR2` the fifty-sixth, `V2-S1-004-PR1` the fifty-seventh, `V2-S1-004-PR2` the fifty-eighth, `V2-S2-001-PR1` the fifty-ninth, `V2-S2-001-PR2` the sixtieth, `V2-S2-002-PR1` the sixty-first, and `V2-S2-003-PR1` the sixty-second and the sixty-third. It drifted once more: `V2-S1-003-PR1` added the fifty-fifth and left this sentence at fifty-four, and `V2-S1-003-PR2` first committed it unchanged beside fifty-six rows; that change's review found it. `V2-S2-003-PR2` added the sixty-fourth and left this sentence at sixty-three; `V2-S2-005-PR1` added the sixty-fifth and corrected it. `V2-S2-005-PR2` added the sixty-sixth, `V2-S3-001-PR1` the sixty-seventh, `V2-S3-001-PR2` the sixty-eighth, `V2-S3-002-PR1` the sixty-ninth, and `V2-S3-002-PR2` the seventieth and the seventy-first. `V2-S3-003-PR1` added the seventy-second, and `V2-S3-003-PR2` the seventy-third. The machine-checked count is the one in the opening section.) Each carries its
+and corrected it, `V1-S5-006-PR1` added the forty-first, `V1-S5-006-PR2` the forty-second, `V1-S5-007-PR1` the forty-third, `V1-S5-013-PR1` the forty-fourth, `V1-S5-013-PR2` the forty-fifth, `V1-S5-008-PR1` the forty-sixth, `V1-S5-009-PR1` the forty-seventh and the forty-eighth, `V2-S0-001-PR1` the forty-ninth, `V2-S1-001-PR1` the fiftieth, `V2-S1-001-PR2` the fifty-first, and `V2-S1-002-PR1` the fifty-second, the change accepting `EX-07` the fifty-third, `V2-S1-002-PR2` the fifty-fourth, `V2-S1-003-PR1` the fifty-fifth, `V2-S1-003-PR2` the fifty-sixth, `V2-S1-004-PR1` the fifty-seventh, `V2-S1-004-PR2` the fifty-eighth, `V2-S2-001-PR1` the fifty-ninth, `V2-S2-001-PR2` the sixtieth, `V2-S2-002-PR1` the sixty-first, and `V2-S2-003-PR1` the sixty-second and the sixty-third. It drifted once more: `V2-S1-003-PR1` added the fifty-fifth and left this sentence at fifty-four, and `V2-S1-003-PR2` first committed it unchanged beside fifty-six rows; that change's review found it. `V2-S2-003-PR2` added the sixty-fourth and left this sentence at sixty-three; `V2-S2-005-PR1` added the sixty-fifth and corrected it. `V2-S2-005-PR2` added the sixty-sixth, `V2-S3-001-PR1` the sixty-seventh, `V2-S3-001-PR2` the sixty-eighth, `V2-S3-002-PR1` the sixty-ninth, and `V2-S3-002-PR2` the seventieth and the seventy-first. `V2-S3-003-PR1` added the seventy-second, and `V2-S3-003-PR2` the seventy-third. `V2-S4-001-PR2` added the seventy-fourth. The machine-checked count is the one in the opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -354,6 +354,7 @@ matrix is complete needs to see them together.
 | [`tests/architecture/test_decision_authority.py`](../../tests/architecture/test_decision_authority.py) | That no V1 architectural decision is left without an accountable owner, and that no document still says one is. Deliberately no claim: exercising any of the four authorities ADR 0015 declares changes no status, no certification level and no evidence class, so a row in the claim register would assert the opposite of what that record decided |
 | [`tests/adapters/test_llama_server_pins.py`](../../tests/adapters/test_llama_server_pins.py) | That a constant copied out of an accepted decision still matches its source. The claim about the artifact's hash is certified by a manual procedure, not by this module |
 | [`tests/api/test_api_lifecycle.py`](../../tests/api/test_api_lifecycle.py) | The order of start, drain, and stop. ADR 0010 chose a graceful drain over a remote-stop endpoint and the matrix has no row for it |
+| [`tests/api/test_api_readiness_semantics.py`](../../tests/api/test_api_readiness_semantics.py) | The readiness rule ADR 0020 decided: the status follows the API lifecycle, the adapter's answer is a separate member, the ask is bounded, and a ready API answers inference with the canonical dependency error. The real adapter type runs over a controlled transport; no runtime, kubelet, or Service is involved, so no claim about a deployed release can rest on it |
 | [`tests/api/test_local_real_composition.py`](../../tests/api/test_local_real_composition.py) | Real-only local wiring, readiness order, reverse cleanup, authorization refusal, and the tooling HTTP carrier through controlled seams; no real-runtime claim can rest on generated transport responses |
 | [`tests/serving/test_model_acquisition.py`](../../tests/serving/test_model_acquisition.py) | The selected source record and cache mechanics using tiny synthetic bytes. The real model's integrity remains certified by the authorization-gated procedure, not by this suite |
 | [`tests/serving/test_runtime_configuration.py`](../../tests/serving/test_runtime_configuration.py) | The pinned local runtime profile, its external model boundary, resources, defaults, health semantics, secret boundary, and compatibility with the real adapter. Runtime startup remains for local-real packaging evidence |

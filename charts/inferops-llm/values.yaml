@@ -87,8 +87,12 @@ api:
 
   # Probes, and the mapping docs/serving/inference-api-surface.v1alpha1.json
   # publishes. `/health/live` answers while the model is loading and while the
-  # API is draining; `/health/ready` is false whenever either the API or the
-  # selected adapter is unable. Liveness asks the first and readiness the
+  # API is draining; `/health/ready` is 503 while the API does not accept work,
+  # and it does not follow the selected adapter (ADR 0020). An API image built
+  # before that record answers 503 when its adapter is not ready. The readiness
+  # timeout below is longer than the 3,000 ms the API gives its adapter to
+  # answer; a shorter one makes a slow runtime a failed API probe, and nothing
+  # here refuses it. Liveness asks the first and readiness the
   # second, and neither is ever pointed at the other's path - pointing liveness
   # at a readiness answer is the defect the feasibility trial found on the
   # runtime, and it is the same defect wherever it is written.

@@ -31,6 +31,16 @@ another:
 | Whether the artifact was ever in question | the `verify-model` init container's exit code, in both pods |
 | Recovery | a real completion served after the fix, with its output token count |
 
+> **Amended 2026-10-08.** This experiment was designed and run against the V1
+> readiness rule, in which the API's readiness status was `503` while its adapter
+> was not ready. [ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md)
+> changes that rule: the status answers for the API alone. The descriptor still
+> expects `503` on the API's readiness path and an API pod that is not `Ready`
+> during the unready window. Against an API image built from a revision that holds
+> that record, those two expectations are not met. The descriptor, the script, and the record tool are
+> not changed, and the published record is not affected. A rerun needs a revised
+> descriptor first.
+
 ## What runs, and what owns each piece
 
 | Piece | Path | Owns |

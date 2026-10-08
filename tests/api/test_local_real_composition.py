@@ -10,7 +10,7 @@ runtime or model.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -20,7 +20,7 @@ from inferops.adapters.llama_cpp import RuntimeResponse
 from inferops.api import EXTENSION_MEMBER, InferOpsApi, build
 from tools.local_composition import core
 from tools.local_composition.http_server import LocalApiServer
-from tools.runtime_packaging import CommandResult, ReadinessTrace
+from tools.runtime_packaging import CommandResult, HttpResponse, ReadinessTrace
 
 pytestmark = pytest.mark.mockintegration
 
@@ -303,3 +303,69 @@ def test_composition_log_refuses_a_linked_component(
 
     with pytest.raises(core.CompositionError, match="log path is unsafe"):
         core.CompositionLog(core.load_composition(), repo_root=tmp_path)
+
+
+def _answers(*responses: HttpResponse) -> Callable[[str, float], HttpResponse]:
+    """A readiness getter that returns each response once, then repeats the last."""
+    remaining = list(responses)
+
+    def get(url: str, timeout: float) -> HttpResponse:
+        return remaining.pop(0) if len(remaining) > 1 else remaining[0]
+
+    return get
+
+
+def test_api_wait_continues_while_the_api_is_ready_and_its_adapter_is_not() -> None:
+    """A 200 answers for the API alone, so the wait reads the adapter's member."""
+    composition = core.load_composition()
+    sleeps: list[float] = []
+
+    elapsed = core.wait_api_ready(
+        composition,
+        get=_answers(
+            HttpResponse(503, None),
+            HttpResponse(200, core.ADAPTER_NOT_READY_BODY),
+            HttpResponse(200, core.ADAPTER_NOT_READY_BODY),
+            HttpResponse(200, core.READY_BODY),
+        ),
+        clock=lambda: 0.0,
+        sleeper=sleeps.append,
+    )
+
+    assert elapsed == 0
+    assert len(sleeps) == 3
+
+
+def test_api_wait_ends_when_the_adapter_never_becomes_ready() -> None:
+    composition = core.load_composition()
+    ticks = iter(range(10_000_000))
+
+    with pytest.raises(core.CompositionError, match="did not become ready"):
+        core.wait_api_ready(
+            composition,
+            get=_answers(HttpResponse(200, core.ADAPTER_NOT_READY_BODY)),
+            clock=lambda: float(next(ticks)),
+            sleeper=lambda _seconds: None,
+        )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {**core.READY_BODY, "adapterKind": "mock"},
+        {"status": "ready", "adapterKind": "real", "state": "serving"},
+        {**core.READY_BODY, "adapterStatus": "not-asked"},
+    ],
+)
+def test_api_wait_refuses_a_ready_answer_that_is_not_the_real_identity(
+    body: dict[str, str],
+) -> None:
+    composition = core.load_composition()
+
+    with pytest.raises(core.CompositionError, match="not explicitly real"):
+        core.wait_api_ready(
+            composition,
+            get=_answers(HttpResponse(200, body)),
+            clock=lambda: 0.0,
+            sleeper=lambda _seconds: None,
+        )

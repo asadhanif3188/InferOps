@@ -63,11 +63,11 @@ groups:
       inferops_alert_id: readiness-refusals-sustained
     annotations:
       summary: |-
-        More than half the readiness probes of a component have been refused for five minutes.
+        A component has said no on more than half the readiness checks for five minutes.
       impact: |-
-        The named component is about to stop receiving traffic, or already has: three consecutive refusals remove its endpoint from the Service. This is the one alert that sees an outage before any caller does, and it fires on a release nobody is sending traffic to.
+        It depends on the component label. For api, the API is not accepting work and its endpoint is about to leave the Service, or already has. For serving-adapter, the API stays in the Service and answers an inference request with a canonical dependency error, because its adapter is not ready. This alert reads a probe and not a caller, so it fires on a release nobody is sending traffic to.
       action: |-
-        The component label says which half answered no -- platform-api or serving-adapter. Check the pod's probe configuration and its endpoint before anything else, and read the runtime log if the adapter is the one refusing.
+        The component label says which component answered no -- api or serving-adapter. For api, check the API pod's lifecycle and its endpoint. For serving-adapter, the API endpoint is expected to be present: read the runtime pod's readiness and the runtime log.
       blind_spot: |-
         Which of the several things the adapter checks said no. The counter names the component and not the reason, and the reason is in the log rather than in a metric.
       evidence_query: sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m]))

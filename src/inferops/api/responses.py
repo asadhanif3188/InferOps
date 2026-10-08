@@ -80,11 +80,24 @@ from .surface import (
 #: The status a liveness answer reports about the process.
 STATUS_ALIVE = "alive"
 
-#: The two readiness answers. ``ready`` means the selected adapter said it can
-#: accept an inference request now; ``not-ready`` means it did not, or that this
-#: API has stopped accepting work.
+#: The two readiness answers. ``ready`` means this API accepts work now;
+#: ``not-ready`` means it is starting, draining, or stopped. Neither says
+#: anything about the selected adapter. `ADR 0020` decides this.
 STATUS_READY = "ready"
 STATUS_NOT_READY = "not-ready"
+
+#: What the selected adapter said when the readiness answer asked it. ``ready``
+#: means it said it can accept an inference request now. ``not-ready`` means it
+#: said no, raised, or did not answer inside the budget. ``not-asked`` means
+#: this API was not accepting work, so it did not ask.
+ADAPTER_STATUS_READY = "ready"
+ADAPTER_STATUS_NOT_READY = "not-ready"
+ADAPTER_STATUS_NOT_ASKED = "not-asked"
+ADAPTER_STATUSES: tuple[str, ...] = (
+    ADAPTER_STATUS_READY,
+    ADAPTER_STATUS_NOT_READY,
+    ADAPTER_STATUS_NOT_ASKED,
+)
 
 
 def completion_body(
@@ -220,19 +233,30 @@ def live_body() -> dict[str, object]:
 
 
 def ready_body(
-    *, ready: bool, adapter_kind: str, lifecycle_state: str
+    *, ready: bool, adapter_kind: str, lifecycle_state: str, adapter_status: str
 ) -> dict[str, object]:
-    """Whether the selected adapter can accept an inference request now.
+    """Whether this API accepts work now, and what the selected adapter said.
 
-    It carries the adapter kind and the lifecycle state and nothing else. No
-    endpoint, no credential, no path, and no runtime message reaches a health
-    response — a readiness probe is the surface most likely to be reachable by
-    something that should not see any of them.
+    ``status`` and ``state`` are this API's own answer. ``adapterStatus`` is the
+    dependency's answer, and it is a separate member because the two are
+    different questions: a ``ready`` status beside a ``not-ready`` adapter is an
+    API that answers an inference request with a canonical dependency error.
+
+    The body carries those four members and nothing else. No endpoint, no
+    credential, no path, and no runtime message reaches a health response — a
+    readiness probe is the surface most likely to be reachable by something that
+    should not see any of them. ``adapterStatus`` does not say why an adapter is
+    not ready: the adapter interface answers with a boolean, so an unreachable
+    runtime and a loading model are one value here. The inference path is where
+    the canonical error tells them apart.
     """
+    if adapter_status not in ADAPTER_STATUSES:
+        raise ValueError(f"{adapter_status!r} is not a declared adapter status")
     return {
         "status": STATUS_READY if ready else STATUS_NOT_READY,
         "adapterKind": adapter_kind,
         "state": lifecycle_state,
+        "adapterStatus": adapter_status,
     }
 
 

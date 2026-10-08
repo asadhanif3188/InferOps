@@ -21,7 +21,7 @@ is why its shape is what it is, and this document does not restate the argument.
 | `POST /v1/chat/completions` | Validation, translation to the adapter, the completion body, and the canonical error body in full | Caller generation controls the adapter cannot carry are refused, not ignored |
 | `GET /v1/models` | The list envelope, the runtime descriptor, and the declared capability set | `deterministicSampling` is published as `null` — see [declared capabilities](#declared-capabilities) |
 | `GET /health/live` | Whether this process is alive | — |
-| `GET /health/ready` | This API accepting work **and** the selected adapter reporting itself able | — |
+| `GET /health/ready` | Whether this API accepts work, as the status. What the selected adapter said, as a separate member of the body | The status does not say that inference can be served. See [health](#health) |
 | `GET /metrics` | The route, in the Prometheus exposition content type, and the eight metrics the telemetry catalog assigns to this API | Five active metrics are not emitted — four belong to the adapter or the validator, and one has no source this distribution may read. See [what the API emits](../telemetry/api-instrumentation.md) |
 
 ## How it is composed
@@ -284,14 +284,42 @@ the API is draining. That is the point of it: InferOps being alive and InferOps
 being able to serve are different questions, and only readiness is allowed to
 depend on the backend.
 
-`/health/ready` is the conjunction of this API accepting work and the selected
-adapter reporting itself able, and it is 503 when either half is false —
-including when the adapter raises while being asked, because a backend that
-cannot answer the readiness question has answered it.
+`/health/ready` answers for this API, and it reports the selected adapter beside
+that answer. [ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md) decides
+the rule. In a revision earlier than that record, the status was the conjunction of
+the two.
 
-Neither response carries an endpoint, a credential, a path, a runtime message, or
-any configuration. A readiness probe is the surface most likely to be reachable by
-something that should not see any of them.
+| State of this API | Selected adapter | Status | `status` | `adapterStatus` |
+|---|---|---|---|---|
+| `serving` | says it is ready | `200` | `ready` | `ready` |
+| `serving` | says no, raises, or does not answer inside the budget | `200` | `ready` | `not-ready` |
+| `starting`, `draining`, or `stopped` | not asked | `503` | `not-ready` | `not-asked` |
+
+The body has four members: `status`, `adapterKind`, `state`, and `adapterStatus`.
+
+**The status is 200 while this API can honor its contract.** An API in the
+`serving` state reads a request and answers it. If the adapter cannot serve, the
+answer is the canonical error for that condition: `capability-unavailable` with
+the condition `runtime-unreachable`, or `model-not-ready` with the condition
+`model-loading`. Both are `503` and `retryable`. A caller can receive either one
+only from an API that is still reachable, which is why the adapter's state does
+not change the readiness status.
+
+**`adapterStatus` does not say why an adapter is not ready.** The adapter interface
+answers with a boolean, so an unreachable runtime and a loading model are one value
+in this body. The inference path is where the two canonical errors differ.
+
+**The adapter is asked inside a budget.** The default is 3,000 ms, and no
+environment variable sets it. An ask that does not finish is cancelled and
+reported as `not-ready`. The chart's default readiness probe timeout is 5 seconds.
+The chart does not refuse a shorter one.
+
+**A consumer that needs to know whether inference can be served reads both
+members.** A `200` alone says that this API accepts work.
+
+Neither health response carries an endpoint, a credential, a path, a runtime
+message, or any configuration. A readiness probe is the surface most likely to be
+reachable by something that should not see any of them.
 
 ## Declared capabilities
 
@@ -344,7 +372,7 @@ from the program that imported it.
 | The refusals above are produced | The same | mock |
 | Every canonical code an adapter may raise is mapped, and every condition carries its flag and status | The same, with adapter doubles raising each one | mock |
 | An adapter's own message never reaches a caller | The same, with a double raising a message carrying a path, a host, and a prompt fragment | mock |
-| Readiness follows the selected backend | The same | mock |
+| The readiness status follows this API's lifecycle, and the body reports the selected backend without following it | The same, and `tests/api/test_api_readiness_semantics.py` with the real adapter type over a controlled transport. No runtime, no kubelet, and no Service was involved | mock |
 | The shutdown order holds | The same | mock |
 | A `mock` selection composes the mock and a `real` selection composes the real adapter | Composing from configuration mappings, under `tests/api/test_api_adapter_selection.py` | mock |
 | An unstated selection, and a `real` selection with missing settings, refuse rather than fall back | The same | mock |

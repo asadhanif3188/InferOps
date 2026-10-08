@@ -329,8 +329,8 @@ The API's three probes.
 
 The mapping is the one docs/serving/inference-api-surface.v1alpha1.json
 publishes rather than a choice made here: `/health/live` answers while the model
-is loading and while the API is draining, and `/health/ready` is the conjunction
-of the API accepting work and the selected adapter reporting itself able. So
+is loading and while the API is draining, and `/health/ready` is 503 while the
+API does not accept work. It does not follow the selected adapter (ADR 0020). So
 liveness asks the first and readiness the second, and neither is ever pointed at
 the other's path.
 

@@ -205,6 +205,13 @@
       "owner": "repository-maintainer",
       "assignedOn": "2026-10-04",
       "basis": "assigned-at-acceptance"
+    },
+    {
+      "decisionId": "ADR-0020",
+      "path": "docs/architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-10-08",
+      "basis": "assigned-at-acceptance"
     }
   ],
   "transferRules": [

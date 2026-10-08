@@ -233,6 +233,14 @@
       "note": null
     },
     {
+      "module": "tests/api/test_api_readiness_semantics.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "The readiness rule ADR 0020 decided: the status of the readiness path follows the API lifecycle and not the selected adapter, the adapter's answer is a separate member of the body, the ask is bounded, and an inference request to a ready API with an unavailable runtime receives the canonical dependency error. The real adapter type runs over a controlled transport.",
+      "claims": [],
+      "note": "Deliberately no claim. No register row says what a deployed API pod or its Service does under this rule, and a result here cannot support one: the suite involves no runtime process, no kubelet, and no Service."
+    },
+    {
       "module": "tests/api/test_api_request_validation.py",
       "layer": "mock-integration",
       "marker": "mockintegration",

@@ -119,7 +119,8 @@ reads, and it is meant to be read beside the two scrape panels. The accepted que
 name, and the chart's rule comment, still say more than the expression does.
 
 **There is no readiness panel that reads a number about the model.** The platform
-emits one readiness signal — the API's own refusals — and the model's readiness is
+emits one readiness signal — the API's count of readiness checks in which a
+component said no — and the model's readiness is
 specified, assigned to the serving-runtime adapter, and emitted by nothing. The panel
 reads the recorded absence, which is `1`, and shows *not emitted*.
 
