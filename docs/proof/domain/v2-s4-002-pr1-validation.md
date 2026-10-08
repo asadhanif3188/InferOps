@@ -368,7 +368,7 @@ committed. No file was edited while the suites ran.
 | `helm template`, both committed fixtures | Each render is the committed render, byte for byte, after the comment edits |
 | `tools.generated_release --check`, `tools.gitops_desired_state --check` | Exit 0 for each |
 | `tests/domain`, `tests/contracts`, `tests/architecture`, `tests/testing`, `tests/security`, and `tests/serving` | 16,149 passed, 2 failed, 37 skipped, in 44 minutes 10 seconds |
-| The default lane on the second commit | Run on the committed tree. A later commit of this change records the result in this file |
+| The default lane on the second commit | Run on the committed tree. [The result is below](#the-default-lane-on-the-second-commit) |
 
 **The two failures came from an uncommitted tree.** Both are cases of
 `test_a_planted_defect_is_refused_under_the_rules_it_breaks`: "an edited release
@@ -377,6 +377,33 @@ identifier or the revision from the release file in the working tree, and plants
 edit in a copy of the commit that `HEAD` names. Before the second commit those two
 held different releases, so the edit found nothing to replace. They can pass only on a
 commit that holds the regenerated release.
+
+## The default lane, on the second commit
+
+The lane ran once on the committed second commit, `4855f3e`, with a clean working tree:
+`uv run --locked python -m pytest -q -rs`. No file was edited while it ran.
+
+| Result | Count |
+|---|---|
+| Passed | 19,215 |
+| Failed | 0 |
+| Skipped | 37 |
+| Deselected | 14 |
+| Duration | 39 minutes 41 seconds |
+
+**Both tests that failed on the first commit passed, and so did the two cases that
+needed the second commit.**
+
+**The skips, by cause.** Twenty-five are fixtures that one validation layer does not
+read. Ten are symbolic links that this Windows host cannot create. One is a POSIX signal
+case. The first commit's lane also reported 37 skips; its causes were not listed. One
+skip is a consequence of the earlier topology change and of this one:
+`tests/testing/test_experiment_freeze.py` holds a test that compares freeze revision 3
+with the desired-state release files while they have their pinned content. The release
+changed, so the test reports that and skips. It checks nothing here.
+
+**The lane was not run again after the third commit.** The third commit changes this
+record and nothing else.
 
 ## Privacy and publicability
 
