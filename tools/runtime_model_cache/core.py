@@ -18,13 +18,22 @@ a read is ``not-observed``. It is never ``held``.
 
 **Each rule has one of three states.** ``held`` and ``not-held`` are what the
 reads show. ``not-observed`` means that a read the rule needs is absent. The
-result is ``REFUSED`` when the capacity preflight refused and no pod was read,
-``FAILED`` when one rule is not held, ``INCONCLUSIVE`` when no rule is not held
-and one required rule was not observed, and ``PASSED`` when every required rule
-is held.
+result is ``REFUSED`` when the capacity preflight exited with its refusal status
+and no pod was read, ``FAILED`` when one rule is not held, ``INCONCLUSIVE`` when
+no rule is not held and one required rule was not observed, and ``PASSED`` when
+every required rule is held.
 
 **A rule that compares replicas needs two replicas.** One pod agrees with
-itself. With fewer than two pods, each comparing rule is ``not-observed``.
+itself. With fewer than two pods of distinct names, each comparing rule is
+``not-observed``. Two entries of one name are not two replicas.
+
+**A value is compared whole.** The record holds a bounded copy of a long text
+for a reader, and the SHA-256 of the whole text. A rule compares the whole text.
+
+**The expected identity is checked for its shape before it is used.** A
+collection whose ``expected.json`` lacks a member, or holds an empty one, is not
+a collection. This does not show that the identity is the repository's: the
+check of a committed run compares it with the two pin records.
 
 See docs/environment/runtime-model-cache-observation.md, which describes the
 collection, the rules, and what a record does not establish.
@@ -121,6 +130,9 @@ _RELEASE_ANNOTATION: Final = "meta.helm.sh/release-name"
 _VERIFIED_LINE: Final = "model artifact verified: byte count and SHA-256"
 _POD_NAME: Final = re.compile(r"[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?")
 _DIGEST: Final = re.compile(r"sha256:[0-9a-f]{64}")
+_WHOLE_NUMBER: Final = re.compile(r"[0-9]{1,18}", re.ASCII)
+_REVISION: Final = re.compile(r"[0-9a-f]{40}")
+_LOG_LINES_KEPT: Final = 8
 _MODEL_SOURCE: Final = "docs/serving/model-source.v1.json"
 _RUNTIME_PACKAGE: Final = "deploy/serving/runtime/container-package.v1.json"
 _TEXT_LIMIT: Final = 240
@@ -139,13 +151,13 @@ class Rule:
 RULES: Final[tuple[Rule, ...]] = (
     Rule(
         "capacity-preflight-sufficient",
-        "The V1 multi-replica capacity preflight exited 0 before the release was "
-        "applied.",
+        "The V1 multi-replica capacity preflight exited 0, and the facts it read "
+        "are in the collection.",
     ),
     Rule(
         "replica-count",
-        "The number of serving runtime pods that are not being deleted is the "
-        "declared runtime replica count.",
+        "The serving runtime pods that are not being deleted have distinct names, "
+        "and their number is the declared runtime replica count.",
     ),
     Rule(
         "every-replica-ready",
@@ -158,8 +170,8 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "one-model-argument",
-        "Each runtime container is given the expected artifact path as its model "
-        "argument, and every replica is given the same alias.",
+        "Each runtime container is given one model argument, the expected artifact "
+        "path, and one alias argument, and every replica is given the same alias.",
     ),
     Rule(
         "one-claim",
@@ -182,8 +194,8 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "read-only-in-effect",
-        "The mount table of each runtime container lists the cache mount with the "
-        "option ro.",
+        "Each line that the mount table of each runtime container holds for the "
+        "cache mount point lists the option ro.",
     ),
     Rule(
         "revision-scoped-mount",
@@ -192,8 +204,8 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "one-directory",
-        "The mount table of every runtime container names one device and one "
-        "root directory for the cache mount.",
+        "The last line that the mount table of every runtime container holds for "
+        "the cache mount point names one device and one root directory.",
     ),
     Rule(
         "one-file",
@@ -201,15 +213,16 @@ RULES: Final[tuple[Rule, ...]] = (
         "the pinned byte count.",
     ),
     Rule(
-        "artifact-verified-on-each-start",
-        "In each pod the verification container's script holds the pinned SHA-256 "
-        "and byte count, the container exited 0, and its log holds the "
-        "verification line and the checksum line for the expected path.",
+        "artifact-verified-in-each-pod",
+        "In each pod the verification container's script compares the pinned byte "
+        "count and gives the pinned SHA-256 and the expected path to sha256sum, the "
+        "container exited 0, and its log holds the verification line and the "
+        "checksum line for the expected path, and no failed checksum.",
     ),
     Rule(
         "one-reported-model",
-        "Each runtime answered its model listing with status 200 and the alias it "
-        "was given, and every replica reported the same model metadata.",
+        "Each runtime answered its model listing with status 200, the alias it was "
+        "given, and model metadata, and every replica reported the same metadata.",
     ),
     Rule(
         "every-replica-completed",
@@ -218,8 +231,8 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "not-ready-while-loading",
-        "For each pod, one sample before its first Ready sample shows the runtime "
-        "container running and not ready.",
+        "For each pod, one sample before its first ready sample shows the runtime "
+        "container running and reported as not ready.",
         required=False,
     ),
 )
@@ -236,7 +249,8 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "collection.",
     "A record does not establish that readiness is false whenever inference is "
     "impossible. It states the samples in which a running runtime container was "
-    "not ready, and the completion each runtime answered after it was Ready.",
+    "not ready, and the completion each runtime answered after it was Ready. It "
+    "holds no answer to a readiness probe.",
     "A record does not establish which runtime replica serves a request that a "
     "caller sends. Each completion was sent to one pod through a port-forward, "
     "and not through a Service.",
@@ -246,6 +260,11 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "A record does not establish that the claim cannot be written. It states the "
     "declared mode and the mount option of each runtime container. No write was "
     "attempted, and the acquisition hook mounts the same claim writable.",
+    "A record does not establish that a verification ran again when a runtime "
+    "container restarted. The verification container runs when a pod starts. The "
+    "record states each runtime container's restart count, and no rule reads it.",
+    "A record does not establish that the capacity preflight ran before the "
+    "release was applied. The order is the driver's, and the transcript shows it.",
     "A record does not establish capacity for any other topology, and it is not "
     "a capacity gate for this one. It states one reading of the V1 preflight.",
     "A record does not establish a performance figure. No time in it is a "
@@ -396,7 +415,7 @@ def _json(directory: Path, name: str) -> Any:
         return None
     try:
         return json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except (ValueError, RecursionError):
         return None
 
 
@@ -429,10 +448,15 @@ def _bounded(value: object) -> str | None:
 
 
 def _argument(arguments: object, flag: str) -> str | None:
+    """The value of a flag that is given once. A flag given twice has none."""
     listed = [a for a in _sequence(arguments) if isinstance(a, str)]
-    if flag in listed and listed.index(flag) + 1 < len(listed):
+    if listed.count(flag) == 1 and listed.index(flag) + 1 < len(listed):
         return listed[listed.index(flag) + 1]
     return None
+
+
+def _whole(text: str) -> int | None:
+    return int(text) if _WHOLE_NUMBER.fullmatch(text) else None
 
 
 def _mount(container: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -447,38 +471,47 @@ def _mount(container: Mapping[str, Any]) -> dict[str, Any] | None:
 
 
 def _mount_table(text: str | None, mount_path: str) -> dict[str, Any]:
-    """The line of a ``/proc/self/mountinfo`` text for one mount point."""
+    """The lines of a ``/proc/self/mountinfo`` text for one mount point.
+
+    A later line for one mount point is mounted over an earlier one, so the last
+    line is the mount a process sees. The root is held bounded for a reader, and
+    its SHA-256 is of the whole text.
+    """
     if text is None:
         return {"state": "not-read"}
-    for line in text.splitlines():
-        fields = line.split()
-        if len(fields) < 7 or "-" not in fields or fields[4] != mount_path:
-            continue
-        separator = fields.index("-")
-        return {
-            "state": "read",
-            "device": fields[2],
-            "root": fields[3][:_TEXT_LIMIT],
-            "options": fields[5].split(","),
-            "filesystem": fields[separator + 1]
-            if separator + 1 < len(fields)
-            else None,
-        }
-    return {"state": "no-line"}
+    matching = [
+        fields
+        for fields in (line.split() for line in text.splitlines())
+        if len(fields) >= 7 and "-" in fields and fields[4] == mount_path
+    ]
+    if not matching:
+        return {"state": "no-line"}
+    fields = matching[-1]
+    separator = fields.index("-")
+    return {
+        "state": "read",
+        "lines": len(matching),
+        "everyLineReadOnly": all("ro" in f[5].split(",") for f in matching),
+        "device": fields[2],
+        "root": fields[3][:_TEXT_LIMIT],
+        "rootSha256": _sha256(fields[3].encode("utf-8")),
+        "options": fields[5].split(","),
+        "filesystem": fields[separator + 1] if separator + 1 < len(fields) else None,
+    }
 
 
 def _artifact(text: str | None) -> dict[str, Any]:
     """``stat -c '%d %i %s'`` of the artifact, as three whole numbers."""
     if text is None:
         return {"state": "not-read"}
-    fields = text.split()
-    if len(fields) != 3 or not all(field.isdigit() for field in fields):
+    numbers = [_whole(field) for field in text.split()]
+    if len(numbers) != 3 or any(number is None for number in numbers):
         return {"state": "unreadable"}
     return {
         "state": "read",
-        "device": int(fields[0]),
-        "inode": int(fields[1]),
-        "sizeBytes": int(fields[2]),
+        "device": numbers[0],
+        "inode": numbers[1],
+        "sizeBytes": numbers[2],
     }
 
 
@@ -488,8 +521,10 @@ def _reduced(document: object, members: Sequence[str]) -> dict[str, Any]:
     reduced: dict[str, Any] = {"state": "read"}
     for name in members:
         value = document.get(name)
-        if isinstance(value, str):
-            value = value[:_TEXT_LIMIT]
+        if isinstance(value, str) and len(value) > _TEXT_LIMIT:
+            # A text this long is not a model name. It is not held, and a rule
+            # that needs it does not hold.
+            value = None
         reduced[name] = value
     return reduced
 
@@ -520,6 +555,8 @@ def _pod(item: Mapping[str, Any], directory: Path, mount_path: str) -> dict[str,
     script_text = script[-1] if script and isinstance(script[-1], str) else ""
     reported_mount = _named(runtime_status.get("volumeMounts"), _CACHE_VOLUME)
     log = _text(directory, f"verify-model.{safe}.txt") if safe else None
+    log_lines = [] if log is None else [line.strip() for line in log.splitlines()]
+    arguments = [a for a in _sequence(runtime.get("args")) if isinstance(a, str)]
 
     return {
         "name": name,
@@ -530,8 +567,10 @@ def _pod(item: Mapping[str, Any], directory: Path, mount_path: str) -> dict[str,
         "restartCount": runtime_status.get("restartCount"),
         "runtimeImage": runtime.get("image"),
         "runtimeImageIdentifier": runtime_status.get("imageID"),
-        "modelArgument": _argument(runtime.get("args"), "--model"),
-        "aliasArgument": _argument(runtime.get("args"), "--alias"),
+        "modelArguments": arguments.count("--model"),
+        "modelArgument": _argument(arguments, "--model"),
+        "aliasArguments": arguments.count("--alias"),
+        "aliasArgument": _argument(arguments, "--alias"),
         "volume": {
             "claimName": claim.get("claimName"),
             "readOnly": claim.get("readOnly"),
@@ -553,7 +592,19 @@ def _pod(item: Mapping[str, Any], directory: Path, mount_path: str) -> dict[str,
             "finishedAt": terminated.get("finishedAt"),
             "script": script_text,
             "log": "not-read" if log is None else "read",
-            "logLines": [] if log is None else log.splitlines()[:8],
+            "logLines": [] if log is None else log.splitlines()[:_LOG_LINES_KEPT],
+            "logHoldsVerifiedLine": _VERIFIED_LINE in log_lines,
+            "logChecksumResults": sorted(
+                {line.rsplit(": ", 1)[1] for line in log_lines if ": " in line}
+                & {"OK", "FAILED"}
+            ),
+            "logChecksumPaths": sorted(
+                {
+                    line.rsplit(": ", 1)[0][:_TEXT_LIMIT]
+                    for line in log_lines
+                    if line.endswith((": OK", ": FAILED"))
+                }
+            )[:_LOG_LINES_KEPT],
         },
         "mountTable": _mount_table(
             _text(directory, f"mountinfo.{safe}.txt") if safe else None, mount_path
@@ -579,7 +630,7 @@ def _pod(item: Mapping[str, Any], directory: Path, mount_path: str) -> dict[str,
 
 
 def _claims(document: object, claim_name: str, volumes: object) -> dict[str, Any]:
-    if not isinstance(document, Mapping):
+    if not isinstance(document, Mapping) or not isinstance(document.get("items"), list):
         return {"state": "not-read"}
     items = [_mapping(i) for i in _sequence(document.get("items"))]
     names = sorted(str(_mapping(i.get("metadata")).get("name")) for i in items)
@@ -677,7 +728,7 @@ def _samples(text: str | None) -> dict[str, Any]:
         if ready == "true":
             if entry["firstReadySample"] is None:
                 entry["firstReadySample"] = time
-        elif running_since and entry["firstReadySample"] is None:
+        elif ready == "false" and running_since and entry["firstReadySample"] is None:
             entry["runningAndNotReadyBeforeReady"] += 1
     return {
         "state": "read",
@@ -702,7 +753,7 @@ def _events(text: str | None) -> dict[str, Any]:
         pod, _reason, count, _first, _last, message = fields
         if not message.startswith("Startup probe failed"):
             continue
-        occurrences = int(count) if count.isdigit() else 1
+        occurrences = _whole(count) or 1
         entry = pods.setdefault(pod, {"startupProbeFailures": 0, "withStatus503": 0})
         entry["startupProbeFailures"] += occurrences
         if "statuscode: 503" in message:
@@ -719,8 +770,34 @@ def _capacity(directory: Path) -> dict[str, Any]:
     return {
         "state": "read",
         "exitStatus": exit_status,
-        "facts": facts if isinstance(facts, Mapping) else None,
+        "facts": _capacity_facts(facts),
     }
+
+
+def _capacity_facts(document: object) -> dict[str, dict[str, int]] | None:
+    """The seven whole numbers of a capacity facts file, or nothing."""
+    wanted = {
+        "engine": ("cpus", "memoryBytes"),
+        "cluster": (
+            "schedulableNodes",
+            "allocatableCpuMillis",
+            "allocatableMemoryBytes",
+            "committedCpuMillis",
+            "committedMemoryBytes",
+        ),
+    }
+    facts: dict[str, dict[str, int]] = {}
+    for section, members in wanted.items():
+        held = _mapping(_mapping(document).get(section))
+        facts[section] = {}
+        for member in members:
+            value = held.get(member)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                return None
+            facts[section][member] = value
+    if facts["engine"]["cpus"] < 1 or facts["cluster"]["schedulableNodes"] < 1:
+        return None
+    return facts
 
 
 # --------------------------------------------------------------------------
@@ -762,11 +839,13 @@ def _same(
     pods: Sequence[Mapping[str, Any]], read: Any, held: str
 ) -> tuple[str, str, Any]:
     """One state for a rule that compares a value across every replica."""
-    if len(pods) < 2:
+    if len({str(pod["name"]) for pod in pods}) < 2 or len(
+        {str(pod["name"]) for pod in pods}
+    ) != len(pods):
         return (
             NOT_OBSERVED,
-            "Fewer than two serving runtime pods were read, and one pod agrees "
-            "with itself.",
+            "Fewer than two serving runtime pods of distinct names were read, and "
+            "one pod agrees with itself.",
             None,
         )
     values = [read(pod) for pod in pods]
@@ -807,18 +886,38 @@ def evaluate(
     # capacity-preflight-sufficient
     if capacity.get("state") != "read":
         add("capacity-preflight-sufficient", NOT_OBSERVED, "No outcome was read.")
-    elif capacity["exitStatus"] == 0:
-        add("capacity-preflight-sufficient", HELD, "The preflight exited 0.")
-    else:
+    elif capacity["exitStatus"] == CAPACITY_REFUSED_EXIT:
         add(
             "capacity-preflight-sufficient",
             NOT_HELD,
-            f"The preflight exited {capacity['exitStatus']}.",
+            f"The preflight exited {CAPACITY_REFUSED_EXIT}, its refusal status.",
         )
+    elif capacity["exitStatus"] != 0:
+        add(
+            "capacity-preflight-sufficient",
+            NOT_OBSERVED,
+            f"The preflight exited {capacity['exitStatus']}, which is neither "
+            "its success status nor its refusal status.",
+        )
+    elif capacity["facts"] is None:
+        add(
+            "capacity-preflight-sufficient",
+            NOT_OBSERVED,
+            "The preflight exited 0, and the facts it read are not in the collection.",
+        )
+    else:
+        add("capacity-preflight-sufficient", HELD, "The preflight exited 0.")
 
     # replica-count
     declared = expected.get("runtimeReplicas")
-    if pods:
+    distinct = len({str(pod["name"]) for pod in pods})
+    if pods and distinct != len(pods):
+        add(
+            "replica-count",
+            NOT_HELD,
+            f"{len(pods)} pod entries were read with {distinct} distinct name(s).",
+        )
+    elif pods:
         add(
             "replica-count",
             HELD if len(pods) == declared else NOT_HELD,
@@ -856,8 +955,14 @@ def evaluate(
     )
 
     def argument_check(pod: Mapping[str, Any]) -> str | None:
-        if pod["modelArgument"] is None:
-            return None
+        for flag, count in (
+            ("--model", pod["modelArguments"]),
+            ("--alias", pod["aliasArguments"]),
+        ):
+            if count != 1:
+                return f"is given {count} {flag} arguments"
+        if pod["modelArgument"] is None or pod["aliasArgument"] is None:
+            return "is given a flag with no value"
         return (
             "" if pod["modelArgument"] == path else f"is given {pod['modelArgument']!r}"
         )
@@ -956,11 +1061,20 @@ def evaluate(
             return None
         if table["state"] != "read":
             return "the mount table has no line for the cache mount"
-        return "" if "ro" in table["options"] else f"the options are {table['options']}"
+        if not table["everyLineReadOnly"]:
+            return (
+                f"one of {table['lines']} line(s) for the mount point does not "
+                f"list ro; the last lists {table['options']}"
+            )
+        return ""
 
     add(
         "read-only-in-effect",
-        *_each(pods, effective_read_only, "Each mount table lists the option ro."),
+        *_each(
+            pods,
+            effective_read_only,
+            "Each line for the mount point lists the option ro.",
+        ),
     )
 
     def scoped(pod: Mapping[str, Any]) -> str | None:
@@ -978,11 +1092,12 @@ def evaluate(
     state, detail, _ = _same(
         pods,
         lambda p: (
-            [p["mountTable"]["device"], p["mountTable"]["root"]]
+            [p["mountTable"]["device"], p["mountTable"]["rootSha256"]]
             if p["mountTable"]["state"] == "read"
             else None
         ),
-        "Every mount table names one device and one root directory.",
+        "Every mount table names one device and one root directory. The whole "
+        "root is compared, by its SHA-256.",
     )
     add("one-directory", state, detail)
 
@@ -1003,21 +1118,33 @@ def evaluate(
 
     def verified(pod: Mapping[str, Any]) -> str | None:
         check = pod["verification"]
-        if digest not in check["script"] or str(size) not in check["script"]:
-            return "the script does not hold the pinned SHA-256 and byte count"
-        if check["exitCode"] is None:
+        script = [line.strip() for line in check["script"].splitlines()]
+        wanted = (
+            f"artifact='{path}'",
+            f'if [ "$present" != "{size}" ]; then',
+            f'echo "{digest}  $artifact" | sha256sum -c -',
+        )
+        absent = [line for line in wanted if line not in script]
+        if absent:
+            return f"the script does not hold the line {absent[0]!r}"
+        code = check["exitCode"]
+        if code is None:
             return "the verification container has not terminated"
-        if check["exitCode"] != 0:
-            return f"the verification container exited {check['exitCode']}"
+        if type(code) is not int or code != 0:
+            return f"the verification container exited {code!r}"
         if check["log"] != "read":
             return None
-        lines = [line.strip() for line in check["logLines"]]
-        if _VERIFIED_LINE not in lines or f"{path}: OK" not in lines:
-            return "the log does not hold the two expected lines"
+        if not check["logHoldsVerifiedLine"]:
+            return "the log does not hold the verification line"
+        if check["logChecksumResults"] != ["OK"] or check["logChecksumPaths"] != [path]:
+            return (
+                "the log does not hold one checksum result, OK, for the expected "
+                f"path: {check['logChecksumResults']} for {check['logChecksumPaths']}"
+            )
         return ""
 
     add(
-        "artifact-verified-on-each-start",
+        "artifact-verified-in-each-pod",
         *_each(
             pods,
             verified,
@@ -1030,9 +1157,14 @@ def evaluate(
         if answer["state"] != "read":
             return None
         if answer["httpStatus"] != 200:
-            return f"the listing answered {answer['httpStatus']}"
-        if answer["id"] != pod["aliasArgument"]:
+            return f"the listing answered {answer['httpStatus']!r}"
+        alias = pod["aliasArgument"]
+        if not isinstance(alias, str) or not alias:
+            return None
+        if not isinstance(answer["id"], str) or answer["id"] != alias:
             return f"the listing names {answer['id']!r}"
+        if not isinstance(answer["meta"], Mapping) or not answer["meta"]:
+            return "the listing holds no model metadata"
         return ""
 
     state, detail = _each(pods, listed, "")
@@ -1049,7 +1181,7 @@ def evaluate(
         if answer["state"] != "read":
             return None
         if answer["httpStatus"] != 200:
-            return f"the completion answered {answer['httpStatus']}"
+            return f"the completion answered {answer['httpStatus']!r}"
         tokens = answer["completionTokens"]
         if isinstance(tokens, bool) or not isinstance(tokens, int) or tokens < 1:
             return f"the completion reports {tokens!r} completion tokens"
@@ -1082,6 +1214,8 @@ def evaluate(
 def result_state(findings: Sequence[Mapping[str, Any]], pods_read: int) -> str:
     """The one result of a record, from the state of each rule."""
     states = {f["id"]: f["state"] for f in findings}
+    # The one rule is not held only when the preflight exited with its refusal
+    # status. Another failure of the preflight leaves the rule not observed.
     if states.get("capacity-preflight-sufficient") == NOT_HELD and not pods_read:
         return REFUSED
     if NOT_HELD in states.values():
@@ -1089,6 +1223,95 @@ def result_state(findings: Sequence[Mapping[str, Any]], pods_read: int) -> str:
     if any(f["required"] and f["state"] == NOT_OBSERVED for f in findings):
         return INCONCLUSIVE
     return PASSED
+
+
+_EXPECTED_TEXTS: Final = (
+    ("release", "key"),
+    ("release", "valuesFile"),
+    ("runtimeImage", "reference"),
+    ("model", "repository"),
+    ("model", "fileName"),
+    ("claimName",),
+    ("mountPath",),
+    ("cacheSubPath",),
+    ("containerPath",),
+)
+
+
+def _expected_faults(expected: Mapping[str, Any]) -> list[str]:
+    """Each member an expected identity lacks, or holds in another form."""
+
+    def at(path: Sequence[str]) -> Any:
+        current: Any = expected
+        for name in path:
+            current = _mapping(current).get(name)
+        return current
+
+    faults = [
+        f"{'.'.join(path)} is not a text of 1 to {_TEXT_LIMIT} characters"
+        for path in _EXPECTED_TEXTS
+        if not isinstance(at(path), str) or not 0 < len(at(path)) <= _TEXT_LIMIT
+    ]
+    for path, pattern in (
+        (("model", "sha256"), _DIGEST),
+        (("runtimeImage", "digest"), _DIGEST),
+        (("model", "revision"), _REVISION),
+        (("release", "valuesFileSha256"), re.compile(r"[0-9a-f]{64}")),
+    ):
+        if not isinstance(at(path), str) or not pattern.fullmatch(at(path)):
+            faults.append(f"{'.'.join(path)} does not have its form")
+    numbers: tuple[tuple[str, ...], ...] = (
+        ("runtimeReplicas",),
+        ("model", "sizeBytes"),
+    )
+    for member in numbers:
+        value = at(member)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            faults.append(f"{'.'.join(member)} is not a whole number above 0")
+    if not faults:
+        model = expected["model"]
+        image = expected["runtimeImage"]
+        derived = (
+            (
+                "cacheSubPath",
+                cache_sub_path(model["repository"], model["revision"]),
+            ),
+            (
+                "containerPath",
+                f"{expected['mountPath'].rstrip('/')}/{model['fileName']}",
+            ),
+        )
+        faults.extend(
+            f"{name} is not what the other members derive"
+            for name, value in derived
+            if expected[name] != value
+        )
+        if not image["reference"].endswith("@" + image["digest"]):
+            faults.append("runtimeImage.reference does not end with its digest")
+    return faults
+
+
+def _expected_members(expected: Mapping[str, Any]) -> dict[str, Any]:
+    """The members of an expected identity that a record holds, and no other."""
+    return {
+        "schema": EXPECTED_SCHEMA,
+        "release": {
+            name: expected["release"][name]
+            for name in ("key", "valuesFile", "valuesFileSha256")
+        },
+        "runtimeReplicas": expected["runtimeReplicas"],
+        "runtimeImage": {
+            name: expected["runtimeImage"][name] for name in ("reference", "digest")
+        },
+        "model": {
+            name: expected["model"][name]
+            for name in ("repository", "revision", "fileName", "sha256", "sizeBytes")
+        },
+        "claimName": expected["claimName"],
+        "mountPath": expected["mountPath"],
+        "cacheSubPath": expected["cacheSubPath"],
+        "containerPath": expected["containerPath"],
+    }
 
 
 def build_record(directory: Path) -> dict[str, Any]:
@@ -1103,7 +1326,14 @@ def build_record(directory: Path) -> dict[str, Any]:
         raise CollectionRefused(
             f"{directory.name} holds no expected.json with the schema {EXPECTED_SCHEMA}"
         )
-    mount_path = str(expected.get("mountPath"))
+    faults = _expected_faults(expected)
+    if faults:
+        raise CollectionRefused(
+            f"{directory.name} holds an expected.json that is not an expected "
+            f"identity: {'; '.join(faults)}"
+        )
+    expected = _expected_members(expected)
+    mount_path = str(expected["mountPath"])
 
     listing = _json(directory, "runtime-pods.json")
     items = [
@@ -1136,7 +1366,8 @@ def build_record(directory: Path) -> dict[str, Any]:
     )
     return {
         "schema": RECORD_SCHEMA,
-        "evidenceLevel": "C2",
+        # A record with no pod observed no runtime, so it states no level.
+        "evidenceLevel": "C2" if pods else None,
         "result": result_state(findings, len(pods)),
         "collection": {
             name: _bounded(header.get(name))
@@ -1157,7 +1388,7 @@ def build_record(directory: Path) -> dict[str, Any]:
             }
             for path in files
         ],
-        "expected": dict(expected),
+        "expected": expected,
         "podListing": "read" if isinstance(listing, Mapping) else "not-read",
         "replicas": pods,
         "placement": {"nodes": nodes, "distinctNodes": len(nodes)},
@@ -1185,7 +1416,12 @@ def committed_runs(root: Path = REPO_ROOT) -> list[str]:
 
 
 def check_committed_runs(root: Path = REPO_ROOT) -> list[str]:
-    """Each committed run whose record is not what its collection gives."""
+    """Each committed run whose record is not what its collection gives.
+
+    The expected identity of each run is also compared with the two pin records
+    of the root. It is not compared with the root's desired-state release: a
+    later tree may declare another replica count or another claim.
+    """
     findings: list[str] = []
     for run in committed_runs(root):
         directory = root / run
@@ -1194,10 +1430,15 @@ def check_committed_runs(root: Path = REPO_ROOT) -> list[str]:
             findings.append(f"{run}: the directory holds no {RECORD_FILE}")
             continue
         try:
-            built = record_text(build_record(directory))
+            record = build_record(directory)
         except CollectionRefused as refused:
             findings.append(f"{run}: {refused}")
             continue
+        findings.extend(
+            f"{run}: the expected identity is not the pin records': {finding}"
+            for finding in pin_findings(record["expected"], root)
+        )
+        built = record_text(record)
         if built.encode("utf-8") != committed:
             findings.append(
                 f"{run}: {RECORD_FILE} is not what the collection gives. Build it "

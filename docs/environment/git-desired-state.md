@@ -127,7 +127,7 @@ rollout leaves a caller served, or what a caller observes when a pod is deleted 
 node is lost. When the count was declared, chart `0.5.0` was installed nowhere. On
 2026-10-08 one run applied this release on `docker-desktop`, and two pods of each tier
 became Ready on one node. Both API pods were restarted once by their startup probe
-while the two runtimes started:
+while the two runtime pods verified the artifact:
 [the record of that run](../proof/environment/v2-s4-002-pr2-validation.md).
 
 **What the runtime's two replicas ask of a cluster.** Both runtime pods mount the one
@@ -137,14 +137,15 @@ several pods on one node and not by pods on two nodes. The render states no node
 selector, affinity, or topology spread for the runtime, so it states nothing about
 where the two pods are placed. Two runtime pods on one claim were observed once, on one
 node: [the observation](runtime-model-cache-observation.md). At the
-chart's runtime requests, two runtime pods request 2 CPU and 4Gi. This change ran no
-capacity check, and nothing in this tree refuses a cluster that cannot schedule them.
+chart's runtime requests, two runtime pods request 2 CPU and 4Gi. The change that
+declared the count ran no capacity check, and nothing in this tree refuses a cluster that cannot schedule them.
 One earlier record bears on it: the V1
 [multi-replica certification](../serving/kubernetes-multi-replica-certification.md)
 ran a capacity gate for two API replicas and two runtime replicas on `docker-desktop`,
 the provider this release names, and the gate refused that host for lack of
 uncommitted memory. That record is of one host on one day. On 2026-10-08 the same
-preflight passed on that provider, with no other workload on the cluster. No capacity
+preflight passed on that provider, and no pod outside `kube-system` stated a request then: the
+Argo CD installation ran and states none. No capacity
 check exists for this topology. A later change owns one.
 
 On a cluster where the Application is applied, a merge of this release changes the

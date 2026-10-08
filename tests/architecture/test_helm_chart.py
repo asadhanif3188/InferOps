@@ -2585,8 +2585,9 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     rendered the same.
 
     This renders files. No cluster was asked, and no release with two replicas
-    of either tier has been installed, so this establishes the rendered topology
-    and not what a caller observes when a pod is unavailable.
+    of either tier was installed by the change that added this test. One later
+    run applied it once, on one provider. This establishes the rendered
+    topology and not what a caller observes when a pod is unavailable.
     """
     desired = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
     fixture = _template(GENERATED_VALUES, HAND_WRITTEN_VALUES)
@@ -2710,9 +2711,15 @@ def test_every_runtime_replica_of_the_desired_state_release_is_given_one_model()
     assert expected["model"]["sha256"].removeprefix("sha256:") in script
     assert str(expected["model"]["sizeBytes"]) in script
     assert expected["containerPath"] in script
-    # The two lines the tool looks for in a verification log are the script's.
-    assert 'echo "model artifact verified: byte count and SHA-256"' in script
-    assert "sha256sum -c -" in script
+    # The three script lines that the tool requires of a live pod, and the line
+    # it looks for in a verification log, are the chart's, character for
+    # character.
+    lines = [line.strip() for line in script.splitlines()]
+    digest = expected["model"]["sha256"].removeprefix("sha256:")
+    assert f"artifact='{expected['containerPath']}'" in lines
+    assert f'if [ "$present" != "{expected["model"]["sizeBytes"]}" ]; then' in lines
+    assert f'echo "{digest}  $artifact" | sha256sum -c -' in lines
+    assert 'echo "model artifact verified: byte count and SHA-256"' in lines
 
     # The release creates no claim, and its one writable mount is the hook's.
     assert not [d for d in documents if d["kind"] == "PersistentVolumeClaim"]

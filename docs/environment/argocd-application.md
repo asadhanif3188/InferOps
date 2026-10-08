@@ -142,7 +142,9 @@ once a second. That is a check of the setting and not the drift experiment.
 The desired state declared one API replica at each of those runs. Since
 `V2-S4-001-PR1` it declares two, so a scale to two is no longer a change, and the
 same check needs another count. Since `V2-S4-002-PR1` it also declares two serving
-runtime replicas. No run was made against either two-replica state.
+runtime replicas. One run on 2026-10-08 applied the Application against the
+two-replica state. It made no manual change, so that check was not repeated:
+[the record](../proof/environment/v2-s4-002-pr2-validation.md).
 
 ## The procedure
 

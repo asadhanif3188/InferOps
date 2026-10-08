@@ -340,11 +340,16 @@ The tests assert each property directly:
   too: it does not import the package, and it names the provenance tool, the
   drift check, and the desired-state tool to compare
   [what a controller reported](../environment/reconciliation-evidence.md) with a
-  declared release. It writes nothing. Another reads every tracked file under `src`, `tools`, `scripts`,
+  declared release. It writes nothing. Since `V2-S4-002-PR2`,
+  `tools/runtime_model_cache` is listed too: it does not import the package, and it
+  names the drift check and the desired-state tool to read the identity that the
+  declared release gives
+  [each serving runtime replica](../environment/runtime-model-cache-observation.md).
+  It writes nothing. Another reads every tracked file under `src`, `tools`, `scripts`,
   `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, whatever its suffix,
-  and fails if any file outside the five tools names any of their packages as a whole
+  and fails if any file outside the six tools names any of their packages as a whole
   word - so no module, script, chart, deployment or infrastructure file, workflow, or
-  project setting reaches any of them in turn. A file inside one of the five is not read, so
+  project setting reaches any of them in turn. A file inside one of the six is not read, so
   the E01 runner may name the drift check's reader.
 
 ## The renderer interface

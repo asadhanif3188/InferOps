@@ -181,7 +181,10 @@ The schema is what refuses a bad bound. With `--skip-schema-validation` the temp
 turns a percentage into 0 and gives no refusal, as measured with `helm template`.
 
 **What this is not.** A replica count and a rollout policy are configuration. Chart
-`0.4.0` has not been installed. Nothing here establishes that two API pods run, that a
+`0.4.0` has not been installed. One run of chart `0.5.0` on 2026-10-08 had two API pods
+Ready on one node, after each was restarted once by its startup probe:
+[the record](../../docs/proof/environment/v2-s4-002-pr2-validation.md). Nothing here
+establishes that a
 rollout leaves a caller served, or what a caller observes when an API pod is deleted
 or a node is lost. A rollout policy bounds a template change. It does not bound a pod
 deletion, and the chart renders no PodDisruptionBudget, so it does not bound an
@@ -261,9 +264,9 @@ has no autoscaler. The platform defaults own the two bounds. The
 [renderer](../../docs/domain/helm-values-renderer.md) refuses a hand-written values file
 that sets any of the three.
 
-**What this is not.** Chart `0.5.0` was installed once with two runtime replicas, on
-`docker-desktop` on 2026-10-08. Both runtime pods started on one node and mounted the
-one model cache claim:
+**What this is not.** One run on `docker-desktop` on 2026-10-08 installed chart `0.5.0`
+with two runtime replicas. Both runtime pods started on one node and mounted the one
+model cache claim:
 [the record of that run](../../docs/proof/environment/v2-s4-002-pr2-validation.md). It is
 one run on one provider and one storage class. Nothing here establishes that two
 runtime pods can be placed on two nodes, that a rollout leaves a caller served, or what

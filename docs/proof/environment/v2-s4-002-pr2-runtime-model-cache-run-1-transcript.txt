@@ -1,6 +1,10 @@
 Transcript of run-1. Three invocations of the driver, and one read by hand.
 Redacted: terminal colour codes are removed, and the absolute path of the
 checkout is written as <repository>. Nothing else is changed.
+The phases are printed one after the other. They did not run strictly in that
+order: the collect invocation started at 10:49:06Z, before the up invocation
+printed its last time, 10:49:43Z. In the part read by hand, each line that
+starts with $ describes a command and is not the command.
 
 =============== PHASE up ===============
 

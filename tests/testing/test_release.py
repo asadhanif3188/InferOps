@@ -258,8 +258,9 @@ def test_the_notes_state_the_counts_the_data_holds() -> None:
 #: to `0.4.0`, which states the API Deployment's rollout strategy, and
 #: `V2-S4-002-PR1` moved it to `0.5.0`, which states the runtime Deployment's. The
 #: release was cut with chart `0.3.0`, and the release data still says so. No
-#: release quotes chart `0.4.0` or `0.5.0`, and no record of an installed release
-#: names either.
+#: release quotes chart `0.4.0` or `0.5.0`. No record names an installed chart
+#: `0.4.0`. One run record of 2026-10-08 holds pods that carry the label of chart
+#: `0.5.0`; it is the record of one observation and not of a release.
 MOVED_SINCE_THE_RELEASE: dict[str, dict[str, str]] = {
     "chart": {"charts/inferops-llm/Chart.yaml": "version: 0.5.0"},
 }

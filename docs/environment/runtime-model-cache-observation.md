@@ -39,10 +39,11 @@ The prerequisite layer creates the claim as `ReadWriteOnce`
 (`infra/terraform/modules/platform-prerequisites/main.tf`). Kubernetes documents
 that such a claim can be mounted by several pods that run on one node, and not by
 pods on two nodes. The release states no node selector, affinity, or topology
-spread for the runtime. So on a cluster with more than one schedulable node, the
-second runtime pod may be placed where it cannot mount the claim. No such cluster
-was used. **Two runtime pods on one node are pod redundancy. They do not
-establish node-loss resilience.**
+spread for the runtime. What the scheduler does with two such pods on a cluster with
+more than one schedulable node was not observed: no such cluster was used. In the
+one run, the claim's volume carried a required node affinity to the one node.
+**Two runtime pods on one node are pod redundancy. They do not establish node-loss
+resilience.**
 
 ## The observation
 
@@ -77,8 +78,10 @@ It changes no replica count, request, or limit to fit. The record of that run ha
 the result `REFUSED`.
 
 The preflight is one reading of one host. It is not a capacity gate for this
-topology: it does not read rollout headroom, and it does not count the
-acquisition hook's pod.
+topology: it does not read rollout headroom, it does not count the acquisition
+hook's pod, and it counts a pod that states no request as zero. The tool does not
+check that the preflight ran before the release was applied. That order is the
+driver's, and the transcript shows it.
 
 ### The collection
 
@@ -111,10 +114,24 @@ release and a pin record disagree. The pin records are
 ### The record
 
 The record has the schema `inferops.io/runtime-model-cache-observation/v1alpha1`.
-It holds the header, the SHA-256 of each file of the collection, the expected
-identity, an allowlisted reduction of each read, the state of each rule, the
-result, and the statements below of what it does not establish. A digest is the
-SHA-256 of the file's bytes with every CRLF replaced by LF.
+It holds the header, the SHA-256 of each file of the collection, the declared
+members of the expected identity and of the capacity facts, an allowlisted
+reduction of each other read, the state of each rule, the result, and the
+statements below of what it does not establish. A digest is the SHA-256 of the
+file's bytes with every CRLF replaced by LF.
+
+**A value is compared whole.** The record holds the root directory of a mount
+bounded at 240 characters, for a reader, and the SHA-256 of the whole text. The
+rule compares the SHA-256.
+
+**The expected identity is checked for its shape.** A collection whose
+`expected.json` lacks a member, holds an empty one, or holds a digest or a
+revision of another form is refused as not a collection. `--check` also compares
+the expected identity of each committed run with the two pin records.
+
+**Three reads are in the record and in no rule**: each runtime container's
+restart count, the mode that the kubelet reports for the mount, and the model
+name in the completion.
 
 **A read that was not made is not a value.** An absent file and a JSON file that
 does not parse give `not-read`. A rule that needs such a read is `not-observed`.
@@ -132,45 +149,54 @@ does not parse give `not-read`. A rule that needs such a read is `not-observed`.
 | `INCONCLUSIVE` | No rule is `not-held`, and one required rule is `not-observed` |
 | `PASSED` | Every required rule is `held` |
 
-The evidence level of a record is C2 when the pods ran the pinned runtime and the
-pinned model. The level, the result, and the status of any claim are three
-separate things. A record registers no claim.
+The tool writes the evidence level C2 in a record that read at least one runtime
+pod, and no level in a record that read none. The level names the kind of
+execution: a real runtime on a real cluster. Whether the pods ran the pinned
+runtime and the pinned model is what the rules decide. The level, the result, and
+the status of any claim are three separate things. A record registers no claim.
 
 ### The rules
 
-17 rules. 16 are required. The last is not: the samples
-are taken every five seconds, and a pod whose load was not sampled leaves that
-rule `not-observed` without changing the result.
+17 rules. 16 are required. The last is not: the driver
+waits five seconds between two samples, and a pod whose load was not sampled
+leaves that rule `not-observed` without changing the result. In `run-1` two
+samples were 6 to 24 seconds apart.
+
+`artifact-verified-in-each-pod` was named `artifact-verified-on-each-start` when
+`run-1` executed. The verification container runs when a pod starts, and not when
+a runtime container restarts, so the rule was renamed after the run.
 
 | Rule | Statement |
 |---|---|
-| `capacity-preflight-sufficient` | The V1 multi-replica capacity preflight exited 0 before the release was applied. |
-| `replica-count` | The number of serving runtime pods that are not being deleted is the declared runtime replica count. |
+| `capacity-preflight-sufficient` | The V1 multi-replica capacity preflight exited 0, and the facts it read are in the collection. |
+| `replica-count` | The serving runtime pods that are not being deleted have distinct names, and their number is the declared runtime replica count. |
 | `every-replica-ready` | Each serving runtime pod reports the Ready condition as True. |
 | `one-runtime-image` | Each runtime container declares the pinned image reference, and each reported image identifier holds the pinned digest. |
-| `one-model-argument` | Each runtime container is given the expected artifact path as its model argument, and every replica is given the same alias. |
+| `one-model-argument` | Each runtime container is given one model argument, the expected artifact path, and one alias argument, and every replica is given the same alias. |
 | `one-claim` | Each pod mounts the declared claim as its one persistent volume, and no pod mounts a host path. |
 | `claim-is-the-prerequisite-claim` | The declared claim is Bound, carries the labels of the prerequisite layer, and carries no label or annotation of a Helm release. |
 | `no-second-claim` | The namespace holds one PersistentVolumeClaim. |
 | `read-only-declared` | Each pod declares the claim read only on the volume, on the runtime container's mount, and on the verification container's mount. |
-| `read-only-in-effect` | The mount table of each runtime container lists the cache mount with the option ro. |
+| `read-only-in-effect` | Each line that the mount table of each runtime container holds for the cache mount point lists the option ro. |
 | `revision-scoped-mount` | Each of the two mounts of each pod names the expected repository-and-revision subdirectory. |
-| `one-directory` | The mount table of every runtime container names one device and one root directory for the cache mount. |
+| `one-directory` | The last line that the mount table of every runtime container holds for the cache mount point names one device and one root directory. |
 | `one-file` | Every runtime container sees the artifact as one device, one inode, and the pinned byte count. |
-| `artifact-verified-on-each-start` | In each pod the verification container's script holds the pinned SHA-256 and byte count, the container exited 0, and its log holds the verification line and the checksum line for the expected path. |
-| `one-reported-model` | Each runtime answered its model listing with status 200 and the alias it was given, and every replica reported the same model metadata. |
+| `artifact-verified-in-each-pod` | In each pod the verification container's script compares the pinned byte count and gives the pinned SHA-256 and the expected path to sha256sum, the container exited 0, and its log holds the verification line and the checksum line for the expected path, and no failed checksum. |
+| `one-reported-model` | Each runtime answered its model listing with status 200, the alias it was given, and model metadata, and every replica reported the same metadata. |
 | `every-replica-completed` | Each runtime answered one completion with status 200 and at least one completion token. |
-| `not-ready-while-loading` (not required) | For each pod, one sample before its first Ready sample shows the runtime container running and not ready. |
+| `not-ready-while-loading` (not required) | For each pod, one sample before its first ready sample shows the runtime container running and reported as not ready. |
 
 ### What a record does not establish
 
 - A record does not establish node-loss resilience. Kubernetes documents that pods which share a ReadWriteOnce claim run on one node. The record states the node of each pod.
 - A record does not establish that a caller is served when one runtime pod is unavailable. No pod was removed, and no request was sent through the API Service by this collection.
 - A record does not establish a rollout. No pod template changed during the collection.
-- A record does not establish that readiness is false whenever inference is impossible. It states the samples in which a running runtime container was not ready, and the completion each runtime answered after it was Ready.
+- A record does not establish that readiness is false whenever inference is impossible. It states the samples in which a running runtime container was not ready, and the completion each runtime answered after it was Ready. It holds no answer to a readiness probe.
 - A record does not establish which runtime replica serves a request that a caller sends. Each completion was sent to one pod through a port-forward, and not through a Service.
 - A record does not establish behaviour on another provider, another storage class, another node count, or another day. It is one collection on one cluster.
 - A record does not establish that the claim cannot be written. It states the declared mode and the mount option of each runtime container. No write was attempted, and the acquisition hook mounts the same claim writable.
+- A record does not establish that a verification ran again when a runtime container restarted. The verification container runs when a pod starts. The record states each runtime container's restart count, and no rule reads it.
+- A record does not establish that the capacity preflight ran before the release was applied. The order is the driver's, and the transcript shows it.
 - A record does not establish capacity for any other topology, and it is not a capacity gate for this one. It states one reading of the V1 preflight.
 - A record does not establish a performance figure. No time in it is a latency, a throughput, or a model-load measurement.
 
@@ -181,7 +207,13 @@ Three more limits are of the collection, and not of one record.
   writable while two runtime pods hold it read only, as an upgrade needs, was not
   observed.
 - **The mount table shows the mount option. It does not show that every write
-  is refused.** No write was attempted from a runtime container.
+  is refused.** No write was attempted from a runtime container. The option `ro`
+  is the mount's own. The same line of `run-1` shows the file system's option
+  `rw`.
+- **The samples and the events are of the startup probe.** In each sample that
+  shows a running container that is not ready, the container was also not yet
+  started. The events hold answers to the startup probe. No answer to a readiness
+  probe is collected.
 - **`kubectl exec` and a port-forward are not read requests.** They change no
   object that the release declares. They do run a process in the runtime
   container, and they do make each runtime decode one short completion.
@@ -213,6 +245,8 @@ committed collection.
 |---|---|---|---|---|
 | `run-1` | 2026-10-08 | `docker-desktop`, server `v1.36.1`, one node | `PASSED`: each of the 17 rules is `held` | [The record](../proof/environment/v2-s4-002-pr2-runtime-model-cache-run-1/record.v1alpha1.json), and [the validation record](../proof/environment/v2-s4-002-pr2-validation.md), which also states what the run showed that no rule reads |
 
-One run exists. It was not repeated. In that run both API pods were restarted once
-by their startup probe while the two runtime pods started. No rule of the record
-reads an API pod, so the result does not show it. The validation record states it.
+One run exists. It was not repeated. The tool was corrected after the run, and the
+record was built again from the committed collection: the validation record states
+each correction. In that run both API pods were restarted once by their startup
+probe while the two runtime pods verified the artifact. No rule of the record reads
+an API pod, so the result does not show it. The validation record states it.

@@ -59,10 +59,12 @@
     "A record does not establish node-loss resilience. Kubernetes documents that pods which share a ReadWriteOnce claim run on one node. The record states the node of each pod.",
     "A record does not establish that a caller is served when one runtime pod is unavailable. No pod was removed, and no request was sent through the API Service by this collection.",
     "A record does not establish a rollout. No pod template changed during the collection.",
-    "A record does not establish that readiness is false whenever inference is impossible. It states the samples in which a running runtime container was not ready, and the completion each runtime answered after it was Ready.",
+    "A record does not establish that readiness is false whenever inference is impossible. It states the samples in which a running runtime container was not ready, and the completion each runtime answered after it was Ready. It holds no answer to a readiness probe.",
     "A record does not establish which runtime replica serves a request that a caller sends. Each completion was sent to one pod through a port-forward, and not through a Service.",
     "A record does not establish behaviour on another provider, another storage class, another node count, or another day. It is one collection on one cluster.",
     "A record does not establish that the claim cannot be written. It states the declared mode and the mount option of each runtime container. No write was attempted, and the acquisition hook mounts the same claim writable.",
+    "A record does not establish that a verification ran again when a runtime container restarted. The verification container runs when a pod starts. The record states each runtime container's restart count, and no rule reads it.",
+    "A record does not establish that the capacity preflight ran before the release was applied. The order is the driver's, and the transcript shows it.",
     "A record does not establish capacity for any other topology, and it is not a capacity gate for this one. It states one reading of the V1 preflight.",
     "A record does not establish a performance figure. No time in it is a latency, a throughput, or a model-load measurement."
   ],
@@ -198,6 +200,7 @@
   "replicas": [
     {
       "aliasArgument": "qwen3-1.7b-q8_0",
+      "aliasArguments": 1,
       "artifact": {
         "device": 2096,
         "inode": 1097160,
@@ -215,14 +218,18 @@
       },
       "hostPathVolumes": 0,
       "modelArgument": "/models/Qwen3-1.7B-Q8_0.gguf",
+      "modelArguments": 1,
       "mountTable": {
         "device": "8:48",
+        "everyLineReadOnly": true,
         "filesystem": "ext4",
+        "lines": 1,
         "options": [
           "ro",
           "relatime"
         ],
         "root": "/data/docker/volumes/36d238589872e2a65a82a2a0767fbe7ae897d70d8454a532ceb7b1719ba441dc/_data/local-path-provisioner/pvc-8f7cbcad-b3f5-4262-be0f-d42e99c90256_inferops-release_inferops-model-cache/Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d122",
+        "rootSha256": "b316046897784567fadbc782f23cd5312deccf863c4a32a3cc92563040187033",
         "state": "read"
       },
       "name": "inferops-inferops-llm-runtime-bdf8d566c-dk2nc",
@@ -261,6 +268,13 @@
         "exitCode": 0,
         "finishedAt": "2026-10-08T10:44:47Z",
         "log": "read",
+        "logChecksumPaths": [
+          "/models/Qwen3-1.7B-Q8_0.gguf"
+        ],
+        "logChecksumResults": [
+          "OK"
+        ],
+        "logHoldsVerifiedLine": true,
         "logLines": [
           "/models/Qwen3-1.7B-Q8_0.gguf: OK",
           "model artifact verified: byte count and SHA-256"
@@ -279,6 +293,7 @@
     },
     {
       "aliasArgument": "qwen3-1.7b-q8_0",
+      "aliasArguments": 1,
       "artifact": {
         "device": 2096,
         "inode": 1097160,
@@ -296,14 +311,18 @@
       },
       "hostPathVolumes": 0,
       "modelArgument": "/models/Qwen3-1.7B-Q8_0.gguf",
+      "modelArguments": 1,
       "mountTable": {
         "device": "8:48",
+        "everyLineReadOnly": true,
         "filesystem": "ext4",
+        "lines": 1,
         "options": [
           "ro",
           "relatime"
         ],
         "root": "/data/docker/volumes/36d238589872e2a65a82a2a0767fbe7ae897d70d8454a532ceb7b1719ba441dc/_data/local-path-provisioner/pvc-8f7cbcad-b3f5-4262-be0f-d42e99c90256_inferops-release_inferops-model-cache/Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d122",
+        "rootSha256": "b316046897784567fadbc782f23cd5312deccf863c4a32a3cc92563040187033",
         "state": "read"
       },
       "name": "inferops-inferops-llm-runtime-bdf8d566c-j82km",
@@ -342,6 +361,13 @@
         "exitCode": 0,
         "finishedAt": "2026-10-08T10:44:49Z",
         "log": "read",
+        "logChecksumPaths": [
+          "/models/Qwen3-1.7B-Q8_0.gguf"
+        ],
+        "logChecksumResults": [
+          "OK"
+        ],
+        "logHoldsVerifiedLine": true,
         "logLines": [
           "/models/Qwen3-1.7B-Q8_0.gguf: OK",
           "model artifact verified: byte count and SHA-256"
@@ -366,14 +392,14 @@
       "id": "capacity-preflight-sufficient",
       "required": true,
       "state": "held",
-      "statement": "The V1 multi-replica capacity preflight exited 0 before the release was applied."
+      "statement": "The V1 multi-replica capacity preflight exited 0, and the facts it read are in the collection."
     },
     {
       "detail": "2 pod(s) were read, and the release declares 2.",
       "id": "replica-count",
       "required": true,
       "state": "held",
-      "statement": "The number of serving runtime pods that are not being deleted is the declared runtime replica count."
+      "statement": "The serving runtime pods that are not being deleted have distinct names, and their number is the declared runtime replica count."
     },
     {
       "detail": "Each pod reports Ready as True.",
@@ -394,7 +420,7 @@
       "id": "one-model-argument",
       "required": true,
       "state": "held",
-      "statement": "Each runtime container is given the expected artifact path as its model argument, and every replica is given the same alias."
+      "statement": "Each runtime container is given one model argument, the expected artifact path, and one alias argument, and every replica is given the same alias."
     },
     {
       "detail": "Each pod mounts inferops-model-cache.",
@@ -425,11 +451,11 @@
       "statement": "Each pod declares the claim read only on the volume, on the runtime container's mount, and on the verification container's mount."
     },
     {
-      "detail": "Each mount table lists the option ro.",
+      "detail": "Each line for the mount point lists the option ro.",
       "id": "read-only-in-effect",
       "required": true,
       "state": "held",
-      "statement": "The mount table of each runtime container lists the cache mount with the option ro."
+      "statement": "Each line that the mount table of each runtime container holds for the cache mount point lists the option ro."
     },
     {
       "detail": "Each mount names Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077.",
@@ -439,11 +465,11 @@
       "statement": "Each of the two mounts of each pod names the expected repository-and-revision subdirectory."
     },
     {
-      "detail": "Every mount table names one device and one root directory.",
+      "detail": "Every mount table names one device and one root directory. The whole root is compared, by its SHA-256.",
       "id": "one-directory",
       "required": true,
       "state": "held",
-      "statement": "The mount table of every runtime container names one device and one root directory for the cache mount."
+      "statement": "The last line that the mount table of every runtime container holds for the cache mount point names one device and one root directory."
     },
     {
       "detail": "Every runtime container sees one device, one inode, and the pinned byte count.",
@@ -454,17 +480,17 @@
     },
     {
       "detail": "Each verification container compared the pinned digest and exited 0.",
-      "id": "artifact-verified-on-each-start",
+      "id": "artifact-verified-in-each-pod",
       "required": true,
       "state": "held",
-      "statement": "In each pod the verification container's script holds the pinned SHA-256 and byte count, the container exited 0, and its log holds the verification line and the checksum line for the expected path."
+      "statement": "In each pod the verification container's script compares the pinned byte count and gives the pinned SHA-256 and the expected path to sha256sum, the container exited 0, and its log holds the verification line and the checksum line for the expected path, and no failed checksum."
     },
     {
       "detail": "Every runtime listed the alias it was given and the same metadata.",
       "id": "one-reported-model",
       "required": true,
       "state": "held",
-      "statement": "Each runtime answered its model listing with status 200 and the alias it was given, and every replica reported the same model metadata."
+      "statement": "Each runtime answered its model listing with status 200, the alias it was given, and model metadata, and every replica reported the same metadata."
     },
     {
       "detail": "Each runtime answered 200 with completion tokens.",
@@ -478,7 +504,7 @@
       "id": "not-ready-while-loading",
       "required": false,
       "state": "held",
-      "statement": "For each pod, one sample before its first Ready sample shows the runtime container running and not ready."
+      "statement": "For each pod, one sample before its first ready sample shows the runtime container running and reported as not ready."
     }
   ],
   "schema": "inferops.io/runtime-model-cache-observation/v1alpha1",

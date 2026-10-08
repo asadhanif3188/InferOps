@@ -189,9 +189,10 @@ the chart states the API Deployment's rolling-update bounds, which the platform
 defaults own. Since `V2-S4-002-PR1` it also declares two serving runtime replicas,
 from a contract version that states them, and the chart states the runtime
 Deployment's rolling-update bounds: one pod unavailable and no pod above the replica
-count. That is configuration and not a result: the release was rendered and not
-installed, and it establishes nothing about what a caller observes when an API pod
-or a runtime pod is lost.
+count. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
+release once, and two pods of each tier became Ready on one node:
+[the record](docs/proof/environment/v2-s4-002-pr2-validation.md). It establishes
+nothing about what a caller observes when an API pod or a runtime pod is lost.
 
 ## Prerequisites
 

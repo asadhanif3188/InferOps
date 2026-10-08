@@ -84,9 +84,11 @@ PODS = ("runtime-7d9c-aaaaa", "runtime-7d9c-bbbbb")
 MARKER = "planted-marker-that-no-record-holds"
 
 SCRIPT = (
-    f"set -eu\nartifact={PATH}\n"
-    f'[ "$(wc -c < "$artifact")" = "{MODEL["sizeBytes"]}" ]\n'
+    f"set -eu\nartifact='{PATH}'\n"
+    'present=$(stat -c %s "$artifact")\n'
+    f'if [ "$present" != "{MODEL["sizeBytes"]}" ]; then\n  exit 1\nfi\n'
     f'echo "{DIGEST}  $artifact" | sha256sum -c -\n'
+    'echo "model artifact verified: byte count and SHA-256"\n'
 )
 
 
@@ -251,7 +253,16 @@ def complete() -> dict[str, Any]:
             ]
         },
         "capacity-preflight.json": {"exitStatus": 0},
-        "capacity-facts.json": {"engine": {"cpus": 8}, "cluster": {}},
+        "capacity-facts.json": {
+            "engine": {"cpus": 8, "memoryBytes": 12 * 1024**3},
+            "cluster": {
+                "schedulableNodes": 1,
+                "allocatableCpuMillis": 8000,
+                "allocatableMemoryBytes": 12 * 1024**3,
+                "committedCpuMillis": 950,
+                "committedMemoryBytes": 300 * 1024**2,
+            },
+        },
         "readiness-samples.txt": "".join(
             f"2026-01-01T00:0{minute}:00Z\t{name}\tRunning\t0\t{since}\t{state}\t{state}\n"
             for minute, since, state in (
@@ -642,11 +653,11 @@ DEFECTS = [
     (_other_inode, "one-file"),
     (_other_device, "one-file"),
     (_another_size, "one-file"),
-    (_script_without_the_digest, "artifact-verified-on-each-start"),
-    (_verification_failed, "artifact-verified-on-each-start"),
-    (_verification_running, "artifact-verified-on-each-start"),
-    (_log_without_the_checksum_line, "artifact-verified-on-each-start"),
-    (_log_of_a_weaker_mode, "artifact-verified-on-each-start"),
+    (_script_without_the_digest, "artifact-verified-in-each-pod"),
+    (_verification_failed, "artifact-verified-in-each-pod"),
+    (_verification_running, "artifact-verified-in-each-pod"),
+    (_log_without_the_checksum_line, "artifact-verified-in-each-pod"),
+    (_log_of_a_weaker_mode, "artifact-verified-in-each-pod"),
     (_listing_unavailable, "one-reported-model"),
     (_listing_names_another_model, "one-reported-model"),
     (_other_metadata, "one-reported-model"),
@@ -693,7 +704,7 @@ def test_every_rule_but_the_optional_one_has_a_defect_that_fails_it() -> None:
 
 
 UNMADE_READS = [
-    (f"verify-model.{PODS[1]}.txt", {"artifact-verified-on-each-start"}),
+    (f"verify-model.{PODS[1]}.txt", {"artifact-verified-in-each-pod"}),
     (f"mountinfo.{PODS[1]}.txt", {"read-only-in-effect", "one-directory"}),
     (f"artifact.{PODS[1]}.txt", {"one-file"}),
     (f"models.{PODS[1]}.json", {"one-reported-model"}),
@@ -857,6 +868,310 @@ def test_a_pod_name_that_is_not_a_name_reads_no_file(tmp_path: Path) -> None:
     assert pod["artifact"] == {"state": "not-read"}
 
 
+# --------------------------------------------------------------------------
+# What the independent review constructed, and what each now gives
+# --------------------------------------------------------------------------
+
+
+def test_two_roots_that_differ_after_the_bound_are_two_directories(
+    tmp_path: Path,
+) -> None:
+    """The record holds a bounded root. The rule compares the whole root."""
+    files = complete()
+    long_root = "/a" + "b" * 300
+    files[f"mountinfo.{PODS[0]}.txt"] = _mount_table(root=long_root + "1")
+    files[f"mountinfo.{PODS[1]}.txt"] = _mount_table(root=long_root + "2")
+    record = build_record(write(tmp_path, files))
+    first, second = (pod["mountTable"] for pod in record["replicas"])
+    assert first["root"] == second["root"], "the bounded copies are equal"
+    assert first["rootSha256"] != second["rootSha256"]
+    assert states(record)["one-directory"] == NOT_HELD
+    assert record["result"] == "FAILED"
+
+
+def test_a_later_writable_line_for_the_mount_point_is_not_read_only(
+    tmp_path: Path,
+) -> None:
+    """A later line for one mount point is mounted over the earlier one."""
+    files = complete()
+    files[f"mountinfo.{PODS[0]}.txt"] = _mount_table() + (
+        f"103 100 8:48 /pvc-0001/rev {EXPECTED['mountPath']} rw,relatime - ext4 "
+        "/dev/sdd rw\n"
+    )
+    record = build_record(write(tmp_path, files))
+    table = record["replicas"][0]["mountTable"]
+    assert table["lines"] == 2
+    assert table["options"] == ["rw", "relatime"]
+    assert states(record)["read-only-in-effect"] == NOT_HELD
+
+
+def test_two_entries_of_one_pod_are_not_two_replicas(tmp_path: Path) -> None:
+    files = complete()
+    items = files["runtime-pods.json"]["items"]
+    items[1] = copy.deepcopy(items[0])
+    record = build_record(write(tmp_path, files))
+    assert states(record)["replica-count"] == NOT_HELD
+    for rule in (
+        "one-model-argument",
+        "one-directory",
+        "one-file",
+        "one-reported-model",
+    ):
+        assert states(record)[rule] == NOT_OBSERVED, rule
+    assert record["result"] == "FAILED"
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (("model", "sha256"), ""),
+        (("model", "sha256"), None),
+        (("model", "sha256"), "sha256:" + "g" * 64),
+        (("model", "revision"), "main"),
+        (("model", "sizeBytes"), 0),
+        (("model", "sizeBytes"), True),
+        (("model", "sizeBytes"), "1834426016"),
+        (("runtimeReplicas",), 0),
+        (("runtimeReplicas",), 2.0),
+        (("claimName",), None),
+        (("claimName",), ""),
+        (("cacheSubPath",), None),
+        (("cacheSubPath",), "another--repository/" + "0" * 40),
+        (("containerPath",), "/models/another.gguf"),
+        (("mountPath",), "x" * 241),
+        (("runtimeImage", "reference"), "example.invalid/runtime"),
+        (("runtimeImage", "digest"), "sha256:abc"),
+        (("release", "valuesFileSha256"), "abc"),
+        (("release", "key"), 7),
+    ],
+)
+def test_an_expected_identity_of_another_shape_is_not_a_collection(
+    tmp_path: Path, path: tuple[str, ...], value: object
+) -> None:
+    """An empty digest is in every script, and an absent member equals an
+    absent read. Neither reaches a rule."""
+    files = complete()
+    holder = files["expected.json"]
+    for name in path[:-1]:
+        holder = holder[name]
+    if value is None:
+        del holder[path[-1]]
+    else:
+        holder[path[-1]] = value
+    with pytest.raises(CollectionRefused, match="is not an expected identity"):
+        build_record(write(tmp_path, files))
+
+
+def test_the_record_holds_only_the_declared_members_of_two_copied_files(
+    tmp_path: Path,
+) -> None:
+    files = complete()
+    files["expected.json"]["planted"] = MARKER
+    files["expected.json"]["model"]["planted"] = MARKER
+    files["capacity-facts.json"]["planted"] = MARKER
+    files["capacity-facts.json"]["cluster"]["planted"] = MARKER
+    record = build_record(write(tmp_path, files))
+    assert MARKER not in record_text(record)
+    assert record["expected"] == EXPECTED
+    assert record["result"] == "PASSED"
+
+
+@pytest.mark.parametrize(
+    ("name", "content", "rule"),
+    [
+        (f"artifact.{PODS[0]}.txt", "2096 131 \u00b2\n", "one-file"),
+        (f"artifact.{PODS[0]}.txt", "2096 131 " + "9" * 5000 + "\n", "one-file"),
+        (f"models.{PODS[0]}.json", "[" * 200_000, "one-reported-model"),
+        (f"completion.{PODS[0]}.json", "[" * 200_000, "every-replica-completed"),
+        ("claims.json", "{}", "claim-is-the-prerequisite-claim"),
+        ("claims.json", '{"items": {}}', "no-second-claim"),
+    ],
+    ids=[
+        "a-digit-that-is-not-ascii",
+        "a-number-of-5000-digits",
+        "a-listing-nested-too-deep",
+        "a-completion-nested-too-deep",
+        "claims-without-items",
+        "claims-with-items-of-another-type",
+    ],
+)
+def test_a_file_the_tool_cannot_read_as_a_value_is_not_observed(
+    tmp_path: Path, name: str, content: str, rule: str
+) -> None:
+    """A digit that is not ASCII, a number of 5,000 digits, and JSON nested
+    200,000 deep give no value and no traceback."""
+    files = complete()
+    files[name] = content
+    record = build_record(write(tmp_path, files))
+    assert states(record)[rule] == NOT_OBSERVED
+    assert record["result"] == "INCONCLUSIVE"
+
+
+def test_an_event_count_that_is_not_a_number_counts_once(tmp_path: Path) -> None:
+    files = complete()
+    files["events.txt"] = (
+        f"{PODS[0]}\tUnhealthy\t\u00b2\t-\t-\tStartup probe failed: statuscode: 503\n"
+    )
+    record = build_record(write(tmp_path, files))
+    assert record["startupProbeEvents"]["pods"][PODS[0]] == {
+        "startupProbeFailures": 1,
+        "withStatus503": 1,
+    }
+
+
+def _exit_status_false(files: dict[str, Any]) -> None:
+    status = first_pod(files)["status"]["initContainerStatuses"][0]
+    status["state"]["terminated"]["exitCode"] = False
+
+
+def _log_with_a_failed_checksum(files: dict[str, Any]) -> None:
+    files[f"verify-model.{PODS[0]}.txt"] = (
+        f"{PATH}: FAILED\n" + files[f"verify-model.{PODS[0]}.txt"]
+    )
+
+
+def _log_for_another_path(files: dict[str, Any]) -> None:
+    files[f"verify-model.{PODS[0]}.txt"] = (
+        "/models/another.gguf: OK\n" + files[f"verify-model.{PODS[0]}.txt"]
+    )
+
+
+def _script_that_only_names_the_pins(files: dict[str, Any]) -> None:
+    first_pod(files)["spec"]["initContainers"][0]["command"][-1] = (
+        f"# {DIGEST} {MODEL['sizeBytes']} {PATH}\nexit 0\n"
+    )
+
+
+def _second_model_argument(files: dict[str, Any]) -> None:
+    first_pod(files)["spec"]["containers"][0]["args"] += ["--model", "/models/b.gguf"]
+
+
+def _no_alias_argument(files: dict[str, Any]) -> None:
+    arguments = first_pod(files)["spec"]["containers"][0]["args"]
+    del arguments[arguments.index("--alias") : arguments.index("--alias") + 2]
+
+
+def _listing_without_metadata(files: dict[str, Any]) -> None:
+    for name in PODS:
+        del files[f"models.{name}.json"]["meta"]
+
+
+def _listing_with_a_status_text(files: dict[str, Any]) -> None:
+    files[f"models.{PODS[0]}.json"]["httpStatus"] = "200"
+
+
+STRICTER = [
+    (_exit_status_false, "artifact-verified-in-each-pod"),
+    (_log_with_a_failed_checksum, "artifact-verified-in-each-pod"),
+    (_log_for_another_path, "artifact-verified-in-each-pod"),
+    (_script_that_only_names_the_pins, "artifact-verified-in-each-pod"),
+    (_second_model_argument, "one-model-argument"),
+    (_no_alias_argument, "one-model-argument"),
+    (_listing_without_metadata, "one-reported-model"),
+    (_listing_with_a_status_text, "one-reported-model"),
+]
+
+
+@pytest.mark.parametrize(
+    ("plant", "rule"),
+    STRICTER,
+    ids=[plant.__name__.lstrip("_") for plant, _ in STRICTER],
+)
+def test_a_read_that_only_resembles_the_evidence_fails_its_rule(
+    tmp_path: Path, plant: Any, rule: str
+) -> None:
+    """Each of these gave ``held`` before the independent review."""
+    files = complete()
+    plant(files)
+    record = build_record(write(tmp_path, files))
+    assert states(record)[rule] == NOT_HELD
+    assert record["result"] == "FAILED"
+
+
+def test_a_long_verification_log_is_searched_whole(tmp_path: Path) -> None:
+    """The record keeps eight lines. The rule reads every line."""
+    files = complete()
+    for name in PODS:
+        files[f"verify-model.{name}.txt"] = (
+            "".join(f"a line before the result {n}\n" for n in range(20))
+            + files[f"verify-model.{name}.txt"]
+        )
+    record = build_record(write(tmp_path, files))
+    assert len(record["replicas"][0]["verification"]["logLines"]) == 8
+    assert states(record)["artifact-verified-in-each-pod"] == HELD
+    assert record["result"] == "PASSED"
+
+
+def test_a_sample_with_no_ready_value_is_not_a_sample_of_a_pod_not_ready(
+    tmp_path: Path,
+) -> None:
+    files = complete()
+    files["readiness-samples.txt"] = "".join(
+        f"2026-01-01T00:02:00Z\t{name}\tRunning\t0\t2026-01-01T00:01:30Z\t\t\n"
+        for name in PODS
+    )
+    record = build_record(write(tmp_path, files))
+    assert states(record)["not-ready-while-loading"] == NOT_OBSERVED
+
+
+@pytest.mark.parametrize("status", [1, 2, 3, 4, 127])
+def test_a_preflight_that_failed_in_another_way_is_not_a_refusal(
+    tmp_path: Path, status: int
+) -> None:
+    """Only the refusal status is a refusal. Another exit status is a preflight
+    that did not answer, and the rule is not observed."""
+    files = {
+        name: content
+        for name, content in complete().items()
+        if name in {"run.json", "expected.json", "capacity-facts.json"}
+    }
+    files["capacity-preflight.json"] = {"exitStatus": status}
+    record = build_record(write(tmp_path, files))
+    assert states(record)["capacity-preflight-sufficient"] == NOT_OBSERVED
+    assert record["result"] == "INCONCLUSIVE"
+    assert record["evidenceLevel"] is None
+
+
+@pytest.mark.parametrize(
+    "facts",
+    [None, {"engine": {"cpus": 0, "memoryBytes": 1}, "cluster": {}}, {"engine": {}}],
+)
+def test_a_passed_preflight_without_its_facts_is_not_observed(
+    tmp_path: Path, facts: object
+) -> None:
+    files = complete()
+    if facts is None:
+        del files["capacity-facts.json"]
+    else:
+        files["capacity-facts.json"] = facts
+    record = build_record(write(tmp_path, files))
+    assert states(record)["capacity-preflight-sufficient"] == NOT_OBSERVED
+    assert record["capacityPreflight"]["facts"] is None
+    assert record["result"] == "INCONCLUSIVE"
+
+
+def test_a_pod_name_cannot_reach_a_file_outside_the_collection(
+    tmp_path: Path,
+) -> None:
+    """The name ``x/../../outside`` would resolve to a file beside the
+    collection if it were used. A directory makes that path resolvable, so this
+    fails when the name check is removed."""
+    files = complete()
+    name = "x/../../outside"
+    for kind in ("verify-model", "mountinfo", "artifact"):
+        (tmp_path / "collection" / f"{kind}.x").mkdir(parents=True)
+    (tmp_path / "outside.txt").write_text(
+        f"2096 131 {MODEL['sizeBytes']}\n", encoding="utf-8"
+    )
+    assert (tmp_path / "collection" / f"artifact.{name}.txt").is_file()
+    first_pod(files)["metadata"]["name"] = name
+    record = build_record(write(tmp_path / "collection", files))
+    [pod] = [p for p in record["replicas"] if p["name"] == name]
+    assert pod["artifact"] == {"state": "not-read"}
+    assert pod["verification"]["log"] == "not-read"
+    assert pod["mountTable"] == {"state": "not-read"}
+
+
 @pytest.mark.parametrize("name", ["run.json", "expected.json"])
 def test_a_directory_without_its_two_headers_is_not_a_collection(
     tmp_path: Path, name: str
@@ -897,6 +1212,12 @@ def test_a_committed_record_that_its_collection_does_not_give_is_a_finding(
     ]
     record = directory / RECORD_FILE
     record.write_text(record_text(build_record(directory)), encoding="utf-8")
+    for pin in (
+        "docs/serving/model-source.v1.json",
+        "deploy/serving/runtime/container-package.v1.json",
+    ):
+        (tmp_path / pin).parent.mkdir(parents=True)
+        (tmp_path / pin).write_bytes((REPO_ROOT / pin).read_bytes())
     assert check_committed_runs(tmp_path) == []
     record.write_text(
         record.read_text(encoding="utf-8").replace('"PASSED"', '"FAILED"'),
@@ -1003,7 +1324,7 @@ def test_the_document_publishes_the_record() -> None:
         assert f"`{state}`" in text, state
     for statement in DOES_NOT_ESTABLISH:
         assert statement in text, statement
-    assert len(DOES_NOT_ESTABLISH) == 9
+    assert len(DOES_NOT_ESTABLISH) == 11
     assert len(RULES) == 17
 
 

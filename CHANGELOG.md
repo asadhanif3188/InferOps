@@ -16,7 +16,9 @@ from `1.0.0`.
   stays as it is: Terraform owns the one claim, the acquisition hook is the one
   writer, and each runtime replica mounts the claim read only at the
   repository-and-revision subdirectory and verifies the pinned artifact before it
-  serves. No chart file, contract, binding, or Terraform file is edited.
+  serves. No chart value, rendered byte, contract field, binding, or Terraform
+  file is edited. The chart README, one template comment, and the comments of
+  two fixtures are.
   **The tool reads files and contacts no cluster.** A run driver writes a bounded
   set of cluster reads into one directory. `python -m tools.runtime_model_cache
   DIRECTORY` prints one record from it: the model identity each replica was
@@ -32,8 +34,9 @@ from `1.0.0`.
   this release's three Deployments plus one pod with the resources of the V1
   request driver. **No capacity gate for the V2 topology is added.** A run uses
   the V1 preflight as it is, and a refusal ends the run before the release is
-  applied. **One run observed it, on the `docker-desktop` provider on
-  2026-10-08, at evidence level C2.** The V1 preflight passed. Argo CD applied
+  applied. **One run observed two runtime replicas on the one claim, on the
+  `docker-desktop` provider on 2026-10-08, at evidence level C2.** The V1
+  preflight passed. Argo CD applied
   the desired-state release from `main`, and two runtime pods became Ready on
   the one node. Each mounted the one Terraform-owned claim read only at the
   revision directory, each pod's init container verified the pinned SHA-256,
@@ -42,8 +45,14 @@ from `1.0.0`.
   `PASSED`. The run, its collection, its transcript, and its driver are
   committed, and `--check` builds the record again from the collection.
   **Both API pods were restarted once by their startup probe while the two
-  runtime pods started.** No rule reads an API pod; the validation record
-  states it, and its cause was not measured. **Both runtime pods ran on one
+  runtime pods verified the artifact.** No rule reads an API pod; the
+  validation record states it, and its cause was not measured. **The tool was
+  corrected after the run.** An independent review made it give `held` for
+  evidence that did not show it: a mount root compared after it was cut at 240
+  characters, an expected identity taken from the collection without a check
+  of its shape, two entries of one pod counted as two replicas, and twelve
+  more. None was the case in the run. The collection was not edited, and the
+  record was built again from it with the same result. **Both runtime pods ran on one
   node, so the run establishes nothing about the loss of that node.** It also
   establishes no rollout, no caller outcome when a runtime pod is unavailable,
   and no capacity gate. No claim is registered. See
