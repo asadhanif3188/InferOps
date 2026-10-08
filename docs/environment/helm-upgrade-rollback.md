@@ -148,6 +148,14 @@ While the candidate is failing, a probe asks the release's own
 `/health/ready` through the forward every five seconds and records the status
 each time. That is the answer a caller in front of the Service would get.
 
+**This holds for the API images the recorded runs used.** Their readiness status
+was `503` whenever the adapter was not ready. Since
+[ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md) the status answers
+for the API alone. Against an image built from a revision that holds that record,
+this probe records
+whether the API accepts work, and it does not record whether inference is served.
+The experiment and its descriptor are not changed.
+
 It is a **measurement, not an assumption**. A rolling update of a single-replica
 Deployment surges rather than displacing, so the expectation is that every probe
 is answered — but a refused probe is recorded and reported rather than failing

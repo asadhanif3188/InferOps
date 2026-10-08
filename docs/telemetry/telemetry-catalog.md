@@ -260,7 +260,7 @@ anything in this repository actually emits it.
 | `inferops_inference_tokens_total` | counter | workload, model, direction | 250 | yes | How many tokens in and out, where reported? |
 | `inferops_model_load_duration_seconds` | histogram | model, runtime, outcome | 720 | no | How long until a model is servable, and how often does that fail? |
 | `inferops_model_ready` | gauge | workload, model | 125 | no | Is the model servable right now? |
-| `inferops_readiness_check_failures_total` | counter | workload, component | 150 | yes | Which component is refusing traffic? |
+| `inferops_readiness_check_failures_total` | counter | workload, component | 150 | yes | Which component did a readiness check find unable, whatever the readiness answer was? Since [ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md), only an `api` count means the readiness answer was `503` |
 | `inferops_workload_document_rejections_total` | counter | rule | 24 | no | Which validation rule rejects real documents? |
 | `inferops_process_resident_memory_bytes` | gauge | none | 25 | no | How much memory is this process holding? |
 | `inferops_process_cpu_seconds_total` | counter | none | 25 | yes | How much processor time is it consuming? |

@@ -65,6 +65,13 @@ depend on the runtime — the same reasoning ADR 0002's proven probe mapping app
 layer down, where liveness watches a TCP socket rather than the endpoint that returns
 503 during a model load.
 
+**Amended 2026-10-08 by [ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md).**
+The status of `/health/ready` is the API's own answer: `200` while the API accepts
+work, and `503` while it is starting, draining, or stopped. The API still asks the
+selected adapter on each readiness request, and the body reports the answer in
+`adapterStatus`. That answer does not change the status. Before that amendment the
+status was `503` whenever the adapter was not ready.
+
 **Graceful shutdown is met by an equivalent, not an endpoint**: `SIGTERM` handling
 that flips readiness false, drains what is in flight, and exits. An HTTP endpoint that
 stops a process would be an unauthenticated remote-stop control on a surface with no

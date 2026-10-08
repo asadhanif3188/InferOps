@@ -954,7 +954,7 @@
       "kind": "operational",
       "instrument": "counter",
       "unit": "1",
-      "question": "Which component is failing its readiness check, when the platform is refusing traffic?",
+      "question": "Which component did a readiness check find unable, whatever the readiness answer was?",
       "families": ["availability"],
       "emitter": "inferops-api",
       "labels": ["workload-id", "component"],
@@ -966,7 +966,7 @@
       "emission": "emitted",
       "emissionReason": null,
       "runtimeSeries": [],
-      "notes": null
+      "notes": "Amended 2026-10-08 by ADR 0020. A count for the api component is a readiness answer of 503. A count for the serving-adapter component is a readiness answer of 200 whose body reports the adapter as not ready. Before the amendment both were 503, and the question said the platform was refusing traffic."
     },
     {
       "metricId": "workload-document-rejections",

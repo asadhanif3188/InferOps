@@ -42,6 +42,14 @@ traceable as a success.
 That is the graceful-shutdown equivalent the accepted record chose, and the
 ordering is in :mod:`inferops.api.lifecycle` rather than here.
 
+**Readiness is this API's own answer, and the adapter's answer is beside it.**
+`ADR 0020` decides it. The status of ``/health/ready`` is 200 while this API
+accepts work and 503 while it does not. The selected adapter is still asked, under
+a budget, one ask at a time, and the body reports what it said in
+``adapterStatus``. An adapter that says no does not change the status: this API can still answer an inference
+request with the canonical error for that condition, and a caller can only
+receive that error from an endpoint that is still in the Service.
+
 **The inference endpoint is instrumented; the other four are not.** A request to
 ``/v1/chat/completions`` that reached a matched route is counted in flight,
 timed, and closed with an outcome, and one structured record is written when it
@@ -49,13 +57,16 @@ arrives and one when it closes. Liveness, readiness, the model list, and the
 metrics scrape are deliberately outside that: they are not inference requests,
 and counting a readiness probe in the same counter would make the success rate a
 figure about a probe loop. What readiness contributes instead is
-``inferops_readiness_check_failures_total``, which names the half that said no.
+``inferops_readiness_check_failures_total``, which names the component that said
+no. A count against the adapter is a dependency observation: it does not mean
+the readiness answer was 503.
 The instruments themselves are in :mod:`inferops.api.observability`, and the
 names they use are the accepted catalog's.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -97,6 +108,9 @@ from .lifecycle import (
 )
 from .observability import ApiTelemetry, outcome_for
 from .responses import (
+    ADAPTER_STATUS_NOT_ASKED,
+    ADAPTER_STATUS_NOT_READY,
+    ADAPTER_STATUS_READY,
     completion_body,
     error_body,
     live_body,
@@ -125,6 +139,16 @@ MAX_REQUEST_BYTES = 1_048_576
 
 JSON_CONTENT_TYPE = "application/json; charset=utf-8"
 
+#: The default budget, in milliseconds, the readiness answer gives the adapter to
+#: say whether it is ready. The adapter bounds its own probe by the inference
+#: request budget, which is far longer than a probe timeout. Without this bound a
+#: runtime that does not answer would make the readiness answer late, a late
+#: answer is a failed probe, and this API would leave the Service because of its
+#: dependency. The chart's default ``api.probes.readiness.timeoutSeconds`` is
+#: longer than this budget, and a test compares the two. It is a default and not
+#: a measurement: no probe latency was observed to derive it from.
+DEFAULT_ADAPTER_READINESS_TIMEOUT_MS = 3_000
+
 #: The path segment that names a version in the compatibility target's shape.
 #: A first segment matching this pattern and naming a version other than the one
 #: :data:`~inferops.api.surface.PATH_PREFIX` publishes is what makes
@@ -146,10 +170,14 @@ class ApiConfiguration:
             produces, so a deployment that labelled itself wrongly fails loudly
             instead of serving mislabelled responses.
         drain_timeout_ms: The budget a graceful shutdown gives in-flight work.
+        adapter_readiness_timeout_ms: The budget the readiness answer gives the
+            adapter to report its own readiness. No environment variable sets
+            it, so a deployment composed from configuration uses the default.
     """
 
     adapter_kind: str
     drain_timeout_ms: int = DEFAULT_DRAIN_TIMEOUT_MS
+    adapter_readiness_timeout_ms: int = DEFAULT_ADAPTER_READINESS_TIMEOUT_MS
 
     def __post_init__(self) -> None:
         if self.adapter_kind not in ACCEPTED_ADAPTER_KINDS:
@@ -158,6 +186,8 @@ class ApiConfiguration:
             )
         if self.drain_timeout_ms <= 0:
             raise InvalidValueError("drain_timeout_ms must be positive")
+        if self.adapter_readiness_timeout_ms <= 0:
+            raise InvalidValueError("adapter_readiness_timeout_ms must be positive")
 
 
 class InferOpsApi:
@@ -198,6 +228,8 @@ class InferOpsApi:
         )
         self._started_at = 0
         self._drained: bool | None = None
+        # The one readiness ask in flight, if any. See `_adapter_status`.
+        self._adapter_ask: asyncio.Task[bool] | None = None
 
     @property
     def lifecycle(self) -> ApplicationLifecycle:
@@ -311,6 +343,7 @@ class InferOpsApi:
             telemetry_names.EVENT_DEPLOYMENT_DRAINING, correlation_id=correlation_id
         )
         self._drained = await self._lifecycle.drain()
+        await self._cancel_adapter_ask()
         await self._adapter.shutdown(self._new_context())
         self._telemetry.deployment_event(
             telemetry_names.EVENT_DEPLOYMENT_STOPPED, correlation_id=correlation_id
@@ -381,32 +414,88 @@ class InferOpsApi:
     async def _ready(
         self, send: Send, answer: _Answer, context: RequestContext
     ) -> None:
-        """Readiness: this API willing, and the selected adapter able.
+        """Readiness: whether this API accepts work. The adapter is reported beside it.
 
-        Both halves have to be yes. An adapter that raises while being asked is
-        not ready — the question was whether it can serve, and a backend that
-        cannot answer it has answered it.
+        The status is this API's own answer. It is 200 while the lifecycle is
+        serving and 503 in every other state. The adapter's answer is published
+        in the body and counted, and it does not change the status.
+
+        The adapter is asked only while this API accepts work. An API that is
+        starting has an adapter that is not initialized, and an API that is
+        draining is about to release it.
+
+        The lifecycle is read again after the ask, because the ask can take the
+        whole budget and a shutdown can begin inside it. The status and the
+        state in the body come from that second read, so one response cannot say
+        200 beside ``draining``. ``adapterStatus`` then still reports what the
+        adapter said, because it was asked.
         """
-        ready = self._lifecycle.is_accepting_work
-        failed_component = telemetry_names.COMPONENT_API if not ready else None
-        if ready:
-            try:
-                ready = await self._adapter.is_ready(context)
-            except Exception:
-                ready = False
-            if not ready:
-                failed_component = telemetry_names.COMPONENT_ADAPTER
-        if failed_component is not None:
+        adapter_status = ADAPTER_STATUS_NOT_ASKED
+        if self._lifecycle.is_accepting_work:
+            adapter_status = await self._adapter_status(context)
+        accepting = self._lifecycle.is_accepting_work
+        if not accepting:
             self._telemetry.readiness_failed(
-                correlation_id=answer.correlation_id, component=failed_component
+                correlation_id=answer.correlation_id,
+                component=telemetry_names.COMPONENT_API,
+            )
+        elif adapter_status != ADAPTER_STATUS_READY:
+            self._telemetry.readiness_failed(
+                correlation_id=answer.correlation_id,
+                component=telemetry_names.COMPONENT_ADAPTER,
             )
         body = ready_body(
-            ready=ready,
+            ready=accepting,
             adapter_kind=self._configuration.adapter_kind,
             lifecycle_state=str(self._lifecycle.state),
+            adapter_status=adapter_status,
         )
-        status = HTTPStatus.OK if ready else HTTPStatus.SERVICE_UNAVAILABLE
+        status = HTTPStatus.OK if accepting else HTTPStatus.SERVICE_UNAVAILABLE
         await answer.send_json(send, status, body)
+
+    async def _adapter_status(self, context: RequestContext) -> str:
+        """Wait for the adapter's readiness answer, inside the readiness budget.
+
+        Three outcomes are one answer here: the adapter said no, the adapter
+        raised, and the adapter did not answer inside the budget. In each one
+        the adapter did not say it is ready. The adapter is still asked while
+        this API accepts work, because the real adapter refuses inference until
+        one of its own probes has seen the runtime ready.
+
+        **One ask is in flight at a time, and it is not cancelled.** A readiness
+        request that finds an ask in flight waits for that one, with its own
+        budget, and starts no second ask. An ask that outlives the budget runs
+        on, so the adapter still records what the runtime finally said, and the
+        next request that finds it finished starts a new one. Cancelling instead
+        would leave the real transport's worker thread blocked on the runtime
+        for each probe that timed out. So a runtime that does not answer holds
+        one ask, and not one for each probe.
+
+        The ask carries the context of the request that started it.
+        """
+        ask = self._adapter_ask
+        if ask is None or ask.done():
+            ask = asyncio.ensure_future(self._adapter.is_ready(context))
+            ask.add_done_callback(_retrieve_outcome)
+            self._adapter_ask = ask
+        budget = self._configuration.adapter_readiness_timeout_ms / 1000
+        finished, _ = await asyncio.wait({ask}, timeout=budget)
+        if not finished or ask.cancelled() or ask.exception() is not None:
+            return ADAPTER_STATUS_NOT_READY
+        return ADAPTER_STATUS_READY if ask.result() else ADAPTER_STATUS_NOT_READY
+
+    async def _cancel_adapter_ask(self) -> None:
+        """Stop a readiness ask that is still in flight, before the adapter goes.
+
+        The wait is bounded by the readiness budget. An ask that does not stop
+        inside it is left behind, so that it cannot hold a shutdown.
+        """
+        ask, self._adapter_ask = self._adapter_ask, None
+        if ask is None or ask.done():
+            return
+        ask.cancel()
+        budget = self._configuration.adapter_readiness_timeout_ms / 1000
+        await asyncio.wait({ask}, timeout=budget)
 
     async def _models(
         self, send: Send, answer: _Answer, context: RequestContext
@@ -703,6 +792,17 @@ class _Answer:
             }
         )
         await send({"type": "http.response.body", "body": payload})
+
+
+def _retrieve_outcome(ask: asyncio.Task[bool]) -> None:
+    """Read a finished ask's outcome, so that an unread exception is not reported.
+
+    An ask can finish after every request that waited for it has answered. The
+    event loop logs an exception that nothing retrieved, and that log line would
+    carry the adapter's own words.
+    """
+    if not ask.cancelled():
+        ask.exception()
 
 
 def _request_headers(scope: Scope) -> dict[str, str]:

@@ -152,7 +152,7 @@
       "catalogAttributeId": null,
       "cardinality": "bounded-small",
       "maxDistinctValues": 2,
-      "reason": "Which workload tier answered: platform-api or serving-runtime. It is a different thing from inferops.component, which is the readiness component the API names when it refuses traffic, and the k8s_ prefix is what keeps a label the collector attached from being read as an attribute an emitter placed."
+      "reason": "Which workload tier answered: platform-api or serving-runtime. It is a different thing from inferops.component, which is the component a readiness check of the API found unable, and the k8s_ prefix is what keeps a label the collector attached from being read as an attribute an emitter placed."
     },
     {
       "labelName": "deployment_environment",

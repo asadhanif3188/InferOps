@@ -255,8 +255,12 @@ curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:18091/health/ready
 curl -sS http://127.0.0.1:18091/v1/models
 ```
 
-`/health/ready` answers `200` only when the API accepts work **and** its adapter
-reports itself able to serve. `/v1/models` names the served model and the runtime.
+`/health/ready` answers `200` when the API accepts work. That status does not say
+the model is loaded. Read the body: `adapterStatus` is `ready` only when the adapter
+reports itself able to serve
+([ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md)). An API image
+built from a revision earlier than that record answers `503` when its adapter is
+not ready, and its body has no `adapterStatus`. `/v1/models` names the served model and the runtime.
 A completion is the only proof that inference works. The certification workflow
 sends one, checks for output tokens, and keeps no text, and that is the checked way
 to ask. It installs and removes its own release, so it cannot be pointed at this
@@ -393,10 +397,18 @@ code to an incident.
 
 ### InferOpsReadinessRefusalsSustained
 
-Critical. Owner: the serving path. More than half of one component's readiness
-probes have been refused for five minutes. **This is the only alert that fires
-before a caller notices**, and it fires on a release nobody is sending traffic to.
-Its `inferops_component` label says which half refused.
+Critical. Owner: the serving path. One component has said no on more than half
+the readiness checks for five minutes. **This is the only alert that reads no
+caller request**, so it fires on a release nobody is sending traffic to.
+Its `inferops_component` label says which component said no. With `api`, the
+readiness answer was `503` and the API pod leaves the Service. With
+`serving-adapter`, the answer depends on the API image. On an image built from a
+revision that holds
+[ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md)
+the readiness answer was `200`. By that rule the API pod is not removed from the
+Service and answers inference with a canonical dependency error; that outcome is
+derived and was not observed, so read the API Service's endpoints. On an image
+built from an earlier revision both answers were `503`.
 
 ```text
 # read-only

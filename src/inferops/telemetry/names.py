@@ -329,8 +329,8 @@ EVENTS: tuple[str, ...] = (
 )
 
 #: The component names ``inferops.component`` takes on a readiness failure. Two,
-#: because readiness is the conjunction of two answers and an operator needs to
-#: know which half said no.
+#: because a readiness check reads two answers and an operator needs to know
+#: which component said no. Only ``api`` makes the readiness status 503.
 COMPONENT_API = "api"
 COMPONENT_ADAPTER = "serving-adapter"
 

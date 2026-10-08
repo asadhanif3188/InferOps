@@ -4,9 +4,9 @@
 
 The probes ask the two questions the accepted API surface record separates:
 `/health/live` answers while the model is loading and while the API is draining,
-and `/health/ready` is false whenever either the API or the selected adapter is
-unable. Liveness asks the first, readiness the second, and neither is pointed at
-the other's path.
+and `/health/ready` is 503 while the API does not accept work. It does not
+follow the selected adapter (ADR 0020). Liveness asks the first, readiness the
+second, and neither is pointed at the other's path.
 
 Shutdown is the order src/inferops/api/lifecycle.py fixes -- readiness false,
 drain, exit -- with a preStop pause in front of it for the endpoint race, and a

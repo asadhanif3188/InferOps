@@ -163,7 +163,7 @@ Three decisions shape it:
 
 The design boundary, the request and deployment flows, the trust boundaries, and
 what is not defended at each are in
-[the system architecture](docs/architecture/system-architecture.md). The nineteen
+[the system architecture](docs/architecture/system-architecture.md). The twenty
 decision records are indexed in [the architecture index](docs/architecture/README.md).
 One component of the design is still unbuilt end to end: since `V2-S2-001-PR1` the Helm
 values renderer derives release values from a validated contract, and since
@@ -471,7 +471,7 @@ intention reads as a capability:
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
 | Workload domain model | [docs/domain/workload-domain-model.md](docs/domain/workload-domain-model.md) | Typed domain objects, parsing, contract-version handling, and the seven-rule semantic validation pipeline implemented; the schema's profile conditions are not among its rules, and only the renderer input boundary applies them |
 | Workload template | [docs/scaffolding/workload-template.md](docs/scaffolding/workload-template.md) | Template, rendering library, and non-overwriting scaffolding command implemented and verified for mock and synchronous profiles; no generated workload is committed |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Nineteen decisions: twelve accepted in part, five accepted, one accepted with a recorded exception, and one accepted and later amended. Every one names an accountable decision owner |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Twenty decisions: twelve accepted in part, six accepted, one accepted with a recorded exception, and one accepted and later amended. Every one names an accountable decision owner |
 | V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; the platform domain, both adapters, the API, the chart, and the Terraform prerequisite layer are built and have been executed on `docker-desktop`; deployment rendering is not |
 | Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked. Terraform and Helm both exist and have been applied and installed on `docker-desktop`; twenty rows moved from `planned` to `implemented` and each cites the run that moved it |
 | Project boundaries | [docs/architecture/project-boundaries.md](docs/architecture/project-boundaries.md) | Accepted scope rule; two serving capabilities and no gateway or deep-serving work |

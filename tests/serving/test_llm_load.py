@@ -183,16 +183,21 @@ def identity_answers(
     ready_status: int = 200,
     ready_state: str = "ready",
     ready_adapter: str = "real",
+    adapter_status: str | None = "ready",
     models_adapter: str = "real",
     model_ids: tuple[str, ...] = (MODEL,),
     runtime_name: str = RUNTIME_NAME,
     revision: str = REVISION,
 ) -> dict[str, HttpAnswer]:
+    ready_body = {
+        "status": ready_state,
+        "adapterKind": ready_adapter,
+        "state": "serving",
+    }
+    if adapter_status is not None:
+        ready_body["adapterStatus"] = adapter_status
     return {
-        "/health/ready": HttpAnswer(
-            ready_status,
-            {"status": ready_state, "adapterKind": ready_adapter, "state": "ready"},
-        ),
+        "/health/ready": HttpAnswer(ready_status, ready_body),
         "/v1/models": HttpAnswer(
             200,
             {
@@ -567,6 +572,10 @@ def test_the_identity_probe_records_what_the_release_said() -> None:
     [
         ({"ready_status": 503}, "not ready"),
         ({"ready_state": "not-ready"}, "not ready"),
+        # The API accepts work and its adapter does not: 200, and still no load.
+        ({"adapter_status": "not-ready"}, "not ready"),
+        # A body that does not report the adapter says nothing about it.
+        ({"adapter_status": None}, "not ready"),
         ({"ready_adapter": "mock"}, "readiness names an adapter"),
         ({"models_adapter": "mock"}, "model list names an adapter"),
         ({"models_adapter": REHEARSAL_ADAPTER_KIND}, "model list names an adapter"),

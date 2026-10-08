@@ -283,7 +283,7 @@ enforces it rather than describing it.
 |---|---|
 | `503` on `/health`, TCP connects | `runtime-loading`. Wait, inside the 300,000 ms startup budget |
 | TCP refuses and `/health` is unreachable | The process is not up. Check the container's status and exit |
-| `200` on `/health`, but API `/health/ready` is false | The API half has not observed the runtime yet, or the adapter identity does not match |
+| `200` on `/health`, but API `/health/ready` reports `adapterStatus` as `not-ready` | The adapter has not observed the runtime yet. Each readiness request asks again. The API's own status is `200` in this state |
 | Readiness was true and is now false | Correct. A ready runtime that answers `503` again becomes not-ready rather than latching |
 | The startup budget elapsed | See below — this may be the host rather than a fault |
 

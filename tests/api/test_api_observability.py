@@ -523,7 +523,8 @@ async def test_a_readiness_failure_names_the_component_that_said_no() -> None:
     )
     api, sink = await started(adapter)
 
-    assert (await asgi_client.request(api, "GET", READY_PATH)).status == 503
+    # The adapter said no, so it is counted. The status is the API's own answer.
+    assert (await asgi_client.request(api, "GET", READY_PATH)).status == 200
 
     text = await scrape(api)
     assert (

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Accepted; amended 2026-09-01** |
+| Status | **Accepted; amended 2026-09-01, and on 2026-10-08 by [ADR 0020](ADR-0020-api-readiness-is-the-apis-own-answer.md)** |
 | Date proposed | 2026-08-27 |
 | Date accepted | 2026-08-27; D3 narrowed and D9 accepted 2026-09-01 |
 | Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
@@ -185,6 +185,14 @@ and a liveness probe pointed at that restarts the pod mid-load and never converg
 The same reasoning applies one layer up: InferOps being alive and InferOps being able
 to serve are different questions, and only readiness is allowed to depend on the
 runtime.
+
+> **Amended 2026-10-08 by [ADR 0020](ADR-0020-api-readiness-is-the-apis-own-answer.md).** The sentence above
+> permitted readiness to depend on the runtime, and the implementation made the
+> status of `/health/ready` the conjunction of the API accepting work and the
+> adapter reporting itself ready. ADR 0020 narrows that. The status is the API's
+> own answer, and the adapter's answer is a separate member of the body. The
+> table above is unchanged: the runtime counterpart of `/health/ready` is still
+> `GET /health`, because the API still asks it on each readiness request.
 
 **Graceful shutdown is met by an equivalent, not an endpoint.** The serving contract
 permits either. The equivalent is `SIGTERM` handling that flips readiness false,

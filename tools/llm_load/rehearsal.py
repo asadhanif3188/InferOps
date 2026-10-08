@@ -148,7 +148,8 @@ def _handler(profile: Profile) -> type[BaseHTTPRequestHandler]:
                     {
                         "status": "ready",
                         "adapterKind": REHEARSAL_ADAPTER_KIND,
-                        "state": "ready",
+                        "state": "serving",
+                        "adapterStatus": "ready",
                     },
                 )
             elif self.path == profile.models_path:

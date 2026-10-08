@@ -316,15 +316,15 @@ count then measures something other than consecutive failures.
 {{/*
 The API's two health paths answer different questions and may not be the same
 path. `/health/live` answers while the model is loading and while the API is
-draining; `/health/ready` is false whenever either the API or the adapter is
-unable. A liveness probe pointed at the readiness answer restarts a pod for
+draining; `/health/ready` is 503 while the API does not accept work, which
+includes the whole of a drain. A liveness probe pointed at the readiness answer restarts a pod for
 being not-ready, which is the defect the feasibility trial found on the runtime
 written in the other workload -- and two free-form strings are exactly how it
 gets written by accident.
 */}}
 {{- if .Values.api.probes.enabled -}}
 {{- if eq .Values.api.readinessPath .Values.api.livenessPath -}}
-{{- fail "api.readinessPath and api.livenessPath must be different paths. Liveness asks whether the process is alive and readiness whether the adapter can serve; pointing them at one answer restarts a pod for being not-ready, which is the defect docs/serving/runtime-profile.local.v1.json exists to keep out of the runtime's probes." -}}
+{{- fail "api.readinessPath and api.livenessPath must be different paths. Liveness asks whether the process is alive and readiness whether the API accepts work; pointing them at one answer restarts a pod for being not-ready, which is the defect docs/serving/runtime-profile.local.v1.json exists to keep out of the runtime's probes." -}}
 {{- end -}}
 {{- end -}}
 

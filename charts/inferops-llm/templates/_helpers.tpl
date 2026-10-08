@@ -329,8 +329,8 @@ The API's three probes.
 
 The mapping is the one docs/serving/inference-api-surface.v1alpha1.json
 publishes rather than a choice made here: `/health/live` answers while the model
-is loading and while the API is draining, and `/health/ready` is the conjunction
-of the API accepting work and the selected adapter reporting itself able. So
+is loading and while the API is draining, and `/health/ready` is 503 while the
+API does not accept work. It does not follow the selected adapter (ADR 0020). So
 liveness asks the first and readiness the second, and neither is ever pointed at
 the other's path.
 
@@ -943,8 +943,8 @@ still refuses one that tries.
 **The Kubernetes context labels carry a `k8s_` prefix** so that a label the collector
 attached is never read as an attribute an emitter placed. `k8s_component` is the
 workload tier -- `platform-api` or `serving-runtime` -- and is a different thing from
-`inferops.component`, which is the readiness component the API names when it refuses
-traffic.
+`inferops.component`, which is the component a readiness check of the API found
+unable.
 */}}
 {{- define "inferops-llm.telemetryScrapeConfig" -}}
 {{- $interval := printf "%ds" (int .Values.telemetry.collection.scrapeIntervalSeconds) -}}

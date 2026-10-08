@@ -72,7 +72,18 @@ EXPECTED_STARTUP_ORDER = (
 )
 EXPECTED_SHUTDOWN_ORDER = ("api", "runtime")
 EXPECTED_CAPABILITY = "inferops-native-serving"
-READY_BODY = {"status": "ready", "adapterKind": "real", "state": "serving"}
+#: The readiness body this composition waits for. The API's own status and the
+#: adapter's status are separate members, and both must say ready: an API that
+#: accepts work while its adapter is not ready answers 200, and that is not the
+#: state a composition may report as ready for real inference.
+READY_BODY = {
+    "status": "ready",
+    "adapterKind": "real",
+    "state": "serving",
+    "adapterStatus": "ready",
+}
+#: The same body while the API accepts work and the real adapter is not ready yet.
+ADAPTER_NOT_READY_BODY = {**READY_BODY, "adapterStatus": "not-ready"}
 
 
 class CompositionError(RuntimeError):
@@ -474,7 +485,12 @@ def wait_api_ready(
     clock: Callable[[], float] = time.monotonic,
     sleeper: Callable[[float], None] = time.sleep,
 ) -> int:
-    """Wait for API readiness, which probes the selected real runtime."""
+    """Wait until the API accepts work and its real adapter reports itself ready.
+
+    The API's readiness status answers for the API alone. This wait therefore
+    reads the body: a 200 whose ``adapterStatus`` is ``not-ready`` is an API that
+    is up before the runtime is, and the wait continues.
+    """
     started = clock()
     budget_seconds = composition.response_budget_ms / 1000
     deadline = started + budget_seconds
@@ -487,12 +503,13 @@ def wait_api_ready(
         except CompositionError:
             response = HttpResponse(0)
         if response.status == composition.ready_status:
-            if response.body != READY_BODY:
+            if response.body == READY_BODY:
+                return max(0, round((clock() - started) * 1000))
+            if response.body != ADAPTER_NOT_READY_BODY:
                 raise CompositionError(
                     "the InferOps API readiness identity is not explicitly real"
                 )
-            return max(0, round((clock() - started) * 1000))
-        if response.status not in (0, composition.not_ready_status):
+        elif response.status not in (0, composition.not_ready_status):
             raise CompositionError(
                 "the InferOps API returned an unexpected readiness status"
             )
@@ -500,7 +517,7 @@ def wait_api_ready(
             raise CompositionError(
                 "the InferOps API did not become ready within its budget"
             )
-        sleeper(min(1.0, deadline - clock()))
+        sleeper(max(0.0, min(1.0, deadline - clock())))
 
 
 def status(

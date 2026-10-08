@@ -793,6 +793,46 @@ from `1.0.0`.
 
 ### Changed
 
+- **`V2-S4-001-PR2`: the API's readiness status answers for the API, and no longer
+  for its dependency. The evidence is in-process tests over a controlled transport, C1.
+  No image was built and nothing was installed.** [ADR 0020](docs/architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md)
+  amends one sentence of ADR 0010. Until this change, `GET /health/ready` answered
+  `200` only when the API accepted work **and** its adapter reported itself ready,
+  so an API pod failed its readiness probe whenever the runtime was unreachable or
+  the model was loading. **The status is now the API's own answer:** `200` in the
+  `serving` state, and `503` while the API is starting, draining, or stopped.
+  **The adapter is still asked, and its answer is a separate member.** The body
+  gains `adapterStatus`, which is `ready`, `not-ready`, or `not-asked`. The ask
+  is waited for inside a budget of 3,000 ms by default, and one ask is in flight
+  at a time. A runtime that does not answer therefore cannot make the readiness
+  answer later than the budget; whether that is in time depends on the probe
+  timeout, which the chart defaults to 5 seconds and does not bound. **The canonical dependency errors are
+  unchanged:** an unreachable runtime is `capability-unavailable` with the
+  condition `runtime-unreachable`, and a loading model is `model-not-ready` with
+  the condition `model-loading`. The readiness body does not tell those two
+  apart, because the adapter interface answers with a boolean. **The readiness
+  counter keeps its name and labels and changes its meaning for one component.**
+  A count for `serving-adapter` is now a readiness answer of `200`. The metric's
+  help text, the catalog, the alert record, both rendered rule files, the
+  dashboard record, the Grafana JSON, and the runbook say so. The alert
+  expression and threshold are unchanged. The alert record had named the two
+  component values as `platform-api` and `serving-adapter`; the first is `api`,
+  and the text now says that. **Two tools read the new member.** The load
+  generator refuses a target whose `adapterStatus` is not `ready`, which includes
+  a body without the member, so it refuses an API image built before this change.
+  The local composition waits while the adapter is not ready. **The chart's
+  rendered objects are unchanged.** Comments in the chart, and the words of one
+  template refusal, were corrected; the chart version stays `0.4.0`. **What this
+  does not establish:** no test involves a runtime process, a kubelet, or a
+  Service, so nothing here shows that a Service keeps an API endpoint while the
+  runtime is unavailable, or what a caller receives through one. A deployed
+  release answers under the new rule only after an API image is built from a
+  revision that contains it. Three V1 experiment tools that read the readiness
+  status only are unchanged, and the unready-model experiment's descriptor still
+  expects the V1 answer; ADR 0020 records both.
+  [The validation record](docs/proof/serving/v2-s4-001-pr2-validation.md) lists
+  the commands and their results.
+
 - **`V2-S3-004-PR1`: one test of the published review no longer compares with the registry
   file as it is today.** The review of the second static run names the
   registry's digest as that run recorded it. Registering a third record adds a

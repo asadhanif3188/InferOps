@@ -4,9 +4,10 @@ Four properties this suite is really about, beyond that each route answers.
 
 **Liveness and readiness answer different questions.** `/health/live` says
 whether this process is alive and says nothing about the model, which is why it
-still answers while the adapter is not ready. `/health/ready` is the conjunction
-of this API being willing and the selected adapter being able, and it is false
-when either half is.
+still answers while the adapter is not ready. `/health/ready` says whether this
+API accepts work, and it reports the selected adapter's own answer in a separate
+member that does not change the status. ``tests/api/test_api_readiness_semantics.py``
+holds that rule against the real adapter type; this suite holds the route.
 
 **A health response carries no secret.** No endpoint, no credential, no path, no
 runtime message, and no configuration reaches one. A readiness probe is the
@@ -101,26 +102,28 @@ async def test_readiness_is_false_before_startup() -> None:
     assert body["state"] == "starting"
 
 
-async def test_readiness_is_true_once_the_adapter_reports_ready(
+async def test_readiness_is_true_once_the_api_is_serving(
     mock_api: InferOpsApi,
 ) -> None:
     response = await get(mock_api, READY_PATH)
     assert response.status == 200
     assert response.json()["status"] == "ready"
+    assert response.json()["adapterStatus"] == "ready"
 
 
-async def test_readiness_reflects_the_selected_backend_rather_than_this_process(
+async def test_readiness_reports_the_selected_backend_without_following_it(
     recording_adapter: RecordingAdapter, recording_api: InferOpsApi
 ) -> None:
-    """The half of readiness that is not this API's own state."""
+    """The backend's answer is published, and the status stays this API's own."""
     assert (await get(recording_api, READY_PATH)).status == 200
     recording_adapter.model_ready = False
     response = await get(recording_api, READY_PATH)
-    assert response.status == 503
-    assert response.json()["status"] == "not-ready"
+    assert response.status == 200
+    assert response.json()["status"] == "ready"
+    assert response.json()["adapterStatus"] == "not-ready"
 
 
-async def test_a_backend_that_raises_while_being_asked_is_not_ready(
+async def test_a_backend_that_raises_while_being_asked_is_reported_not_ready(
     recording_adapter: RecordingAdapter, recording_api: InferOpsApi
 ) -> None:
     async def explode(context: object) -> bool:
@@ -128,15 +131,16 @@ async def test_a_backend_that_raises_while_being_asked_is_not_ready(
 
     recording_adapter.is_ready = explode  # type: ignore[method-assign]
     response = await get(recording_api, READY_PATH)
-    assert response.status == 503
+    assert response.status == 200
+    assert response.json()["adapterStatus"] == "not-ready"
     assert "refused the connection" not in response.text()
 
 
-async def test_readiness_names_the_adapter_kind_and_nothing_else(
+async def test_readiness_names_four_members_and_nothing_else(
     mock_api: InferOpsApi,
 ) -> None:
     body = (await get(mock_api, READY_PATH)).json()
-    assert set(body) == {"status", "adapterKind", "state"}
+    assert set(body) == {"status", "adapterKind", "state", "adapterStatus"}
     assert body["adapterKind"] == MOCK_ADAPTER_KIND
 
 
@@ -158,7 +162,9 @@ async def test_a_not_ready_adapter_still_answers_liveness() -> None:
     api = build(adapter)
     await api.startup()
     assert (await get(api, LIVE_PATH)).status == 200
-    assert (await get(api, READY_PATH)).status == 503
+    ready = await get(api, READY_PATH)
+    assert ready.status == 200
+    assert ready.json()["adapterStatus"] == "not-ready"
 
 
 # --------------------------------------------------------------------------

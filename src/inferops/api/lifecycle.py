@@ -118,10 +118,9 @@ class ApplicationLifecycle:
     def is_accepting_work(self) -> bool:
         """Whether new work would be accepted right now.
 
-        This is the platform half of readiness. The other half is the selected
-        adapter's own answer, and a readiness response is the conjunction: this
-        API being willing and the backend being able are different questions and
-        both have to be yes.
+        This is the whole of the readiness status. The selected adapter's own
+        answer is a different question, and a readiness response reports it
+        beside this one without combining them: `ADR 0020`.
         """
         return self._state is LifecycleState.SERVING
 

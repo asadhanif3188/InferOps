@@ -119,6 +119,13 @@ readiness is model readiness — `/health/ready` is false whenever either the AP
 its adapter is unable — so a ready replica is one that could reach the runtime and
 the model was loaded.
 
+**That sentence describes the API image the certified run used.** Since
+[ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md), dated 2026-10-08,
+an API replica is ready when the API accepts work, whatever its adapter reports.
+On an image built from a revision that holds that record, a ready replica is not
+evidence that a model is loaded. The completion each replica served is that evidence, and the procedure
+already joins each successful request to the replica that recorded it.
+
 ### The serving runtime tier: per replica, over a window
 
 **No request can be attributed to a runtime replica, and this procedure does not

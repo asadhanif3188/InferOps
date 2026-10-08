@@ -61,7 +61,7 @@ is refusing and the second says which codes, which outcomes, or which tier.
 |---|---|
 | `InferOpsInferenceCallersRefused` | `error-rate-by-workload-and-code` — every code, including the `internal-error` this alert does not count |
 | `InferOpsInferenceServingNothing` | `request-throughput-by-workload-model-and-outcome` — how much is arriving and how much is failing |
-| `InferOpsReadinessRefusalsSustained` | `readiness-check-failures-by-component` — which half said no |
+| `InferOpsReadinessRefusalsSustained` | `readiness-check-failures-by-component` — which component said no |
 | `InferOpsInferenceLatencyPastHalfTheRequestBudget` | `request-latency-p95-by-workload-and-model` — the split the condition deliberately does not make |
 | `InferOpsRuntimeDefersRequests` | `runtime-deferred-requests` — a count of requests, never a wait |
 | `InferOpsPlatformApiScrapeJobAbsent` | `scrape-target-health-by-job` — which tier answers a scrape |
@@ -72,7 +72,7 @@ is refusing and the second says which codes, which outcomes, or which tier.
 |---|---|---|---|
 | `InferOpsInferenceCallersRefused` | critical | The platform has been refusing completions with `capability-unavailable` for five minutes | [callers refused](../environment/operator-runbook.md#inferopsinferencecallersrefused) |
 | `InferOpsInferenceServingNothing` | critical | Completions have been arriving for five minutes and none has succeeded | [serving nothing](../environment/operator-runbook.md#inferopsinferenceservingnothing) |
-| `InferOpsReadinessRefusalsSustained` | critical | More than half a component's readiness probes have been refused for five minutes | [readiness refusals](../environment/operator-runbook.md#inferopsreadinessrefusalssustained) |
+| `InferOpsReadinessRefusalsSustained` | critical | A component has said no on more than half the readiness checks for five minutes | [readiness refusals](../environment/operator-runbook.md#inferopsreadinessrefusalssustained) |
 | `InferOpsInferenceLatencyPastHalfTheRequestBudget` | warning | The 95th percentile of completion time has been past half the configured request timeout for ten minutes | [latency past half the budget](../environment/operator-runbook.md#inferopsinferencelatencypasthalftherequestbudget) |
 | `InferOpsRuntimeDefersRequests` | warning | The runtime has been holding requests it has no parallel slot for for ten minutes | [runtime defers requests](../environment/operator-runbook.md#inferopsruntimedefersrequests) |
 | `InferOpsPlatformApiScrapeJobAbsent` | warning | The collector's `platform-api` job has matched no target for ten minutes | [scrape job absent](../environment/operator-runbook.md#inferopsplatformapiscrapejobabsent) |
@@ -85,10 +85,27 @@ anything.
 
 They fire together in an outage and they are not the same question.
 
-`InferOpsReadinessRefusalsSustained` reads the API's own readiness answer, so **it
-fires on a release nobody is sending traffic to**. In the recorded unready-model run
-the readiness counter was already climbing two minutes before the first caller was
-refused. It is the only one of the three that sees an outage before a user does.
+`InferOpsReadinessRefusalsSustained` reads the API's own count of readiness checks,
+so **it fires on a release nobody is sending traffic to**. In the recorded
+unready-model run the readiness counter was already climbing two minutes before the
+first caller was refused. It is the only one of the three that reads no caller
+request, so it is the only one that can move before a caller arrives.
+
+**What the component label means changed with ADR 0020, dated 2026-10-08.**
+[ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md) makes the
+readiness status the API's own answer. A count for `api` is still a readiness
+answer of `503`, and the kubelet removes that endpoint after three consecutive
+failures. A count for `serving-adapter` depends on the API image. On an image built
+from a revision that holds that record, the adapter said no and the readiness answer
+was `200`. By that rule, and by what Kubernetes documents, the API endpoint is not
+removed and a caller receives a canonical dependency error. **That outcome is
+derived. It was not observed.** On an image built from an earlier revision, the
+answer was `503`, as before. The expression, the threshold, and the scenarios are
+unchanged, because the counter still counts each ask in which a component said no.
+The scenario fixtures still describe the earlier rule, in which the API endpoint
+leaves with the adapter. The recorded runs this document cites used API images
+built from earlier revisions. No run has evaluated this alert against an image
+built from a revision that holds that record.
 
 `InferOpsInferenceCallersRefused` reads one canonical error code. It is the code both
 recorded failure experiments produced and it is **not** the only one either produced:
@@ -115,11 +132,16 @@ measured.**
 The two derived ones, in full:
 
 **Readiness, `> 0.05`.** The kubelet asks `/health/ready` every
-`api.probes.readiness.periodSeconds`, which the chart defaults to `10`, and removes
-the endpoint after `failureThreshold: 3` consecutive refusals. Every probe failing is
-therefore 0.1 refusals a second, and 0.05 is half of that: more probes are being
-refused than answered. An installation that changes the period changes the threshold
-with it.
+`api.probes.readiness.periodSeconds`, which the chart defaults to `10`. Each ask in
+which a component says no is counted once. Every ask counting is therefore 0.1 a
+second for one API replica, and 0.05 is half of that: a component said no on more
+asks than not. The expression sums over replicas, so with two replicas the same
+threshold is a quarter of the asks. An installation that changes the period changes
+the threshold with it. For the `api` component each counted ask was answered `503`,
+and the kubelet removes the endpoint after `failureThreshold: 3` consecutive
+failures. For the `serving-adapter` component the answer depends on the API image:
+`200` on an image built from a revision that holds ADR 0020, and `503` on an
+earlier one.
 
 **Latency, `> 60`.** 60 seconds is half the chart's default
 `api.requestTimeoutMs` of `120000`, and it is also one of the histogram's declared

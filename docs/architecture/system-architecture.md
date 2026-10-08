@@ -664,7 +664,9 @@ reference provider, and one more is a routine operation with a rollback path.
    joins the endpoint slice
         |
         v
-   the API stays live and refuses cleanly:
+   the API stays live and refuses cleanly (as recorded in V1; an API image
+   built from a revision that holds ADR 0020 answers 200 on /health/ready
+   here, with adapterStatus=not-ready, and that has not been observed):
      runtime  GET /health        -> 503, "Loading model"
      API      GET /health/live   -> 200      <- the API is not the problem
      API      GET /health/ready  -> 503, not-ready, adapterKind=real

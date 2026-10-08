@@ -37,7 +37,7 @@ from that file without a failing build.
 | `inferops_inference_request_duration_seconds` | Once per closed request, measured on a monotonic clock across the whole handler |
 | `inferops_inference_requests_in_flight` | Up when a request arrives, down when it closes — including when it closes by failing |
 | `inferops_inference_tokens_total` | Only when the adapter reported a token count. Absent, not zero, when it did not |
-| `inferops_readiness_check_failures_total` | Once per `/health/ready` that answered no, labelled by which half said so |
+| `inferops_readiness_check_failures_total` | Once per `/health/ready` request in which a component said no, labelled by the component. A count for `api` is a `503`. A count for `serving-adapter` is a `200` whose body reports `adapterStatus` as `not-ready` ([ADR 0020](../architecture/decisions/ADR-0020-api-readiness-is-the-apis-own-answer.md)) |
 | `inferops_process_cpu_seconds_total` | Read from the process's own processor clock at scrape time |
 
 Two decisions inside that table are worth stating rather than inferring.
@@ -110,7 +110,7 @@ inferops_inference_request_duration_seconds_count{inferops_workload_id="support-
 inferops_inference_requests_in_flight{inferops_workload_id="support-assistant",inferops_model_id="mock-fixed-fixture"} 0
 # HELP inferops_inference_tokens_total How many tokens were read and written, where the runtime reports them.
 # TYPE inferops_inference_tokens_total counter
-# HELP inferops_readiness_check_failures_total Which component is failing its readiness check, when the platform is refusing traffic.
+# HELP inferops_readiness_check_failures_total Which component a readiness check found unable, whatever the readiness answer was.
 # TYPE inferops_readiness_check_failures_total counter
 # HELP inferops_process_cpu_seconds_total How much processor time the emitting process is consuming.
 # TYPE inferops_process_cpu_seconds_total counter
