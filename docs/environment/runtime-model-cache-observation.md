@@ -1,6 +1,6 @@
 # The model cache under two serving runtime replicas: what is observed, and how
 
-Status: **the tool, the rules, and the static tests exist. No run is recorded on this page yet.**
+Status: **one run is recorded. On the `docker-desktop` provider, two runtime pods on one node read one verified artifact from the one claim, and the record of that run has the result `PASSED`. One run on one node does not establish node-loss resilience, and `kind` executed none of it.**
 
 The desired-state release declares two serving runtime replicas. A Deployment has
 one pod template, so both replicas are declared to mount one claim, to verify one
@@ -209,4 +209,10 @@ committed collection.
 
 ## The runs
 
-No run is committed yet. A run is added by the change that executes it.
+| Run | Date | Provider | Result | Record |
+|---|---|---|---|---|
+| `run-1` | 2026-10-08 | `docker-desktop`, server `v1.36.1`, one node | `PASSED`: each of the 17 rules is `held` | [The record](../proof/environment/v2-s4-002-pr2-runtime-model-cache-run-1/record.v1alpha1.json), and [the validation record](../proof/environment/v2-s4-002-pr2-validation.md), which also states what the run showed that no rule reads |
+
+One run exists. It was not repeated. In that run both API pods were restarted once
+by their startup probe while the two runtime pods started. No rule of the record
+reads an API pod, so the result does not show it. The validation record states it.

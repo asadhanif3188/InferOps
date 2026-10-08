@@ -1,0 +1,518 @@
+{
+  "capacityPreflight": {
+    "exitStatus": 0,
+    "facts": {
+      "cluster": {
+        "allocatableCpuMillis": 12000,
+        "allocatableMemoryBytes": 10430685184,
+        "committedCpuMillis": 950,
+        "committedMemoryBytes": 304087040,
+        "schedulableNodes": 1
+      },
+      "engine": {
+        "cpus": 12,
+        "memoryBytes": 10430685184
+      }
+    },
+    "state": "read"
+  },
+  "claims": {
+    "claimsInNamespace": [
+      "inferops-model-cache"
+    ],
+    "declaredClaim": {
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "component": "model-cache-volume-claim",
+      "lifecycle": "prerequisite",
+      "managedBy": "Terraform",
+      "name": "inferops-model-cache",
+      "phase": "Bound",
+      "releaseMarkers": [],
+      "storageClassName": "standard",
+      "volumeName": "pvc-8f7cbcad-b3f5-4262-be0f-d42e99c90256"
+    },
+    "state": "read",
+    "volume": {
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "nodes": [
+        "desktop-control-plane"
+      ],
+      "reclaimPolicy": "Delete",
+      "source": "hostPath",
+      "state": "read"
+    }
+  },
+  "collection": {
+    "collectedAt": "2026-10-08T10:50:18Z",
+    "executingCommit": "c04bc77647fcfe15634012c688f39e95ba8d93ad",
+    "namespace": "inferops-release",
+    "provider": "docker-desktop",
+    "reportedRevision": "4df31fd86363a6ee5b5b6a0023f3355f5c1bfc5f",
+    "runId": "run-1",
+    "startedAt": "2026-10-08T09:52:59Z"
+  },
+  "doesNotEstablish": [
+    "A record does not establish node-loss resilience. Kubernetes documents that pods which share a ReadWriteOnce claim run on one node. The record states the node of each pod.",
+    "A record does not establish that a caller is served when one runtime pod is unavailable. No pod was removed, and no request was sent through the API Service by this collection.",
+    "A record does not establish a rollout. No pod template changed during the collection.",
+    "A record does not establish that readiness is false whenever inference is impossible. It states the samples in which a running runtime container was not ready, and the completion each runtime answered after it was Ready.",
+    "A record does not establish which runtime replica serves a request that a caller sends. Each completion was sent to one pod through a port-forward, and not through a Service.",
+    "A record does not establish behaviour on another provider, another storage class, another node count, or another day. It is one collection on one cluster.",
+    "A record does not establish that the claim cannot be written. It states the declared mode and the mount option of each runtime container. No write was attempted, and the acquisition hook mounts the same claim writable.",
+    "A record does not establish capacity for any other topology, and it is not a capacity gate for this one. It states one reading of the V1 preflight.",
+    "A record does not establish a performance figure. No time in it is a latency, a throughput, or a model-load measurement."
+  ],
+  "evidenceLevel": "C2",
+  "expected": {
+    "cacheSubPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "claimName": "inferops-model-cache",
+    "containerPath": "/models/Qwen3-1.7B-Q8_0.gguf",
+    "model": {
+      "fileName": "Qwen3-1.7B-Q8_0.gguf",
+      "repository": "Qwen/Qwen3-1.7B-GGUF",
+      "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "sha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+      "sizeBytes": 1834426016
+    },
+    "mountPath": "/models",
+    "release": {
+      "key": "local-docker-desktop/support-assistant",
+      "valuesFile": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+      "valuesFileSha256": "314a34829e7b44c62402249f1e93ba4493ec5b019ca7becdd1a5595025d6b6f9"
+    },
+    "runtimeImage": {
+      "digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "reference": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+    },
+    "runtimeReplicas": 2,
+    "schema": "inferops.io/runtime-model-cache-expected/v1alpha1"
+  },
+  "files": [
+    {
+      "name": "artifact.inferops-inferops-llm-runtime-bdf8d566c-dk2nc.txt",
+      "sha256": "deef05c50e80c06c7b0aa7c25e5670cb441268ff9d4ab6410a2782dc3f26b973"
+    },
+    {
+      "name": "artifact.inferops-inferops-llm-runtime-bdf8d566c-j82km.txt",
+      "sha256": "deef05c50e80c06c7b0aa7c25e5670cb441268ff9d4ab6410a2782dc3f26b973"
+    },
+    {
+      "name": "capacity-facts.json",
+      "sha256": "adb691748fd791a2b15799de5d0036abdc489ba9400e912e9550ded2cec37d62"
+    },
+    {
+      "name": "capacity-preflight.json",
+      "sha256": "f61b19574fc02bb93f33a4b41d6c348fa39e76f340f164c74e5f7fd2dd955c5e"
+    },
+    {
+      "name": "claims.json",
+      "sha256": "ced458e41295bd397e2f533c14cd1970b7a55b2e617bae0cf3a05174e1d5caf2"
+    },
+    {
+      "name": "completion.inferops-inferops-llm-runtime-bdf8d566c-dk2nc.json",
+      "sha256": "da4a8850256f7ccece591c8f2f8339494126b84390ebaeb71e885c19354f9944"
+    },
+    {
+      "name": "completion.inferops-inferops-llm-runtime-bdf8d566c-j82km.json",
+      "sha256": "da4a8850256f7ccece591c8f2f8339494126b84390ebaeb71e885c19354f9944"
+    },
+    {
+      "name": "events.txt",
+      "sha256": "79fa1a4af8e5ce71a2035411ea186f2afc5cf353a3714a0b84985c9f28c02bf9"
+    },
+    {
+      "name": "expected.json",
+      "sha256": "a632154b7d61c59c002a423e8938ef6cc6aeadca01cbc781cae11b79b88a1958"
+    },
+    {
+      "name": "models.inferops-inferops-llm-runtime-bdf8d566c-dk2nc.json",
+      "sha256": "3125dc95ee12c01bdfe83c9abd131a5965c19a28703d6136607dc0201538d31a"
+    },
+    {
+      "name": "models.inferops-inferops-llm-runtime-bdf8d566c-j82km.json",
+      "sha256": "3125dc95ee12c01bdfe83c9abd131a5965c19a28703d6136607dc0201538d31a"
+    },
+    {
+      "name": "mountinfo.inferops-inferops-llm-runtime-bdf8d566c-dk2nc.txt",
+      "sha256": "7cbc0e62358d8200f25bdcb2c323fb12b7bf797a3de0956735a1ca269c979fb3"
+    },
+    {
+      "name": "mountinfo.inferops-inferops-llm-runtime-bdf8d566c-j82km.txt",
+      "sha256": "64588851b46f97ce9c4e1994eef6231544085c0aaa051f60ec276a18a7361a53"
+    },
+    {
+      "name": "readiness-samples.txt",
+      "sha256": "bb7f1342e6d28c8dc435342193b513a007407f0a6564840f1dfd15513edd544c"
+    },
+    {
+      "name": "run.json",
+      "sha256": "6d6d542226fb96f6feb1ccc281c4cb403b7c3f4cff9d91705adb33397e47b25a"
+    },
+    {
+      "name": "runtime-pods.json",
+      "sha256": "0f32597de028c6f006cb52543a9d9bf0534b04bee08f7894cbf9527ecf227642"
+    },
+    {
+      "name": "verify-model.inferops-inferops-llm-runtime-bdf8d566c-dk2nc.txt",
+      "sha256": "3ec72520e73591dd72999d9b9f8c66cf22431f9ed237c5e8922f11051c726db1"
+    },
+    {
+      "name": "verify-model.inferops-inferops-llm-runtime-bdf8d566c-j82km.txt",
+      "sha256": "3ec72520e73591dd72999d9b9f8c66cf22431f9ed237c5e8922f11051c726db1"
+    },
+    {
+      "name": "volumes.json",
+      "sha256": "d55b1740b22f4b75528008294db80e8573717847efc24d137975bb8ddb9c60ec"
+    }
+  ],
+  "placement": {
+    "distinctNodes": 1,
+    "nodes": [
+      "desktop-control-plane"
+    ]
+  },
+  "podListing": "read",
+  "readinessSamples": {
+    "lines": 62,
+    "linesNotRead": 0,
+    "pods": {
+      "inferops-inferops-llm-runtime-bdf8d566c-dk2nc": {
+        "firstReadySample": "2026-10-08T10:48:10Z",
+        "firstSample": "2026-10-08T10:43:21Z",
+        "runningAndNotReadyBeforeReady": 22,
+        "samples": 31
+      },
+      "inferops-inferops-llm-runtime-bdf8d566c-j82km": {
+        "firstReadySample": "2026-10-08T10:48:10Z",
+        "firstSample": "2026-10-08T10:43:21Z",
+        "runningAndNotReadyBeforeReady": 22,
+        "samples": 31
+      }
+    },
+    "state": "read"
+  },
+  "replicas": [
+    {
+      "aliasArgument": "qwen3-1.7b-q8_0",
+      "artifact": {
+        "device": 2096,
+        "inode": 1097160,
+        "sizeBytes": 1834426016,
+        "state": "read"
+      },
+      "claimVolumes": 1,
+      "completion": {
+        "completionTokens": 16,
+        "finishReason": "length",
+        "httpStatus": 200,
+        "model": "qwen3-1.7b-q8_0",
+        "promptTokens": 15,
+        "state": "read"
+      },
+      "hostPathVolumes": 0,
+      "modelArgument": "/models/Qwen3-1.7B-Q8_0.gguf",
+      "mountTable": {
+        "device": "8:48",
+        "filesystem": "ext4",
+        "options": [
+          "ro",
+          "relatime"
+        ],
+        "root": "/data/docker/volumes/36d238589872e2a65a82a2a0767fbe7ae897d70d8454a532ceb7b1719ba441dc/_data/local-path-provisioner/pvc-8f7cbcad-b3f5-4262-be0f-d42e99c90256_inferops-release_inferops-model-cache/Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d122",
+        "state": "read"
+      },
+      "name": "inferops-inferops-llm-runtime-bdf8d566c-dk2nc",
+      "node": "desktop-control-plane",
+      "phase": "Running",
+      "ready": true,
+      "readySince": "2026-10-08T10:48:11Z",
+      "reportedModel": {
+        "httpStatus": 200,
+        "id": "qwen3-1.7b-q8_0",
+        "meta": {
+          "ftype": "Q8_0",
+          "n_ctx": 4096,
+          "n_ctx_train": 40960,
+          "n_embd": 2048,
+          "n_params": 1720574976,
+          "n_vocab": 151936,
+          "size": 1828474880,
+          "vocab_type": true
+        },
+        "state": "read"
+      },
+      "reportedMount": {
+        "readOnly": true,
+        "recursiveReadOnly": "Disabled"
+      },
+      "restartCount": 0,
+      "runtimeImage": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "runtimeImageIdentifier": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "runtimeMount": {
+        "mountPath": "/models",
+        "readOnly": true,
+        "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+      },
+      "verification": {
+        "exitCode": 0,
+        "finishedAt": "2026-10-08T10:44:47Z",
+        "log": "read",
+        "logLines": [
+          "/models/Qwen3-1.7B-Q8_0.gguf: OK",
+          "model artifact verified: byte count and SHA-256"
+        ],
+        "script": "set -eu\nartifact='/models/Qwen3-1.7B-Q8_0.gguf'\nif [ ! -f \"$artifact\" ]; then\n  echo \"REFUSED: the mounted model cache holds no artifact for the declared revision\" >&2\n  exit 1\nfi\npresent=$(stat -c %s \"$artifact\")\nif [ \"$present\" != \"1834426016\" ]; then\n  echo \"REFUSED: the mounted model artifact does not match the pinned byte count\" >&2\n  exit 1\nfi\necho \"061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a  $artifact\" | sha256sum -c -\necho \"model artifact verified: byte count and SHA-256\"\n"
+      },
+      "verificationMount": {
+        "mountPath": "/models",
+        "readOnly": true,
+        "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+      },
+      "volume": {
+        "claimName": "inferops-model-cache",
+        "readOnly": true
+      }
+    },
+    {
+      "aliasArgument": "qwen3-1.7b-q8_0",
+      "artifact": {
+        "device": 2096,
+        "inode": 1097160,
+        "sizeBytes": 1834426016,
+        "state": "read"
+      },
+      "claimVolumes": 1,
+      "completion": {
+        "completionTokens": 16,
+        "finishReason": "length",
+        "httpStatus": 200,
+        "model": "qwen3-1.7b-q8_0",
+        "promptTokens": 15,
+        "state": "read"
+      },
+      "hostPathVolumes": 0,
+      "modelArgument": "/models/Qwen3-1.7B-Q8_0.gguf",
+      "mountTable": {
+        "device": "8:48",
+        "filesystem": "ext4",
+        "options": [
+          "ro",
+          "relatime"
+        ],
+        "root": "/data/docker/volumes/36d238589872e2a65a82a2a0767fbe7ae897d70d8454a532ceb7b1719ba441dc/_data/local-path-provisioner/pvc-8f7cbcad-b3f5-4262-be0f-d42e99c90256_inferops-release_inferops-model-cache/Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d122",
+        "state": "read"
+      },
+      "name": "inferops-inferops-llm-runtime-bdf8d566c-j82km",
+      "node": "desktop-control-plane",
+      "phase": "Running",
+      "ready": true,
+      "readySince": "2026-10-08T10:48:11Z",
+      "reportedModel": {
+        "httpStatus": 200,
+        "id": "qwen3-1.7b-q8_0",
+        "meta": {
+          "ftype": "Q8_0",
+          "n_ctx": 4096,
+          "n_ctx_train": 40960,
+          "n_embd": 2048,
+          "n_params": 1720574976,
+          "n_vocab": 151936,
+          "size": 1828474880,
+          "vocab_type": true
+        },
+        "state": "read"
+      },
+      "reportedMount": {
+        "readOnly": true,
+        "recursiveReadOnly": "Disabled"
+      },
+      "restartCount": 0,
+      "runtimeImage": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "runtimeImageIdentifier": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "runtimeMount": {
+        "mountPath": "/models",
+        "readOnly": true,
+        "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+      },
+      "verification": {
+        "exitCode": 0,
+        "finishedAt": "2026-10-08T10:44:49Z",
+        "log": "read",
+        "logLines": [
+          "/models/Qwen3-1.7B-Q8_0.gguf: OK",
+          "model artifact verified: byte count and SHA-256"
+        ],
+        "script": "set -eu\nartifact='/models/Qwen3-1.7B-Q8_0.gguf'\nif [ ! -f \"$artifact\" ]; then\n  echo \"REFUSED: the mounted model cache holds no artifact for the declared revision\" >&2\n  exit 1\nfi\npresent=$(stat -c %s \"$artifact\")\nif [ \"$present\" != \"1834426016\" ]; then\n  echo \"REFUSED: the mounted model artifact does not match the pinned byte count\" >&2\n  exit 1\nfi\necho \"061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a  $artifact\" | sha256sum -c -\necho \"model artifact verified: byte count and SHA-256\"\n"
+      },
+      "verificationMount": {
+        "mountPath": "/models",
+        "readOnly": true,
+        "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+      },
+      "volume": {
+        "claimName": "inferops-model-cache",
+        "readOnly": true
+      }
+    }
+  ],
+  "result": "PASSED",
+  "rules": [
+    {
+      "detail": "The preflight exited 0.",
+      "id": "capacity-preflight-sufficient",
+      "required": true,
+      "state": "held",
+      "statement": "The V1 multi-replica capacity preflight exited 0 before the release was applied."
+    },
+    {
+      "detail": "2 pod(s) were read, and the release declares 2.",
+      "id": "replica-count",
+      "required": true,
+      "state": "held",
+      "statement": "The number of serving runtime pods that are not being deleted is the declared runtime replica count."
+    },
+    {
+      "detail": "Each pod reports Ready as True.",
+      "id": "every-replica-ready",
+      "required": true,
+      "state": "held",
+      "statement": "Each serving runtime pod reports the Ready condition as True."
+    },
+    {
+      "detail": "Each pod holds ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384.",
+      "id": "one-runtime-image",
+      "required": true,
+      "state": "held",
+      "statement": "Each runtime container declares the pinned image reference, and each reported image identifier holds the pinned digest."
+    },
+    {
+      "detail": "Each pod is given /models/Qwen3-1.7B-Q8_0.gguf and the alias qwen3-1.7b-q8_0.",
+      "id": "one-model-argument",
+      "required": true,
+      "state": "held",
+      "statement": "Each runtime container is given the expected artifact path as its model argument, and every replica is given the same alias."
+    },
+    {
+      "detail": "Each pod mounts inferops-model-cache.",
+      "id": "one-claim",
+      "required": true,
+      "state": "held",
+      "statement": "Each pod mounts the declared claim as its one persistent volume, and no pod mounts a host path."
+    },
+    {
+      "detail": "The claim is Bound, is managed by Terraform with the prerequisite lifecycle, and carries no release marker.",
+      "id": "claim-is-the-prerequisite-claim",
+      "required": true,
+      "state": "held",
+      "statement": "The declared claim is Bound, carries the labels of the prerequisite layer, and carries no label or annotation of a Helm release."
+    },
+    {
+      "detail": "The namespace holds 1 claim(s): inferops-model-cache.",
+      "id": "no-second-claim",
+      "required": true,
+      "state": "held",
+      "statement": "The namespace holds one PersistentVolumeClaim."
+    },
+    {
+      "detail": "Each of the three places states readOnly: true.",
+      "id": "read-only-declared",
+      "required": true,
+      "state": "held",
+      "statement": "Each pod declares the claim read only on the volume, on the runtime container's mount, and on the verification container's mount."
+    },
+    {
+      "detail": "Each mount table lists the option ro.",
+      "id": "read-only-in-effect",
+      "required": true,
+      "state": "held",
+      "statement": "The mount table of each runtime container lists the cache mount with the option ro."
+    },
+    {
+      "detail": "Each mount names Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077.",
+      "id": "revision-scoped-mount",
+      "required": true,
+      "state": "held",
+      "statement": "Each of the two mounts of each pod names the expected repository-and-revision subdirectory."
+    },
+    {
+      "detail": "Every mount table names one device and one root directory.",
+      "id": "one-directory",
+      "required": true,
+      "state": "held",
+      "statement": "The mount table of every runtime container names one device and one root directory for the cache mount."
+    },
+    {
+      "detail": "Every runtime container sees one device, one inode, and the pinned byte count.",
+      "id": "one-file",
+      "required": true,
+      "state": "held",
+      "statement": "Every runtime container sees the artifact as one device, one inode, and the pinned byte count."
+    },
+    {
+      "detail": "Each verification container compared the pinned digest and exited 0.",
+      "id": "artifact-verified-on-each-start",
+      "required": true,
+      "state": "held",
+      "statement": "In each pod the verification container's script holds the pinned SHA-256 and byte count, the container exited 0, and its log holds the verification line and the checksum line for the expected path."
+    },
+    {
+      "detail": "Every runtime listed the alias it was given and the same metadata.",
+      "id": "one-reported-model",
+      "required": true,
+      "state": "held",
+      "statement": "Each runtime answered its model listing with status 200 and the alias it was given, and every replica reported the same model metadata."
+    },
+    {
+      "detail": "Each runtime answered 200 with completion tokens.",
+      "id": "every-replica-completed",
+      "required": true,
+      "state": "held",
+      "statement": "Each runtime answered one completion with status 200 and at least one completion token."
+    },
+    {
+      "detail": "Each pod was sampled running and not ready before it was Ready.",
+      "id": "not-ready-while-loading",
+      "required": false,
+      "state": "held",
+      "statement": "For each pod, one sample before its first Ready sample shows the runtime container running and not ready."
+    }
+  ],
+  "schema": "inferops.io/runtime-model-cache-observation/v1alpha1",
+  "startupProbeEvents": {
+    "pods": {
+      "inferops-inferops-llm-5448f86f88-55h79": {
+        "startupProbeFailures": 17,
+        "withStatus503": 0
+      },
+      "inferops-inferops-llm-5448f86f88-zq5wx": {
+        "startupProbeFailures": 15,
+        "withStatus503": 0
+      },
+      "inferops-inferops-llm-6647747cf-mz5rs": {
+        "startupProbeFailures": 3,
+        "withStatus503": 0
+      },
+      "inferops-inferops-llm-collector-7dfbfbc575-74p2g": {
+        "startupProbeFailures": 3,
+        "withStatus503": 0
+      },
+      "inferops-inferops-llm-collector-c484bf957-8ndg2": {
+        "startupProbeFailures": 16,
+        "withStatus503": 0
+      },
+      "inferops-inferops-llm-runtime-bdf8d566c-dk2nc": {
+        "startupProbeFailures": 20,
+        "withStatus503": 19
+      },
+      "inferops-inferops-llm-runtime-bdf8d566c-j82km": {
+        "startupProbeFailures": 19,
+        "withStatus503": 19
+      }
+    },
+    "state": "read"
+  }
+}

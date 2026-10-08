@@ -232,7 +232,11 @@ pinned artifact in an init container before `llama-server` starts, and states st
 readiness, and liveness probes. The runtime Service selects pods by the Deployment's
 selector labels and names no replica. Kubernetes documents that a Service does not route
 to a pod that is not Ready. That is read from the render and from the Kubernetes
-documentation. It was not observed for two runtime pods.
+documentation. It was not observed for two runtime pods when this was written. On
+2026-10-08 one run on `docker-desktop` observed two runtime pods that each mounted the
+claim read only, verified the artifact, and became Ready:
+[the observation](../../docs/environment/runtime-model-cache-observation.md). That run
+did not observe which pod a Service routes to.
 
 The template states no node selector, no affinity, and no topology spread, so both
 runtime pods may be placed on one node. The model cache claim the prerequisite layer
@@ -257,11 +261,13 @@ has no autoscaler. The platform defaults own the two bounds. The
 [renderer](../../docs/domain/helm-values-renderer.md) refuses a hand-written values file
 that sets any of the three.
 
-**What this is not.** Chart `0.5.0` has not been installed, and no release with two
-runtime replicas has been installed. Nothing here establishes that two runtime pods
-start, that one model cache claim can be mounted by two runtime pods on the selected
-storage, that a rollout leaves a caller served, or what a caller observes when a runtime
-pod is deleted or a node is lost. The chart's schema does not compare a request with a
+**What this is not.** Chart `0.5.0` was installed once with two runtime replicas, on
+`docker-desktop` on 2026-10-08. Both runtime pods started on one node and mounted the
+one model cache claim:
+[the record of that run](../../docs/proof/environment/v2-s4-002-pr2-validation.md). It is
+one run on one provider and one storage class. Nothing here establishes that two
+runtime pods can be placed on two nodes, that a rollout leaves a caller served, or what
+a caller observes when a runtime pod is deleted or a node is lost. The chart's schema does not compare a request with a
 limit, so a values file given to Helm directly can state a runtime limit below the
 runtime request. Kubernetes documents that it refuses such a pod; that was not observed.
 The renderer refuses a contract that asks for it.

@@ -50,7 +50,8 @@ another:
 > unavailable, and no pod is added above the replica count. With one runtime replica,
 > Kubernetes documents that such a rollout may remove the serving pod before the
 > candidate is Ready, so a candidate that never becomes Ready may leave no serving
-> runtime. That was not observed: nothing was run on chart `0.5.0`.
+> runtime. That was not observed: nothing was run on chart `0.5.0` by that change.
+> A later run on 2026-10-08 installed chart `0.5.0` once, with two runtime replicas, and ran no rollout: [the record](../proof/environment/v2-s4-002-pr2-validation.md).
 > So the intervals this page defines, and the script's wait for one pod of the
 > tier, describe the earlier bounds. Nothing was changed in the descriptor, the
 > script, or the record tool.

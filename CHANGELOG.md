@@ -32,8 +32,24 @@ from `1.0.0`.
   this release's three Deployments plus one pod with the resources of the V1
   request driver. **No capacity gate for the V2 topology is added.** A run uses
   the V1 preflight as it is, and a refusal ends the run before the release is
-  applied. See
-  [the observation page](docs/environment/runtime-model-cache-observation.md).
+  applied. **One run observed it, on the `docker-desktop` provider on
+  2026-10-08, at evidence level C2.** The V1 preflight passed. Argo CD applied
+  the desired-state release from `main`, and two runtime pods became Ready on
+  the one node. Each mounted the one Terraform-owned claim read only at the
+  revision directory, each pod's init container verified the pinned SHA-256,
+  both runtime containers saw one file, each runtime listed the same model,
+  and each answered one completion. All 17 rules are `held`, and the result is
+  `PASSED`. The run, its collection, its transcript, and its driver are
+  committed, and `--check` builds the record again from the collection.
+  **Both API pods were restarted once by their startup probe while the two
+  runtime pods started.** No rule reads an API pod; the validation record
+  states it, and its cause was not measured. **Both runtime pods ran on one
+  node, so the run establishes nothing about the loss of that node.** It also
+  establishes no rollout, no caller outcome when a runtime pod is unavailable,
+  and no capacity gate. No claim is registered. See
+  [the observation page](docs/environment/runtime-model-cache-observation.md)
+  and
+  [the validation record](docs/proof/environment/v2-s4-002-pr2-validation.md).
 - **The serving runtime tier's reference topology is declared: two replicas and a
   stated rollout. It is configuration. Nothing was installed.** `V2-S4-002-PR1`
   makes three changes that belong together. **The chart states the runtime

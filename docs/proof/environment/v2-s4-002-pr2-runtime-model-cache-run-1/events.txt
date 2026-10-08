@@ -1,0 +1,63 @@
+inferops-inferops-llm-5448f86f88-55h79	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-5448f86f88-55h79 to desktop-control-plane
+inferops-inferops-llm-5448f86f88-55h79	Pulled	2	2026-10-08T10:43:24Z	2026-10-08T10:44:59Z	Container image "localhost/inferops-api@sha256:d3a3112a56e91812d0627115776c23b483f8141e15b6aab05e965fcf240f4413" already present on machine and can be accessed by the pod
+inferops-inferops-llm-5448f86f88-55h79	Created	2	2026-10-08T10:43:25Z	2026-10-08T10:45:00Z	Container created
+inferops-inferops-llm-5448f86f88-55h79	Started	2	2026-10-08T10:43:29Z	2026-10-08T10:45:08Z	Container started
+inferops-inferops-llm-5448f86f88-55h79	Unhealthy	17	2026-10-08T10:43:31Z	2026-10-08T10:45:30Z	Startup probe failed: Get "http://10.244.0.15:8090/health/live": dial tcp 10.244.0.15:8090: connect: connection refused
+inferops-inferops-llm-5448f86f88-55h79	Killing	1	2026-10-08T10:44:25Z	2026-10-08T10:44:25Z	Container api failed startup probe, will be restarted
+inferops-inferops-llm-5448f86f88-55h79	Unhealthy	1	2026-10-08T10:45:41Z	2026-10-08T10:45:41Z	Readiness probe failed: Get "http://10.244.0.15:8090/health/ready": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+inferops-inferops-llm-5448f86f88-55h79	Unhealthy	1	2026-10-08T10:45:42Z	2026-10-08T10:45:42Z	Liveness probe failed: Get "http://10.244.0.15:8090/health/live": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+inferops-inferops-llm-5448f86f88-zq5wx	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-5448f86f88-zq5wx to desktop-control-plane
+inferops-inferops-llm-5448f86f88-zq5wx	Pulled	2	2026-10-08T10:43:26Z	2026-10-08T10:44:59Z	Container image "localhost/inferops-api@sha256:d3a3112a56e91812d0627115776c23b483f8141e15b6aab05e965fcf240f4413" already present on machine and can be accessed by the pod
+inferops-inferops-llm-5448f86f88-zq5wx	Created	2	2026-10-08T10:43:27Z	2026-10-08T10:45:00Z	Container created
+inferops-inferops-llm-5448f86f88-zq5wx	Started	2	2026-10-08T10:43:30Z	2026-10-08T10:45:08Z	Container started
+inferops-inferops-llm-5448f86f88-zq5wx	Unhealthy	15	2026-10-08T10:43:31Z	2026-10-08T10:45:21Z	Startup probe failed: Get "http://10.244.0.17:8090/health/live": dial tcp 10.244.0.17:8090: connect: connection refused
+inferops-inferops-llm-5448f86f88-zq5wx	Killing	1	2026-10-08T10:44:25Z	2026-10-08T10:44:25Z	Container api failed startup probe, will be restarted
+inferops-inferops-llm-5448f86f88-zq5wx	Unhealthy	1	2026-10-08T10:45:42Z	2026-10-08T10:45:42Z	Readiness probe failed: Get "http://10.244.0.17:8090/health/ready": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+inferops-inferops-llm-5448f86f88-zq5wx	Unhealthy	1	2026-10-08T10:45:42Z	2026-10-08T10:45:42Z	Liveness probe failed: Get "http://10.244.0.17:8090/health/live": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+inferops-inferops-llm-6647747cf-mz5rs	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-6647747cf-mz5rs to desktop-control-plane
+inferops-inferops-llm-6647747cf-mz5rs	Pulled	1	2026-10-08T10:30:27Z	2026-10-08T10:30:27Z	Container image "localhost/inferops-api@sha256:d3a3112a56e91812d0627115776c23b483f8141e15b6aab05e965fcf240f4413" already present on machine and can be accessed by the pod
+inferops-inferops-llm-6647747cf-mz5rs	Created	1	2026-10-08T10:30:29Z	2026-10-08T10:30:29Z	Container created
+inferops-inferops-llm-6647747cf-mz5rs	Started	1	2026-10-08T10:30:32Z	2026-10-08T10:30:32Z	Container started
+inferops-inferops-llm-6647747cf-mz5rs	Unhealthy	3	2026-10-08T10:30:34Z	2026-10-08T10:30:44Z	Startup probe failed: Get "http://10.244.0.9:8090/health/live": dial tcp 10.244.0.9:8090: connect: connection refused
+inferops-inferops-llm-6647747cf-mz5rs	Killing	1	2026-10-08T10:31:02Z	2026-10-08T10:31:02Z	Stopping container api
+inferops-inferops-llm-collector-7dfbfbc575-74p2g	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-collector-7dfbfbc575-74p2g to desktop-control-plane
+inferops-inferops-llm-collector-7dfbfbc575-74p2g	Pulled	1	2026-10-08T10:30:27Z	2026-10-08T10:30:27Z	Container image "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996" already present on machine and can be accessed by the pod
+inferops-inferops-llm-collector-7dfbfbc575-74p2g	Created	1	2026-10-08T10:30:29Z	2026-10-08T10:30:29Z	Container created
+inferops-inferops-llm-collector-7dfbfbc575-74p2g	Started	1	2026-10-08T10:30:32Z	2026-10-08T10:30:32Z	Container started
+inferops-inferops-llm-collector-7dfbfbc575-74p2g	Unhealthy	3	2026-10-08T10:30:34Z	2026-10-08T10:30:44Z	Startup probe failed: Get "http://10.244.0.7:9090/-/ready": dial tcp 10.244.0.7:9090: connect: connection refused
+inferops-inferops-llm-collector-7dfbfbc575-74p2g	Killing	1	2026-10-08T10:31:02Z	2026-10-08T10:31:02Z	Stopping container collector
+inferops-inferops-llm-collector-c484bf957-8ndg2	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-collector-c484bf957-8ndg2 to desktop-control-plane
+inferops-inferops-llm-collector-c484bf957-8ndg2	Pulled	1	2026-10-08T10:43:26Z	2026-10-08T10:43:26Z	Container image "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996" already present on machine and can be accessed by the pod
+inferops-inferops-llm-collector-c484bf957-8ndg2	Created	1	2026-10-08T10:43:29Z	2026-10-08T10:43:29Z	Container created
+inferops-inferops-llm-collector-c484bf957-8ndg2	Started	1	2026-10-08T10:43:31Z	2026-10-08T10:43:31Z	Container started
+inferops-inferops-llm-collector-c484bf957-8ndg2	Unhealthy	16	2026-10-08T10:43:36Z	2026-10-08T10:44:51Z	Startup probe failed: Get "http://10.244.0.16:9090/-/ready": dial tcp 10.244.0.16:9090: connect: connection refused
+inferops-inferops-llm-model-acquisition-9tb27	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-model-acquisition-9tb27 to desktop-control-plane
+inferops-inferops-llm-model-acquisition-9tb27	Pulled	1	2026-10-08T10:25:30Z	2026-10-08T10:25:30Z	Container image "localhost/inferops-model-seed@sha256:fb68b706718132f8e580d92f5db88575d07b0ef0cefe0be873c4ef1023a00430" already present on machine and can be accessed by the pod
+inferops-inferops-llm-model-acquisition-9tb27	Created	1	2026-10-08T10:25:30Z	2026-10-08T10:25:30Z	Container created
+inferops-inferops-llm-model-acquisition-9tb27	Started	1	2026-10-08T10:25:31Z	2026-10-08T10:25:31Z	Container started
+inferops-inferops-llm-model-acquisition-gjc6l	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-model-acquisition-gjc6l to desktop-control-plane
+inferops-inferops-llm-model-acquisition-gjc6l	Pulled	1	2026-10-08T10:42:38Z	2026-10-08T10:42:38Z	Container image "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0" already present on machine and can be accessed by the pod
+inferops-inferops-llm-model-acquisition-gjc6l	Created	1	2026-10-08T10:42:38Z	2026-10-08T10:42:38Z	Container created
+inferops-inferops-llm-model-acquisition-gjc6l	Started	1	2026-10-08T10:42:39Z	2026-10-08T10:42:39Z	Container started
+inferops-inferops-llm-runtime-6dd9444664-ldb5n	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-runtime-6dd9444664-ldb5n to desktop-control-plane
+inferops-inferops-llm-runtime-6dd9444664-ldb5n	Pulled	1	2026-10-08T10:30:27Z	2026-10-08T10:30:27Z	Container image "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-6dd9444664-ldb5n	Created	1	2026-10-08T10:30:28Z	2026-10-08T10:30:28Z	Container created
+inferops-inferops-llm-runtime-6dd9444664-ldb5n	Started	1	2026-10-08T10:30:33Z	2026-10-08T10:30:33Z	Container started
+inferops-inferops-llm-runtime-6dd9444664-ldb5n	Killing	1	2026-10-08T10:31:01Z	2026-10-08T10:31:01Z	Stopping container verify-model
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-runtime-bdf8d566c-dk2nc to desktop-control-plane
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Pulled	1	2026-10-08T10:43:27Z	2026-10-08T10:43:27Z	Container image "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Created	1	2026-10-08T10:43:28Z	2026-10-08T10:43:28Z	Container created
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Started	1	2026-10-08T10:43:30Z	2026-10-08T10:43:30Z	Container started
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Pulled	1	2026-10-08T10:44:48Z	2026-10-08T10:44:48Z	Container image "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Created	1	2026-10-08T10:44:49Z	2026-10-08T10:44:49Z	Container created
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Started	1	2026-10-08T10:44:51Z	2026-10-08T10:44:51Z	Container started
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Unhealthy	1	2026-10-08T10:44:51Z	2026-10-08T10:44:51Z	Startup probe failed: Get "http://10.244.0.19:8080/health": dial tcp 10.244.0.19:8080: connect: connection refused
+inferops-inferops-llm-runtime-bdf8d566c-dk2nc	Unhealthy	19	2026-10-08T10:45:01Z	2026-10-08T10:48:01Z	Startup probe failed: HTTP probe failed with statuscode: 503
+inferops-inferops-llm-runtime-bdf8d566c-j82km	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-runtime-bdf8d566c-j82km to desktop-control-plane
+inferops-inferops-llm-runtime-bdf8d566c-j82km	Pulled	1	2026-10-08T10:43:26Z	2026-10-08T10:43:26Z	Container image "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-bdf8d566c-j82km	Created	1	2026-10-08T10:43:28Z	2026-10-08T10:43:28Z	Container created
+inferops-inferops-llm-runtime-bdf8d566c-j82km	Started	1	2026-10-08T10:43:30Z	2026-10-08T10:43:30Z	Container started
+inferops-inferops-llm-runtime-bdf8d566c-j82km	Pulled	1	2026-10-08T10:44:51Z	2026-10-08T10:44:51Z	Container image "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-bdf8d566c-j82km	Created	1	2026-10-08T10:44:51Z	2026-10-08T10:44:51Z	Container created
+inferops-inferops-llm-runtime-bdf8d566c-j82km	Started	1	2026-10-08T10:44:53Z	2026-10-08T10:44:53Z	Container started
+inferops-inferops-llm-runtime-bdf8d566c-j82km	Unhealthy	19	2026-10-08T10:45:01Z	2026-10-08T10:48:01Z	Startup probe failed: HTTP probe failed with statuscode: 503

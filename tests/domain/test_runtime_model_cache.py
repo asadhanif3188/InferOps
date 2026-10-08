@@ -31,6 +31,7 @@ from __future__ import annotations
 import ast
 import copy
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -1020,3 +1021,69 @@ def test_each_committed_record_is_what_its_collection_gives() -> None:
         assert record["schema"] == RECORD_SCHEMA
         assert record["result"] in RESULT_STATES
         assert pin_findings(record["expected"]) == [], run
+
+
+RUN_1 = "docs/proof/environment/v2-s4-002-pr2-runtime-model-cache-run-1"
+VALIDATION_RECORD = (
+    REPO_ROOT / "docs" / "proof" / "environment" / "v2-s4-002-pr2-validation.md"
+)
+
+
+def test_the_one_committed_run_is_the_run_the_validation_record_states() -> None:
+    """The record of run-1, read as a file, beside the page that describes it.
+
+    This reads committed files. It observes no cluster, and it does not show
+    that the collection is what the cluster held. The expected identity of the
+    record is not compared with the tree's: a later tree may declare another
+    release, and the record states the one it ran with.
+    """
+    assert committed_runs() == [RUN_1]
+    directory = REPO_ROOT / RUN_1
+    record = json.loads((directory / RECORD_FILE).read_text(encoding="utf-8"))
+    assert record["result"] == "PASSED"
+    assert record["evidenceLevel"] == "C2"
+    assert states(record) == {rule.rule_id: HELD for rule in RULES}
+    assert record["collection"] == {
+        "runId": "run-1",
+        "provider": "docker-desktop",
+        "namespace": "inferops-release",
+        "executingCommit": "c04bc77647fcfe15634012c688f39e95ba8d93ad",
+        "reportedRevision": "4df31fd86363a6ee5b5b6a0023f3355f5c1bfc5f",
+        "startedAt": "2026-10-08T09:52:59Z",
+        "collectedAt": "2026-10-08T10:50:18Z",
+    }
+    assert record["expected"]["release"]["valuesFileSha256"] == (
+        "314a34829e7b44c62402249f1e93ba4493ec5b019ca7becdd1a5595025d6b6f9"
+    )
+    assert record["expected"]["runtimeReplicas"] == 2
+
+    replicas = record["replicas"]
+    assert len(replicas) == 2
+    assert len({pod["name"] for pod in replicas}) == 2
+    assert record["placement"] == {
+        "nodes": ["desktop-control-plane"],
+        "distinctNodes": 1,
+    }
+    assert replicas[0]["artifact"] == replicas[1]["artifact"]
+    assert replicas[0]["artifact"]["sizeBytes"] == 1834426016
+    assert [pod["restartCount"] for pod in replicas] == [0, 0]
+    assert record["claims"]["declaredClaim"]["accessModes"] == ["ReadWriteOnce"]
+    assert record["capacityPreflight"]["exitStatus"] == 0
+
+    # No file of the run holds a path of the workstation it ran on.
+    names = {path.name for path in directory.iterdir()}
+    assert len(names) == 20
+    assert names == {f["name"] for f in record["files"]} | {RECORD_FILE}
+    for path in directory.iterdir():
+        text = path.read_text(encoding="utf-8")
+        assert not re.search(r"\b[A-Z]:[\\/]|/Users/|/home/", text), path.name
+
+    page = " ".join(VALIDATION_RECORD.read_text(encoding="utf-8").split())
+    for stated in (
+        record["collection"]["executingCommit"],
+        record["collection"]["reportedRevision"],
+        "The result is `PASSED`",
+        "Both API pods were restarted once by their startup probe",
+        "Same-node pod redundancy says nothing about the loss of that node",
+    ):
+        assert stated in page, stated

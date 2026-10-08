@@ -8,10 +8,11 @@
 # count and has no autoscaler, so a range of two different numbers is refused at
 # render. The ceiling under spec.resources applies to each replica.
 #
-# This is a contract example. Two replicas here is declared intent. No release
-# with two runtime replicas has been installed, so this document does not
-# establish that two runtime pods run, that one model cache claim serves both, or
-# what a caller observes when one of them stops.
+# This is a contract example. Two replicas here is declared intent. This document
+# does not establish that two runtime pods run, that one model cache claim serves
+# both, or what a caller observes when one of them stops. One run on one provider
+# observed the first two on 2026-10-08:
+# docs/environment/runtime-model-cache-observation.md.
 apiVersion: inferops.io/v1alpha1
 kind: WorkloadContract
 
@@ -60,7 +61,8 @@ spec:
   evidence:
     runbookRef: docs/serving/feasibility-workflow.md
     proofRefs:
-      # The record of one runtime. No record of two runtime replicas running exists.
+      # The record of one runtime. The record of two runtime replicas is not a
+      # proof reference of this contract: it registers no claim.
       - docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md
 
   synchronousLlm:

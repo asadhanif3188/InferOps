@@ -231,6 +231,21 @@ installed. `V1-S3-011` ran it on the `docker-desktop` provider: the namespace an
 the claim were both removed, and the release had already been uninstalled, so
 neither refusal fired.
 
+## Two serving replicas on the one claim
+
+The V2 desired-state release declares two serving runtime replicas. The design above is
+not changed for them: one claim, one writer, and each replica a reader that verifies the
+artifact when its pod starts. The claim is `ReadWriteOnce`, and Kubernetes documents
+that pods which share such a claim run on one node.
+
+On 2026-10-08 one run on the `docker-desktop` provider observed two runtime pods on one
+node. Each mounted the claim read only at the revision directory, each pod's own init
+container verified the pinned digest, and both runtime containers saw one file.
+[The observation page](runtime-model-cache-observation.md) describes the collection and
+its rules, and
+[the record of the run](../proof/environment/v2-s4-002-pr2-validation.md) states what
+was observed. **Two pods on one node do not establish node-loss resilience.**
+
 ## What this does not establish
 
 - **The storage underneath the claim was not tested for durability.** The claim
