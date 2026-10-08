@@ -178,7 +178,7 @@ glob that matched nothing fails instead of producing an empty, passing run.
 
 ### Without a tool: `python -m tools.ci_gates expected-failures`
 
-Sixty-two controls run, in eight groups.
+Sixty-three controls run, in eight groups.
 
 | Group | Command | Inputs | Required exit |
 |---|---|---|---|

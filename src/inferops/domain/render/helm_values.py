@@ -11,8 +11,8 @@ value it does not write keeps the chart's own default or comes from a hand-writt
 **Every context value is accounted for.** :data:`HELM_VALUE_DISPOSITIONS` names each of
 the context's values once, and says what the renderer does with it:
 
-- **rendered** - written to the chart values it names. Twenty-six values, written to
-  twenty-seven chart values: the runtime image reference is split into its repository
+- **rendered** - written to the chart values it names. Twenty-eight values, written to
+  twenty-nine chart values: the runtime image reference is split into its repository
   and its digest, as the chart pins them;
 - **constrained** - not written, because the chart has no setting for it, and refused
   unless it asks for what the chart already does: a fixed replica count, no
@@ -106,7 +106,7 @@ from .values_yaml import canonical_yaml
 #: compares both with ``charts/inferops-llm/Chart.yaml``, so a chart change fails the
 #: build until somebody reads this mapping against it.
 CHART_NAME: Final = "inferops-llm"
-CHART_VERSION: Final = "0.4.0"
+CHART_VERSION: Final = "0.5.0"
 
 #: What the renderer takes: today's input versions and the synchronous profile only.
 HELM_VALUES_SUPPORT: Final = RendererSupport(
@@ -285,6 +285,10 @@ HELM_VALUE_DISPOSITIONS: Final[Mapping[str, ValueDisposition]] = MappingProxyTyp
             "api.rollout.maxUnavailable", reason=_SAME
         ),
         "api.rollout.maxSurge": _rendered("api.rollout.maxSurge", reason=_SAME),
+        "runtime.rollout.maxUnavailable": _rendered(
+            "runtime.rollout.maxUnavailable", reason=_SAME
+        ),
+        "runtime.rollout.maxSurge": _rendered("runtime.rollout.maxSurge", reason=_SAME),
         "destination.clusterProvider": _not_rendered(
             "selects the cluster a release is installed into; not a chart value"
         ),
@@ -457,6 +461,8 @@ CHART_VALUE_CONSTRAINTS: Final[Mapping[str, ChartValueConstraint]] = MappingProx
             max_length=255,
         ),
         "runtime.replicaCount": _integer(1, 16),
+        "runtime.rollout.maxSurge": _integer(0, 16),
+        "runtime.rollout.maxUnavailable": _integer(0, 16),
         "runtime.resources.limits.cpu": _string("^[0-9]+(\\.[0-9]+)?m?$"),
         "runtime.resources.limits.memory": _string(
             "^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|k|M|G|T)?$"

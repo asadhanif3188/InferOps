@@ -61,16 +61,17 @@ One release is declared.
 
 | Key | Directory | Contract | Binding | Platform defaults | Revisions |
 |---|---|---|---|---|---|
-| `local-docker-desktop/support-assistant` | `gitops/environments/local-docker-desktop/workloads/support-assistant` | `contracts/workload/examples/valid/synchronous-llm-local.yaml` | `local-docker-desktop`, the only binding offered | The `api` block of `charts/inferops-llm/values.yaml` | Both are `9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0` |
+| `local-docker-desktop/support-assistant` | `gitops/environments/local-docker-desktop/workloads/support-assistant` | `contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml` | `local-docker-desktop`, the only binding offered | The `api` block and `runtime.rollout` of `charts/inferops-llm/values.yaml` | Both are `40803f2fe9a95753da6480de1e5321efafb3cbf0` |
 
 Its release identifier is
-`f23c37d81fbb297643af9e6005cffd805ac05bc98847a6360894fdd238b41d8c`.
+`79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812`.
 
 **Why this binding.** `local-docker-desktop` names the one provider on which the
 Argo CD bootstrap was executed. No release is committed for `local-kind`.
 
 **What the revisions are.** A release cannot name the commit that adds it. A change
-that edits the renderer or the chart's `api` defaults must record a commit of its own
+that edits the renderer or the platform defaults in the chart's values, which are the
+`api` defaults and the `runtime.rollout` bounds, must record a commit of its own
 that already holds the new files, which takes two commits and a merge that keeps them.
 `V2-S4-001-PR1` is such a change: its first commit edited the renderer, the chart's
 `api` defaults, and the binding, and regenerated the values. Its second commit recorded
@@ -83,29 +84,71 @@ off `main`, and the release would name a commit that `main` does not hold. A lat
 renderer's source without moving a rendered byte; no test compares the renderer's
 source at the recorded revision.
 
+`V2-S4-002-PR1` is another such change. Its first commit,
+`40803f2fe9a95753da6480de1e5321efafb3cbf0`, edited the renderer and the chart's
+`runtime.rollout` bounds, added the two-replica contract, and regenerated the values.
+At that commit the tree holds a release,
+`541a944e1a480bafbcd4ec0267c139ab6a72cfa98c3a6a3928bcbe1db8aa6228`, whose two revisions
+still name `9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0`; that statement is false for that
+one commit. Its second commit recorded the first commit as both revisions, which moved
+the release identifier and no value. The same merge rule applies.
+
 **The release this one replaced.** Until `V2-S4-001-PR1` the tree held the release
 `eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae`, rendered at
 `c056b9772a3de391fd61589649b1d3ed1c5ac7c4` for chart `0.3.0`, with one API replica. That
 release is the one every recorded Argo CD run reconciled, the real-deployment run of
 the first experiment included. It is in Git history at the commits those runs
-recorded. **No run reconciled the release that the tree holds now.**
+recorded.
+
+From `V2-S4-001-PR1` until `V2-S4-002-PR1` the tree held the release
+`f23c37d81fbb297643af9e6005cffd805ac05bc98847a6360894fdd238b41d8c`, rendered at
+`9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0` for chart `0.4.0`, with two API replicas and
+one runtime replica. No recorded run reconciled that release. **No run reconciled the
+release that the tree holds now.**
 
 **What the values are.** The values file differs from the values file of the reference
-release in the test fixtures in one value: `api.replicaCount` is 2 here and 1 there.
-The `local-docker-desktop` binding states two API replicas and the `local-kind`
-binding states one. Both files carry the same two rollout bounds, which the platform
-defaults own: `api.rollout.maxUnavailable` 0 and `api.rollout.maxSurge` 1. A test
-asserts each of these facts. The two releases differ in the binding they name, the
-binding's digest, the values digest, the two revisions, and the release identifier.
+release in the test fixtures in three values. `api.replicaCount` is 2 here and 1 there:
+the `local-docker-desktop` binding states two API replicas and the `local-kind` binding
+states one. `runtime.replicaCount` is 2 here and 1 there, and
+`ownership.workloadVersion` is `0.2.0` here and `0.1.0` there: this release is rendered
+from the [two-replica contract](../../contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml),
+and the fixture from the one-replica contract. Every other value is the same, the
+runtime image digest, the model revision, and the artifact pins among them. Both files
+carry the same four rollout bounds, which the platform defaults own:
+`api.rollout.maxUnavailable` 0 and `api.rollout.maxSurge` 1, and
+`runtime.rollout.maxUnavailable` 1 and `runtime.rollout.maxSurge` 0. A test asserts each
+of these facts. The two releases differ in the workload version, the contract digest,
+the binding they name, the binding's digest, the values digest, the two revisions, and
+the release identifier.
 
-**What two replicas establishes.** A declared count and a rendered Deployment. Chart
-`0.4.0` was installed nowhere, and no release with two API replicas was installed from
-this tree. The count does not establish that two API pods run, that a rollout leaves a
-caller served, or what a caller observes when an API pod is deleted or a node is lost.
+**What two replicas establishes.** A declared count and a rendered Deployment, for each
+tier. Chart `0.5.0` was installed nowhere, and no release with two replicas of either
+tier was installed from this tree. The counts do not establish that two API pods or two
+runtime pods run, that a rollout leaves a caller served, or what a caller observes when
+a pod is deleted or a node is lost.
+
+**What the runtime's two replicas ask of a cluster.** Both runtime pods mount the one
+model cache claim the binding names, read only. The prerequisite layer creates that
+claim as `ReadWriteOnce`. Kubernetes documents that such a claim can be mounted by
+several pods on one node and not by pods on two nodes. The render states no node
+selector, affinity, or topology spread for the runtime, so it states nothing about
+where the two pods are placed. Two runtime pods on one claim were not observed. At the
+chart's runtime requests, two runtime pods request 2 CPU and 4Gi. This change ran no
+capacity check, and nothing in this tree refuses a cluster that cannot schedule them.
+One earlier record bears on it: the V1
+[multi-replica certification](../serving/kubernetes-multi-replica-certification.md)
+ran a capacity gate for two API replicas and two runtime replicas on `docker-desktop`,
+the provider this release names, and the gate refused that host for lack of
+uncommitted memory. That record is of one host on one day. A later change owns a
+capacity check and a model-cache check for this topology.
+
 On a cluster where the Application is applied, a merge of this release changes the
-live release. The pod template of each Deployment carries the chart version label, and
-that label changes with chart `0.4.0`, so the render gives every Deployment a new pod
-template. That is read from the render. It was not observed on a cluster.
+live release. The pod template of each Deployment carries the chart version label,
+which changes with chart `0.5.0`, so the render gives every Deployment a new pod
+template. The workload version is not a label: it changes one ConfigMap value and the
+configuration checksum annotation of the API and runtime pod templates. The runtime
+Deployment also gains a second replica and a stated strategy. That is read from the
+render. It was not observed on a cluster.
 
 ## The promotion boundary
 

@@ -161,6 +161,10 @@ neither alone survives a compromised or re-pointed mirror.
 carries exactly the runtime digest and model revision that
 [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md) selected,
 and a test fails if the two ever disagree.
+[A second fixture](../../contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml)
+is version `0.2.0` of the same workload. It declares a replica range of two and two and
+carries the same pins, and a test compares the two documents. It is declared intent: no
+release with two serving runtime replicas has been installed.
 
 ## Secret references
 

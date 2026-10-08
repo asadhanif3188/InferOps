@@ -29,6 +29,22 @@ observation supports with 2,753 samples in which an HTTP liveness probe would
 have been failing against a healthy loading process. The startup budget is the
 measured load time with margin, and the kubelet runs neither of the other two
 probes until it passes.
+
+The rollout strategy is stated, not left to the Kubernetes default.
+`runtime.rollout` holds the two bounds in whole pods. The defaults allow no
+runtime pod above the replica count, and allow one existing pod to be taken away
+before its replacement is available. Kubernetes documents that such a rollout
+needs no room for one more pod, and may run one pod fewer until each replacement
+is Ready. At one replica that is none. No rollout was run. That is a policy for
+a template change. It says nothing about a deleted pod, a lost node, or an
+eviction.
+
+This object holds one pod template, whatever the replica count. The template
+mounts the claim read only, verifies the pinned artifact in an init container,
+and states the three probes. The Service selects pods by the three selector
+labels and names no replica. No release with two runtime replicas has been
+installed, so whether one claim serves two runtime pods on a cluster is not
+established here.
 */}}
 apiVersion: apps/v1
 kind: Deployment
@@ -45,6 +61,13 @@ metadata:
 spec:
   replicas: {{ .Values.runtime.replicaCount }}
   progressDeadlineSeconds: {{ .Values.runtime.lifecycle.progressDeadlineSeconds }}
+  {{- /* Stated rather than left to the Kubernetes default, which is 25% for
+         both bounds: at one to three replicas that adds a runtime pod first. */}}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ int .Values.runtime.rollout.maxUnavailable }}
+      maxSurge: {{ int .Values.runtime.rollout.maxSurge }}
   selector:
     matchLabels:
       {{- include "inferops-llm.runtime.selectorLabels" . | nindent 6 }}

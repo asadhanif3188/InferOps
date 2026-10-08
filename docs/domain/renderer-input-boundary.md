@@ -122,7 +122,8 @@ A release takes workload intent from a WorkloadContract and environment facts fr
 EnvironmentBinding. A third kind of input belongs to neither: a setting InferOps fixes for
 every workload in every environment. `PlatformDefaults` holds one versioned set of them.
 
-A `v1alpha1` set carries five settings of the platform API tier. Each was chosen because
+A `v1alpha1` set carries seven settings: five of the platform API tier, and the two
+rollout bounds of the serving runtime tier. Each was chosen because
 the chart exposes it, neither the WorkloadContract nor the EnvironmentBinding has a
 field for it, and the chart's default is the value every values file the repository renders
 with uses - no file under `charts/inferops-llm/ci/` overrides any of them:
@@ -134,6 +135,8 @@ with uses - no file under `charts/inferops-llm/ci/` overrides any of them:
 | `api.maxOutputTokens` | `api.maxOutputTokens` | 128 | 1 to 32768 |
 | `api.rollout.maxUnavailable` | `api.rollout.maxUnavailable` | 0 | 0 to 16 |
 | `api.rollout.maxSurge` | `api.rollout.maxSurge` | 1 | 0 to 16 |
+| `runtime.rollout.maxUnavailable` | `runtime.rollout.maxUnavailable` | 1 | 0 to 16 |
+| `runtime.rollout.maxSurge` | `runtime.rollout.maxSurge` | 0 | 0 to 16 |
 
 The bounds are the chart's values schema, and a test fails if they differ. A value outside
 them, a boolean, a float, or a string is refused at construction, and so is a version other
@@ -148,9 +151,18 @@ to be taken away before its replacement is available. They are a rollout policy:
 caller observes during a rollout, and they do not bound a pod deletion, a node loss, or an
 eviction.
 
-**The two rollout settings joined `v1alpha1` in place.** The first sets carried three
-settings. No defaults file is committed at any revision, so no stored document changed its
-meaning. A caller that constructs a set states the two bounds, or construction fails.
+The runtime tier has the same two settings, with the opposite defaults: one runtime pod
+may be taken away before its replacement is available, and no runtime pod is added above
+the replica count. A runtime pod reserves the CPU and memory of a loaded model, so the
+platform default gives a rollout no surge pod. The API tier's bounds and the runtime tier's
+bounds are two types, and each tier's settings refuse the other's. The runtime's replica
+count is not a platform default: the WorkloadContract's `spec.scaling` owns it.
+
+**The rollout settings joined `v1alpha1` in place.** The first sets carried three
+settings. The API tier's two bounds joined them in `V2-S4-001-PR1`, and the runtime tier's
+two in `V2-S4-002-PR1`. No defaults file is committed at any revision, so no stored
+document changed its meaning either time. A caller that constructs a set states all four
+bounds, or construction fails.
 
 A set is identified by the full Git revision its values were read at, which a release
 records in `source.platformDefaults.revision`. **No platform-defaults file exists yet, and
@@ -224,6 +236,8 @@ owner left it out, and nothing fills it in.
 | `api.maxOutputTokens` | `platform-defaults` | `api.maxOutputTokens` | yes |
 | `api.rollout.maxUnavailable` | `platform-defaults` | `api.rollout.maxUnavailable` | yes |
 | `api.rollout.maxSurge` | `platform-defaults` | `api.rollout.maxSurge` | yes |
+| `runtime.rollout.maxUnavailable` | `platform-defaults` | `runtime.rollout.maxUnavailable` | yes |
+| `runtime.rollout.maxSurge` | `platform-defaults` | `runtime.rollout.maxSurge` | yes |
 | `destination.clusterProvider` | `environment-binding` | `spec.destination.clusterProvider` | yes |
 | `destination.namespace` | `environment-binding` | `spec.destination.namespace` | yes |
 | `modelCache.class` | `environment-binding` | `spec.modelCache.class` | yes |
@@ -231,8 +245,8 @@ owner left it out, and nothing fills it in.
 | `api.replicas` | `environment-binding` | `spec.platform.apiReplicas` | yes |
 | `gitops.destinationPath` | `environment-binding` | `spec.gitops.destinationPath` | yes |
 
-That is 46 values: 35 of workload intent (21 always present, 14 present only when the
-contract carries them), 5 platform defaults, and 6 environment facts. The six binding rows
+That is 48 values: 35 of workload intent (21 always present, 14 present only when the
+contract carries them), 7 platform defaults, and 6 environment facts. The six binding rows
 are [the binding's published ownership table](../contracts/environment-binding.md#ownership-what-a-binding-owns-and-what-it-may-not-touch)
 less `spec.environment`, and each of the ten contract blocks that table says a binding may
 not carry is read here as workload intent and never as a binding value. A test compares
@@ -502,9 +516,9 @@ which selection has already required to equal the contract's. A binding carrying
 binding, not a claim on the workload's values. A test asserts these three are the only
 shared paths.
 
-**What the tests reach, and what reaches it today.** For each of the 46 values and each of
+**What the tests reach, and what reaches it today.** For each of the 48 values and each of
 the two layers that do not own it, an input of that layer supplying the value by its name is
-refused as an ownership conflict naming the owner: 92 cases. Each of the 41 values the
+refused as an ownership conflict naming the owner: 96 cases. Each of the 41 values the
 contract or the binding owns is also supplied at its owner's source path from the other of
 the two: 38 are refused and the three shared paths are not. **No parsed input reaches the
 check today.** Each parser refuses a field its schema does not define, so a binding writing
@@ -521,7 +535,7 @@ the rule on that day.
 The reference workload is `support-assistant`, the [`synchronous-llm` contract
 fixture](../../contracts/workload/examples/valid/synchronous-llm-local.yaml), on the
 [V1 reference environment's binding](../../contracts/environment/examples/valid/local-docker-desktop.yaml),
-`local-docker-desktop`, with the chart's API defaults read at a placeholder revision. Each
+`local-docker-desktop`, with the chart's platform defaults read at a placeholder revision. Each
 row is a render value; a layer's cell is **owns** with the path the value is read from, or
 `refused`: an input of that layer supplying it is refused as an ownership conflict. The last
 column is the value the reference inputs give it, in the JSON form the context holds, or
@@ -569,6 +583,8 @@ column is the value the reference inputs give it, in the JSON form the context h
 | `api.maxOutputTokens` | refused | **owns** `api.maxOutputTokens` | refused | `128` |
 | `api.rollout.maxUnavailable` | refused | **owns** `api.rollout.maxUnavailable` | refused | `0` |
 | `api.rollout.maxSurge` | refused | **owns** `api.rollout.maxSurge` | refused | `1` |
+| `runtime.rollout.maxUnavailable` | refused | **owns** `runtime.rollout.maxUnavailable` | refused | `1` |
+| `runtime.rollout.maxSurge` | refused | **owns** `runtime.rollout.maxSurge` | refused | `0` |
 | `destination.clusterProvider` | refused | refused | **owns** `spec.destination.clusterProvider` | `"docker-desktop"` |
 | `destination.namespace` | refused | refused | **owns** `spec.destination.namespace` | `"inferops-release"` |
 | `modelCache.class` | refused | refused | **owns** `spec.modelCache.class` | `"existing-claim"` |
@@ -598,7 +614,7 @@ is refused with `ReleaseNotRecordedError` before anything is returned, without q
 it. A caller that imports the private sentinel can still build a context of well-formed
 values the boundary never saw; that limit is the context's own, recorded above.
 
-The policy - every release field and every one of the 46 context values classified as a
+The policy - every release field and every one of the 48 context values classified as a
 public-safe identity, a derived digest or revision, or excluded, each with its reason - is
 published with the release, under
 [Provenance input trust](../contracts/rendered-workload-release.md#provenance-input-trust),

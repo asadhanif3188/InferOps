@@ -647,6 +647,19 @@ scenario in [the alert record](../telemetry/inference-alerts.md), `synthetic`, a
 
 An upgrade produced a revision that does not work.
 
+> **Amended 2026-10-08.** The rows below describe the recorded run, on chart `0.3.0`
+> with one runtime replica, where the rollout started the candidate beside the
+> serving pod. Chart `0.5.0` states the runtime's rolling-update bounds: one pod may be
+> unavailable, and no pod is added above the replica count. With one runtime replica,
+> Kubernetes documents that such a rollout may remove the serving pod before the
+> candidate is Ready, so a candidate that never becomes Ready may leave no serving
+> runtime. That was not observed: nothing was run on chart `0.5.0`.
+> On chart `0.5.0` with one runtime replica, read "the old pod keeps serving" and
+> "User impact: none", here and under [model and cache faults](#model-and-cache-faults),
+> as statements about the recorded run and not about the chart in this tree. With
+> two runtime replicas the stated bounds allow one of the two to be removed. No
+> alert, detection, or user impact was observed for either case.
+
 | | |
 |---|---|
 | Detection | Evidence, not a clock. The candidate pod's `verify-model` init container exits non-zero, or its runtime never becomes ready. **In the recorded shape no alert fires**: with one replica, the rollout surges, the old pod keeps serving, and the API stays ready. `progress deadline exceeded` is a deadline. It is not a detection |

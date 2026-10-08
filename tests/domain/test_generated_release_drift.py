@@ -330,7 +330,7 @@ PROVENANCE_EDITS: dict[str, tuple[str, str, list[tuple[str, str]]]] = {
         [("generated-release-field-drifted", "output.helmValues.path")],
     ),
     "values-digest": (
-        'sha256: "0c3cd4cc9f74',
+        'sha256: "49538bea8fae',
         'sha256: "2849af0c88c2',
         [
             ("generated-release-values-unrecorded", VALUES),
@@ -381,7 +381,7 @@ def test_values_and_a_release_forged_to_agree_are_still_drift(root: Path) -> Non
     forged = hashlib.sha256(values.read_bytes()).hexdigest()
     edit(
         release_path(root, RELEASE),
-        "0c3cd4cc9f7462f1964d3832c6a7415bdb72dc78cccb5be8a83bd78101212cdd",
+        "49538bea8fae419d021f3d3bd8d28184fe328109b76a1eeef7f68cce4b9ac9eb",
         forged,
     )
     assert found(verify(REFERENCE, root)) == [
@@ -668,6 +668,48 @@ def test_deriving_restores_the_compatibility_matrix_it_replaced(root: Path) -> N
 def test_defaults_the_chart_does_not_set_are_a_refusal(root: Path) -> None:
     edit(root / REFERENCE.platform_defaults, "requestTimeoutMs: 120000", "")
     with pytest.raises(SourcesRefused, match=r"sets no api\.requestTimeoutMs"):
+        derive(REFERENCE, root)
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ("  rollout:\n    maxUnavailable: 1\n", "", r"sets no runtime\.rollout$"),
+        (
+            "  rollout:\n    maxUnavailable: 1\n    maxSurge: 0\n",
+            "  rollout: Recreate\n",
+            r"has no runtime\.rollout mapping",
+        ),
+        (
+            "    maxUnavailable: 1\n    maxSurge: 0\n",
+            "    maxUnavailable: 1\n",
+            r"sets no runtime\.rollout\.maxSurge",
+        ),
+        (
+            "    maxUnavailable: 1\n    maxSurge: 0\n",
+            "    maxUnavailable: 0\n    maxSurge: 0\n",
+            "must not both be 0",
+        ),
+        (
+            "    maxUnavailable: 1\n    maxSurge: 0\n",
+            "    maxUnavailable: 50%\n    maxSurge: 0\n",
+            "unavailable-pod bound",
+        ),
+    ],
+)
+def test_runtime_rollout_defaults_the_chart_does_not_state_are_a_refusal(
+    root: Path, old: str, new: str, message: str
+) -> None:
+    """The runtime bounds are read from the chart's values file. A file that leaves
+    one out, or states one the defaults refuse, derives no release."""
+    path = root / REFERENCE.platform_defaults
+    text = path.read_text(encoding="utf-8")
+    if new == "":
+        # Remove the whole block: the key, both bounds, and nothing else.
+        old = "  rollout:\n    maxUnavailable: 1\n    maxSurge: 0\n"
+    edit(path, old, new)
+    assert text != path.read_text(encoding="utf-8")
+    with pytest.raises(SourcesRefused, match=message):
         derive(REFERENCE, root)
 
 

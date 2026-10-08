@@ -17,6 +17,20 @@ What that record establishes is bounded to `docker-desktop`, one Windows host,
 CPU only, one replica of each tier, and one injected fault. It certifies no other
 provider.
 
+> **Amended 2026-10-08.** This experiment was designed and run with chart `0.3.0`,
+> which stated no rollout strategy for the runtime. Under the Kubernetes default
+> that applied, the candidate pod was started beside the serving pod, and this page
+> describes that: the surge pod, the probes that were answered while the candidate
+> failed, and the `candidate-pod-unschedulable` signal. Chart `0.5.0` states the runtime's rolling-update bounds: one pod may be
+> unavailable, and no pod is added above the replica count. With one runtime replica,
+> Kubernetes documents that such a rollout may remove the serving pod before the
+> candidate is Ready, so a candidate that never becomes Ready may leave no serving
+> runtime. That was not observed: nothing was run on chart `0.5.0`.
+> The descriptor, the script, and the record tool are not changed, and the
+> published record is not affected. A rerun on chart `0.5.0` must first decide
+> whether its values state the earlier bounds, and revise the descriptor's
+> expectations if they do not.
+
 ## What it answers, and what `helm rollback` does not
 
 `helm rollback` returning zero says a revision was recorded. It does not say the

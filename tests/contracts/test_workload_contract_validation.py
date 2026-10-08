@@ -93,6 +93,7 @@ def test_the_valid_fixtures_this_change_inherited_are_all_still_here():
         "mock-llm-ci.yaml",
         "synchronous-llm-local.yaml",
         "synchronous-llm-secret-refs.yaml",
+        "synchronous-llm-two-replicas.yaml",
     }
 
 

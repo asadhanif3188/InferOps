@@ -1,7 +1,7 @@
 # V1 synchronous compatibility
 
-Status: **recorded by `V2-S2-003-PR1`, amended by `V2-S2-004-PR1` and by
-`V2-S4-001-PR1`**, at evidence level C0. This page says whether the
+Status: **recorded by `V2-S2-003-PR1`, amended by `V2-S2-004-PR1`, by
+`V2-S4-001-PR1`, and by `V2-S4-002-PR1`**, at evidence level C0. This page says whether the
 V2 render path produces the release input of the released V1 synchronous workload, who
 owns each value of that input now, and what is still written by hand. Every check behind
 it reads committed files, runs the render path in memory, or runs `helm`. Nothing was
@@ -10,11 +10,11 @@ installed, and nothing here establishes that a generated release serves a reques
 | Property | Value |
 |---|---|
 | Record | [`v1-synchronous-compatibility.v1alpha1.json`](v1-synchronous-compatibility.v1alpha1.json) |
-| Target | The V1 real workload's values: the V1 [real values file](../../charts/inferops-llm/ci/real-values.yaml) over the [defaults](../../charts/inferops-llm/values.yaml) of the [`inferops-llm`](../../charts/inferops-llm/Chart.yaml) chart at its current version, `0.4.0`. `v1.0.0` released chart `0.3.0`: see the amendment of 2026-10-07 |
-| V2 inputs | The [reference contract](../../contracts/workload/examples/valid/synchronous-llm-local.yaml), the [`local-kind` binding](../../contracts/environment/examples/valid/local-kind.yaml), and the chart's `api` defaults: the [declared reference release](helm-values-renderer.md#verifying-a-committed-release) |
+| Target | The V1 real workload's values: the V1 [real values file](../../charts/inferops-llm/ci/real-values.yaml) over the [defaults](../../charts/inferops-llm/values.yaml) of the [`inferops-llm`](../../charts/inferops-llm/Chart.yaml) chart at its current version, `0.5.0`. `v1.0.0` released chart `0.3.0`: see the amendments of 2026-10-07 and 2026-10-08 |
+| V2 inputs | The [reference contract](../../contracts/workload/examples/valid/synchronous-llm-local.yaml), the [`local-kind` binding](../../contracts/environment/examples/valid/local-kind.yaml), and the chart's `api` defaults and runtime rollout bounds: the [declared reference release](helm-values-renderer.md#verifying-a-committed-release) |
 | V2 release input | The generated [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the hand-written [`support-assistant-local.manual-values.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml) installed after it |
 | Tests | [`tests/domain/test_v1_sync_compatibility.py`](../../tests/domain/test_v1_sync_compatibility.py) for the record; the Helm lint and render in [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py) |
-| Validation records | [`v2-s2-003-pr1-validation.md`](../proof/domain/v2-s2-003-pr1-validation.md); the amendments, [`v2-s2-004-pr1-validation.md`](../proof/domain/v2-s2-004-pr1-validation.md) and [`v2-s4-001-pr1-validation.md`](../proof/domain/v2-s4-001-pr1-validation.md) |
+| Validation records | [`v2-s2-003-pr1-validation.md`](../proof/domain/v2-s2-003-pr1-validation.md); the amendments, [`v2-s2-004-pr1-validation.md`](../proof/domain/v2-s2-004-pr1-validation.md), [`v2-s4-001-pr1-validation.md`](../proof/domain/v2-s4-001-pr1-validation.md), and [`v2-s4-002-pr1-validation.md`](../proof/domain/v2-s4-002-pr1-validation.md) |
 
 > **Amendment, 2026-10-03 (`V2-S2-004-PR1`).** As first recorded, two hand-written values
 > repeated contract pins: the download URL (`model.artifact.sourceUrl`) and the licence
@@ -39,6 +39,25 @@ installed, and nothing here establishes that a generated release serves a reques
 > `0.3.0` had no such value. The rows, counts, and prose below are the amended state.
 > Nothing was installed with chart `0.4.0`.
 
+> **Amendment, 2026-10-08 (`V2-S4-002-PR1`).** The chart moved again. Chart `0.5.0`
+> states the runtime Deployment's rolling-update strategy, and `runtime.rollout` holds its
+> two bounds: `maxUnavailable` 1 and `maxSurge` 0. Charts `0.3.0` and `0.4.0` stated no
+> strategy for the runtime, so the Kubernetes default applied to it. Both sides of this
+> page's comparison render the new strategy, so the comparison between them is unchanged.
+> Rendered with the V1 values file, chart `0.5.0` differs from chart `0.3.0` in the ten
+> lines of the two strategies and in the chart version label; that was measured with
+> `helm template` over the chart at the `v1.0.0` tag and the chart in this tree. The
+> record gained two rows, `runtime.rollout.maxUnavailable` and `runtime.rollout.maxSurge`,
+> both generated and both owned by the platform defaults. V1 set neither. The reference
+> contract on this page still declares one runtime replica. The two-replica version of
+> the workload is another contract document, and it is not compared here. The rows,
+> counts, and prose below are the amended state. Nothing was installed with chart `0.5.0`.
+> **The runtime's bounds are not the bounds V1 ran under.** The one-replica workload on
+> this page now renders `maxUnavailable` 1 and `maxSurge` 0 for the runtime. With chart
+> `0.3.0` the Kubernetes default applied, which Kubernetes documents as 0 and 1 at one
+> replica. So a rollout of the V1 workload on chart `0.5.0` may remove the one runtime
+> pod before its replacement is Ready. No rollout was run on either chart for this page.
+
 ## The question
 
 A V1 release is installed from a values file somebody wrote by hand. That file states the
@@ -58,7 +77,8 @@ The V1 real values file, the reference contract, the compatibility matrix, the
 model-source record, and the runtime-profile record are byte for byte what `v1.0.0`
 released. The first validation record shows the `git diff` that measured this for the
 whole chart directory as well. That no longer holds for the chart: its templates, its
-values, and its values schema changed in `0.4.0`, as the amendment above states. One test
+values, and its values schema changed in `0.4.0` and again in `0.5.0`, as the amendments
+above state. One test
 reads the tag for the chart version and the API Deployment template, and skips in a
 checkout that does not hold the tag. The
 target is the committed V1 values file, not a deployment of it. A V1 deployment also took
@@ -86,11 +106,11 @@ well as its exit status, and `helm template`, which stops on a guard, is the ren
 
 ## Where every value went
 
-The record has one row for every chart value either release sets: 42 values.
-Twenty-nine are generated. The WorkloadContract owns twenty-two of those, the
-EnvironmentBinding two, and the platform defaults five. Two of the contract's are
+The record has one row for every chart value either release sets: 44 values.
+Thirty-one are generated. The WorkloadContract owns twenty-two of those, the
+EnvironmentBinding two, and the platform defaults seven. Two of the contract's are
 derived: the renderer writes them from three model pins by one rule, described below.
-Nineteen of the 29 came from the V1 values file, and ten from the chart's defaults.
+Nineteen of the 31 came from the V1 values file, and twelve from the chart's defaults.
 Thirteen values stay hand-written, under four classes. A test derives every owner from the
 renderer's disposition table, its derived-value table, and the boundary's ownership table,
 and fails if the record says otherwise.
@@ -107,11 +127,12 @@ What moved:
   A change to those chart defaults no longer changes a rendered release. The contract does.
 - **Two values belong to the binding**: `model.cache.claimName`, which V1's file set, and
   `api.replicaCount`, which V1 left to the chart.
-- **Five API settings belong to the platform defaults**: the request and drain timeouts,
-  the output-token ceiling, and the two bounds of the API's rolling update. The platform
-  defaults are read from the chart's `api` block today. The first three come from the
-  same place as in V1. The two rollout bounds have no V1 counterpart: chart `0.3.0` had
-  no such value. The record names the owner of all five.
+- **Seven settings belong to the platform defaults**: the API's request and drain
+  timeouts, its output-token ceiling, the two bounds of the API's rolling update, and the
+  two bounds of the runtime's. The platform defaults are read from the chart's `api`
+  block and from `runtime.rollout` today. The first three come from the same place as in
+  V1. The four rollout bounds have no V1 counterpart: chart `0.3.0` had no such value.
+  The record names the owner of all seven.
 
 <!-- The classes below are generated from the record. -->
 
@@ -163,6 +184,8 @@ What moved:
 | `runtime.replicaCount` | `chart-default` | `generated` | `workload-intent` (`serving.replicas.minimum`) |  |
 | `runtime.resources.limits.cpu` | `chart-default` | `generated` | `workload-intent` (`resources.cpu`) |  |
 | `runtime.resources.limits.memory` | `chart-default` | `generated` | `workload-intent` (`resources.memory`) |  |
+| `runtime.rollout.maxSurge` | `chart-default` | `generated` | `platform-defaults` (`runtime.rollout.maxSurge`) |  |
+| `runtime.rollout.maxUnavailable` | `chart-default` | `generated` | `platform-defaults` (`runtime.rollout.maxUnavailable`) |  |
 | `security.secretRefs` | `chart-default` | `generated` | `workload-intent` (`security.secretRefs`) |  |
 | `telemetry.collection.collector.deploy` | `values-file` | `hand-written` | `host-operation` |  |
 | `telemetry.deploymentEnvironment` | `values-file` | `generated` | `workload-intent` (`workload.environment`) | V1 `dev`, V2 `local`: intended |
@@ -218,10 +241,14 @@ configuration-checksum annotations derived from them.
 - **That anything was installed or served.** The comparison is of values and rendered
   manifests. No cluster read them. A real deployment of a generated release is later work.
 - **That a generated release renders what `v1.0.0` rendered.** Both sides of this
-  comparison use chart `0.4.0`. Against chart `0.3.0`, each differs in the API
-  Deployment's stated rollout strategy and in the chart version label.
-- **Anything about a rollout.** The two rollout bounds are configuration. No rollout was
-  run, and nothing here establishes what a caller observes while an API pod is replaced.
+  comparison use chart `0.5.0`. Against chart `0.3.0`, each differs in the stated
+  rollout strategy of the API Deployment and of the runtime Deployment, and in the chart
+  version label.
+- **Anything about a rollout.** The four rollout bounds are configuration. No rollout was
+  run, and nothing here establishes what a caller observes while an API pod or a runtime
+  pod is replaced.
+- **Anything about two runtime replicas.** The contract compared here declares one. The
+  two-replica contract is not compared with a V1 values file, because V1 ran one runtime.
 - **That every workload is compatible.** One contract on one binding is compared with one
   V1 values file. Another workload shape, binding, or chart setting is not covered.
 - **That the hand-written values are right.** Admission and the record check ownership.

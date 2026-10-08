@@ -6,22 +6,28 @@ platform fixes for every workload in every environment, which no workload owner
 should have to restate and no environment should vary. That is a platform default,
 and :class:`PlatformDefaults` holds one set of them.
 
-**What a ``v1alpha1`` set carries.** Five settings of the platform API tier: the
-upstream request timeout, the drain timeout on shutdown, the output-token ceiling
-the API enforces, and the two bounds of the API's rolling update. Each was chosen
-for three properties together: the chart exposes it, neither the WorkloadContract
-nor the EnvironmentBinding has a field for it, and the chart's default is the
-value every values file the repository renders with uses. The bounds are the
-chart's own, and a test reads the chart's values schema and fails if any of them
-differs. Nothing else is here yet, on purpose: a setting enters the defaults when
-a change needs it rendered, not in advance.
+**What a ``v1alpha1`` set carries.** Seven settings. Five are the platform API
+tier's: the upstream request timeout, the drain timeout on shutdown, the
+output-token ceiling the API enforces, and the two bounds of the API's rolling
+update. Two are the serving runtime tier's: the two bounds of its rolling update.
+Each was chosen for three properties together: the chart exposes it, neither the
+WorkloadContract nor the EnvironmentBinding has a field for it, and the chart's
+default is the value every values file the repository renders with uses. The
+bounds are the chart's own, and a test reads the chart's values schema and fails
+if any of them differs. Nothing else is here yet, on purpose: a setting enters
+the defaults when a change needs it rendered, not in advance.
 
 **The rollout bounds were added in place.** The first ``v1alpha1`` sets carried
-three settings. No defaults file is committed at any revision, so no stored
-document changed its meaning when the two bounds joined; a caller that constructs
-a set states them, or construction fails. The bounds are a rollout policy. They
-establish nothing about what a caller observes during a rollout, a pod deletion,
-or an eviction.
+three settings. The API tier's two bounds joined them, and then the runtime
+tier's two. No defaults file is committed at any revision, so no stored document
+changed its meaning either time; a caller that constructs a set states every
+bound, or construction fails. The bounds are a rollout policy. They establish
+nothing about what a caller observes during a rollout, a pod deletion, or an
+eviction.
+
+**The runtime's replica count is not a default.** The workload owner declares it
+in the WorkloadContract's ``spec.scaling``. The platform owns how a rollout of
+those replicas proceeds, and does not own how many there are.
 
 **Identified by a revision.** A set of defaults is read from a committed file at a
 full Git revision, and a release records that revision in
@@ -68,6 +74,26 @@ def _bounded(value: object, floor: int, ceiling: int, what: str) -> None:
         raise InvalidValueError(f"{what} must be between {floor} and {ceiling}")
 
 
+def _rollout_bounds(max_unavailable: object, max_surge: object) -> None:
+    """The checks every tier's rollout bounds pass: whole pods, and not two zeros."""
+    _bounded(
+        max_unavailable,
+        ROLLOUT_PODS_FLOOR,
+        ROLLOUT_PODS_CEILING,
+        "a rollout's unavailable-pod bound",
+    )
+    _bounded(
+        max_surge,
+        ROLLOUT_PODS_FLOOR,
+        ROLLOUT_PODS_CEILING,
+        "a rollout's surge-pod bound",
+    )
+    if max_unavailable == 0 and max_surge == 0:
+        raise InvalidValueError(
+            "a rollout's unavailable-pod bound and surge-pod bound must not both be 0"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class ApiRolloutDefaults:
     """``api.rollout``. The two bounds of the API tier's rolling update, in whole pods.
@@ -82,23 +108,29 @@ class ApiRolloutDefaults:
     max_surge: int
 
     def __post_init__(self) -> None:
-        _bounded(
-            self.max_unavailable,
-            ROLLOUT_PODS_FLOOR,
-            ROLLOUT_PODS_CEILING,
-            "a rollout's unavailable-pod bound",
-        )
-        _bounded(
-            self.max_surge,
-            ROLLOUT_PODS_FLOOR,
-            ROLLOUT_PODS_CEILING,
-            "a rollout's surge-pod bound",
-        )
-        if self.max_unavailable == 0 and self.max_surge == 0:
-            raise InvalidValueError(
-                "a rollout's unavailable-pod bound and surge-pod bound must not "
-                "both be 0"
-            )
+        _rollout_bounds(self.max_unavailable, self.max_surge)
+
+    def as_document(self) -> Document:
+        return {
+            "maxUnavailable": self.max_unavailable,
+            "maxSurge": self.max_surge,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeRolloutDefaults:
+    """``runtime.rollout``. The two bounds of the runtime tier's rolling update.
+
+    The bounds are whole pods, and mean what :class:`ApiRolloutDefaults` says. This
+    is a type of its own so that one tier's bounds cannot be passed as the other's:
+    the two tiers hold opposite policies. Two zeros are refused here too.
+    """
+
+    max_unavailable: int
+    max_surge: int
+
+    def __post_init__(self) -> None:
+        _rollout_bounds(self.max_unavailable, self.max_surge)
 
     def as_document(self) -> Document:
         return {
@@ -154,12 +186,34 @@ class ApiDefaults:
 
 
 @dataclass(frozen=True, slots=True)
+class RuntimeDefaults:
+    """``runtime``. Settings of the serving runtime tier that are the same everywhere.
+
+    The runtime's replica count is not here: it is workload intent, and the
+    WorkloadContract's ``spec.scaling`` owns it. Its image, its model, and its CPU
+    and memory limits are the contract's too.
+    """
+
+    rollout: RuntimeRolloutDefaults
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.rollout, RuntimeRolloutDefaults):
+            raise InvalidValueError(
+                "platform runtime rollout defaults must be RuntimeRolloutDefaults"
+            )
+
+    def as_document(self) -> Document:
+        return {"rollout": self.rollout.as_document()}
+
+
+@dataclass(frozen=True, slots=True)
 class PlatformDefaults:
     """One versioned set of platform defaults, read at one revision."""
 
     version: str
     revision: GitRevision
     api: ApiDefaults
+    runtime: RuntimeDefaults
 
     def __post_init__(self) -> None:
         if self.version not in SUPPORTED_PLATFORM_DEFAULTS_VERSIONS:
@@ -176,12 +230,15 @@ class PlatformDefaults:
             )
         if not isinstance(self.api, ApiDefaults):
             raise InvalidValueError("platform API defaults must be ApiDefaults")
+        if not isinstance(self.runtime, RuntimeDefaults):
+            raise InvalidValueError("platform runtime defaults must be RuntimeDefaults")
 
     def as_document(self) -> Document:
         return {
             "version": self.version,
             "revision": str(self.revision),
             "api": self.api.as_document(),
+            "runtime": self.runtime.as_document(),
         }
 
 
@@ -196,4 +253,6 @@ __all__ = [
     "ApiDefaults",
     "ApiRolloutDefaults",
     "PlatformDefaults",
+    "RuntimeDefaults",
+    "RuntimeRolloutDefaults",
 ]

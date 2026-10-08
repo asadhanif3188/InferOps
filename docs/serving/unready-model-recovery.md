@@ -43,6 +43,18 @@ another:
 > record tool are not changed, and the published record is not affected. A rerun
 > needs a revised descriptor first.
 
+> **Amended 2026-10-08, a second note.** This experiment was also designed and run
+> with chart `0.3.0`, which stated no rollout strategy for the runtime. The sections
+> below say that a rolling update keeps the predecessor pod until the replacement is
+> ready. That describes the Kubernetes default that applied then. Chart `0.5.0` states the runtime's rolling-update bounds: one pod may be
+> unavailable, and no pod is added above the replica count. With one runtime replica,
+> Kubernetes documents that such a rollout may remove the serving pod before the
+> candidate is Ready, so a candidate that never becomes Ready may leave no serving
+> runtime. That was not observed: nothing was run on chart `0.5.0`.
+> So the intervals this page defines, and the script's wait for one pod of the
+> tier, describe the earlier bounds. Nothing was changed in the descriptor, the
+> script, or the record tool.
+
 ## What runs, and what owns each piece
 
 | Piece | Path | Owns |

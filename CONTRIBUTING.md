@@ -403,8 +403,8 @@ typed exceptions with a field location and no canonical code, and
 A generated release committed to this repository - `values.generated.yaml` and the
 `rendered-workload-release.yaml` that names it - is the platform's output. Nobody edits
 it by hand. After a change to a WorkloadContract, an EnvironmentBinding, the chart's
-`api` defaults, or the renderer, verify the reference release, and then the desired
-state (next section):
+`api` defaults or its `runtime.rollout` bounds, or the renderer, verify the reference
+release, and then the desired state (next section):
 
 ```sh
 uv run --locked python -m tools.generated_release --check
@@ -432,7 +432,7 @@ lists the rules and what the check does not cover.
 [`gitops/`](gitops/README.md) holds the desired state of a workload, as generated
 releases. Nobody edits a file in it by hand, and no hand-written values file belongs
 in it. The same change to a WorkloadContract, an EnvironmentBinding, or the chart's
-`api` defaults that makes a release stale must regenerate it:
+`api` defaults or `runtime.rollout` bounds that makes a release stale must regenerate it:
 
 ```sh
 uv run --locked python -m tools.gitops_desired_state --check
@@ -447,7 +447,8 @@ is accepted into `main`. A desired-state release is declared in
 `DESIRED_STATE_RELEASES` in
 [`tools/gitops_desired_state/core.py`](tools/gitops_desired_state/core.py), not in the
 drift check's own list. A release records the commit its change was based on. A
-change to the chart's `api` defaults or to the renderer is the exception: the release
+change to the chart's `api` defaults, to its `runtime.rollout` bounds, or to the renderer
+is the exception: the release
 must then record a commit of the same change that already holds the new files, so
 that change needs two commits and a merge that keeps them.
 [The desired-state document](docs/environment/git-desired-state.md) states the rules.

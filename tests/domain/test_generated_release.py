@@ -91,6 +91,8 @@ from inferops.domain.render import (
     PlatformDefaults,
     ReleaseNotRecordedError,
     RenderRefused,
+    RuntimeDefaults,
+    RuntimeRolloutDefaults,
     admit_manual_values,
     generate_release,
     release_text,
@@ -182,8 +184,17 @@ def changed_binding(mutate: Callable[[dict[str, Any]], None]) -> EnvironmentBind
 
 
 def defaults(revision: str = DEFAULTS_REVISION, **overrides: int) -> PlatformDefaults:
-    """The chart's own API defaults, read at a placeholder revision."""
+    """The chart's own platform defaults, read at a placeholder revision."""
     chart = load(CHART_VALUES)["api"]
+    runtime_rollout = load(CHART_VALUES)["runtime"]["rollout"]
+    runtime = RuntimeDefaults(
+        RuntimeRolloutDefaults(
+            max_unavailable=overrides.pop(
+                "runtime_max_unavailable", runtime_rollout["maxUnavailable"]
+            ),
+            max_surge=overrides.pop("runtime_max_surge", runtime_rollout["maxSurge"]),
+        )
+    )
     rollout = ApiRolloutDefaults(
         max_unavailable=overrides.pop(
             "max_unavailable", chart["rollout"]["maxUnavailable"]
@@ -197,7 +208,9 @@ def defaults(revision: str = DEFAULTS_REVISION, **overrides: int) -> PlatformDef
         "rollout": rollout,
         **overrides,
     }
-    return PlatformDefaults("v1alpha1", GitRevision(revision), ApiDefaults(**settings))
+    return PlatformDefaults(
+        "v1alpha1", GitRevision(revision), ApiDefaults(**settings), runtime
+    )
 
 
 def renderer(revision: str = RENDERER_REVISION) -> HelmValuesRenderer:

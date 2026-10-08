@@ -144,6 +144,17 @@ changes nothing.
 paths are read comes from the declared release in the code that runs. The parsers
 and the rules are that code too.
 
+**A commit from before a declaration change is refused under the new declaration.**
+Since `V2-S4-002-PR1` the declared release is derived from another contract document,
+[`synchronous-llm-two-replicas.yaml`](../../contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml).
+A commit made before that change does not hold that file. The command reads every
+commit with the declaration of the checkout it runs from, so it refuses such a commit
+under `desired-state-absent-at-revision` and names the contract path. It does not try
+an earlier declaration. The commit that the recorded runs reported is such a commit.
+A test reads it through the library function, with the declaration that held at that
+commit, and it still resolves to the release identifier the records state. The command
+has no option for an earlier declaration.
+
 The tool runs one Git subcommand, `cat-file`, in two read-only forms. It disables
 Git replacement objects and lazy fetching, and it removes the caller's `GIT_*`
 variables, so a `GIT_DIR` that a hook sets does not replace the repository it was

@@ -208,7 +208,7 @@ def test_one_release_is_declared_and_it_is_the_reference_workload() -> None:
         "gitops/environments/local-docker-desktop/workloads/support-assistant"
     )
     assert REFERENCE.contract == (
-        "contracts/workload/examples/valid/synchronous-llm-local.yaml"
+        "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml"
     )
     assert REFERENCE.bindings == (
         "contracts/environment/examples/valid/local-docker-desktop.yaml",
@@ -290,22 +290,29 @@ def test_the_declared_revision_names_a_commit_that_holds_the_defaults_read_today
     now = load(declared.platform_defaults)["api"]
     for setting in ("requestTimeoutMs", "drainTimeoutMs", "maxOutputTokens", "rollout"):
         assert then.get(setting) == now[setting], setting
+    then_runtime = yaml.safe_load(shown.stdout)["runtime"]
+    assert (
+        then_runtime.get("rollout")
+        == load(declared.platform_defaults)["runtime"]["rollout"]
+    )
 
 
-def test_the_values_differ_from_the_reference_release_values_in_the_replica_count() -> (
-    None
-):
-    """The two local bindings render chart values that differ in one value.
+def test_the_values_differ_from_the_reference_release_values_in_three_values() -> None:
+    """The desired-state release and the fixture release differ in three values.
 
     This binding states two API replicas, and the fixture's binding states one.
-    Every other generated value is the same. So what the chart suite establishes
-    about the reference release's values file holds for this one, but for the API
-    replica count: the chart's guards still require four hand-written values. The
-    releases differ in the binding they name, its digest, the values digest, the
-    two revisions, and the identifier derived from them.
+    This release's contract declares two runtime replicas at workload version
+    0.2.0, and the fixture's declares one at 0.1.0. Every other generated value
+    is the same, the model and runtime pins among them. So what the chart suite
+    establishes about the fixture release's values file holds for this one, but
+    for those three values: the chart's guards still require four hand-written
+    values. The releases differ in the workload version, the contract digest,
+    the binding they name, its digest, the values digest, the two revisions, and
+    the identifier derived from them.
 
     Two replicas here is a declared count. This test reads two files. It does not
-    establish that two API pods run, or what a caller observes when one stops.
+    establish that two pods of either tier run, or what a caller observes when
+    one stops.
     """
     fixture = DECLARED_RELEASES[0]
 
@@ -322,9 +329,23 @@ def test_the_values_differ_from_the_reference_release_values_in_the_replica_coun
     their_values = leaves(load(f"{fixture.directory}/{VALUES}"))
     assert set(our_values) == set(their_values)
     assert {path for path in our_values if our_values[path] != their_values[path]} == {
-        "api.replicaCount"
+        "api.replicaCount",
+        "ownership.workloadVersion",
+        "runtime.replicaCount",
     }
     assert (our_values["api.replicaCount"], their_values["api.replicaCount"]) == (2, 1)
+    assert (
+        our_values["runtime.replicaCount"],
+        their_values["runtime.replicaCount"],
+    ) == (2, 1)
+    assert (
+        our_values["runtime.rollout.maxUnavailable"],
+        our_values["runtime.rollout.maxSurge"],
+    ) == (1, 0)
+    assert (
+        our_values["ownership.workloadVersion"],
+        their_values["ownership.workloadVersion"],
+    ) == ("0.2.0", "0.1.0")
     assert (
         our_values["api.rollout.maxUnavailable"],
         our_values["api.rollout.maxSurge"],
@@ -337,7 +358,9 @@ def test_the_values_differ_from_the_reference_release_values_in_the_replica_coun
     theirs = leaves(load(f"{fixture.directory}/{RELEASE}"))
     assert {path for path in ours if ours[path] != theirs[path]} == {
         "metadata.releaseId",
+        "metadata.workloadVersion",
         "output.helmValues.sha256",
+        "source.contract.sha256",
         "source.environmentBinding.name",
         "source.environmentBinding.sha256",
         "source.platformDefaults.revision",

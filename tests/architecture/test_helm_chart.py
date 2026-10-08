@@ -1557,13 +1557,14 @@ def test_the_rollout_deadline_is_outside_the_startup_budget(name: str) -> None:
 
 
 # --------------------------------------------------------------------------
-# The API rollout strategy, which is stated and not left to a default
+# The rollout strategy of each tier, which is stated and not left to a default
 # --------------------------------------------------------------------------
 #
 # Everything in this section is about a rendered file or a schema. A stated
 # strategy and a replica count are configuration. None of these tests installs
 # the chart, replaces a pod, deletes one, or sends a request, so none of them
-# establishes what a caller observes while an API pod is unavailable.
+# establishes what a caller observes while an API pod or a runtime pod is
+# unavailable.
 
 
 def _deployments(component: str) -> list[tuple[str, dict]]:
@@ -1600,26 +1601,67 @@ def test_the_api_deployment_states_the_rollout_the_values_configure() -> None:
             assert type(value) is int, f"{profile}: {name} is not a whole number"
 
 
-def test_the_rollout_values_are_the_api_tiers_and_no_other_deployments() -> None:
-    """The change that added `api.rollout` decided the API tier's policy only.
+def test_the_runtime_deployment_states_the_rollout_the_values_configure() -> None:
+    """The real profile renders one runtime Deployment, and it states both bounds.
 
-    The runtime Deployment and the collector state no strategy, so the Kubernetes
-    default applies to each, and the values contract has no rollout setting for
-    either. A change that gives one of them a policy fails this test, and has to
-    restate what is decided here.
+    The bounds are the opposite of the API tier's. No runtime pod is added above
+    the replica count, so a rollout reserves nothing for one more loaded model,
+    and one existing pod may be taken away before its replacement is available.
+    The mock profile renders no runtime, so it renders no runtime strategy.
     """
-    assert "rollout" not in VALUES["runtime"]
-    assert "rollout" not in SCHEMA["properties"]["runtime"]["properties"]
-    others = [
-        document
-        for _profile, document in ALL_INSTALLED
-        if document["kind"] == "Deployment"
-        and _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
-        != "platform-api"
-    ]
-    assert others, "the real profile renders a runtime Deployment"
-    for document in others:
-        assert "strategy" not in _mapping(document, "spec"), _subject(document)
+    rollout = VALUES["runtime"]["rollout"]
+    assert rollout == {"maxUnavailable": 1, "maxSurge": 0}
+    rendered = _deployments("serving-runtime")
+    assert [profile for profile, _ in rendered] == ["real"]
+    [(_, document)] = rendered
+    assert _mapping(document, "spec.strategy") == {
+        "type": "RollingUpdate",
+        "rollingUpdate": {"maxUnavailable": 1, "maxSurge": 0},
+    }
+    for name, value in _mapping(document, "spec.strategy.rollingUpdate").items():
+        assert type(value) is int, f"{name} is not a whole number"
+
+
+def test_the_rollout_values_are_the_two_tiers_and_no_other_deployments() -> None:
+    """The API tier and the runtime tier each have a decided rollout policy.
+
+    The collector states no strategy, so the Kubernetes default applies to it,
+    and the values contract has no rollout setting for it. A change that gives
+    it a policy fails this test, and has to restate what is decided here.
+    """
+    assert SCHEMA["properties"]["runtime"]["properties"]["rollout"] == {
+        "$ref": "#/$defs/rollout"
+    }
+    assert "rollout" not in VALUES["telemetry"]["collection"]["collector"]
+    decided = {"platform-api", "serving-runtime"}
+    components = set()
+    for _profile, document in ALL_INSTALLED:
+        if document["kind"] != "Deployment":
+            continue
+        component = _mapping(document, "metadata.labels").get(
+            "app.kubernetes.io/component"
+        )
+        components.add(component)
+        assert ("strategy" in _mapping(document, "spec")) == (component in decided), (
+            _subject(document)
+        )
+    assert decided <= components
+
+
+def test_no_committed_values_file_adds_a_runtime_pod_above_the_replica_count() -> None:
+    """No surge pod for the runtime, in the chart's defaults or in any render.
+
+    A surge pod for the runtime is one more loaded model than the tier runs.
+    The chart's default allows none, and neither committed values file states
+    another bound. The chart renders no autoscaler for either tier.
+    """
+    assert VALUES["runtime"]["rollout"]["maxSurge"] == 0
+    for name in ("mock-values.yaml", "real-values.yaml"):
+        assert "rollout" not in (_load_yaml(CI_DIR / name).get("runtime") or {}), name
+    for _profile, document in _deployments("serving-runtime"):
+        assert _dig(document, "spec.strategy.rollingUpdate.maxSurge") == 0
+    kinds = {document["kind"] for _profile, document in ALL_RENDERED}
+    assert "HorizontalPodAutoscaler" not in kinds
 
 
 def test_the_chart_renders_no_disruption_budget() -> None:
@@ -1666,15 +1708,16 @@ def test_a_rollout_block_is_two_whole_pod_bounds_and_nothing_else(
     assert (not errors) == accepted, (rollout, [e.message for e in errors])
 
 
-def test_the_api_block_requires_a_rollout() -> None:
+@pytest.mark.parametrize("tier", ("api", "runtime"))
+def test_each_tier_block_requires_a_rollout(tier: str) -> None:
     """A values file that removes the block is refused, not given a default."""
     jsonschema = pytest.importorskip("jsonschema")
-    assert "rollout" in SCHEMA["properties"]["api"]["required"]
-    assert SCHEMA["properties"]["api"]["properties"]["rollout"] == {
+    assert "rollout" in SCHEMA["properties"][tier]["required"]
+    assert SCHEMA["properties"][tier]["properties"]["rollout"] == {
         "$ref": "#/$defs/rollout"
     }
     without = _merge(VALUES, {})
-    del without["api"]["rollout"]
+    del without[tier]["rollout"]
     errors = list(jsonschema.Draft202012Validator(SCHEMA).iter_errors(without))
     assert any("rollout" in error.message for error in errors)
 
@@ -1697,10 +1740,215 @@ def test_a_rollout_that_can_do_nothing_is_refused_by_the_render() -> None:
     )
 
 
-def test_a_rollout_percentage_is_refused_by_the_schema_at_render() -> None:
-    refused = _render("api.rollout.maxSurge=25%")
+def test_a_runtime_rollout_that_can_do_nothing_is_refused_by_the_render() -> None:
+    """The runtime's two zeros are refused as the API's are, and named as its own."""
+    refused = _render("runtime.rollout.maxUnavailable=0")
+    assert refused.returncode != 0, "two zero bounds rendered and should not have"
+    assert (
+        "runtime.rollout.maxUnavailable and runtime.rollout.maxSurge must not both "
+        "be 0" in refused.stderr
+    )
+    assert (
+        _render(
+            "runtime.rollout.maxUnavailable=0", "runtime.rollout.maxSurge=1"
+        ).returncode
+        == 0
+    )
+
+
+def test_the_runtime_rollout_refusal_does_not_depend_on_the_profile() -> None:
+    """The mock profile renders no runtime, and still refuses the runtime's two zeros.
+
+    A values file refused under one profile only would be read as accepted."""
+    helm = shutil.which("helm")
+    if helm is None:
+        pytest.skip("helm is not on PATH; see CONTRIBUTING.md for the commands")
+    refused = subprocess.run(
+        [
+            helm,
+            "template",
+            "inferops",
+            str(CHART_DIR),
+            "--namespace",
+            "inferops-platform",
+            "--values",
+            str(CI_DIR / "mock-values.yaml"),
+            "--set",
+            "runtime.rollout.maxUnavailable=0",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     assert refused.returncode != 0
-    assert "/api/rollout/maxSurge" in refused.stderr
+    assert "runtime.rollout.maxUnavailable" in refused.stderr
+
+
+@pytest.mark.parametrize("tier", ("api", "runtime"))
+def test_a_rollout_percentage_is_refused_by_the_schema_at_render(tier: str) -> None:
+    refused = _render(f"{tier}.rollout.maxSurge=25%")
+    assert refused.returncode != 0
+    assert f"/{tier}/rollout/maxSurge" in refused.stderr
+
+
+@pytest.mark.parametrize(
+    ("override", "location"),
+    (
+        ("runtime.replicaCount=0", "/runtime/replicaCount"),
+        ("runtime.replicaCount=17", "/runtime/replicaCount"),
+        ("runtime.replicaCount=-1", "/runtime/replicaCount"),
+        ("runtime.replicaCount=2.5", "/runtime/replicaCount"),
+        ("runtime.replicaCount=two", "/runtime/replicaCount"),
+        ("runtime.rollout.maxUnavailable=-1", "/runtime/rollout/maxUnavailable"),
+        ("runtime.rollout.maxUnavailable=17", "/runtime/rollout/maxUnavailable"),
+        ("runtime.rollout.maxSurge=-1", "/runtime/rollout/maxSurge"),
+        ("runtime.rollout.maxSurge=17", "/runtime/rollout/maxSurge"),
+        ("runtime.rollout.maxSurge=1.5", "/runtime/rollout/maxSurge"),
+        ("runtime.rollout.type=Recreate", "/runtime/rollout"),
+    ),
+)
+def test_a_runtime_topology_value_outside_its_bounds_is_refused_at_render(
+    override: str, location: str
+) -> None:
+    """The schema refuses a count outside 1 to 16, a bound outside 0 to 16, a value
+    that is not a whole number, and a member the rollout block does not define."""
+    refused = _render(override)
+    assert refused.returncode != 0, override
+    assert location in refused.stderr, refused.stderr
+
+
+def test_a_runtime_request_above_its_limit_renders_and_nothing_here_refuses_it() -> (
+    None
+):
+    """A limitation, stated as a test so that closing it has to change this file.
+
+    The chart's schema checks the form of each quantity and does not compare a
+    request with a limit. Kubernetes documents that it refuses a pod whose
+    request is above its limit; that was not observed here. The platform
+    renderer refuses a contract ceiling below the chart's runtime request, and
+    `tests/domain` holds that. A values file given to Helm directly is not checked.
+    """
+    rendered = _render("runtime.resources.limits.memory=1Gi")
+    assert rendered.returncode == 0, rendered.stderr
+    malformed = _render("runtime.resources.limits.memory=lots")
+    assert malformed.returncode != 0
+    assert "/runtime/resources/limits/memory" in malformed.stderr
+
+
+def _runtime_render(count: int) -> tuple[list[str], list[dict]]:
+    result = _render(f"runtime.replicaCount={count}")
+    assert result.returncode == 0, result.stderr
+    text = result.stdout.replace("\r\n", "\n")
+    return text.splitlines(), [
+        d for d in yaml.safe_load_all(text) if isinstance(d, dict)
+    ]
+
+
+def test_a_second_runtime_replica_changes_the_replica_count_and_nothing_else() -> None:
+    """Two runtime replicas are one field of one object.
+
+    The Service, its selector, the pod template, the probes, the model mount, the
+    integrity check, the network policies, and the API are the same bytes at one
+    replica and at two. The render holds one pod template for the runtime: one
+    image digest, one model revision, one artifact digest, one read-only claim.
+    Kubernetes documents that a Deployment creates each replica from that
+    template.
+
+    This compares rendered text. Whether two runtime pods then start, whether
+    one claim serves both, and whether a caller is served when one stops, is not
+    something a render shows.
+    """
+    before, _ = _runtime_render(1)
+    after, documents = _runtime_render(2)
+    assert len(before) == len(after)
+    changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
+    assert changed == [("  replicas: 1", "  replicas: 2")]
+
+    [deployment] = [
+        d
+        for d in documents
+        if d["kind"] == "Deployment"
+        and d["metadata"]["labels"].get("app.kubernetes.io/component")
+        == "serving-runtime"
+    ]
+    assert deployment["spec"]["replicas"] == 2
+    assert deployment["spec"]["strategy"]["rollingUpdate"] == {
+        "maxUnavailable": 1,
+        "maxSurge": 0,
+    }
+
+
+def test_the_runtime_service_selects_every_replica_and_names_none() -> None:
+    """What the rendered objects say about each replica behind the Service.
+
+    The Service's selector is the Deployment's selector, and the pod template
+    carries those labels. The selector has no member that names one replica.
+    The Service sets no `publishNotReadyAddresses`, and Kubernetes documents
+    that such a Service routes to a pod only while the pod is Ready. The probes
+    are in the pod template: readiness and the startup gate ask the health
+    endpoint, and liveness is a TCP connect. The V1 records observed that
+    endpoint answer 503 while one runtime loaded the model. The template also
+    holds the init container that verifies the artifact.
+
+    This reads a render. It does not establish that each of two pods is probed
+    as the template says, that an endpoint is removed when a runtime pod stops,
+    how quickly it is removed, or that a request reaches the other pod.
+    """
+    _, documents = _runtime_render(2)
+    [deployment] = [
+        d
+        for d in documents
+        if d["kind"] == "Deployment"
+        and d["metadata"]["labels"].get("app.kubernetes.io/component")
+        == "serving-runtime"
+    ]
+    [service] = [
+        d
+        for d in documents
+        if d["kind"] == "Service"
+        and d["metadata"]["labels"].get("app.kubernetes.io/component")
+        == "serving-runtime"
+    ]
+    selector = service["spec"]["selector"]
+    assert selector == deployment["spec"]["selector"]["matchLabels"]
+    assert selector == {
+        "app.kubernetes.io/name": "inferops-llm",
+        "app.kubernetes.io/instance": "inferops",
+        "app.kubernetes.io/component": "serving-runtime",
+    }
+    template = deployment["spec"]["template"]
+    assert selector.items() <= template["metadata"]["labels"].items()
+    # A Service that published unready addresses would route to a loading model.
+    assert "publishNotReadyAddresses" not in service["spec"]
+    assert service["spec"]["type"] == "ClusterIP"
+    assert service["spec"].get("clusterIP") != "None", "a headless Service names pods"
+    assert "sessionAffinity" not in service["spec"]
+
+    pod = template["spec"]
+    [runtime] = pod["containers"]
+    health = VALUES["runtime"]["healthPath"]
+    assert runtime["readinessProbe"]["httpGet"]["path"] == health
+    assert runtime["startupProbe"]["httpGet"]["path"] == health
+    assert "tcpSocket" in runtime["livenessProbe"]
+    assert [c["name"] for c in pod["initContainers"]] == ["verify-model"]
+    # The pod specification names no replica, and states nothing about where a
+    # replica is scheduled: both pods may be placed on one node.
+    for absent in (
+        "hostname",
+        "subdomain",
+        "nodeName",
+        "nodeSelector",
+        "affinity",
+        "topologySpreadConstraints",
+    ):
+        assert absent not in pod, absent
+    [claim] = [v for v in pod["volumes"] if "persistentVolumeClaim" in v]
+    assert claim["persistentVolumeClaim"] == {
+        "claimName": _load_yaml(CI_DIR / "real-values.yaml")["model"]["cache"][
+            "claimName"
+        ],
+        "readOnly": True,
+    }
 
 
 def test_a_second_api_replica_changes_the_replica_count_and_nothing_else() -> None:
@@ -2324,26 +2572,35 @@ DESIRED_STATE_VALUES = (
 )
 
 
-def test_the_desired_state_release_renders_two_api_replicas_and_one_changed_line() -> (
-    None
-):
+def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     """The desired-state release, as the chart reads it, beside the fixture release.
 
-    The two generated files differ in the API replica count, so the two renders
-    differ in one line: the API Deployment's `replicas`. The Service, the pod
-    template, and the runtime are rendered the same. The API Deployment states
-    `maxUnavailable` 0 and `maxSurge` 1 in both.
+    The two generated files differ in three values: the API replica count, the
+    runtime replica count, and the workload version. So the two renders differ
+    in the `replicas` line of each Deployment and in the lines that carry the
+    workload version: one ConfigMap value, and the configuration checksum
+    annotations derived from it. The workload version is not a label. Nothing
+    else differs. The Services, the probes, the model mount, and the pins are
+    rendered the same.
 
-    This renders files. No cluster was asked, and no release with two API
-    replicas has been installed, so this establishes the rendered topology and
-    not what a caller observes when one API pod is unavailable.
+    This renders files. No cluster was asked, and no release with two replicas
+    of either tier has been installed, so this establishes the rendered topology
+    and not what a caller observes when a pod is unavailable.
     """
     desired = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
     fixture = _template(GENERATED_VALUES, HAND_WRITTEN_VALUES)
     before, after = fixture.splitlines(), desired.splitlines()
     assert len(before) == len(after)
     changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
-    assert changed == [("  replicas: 1", "  replicas: 2")]
+    replicas = [pair for pair in changed if "replicas:" in pair[0]]
+    assert replicas == [("  replicas: 1", "  replicas: 2")] * 2
+    others = [pair for pair in changed if pair not in replicas]
+    checksums = [pair for pair in others if "configuration-checksum" in pair[0]]
+    assert len(checksums) == 2
+    assert all("configuration-checksum" in new for _old, new in checksums)
+    assert [pair for pair in others if pair not in checksums] == [
+        ('  INFEROPS_WORKLOAD_VERSION: "0.1.0"', '  INFEROPS_WORKLOAD_VERSION: "0.2.0"')
+    ]
 
     documents = [d for d in yaml.safe_load_all(desired) if isinstance(d, dict)]
     deployments = {
@@ -2357,7 +2614,25 @@ def test_the_desired_state_release_renders_two_api_replicas_and_one_changed_line
         "type": "RollingUpdate",
         "rollingUpdate": {"maxUnavailable": 0, "maxSurge": 1},
     }
-    assert deployments["serving-runtime"]["spec"]["replicas"] == 1
+    runtime = deployments["serving-runtime"]
+    assert runtime["spec"]["replicas"] == 2
+    assert runtime["spec"]["strategy"] == {
+        "type": "RollingUpdate",
+        "rollingUpdate": {"maxUnavailable": 1, "maxSurge": 0},
+    }
+    # Both replicas are created from this one template, so they carry one image
+    # digest and verify and serve one pinned artifact.
+    pod = runtime["spec"]["template"]["spec"]
+    source = _load_json(MODEL_SOURCE_PATH)
+    package = _load_json(RUNTIME_PACKAGE_PATH)
+    [container] = pod["containers"]
+    assert container["image"] == package["container"]["imageReference"]
+    [verify] = pod["initContainers"]
+    script = " ".join(verify["command"] + verify.get("args", []))
+    assert source["sha256"].removeprefix("sha256:") in script
+    [mount] = [m for m in container["volumeMounts"] if m["name"] == "model-cache"]
+    assert mount["readOnly"] is True
+    assert source["revision"] in mount["subPath"]
     lint = _lint(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
     assert lint.returncode == 0, lint.stdout + lint.stderr
     assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
