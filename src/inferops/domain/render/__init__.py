@@ -78,6 +78,8 @@ from .defaults import (
     ApiDefaults,
     ApiRolloutDefaults,
     PlatformDefaults,
+    RuntimeDefaults,
+    RuntimeRolloutDefaults,
 )
 from .errors import (
     CAPABILITY_UNAVAILABLE,
@@ -218,6 +220,8 @@ __all__ = [
     "Renderer",
     "RendererSupport",
     "RuleOrigin",
+    "RuntimeDefaults",
+    "RuntimeRolloutDefaults",
     "ValidatedWorkloadContract",
     "ValueDisposition",
     "ValuesFormError",

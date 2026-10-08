@@ -287,12 +287,13 @@ def test_the_record_says_the_chart_is_not_the_one_the_release_shipped() -> None:
     """
     target = load_record()["target"]
     assert target["chartVersion"] != target["releasedChartVersion"]
-    assert "0.4.0" in target["chartChangeSinceRelease"]
+    assert target["chartVersion"] in target["chartChangeSinceRelease"]
     assert target["releasedChartVersion"] in target["chartChangeSinceRelease"]
-    template = (
-        REPO_ROOT / target["chart"] / "templates" / "api-deployment.yaml"
-    ).read_text(encoding="utf-8")
-    assert "  strategy:\n    type: RollingUpdate\n" in template
+    for name in ("api-deployment.yaml", "runtime-deployment.yaml"):
+        template = (REPO_ROOT / target["chart"] / "templates" / name).read_text(
+            encoding="utf-8"
+        )
+        assert "  strategy:\n    type: RollingUpdate\n" in template, name
 
     git = shutil.which("git")
     if git is None:
@@ -312,9 +313,10 @@ def test_the_record_says_the_chart_is_not_the_one_the_release_shipped() -> None:
     if released.returncode != 0:
         pytest.skip(f"this checkout does not hold the tag {target['release']}")
     assert yaml.safe_load(released.stdout)["version"] == target["releasedChartVersion"]
-    released_template = show(f"{target['chart']}/templates/api-deployment.yaml")
-    assert released_template.returncode == 0, released_template.stderr
-    assert "strategy:" not in released_template.stdout
+    for name in ("api-deployment.yaml", "runtime-deployment.yaml"):
+        released_template = show(f"{target['chart']}/templates/{name}")
+        assert released_template.returncode == 0, released_template.stderr
+        assert "strategy:" not in released_template.stdout, name
 
 
 def test_the_v2_inputs_are_the_declared_reference_release() -> None:
@@ -348,13 +350,13 @@ def test_every_value_either_release_sets_has_exactly_one_row() -> None:
 
 
 def test_the_record_measures_the_migration_it_publishes() -> None:
-    """The counts the page states, from the record: 42 values, 29 of them generated,
+    """The counts the page states, from the record: 44 values, 31 of them generated,
     2 of those derived."""
     rows = load_record()["rows"]
     generated = [row for row in rows if row["v2"] == "generated"]
-    assert len(rows) == 42
-    assert len(generated) == 29
-    assert len(FILES.generated_leaves) == 29
+    assert len(rows) == 44
+    assert len(generated) == 31
+    assert len(FILES.generated_leaves) == 31
     assert sorted(row["chartValue"] for row in generated if "derivedFrom" in row) == [
         "model.artifact.sourceUrl",
         "model.license.reference",
@@ -366,7 +368,7 @@ def test_the_record_measures_the_migration_it_publishes() -> None:
     assert by_owner == {
         "workload-intent": 22,
         "environment-binding": 2,
-        "platform-defaults": 5,
+        "platform-defaults": 7,
     }
     from_values_file = [row for row in generated if row["v1"] == "values-file"]
     assert len(from_values_file) == 19

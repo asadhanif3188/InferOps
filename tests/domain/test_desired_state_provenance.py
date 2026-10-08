@@ -101,6 +101,12 @@ REPOSITORY = "https://github.com/asadhanif3188/InferOps.git"
 FOLLOWED_REVISION = "main"
 RECORDED_RELEASE_ID = "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae"
 RECORDED_RUN_REVISION = "293767b6c27d858e911e5e43104ad74fbfac4b02"
+#: The declaration that held at the commit the recorded runs reported. The release
+#: was then derived from the one-replica contract. The declaration in this tree
+#: names the two-replica contract, which that commit does not hold.
+DECLARED_AT_THE_RECORDED_RUNS = replace(
+    DECLARED, contract="contracts/workload/examples/valid/synchronous-llm-local.yaml"
+)
 PLACEHOLDER_DIGEST = "sha256:" + "0" * 64
 
 #: A full commit identifier that this repository does not hold.
@@ -712,6 +718,10 @@ def test_the_recorded_runs_reported_one_commit_and_it_resolves_to_the_release() 
     applied object, so this relates the reported commit to a release and relates no
     object to it. The release identifier is restated here, and the desired-state
     document states the same one.
+
+    The commit is read with the declaration that held at it. The declaration in
+    this tree names a contract that the commit does not hold, and the tool refuses
+    the commit under that declaration: it does not guess an earlier one.
     """
     for transcript in TRANSCRIPTS:
         assert reported_revisions(transcript) == {RECORDED_RUN_REVISION}, transcript
@@ -719,7 +729,12 @@ def test_the_recorded_runs_reported_one_commit_and_it_resolves_to_the_release() 
     exists = run_git(REPO_ROOT, "cat-file", "-e", f"{RECORDED_RUN_REVISION}^{{commit}}")
     if exists.returncode != 0:
         pytest.skip("this checkout does not hold the commit the runs reported")
-    recorded = resolve(RECORDED_RUN_REVISION, DECLARED)
+    with pytest.raises(ProvenanceRefused) as refused:
+        resolve(RECORDED_RUN_REVISION, DECLARED)
+    assert [(f.rule_id, f.subject) for f in refused.value.findings] == [
+        ("desired-state-absent-at-revision", DECLARED.contract)
+    ]
+    recorded = resolve(RECORDED_RUN_REVISION, DECLARED_AT_THE_RECORDED_RUNS)
     assert recorded.release_id == RECORDED_RELEASE_ID
     assert recorded.values_sha256 == (
         "1849af0c88c2ef646b4f6eddfb515ba5fd3f3cbc5ac44950a35b9bf8cec864ce"

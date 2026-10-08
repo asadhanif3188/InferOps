@@ -1,0 +1,74 @@
+# The synchronous-llm reference workload with two serving runtime replicas. It is
+# version 0.2.0 of the workload that synchronous-llm-local.yaml declares at 0.1.0.
+# The two documents differ in the version, the description, and the replica range,
+# and in nothing else: the runtime image digest, the model revision, the artifact
+# pins, and the CPU and memory ceiling are the same values, and a test compares them.
+#
+# The replica range is one number, two. The platform chart runs a fixed replica
+# count and has no autoscaler, so a range of two different numbers is refused at
+# render. The ceiling under spec.resources applies to each replica.
+#
+# This is a contract example. Two replicas here is declared intent. No release
+# with two runtime replicas has been installed, so this document does not
+# establish that two runtime pods run, that one model cache claim serves both, or
+# what a caller observes when one of them stops.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: support-assistant
+  version: 0.2.0
+  owner: team-platform-demo
+  description: Example synchronous LLM workload that declares two serving runtime replicas.
+
+spec:
+  profile: synchronous-llm
+  environment: local
+
+  model:
+    servingCapability: inferops-native-serving
+    modelRef: qwen3-1-7b-q8-0
+    runtimeProfile: resource-conscious
+
+  resources:
+    # The ceiling each replica runs under. It is the ceiling the 0.1.0 document
+    # declares, which is the limit the feasibility trial ran one runtime under.
+    cpu: "6"
+    memory: 3Gi
+    accelerator:
+      type: none
+      count: 0
+
+  scaling:
+    minimumReplicas: 2
+    maximumReplicas: 2
+
+  integrations:
+    # No model-access or evaluation capability exists, so neither is declared.
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    dataClassification: internal
+    secretRefs: []
+
+  attribution:
+    tenant: demo
+    costCenter: demo-cost-center
+
+  evidence:
+    runbookRef: docs/serving/feasibility-workflow.md
+    proofRefs:
+      # The record of one runtime. No record of two runtime replicas exists yet.
+      - docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md
+
+  synchronousLlm:
+    runtime:
+      imageReference: ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+    modelArtifact:
+      repository: Qwen/Qwen3-1.7B-GGUF
+      revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+      file: Qwen3-1.7B-Q8_0.gguf
+      sizeBytes: 1834426016
+      sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a

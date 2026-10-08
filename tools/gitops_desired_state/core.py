@@ -99,7 +99,9 @@ _REFERENCE_RENDER_REVISION: Final = "9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0"
 
 #: Every desired-state release, and the inputs each is derived from.
 #:
-#: The one entry is the reference workload on the ``local-docker-desktop`` binding.
+#: The one entry is the two-replica version of the reference workload, on the
+#: ``local-docker-desktop`` binding. The contract declares two serving runtime
+#: replicas, and the binding states two API replicas.
 #: That binding names the one provider on which the GitOps controller's bootstrap
 #: was executed. One Application of that controller reads this release, on a
 #: cluster where an operator applied the Application.
@@ -109,7 +111,7 @@ DESIRED_STATE_RELEASES: Final[tuple[DeclaredRelease, ...]] = (
             f"{ENVIRONMENTS_PATH}/local-docker-desktop/"
             f"{WORKLOADS_SEGMENT}/support-assistant"
         ),
-        contract="contracts/workload/examples/valid/synchronous-llm-local.yaml",
+        contract="contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
         bindings=("contracts/environment/examples/valid/local-docker-desktop.yaml",),
         binding_name="local-docker-desktop",
         platform_defaults="charts/inferops-llm/values.yaml",

@@ -94,6 +94,8 @@ from inferops.domain.render import (
     Renderer,
     RendererSupport,
     RenderRefused,
+    RuntimeDefaults,
+    RuntimeRolloutDefaults,
     ValidatedWorkloadContract,
     WorkloadNotAcceptedError,
     build_render_context,
@@ -196,6 +198,11 @@ def chart_api_defaults() -> dict[str, Any]:
     return load(CHART_DIR / "values.yaml")["api"]
 
 
+def chart_runtime_defaults() -> dict[str, Any]:
+    """The runtime settings of the chart that are platform defaults: its rollout."""
+    return {"rollout": load(CHART_DIR / "values.yaml")["runtime"]["rollout"]}
+
+
 def defaults(
     *,
     request_timeout_ms: int | None = None,
@@ -203,10 +210,13 @@ def defaults(
     max_output_tokens: int | None = None,
     max_unavailable: int | None = None,
     max_surge: int | None = None,
+    runtime_max_unavailable: int | None = None,
+    runtime_max_surge: int | None = None,
     revision: str = DEFAULTS_REVISION,
 ) -> PlatformDefaults:
     """The chart's own defaults, read at a placeholder revision."""
     chart = chart_api_defaults()
+    runtime = chart_runtime_defaults()["rollout"]
     return PlatformDefaults(
         "v1alpha1",
         GitRevision(revision),
@@ -236,6 +246,20 @@ def defaults(
                     chart["rollout"]["maxSurge"] if max_surge is None else max_surge
                 ),
             ),
+        ),
+        RuntimeDefaults(
+            RuntimeRolloutDefaults(
+                max_unavailable=(
+                    runtime["maxUnavailable"]
+                    if runtime_max_unavailable is None
+                    else runtime_max_unavailable
+                ),
+                max_surge=(
+                    runtime["maxSurge"]
+                    if runtime_max_surge is None
+                    else runtime_max_surge
+                ),
+            )
         ),
     )
 
@@ -616,6 +640,9 @@ def test_the_defaults_bounds_are_the_charts() -> None:
         OUTPUT_TOKENS_FLOOR,
         OUTPUT_TOKENS_CEILING,
     )
+    runtime = schema["properties"]["runtime"]["properties"]
+    # Both tiers take the one rollout definition, so one set of bounds holds both.
+    assert api["rollout"] == runtime["rollout"]
     rollout = resolve(schema, api["rollout"])
     assert set(rollout["properties"]) == {"maxUnavailable", "maxSurge"}
     assert rollout["additionalProperties"] is False
@@ -639,6 +666,8 @@ def test_the_charts_defaults_construct_a_valid_set() -> None:
             "maxSurge": chart["rollout"]["maxSurge"],
         },
     }
+    assert built.as_document()["runtime"] == chart_runtime_defaults()
+    assert set(built.as_document()) == {"version", "revision", "api", "runtime"}
 
 
 def test_the_charts_rollout_default_is_zero_unavailable_and_one_surge() -> None:
@@ -646,6 +675,29 @@ def test_the_charts_rollout_default_is_zero_unavailable_and_one_surge() -> None:
     This is the value of a setting. It is not a measurement of a rollout."""
     assert chart_api_defaults()["rollout"] == {"maxUnavailable": 0, "maxSurge": 1}
     assert defaults().api.rollout == ApiRolloutDefaults(max_unavailable=0, max_surge=1)
+
+
+def test_the_charts_runtime_rollout_default_is_one_unavailable_and_no_surge() -> None:
+    """The platform default for the runtime tier: `maxUnavailable` 1, `maxSurge` 0.
+
+    No runtime pod is added above the replica count, so a rollout reserves no CPU
+    or memory for one more loaded model. This is the value of a setting. It is not
+    a measurement of a rollout, and no rollout of a runtime pod was run."""
+    assert chart_runtime_defaults()["rollout"] == {"maxUnavailable": 1, "maxSurge": 0}
+    assert defaults().runtime.rollout == RuntimeRolloutDefaults(
+        max_unavailable=1, max_surge=0
+    )
+    assert defaults().runtime.rollout.max_surge == 0
+
+
+def test_the_two_tiers_hold_opposite_rollout_defaults() -> None:
+    """The API tier adds a pod first. The runtime tier removes a pod first."""
+    built = defaults()
+    assert (built.api.rollout.max_unavailable, built.api.rollout.max_surge) == (0, 1)
+    assert (
+        built.runtime.rollout.max_unavailable,
+        built.runtime.rollout.max_surge,
+    ) == (1, 0)
 
 
 def test_no_ci_values_file_overrides_a_default() -> None:
@@ -658,6 +710,7 @@ def test_no_ci_values_file_overrides_a_default() -> None:
             "maxOutputTokens",
             "rollout",
         }.isdisjoint(api), path.name
+        assert "rollout" not in (load(path) or {}).get("runtime", {}), path.name
 
 
 def test_no_default_is_a_field_the_contract_or_the_binding_has() -> None:
@@ -674,7 +727,7 @@ def test_no_default_is_a_field_the_contract_or_the_binding_has() -> None:
         assert "rollout" not in leaves
     assert {row.source for row in rows(Layer.PLATFORM_DEFAULTS)} == {
         f"api.{name}" for name in names
-    }
+    } | {"runtime.rollout.maxUnavailable", "runtime.rollout.maxSurge"}
 
 
 @pytest.mark.parametrize(
@@ -699,6 +752,16 @@ def test_no_default_is_a_field_the_contract_or_the_binding_has() -> None:
         ("max_unavailable", "25%"),
         # Two zeros: Kubernetes refuses a rolling update that can do nothing.
         ("max_surge", 0),
+        ("runtime_max_unavailable", ROLLOUT_PODS_FLOOR - 1),
+        ("runtime_max_unavailable", ROLLOUT_PODS_CEILING + 1),
+        ("runtime_max_surge", ROLLOUT_PODS_FLOOR - 1),
+        ("runtime_max_surge", ROLLOUT_PODS_CEILING + 1),
+        ("runtime_max_surge", False),
+        ("runtime_max_surge", 0.0),
+        ("runtime_max_unavailable", "1"),
+        ("runtime_max_unavailable", "50%"),
+        # Two zeros again: the runtime's default surge is 0 already.
+        ("runtime_max_unavailable", 0),
     ],
 )
 def test_a_default_outside_its_bounds_or_type_is_refused(
@@ -718,6 +781,8 @@ def test_a_default_outside_its_bounds_or_type_is_refused(
         ("max_unavailable", ROLLOUT_PODS_FLOOR),
         ("max_unavailable", ROLLOUT_PODS_CEILING),
         ("max_surge", ROLLOUT_PODS_CEILING),
+        ("runtime_max_unavailable", ROLLOUT_PODS_CEILING),
+        ("runtime_max_surge", ROLLOUT_PODS_CEILING),
     ],
 )
 def test_a_default_on_its_bound_is_accepted(setting: str, value: int) -> None:
@@ -744,27 +809,76 @@ def test_the_api_defaults_take_only_typed_rollout_defaults() -> None:
         )
 
 
+def test_a_runtime_rollout_of_two_zeros_is_refused_and_one_zero_is_not() -> None:
+    with pytest.raises(InvalidValueError, match="must not both be 0"):
+        RuntimeRolloutDefaults(max_unavailable=0, max_surge=0)
+    built = defaults(runtime_max_unavailable=0, runtime_max_surge=1)
+    assert built.runtime.rollout.as_document() == {"maxUnavailable": 0, "maxSurge": 1}
+
+
+def test_one_tiers_rollout_defaults_are_not_accepted_as_the_others() -> None:
+    """The two tiers hold opposite bounds, so each takes its own type and no other."""
+    built = defaults()
+    with pytest.raises(InvalidValueError, match="RuntimeRolloutDefaults"):
+        RuntimeDefaults(built.api.rollout)  # type: ignore[arg-type]
+    with pytest.raises(InvalidValueError, match="RuntimeRolloutDefaults"):
+        RuntimeDefaults(built.runtime.rollout.as_document())  # type: ignore[arg-type]
+    with pytest.raises(InvalidValueError, match="ApiRolloutDefaults"):
+        ApiDefaults(
+            built.api.request_timeout_ms,
+            built.api.drain_timeout_ms,
+            built.api.max_output_tokens,
+            built.runtime.rollout,  # type: ignore[arg-type]
+        )
+
+
 @pytest.mark.parametrize("version", ["v1alpha2", "v1", "", "inferops.io/v1alpha1"])
 def test_an_unsupported_defaults_version_is_refused(version: str) -> None:
     with pytest.raises(InvalidValueError, match="supported versions are 'v1alpha1'"):
-        PlatformDefaults(version, GitRevision(DEFAULTS_REVISION), defaults().api)
+        PlatformDefaults(
+            version,
+            GitRevision(DEFAULTS_REVISION),
+            defaults().api,
+            defaults().runtime,
+        )
     assert SUPPORTED_PLATFORM_DEFAULTS_VERSIONS == ("v1alpha1",)
 
 
 def test_a_defaults_revision_or_api_block_must_be_typed() -> None:
+    runtime = defaults().runtime
     with pytest.raises(InvalidValueError, match="GitRevision"):
-        PlatformDefaults("v1alpha1", DEFAULTS_REVISION, defaults().api)  # type: ignore[arg-type]
+        PlatformDefaults("v1alpha1", DEFAULTS_REVISION, defaults().api, runtime)  # type: ignore[arg-type]
     with pytest.raises(InvalidValueError, match="ApiDefaults"):
         PlatformDefaults(
             "v1alpha1",
             GitRevision(DEFAULTS_REVISION),
             defaults().api.as_document(),  # type: ignore[arg-type]
+            runtime,
         )
+    with pytest.raises(InvalidValueError, match="RuntimeDefaults"):
+        PlatformDefaults(
+            "v1alpha1",
+            GitRevision(DEFAULTS_REVISION),
+            defaults().api,
+            runtime.as_document(),  # type: ignore[arg-type]
+        )
+    with pytest.raises(TypeError):
+        # A set that states no runtime block is not constructed with a default one.
+        PlatformDefaults("v1alpha1", GitRevision(DEFAULTS_REVISION), defaults().api)  # type: ignore[call-arg]
     with pytest.raises(InvalidValueError):
         GitRevision("main")
 
 
-@pytest.mark.parametrize("kind", [ApiDefaults, PlatformDefaults])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        ApiDefaults,
+        ApiRolloutDefaults,
+        RuntimeDefaults,
+        RuntimeRolloutDefaults,
+        PlatformDefaults,
+    ],
+)
 def test_no_default_has_a_default(kind: type) -> None:
     for member in dataclasses.fields(kind):
         assert member.default is dataclasses.MISSING, member.name
@@ -997,6 +1111,8 @@ def test_each_layer_supplies_only_what_it_owns() -> None:
         "api.requestTimeoutMs",
         "api.rollout.maxSurge",
         "api.rollout.maxUnavailable",
+        "runtime.rollout.maxSurge",
+        "runtime.rollout.maxUnavailable",
     }
 
 

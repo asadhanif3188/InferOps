@@ -185,8 +185,64 @@ turns a percentage into 0 and gives no refusal, as measured with `helm template`
 rollout leaves a caller served, or what a caller observes when an API pod is deleted
 or a node is lost. A rollout policy bounds a template change. It does not bound a pod
 deletion, and the chart renders no PodDisruptionBudget, so it does not bound an
-eviction either. The runtime Deployment states no strategy: the Kubernetes default
-applies to it, and this chart decides nothing about it.
+eviction either. The runtime Deployment's strategy is the next section's.
+
+### The runtime tier's replicas and rollout
+
+`runtime.replicaCount` is the number of runtime pods under the `real` profile, and
+`runtime.rollout` holds the two bounds of the runtime Deployment's rolling update, in
+whole pods:
+
+| Value | Default | Meaning |
+|---|---|---|
+| `runtime.replicaCount` | `1` | Runtime pods the Deployment runs. Each loads the model |
+| `runtime.rollout.maxUnavailable` | `1` | Runtime pods a rollout may take away before their replacements are available |
+| `runtime.rollout.maxSurge` | `0` | Runtime pods a rollout may add above `replicaCount` |
+
+The bounds are the opposite of the API tier's, on purpose. An API pod is small. A
+runtime pod reserves the CPU and memory of a loaded model, so a surge pod is one more
+loaded model than the tier runs. With `maxSurge: 0` a rollout adds none. The cost is that
+a rollout runs one runtime pod fewer than `replicaCount` until each replacement is Ready,
+and a replacement loads the model before it is Ready. At one replica that is no Ready
+runtime pod for the whole of that load. At two replicas it is one. That is the behaviour
+Kubernetes documents for these bounds. No rollout of a runtime pod was run.
+
+Until chart `0.5.0` the template stated no strategy for the runtime, and the Kubernetes
+default applied: 25% for both bounds, which resolves to 0 unavailable and 1 surge at one
+to three replicas. So chart `0.5.0` changes the bounds in effect at the replica counts
+the repository renders, and not only what the Deployment says: `0.4.0` added a runtime
+pod first, and `0.5.0` removes one first. The rounding rule is the one Kubernetes
+documents; it was not observed on a cluster. The schema takes whole pods only and
+refuses a percentage, and the template refuses two zeros, under either profile.
+
+Every replica is created from one pod template. So each runtime pod runs the same pinned
+image, mounts the same claim read only at the same revision directory, verifies the same
+pinned artifact in its own init container before `llama-server` starts, and has its own
+startup, readiness, and liveness probes. The runtime Service selects pods by the
+Deployment's selector labels and names no replica. Kubernetes documents that a Service
+does not route to a pod that is not Ready. That is read from the render and from the
+Kubernetes documentation. It was not observed for two runtime pods.
+
+At the chart's runtime requests, 1 CPU and 2Gi each, two replicas request 2 CPU and 4Gi,
+and a rollout under the default bounds requests no more than that. At the limits a
+reference contract declares, 6 CPU and 3Gi each, two replicas may use 12 CPU and 6Gi.
+These are sums of values. No capacity check was run for them, and nothing here refuses an
+environment that cannot schedule two runtime pods.
+
+In a generated release none of the three values is written by hand. The WorkloadContract
+owns the replica count: its `spec.scaling` range must be one number, because the chart
+has no autoscaler. The platform defaults own the two bounds. The
+[renderer](../../docs/domain/helm-values-renderer.md) refuses a hand-written values file
+that sets any of the three.
+
+**What this is not.** Chart `0.5.0` has not been installed, and no release with two
+runtime replicas has been installed. Nothing here establishes that two runtime pods
+start, that one model cache claim can be mounted by two runtime pods on the selected
+storage, that a rollout leaves a caller served, or what a caller observes when a runtime
+pod is deleted or a node is lost. The chart's schema does not compare a request with a
+limit, so a values file given to Helm directly can state a runtime limit below the
+runtime request; Kubernetes refuses that container, and the renderer refuses a contract
+that asks for it.
 
 Two committed values files under [`ci/`](ci/) are the render fixtures. Both carry
 a **placeholder API image digest** that resolves to no image, for the reason

@@ -6,9 +6,11 @@ cluster, only by the tests that say so, and they skip when it is not on PATH.
 
 Seven things are asserted:
 
-1. **Golden output.** The reference workload on each local binding renders that
-   binding's committed file byte for byte, and the two renders differ in
-   ``api.replicaCount`` and in no other value.
+1. **Golden output.** The reference workload on the ``local-kind`` binding renders
+   the committed fixture file byte for byte. Its two-replica version on the
+   ``local-docker-desktop`` binding renders the committed desired-state file byte
+   for byte. Two bindings move ``api.replicaCount`` and no other value, and the
+   two contract versions move the runtime replica count and the workload version.
 2. **Deterministic and pure.** Equal inputs give equal values and text, whatever
    order the bindings arrive in, under two hash seeds, and with every clock,
    random source, and environment read patched to fail.
@@ -85,6 +87,8 @@ from inferops.domain.render import (
     RefusalCategory,
     RenderContext,
     RenderRefused,
+    RuntimeDefaults,
+    RuntimeRolloutDefaults,
     ValuesFormError,
     admit_manual_values,
     build_render_context,
@@ -137,6 +141,8 @@ DESIRED_STATE_VALUES = (
     / "values.generated.yaml"
 )
 DOC = REPO_ROOT / "docs" / "domain" / "helm-values-renderer.md"
+#: The contract fixture that declares two serving runtime replicas.
+TWO_REPLICAS = "synchronous-llm-two-replicas"
 
 DEFAULTS_REVISION = "b" * 40
 RENDERER_REVISION = "a" * 40
@@ -203,8 +209,17 @@ def bindings_for(workload: WorkloadContract) -> list[EnvironmentBinding]:
 
 
 def defaults(**overrides: int) -> PlatformDefaults:
-    """The chart's own API defaults, read at a placeholder revision."""
+    """The chart's own platform defaults, read at a placeholder revision."""
     chart = load(CHART_VALUES)["api"]
+    runtime_rollout = load(CHART_VALUES)["runtime"]["rollout"]
+    runtime = RuntimeDefaults(
+        RuntimeRolloutDefaults(
+            max_unavailable=overrides.pop(
+                "runtime_max_unavailable", runtime_rollout["maxUnavailable"]
+            ),
+            max_surge=overrides.pop("runtime_max_surge", runtime_rollout["maxSurge"]),
+        )
+    )
     rollout = ApiRolloutDefaults(
         max_unavailable=overrides.pop(
             "max_unavailable", chart["rollout"]["maxUnavailable"]
@@ -219,7 +234,7 @@ def defaults(**overrides: int) -> PlatformDefaults:
         **overrides,
     }
     return PlatformDefaults(
-        "v1alpha1", GitRevision(DEFAULTS_REVISION), ApiDefaults(**settings)
+        "v1alpha1", GitRevision(DEFAULTS_REVISION), ApiDefaults(**settings), runtime
     )
 
 
@@ -375,16 +390,20 @@ def at(document: Mapping[str, Any], path: tuple[str, ...] | str) -> Any:
 
 
 @pytest.mark.parametrize(
-    ("name", "golden"),
-    [("local-kind", GOLDEN), ("local-docker-desktop", DESIRED_STATE_VALUES)],
+    ("workload", "name", "golden"),
+    [
+        ("synchronous-llm-local", "local-kind", GOLDEN),
+        (TWO_REPLICAS, "local-docker-desktop", DESIRED_STATE_VALUES),
+    ],
 )
 def test_the_reference_workload_renders_the_committed_golden_file(
-    name: str, golden: Path
+    workload: str, name: str, golden: Path
 ) -> None:
-    """Each local binding has a committed render: the fixture release, and the
-    desired-state release the second binding's destination holds."""
+    """Two committed renders: the fixture release, from the one-replica contract on
+    the first binding, and the desired-state release, from the two-replica contract
+    on the binding whose destination holds it."""
     bindings = [binding("local-kind"), binding("local-docker-desktop")]
-    values = render(bindings=bindings, binding_name=name)
+    values = render(contract(workload), bindings=bindings, binding_name=name)
     assert values.to_yaml() == golden.read_bytes().decode("utf-8")
 
 
@@ -430,6 +449,7 @@ def test_every_generated_value_is_the_inputs_own() -> None:
     sync = workload["spec"]["synchronousLlm"]
     kind = binding_document()
     chart_api = load(CHART_VALUES)["api"]
+    chart_runtime = load(CHART_VALUES)["runtime"]
     values = render().as_document()
     repository, digest = sync["runtime"]["imageReference"].split("@")
     assert values == {
@@ -446,6 +466,10 @@ def test_every_generated_value_is_the_inputs_own() -> None:
         },
         "runtime": {
             "replicaCount": workload["spec"]["scaling"]["minimumReplicas"],
+            "rollout": {
+                "maxUnavailable": chart_runtime["rollout"]["maxUnavailable"],
+                "maxSurge": chart_runtime["rollout"]["maxSurge"],
+            },
             "image": {"repository": repository, "digest": digest},
             "resources": {
                 "limits": {
@@ -558,6 +582,233 @@ def test_a_rollout_default_change_moves_exactly_its_own_values(
 ) -> None:
     """The rollout bounds are the platform defaults' and reach two chart values."""
     assert moved(render(), render(platform_defaults=defaults(**overrides))) == expected
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected"),
+    [
+        ({"runtime_max_unavailable": 2}, {"runtime.rollout.maxUnavailable"}),
+        ({"runtime_max_surge": 1}, {"runtime.rollout.maxSurge"}),
+        (
+            {"runtime_max_unavailable": 0, "runtime_max_surge": 1},
+            {"runtime.rollout.maxUnavailable", "runtime.rollout.maxSurge"},
+        ),
+    ],
+)
+def test_a_runtime_rollout_default_change_moves_exactly_its_own_values(
+    overrides: dict[str, int], expected: set[str]
+) -> None:
+    """The runtime's bounds reach the runtime's two chart values and not the API's."""
+    assert moved(render(), render(platform_defaults=defaults(**overrides))) == expected
+
+
+def test_the_runtime_rollout_bounds_are_the_platform_defaults_and_no_other_inputs() -> (
+    None
+):
+    """The platform defaults own both runtime bounds, for each contract version.
+
+    Neither committed contract and neither local binding states a bound, so the
+    replica count is the only runtime topology value a workload owner declares.
+    The rendered default adds no runtime pod above the replica count."""
+    for name in ("synchronous-llm-local", TWO_REPLICAS):
+        context = build_render_context(
+            validate_for_render(contract(name)), defaults(), [binding()]
+        )
+        for bound in ("runtime.rollout.maxUnavailable", "runtime.rollout.maxSurge"):
+            entry = context.entry(bound)
+            assert entry.layer is Layer.PLATFORM_DEFAULTS
+            assert entry.source == bound
+        values = render(contract(name)).as_document()
+        assert values["runtime"]["rollout"] == {"maxUnavailable": 1, "maxSurge": 0}
+        assert "rollout" not in json.dumps(contract_document(name))
+    for name in ("local-kind", "local-docker-desktop"):
+        assert "rollout" not in json.dumps(binding_document(name))
+
+
+# --------------------------------------------------------------------------
+# The two-replica version of the reference workload
+# --------------------------------------------------------------------------
+#
+# These tests read two contract documents and render them. A replica count is
+# declared intent. None of these tests installs a release, so none establishes
+# that two runtime pods run or what a caller observes when one of them stops.
+
+
+def test_the_two_replica_contract_differs_from_the_reference_in_three_members() -> None:
+    """Version, description, and the replica range. Every pin is the same value."""
+    one, two = contract_document(), contract_document(TWO_REPLICAS)
+    differing = dotted(
+        {
+            path
+            for path in leaf_paths(one) | leaf_paths(two)
+            if at(one, path) != at(two, path)
+        }
+    )
+    assert differing == {
+        "metadata.description",
+        "metadata.version",
+        "spec.scaling.maximumReplicas",
+        "spec.scaling.minimumReplicas",
+    }
+    assert (one["metadata"]["version"], two["metadata"]["version"]) == (
+        "0.1.0",
+        "0.2.0",
+    )
+    assert two["spec"]["scaling"] == {"minimumReplicas": 2, "maximumReplicas": 2}
+    assert one["spec"]["synchronousLlm"] == two["spec"]["synchronousLlm"]
+    assert one["spec"]["resources"] == two["spec"]["resources"]
+
+
+def test_the_two_replica_contract_moves_the_replica_count_and_the_version() -> None:
+    """The render differs in the two values the contract's differing members own.
+
+    The image, the model revision, the artifact pins, and the limits are rendered
+    once and are the same for every replica: a Deployment has one pod template."""
+    one, two = render(), render(contract(TWO_REPLICAS))
+    assert moved(one, two) == {"runtime.replicaCount", "ownership.workloadVersion"}
+    document = two.as_document()
+    assert document["runtime"]["replicaCount"] == 2
+    assert document["runtime"]["rollout"] == {"maxUnavailable": 1, "maxSurge": 0}
+    for values in (one.as_document(), document):
+        assert values["runtime"]["image"] == one.as_document()["runtime"]["image"]
+        assert values["model"] == one.as_document()["model"]
+        assert values["runtime"]["resources"] == {
+            "limits": {"cpu": "6", "memory": "3Gi"}
+        }
+
+
+def two_replicas(mutate: Callable[[dict[str, Any]], None]) -> WorkloadContract:
+    document = contract_document(TWO_REPLICAS)
+    mutate(document)
+    return parse_workload_contract(document)
+
+
+@pytest.mark.parametrize(
+    ("scaling", "field"),
+    [
+        # A range of two numbers: the chart has no autoscaler to choose within it.
+        ({"minimumReplicas": 2, "maximumReplicas": 3}, "maximumReplicas"),
+        ({"minimumReplicas": 1, "maximumReplicas": 2}, "maximumReplicas"),
+        ({"minimumReplicas": 2, "maximumReplicas": 16}, "maximumReplicas"),
+    ],
+)
+def test_a_replica_range_of_two_numbers_is_refused_and_no_count_is_chosen(
+    scaling: dict[str, int], field: str
+) -> None:
+    refused = refusal_of(
+        two_replicas(lambda d: d["spec"].__setitem__("scaling", scaling))
+    )
+    assert [(f.rule_id, f.field) for f in refused.findings] == [
+        ("render-capability-unsupported", f"contract.spec.scaling.{field}")
+    ]
+
+
+@pytest.mark.parametrize("count", [0, 17, 100])
+def test_a_replica_count_the_chart_cannot_carry_is_refused(count: int) -> None:
+    """The contract's schema takes 0 to 100. The chart takes 1 to 16."""
+    refused = refusal_of(
+        two_replicas(
+            lambda d: d["spec"].__setitem__(
+                "scaling", {"minimumReplicas": count, "maximumReplicas": max(count, 1)}
+            )
+        )
+    )
+    rules = {(f.rule_id, f.field) for f in refused.findings}
+    assert (
+        "render-value-unsupported",
+        "contract.spec.scaling.minimumReplicas",
+    ) in rules
+    assert {rule for rule, _ in rules} <= {
+        "render-value-unsupported",
+        "render-capability-unsupported",
+    }
+
+
+@pytest.mark.parametrize("count", [1, 2, 16])
+def test_a_fixed_replica_count_within_the_charts_bounds_is_rendered(count: int) -> None:
+    values = render(
+        two_replicas(
+            lambda d: d["spec"].__setitem__(
+                "scaling", {"minimumReplicas": count, "maximumReplicas": count}
+            )
+        )
+    ).as_document()
+    assert values["runtime"]["replicaCount"] == count
+    # The bounds do not follow the count: they are whole pods, and not the contract's.
+    assert values["runtime"]["rollout"] == {"maxUnavailable": 1, "maxSurge": 0}
+
+
+@pytest.mark.parametrize(
+    ("resource", "value"),
+    [
+        # Below the chart's own runtime request, which Kubernetes refuses.
+        ("cpu", "500m"),
+        ("memory", "1Gi"),
+        ("memory", "2047Mi"),
+        # A form the chart's schema does not take.
+        ("memory", "3Pi"),
+    ],
+)
+def test_a_resource_ceiling_the_chart_cannot_carry_is_refused_at_two_replicas(
+    resource: str, value: str
+) -> None:
+    """The ceiling is per replica, and the refusal does not depend on the count."""
+    refused = refusal_of(
+        two_replicas(lambda d: d["spec"]["resources"].__setitem__(resource, value))
+    )
+    assert [(f.rule_id, f.field) for f in refused.findings] == [
+        ("render-value-unsupported", f"contract.spec.resources.{resource}")
+    ]
+
+
+def test_an_accelerator_is_refused_at_two_replicas() -> None:
+    refused = refusal_of(
+        two_replicas(
+            lambda d: d["spec"]["resources"].__setitem__(
+                "accelerator", {"type": "nvidia-gpu", "count": 1}
+            )
+        )
+    )
+    assert {f.rule_id for f in refused.findings} == {"render-capability-unsupported"}
+    assert {f.field for f in refused.findings} == {
+        "contract.spec.resources.accelerator.type",
+        "contract.spec.resources.accelerator.count",
+    }
+
+
+@pytest.mark.parametrize(
+    ("manual", "field"),
+    [
+        ({"runtime": {"replicaCount": 1}}, "manualValues.runtime.replicaCount"),
+        ({"runtime": {"replicaCount": 3}}, "manualValues.runtime.replicaCount"),
+        ({"runtime": {"replicaCount": None}}, "manualValues.runtime.replicaCount"),
+        (
+            {"runtime": {"rollout": {"maxSurge": 1}}},
+            "manualValues.runtime.rollout.maxSurge",
+        ),
+        (
+            {"runtime": {"rollout": {"maxUnavailable": 0}}},
+            "manualValues.runtime.rollout.maxUnavailable",
+        ),
+        ({"runtime": {"rollout": None}}, "manualValues.runtime.rollout"),
+        ({"runtime": {"rollout": "Recreate"}}, "manualValues.runtime.rollout"),
+    ],
+)
+def test_a_hand_written_file_may_not_set_the_runtime_topology(
+    manual: dict[str, Any], field: str
+) -> None:
+    """The replica count is the contract's and the bounds are the platform defaults'.
+
+    A hand-written file admitted beside the generated values may not set, replace,
+    or remove any of the three. So such a file cannot add a third runtime replica
+    or a surge pod to a release that states neither. A values file passed to Helm
+    by another route is not checked here: see the module's own limitation."""
+    assert [finding.field for finding in manual_value_findings(manual)] == [field]
+    with pytest.raises(RenderRefused) as refused:
+        admit_manual_values(render(contract(TWO_REPLICAS)), manual)
+    assert [finding.rule_id for finding in refused.value.findings] == [
+        "render-manual-value-generated"
+    ]
 
 
 def test_the_rollout_bounds_are_read_from_the_platform_defaults_and_nowhere_else() -> (
@@ -719,7 +970,7 @@ def test_the_disposition_counts_are_the_published_ones() -> None:
         for disposition in Disposition
     }
     assert counts == {
-        Disposition.RENDERED: 26,
+        Disposition.RENDERED: 28,
         Disposition.CONSTRAINED: 8,
         Disposition.NOT_RENDERED: 12,
     }
@@ -732,11 +983,11 @@ def test_only_a_rendered_value_names_a_target_and_every_target_is_constrained() 
     for row in HELM_VALUE_DISPOSITIONS.values():
         assert bool(row.targets) == (row.disposition is Disposition.RENDERED)
         assert row.reason
-    assert len(targets) == len(set(targets)) == 27
+    assert len(targets) == len(set(targets)) == 29
     # The derived values are the only chart values no disposition row targets.
     assert set(targets).isdisjoint(DERIVED_HELM_VALUES)
     assert set(targets) | set(DERIVED_HELM_VALUES) == set(CHART_VALUE_CONSTRAINTS)
-    assert len(CHART_VALUE_CONSTRAINTS) == 29
+    assert len(CHART_VALUE_CONSTRAINTS) == 31
     assert {".".join(path) for path in GENERATED_VALUE_PATHS} == set(
         CHART_VALUE_CONSTRAINTS
     )

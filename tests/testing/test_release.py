@@ -255,11 +255,13 @@ def test_the_notes_state_the_counts_the_data_holds() -> None:
 
 #: Released component pins that `main` has moved since the tag: the component, the
 #: pinning file, and the pin that file carries now. `V2-S4-001-PR1` moved the chart
-#: to `0.4.0`, which states the API Deployment's rollout strategy. The release was
-#: cut with chart `0.3.0`, and the release data still says so. No release quotes
-#: chart `0.4.0`, and no record of an installed release names it.
+#: to `0.4.0`, which states the API Deployment's rollout strategy, and
+#: `V2-S4-002-PR1` moved it to `0.5.0`, which states the runtime Deployment's. The
+#: release was cut with chart `0.3.0`, and the release data still says so. No
+#: release quotes chart `0.4.0` or `0.5.0`, and no record of an installed release
+#: names either.
 MOVED_SINCE_THE_RELEASE: dict[str, dict[str, str]] = {
-    "chart": {"charts/inferops-llm/Chart.yaml": "version: 0.4.0"},
+    "chart": {"charts/inferops-llm/Chart.yaml": "version: 0.5.0"},
 }
 
 

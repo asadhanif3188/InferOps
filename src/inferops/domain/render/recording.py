@@ -257,6 +257,8 @@ CONTEXT_FIELD_TRUST: Final[Mapping[str, ContextFieldTrust]] = MappingProxyType(
             ("api.maxOutputTokens", _excluded(_DEFAULT)),
             ("api.rollout.maxUnavailable", _excluded(_DEFAULT)),
             ("api.rollout.maxSurge", _excluded(_DEFAULT)),
+            ("runtime.rollout.maxUnavailable", _excluded(_DEFAULT)),
+            ("runtime.rollout.maxSurge", _excluded(_DEFAULT)),
             ("destination.clusterProvider", _excluded(_FACT)),
             ("destination.namespace", _excluded(_FACT)),
             ("modelCache.class", _excluded(_FACT)),

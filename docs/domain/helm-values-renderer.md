@@ -25,8 +25,8 @@ about an installed render, and it is not this page's.
 | Module | [`src/inferops/domain/render/helm_values.py`](../../src/inferops/domain/render/helm_values.py), with the YAML form in [`values_yaml.py`](../../src/inferops/domain/render/values_yaml.py) |
 | Entry points | `HelmValuesRenderer(revision).render(context)`, or `render_with(renderer, ...)` on documents; `generate_release(renderer, ...)` for the values and their release, and `write_release(generated, directory)` to write both; `admit_manual_values(values, manual)` to pair a hand-written file with them, and `manual_value_findings(manual)` for its findings |
 | Input | A `RenderContext` from [the renderer input boundary](renderer-input-boundary.md), for a `synchronous-llm` contract |
-| Output | `GeneratedHelmValues`: 29 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
-| Chart | `inferops-llm` `0.4.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
+| Output | `GeneratedHelmValues`: 31 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
+| Chart | `inferops-llm` `0.5.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
 | Refusal | `RenderRefused`, under the boundary's vocabulary; four rules are the renderer's own |
 | Golden output | The release directory [`support-assistant-local-kind/`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/): [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the release naming it, [`rendered-workload-release.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/rendered-workload-release.yaml) |
 | Drift check | [`tools/generated_release`](../../tools/generated_release/core.py): `python -m tools.generated_release --check`, and `--write NAME` to regenerate |
@@ -47,16 +47,17 @@ it writes is one [`values.schema.json`](../../charts/inferops-llm/values.schema.
 already defines; every value it does not write keeps the chart's own default or comes from
 a hand-written file. Introducing the renderer changed nothing in the chart. Since
 `V2-S4-001-PR1` the chart also defines `api.rollout`, in its values, its schema, and the
-API Deployment template, and the renderer writes it.
+API Deployment template, and the renderer writes it. Since `V2-S4-002-PR1` the same is
+true of `runtime.rollout` and the runtime Deployment template.
 
 ## What it produces
 
 For the reference workload - the [`synchronous-llm` contract fixture](../../contracts/workload/examples/valid/synchronous-llm-local.yaml)
 on the [`local-kind` binding](../../contracts/environment/examples/valid/local-kind.yaml), with
-the chart's API defaults - the output is the committed golden file, byte for byte:
+the chart's platform defaults - the output is the committed golden file, byte for byte:
 
 ```yaml
-# Generated Helm values for the inferops-llm chart, version 0.4.0.
+# Generated Helm values for the inferops-llm chart, version 0.5.0.
 # Do not edit by hand: change the WorkloadContract, the EnvironmentBinding, or
 # the platform defaults they were rendered from, and render them again.
 api:
@@ -96,6 +97,9 @@ runtime:
     limits:
       cpu: "6"
       memory: "3Gi"
+  rollout:
+    maxSurge: 0
+    maxUnavailable: 1
 security:
   secretRefs: []
 telemetry:
@@ -106,21 +110,39 @@ telemetry:
 The two local bindings differ in the cluster provider, the GitOps destination, and the API
 replica count. The first two are not chart values and move nothing. The replica count is
 a chart value: the [`local-docker-desktop` binding](../../contracts/environment/examples/valid/local-docker-desktop.yaml)
-states two API replicas, so its render differs from the file above in `api.replicaCount`
-and in no other value. That render is the committed
-[desired-state values file](../../gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml),
-byte for byte. A test asserts each of these facts.
+states two API replicas, so the same contract on that binding renders a file that differs
+from the one above in `api.replicaCount` and in no other value. A test asserts each of
+these facts.
 
-The two rollout values and the replica count are configuration. No release with two API
-replicas has been installed, and nothing here establishes what a caller observes while an
-API pod is replaced, deleted, or evicted.
+**The two-replica version of the workload.** A second contract document,
+[`synchronous-llm-two-replicas.yaml`](../../contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml),
+is version `0.2.0` of the same workload. It declares a replica range of two and two, and
+every pin in it is the pin of the reference contract; a test compares the two documents.
+On one binding its render differs from the reference contract's in two values:
+`runtime.replicaCount` is 2, and `ownership.workloadVersion` is `0.2.0`. That contract on
+the `local-docker-desktop` binding renders the committed
+[desired-state values file](../../gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml),
+byte for byte.
+
+The runtime's replica count is the contract's, because it is workload intent. The
+runtime's two rollout bounds are the platform defaults', as the API's are: `maxUnavailable`
+1 and `maxSurge` 0. So a rendered release adds no runtime pod above the replica count
+during a rollout. A hand-written values file admitted beside the generated values may not
+set the count or either bound.
+
+The four rollout values and the two replica counts are configuration. No release with two
+replicas of either tier has been installed, and nothing here establishes what a caller
+observes while a pod is replaced, deleted, or evicted. A Deployment has one pod template,
+so the render gives every replica the same image digest, model revision, and artifact
+digest. That is read from the render. Whether one model cache claim serves two runtime
+pods on a cluster is not established here.
 
 ## Where every value goes
 
-Every one of the context's 46 values has one disposition, and a test fails if the context
+Every one of the context's 48 values has one disposition, and a test fails if the context
 gains a value this table does not name:
 
-- **`rendered`** - written to the chart values named. 26 values, written to 27 chart values:
+- **`rendered`** - written to the chart values named. 28 values, written to 29 chart values:
   the runtime image reference is split at its digest.
 - **`constrained`** - not written, because the chart has no setting for it, and refused
   unless it asks for what the chart already does. 8 values.
@@ -173,6 +195,8 @@ A test compares this table with the code, row for row.
 | `api.maxOutputTokens` | `rendered` | `api.maxOutputTokens` | The chart value of the same meaning |
 | `api.rollout.maxUnavailable` | `rendered` | `api.rollout.maxUnavailable` | The chart value of the same meaning |
 | `api.rollout.maxSurge` | `rendered` | `api.rollout.maxSurge` | The chart value of the same meaning |
+| `runtime.rollout.maxUnavailable` | `rendered` | `runtime.rollout.maxUnavailable` | The chart value of the same meaning |
+| `runtime.rollout.maxSurge` | `rendered` | `runtime.rollout.maxSurge` | The chart value of the same meaning |
 | `destination.clusterProvider` | `not-rendered` | - | Selects the cluster a release is installed into; not a chart value |
 | `destination.namespace` | `not-rendered` | - | The release namespace is an install argument, not a value, and the chart checks its prefix itself |
 | `modelCache.class` | `not-rendered` | - | The chart mounts an existing claim, the one class this binding version has |
@@ -269,7 +293,7 @@ metadata:
 output:
   helmValues:
     path: "values.generated.yaml"
-    sha256: "0c3cd4cc9f7462f1964d3832c6a7415bdb72dc78cccb5be8a83bd78101212cdd"
+    sha256: "49538bea8fae419d021f3d3bd8d28184fe328109b76a1eeef7f68cce4b9ac9eb"
 source:
   contract:
     apiVersion: "inferops.io/v1alpha1"
@@ -390,7 +414,7 @@ release is declared:
 
 | Release | Contract | Binding | Platform defaults | Revisions |
 |---|---|---|---|---|
-| `support-assistant-local-kind` | `contracts/workload/examples/valid/synchronous-llm-local.yaml` | `local-kind`, the only binding offered | The `api` block of `charts/inferops-llm/values.yaml` | Placeholders: `a` and `b`, each repeated 40 times |
+| `support-assistant-local-kind` | `contracts/workload/examples/valid/synchronous-llm-local.yaml` | `local-kind`, the only binding offered | The `api` block and `runtime.rollout` of `charts/inferops-llm/values.yaml` | Placeholders: `a` and `b`, each repeated 40 times |
 
 **The workflow.**
 
@@ -462,7 +486,7 @@ the declared inputs:
   compared, because there is nothing to compare with.
 
 **Platform defaults, measured.** The reference release reads its defaults from the
-chart's `api` block, as the generated-release suite does. A change to one of those values
+chart's `api` block and its `runtime.rollout` block, as the generated-release suite does. A change to one of those values
 is drift: the values file and `output.helmValues.sha256` move. `metadata.releaseId` does
 not move, because the platform-defaults revision is declared, not derived from the
 content. This is the [limitation measured above](#the-generated-release), now visible as

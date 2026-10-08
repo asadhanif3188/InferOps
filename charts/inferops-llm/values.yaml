@@ -169,6 +169,34 @@ api:
 runtime:
   replicaCount: 1
 
+  # The bounds the Deployment controller is given for a rollout of runtime pods.
+  # `maxSurge: 0` allows no runtime pod above `replicaCount`, so a rollout needs
+  # no room for one more runtime and one more loaded model than the tier runs.
+  # `maxUnavailable: 1` allows one existing runtime pod to be taken away before
+  # its replacement is available. That is the behaviour Kubernetes documents for
+  # these bounds. No rollout was run.
+  #
+  # The cost is stated, not hidden. A rollout under these bounds runs one runtime
+  # pod fewer than `replicaCount` until each replacement is Ready, and a
+  # replacement loads the model before it is Ready. At `replicaCount: 1` that is
+  # no Ready runtime pod for the whole of that load. At `replicaCount: 2` it is
+  # one. The bounds are the opposite of the API tier's on purpose: an API pod is
+  # small, and a runtime pod reserves the CPU and memory of a loaded model.
+  #
+  # Whole pods only, as for `api.rollout`. Until chart 0.5.0 the Kubernetes
+  # default applied: 25% for both bounds, which resolves to 0 unavailable and 1
+  # surge at one to three replicas. So this changes the effective bounds at the
+  # replica counts the repository renders: 0.4.0 added a pod first, and 0.5.0
+  # removes one first. The template refuses two zeros, because Kubernetes refuses
+  # a rolling update that may neither remove a pod nor add one.
+  #
+  # This is a rollout policy and not an availability result. It bounds what the
+  # Deployment controller does on a template change. It does not bound what
+  # happens when a pod is deleted, a node is lost, or a pod is evicted.
+  rollout:
+    maxUnavailable: 1
+    maxSurge: 0
+
   image:
     # Pinned by digest to the image ADR 0002 selected and the feasibility trial
     # actually ran. Kept identical to

@@ -29,7 +29,14 @@ type: application
 # still passes the schema and renders, because the new member has a default; no
 # install was run. The render is not the same one: 0.3.0 left the strategy to the
 # Kubernetes default, a percentage. No 0.4.0 release has been installed anywhere.
-version: 0.4.0
+#
+# 0.5.0 rather than 0.4.1: the runtime Deployment now states its rollout strategy,
+# and `runtime.rollout` joins the values contract. A values file written against
+# 0.4.0 still passes the schema and renders, because the new member has a default;
+# no install was run. The render is not the same one: 0.4.0 left the runtime's
+# strategy to the Kubernetes default, which may add a runtime pod above the replica
+# count. No 0.5.0 release has been installed anywhere.
+version: 0.5.0
 
 # What this chart installs. `platform-api-container-image` is `implemented` in the
 # ownership inventory: `deploy/api/Dockerfile` builds one and `V1-S3-011` loaded it

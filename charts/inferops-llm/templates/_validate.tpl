@@ -377,13 +377,18 @@ HTTP liveness probe on a loading endpoint wearing different clothes.
 {{- end -}}
 
 {{/*
-The API rollout bounds. Kubernetes refuses a rolling update whose two bounds are
-both zero: the controller could then neither remove a pod nor add one. The schema
-cannot say so, because it sees one value at a time. The refusal is here, so the
-render fails before a cluster is asked.
+The rollout bounds of each tier. Kubernetes refuses a rolling update whose two
+bounds are both zero: the controller could then neither remove a pod nor add one.
+The schema cannot say so, because it sees one value at a time. The refusal is
+here, so the render fails before a cluster is asked. The runtime's bounds are
+checked under both profiles: the mock profile renders no runtime, and a values
+file that is refused under one profile only would be read as accepted.
 */}}
-{{- if and (eq (int .Values.api.rollout.maxUnavailable) 0) (eq (int .Values.api.rollout.maxSurge) 0) -}}
-{{- fail "api.rollout.maxUnavailable and api.rollout.maxSurge must not both be 0. A rolling update that may neither remove a pod nor add one cannot proceed, and Kubernetes refuses the Deployment." -}}
+{{- range $component := list "api" "runtime" -}}
+{{- $rollout := (index $.Values $component).rollout -}}
+{{- if and (eq (int $rollout.maxUnavailable) 0) (eq (int $rollout.maxSurge) 0) -}}
+{{- fail (printf "%s.rollout.maxUnavailable and %s.rollout.maxSurge must not both be 0. A rolling update that may neither remove a pod nor add one cannot proceed, and Kubernetes refuses the Deployment." $component $component) -}}
+{{- end -}}
 {{- end -}}
 
 {{/* -- the identities, and the escape hatch that defeated the control ---- */}}

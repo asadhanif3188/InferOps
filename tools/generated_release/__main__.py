@@ -90,7 +90,9 @@ def _list() -> int:
         for path in declared.bindings:
             print(f"  binding                     {path}")
         print(f"  binding name                {declared.binding_name or '(selected)'}")
-        print(f"  platform defaults           {declared.platform_defaults} (api)")
+        print(
+            f"  platform defaults           {declared.platform_defaults} (api, runtime.rollout)"
+        )
         print(f"  platform-defaults revision  {declared.platform_defaults_revision}")
         print(f"  renderer revision           {declared.renderer_revision}")
     return 0

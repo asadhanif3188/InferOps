@@ -55,6 +55,8 @@ from inferops.domain.render import (
     GeneratedRelease,
     HelmValuesRenderer,
     PlatformDefaults,
+    RuntimeDefaults,
+    RuntimeRolloutDefaults,
     generate_release,
     staging_directory,
     write_release,
@@ -294,8 +296,24 @@ def _load_yaml(path: Path) -> Any:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
+def _rollout_bounds(path: Path, tier: str, block: object) -> tuple[Any, Any]:
+    """The two bounds of ``<tier>.rollout`` in a values file, as the file states them."""
+    if not isinstance(block, dict):
+        raise ValueError(f"{path.name} has no {tier}.rollout mapping")
+    try:
+        return block["maxUnavailable"], block["maxSurge"]
+    except KeyError as missing:
+        raise ValueError(
+            f"{path.name} sets no {tier}.rollout.{missing.args[0]}"
+        ) from None
+
+
 def _chart_api_defaults(path: Path, revision: str) -> PlatformDefaults:
-    """The chart's own API defaults, read from its values file, at ``revision``."""
+    """The chart's own platform defaults, read from its values file, at ``revision``.
+
+    The function keeps the name it had when the defaults were the API tier's alone.
+    It reads the runtime tier's rollout bounds too.
+    """
     document = _load_yaml(path)
     api = document.get("api") if isinstance(document, dict) else None
     if not isinstance(api, dict):
@@ -309,16 +327,26 @@ def _chart_api_defaults(path: Path, revision: str) -> PlatformDefaults:
         rollout = api["rollout"]
     except KeyError as missing:
         raise ValueError(f"{path.name} sets no api.{missing.args[0]}") from None
-    if not isinstance(rollout, dict):
-        raise ValueError(f"{path.name} has no api.rollout mapping")
-    try:
-        settings["rollout"] = ApiRolloutDefaults(
-            max_unavailable=rollout["maxUnavailable"],
-            max_surge=rollout["maxSurge"],
+    unavailable, surge = _rollout_bounds(path, "api", rollout)
+    settings["rollout"] = ApiRolloutDefaults(
+        max_unavailable=unavailable, max_surge=surge
+    )
+    runtime = document.get("runtime")
+    if not isinstance(runtime, dict):
+        raise ValueError(
+            f"{path.name} has no runtime mapping to read the defaults from"
         )
-    except KeyError as missing:
-        raise ValueError(f"{path.name} sets no api.rollout.{missing.args[0]}") from None
-    return PlatformDefaults("v1alpha1", GitRevision(revision), ApiDefaults(**settings))
+    if "rollout" not in runtime:
+        raise ValueError(f"{path.name} sets no runtime.rollout")
+    unavailable, surge = _rollout_bounds(path, "runtime", runtime["rollout"])
+    return PlatformDefaults(
+        "v1alpha1",
+        GitRevision(revision),
+        ApiDefaults(**settings),
+        RuntimeDefaults(
+            RuntimeRolloutDefaults(max_unavailable=unavailable, max_surge=surge)
+        ),
+    )
 
 
 def derive(declared: DeclaredRelease, root: Path = REPO_ROOT) -> GeneratedRelease:

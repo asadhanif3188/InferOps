@@ -17,6 +17,7 @@ objects and these fixtures from drifting apart; parsing one deploys nothing.
 | [`valid/synchronous-llm-local.yaml`](valid/synchronous-llm-local.yaml) | `synchronous-llm` | The real profile, pinned to the runtime digest and model revision that ADR 0002 selected |
 | [`valid/mock-llm-ci.yaml`](valid/mock-llm-ci.yaml) | `mock-llm` | The continuous-integration profile, structurally unable to present itself as real serving |
 | [`valid/synchronous-llm-secret-refs.yaml`](valid/synchronous-llm-secret-refs.yaml) | `synchronous-llm` | The secret-reference block. A shape example; the secrets it names do not exist |
+| [`valid/synchronous-llm-two-replicas.yaml`](valid/synchronous-llm-two-replicas.yaml) | `synchronous-llm` | Version `0.2.0` of the first fixture's workload, declaring a replica range of two and two. Every pin is the first fixture's. It is declared intent: no release with two runtime replicas has been installed |
 
 ## Two things the fixtures deliberately do not do
 

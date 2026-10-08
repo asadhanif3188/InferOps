@@ -139,6 +139,7 @@
       "additionalProperties": false,
       "required": [
         "replicaCount",
+        "rollout",
         "image",
         "command",
         "containerPort",
@@ -150,6 +151,9 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 16
+        },
+        "rollout": {
+          "$ref": "#/$defs/rollout"
         },
         "image": {
           "$ref": "#/$defs/image"

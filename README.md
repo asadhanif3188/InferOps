@@ -186,9 +186,12 @@ reported stays not reported. That collection ran on one provider on one day, in
 two runs and one aborted attempt, and what Argo CD reports is not a caller
 outcome. Since `V2-S4-001-PR1` the committed release declares two API replicas, and
 the chart states the API Deployment's rolling-update bounds, which the platform
-defaults own. That is configuration and not a result: the two-replica release was
-rendered and not installed, and it establishes nothing about what a caller observes
-when an API pod is lost.
+defaults own. Since `V2-S4-002-PR1` it also declares two serving runtime replicas,
+from a contract version that states them, and the chart states the runtime
+Deployment's rolling-update bounds: one pod unavailable and no pod above the replica
+count. That is configuration and not a result: the release was rendered and not
+installed, and it establishes nothing about what a caller observes when an API pod
+or a runtime pod is lost.
 
 ## Prerequisites
 

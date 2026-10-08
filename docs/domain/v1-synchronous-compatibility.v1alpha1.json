@@ -7,16 +7,17 @@
     "evidenceLevel": "C0",
     "amendedBy": [
       "V2-S2-004-PR1",
-      "V2-S4-001-PR1"
+      "V2-S4-001-PR1",
+      "V2-S4-002-PR1"
     ]
   },
   "target": {
     "description": "The V1 real synchronous workload's values: the V1 real values file, installed over the defaults of the inferops-llm chart at its current version. That version is not the one v1.0.0 released: see releasedChartVersion and chartChangeSinceRelease.",
     "release": "v1.0.0",
     "chart": "charts/inferops-llm",
-    "chartVersion": "0.4.0",
+    "chartVersion": "0.5.0",
     "releasedChartVersion": "0.3.0",
-    "chartChangeSinceRelease": "Chart 0.4.0 states the API Deployment's rolling-update strategy, with the bounds api.rollout holds: maxUnavailable 0 and maxSurge 1. Chart 0.3.0 stated no strategy, so the Kubernetes default applied. Rendered with the V1 real values file, 0.4.0 differs from 0.3.0 in the five lines of that strategy and in the chart version label.",
+    "chartChangeSinceRelease": "Chart 0.4.0 states the API Deployment's rolling-update strategy, with the bounds api.rollout holds: maxUnavailable 0 and maxSurge 1. Chart 0.5.0 states the runtime Deployment's, with the bounds runtime.rollout holds: maxUnavailable 1 and maxSurge 0. Chart 0.3.0 stated neither strategy, so the Kubernetes default applied to both Deployments. Rendered with the V1 real values file, 0.5.0 differs from 0.3.0 in the ten lines of the two strategies and in the chart version label.",
     "chartDefaults": "charts/inferops-llm/values.yaml",
     "valuesFile": "charts/inferops-llm/ci/real-values.yaml",
     "committedRender": "charts/inferops-llm/ci/rendered/real.expected.yaml"
@@ -299,6 +300,20 @@
       "v2": "generated",
       "contextValue": "resources.memory",
       "owner": "workload-intent"
+    },
+    {
+      "chartValue": "runtime.rollout.maxSurge",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "runtime.rollout.maxSurge",
+      "owner": "platform-defaults"
+    },
+    {
+      "chartValue": "runtime.rollout.maxUnavailable",
+      "v1": "chart-default",
+      "v2": "generated",
+      "contextValue": "runtime.rollout.maxUnavailable",
+      "owner": "platform-defaults"
     },
     {
       "chartValue": "security.secretRefs",

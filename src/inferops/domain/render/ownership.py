@@ -165,6 +165,8 @@ RENDER_FIELD_OWNERSHIP: Final[tuple[FieldOwnership, ...]] = (
     _d("api.maxOutputTokens", "api.maxOutputTokens"),
     _d("api.rollout.maxUnavailable", "api.rollout.maxUnavailable"),
     _d("api.rollout.maxSurge", "api.rollout.maxSurge"),
+    _d("runtime.rollout.maxUnavailable", "runtime.rollout.maxUnavailable"),
+    _d("runtime.rollout.maxSurge", "runtime.rollout.maxSurge"),
     # Environment binding: the facts one environment supplies.
     _b("destination.clusterProvider", "spec.destination.clusterProvider"),
     _b("destination.namespace", "spec.destination.namespace"),

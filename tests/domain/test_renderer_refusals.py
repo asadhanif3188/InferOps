@@ -19,7 +19,7 @@ Six things are asserted:
    sorted by category, field, and rule; the refusal's code is the first finding's;
    every refusal is non-retryable, carries the request context, and repeats no
    value read out of a document.
-4. **No value has two owners.** For each of the 46 render values and each layer
+4. **No value has two owners.** For each of the 48 render values and each layer
    that does not own it, an input of that layer supplying it is refused as an
    ownership conflict naming the owner - neither value is chosen - and an input
    supplying a value nobody owns is refused rather than dropped. No committed
@@ -73,6 +73,8 @@ from inferops.domain.render import (
     RenderFinding,
     RenderRefused,
     RuleOrigin,
+    RuntimeDefaults,
+    RuntimeRolloutDefaults,
     build_render_context,
     ownership_findings,
     prepare_render,
@@ -163,6 +165,7 @@ def binding_for(environment: str, name: str | None = None) -> EnvironmentBinding
 def defaults(version: str = DEFAULTS_VERSION) -> PlatformDefaults:
     """The chart's own defaults, read at a placeholder revision."""
     chart = load(CHART_VALUES)["api"]
+    runtime = load(CHART_VALUES)["runtime"]["rollout"]
     return PlatformDefaults(
         version,
         GitRevision(DEFAULTS_REVISION),
@@ -174,6 +177,12 @@ def defaults(version: str = DEFAULTS_VERSION) -> PlatformDefaults:
                 max_unavailable=chart["rollout"]["maxUnavailable"],
                 max_surge=chart["rollout"]["maxSurge"],
             ),
+        ),
+        RuntimeDefaults(
+            RuntimeRolloutDefaults(
+                max_unavailable=runtime["maxUnavailable"],
+                max_surge=runtime["maxSurge"],
+            )
         ),
     )
 
@@ -832,7 +841,7 @@ def test_a_value_supplied_by_a_layer_that_does_not_own_it_is_refused(
 
 
 def test_the_conflict_matrix_covers_every_value_from_both_other_layers() -> None:
-    assert len(CROSS) == 2 * len(RENDER_FIELD_OWNERSHIP) == 92
+    assert len(CROSS) == 2 * len(RENDER_FIELD_OWNERSHIP) == 96
 
 
 SHARED_PATHS = {"metadata.name", "metadata.owner", "spec.environment"}
@@ -976,7 +985,7 @@ def every_valid_input() -> list[tuple[WorkloadContract, EnvironmentBinding]]:
 def test_no_committed_valid_input_reaches_the_ownership_check() -> None:
     """Every pairing of a valid contract and a binding serving it: no finding."""
     pairs = every_valid_input()
-    assert len(pairs) == 4
+    assert len(pairs) == 6
     for workload, entry in pairs:
         owners = {
             Layer.WORKLOAD_INTENT: workload.as_document(),
@@ -1184,11 +1193,11 @@ def test_the_published_reference_matrix_is_the_reference_context() -> None:
 def test_the_reference_matrix_has_every_value_and_its_absences_are_optional() -> None:
     context = reference_context()
     rows = published_table("## Field-ownership matrix for the reference workload")
-    assert len(rows) == len(RENDER_FIELD_OWNERSHIP) == 46
+    assert len(rows) == len(RENDER_FIELD_OWNERSHIP) == 48
     absent = [row for row in RENDER_FIELD_OWNERSHIP if row.name not in context.names()]
     assert all(not row.required for row in absent)
     assert len(absent) == 7
-    assert len(context.names()) == 39
+    assert len(context.names()) == 41
 
 
 def test_the_reference_matrix_names_the_reference_inputs() -> None:

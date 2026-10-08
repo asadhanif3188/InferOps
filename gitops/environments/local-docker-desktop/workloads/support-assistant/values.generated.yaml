@@ -1,4 +1,4 @@
-# Generated Helm values for the inferops-llm chart, version 0.4.0.
+# Generated Helm values for the inferops-llm chart, version 0.5.0.
 # Do not edit by hand: change the WorkloadContract, the EnvironmentBinding, or
 # the platform defaults they were rendered from, and render them again.
 api:
@@ -27,17 +27,20 @@ ownership:
   owner: "team-platform-demo"
   tenant: "demo"
   workloadId: "support-assistant"
-  workloadVersion: "0.1.0"
+  workloadVersion: "0.2.0"
 profile: "real"
 runtime:
   image:
     digest: "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
     repository: "ghcr.io/ggml-org/llama.cpp"
-  replicaCount: 1
+  replicaCount: 2
   resources:
     limits:
       cpu: "6"
       memory: "3Gi"
+  rollout:
+    maxSurge: 0
+    maxUnavailable: 1
 security:
   secretRefs: []
 telemetry:

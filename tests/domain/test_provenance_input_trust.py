@@ -81,6 +81,8 @@ from inferops.domain.render import (
     RenderContext,
     RendererSupport,
     RenderField,
+    RuntimeDefaults,
+    RuntimeRolloutDefaults,
     build_render_context,
     prepare_render,
     provenance_field,
@@ -181,6 +183,7 @@ def binding_serving(
 
 def platform_defaults() -> PlatformDefaults:
     api = load(CHART_VALUES)["api"]
+    runtime = load(CHART_VALUES)["runtime"]["rollout"]
     return PlatformDefaults(
         "v1alpha1",
         GitRevision("b" * 40),
@@ -191,6 +194,9 @@ def platform_defaults() -> PlatformDefaults:
             ApiRolloutDefaults(
                 api["rollout"]["maxUnavailable"], api["rollout"]["maxSurge"]
             ),
+        ),
+        RuntimeDefaults(
+            RuntimeRolloutDefaults(runtime["maxUnavailable"], runtime["maxSurge"])
         ),
     )
 

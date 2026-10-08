@@ -6,7 +6,7 @@ metadata:
   name: inferops-inferops-llm-default-deny
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -36,7 +36,7 @@ metadata:
   name: inferops-inferops-llm-api
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -89,7 +89,7 @@ metadata:
   name: inferops-inferops-llm-release-test
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -141,7 +141,7 @@ metadata:
   name: inferops-inferops-llm-api
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -164,7 +164,7 @@ metadata:
   name: inferops-inferops-llm-configuration
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -199,7 +199,7 @@ metadata:
   name: inferops-inferops-llm-telemetry-scrape
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -286,7 +286,7 @@ metadata:
   name: inferops-inferops-llm
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -319,7 +319,7 @@ metadata:
   name: inferops-inferops-llm
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -349,7 +349,7 @@ spec:
   template:
     metadata:
       labels:
-        helm.sh/chart: inferops-llm-0.4.0
+        helm.sh/chart: inferops-llm-0.5.0
         app.kubernetes.io/name: inferops-llm
         app.kubernetes.io/instance: inferops
         app.kubernetes.io/version: "0.1.0"
@@ -445,7 +445,7 @@ metadata:
   name: inferops-inferops-llm-connection-test
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.4.0
+    helm.sh/chart: inferops-llm-0.5.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
