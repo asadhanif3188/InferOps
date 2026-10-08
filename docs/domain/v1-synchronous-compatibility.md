@@ -51,7 +51,7 @@ installed, and nothing here establishes that a generated release serves a reques
 > both generated and both owned by the platform defaults. V1 set neither. The reference
 > contract on this page still declares one runtime replica. The two-replica version of
 > the workload is another contract document, and it is not compared here. The rows,
-> counts, and prose below are the amended state. Nothing was installed with chart `0.5.0`.
+> counts, and prose below are the amended state. Nothing was installed with chart `0.5.0` by that change.
 > **The runtime's bounds are not the bounds V1 ran under.** The one-replica workload on
 > this page now renders `maxUnavailable` 1 and `maxSurge` 0 for the runtime. With chart
 > `0.3.0` the Kubernetes default applied, which Kubernetes documents as 0 and 1 at one

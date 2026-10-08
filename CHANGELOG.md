@@ -10,6 +10,55 @@ from `1.0.0`.
 
 ### Added
 
+- **What two serving runtime replicas read from the model cache can be observed
+  and recorded. The storage design is not changed.** `V2-S4-002-PR2` adds
+  `tools/runtime_model_cache`, static tests, and one page. The V1 storage boundary
+  stays as it is: Terraform owns the one claim, the acquisition hook is the one
+  writer, and each runtime replica mounts the claim read only at the
+  repository-and-revision subdirectory and verifies the pinned artifact before it
+  serves. No chart value, rendered byte, contract field, binding, or Terraform
+  file is edited. The chart README, one template comment, and the comments of
+  two fixtures are.
+  **The tool reads files and contacts no cluster.** A run driver writes a bounded
+  set of cluster reads into one directory. `python -m tools.runtime_model_cache
+  DIRECTORY` prints one record from it: the model identity each replica was
+  given, how each replica mounts the claim, what each verification container
+  reported, and the state of 17 rules. The expected identity is read from the
+  committed desired-state release and compared with the model source record and
+  the runtime package record. A read that was not made is `not-observed` and is
+  never read as agreement, and one pod is never compared with itself. The result
+  is `PASSED`, `FAILED`, `INCONCLUSIVE`, or `REFUSED`. **The chart suite gains two
+  checks on the desired-state render**: the one runtime pod template carries each
+  member of that identity, with no environment variable and no host path; and
+  the three figures of the V1 multi-replica capacity preflight are the sums over
+  this release's three Deployments plus one pod with the resources of the V1
+  request driver. **No capacity gate for the V2 topology is added.** A run uses
+  the V1 preflight as it is, and a refusal ends the run before the release is
+  applied. **One run observed two runtime replicas on the one claim, on the
+  `docker-desktop` provider on 2026-10-08, at evidence level C2.** The V1
+  preflight passed. Argo CD applied
+  the desired-state release from `main`, and two runtime pods became Ready on
+  the one node. Each mounted the one Terraform-owned claim read only at the
+  revision directory, each pod's init container verified the pinned SHA-256,
+  both runtime containers saw one file, each runtime listed the same model,
+  and each answered one completion. All 17 rules are `held`, and the result is
+  `PASSED`. The run, its collection, its transcript, and its driver are
+  committed, and `--check` builds the record again from the collection.
+  **Both API pods were restarted once by their startup probe while the two
+  runtime pods verified the artifact.** No rule reads an API pod; the
+  validation record states it, and its cause was not measured. **The tool was
+  corrected after the run.** An independent review made it give `held` for
+  evidence that did not show it: a mount root compared after it was cut at 240
+  characters, an expected identity taken from the collection without a check
+  of its shape, two entries of one pod counted as two replicas, and twelve
+  more. None was the case in the run. The collection was not edited, and the
+  record was built again from it with the same result. **Both runtime pods ran on one
+  node, so the run establishes nothing about the loss of that node.** It also
+  establishes no rollout, no caller outcome when a runtime pod is unavailable,
+  and no capacity gate. No claim is registered. See
+  [the observation page](docs/environment/runtime-model-cache-observation.md)
+  and
+  [the validation record](docs/proof/environment/v2-s4-002-pr2-validation.md).
 - **The serving runtime tier's reference topology is declared: two replicas and a
   stated rollout. It is configuration. Nothing was installed.** `V2-S4-002-PR1`
   makes three changes that belong together. **The chart states the runtime

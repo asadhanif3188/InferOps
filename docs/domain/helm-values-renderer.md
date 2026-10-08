@@ -130,12 +130,14 @@ runtime's two rollout bounds are the platform defaults', as the API's are: `maxU
 the replica count during a rollout. A hand-written values file admitted beside the
 generated values may not set the count or either bound.
 
-The four rollout values and the two replica counts are configuration. No release with two
-replicas of either tier has been installed, and nothing here establishes what a caller
-observes while a pod is replaced, deleted, or evicted. A Deployment has one pod template,
+The four rollout values and the two replica counts are configuration. Nothing here
+establishes what a caller observes while a pod is replaced, deleted, or evicted. A Deployment has one pod template,
 so the render gives every replica the same image digest, model revision, and artifact
 digest. That is read from the render. Whether one model cache claim serves two runtime
-pods on a cluster is not established here.
+pods on a cluster is not established here. One run installed the release with two
+replicas of each tier on one provider, on 2026-10-08, and observed two runtime pods on
+one node that read one verified artifact from the claim:
+[the observation](../environment/runtime-model-cache-observation.md).
 
 ## Where every value goes
 

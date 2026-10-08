@@ -42,9 +42,10 @@ eviction.
 This object holds one pod template, whatever the replica count. The template
 mounts the claim read only, verifies the pinned artifact in an init container,
 and states the three probes. The Service selects pods by the three selector
-labels and names no replica. No release with two runtime replicas has been
-installed, so whether one claim serves two runtime pods on a cluster is not
-established here.
+labels and names no replica. A template does not establish what a pod mounts.
+One run on docker-desktop, on 2026-10-08, observed two runtime pods on one node
+that each mounted the one claim read only and verified the artifact:
+docs/environment/runtime-model-cache-observation.md.
 */}}
 apiVersion: apps/v1
 kind: Deployment

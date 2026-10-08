@@ -5,9 +5,10 @@
 # so a drift between this fixture and the environment it describes fails the build.
 #
 # The replica count is this binding's own decision: the V2 reference topology runs
-# two API replicas. The V1 release ran one, and no release with two API replicas
-# has been installed from this binding. A replica count is configuration. It does
-# not establish that a caller is served while one API pod is lost.
+# two API replicas. The V1 release ran one. One run on 2026-10-08 applied a release
+# with two API replicas from this binding, on one node. A replica count is
+# configuration. It does not establish that a caller is served while one API pod
+# is lost.
 #
 # This is a contract example. The platform domain parses it, and one generated
 # release is derived from it. The GitOps destination below is the directory that

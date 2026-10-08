@@ -69,6 +69,7 @@ from typing import Any
 import pytest
 import yaml
 
+from tools.runtime_model_cache import expected_identity
 from tools.workload_policy import check_documents
 
 pytestmark = pytest.mark.architecture
@@ -2584,8 +2585,9 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     rendered the same.
 
     This renders files. No cluster was asked, and no release with two replicas
-    of either tier has been installed, so this establishes the rendered topology
-    and not what a caller observes when a pod is unavailable.
+    of either tier was installed by the change that added this test. One later
+    run applied it once, on one provider. This establishes the rendered
+    topology and not what a caller observes when a pod is unavailable.
     """
     desired = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
     fixture = _template(GENERATED_VALUES, HAND_WRITTEN_VALUES)
@@ -2636,6 +2638,164 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     lint = _lint(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
     assert lint.returncode == 0, lint.stdout + lint.stderr
     assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
+
+
+def _desired_state_runtime() -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """The runtime Deployment of the desired-state render, and every document."""
+    rendered = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    documents = [d for d in yaml.safe_load_all(rendered) if isinstance(d, dict)]
+    [runtime] = [
+        d
+        for d in documents
+        if d["kind"] == "Deployment"
+        and d["metadata"]["labels"]["app.kubernetes.io/component"] == "serving-runtime"
+    ]
+    return runtime, documents
+
+
+def test_every_runtime_replica_of_the_desired_state_release_is_given_one_model() -> (
+    None
+):
+    """The identity the observation tool expects, read back out of the render.
+
+    `tools.runtime_model_cache.expected_identity` reads the generated values, the
+    chart's default mount path, and restates the chart's rule for the directory
+    inside the claim. This holds each member of it to the one pod template the
+    two-replica release renders: the image, the model argument, the claim, the
+    two mounts, and the script of the verification container. The template names
+    the model in no environment variable, and it holds one claim and no host
+    path, so the template gives a replica no second place to read a model from.
+
+    This reads a render. It does not establish what a pod mounts or loads.
+    """
+    expected = expected_identity()
+    runtime, documents = _desired_state_runtime()
+    assert runtime["spec"]["replicas"] == expected["runtimeReplicas"] == 2
+
+    pod = runtime["spec"]["template"]["spec"]
+    [container] = pod["containers"]
+    [verify] = pod["initContainers"]
+    assert container["image"] == expected["runtimeImage"]["reference"]
+    arguments = container["args"]
+    assert arguments.count("--model") == 1
+    assert arguments[arguments.index("--model") + 1] == expected["containerPath"]
+    assert arguments.count("--alias") == 1
+    assert "env" not in container
+    assert "envFrom" not in container
+    assert "env" not in verify
+    assert "envFrom" not in verify
+
+    claims = [v for v in pod["volumes"] if "persistentVolumeClaim" in v]
+    assert claims == [
+        {
+            "name": "model-cache",
+            "persistentVolumeClaim": {
+                "claimName": expected["claimName"],
+                "readOnly": True,
+            },
+        }
+    ]
+    assert not [v for v in pod["volumes"] if "hostPath" in v]
+    mount = {
+        "name": "model-cache",
+        "mountPath": expected["mountPath"],
+        "readOnly": True,
+        "subPath": expected["cacheSubPath"],
+    }
+    for holder in (container, verify):
+        assert [m for m in holder["volumeMounts"] if m["name"] == "model-cache"] == [
+            mount
+        ], holder["name"]
+
+    script = verify["command"][-1]
+    assert expected["model"]["sha256"].removeprefix("sha256:") in script
+    assert str(expected["model"]["sizeBytes"]) in script
+    assert expected["containerPath"] in script
+    # The three script lines that the tool requires of a live pod, and the line
+    # it looks for in a verification log, are the chart's, character for
+    # character.
+    lines = [line.strip() for line in script.splitlines()]
+    digest = expected["model"]["sha256"].removeprefix("sha256:")
+    assert f"artifact='{expected['containerPath']}'" in lines
+    assert f'if [ "$present" != "{expected["model"]["sizeBytes"]}" ]; then' in lines
+    assert f'echo "{digest}  $artifact" | sha256sum -c -' in lines
+    assert 'echo "model artifact verified: byte count and SHA-256"' in lines
+
+    # The release creates no claim, and its one writable mount is the hook's.
+    assert not [d for d in documents if d["kind"] == "PersistentVolumeClaim"]
+    writable = [
+        label
+        for label, spec in _pod_specs(documents)
+        for volume in spec.get("volumes") or []
+        if "persistentVolumeClaim" in volume
+        and volume["persistentVolumeClaim"].get("readOnly") is not True
+    ]
+    assert len(writable) == 1
+    assert "model-acquisition" in writable[0].lower()
+
+
+def _bytes(quantity: str) -> int:
+    units = {"Ki": 1024, "Mi": 1024**2, "Gi": 1024**3}
+    return int(quantity[:-2]) * units[quantity[-2:]]
+
+
+def _millicores(quantity: str) -> int:
+    return int(quantity[:-1]) if quantity.endswith("m") else int(quantity) * 1000
+
+
+def test_the_v1_capacity_preflight_asks_for_the_desired_state_release_and_one_pod() -> (
+    None
+):
+    """What the V1 multi-replica preflight requires, beside this release's pods.
+
+    The preflight's three figures are in the V1 certification descriptor. Summed
+    over the three Deployments of the desired-state render, with each pod counted
+    as the larger of its containers together and its largest init container, the
+    release requests 2,300 millicores and 4,480 MiB, and its memory limits sum to
+    7,680 MiB. The descriptor's figures are larger by exactly one pod with the
+    resources of the chart's release test, which is the V1 request driver. So a
+    host that the preflight accepts has the uncommitted requests and limits this
+    release's Deployments state, and room for one small pod more.
+
+    The acquisition hook's pod is in neither sum. This compares committed
+    figures. It measures no host, and it is not a capacity gate for this release.
+    """
+    _runtime, documents = _desired_state_runtime()
+    cpu = memory = peak = 0
+    deployments = [d for d in documents if d["kind"] == "Deployment"]
+    assert len(deployments) == 3
+    for deployment in deployments:
+        pod = deployment["spec"]["template"]["spec"]
+        resources = [c["resources"] for c in pod["containers"]]
+        pod_cpu = sum(_millicores(str(r["requests"]["cpu"])) for r in resources)
+        pod_memory = sum(_bytes(r["requests"]["memory"]) for r in resources)
+        pod_peak = sum(_bytes(r["limits"]["memory"]) for r in resources)
+        for init in pod.get("initContainers") or []:
+            requests = init["resources"]["requests"]
+            pod_cpu = max(pod_cpu, _millicores(str(requests["cpu"])))
+            pod_memory = max(pod_memory, _bytes(requests["memory"]))
+            pod_peak = max(pod_peak, _bytes(init["resources"]["limits"]["memory"]))
+        replicas = deployment["spec"]["replicas"]
+        cpu += replicas * pod_cpu
+        memory += replicas * pod_memory
+        peak += replicas * pod_peak
+    assert (cpu, memory, peak) == (2300, 4480 * 1024**2, 7680 * 1024**2)
+
+    capacity = _load_json(
+        REPO_ROOT
+        / "deploy"
+        / "serving"
+        / "certification"
+        / "k8s-multi-replica-inference.v1.json"
+    )["capacity"]
+    driver = VALUES["tests"]["resources"]
+    assert capacity["requestedCpuMillis"] - cpu == _millicores(
+        str(driver["requests"]["cpu"])
+    )
+    assert capacity["requestedMemoryBytes"] - memory == _bytes(
+        driver["requests"]["memory"]
+    )
+    assert capacity["peakMemoryBytes"] - peak == _bytes(driver["limits"]["memory"])
 
 
 def test_the_chart_asks_nothing_beyond_the_generated_values_that_a_contract_owns() -> (

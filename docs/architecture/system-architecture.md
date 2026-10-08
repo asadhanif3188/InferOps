@@ -964,6 +964,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | Where the desired state of a workload is kept, and what that directory may hold | [ADR 0018](decisions/ADR-0018-git-desired-state-layout.md), and [the Git desired state](../environment/git-desired-state.md) |
 | Which release a Git commit holds, starting from the commit that Argo CD reports | [Desired-state provenance](../environment/desired-state-provenance.md) |
 | What Argo CD reported about the Application, what it did not report, and when a manual change is permitted | [Reconciliation evidence](../environment/reconciliation-evidence.md) |
+| What two serving runtime replicas read from the one model cache claim, and the one run that observed it | [The model cache under two runtime replicas](../environment/runtime-model-cache-observation.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |

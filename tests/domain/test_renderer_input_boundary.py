@@ -1571,12 +1571,19 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
 #:   ``gitops_desired_state`` to compare a sample with a declared release, which
 #:   is why it is listed. The procedure that collects the directory does not call
 #:   it.
+#: - ``runtime_model_cache`` reads the directory that an observation of the
+#:   serving runtime replicas wrote and prints one evidence record. It writes
+#:   nothing and reads no cluster. It does not import the render package: it
+#:   names ``generated_release`` and ``gitops_desired_state`` to read the
+#:   identity that the declared desired-state release gives each replica, which
+#:   is why it is listed. No procedure calls it.
 REPOSITORY_CHECKS: tuple[str, ...] = (
     "desired_state_provenance",
     "experiment_e01",
     "generated_release",
     "gitops_desired_state",
     "reconciliation_evidence",
+    "runtime_model_cache",
 )
 
 #: The repository checks that import the render package themselves.

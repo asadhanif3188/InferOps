@@ -1,0 +1,13 @@
+{
+  "cluster": {
+    "allocatableCpuMillis": 12000,
+    "allocatableMemoryBytes": 10430685184,
+    "committedCpuMillis": 950,
+    "committedMemoryBytes": 304087040,
+    "schedulableNodes": 1
+  },
+  "engine": {
+    "cpus": 12,
+    "memoryBytes": 10430685184
+  }
+}

@@ -491,6 +491,20 @@ the release path.**
 [The reconciliation evidence document](docs/environment/reconciliation-evidence.md)
 states the record and the boundary for a manual change.
 
+**What the runtime replicas read from the model cache is recorded by a tool that reads
+files.** A run driver writes a collection directory, and the tool prints one record:
+
+```sh
+uv run --locked python -m tools.runtime_model_cache --expected
+uv run --locked python -m tools.runtime_model_cache DIRECTORY
+uv run --locked python -m tools.runtime_model_cache --check
+```
+
+A committed run holds its collection, and `--check` builds its record again. Do not
+edit a committed collection. If the tool changes, build the record again and say so.
+[The observation page](docs/environment/runtime-model-cache-observation.md) states the
+rules and what a record does not establish.
+
 ### Experiment freeze records
 
 An experiment family is frozen before its first result-bearing run, in a record under

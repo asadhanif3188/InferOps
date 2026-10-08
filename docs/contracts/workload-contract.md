@@ -163,8 +163,9 @@ carries exactly the runtime digest and model revision that
 and a test fails if the two ever disagree.
 [A second fixture](../../contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml)
 is version `0.2.0` of the same workload. It declares a replica range of two and two and
-carries the same pins, and a test compares the two documents. It is declared intent: no
-release with two serving runtime replicas has been installed.
+carries the same pins, and a test compares the two documents. It is declared intent. One
+run installed a release with two serving runtime replicas, on one provider on
+2026-10-08: [the observation](../environment/runtime-model-cache-observation.md).
 
 ## Secret references
 
