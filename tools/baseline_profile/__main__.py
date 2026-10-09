@@ -8,9 +8,12 @@
 checkout. The suite uses it to plant defects without touching the committed files.
 
 ``--record`` prints one JSON record: the differences between the baseline and the
-target in each layer, the state of each rule, and each finding. **Exit status 0
+target in each layer, the install inputs and the readiness inputs of each side,
+each unresolved input, the state of each rule, and each finding. **Exit status 0
 says that the result is COMPARABLE.** Exit status 5 says that the result is
-REFUSED, and the record states each rule that refuses.
+REFUSED, and the record states each rule that refuses. COMPARABLE is a statement
+about committed inputs. It is not eligibility for an experiment, and every
+record states the eligibility as not-established.
 
 ``--check`` verifies the committed profile: that the comparison is COMPARABLE,
 that the committed baseline release is byte for byte what its declared sources
@@ -19,7 +22,8 @@ is 0 when no rule is broken and 1 when one is. ``--check`` writes nothing and
 repairs nothing.
 
 ``--write`` is the only mode that touches a file. It writes the baseline release
-and the comparison record again. It refuses to write when the comparison is
+and the comparison record again. It does not write the baseline's install
+description, which a person writes. It refuses to write when the comparison is
 REFUSED. Read the ``--check`` output first, because a write replaces a hand edit
 without asking.
 
@@ -41,6 +45,7 @@ from tools.generated_release import RegenerationRefused
 from .core import (
     CHECK_RULES,
     COMPARABLE,
+    INSTALL_PATH,
     PROFILE_DIRECTORY,
     RECORD_PATH,
     REFUSED_EXIT,
@@ -67,6 +72,7 @@ def _check(root: Path) -> int:
     if not findings:
         print(f"OK       {PROFILE_DIRECTORY}")
         print(f"OK       {RECORD_PATH}")
+        print(f"OK       {INSTALL_PATH}")
         print(
             "OK       the baseline differs from the target only at the permitted paths"
         )

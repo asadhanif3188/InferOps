@@ -527,9 +527,9 @@ the units, and what a record does not establish.
 
 **The single-runtime baseline profile is held to the desired-state release.** The
 baseline is two API replicas and one runtime replica, derived from the target's own
-declaration with the contract replaced. A tool compares the two releases in four layers
-and refuses a difference that is not the runtime replica count or an identity that
-follows it:
+declaration with the contract replaced. A tool compares the two sides in six layers
+and refuses a difference that is not the runtime replica count, an identity that
+follows it, or the generated values file that each side reads:
 
 ```sh
 uv run --locked python -m tools.baseline_profile --check
@@ -542,13 +542,24 @@ uv run --locked python -m tools.baseline_profile --write
 - **Stale.** A change to the binding, to the platform defaults, or to a revision of the
   desired-state release moves both sides alike. So does a change to a contract at a
   permitted path. The findings are `baseline-release-drifted` and
-  `baseline-record-stale`. Read them, then run `--write` in the same change.
+  `baseline-record-stale`. Read them, then run `--write` in the same change. A change
+  to a chart file that a render reads moves the chart digest of both sides, and it is
+  `baseline-record-stale` alone.
 - **Refused.** A change to one contract of the reference workload at any other path,
   such as a resource ceiling, makes the two sides differ. `--write` refuses. The
   baseline is rendered from version `0.1.0` of the workload, so it can follow the
   target only while every other member of the two contracts stays equal. Give the
   other contract the same change, or decide another baseline contract. That is a
   decision, and the first experiment's freeze record pins the `0.1.0` contract.
+- **Refused, for an install input.** The target states its chart, release name,
+  namespace, and hand-written values in its Application. The baseline states them in
+  `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.install.v1alpha1.yaml`,
+  which a person writes. A change to one of the two alone is
+  `baseline-install-differs`. Make the same change in the other file, in the same
+  change, then run `--write`. The tool reads each description whole: a member that it
+  does not read, such as a Helm parameter in the Application, is
+  `baseline-install-inputs-refused`, and the remedy is a change to the tool and its
+  page. Do not state the runtime replica count by hand in either file.
 
 A comment in a contract is not compared. Do not add a permitted path to obtain
 `COMPARABLE`: a new permitted path is a second variable of the comparison.

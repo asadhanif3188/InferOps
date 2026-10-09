@@ -91,6 +91,17 @@ admission check of
 [the renderer document](../domain/helm-values-renderer.md#hand-written-values)
 over them.
 
+**The single-runtime baseline restates these inputs.** Since `V2-S4-005-PR1`,
+[the baseline profile](single-runtime-baseline-profile.md) states a chart, a release
+name, a namespace, and hand-written values in its own install description, and a
+check compares them with the ones that this manifest states. A change to one of them
+here is made in that description too, in the same change, or
+`python -m tools.baseline_profile --check` refuses. The check reads the members of
+`spec`, `spec.source`, `spec.source.helm`, and `spec.destination` that this manifest
+states today. A new member there, such as a Helm parameter, refuses the comparison
+until the tool reads it. No procedure reads the baseline's description, and it
+installs nothing.
+
 **The API image digest is not in Git.** No InferOps API image is published. The
 digest names an image that the operator built and loaded into the node, and
 `scripts/environment/api-image.sh digest` prints it. Without the parameter the

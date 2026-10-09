@@ -202,9 +202,16 @@ a pod starts. Since `V2-S4-003-PR2` a
 [single-runtime baseline profile](docs/environment/single-runtime-baseline-profile.md)
 exists beside that release: two API replicas and one runtime replica, rendered from
 the same binding, platform defaults, and revisions. A check compares the two
-contracts, the two generated values files, and the two release documents, and it
-refuses a difference at any path but twelve stated ones: the runtime replica count,
-the workload version and the digests that follow it, and the contract's description.
+contracts, the two generated values files, the two release documents, the install
+inputs that each side states, and the values that the chart receives on each side.
+It refuses a difference at any path but fifteen stated ones: the runtime replica
+count, the workload version and the digests that follow it, the contract's
+description, and the generated values file that each side reads. Since
+`V2-S4-005-PR1` a probe setting, a hand-written value, a release name, a namespace,
+or a chart that one side states alone is refused, and so is a readiness input that
+a side does not state. A comparable record is a statement about committed files. It
+is not eligibility for an experiment: no committed file states the API image digest,
+and no caller profile exists.
 The profile is an experiment baseline and not a product tier. No Application reads
 it, and no run installed it. Since `V2-S4-004-PR1` a script and a tool capture the
 [Ready endpoint state](docs/environment/service-endpoint-state.md) of the API Service

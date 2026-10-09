@@ -2727,7 +2727,111 @@ def _objects(render: str) -> dict[tuple[str, str], dict[str, Any]]:
     return objects
 
 
-def test_the_baseline_profile_renders_the_target_with_one_runtime_replica() -> None:
+BASELINE_INSTALL = (
+    REPO_ROOT
+    / "tests"
+    / "domain"
+    / "fixtures"
+    / "experiment-profiles"
+    / "single-runtime-baseline.install.v1alpha1.yaml"
+)
+TARGET_APPLICATION = (
+    REPO_ROOT / "infra" / "argocd" / "local-docker-desktop-support-assistant.yaml"
+)
+
+
+def _described_sides() -> dict[str, dict[str, Any]]:
+    """The install inputs of each side, read from the file that states them.
+
+    The baseline states them in its install description. The target states them
+    in its Application. This reads both files without the comparison tool.
+    """
+    baseline = yaml.safe_load(BASELINE_INSTALL.read_text(encoding="utf-8"))
+    spec = yaml.safe_load(TARGET_APPLICATION.read_text(encoding="utf-8"))["spec"]
+    helm = spec["source"]["helm"]
+    [target_values] = helm["valueFiles"]
+    return {
+        "baseline": {
+            "release": baseline["release"]["name"],
+            "namespace": baseline["release"]["namespace"],
+            "generated": REPO_ROOT / baseline["valuesFile"],
+            "handWritten": baseline["handWrittenValues"],
+        },
+        "target": {
+            "release": helm["releaseName"],
+            "namespace": spec["destination"]["namespace"],
+            "generated": REPO_ROOT / target_values.removeprefix("/"),
+            "handWritten": helm["valuesObject"],
+        },
+    }
+
+
+def _render_described(side: dict[str, Any], directory: Path, name: str) -> str:
+    """One side, rendered with the install inputs that its description states.
+
+    No committed file states the API image digest, so both sides are given the
+    placeholder digest of the reference fixture as one Helm parameter.
+    """
+    hand_written = directory / f"{name}.hand-written.yaml"
+    hand_written.write_text(yaml.safe_dump(side["handWritten"]), encoding="utf-8")
+    fixture = yaml.safe_load(HAND_WRITTEN_VALUES.read_text(encoding="utf-8"))
+    result = _helm(
+        "template",
+        side["release"],
+        str(CHART_DIR),
+        "--namespace",
+        side["namespace"],
+        "--values",
+        str(side["generated"]),
+        "--values",
+        str(hand_written),
+        "--set",
+        f"api.image.digest={fixture['api']['image']['digest']}",
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.replace("\r\n", "\n")
+
+
+def _beyond_the_permitted(baseline: str, target: str) -> list[tuple[str, str]]:
+    """Each object that two renders differ in beyond the stated differences.
+
+    The stated differences are the workload version in the ConfigMap, the
+    configuration checksum annotation of both pod templates, the replica count
+    of the runtime Deployment, and the runtime tier's budget.
+    """
+    ours = _objects(_without_budgets(baseline)[0])
+    theirs = _objects(_without_budgets(target)[0])
+    for side in (ours, theirs):
+        for key, document in side.items():
+            if key[0] == "ConfigMap":
+                document.get("data", {}).pop("INFEROPS_WORKLOAD_VERSION", None)
+            if key[0] != "Deployment":
+                continue
+            document["spec"]["template"]["metadata"]["annotations"].pop(
+                "inferops.io/configuration-checksum"
+            )
+            component = document["metadata"]["labels"]["app.kubernetes.io/component"]
+            if component == "serving-runtime":
+                document["spec"].pop("replicas")
+    return sorted(
+        key for key in ours.keys() | theirs.keys() if ours.get(key) != theirs.get(key)
+    )
+
+
+def _container_of(render: str, component: str) -> dict[str, Any]:
+    [deployment] = [
+        document
+        for (kind, _name), document in _objects(render).items()
+        if kind == "Deployment"
+        and document["metadata"]["labels"]["app.kubernetes.io/component"] == component
+    ]
+    [container] = deployment["spec"]["template"]["spec"]["containers"]
+    return container
+
+
+def test_the_baseline_profile_renders_the_target_with_one_runtime_replica(
+    tmp_path: Path,
+) -> None:
     """The single-runtime baseline, as the chart reads it, beside the target.
 
     The two generated files differ in two values: the runtime replica count and
@@ -2743,16 +2847,23 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica() -> N
     each resource request and limit, each image, the model mount, both rollout
     strategies, and both Services are rendered the same.
 
-    Both sides are rendered with one hand-written values file, the reference
-    fixture. The baseline declares no hand-written values of its own, so this
-    does not establish that a run gives both sides equal ones.
+    Each side is rendered with the hand-written values, the release name, and
+    the namespace that its own install description states. The baseline states
+    them in its install description, and the target in its Application. Both
+    sides are given one placeholder API image digest, because no committed file
+    states that digest. This does not establish that a run installs either side
+    with the described inputs.
 
     This renders files. No cluster was asked, and no run installed the
     baseline. This establishes the rendered difference and not what a caller
     observes when a runtime pod is unavailable.
     """
-    target_render = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
-    baseline_render = _template(BASELINE_PROFILE_VALUES, HAND_WRITTEN_VALUES)
+    sides = _described_sides()
+    assert sides["target"]["generated"] == DESIRED_STATE_VALUES
+    assert sides["baseline"]["generated"] == BASELINE_PROFILE_VALUES
+    target_render = _render_described(sides["target"], tmp_path, "target")
+    baseline_render = _render_described(sides["baseline"], tmp_path, "baseline")
+    assert _beyond_the_permitted(baseline_render, target_render) == []
     target, target_budgets = _without_budgets(target_render)
     baseline, baseline_budgets = _without_budgets(baseline_render)
     assert _budget_components(target_budgets) == ["platform-api", "serving-runtime"]
@@ -2815,6 +2926,61 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica() -> N
     lint = _lint(BASELINE_PROFILE_VALUES, HAND_WRITTEN_VALUES)
     assert lint.returncode == 0, lint.stdout + lint.stderr
     assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
+
+
+def test_a_readiness_timeout_on_one_side_of_the_baseline_comparison_is_rendered(
+    tmp_path: Path,
+) -> None:
+    """A negative control of the render comparison above.
+
+    One side is given another readiness timeout for the API, by hand. The
+    render of that side then states another readiness probe, so the comparison
+    of rendered objects does not pass by construction. The comparison record
+    refuses the same edit without a render: `tests/domain/test_baseline_profile.py`
+    holds that.
+
+    This renders files. No probe ran, and no pod was Ready or not Ready.
+    """
+    sides = _described_sides()
+    target_render = _render_described(sides["target"], tmp_path, "target")
+    for name in ("baseline", "target"):
+        edited = copy.deepcopy(sides[name])
+        edited["handWritten"]["api"]["probes"] = {"readiness": {"timeoutSeconds": 1}}
+        render = _render_described(edited, tmp_path, f"{name}-edited")
+        other = sides["target" if name == "baseline" else "baseline"]
+        unedited = _render_described(other, tmp_path, "unedited")
+        [(kind, _name)] = _beyond_the_permitted(render, unedited)
+        assert kind == "Deployment"
+        probes = [
+            _container_of(text, "platform-api")["readinessProbe"]["timeoutSeconds"]
+            for text in (render, unedited)
+        ]
+        assert probes == [1, 5]
+    # The runtime's probe is another value, and it did not move.
+    runtime = _container_of(target_render, "serving-runtime")
+    assert runtime["readinessProbe"]["timeoutSeconds"] == 3
+
+
+def test_a_hand_written_value_on_one_side_of_the_baseline_comparison_is_rendered(
+    tmp_path: Path,
+) -> None:
+    """A second negative control: a hand-written value that is not a probe.
+
+    The baseline is given no scrape annotations, and the target keeps them. The
+    two renders then differ in objects that the stated differences do not name.
+
+    This renders files. Nothing was scraped.
+    """
+    sides = _described_sides()
+    assert sides["baseline"]["handWritten"] == sides["target"]["handWritten"]
+    assert sides["baseline"]["handWritten"]["telemetry"]["scrapeAnnotations"] is True
+    target_render = _render_described(sides["target"], tmp_path, "target")
+    edited = copy.deepcopy(sides["baseline"])
+    edited["handWritten"]["telemetry"]["scrapeAnnotations"] = False
+    baseline_render = _render_described(edited, tmp_path, "baseline-edited")
+    differing = _beyond_the_permitted(baseline_render, target_render)
+    assert differing, "a one-sided hand-written value changed no rendered object"
+    assert {kind for kind, _name in differing} <= {"Deployment", "Service"}
 
 
 # --------------------------------------------------------------------------

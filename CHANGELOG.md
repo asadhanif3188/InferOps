@@ -1097,6 +1097,41 @@ from `1.0.0`.
 
 ### Fixed
 
+- **The baseline comparison did not read an install input or a readiness input,
+  and it now refuses one that a side states alone.** The single-runtime baseline
+  named no chart, no hand-written values, no release name, and no namespace. So
+  one probe timeout set in the target's Application alone left the comparison
+  record as it was, the result `COMPARABLE`, and `--check` at exit status 0.
+  `V2-S4-005-PR1` adds one hand-written file,
+  `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.install.v1alpha1.yaml`,
+  that states those inputs for the baseline, and `tools/baseline_profile` compares
+  it with the inputs that the target's Application states. **Two layers are
+  added, so six are compared.** The install layer holds the chart's repository,
+  revision, path, version, and the digest of the files that a render reads, the
+  release name, the namespace, the generated values file, and the hand-written
+  values. One path may differ there: the generated values file. The effective
+  layer holds the values that the chart receives: its defaults, then the
+  generated values, then the hand-written values. Two paths may differ there, as
+  in the generated values. 15 paths are permitted in all, and 12 were. **Four
+  rules are added, so a record states 11.** A description that is absent, that
+  does not parse, that lacks a member, or that states a member the tool does not
+  read refuses the comparison. Each side must state each of 24 readiness inputs,
+  so two absent values are not read as two equal values. A hand-written runtime
+  replica count is refused, on one side or on both. **A comparable record is not
+  eligibility.** Every record states `experimentEligibility` as
+  `not-established`, and lists the API image digest and the caller profile as
+  unresolved: no committed file states the first, and the second does not exist.
+  The render comparison of the chart suite now renders each side with the inputs
+  of its own description, and two negative controls change one side. No chart
+  file, contract, binding, Application, desired-state file, or freeze record is
+  edited, the committed baseline release is the same bytes, and the committed
+  record is written again. **This is static evidence at C0, and it registers no
+  claim.** No procedure reads the baseline's description, no run installed either
+  side with the described inputs, and the tool renders nothing and reads no
+  cluster. See
+  [the baseline profile page](docs/environment/single-runtime-baseline-profile.md)
+  and
+  [the validation record](docs/proof/environment/v2-s4-005-pr1-validation.md).
 - **The second E01 claim said more than its frozen criterion.** Its statement said the
   run's evidence holds no hand-written string that contains a generated workload-intent
   value. E01-AC5 limits that to generated values of eight characters or more, and three
