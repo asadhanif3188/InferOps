@@ -71,6 +71,31 @@
         "target": "gitops/environments/local-docker-desktop/workloads/support-assistant"
       }
     ],
+    "effective": [
+      {
+        "baseline": "0.1.0",
+        "path": "/ownership/workloadVersion",
+        "permitted": true,
+        "reason": "identity-of-a-different-content",
+        "target": "0.2.0"
+      },
+      {
+        "baseline": 1,
+        "path": "/runtime/replicaCount",
+        "permitted": true,
+        "reason": "intended-variable",
+        "target": 2
+      }
+    ],
+    "install": [
+      {
+        "baseline": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline/values.generated.yaml",
+        "path": "/valuesFile",
+        "permitted": true,
+        "reason": "profile-declaration",
+        "target": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+      }
+    ],
     "release": [
       {
         "baseline": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
@@ -121,16 +146,144 @@
   "doesNotEstablish": [
     "That a cluster ran the baseline. No Application reads the profile directory, and no run installed the baseline release.",
     "What a caller observes when the one runtime pod of the baseline stops, or when one of the two runtime pods of the target stops.",
-    "That the two releases install with equal hand-written values. The baseline declares none. The target's hand-written values are in its Application, and this record does not compare them.",
-    "That the two releases install with one API image digest, one release name, and one namespace. No compared document states one of them.",
-    "That the two releases install from one chart revision. The baseline names no chart. The chart owns each probe, each request, and each template, and this record compares none of them.",
-    "That the model cache claim is in one state for both sides. The claim is not a compared input.",
-    "That one caller profile is applied to both sides. No caller profile exists in this repository.",
+    "That the baseline is eligible for an experiment. The result is a statement about committed inputs, and every record states the eligibility as not-established.",
+    "That a run installs either release with the install inputs that this record states. The record compares two committed descriptions. No procedure reads the baseline's description, and nothing compares a cluster with either.",
+    "That the two releases install with one API image digest. No committed file states the digest. An operator supplies it at install, and the record lists it as unresolved.",
+    "That a cluster reads the chart files whose digest this record states. Each description names a branch as the chart revision, and the digest is of the files of the tree that the tool read.",
+    "That the two releases render equal probes. The record compares effective values and one digest of the chart files. This tool does not run Helm, and it parses a description as YAML 1.1, which Helm's parser does not do for every plain scalar.",
+    "That the baseline is delivered as the target is. The record states the project, the sync policy, and the name of the target's Application, and it compares none of them. The baseline names no controller.",
+    "That an applied Application is the committed one. The procedure that applies it adds the API image digest as one Helm parameter, and this tool reads the committed file.",
+    "That a probe behaves as its settings state, or that a pod was Ready. No cluster was read.",
+    "That the model cache claim is in one state for both sides. The claim's name and its mount are compared. Its content and its state are not.",
+    "That one caller profile is applied to both sides. No caller profile exists in this repository, and the record lists it as unresolved.",
     "That telemetry of the two sides is equal. The workload version differs, and it is a resource attribute of the API's telemetry.",
     "That a cluster holds the baseline. The capacity preflight derives the footprint of the target only.",
     "That either recorded revision is the commit a release was rendered at, or that it names a commit."
   ],
+  "effectiveTopology": {
+    "baseline": {
+      "apiReplicas": 2,
+      "runtimeReplicas": 1
+    },
+    "target": {
+      "apiReplicas": 2,
+      "runtimeReplicas": 2
+    }
+  },
+  "experimentEligibility": "not-established",
   "findings": [],
+  "installInputs": {
+    "baseline": {
+      "chart": {
+        "contentSha256": "1d947c7fc5e85e450982a4f6a18166a7c68c869d4cb500842849baf5a2329aa9",
+        "path": "charts/inferops-llm",
+        "repository": "https://github.com/asadhanif3188/InferOps.git",
+        "revision": "main",
+        "version": "0.6.0"
+      },
+      "handWrittenValues": {
+        "api": {
+          "image": {
+            "pullPolicy": "Never",
+            "repository": "localhost/inferops-api"
+          }
+        },
+        "model": {
+          "acquisition": {
+            "enabled": true,
+            "source": "download"
+          },
+          "alias": "qwen3-1.7b-q8_0",
+          "cache": {
+            "mountPath": "/models",
+            "readOnly": true
+          },
+          "integrity": {
+            "verifyOnStart": "sha256"
+          },
+          "license": {
+            "spdx": "Apache-2.0"
+          }
+        },
+        "runtime": {
+          "image": {
+            "pullPolicy": "IfNotPresent"
+          }
+        },
+        "telemetry": {
+          "collection": {
+            "collector": {
+              "deploy": true
+            }
+          },
+          "scrapeAnnotations": true
+        }
+      },
+      "release": {
+        "name": "inferops",
+        "namespace": "inferops-release",
+        "server": "https://kubernetes.default.svc"
+      },
+      "valuesFile": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline/values.generated.yaml"
+    },
+    "target": {
+      "chart": {
+        "contentSha256": "1d947c7fc5e85e450982a4f6a18166a7c68c869d4cb500842849baf5a2329aa9",
+        "path": "charts/inferops-llm",
+        "repository": "https://github.com/asadhanif3188/InferOps.git",
+        "revision": "main",
+        "version": "0.6.0"
+      },
+      "handWrittenValues": {
+        "api": {
+          "image": {
+            "pullPolicy": "Never",
+            "repository": "localhost/inferops-api"
+          }
+        },
+        "model": {
+          "acquisition": {
+            "enabled": true,
+            "source": "download"
+          },
+          "alias": "qwen3-1.7b-q8_0",
+          "cache": {
+            "mountPath": "/models",
+            "readOnly": true
+          },
+          "integrity": {
+            "verifyOnStart": "sha256"
+          },
+          "license": {
+            "spdx": "Apache-2.0"
+          }
+        },
+        "runtime": {
+          "image": {
+            "pullPolicy": "IfNotPresent"
+          }
+        },
+        "telemetry": {
+          "collection": {
+            "collector": {
+              "deploy": true
+            }
+          },
+          "scrapeAnnotations": true
+        }
+      },
+      "release": {
+        "name": "inferops",
+        "namespace": "inferops-release",
+        "server": "https://kubernetes.default.svc"
+      },
+      "valuesFile": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+    }
+  },
+  "installSources": {
+    "baseline": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline.install.v1alpha1.yaml",
+    "target": "infra/argocd/local-docker-desktop-support-assistant.yaml"
+  },
   "intendedVariable": {
     "baseline": 1,
     "name": "serving runtime replica count",
@@ -140,6 +293,8 @@
   "pathsCompared": {
     "contract": 31,
     "declaration": 7,
+    "effective": 166,
+    "install": 21,
     "release": 15,
     "values": 31
   },
@@ -154,6 +309,13 @@
       "/contract": "profile-declaration",
       "/directory": "profile-declaration"
     },
+    "effective": {
+      "/ownership/workloadVersion": "identity-of-a-different-content",
+      "/runtime/replicaCount": "intended-variable"
+    },
+    "install": {
+      "/valuesFile": "profile-declaration"
+    },
     "release": {
       "/metadata/releaseId": "identity-of-a-different-content",
       "/metadata/workloadVersion": "identity-of-a-different-content",
@@ -163,6 +325,60 @@
     "values": {
       "/ownership/workloadVersion": "identity-of-a-different-content",
       "/runtime/replicaCount": "intended-variable"
+    }
+  },
+  "readinessInputs": {
+    "baseline": {
+      "/api/livenessPath": "/health/live",
+      "/api/probes/enabled": true,
+      "/api/probes/liveness/failureThreshold": 3,
+      "/api/probes/liveness/periodSeconds": 10,
+      "/api/probes/liveness/timeoutSeconds": 2,
+      "/api/probes/readiness/failureThreshold": 3,
+      "/api/probes/readiness/periodSeconds": 10,
+      "/api/probes/readiness/timeoutSeconds": 5,
+      "/api/probes/startup/budgetMs": 60000,
+      "/api/probes/startup/periodSeconds": 5,
+      "/api/probes/startup/timeoutSeconds": 2,
+      "/api/readinessPath": "/health/ready",
+      "/runtime/healthPath": "/health",
+      "/runtime/probes/enabled": true,
+      "/runtime/probes/liveness/failureThreshold": 3,
+      "/runtime/probes/liveness/periodSeconds": 10,
+      "/runtime/probes/liveness/timeoutSeconds": 3,
+      "/runtime/probes/readiness/failureThreshold": 3,
+      "/runtime/probes/readiness/periodSeconds": 10,
+      "/runtime/probes/readiness/timeoutSeconds": 3,
+      "/runtime/probes/startup/budgetMs": 600000,
+      "/runtime/probes/startup/periodSeconds": 10,
+      "/runtime/probes/startup/timeoutSeconds": 3,
+      "/runtime/startupBudgetMs": 300000
+    },
+    "target": {
+      "/api/livenessPath": "/health/live",
+      "/api/probes/enabled": true,
+      "/api/probes/liveness/failureThreshold": 3,
+      "/api/probes/liveness/periodSeconds": 10,
+      "/api/probes/liveness/timeoutSeconds": 2,
+      "/api/probes/readiness/failureThreshold": 3,
+      "/api/probes/readiness/periodSeconds": 10,
+      "/api/probes/readiness/timeoutSeconds": 5,
+      "/api/probes/startup/budgetMs": 60000,
+      "/api/probes/startup/periodSeconds": 5,
+      "/api/probes/startup/timeoutSeconds": 2,
+      "/api/readinessPath": "/health/ready",
+      "/runtime/healthPath": "/health",
+      "/runtime/probes/enabled": true,
+      "/runtime/probes/liveness/failureThreshold": 3,
+      "/runtime/probes/liveness/periodSeconds": 10,
+      "/runtime/probes/liveness/timeoutSeconds": 3,
+      "/runtime/probes/readiness/failureThreshold": 3,
+      "/runtime/probes/readiness/periodSeconds": 10,
+      "/runtime/probes/readiness/timeoutSeconds": 3,
+      "/runtime/probes/startup/budgetMs": 600000,
+      "/runtime/probes/startup/periodSeconds": 10,
+      "/runtime/probes/startup/timeoutSeconds": 3,
+      "/runtime/startupBudgetMs": 300000
     }
   },
   "releases": {
@@ -269,8 +485,38 @@
       "id": "baseline-version-not-distinct",
       "state": "held",
       "statement": "The baseline and the target name one workload and two workload versions."
+    },
+    {
+      "id": "baseline-install-inputs-refused",
+      "state": "held",
+      "statement": "The install description of the baseline and of the target is each a file that parses, that states each member this tool compares, and that states no other member in a block this tool reads. Each names a chart of this tree."
+    },
+    {
+      "id": "baseline-install-differs",
+      "state": "held",
+      "statement": "The two install descriptions differ only in the generated values file, and each names the generated values file of its own release."
+    },
+    {
+      "id": "baseline-effective-values-differ",
+      "state": "held",
+      "statement": "The effective values of the two sides differ only in the runtime replica count and the workload version, and they state the replica counts of each side. They are the chart's defaults, then the derived generated values, then the hand-written values."
+    },
+    {
+      "id": "baseline-readiness-input-unusable",
+      "state": "held",
+      "statement": "The effective values of each side hold each of 24 readiness inputs with a usable value: the 23 values that the two probe templates read, and the startup budget of the runtime."
     }
   ],
+  "targetDelivery": {
+    "application": "local-docker-desktop-support-assistant",
+    "project": "inferops-workloads",
+    "syncPolicy": {
+      "automated": {
+        "prune": false,
+        "selfHeal": true
+      }
+    }
+  },
   "targetKey": "local-docker-desktop/support-assistant",
   "topology": {
     "baseline": {
@@ -281,5 +527,24 @@
       "apiReplicas": 2,
       "runtimeReplicas": 2
     }
-  }
+  },
+  "unresolvedInputs": [
+    {
+      "input": "api-image-digest",
+      "path": "/api/image/digest",
+      "sides": [
+        "baseline",
+        "target"
+      ],
+      "statement": "The committed files do not give both sides one API image digest of the form sha256 and 64 hexadecimal digits. An operator supplies the digest at install. A run must give both sides one digest."
+    },
+    {
+      "input": "caller-profile",
+      "sides": [
+        "baseline",
+        "target"
+      ],
+      "statement": "No caller profile exists in this repository. A run must give both sides one revision of one caller profile."
+    }
+  ]
 }

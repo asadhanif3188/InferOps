@@ -7,14 +7,15 @@ topologies means something only while the runtime replica count is the one
 variable that differs. This module declares the baseline, derives both releases,
 and refuses each difference that is not stated here.
 
-**The baseline is declared as the target with one input replaced.**
+**The baseline is declared as the target with two fields replaced.**
 :func:`baseline_profile` takes the target's declaration and replaces the contract
 and the directory. The binding, the platform defaults, and both revisions stay the
 target's. The baseline's contract is version ``0.1.0`` of the target's workload,
 which declares a replica range of one and one.
 
-**Four layers are compared.** The two declarations, the two contract documents,
-the two generated values documents, and the two release documents.
+**Six layers are compared.** The two declarations, the two contract documents,
+the two generated values documents, the two release documents, the two install
+descriptions, and the two documents of effective values.
 :data:`PERMITTED` names each path that may differ in a layer, and why. A
 difference at any other path refuses the comparison. Both releases are derived
 again from their declared inputs, so no committed generated file is trusted.
@@ -24,22 +25,54 @@ they must differ in version. The version is a rendered value, so the two release
 differ in it too. That is the second permitted difference, and it follows the
 first.
 
+**Each side states its install inputs.** A release is installed from a chart, a
+release name, a namespace, one generated values file, and hand-written values.
+The target states them in the Application that reads it. The baseline states
+them in :data:`INSTALL_PATH`, a file that a person writes. An absent file, a
+file that does not parse, a key stated twice, an absent member that this module
+compares, and another member in a block that this module reads each refuse the
+comparison. No install input is taken from a default when a description does
+not state it. The chart is stated by its version and by one digest of its
+files.
+
+**Not every member of the Application is compared.** The project, the sync
+policy, and the name of the Application are how the target is delivered. The
+baseline names no controller, so the record states them for the target and
+compares none. The ``apiVersion`` of the Application is not read.
+
+**Effective values are derived, and they are not read from a cluster.** They
+are the chart's defaults, then the derived generated values of the side, then
+its hand-written values, merged as Helm merges values documents. This module
+does not open the values file that a description names. :func:`verify_profile`
+holds that each committed values file is the derived one.
+:data:`READINESS_INPUTS` names 24 values. The effective values of each side
+must hold each of them with a usable value, so two absent values are never read
+as two equal values. Today the chart's defaults supply all 24 for both sides.
+
+**``COMPARABLE`` is not eligibility.** The result is about committed inputs. A
+record lists each input that no committed file resolves:
+:func:`build_record` states them under ``unresolvedInputs``, and it states
+``experimentEligibility`` as ``not-established`` in every record.
+
 **What is not compared.** Comments in a contract are not part of the parsed
-document. The baseline names no chart, no hand-written values, no API image
-digest, no release name, and no namespace, so none of them is compared. This
-module does not run Helm; a test of the chart suite renders both releases with
-the chart of the working tree and one hand-written values file. No caller
-profile exists in this repository, so none is compared.
+document. No committed file states the API image digest, so it is listed as
+unresolved. No caller profile exists in this repository, so it is listed as
+unresolved. This module does not run Helm, so it compares no rendered object;
+a test of the chart suite renders each side with its own install description.
+Nothing here reads a cluster, so nothing compares an installed release with a
+description.
 
 **The declaration layer is a tripwire.** :func:`baseline_profile` builds the
 baseline from the target's declaration, so the two agree by construction. The
 layer is not held when a later edit of that function names another binding,
 another defaults file, or another revision.
 
-**The comparison rests on the parsers.** A release is derived before it is
-compared, so a contract that the render boundary refuses is never compared.
-The walk of two documents does not depend on that: a mapping beside a sequence,
-and a mapping with a key that is not text, are each compared whole.
+**The walk of two documents does not rest on the parsers.** A release is
+derived before it is compared, so a contract that the render boundary refuses
+is never compared. The walk does not depend on that: a mapping beside a
+sequence, and a mapping with a key that is not text, are each compared whole.
+A description is parsed as YAML 1.1. Helm's parser reads some plain scalars in
+another way, and this module does not model that.
 
 **Offline.** Every function reads files under the root it is given.
 :func:`write_profile` writes the declared profile directory and the comparison
@@ -49,7 +82,11 @@ model, and nothing runs Helm or Git.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import math
+import os
+import re
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -57,7 +94,9 @@ from typing import Any, Final
 
 import yaml
 
+from tools.capacity_preflight import APPLICATIONS
 from tools.generated_release import (
+    GENERATED_FILES,
     REPO_ROOT,
     DeclaredRelease,
     SourcesRefused,
@@ -75,12 +114,16 @@ __all__ = [
     "CHECK_RULES",
     "COMPARABLE",
     "DOES_NOT_ESTABLISH",
+    "ELIGIBILITY",
     "HELD",
+    "INSTALL_PATH",
+    "INSTALL_SCHEMA",
     "INTENDED",
     "NOT_EVALUATED",
     "NOT_HELD",
     "PERMITTED",
     "PROFILE_DIRECTORY",
+    "READINESS_INPUTS",
     "RECORD_PATH",
     "RECORD_SCHEMA",
     "REFUSED",
@@ -121,6 +164,17 @@ PROFILE_DIRECTORY: Final = (
 
 #: The committed comparison record, beside the profile directory.
 RECORD_PATH: Final = f"{PROFILE_DIRECTORY}.comparison.v1alpha1.json"
+
+#: The install inputs of the baseline, beside the profile directory. A person
+#: writes this file. The target states the same inputs in its Application.
+INSTALL_PATH: Final = f"{PROFILE_DIRECTORY}.install.v1alpha1.yaml"
+
+#: The schema name the baseline's install description states.
+INSTALL_SCHEMA: Final = "inferops.io/baseline-install-inputs/v1alpha1"
+
+#: What every record states about eligibility. This tool resolves no caller
+#: profile, so no record of it states another value.
+ELIGIBILITY: Final = "not-established"
 
 #: The exit status of a comparison whose result is ``REFUSED``.
 REFUSED_EXIT: Final = 5
@@ -173,10 +227,83 @@ PERMITTED: Final[Mapping[str, Mapping[str, str]]] = {
         "/output/helmValues/sha256": _IDENTITY,
         "/source/contract/sha256": _IDENTITY,
     },
+    "install": {
+        "/valuesFile": _PROFILE,
+    },
+    "effective": {
+        "/ownership/workloadVersion": _IDENTITY,
+        "/runtime/replicaCount": INTENDED,
+    },
 }
 
 #: The layers of a comparison, in the order a record reports them.
-_LAYERS: Final = ("declaration", "contract", "values", "release")
+_LAYERS: Final = (
+    "declaration",
+    "contract",
+    "values",
+    "release",
+    "install",
+    "effective",
+)
+
+_PROBE_SETTINGS: Final[Mapping[str, tuple[str, ...]]] = {
+    "startup": ("budgetMs", "periodSeconds", "timeoutSeconds"),
+    "readiness": ("periodSeconds", "timeoutSeconds", "failureThreshold"),
+    "liveness": ("periodSeconds", "timeoutSeconds", "failureThreshold"),
+}
+
+
+def _probe_inputs(tier: str, *paths: str) -> tuple[str, ...]:
+    return (
+        *(f"/{tier}/{path}" for path in paths),
+        f"/{tier}/probes/enabled",
+        *(
+            f"/{tier}/probes/{probe}/{setting}"
+            for probe, settings in _PROBE_SETTINGS.items()
+            for setting in settings
+        ),
+    )
+
+
+#: The readiness inputs, as JSON pointers into the effective values: the 23
+#: values that the chart's two probe templates read, and the runtime's startup
+#: budget, which the chart's validation compares with the probe budget. A
+#: startup probe gates the other two, and a liveness probe restarts a container,
+#: so all three probes are named. The effective values of each side must hold
+#: each path with a usable value.
+READINESS_INPUTS: Final[tuple[str, ...]] = (
+    *_probe_inputs("api", "readinessPath", "livenessPath"),
+    *_probe_inputs("runtime", "healthPath", "startupBudgetMs"),
+)
+
+#: The members of each block of a description that this module reads. Another
+#: member in one of these blocks is an input that this module cannot compare,
+#: and it refuses the comparison. The ``apiVersion`` is admitted and not read.
+_APPLICATION_MEMBERS: Final[Mapping[str, frozenset[str]]] = {
+    "the document": frozenset({"apiVersion", "kind", "metadata", "spec"}),
+    "metadata": frozenset({"name", "namespace", "labels"}),
+    "spec": frozenset({"project", "source", "destination", "syncPolicy"}),
+    "spec.source": frozenset({"repoURL", "targetRevision", "path", "helm"}),
+    "spec.source.helm": frozenset({"releaseName", "valueFiles", "valuesObject"}),
+    "spec.destination": frozenset({"server", "namespace"}),
+}
+_INSTALL_MEMBERS: Final[Mapping[str, frozenset[str]]] = {
+    "the document": frozenset(
+        {"apiVersion", "kind", "chart", "release", "valuesFile", "handWrittenValues"}
+    ),
+    "chart": frozenset({"repository", "revision", "path"}),
+    "release": frozenset({"name", "namespace", "server"}),
+}
+
+#: The files that a chart must hold, and the directory that must hold a file.
+_CHART_FILES: Final = ("Chart.yaml", "values.yaml", "values.schema.json")
+_CHART_TEMPLATES: Final = "templates"
+#: What the chart digest leaves out: the chart's page, and its render fixtures.
+#: No render reads either.
+_CHART_UNREAD: Final = ("README.md", "ci")
+_API_IMAGE_DIGEST: Final = "/api/image/digest"
+_DIGEST: Final = re.compile(r"sha256:[0-9a-f]{64}")
+_READINESS_PATHS: Final = ("readinessPath", "livenessPath", "healthPath")
 
 
 @dataclass(frozen=True)
@@ -224,6 +351,40 @@ RULES: Final[tuple[Rule, ...]] = (
         "baseline-version-not-distinct",
         "The baseline and the target name one workload and two workload versions.",
     ),
+    Rule(
+        "baseline-install-inputs-refused",
+        "The install description of the baseline and of the target is each a "
+        "file that parses, that states each member this tool compares, and that "
+        "states no other member in a block this tool reads. Each names a chart "
+        "of this tree.",
+    ),
+    Rule(
+        "baseline-install-differs",
+        "The two install descriptions differ only in the generated values file, "
+        "and each names the generated values file of its own release.",
+    ),
+    Rule(
+        "baseline-effective-values-differ",
+        "The effective values of the two sides differ only in the runtime "
+        "replica count and the workload version, and they state the replica "
+        "counts of each side. They are the chart's defaults, then the derived "
+        "generated values, then the hand-written values.",
+    ),
+    Rule(
+        "baseline-readiness-input-unusable",
+        "The effective values of each side hold each of 24 readiness inputs "
+        "with a usable value: the 23 values that the two probe templates read, "
+        "and the startup budget of the runtime.",
+    ),
+)
+
+#: The rules that are evaluated only when each side derives a release.
+_RELEASE_RULES: Final = (
+    "baseline-contract-differs",
+    "baseline-values-differ",
+    "baseline-release-differs",
+    "baseline-topology-not-declared",
+    "baseline-version-not-distinct",
 )
 
 #: The rules that :func:`verify_profile` adds for the committed files.
@@ -232,6 +393,12 @@ CHECK_RULES: Final[tuple[Rule, ...]] = (
         "baseline-release-drifted",
         "The committed baseline release is, byte for byte, what its declared "
         "sources derive.",
+    ),
+    Rule(
+        "baseline-target-release-drifted",
+        "The committed target release is, byte for byte, what its declared "
+        "sources derive. So the values file that the target's description names "
+        "holds the generated values that were compared.",
     ),
     Rule(
         "baseline-record-stale",
@@ -246,18 +413,34 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "and no run installed the baseline release.",
     "What a caller observes when the one runtime pod of the baseline stops, or "
     "when one of the two runtime pods of the target stops.",
-    "That the two releases install with equal hand-written values. The baseline "
-    "declares none. The target's hand-written values are in its Application, and "
-    "this record does not compare them.",
-    "That the two releases install with one API image digest, one release name, "
-    "and one namespace. No compared document states one of them.",
-    "That the two releases install from one chart revision. The baseline names no "
-    "chart. The chart owns each probe, each request, and each template, and this "
-    "record compares none of them.",
-    "That the model cache claim is in one state for both sides. The claim is not "
-    "a compared input.",
+    "That the baseline is eligible for an experiment. The result is a statement "
+    "about committed inputs, and every record states the eligibility as "
+    "not-established.",
+    "That a run installs either release with the install inputs that this record "
+    "states. The record compares two committed descriptions. No procedure reads "
+    "the baseline's description, and nothing compares a cluster with either.",
+    "That the two releases install with one API image digest. No committed file "
+    "states the digest. An operator supplies it at install, and the record lists "
+    "it as unresolved.",
+    "That a cluster reads the chart files whose digest this record states. Each "
+    "description names a branch as the chart revision, and the digest is of the "
+    "files of the tree that the tool read.",
+    "That the two releases render equal probes. The record compares effective "
+    "values and one digest of the chart files. This tool does not run Helm, and "
+    "it parses a description as YAML 1.1, which Helm's parser does not do for "
+    "every plain scalar.",
+    "That the baseline is delivered as the target is. The record states the "
+    "project, the sync policy, and the name of the target's Application, and it "
+    "compares none of them. The baseline names no controller.",
+    "That an applied Application is the committed one. The procedure that "
+    "applies it adds the API image digest as one Helm parameter, and this tool "
+    "reads the committed file.",
+    "That a probe behaves as its settings state, or that a pod was Ready. No "
+    "cluster was read.",
+    "That the model cache claim is in one state for both sides. The claim's name "
+    "and its mount are compared. Its content and its state are not.",
     "That one caller profile is applied to both sides. No caller profile exists "
-    "in this repository.",
+    "in this repository, and the record lists it as unresolved.",
     "That telemetry of the two sides is equal. The workload version differs, and "
     "it is a resource attribute of the API's telemetry.",
     "That a cluster holds the baseline. The capacity preflight derives the "
@@ -364,6 +547,8 @@ def _plain(value: Any) -> Any:
     A value that JSON cannot state without loss, such as a mapping with a key
     that is not text, is stated as its Python text.
     """
+    if type(value) is float and not math.isfinite(value):
+        return repr(value)
     if value is None or type(value) in (str, int, float, bool):
         return value
     if isinstance(value, list):
@@ -547,22 +732,458 @@ def _directory_refusal(directory: str) -> str | None:
     first segment is compared without case, because a file system that ignores
     case gives ``GitOps`` and ``gitops`` one directory.
     """
-    segments = directory.split("/")
-    if (
-        chr(92) in directory
-        or ":" in directory
-        or any(segment in ("", ".", "..") for segment in segments)
-    ):
+    if not _plain_path(directory):
         return (
             "is not a relative POSIX path of plain segments, so the tree it is in "
             "cannot be read from its spelling"
         )
-    if segments[0].casefold() == DESIRED_STATE_ROOT.casefold():
+    if directory.split("/")[0].casefold() == DESIRED_STATE_ROOT.casefold():
         return (
             "is inside the Git desired state; an Application reads that tree, and "
             "the baseline is not desired state"
         )
     return None
+
+
+def _plain_path(path: str) -> bool:
+    """Whether a text is one relative POSIX path of plain segments."""
+    return not (
+        chr(92) in path
+        or ":" in path
+        or any(segment in ("", ".", "..") for segment in path.split("/"))
+    )
+
+
+# --------------------------------------------------------------------------
+# The install inputs of one side
+# --------------------------------------------------------------------------
+
+
+class _InstallRefused(Exception):
+    """An install description that is not read whole."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+class _KeyStatedTwice(yaml.YAMLError):
+    """A mapping that states one key twice."""
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """The safe loader, which refuses a mapping that states one key twice.
+
+    The safe loader keeps the last of two equal keys. A reader of the file sees
+    two, and another parser can keep the first.
+    """
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> Any:
+        seen: set[Any] = set()
+        for key_node, _value in node.value:
+            key = self.construct_object(key_node, deep=True)
+            try:
+                marker = (type(key), key)
+                stated = marker in seen
+                seen.add(marker)
+            except TypeError:
+                continue
+            if stated:
+                raise _KeyStatedTwice(str(key))
+        return super().construct_mapping(node, deep)
+
+
+def _document(root: Path, relative: str) -> Any:
+    """The parsed YAML of one file under the root.
+
+    A reason names the file under the root, and no path of the host.
+    """
+    path = root / relative
+    if path.is_symlink() or not path.is_file():
+        raise _InstallRefused(f"{relative} is not a regular file")
+    try:
+        text = path.read_bytes().decode("utf-8")
+        # The loader is the safe loader with one more refusal.
+        return yaml.load(text, Loader=_UniqueKeyLoader)
+    except OSError as error:
+        reason = error.strerror or "no reason given"
+        raise _InstallRefused(f"{relative} was not read: {reason}") from error
+    except UnicodeError as error:
+        raise _InstallRefused(f"{relative} is not UTF-8 text") from error
+    except _KeyStatedTwice as error:
+        raise _InstallRefused(f"{relative} states the key {error} twice") from error
+    except yaml.YAMLError as error:
+        raise _InstallRefused(f"{relative} is not YAML") from error
+    except RecursionError as error:
+        raise _InstallRefused(f"{relative} is nested too deeply") from error
+
+
+def _block(
+    document: Any, label: str, source: str, members: Mapping[str, frozenset[str]]
+) -> Mapping[Any, Any]:
+    """One mapping of a description, with no member that this module does not read."""
+    if not isinstance(document, Mapping):
+        raise _InstallRefused(f"{source} states no mapping at {label}")
+    other = sorted(str(name) for name in document if name not in members[label])
+    if other:
+        raise _InstallRefused(
+            f"{source} states a member of {label} that this tool does not read: "
+            f"{', '.join(other)}"
+        )
+    return document
+
+
+def _text(block: Mapping[Any, Any], name: str, label: str, source: str) -> str:
+    """A text that a description states. An absent text is not given a default."""
+    value = block.get(name)
+    if type(value) is not str or not value:
+        raise _InstallRefused(f"{source} states no text at {name} of {label}")
+    return value
+
+
+def _hand_written(
+    block: Mapping[Any, Any], name: str, label: str, source: str
+) -> Mapping[Any, Any]:
+    """The hand-written values of a description. An empty mapping states none."""
+    value = block.get(name)
+    if not isinstance(value, Mapping):
+        raise _InstallRefused(f"{source} states no mapping at {name} of {label}")
+    return value
+
+
+def _target_description(root: Path, source: str) -> dict[str, Any]:
+    """The install inputs that the target's Application states."""
+    application = _document(root, source)
+    if not isinstance(application, Mapping) or application.get("kind") != (
+        "Application"
+    ):
+        raise _InstallRefused(f"{source} is not an Application")
+    members = _APPLICATION_MEMBERS
+    _block(application, "the document", source, members)
+    _block(application.get("metadata"), "metadata", source, members)
+    spec = _block(application.get("spec"), "spec", source, members)
+    chart = _block(spec.get("source"), "spec.source", source, members)
+    helm = _block(chart.get("helm"), "spec.source.helm", source, members)
+    destination = _block(spec.get("destination"), "spec.destination", source, members)
+    files = helm.get("valueFiles")
+    if (
+        not isinstance(files, list)
+        or len(files) != 1
+        or type(files[0]) is not str
+        or not files[0].startswith("/")
+    ):
+        raise _InstallRefused(
+            f"{source} does not name one values file from the root of the repository"
+        )
+    return {
+        "chart": {
+            "path": _text(chart, "path", "spec.source", source),
+            "repository": _text(chart, "repoURL", "spec.source", source),
+            "revision": _text(chart, "targetRevision", "spec.source", source),
+        },
+        "release": {
+            "name": _text(helm, "releaseName", "spec.source.helm", source),
+            "namespace": _text(destination, "namespace", "spec.destination", source),
+            "server": _text(destination, "server", "spec.destination", source),
+        },
+        "valuesFile": files[0][1:],
+        "handWrittenValues": _hand_written(
+            helm, "valuesObject", "spec.source.helm", source
+        ),
+    }
+
+
+def _target_delivery(root: Path, source: str | None) -> dict[str, Any]:
+    """How the target is delivered, as its Application states it.
+
+    These members are stated and not compared: the baseline names no
+    controller. An Application that is not read gives an empty statement.
+    """
+    if source is None:
+        return {}
+    try:
+        application = _document(root, source)
+    except _InstallRefused:
+        return {}
+    metadata = _member(application, "metadata")
+    spec = _member(application, "spec")
+    return {
+        "application": _plain(_member(metadata, "name")),
+        "project": _plain(_member(spec, "project")),
+        "syncPolicy": _plain(_member(spec, "syncPolicy")),
+    }
+
+
+def _baseline_description(root: Path, source: str) -> dict[str, Any]:
+    """The install inputs that the baseline's description states."""
+    members = _INSTALL_MEMBERS
+    label = "the document"
+    document = _block(_document(root, source), label, source, members)
+    if (
+        document.get("apiVersion") != INSTALL_SCHEMA
+        or document.get("kind") != "BaselineInstallInputs"
+    ):
+        raise _InstallRefused(
+            f"{source} is not a BaselineInstallInputs document of {INSTALL_SCHEMA}"
+        )
+    chart = _block(document.get("chart"), "chart", source, members)
+    release = _block(document.get("release"), "release", source, members)
+    return {
+        "chart": {
+            "path": _text(chart, "path", "chart", source),
+            "repository": _text(chart, "repository", "chart", source),
+            "revision": _text(chart, "revision", "chart", source),
+        },
+        "release": {
+            "name": _text(release, "name", "release", source),
+            "namespace": _text(release, "namespace", "release", source),
+            "server": _text(release, "server", "release", source),
+        },
+        "valuesFile": _text(document, "valuesFile", label, source),
+        "handWrittenValues": _hand_written(
+            document, "handWrittenValues", label, source
+        ),
+    }
+
+
+def _spelled(root: Path, relative: str) -> bool:
+    """Whether each segment of a path is the name that its directory lists.
+
+    A file system that ignores case opens ``Charts`` as ``charts``. A host that
+    does not ignore case finds no such directory.
+    """
+    here = root
+    for segment in relative.split("/"):
+        try:
+            if segment not in os.listdir(here):
+                return False
+        except OSError:
+            return False
+        here = here / segment
+    return True
+
+
+def _chart_content(root: Path, directory: str, source: str) -> tuple[str, str, Any]:
+    """The version of a chart, the digest of its files, and its default values.
+
+    The digest is over each file of the chart directory, but for the chart's
+    page and its render fixtures. So it holds the chart document, the default
+    values, the values schema, each template, the ignore file, and a subchart or
+    another file that a later change adds. Each file is stated by its own
+    SHA-256 and its path in the chart, in the order of the paths.
+    """
+    if not _plain_path(directory):
+        raise _InstallRefused(
+            f"{source} names a chart path that is not one relative POSIX path of "
+            "plain segments"
+        )
+    chart_root = root / directory
+    if chart_root.is_symlink() or not chart_root.is_dir():
+        raise _InstallRefused(f"{directory} is not a directory of this tree")
+    if not _spelled(root, directory):
+        raise _InstallRefused(
+            f"{source} names the chart path {directory} in another spelling than "
+            "the tree has"
+        )
+    try:
+        names = sorted(
+            path.relative_to(chart_root).as_posix()
+            for path in chart_root.rglob("*")
+            if not path.is_dir() or path.is_symlink()
+        )
+    except OSError as error:
+        reason = error.strerror or "no reason given"
+        raise _InstallRefused(f"{directory} was not read: {reason}") from error
+    names = [name for name in names if name.split("/")[0] not in _CHART_UNREAD]
+    for name in _CHART_FILES:
+        if name not in names:
+            raise _InstallRefused(f"{directory}/{name} is not a regular file")
+    if not any(name.startswith(f"{_CHART_TEMPLATES}/") for name in names):
+        raise _InstallRefused(f"{directory} holds no template")
+    digest = hashlib.sha256()
+    for name in names:
+        path = chart_root / name
+        if path.is_symlink() or not path.is_file():
+            raise _InstallRefused(f"{directory}/{name} is not a regular file")
+        try:
+            content = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as error:
+            reason = error.strerror or "no reason given"
+            raise _InstallRefused(
+                f"{directory}/{name} was not read: {reason}"
+            ) from error
+        digest.update(f"{content}  {name}\n".encode())
+    chart = _document(root, f"{directory}/{_CHART_FILES[0]}")
+    if not isinstance(chart, Mapping):
+        raise _InstallRefused(f"{directory}/{_CHART_FILES[0]} is not a mapping")
+    version = _text(chart, "version", "the chart document", directory)
+    defaults = _document(root, f"{directory}/{_CHART_FILES[1]}")
+    if not isinstance(defaults, Mapping):
+        raise _InstallRefused(f"{directory}/{_CHART_FILES[1]} is not a mapping")
+    return version, digest.hexdigest(), defaults
+
+
+def _merged(base: Any, over: Any) -> Any:
+    """The second document over the first, as Helm merges two values documents.
+
+    A mapping is merged member by member, and any other value replaces the
+    earlier one. A null in the second document removes the member, as the Helm
+    documentation states for a null in a later values document.
+    """
+    if isinstance(base, Mapping) and isinstance(over, Mapping):
+        merged = dict(base)
+        for name, value in over.items():
+            if value is None:
+                merged.pop(name, None)
+            elif name in base:
+                merged[name] = _merged(base[name], value)
+            else:
+                merged[name] = value
+        return merged
+    return over
+
+
+def _at(document: Any, pointer: str) -> Any:
+    """The value at a pointer of plain tokens, or the absent marker."""
+    for token in pointer.split("/")[1:]:
+        if not isinstance(document, Mapping) or token not in document:
+            return _ABSENT
+        document = document[token]
+    return document
+
+
+def _install_findings(
+    sides: Mapping[str, DeclaredRelease],
+    install: Mapping[str, Mapping[str, Any]],
+    differences: Sequence[Mapping[str, Any]],
+) -> list[Finding]:
+    findings = _layer_findings("baseline-install-differs", "install", differences)
+    for side, declared in sides.items():
+        expected = f"{declared.directory}/{GENERATED_FILES[0]}"
+        stated = install[side]["valuesFile"]
+        if stated != expected:
+            findings.append(
+                Finding(
+                    "baseline-install-differs",
+                    f"install: {side} /valuesFile",
+                    f"the {side} names {json.dumps(stated)}; the generated values "
+                    f"file of its release is {json.dumps(expected)}",
+                )
+            )
+    return findings
+
+
+def _effective_findings(
+    effective: Mapping[str, Any], differences: Sequence[Mapping[str, Any]]
+) -> tuple[list[Finding], dict[str, dict[str, int | None]]]:
+    findings = _layer_findings(
+        "baseline-effective-values-differ", "effective", differences
+    )
+    stated: dict[str, dict[str, int | None]] = {}
+    for side, expected in TOPOLOGY.items():
+        raw = {
+            "apiReplicas": _member(effective[side], "api", "replicaCount"),
+            "runtimeReplicas": _member(effective[side], "runtime", "replicaCount"),
+        }
+        stated[side] = {name: _whole(found) for name, found in raw.items()}
+        findings.extend(
+            Finding(
+                "baseline-effective-values-differ",
+                f"effective: {side} {name}",
+                f"the chart receives {json.dumps(_plain(found))} on the {side}; "
+                f"the comparison needs the whole number {expected[name]}",
+            )
+            for name, found in raw.items()
+            if _whole(found) != expected[name]
+        )
+    return findings, stated
+
+
+def _usable(pointer: str, found: Any) -> str | None:
+    """Why a readiness input is not usable, or ``None``."""
+    name = pointer.rsplit("/", 1)[1]
+    if name in _READINESS_PATHS:
+        if type(found) is str and found.startswith("/"):
+            return None
+        return "a text that starts with a slash"
+    if name == "enabled":
+        return None if type(found) is bool else "true or false"
+    if type(found) is int and found > 0:
+        return None
+    return "a whole number above zero"
+
+
+def _readiness(
+    effective: Mapping[str, Any],
+) -> tuple[list[Finding], dict[str, dict[str, Any]]]:
+    """Each readiness input of each side, and a finding for each that is unusable.
+
+    An absent input and a null are not stated. An input of another type is
+    stated as the document has it, and it is refused too.
+    """
+    findings = []
+    stated: dict[str, dict[str, Any]] = {}
+    for side in TOPOLOGY:
+        stated[side] = {}
+        for pointer in READINESS_INPUTS:
+            found = _at(effective[side], pointer)
+            if found is _ABSENT or found is None:
+                detail = (
+                    f"no values document of the {side} states this readiness "
+                    "input, and no default is assumed for it"
+                )
+            else:
+                stated[side][pointer] = _plain(found)
+                needed = _usable(pointer, found)
+                if needed is None:
+                    continue
+                detail = (
+                    f"the {side} states {json.dumps(_plain(found))}; this "
+                    f"readiness input is {needed}"
+                )
+            findings.append(
+                Finding(
+                    "baseline-readiness-input-unusable",
+                    f"effective: {side} {pointer}",
+                    detail,
+                )
+            )
+    return findings, stated
+
+
+def _unresolved(effective: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Each input of a controlled comparison that no committed file resolves."""
+    digests = [
+        _at(effective[side], _API_IMAGE_DIGEST) if side in effective else _ABSENT
+        for side in TOPOLOGY
+    ]
+    resolved = (
+        all(type(d) is str and _DIGEST.fullmatch(d) for d in digests)
+        and len(set(digests)) == 1
+    )
+    without_digest = [] if resolved else list(TOPOLOGY)
+    entries: list[dict[str, Any]] = []
+    if without_digest:
+        entries.append(
+            {
+                "input": "api-image-digest",
+                "path": _API_IMAGE_DIGEST,
+                "sides": without_digest,
+                "statement": "The committed files do not give both sides one "
+                "API image digest of the form sha256 and 64 hexadecimal digits. "
+                "An operator supplies the digest at install. A run must give "
+                "both sides one digest.",
+            }
+        )
+    entries.append(
+        {
+            "input": "caller-profile",
+            "sides": list(TOPOLOGY),
+            "statement": "No caller profile exists in this repository. A run "
+            "must give both sides one revision of one caller profile.",
+        }
+    )
+    return entries
 
 
 def build_record(
@@ -604,10 +1225,58 @@ def build_record(
                 )
             )
 
+    sources = {"baseline": INSTALL_PATH, "target": APPLICATIONS.get(TARGET_KEY)}
+    readers = {"baseline": _baseline_description, "target": _target_description}
+    install: dict[str, dict[str, Any]] = {}
+    defaults: dict[str, Any] = {}
+    hand_written: dict[str, Any] = {}
+    evaluated.add("baseline-install-inputs-refused")
+    for side, source in sources.items():
+        try:
+            if source is None:
+                raise _InstallRefused(
+                    f"no Application is declared for the key {TARGET_KEY}"
+                )
+            description = readers[side](root, source)
+            if not _plain_path(description["valuesFile"]):
+                raise _InstallRefused(
+                    f"{source} names a values file that is not one relative POSIX "
+                    "path of plain segments"
+                )
+            version, digest, defaults[side] = _chart_content(
+                root, description["chart"]["path"], source
+            )
+            description["chart"].update(version=version, contentSha256=digest)
+            hand_written[side] = description["handWrittenValues"]
+            install[side] = _plain(description)
+        except (_InstallRefused, RecursionError) as refused:
+            reason = (
+                refused.reason
+                if isinstance(refused, _InstallRefused)
+                else f"{source} refers to itself or is nested too deeply"
+            )
+            install.pop(side, None)
+            findings.append(
+                Finding(
+                    "baseline-install-inputs-refused",
+                    f"{side}: install inputs",
+                    f"no install input of this side was compared: {reason}",
+                )
+            )
+    if len(install) == len(sides):
+        evaluated.add("baseline-install-differs")
+        differences["install"], compared["install"] = _differences(
+            "install", install["baseline"], install["target"]
+        )
+        findings.extend(_install_findings(sides, install, differences["install"]))
+
     releases: dict[str, Any] = {}
     topology: dict[str, dict[str, int | None]] = {}
+    effective: dict[str, Any] = {}
+    effective_topology: dict[str, dict[str, int | None]] = {}
+    readiness: dict[str, dict[str, Any]] = {}
     if len(derived) == len(sides):
-        evaluated.update(rule.rule_id for rule in RULES)
+        evaluated.update(_RELEASE_RULES)
         contracts = {
             side: _load_yaml(root / declared.contract)
             for side, declared in sides.items()
@@ -626,6 +1295,26 @@ def build_record(
         found, topology = _topology_findings(contracts, values)
         findings.extend(found)
         findings.extend(_version_findings(contracts))
+        if len(install) == len(sides):
+            evaluated.update(
+                (
+                    "baseline-effective-values-differ",
+                    "baseline-readiness-input-unusable",
+                )
+            )
+            effective = {
+                side: _merged(_merged(defaults[side], values[side]), hand_written[side])
+                for side in sides
+            }
+            differences["effective"], compared["effective"] = _differences(
+                "effective", effective["baseline"], effective["target"]
+            )
+            found, effective_topology = _effective_findings(
+                effective, differences["effective"]
+            )
+            findings.extend(found)
+            found, readiness = _readiness(effective)
+            findings.extend(found)
 
     order = {rule.rule_id: index for index, rule in enumerate(RULES)}
     findings.sort(key=lambda finding: (order[finding.rule_id], finding.subject))
@@ -645,6 +1334,13 @@ def build_record(
         },
         "releases": releases,
         "topology": topology,
+        "installSources": sources,
+        "installInputs": install,
+        "targetDelivery": _target_delivery(root, sources["target"]),
+        "effectiveTopology": effective_topology,
+        "readinessInputs": readiness,
+        "unresolvedInputs": _unresolved(effective),
+        "experimentEligibility": ELIGIBILITY,
         "pathsCompared": compared,
         "differences": {
             layer: differences[layer] for layer in _LAYERS if layer in differences
@@ -695,8 +1391,9 @@ def verify_profile(root: Path = REPO_ROOT) -> tuple[Finding, ...]:
     """Every way the committed profile under ``root`` breaks a rule.
 
     An empty result means that the comparison is ``COMPARABLE``, that the
-    committed baseline release is what its declared sources derive, and that the
-    committed record is the record this tree gives. This reads files and writes
+    committed baseline release and the committed target release are each what
+    their declared sources derive, and that the committed record is the record
+    this tree gives. This reads files and writes
     none.
     """
     record = build_record(root)
@@ -709,6 +1406,15 @@ def verify_profile(root: Path = REPO_ROOT) -> tuple[Finding, ...]:
             f"{finding.rule_id}: {finding.detail}",
         )
         for finding in verify(baseline, root)
+    )
+    target = target_release()
+    findings.extend(
+        Finding(
+            "baseline-target-release-drifted",
+            f"{target.directory}: {finding.subject}",
+            f"{finding.rule_id}: {finding.detail}",
+        )
+        for finding in verify(target, root)
     )
     path = root / RECORD_PATH
     if not path.is_file() or path.is_symlink():

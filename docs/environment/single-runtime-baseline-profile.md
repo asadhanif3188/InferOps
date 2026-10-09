@@ -1,9 +1,11 @@
 # The single-runtime baseline profile
 
-Status: **the profile exists as a generated release and a comparison record, and
-a check holds both. This is evidence at C0. No Application reads the profile, and
-no run installed the baseline release. The profile is an experiment baseline. It
-is not a product tier, and it is not desired state.**
+Status: **the profile exists as a generated release, an install description, and
+a comparison record, and a check holds the three. This is evidence at C0. No
+Application reads the profile, and no run installed the baseline release. The
+profile is an experiment baseline. It is not a product tier, and it is not
+desired state. A `COMPARABLE` record is a statement about committed inputs. It
+is not eligibility for an experiment.**
 
 The desired-state release declares two platform API replicas and two serving
 runtime replicas. The baseline exists so that the loss of one runtime pod under
@@ -20,9 +22,10 @@ comparison record does not establish.
 | Target topology | Two API replicas and two serving runtime replicas: the [desired-state release](git-desired-state.md), key `local-docker-desktop/support-assistant` |
 | Profile directory | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline` |
 | Comparison record | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison.v1alpha1.json` |
+| Install description | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.install.v1alpha1.yaml`. A person writes it |
 | Tool | [`tools/baseline_profile`](../../tools/baseline_profile/core.py): `python -m tools.baseline_profile --check`, `--record`, and `--write` |
-| Tests | [`tests/domain/test_baseline_profile.py`](../../tests/domain/test_baseline_profile.py), and one render comparison in [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py) |
-| Validation record | [`v2-s4-003-pr2-validation.md`](../proof/environment/v2-s4-003-pr2-validation.md) |
+| Tests | [`tests/domain/test_baseline_profile.py`](../../tests/domain/test_baseline_profile.py), and three render tests in [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py) |
+| Validation records | [`v2-s4-003-pr2-validation.md`](../proof/environment/v2-s4-003-pr2-validation.md), and [`v2-s4-005-pr1-validation.md`](../proof/environment/v2-s4-005-pr1-validation.md) for the install and readiness inputs |
 | Read by | No Application and no procedure. The two suites read the files |
 
 ## How the baseline is declared
@@ -89,11 +92,169 @@ release identifier is
 > pod deletion. Both identifiers above moved with that change, because the two revisions
 > of the target moved.
 
+## The install inputs
+
+> **Note, 2026-10-09 (`V2-S4-005-PR1`).** Until this change the baseline named no
+> chart, no hand-written values, no release name, and no namespace, and the
+> record compared none of them. A probe timeout set in the target's Application
+> alone left the record as it was and the result `COMPARABLE`. The comparison
+> now reads an install description of each side, and it refuses that edit.
+
+A release is installed from more than its generated values. **Each side states
+its install inputs, and the tool compares the two statements.**
+
+| Install input | Baseline | Target |
+|---|---|---|
+| Where it is stated | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.install.v1alpha1.yaml` | The Application at `infra/argocd/local-docker-desktop-support-assistant.yaml` |
+| Chart repository, revision, and path | `chart.repository`, `chart.revision`, `chart.path` | `spec.source.repoURL`, `spec.source.targetRevision`, `spec.source.path` |
+| Release name | `release.name` | `spec.source.helm.releaseName` |
+| Namespace | `release.namespace` | `spec.destination.namespace` |
+| Cluster address | `release.server` | `spec.destination.server` |
+| Generated values file | `valuesFile` | The one entry of `spec.source.helm.valueFiles` |
+| Hand-written values | `handWrittenValues` | `spec.source.helm.valuesObject` |
+| Chart version and chart content | Read from the chart at the stated path | Read from the chart at the stated path |
+
+**The baseline's description is written by hand.** No command writes it. A change
+to an install input of the target is made in the description too, in the same
+change. `--check` refuses until both state it.
+
+**What the tool reads of each description, and what it refuses.** An absent
+file, a file that is not YAML, a key that is stated twice, a document that
+refers to itself, an absent member of the table above, and an empty text each
+give `baseline-install-inputs-refused`. The tool takes no install input from a
+default when a description does not state it.
+
+- **The baseline's description** states the members of the table and no other.
+  Another member refuses the comparison.
+- **The Application** is read in six blocks: the document, `metadata`, `spec`,
+  `spec.source`, `spec.source.helm`, and `spec.destination`. Another member in
+  one of them refuses the comparison. So a Helm parameter, a second values
+  file, a second source, an annotation, or a top-level `operation` refuses it:
+  each is an input that the tool cannot compare.
+- **Three members of the Application are stated and not compared:**
+  `metadata.name`, `spec.project`, and `spec.syncPolicy`. They are how the
+  target is delivered, and the baseline names no controller. The record states
+  them under `targetDelivery`, so a change to one makes the record stale and
+  does not refuse the comparison.
+- **The tool does not read** the Application's `apiVersion`, its
+  `metadata.namespace`, or its `metadata.labels`.
+
+**The Application that a cluster holds is not the committed one.** The procedure
+that applies the Application adds the API image digest as one Helm parameter.
+The tool reads the committed file, which states no parameter.
+
+**The chart is stated by its version and by one digest.** The digest is the
+SHA-256 of one line for each file of the chart directory, in the order of the
+paths, but for the chart's page `README.md` and its render fixtures under
+`ci/`. A line is the SHA-256 of the file, two spaces, and the path in the chart.
+So the digest holds `Chart.yaml`, `values.yaml`, `values.schema.json`, each
+template, and `.helmignore`, and it would hold a subchart. Both descriptions
+name one chart path, so both sides state one digest: the comparison of the two
+digests is equal by construction, and the comparison of the two paths is the
+check. The digest makes the committed record stale when a chart file changes.
+It is of the files of the tree that the tool read. Each description names a
+branch as the chart revision, and nothing here reads what that branch names on
+a remote. A chart path in another spelling than the tree has, such as another
+case, is refused.
+
+**Effective values are derived. They are not read from a cluster.** The tool
+merges the chart's defaults, then the derived generated values of the side,
+then its hand-written values, as Helm merges values documents: a mapping is
+merged member by member, another value replaces the earlier one, and a null
+removes the member. The tool does not open the values file that a description
+names. It compares the name with the generated values file of that side's
+release, and `--check` holds that each committed values file is the derived
+one: `baseline-release-drifted` for the baseline, and
+`baseline-target-release-drifted` for the target. The two documents of
+effective values may differ at the two paths where the generated values differ,
+and at no other. The replica counts are read from the effective values again,
+so a hand-written `runtime.replicaCount` that replaces the generated count is
+refused, on one side or on both.
+
+**Both sides read one defaults file.** So a chart default cannot differ between
+the sides. The effective layer finds a hand-written value, or a null, that
+moves one side away from the other, and a hand-written replica count.
+
+**A description is parsed as YAML 1.1.** Helm's parser reads some plain scalars
+in another way: a plain `n` is a text here and false there. The tool does not
+model that. A readiness input must have a usable type, so such a text is
+refused there. For another value the tool can report equal values that Helm
+reads as two.
+
+### The readiness inputs
+
+The chart's two probe templates read 23 values. The chart's validation compares
+three more with a startup budget: `runtime.startupBudgetMs`, and the
+`lifecycle.progressDeadlineSeconds` of each tier. The list names the first of
+the three, so it names 24 values. The two deadlines are compared as effective
+values, and nothing requires that they are stated.
+
+**The effective values of each side must hold each of the 24 with a usable
+value, and the record states the value of each.** Two absent values are not read
+as two equal values: an absent input gives `baseline-readiness-input-unusable`
+for each side that lacks it. A usable value is a text that starts with a slash
+for a path, true or false for `enabled`, and a whole number above zero for each
+other setting. Today the chart's defaults supply all 24 for both sides, and
+neither description states one. So the rule is broken by a null, by a changed
+chart default, or by a hand-written value of another type. Probes that both
+sides switch off with `enabled: false` are comparable: the record states the
+value, and no rule requires a probe.
+
+| Readiness input | Value on both sides |
+|---|---|
+| `/api/readinessPath` | `/health/ready` |
+| `/api/livenessPath` | `/health/live` |
+| `/api/probes/enabled` | `true` |
+| `/api/probes/startup/budgetMs` | `60000` |
+| `/api/probes/startup/periodSeconds` | `5` |
+| `/api/probes/startup/timeoutSeconds` | `2` |
+| `/api/probes/readiness/periodSeconds` | `10` |
+| `/api/probes/readiness/timeoutSeconds` | `5` |
+| `/api/probes/readiness/failureThreshold` | `3` |
+| `/api/probes/liveness/periodSeconds` | `10` |
+| `/api/probes/liveness/timeoutSeconds` | `2` |
+| `/api/probes/liveness/failureThreshold` | `3` |
+| `/runtime/healthPath` | `/health` |
+| `/runtime/startupBudgetMs` | `300000` |
+| `/runtime/probes/enabled` | `true` |
+| `/runtime/probes/startup/budgetMs` | `600000` |
+| `/runtime/probes/startup/periodSeconds` | `10` |
+| `/runtime/probes/startup/timeoutSeconds` | `3` |
+| `/runtime/probes/readiness/periodSeconds` | `10` |
+| `/runtime/probes/readiness/timeoutSeconds` | `3` |
+| `/runtime/probes/readiness/failureThreshold` | `3` |
+| `/runtime/probes/liveness/periodSeconds` | `10` |
+| `/runtime/probes/liveness/timeoutSeconds` | `3` |
+| `/runtime/probes/liveness/failureThreshold` | `3` |
+
+A startup probe gates the other two, and a liveness probe restarts a container,
+so the settings of all three probes are named. The record states what the chart
+receives. It does not state a rendered probe, and no probe was observed.
+
+### Unresolved inputs and eligibility
+
+**`COMPARABLE` says that the committed inputs of the two sides are comparable.**
+It does not say that a run may use the baseline. Every record states
+`experimentEligibility` as `not-established`, and it lists each input that no
+committed file resolves under `unresolvedInputs`:
+
+| Input | Path | Statement |
+|---|---|---|
+| `api-image-digest` | `/api/image/digest` | The committed files do not give both sides one API image digest of the form sha256 and 64 hexadecimal digits. An operator supplies the digest at install. A run must give both sides one digest. |
+| `caller-profile` | None | No caller profile exists in this repository. A run must give both sides one revision of one caller profile. |
+
+The record lists the digest unless the effective values of both sides hold one
+digest of the form `sha256:` and 64 hexadecimal digits. A digest that one side
+states alone, and two different digests, are one-sided hand-written values, and
+they are refused. The caller profile is listed in every record, because this
+tool reads none.
+
 ## The permitted differences
 
-The tool compares four layers: the two declarations, the two contract documents,
-the two generated values documents, and the two release documents. A path is a
-JSON pointer into the document of its layer. **A difference at a path that this
+The tool compares six layers: the two declarations, the two contract documents,
+the two generated values documents, the two release documents, the two install
+descriptions, and the two documents of effective values. A path is a JSON
+pointer into the document of its layer. **A difference at a path that this
 table does not state refuses the comparison.**
 
 | Layer | Path | Reason |
@@ -110,13 +271,17 @@ table does not state refuses the comparison.**
 | release | `/metadata/workloadVersion` | `identity-of-a-different-content` |
 | release | `/output/helmValues/sha256` | `identity-of-a-different-content` |
 | release | `/source/contract/sha256` | `identity-of-a-different-content` |
+| install | `/valuesFile` | `profile-declaration` |
+| effective | `/ownership/workloadVersion` | `identity-of-a-different-content` |
+| effective | `/runtime/replicaCount` | `intended-variable` |
 
 - `intended-variable`: the path carries the runtime replica count. One values
   path carries it, and the contract's replica range feeds that path.
 - `identity-of-a-different-content`: the path is a version, a digest, or an
   identifier of a document that differs at a permitted path.
 - `prose-not-rendered`: no render reads the path.
-- `profile-declaration`: the field is what makes the declaration a profile.
+- `profile-declaration`: the field is what makes the declaration a profile. In
+  the install layer it is the generated values file that each side reads.
 
 A permitted path may differ only to the declared counts. The baseline must state
 one runtime replica and the target two, and each side must state two API
@@ -134,9 +299,7 @@ difference, as an edit of the baseline's contract is.
 
 The generated values of the two sides are equal at every path but two. A test
 compares the two committed values files as bytes: two lines differ. Each row but
-the last is about the members that the generated values hold. A value that the
-target's Application states by hand, such as the cache mount path or the scrape
-annotations, is not in this table and is not compared.
+the last four is about the members that the generated values hold.
 
 | Input | Where it is | State |
 |---|---|---|
@@ -148,21 +311,35 @@ annotations, is not in this table and is not compared.
 | API replica count and API rollout bounds | `api.replicaCount`, `api.rollout` | Equal: two replicas |
 | The API values that a caller meets: request timeout, drain timeout, and output-token ceiling | `api` | Equal |
 | Telemetry and secret references | `telemetry`, `security` | Equal |
-| Probes, requests, images of the other tiers, Services | The chart's templates and its other defaults | Not compared by the tool. One test renders both sides with the chart of the working tree: see below |
+| Probe settings, requests, and images of the other tiers | The chart's defaults, and the hand-written values of each side | Equal as values: the effective values of the two sides differ at two paths only, and each of the 24 readiness inputs is stated |
+| Hand-written values, release name, namespace, and the chart's repository, revision, path, and version | The install description of each side | Equal. See [the install inputs](#the-install-inputs) |
+| The chart's templates, and so each rendered object | The chart files | One digest for both sides. The tool compares no rendered object: see below |
 | The runtime tier's PodDisruptionBudget | The chart renders one for a tier of two or more replicas | Not equal, since chart `0.6.0`: the target renders it, and the baseline does not. It follows from the runtime replica count. See the note of 2026-10-09 above |
 
-**Readiness inputs are not in the generated values, and the tool does not
-compare them.** The chart's templates and defaults own each probe. The baseline
-names no chart, so nothing here binds a run to one chart revision for both
-sides. The tool does not run Helm. One test of the chart suite renders both
-releases with the chart of the working tree and one hand-written values file,
-the reference fixture, and compares every object. That test is equal by
-construction in everything but the generated values: it shows what the two
-generated files change in a render, and it plants no changed probe. The two renders differ in three objects: one ConfigMap value that
-carries the workload version, the configuration checksum annotation of the API
-pod template and of the runtime pod template, and the `replicas` line of the
-runtime Deployment. Each probe, each resource request and limit, each image, the
-model mount, both rollout strategies, and both Services are rendered the same.
+**Readiness inputs are not in the generated values. The tool compares them as
+values, and it renders nothing.** The chart's defaults state each probe setting,
+and the hand-written values of a side can replace one. The tool compares the
+values that the chart receives on each side. It does not run Helm, so it does
+not compare a rendered probe.
+
+Three tests of the chart suite render. Each renders a side with the hand-written
+values of its own install description, the release name and the namespace that
+the description states, and one placeholder API image digest for both sides.
+
+- **The two sides as described.** The two renders differ in three objects of
+  the same name: one
+  ConfigMap value that carries the workload version, the configuration checksum
+  annotation of the API pod template and of the runtime pod template, and the
+  `replicas` line of the runtime Deployment. The target also renders the runtime
+  tier's budget. Each probe, each resource request and limit, each image, the
+  model mount, both rollout strategies, and both Services are rendered the same.
+- **A readiness timeout changed on one side.** The rendered readiness probe of
+  the API differs, and the comparison record refuses the same edit.
+- **Scrape annotations switched off on one side.** The pod templates of that
+  side lose the scrape annotations, so the renders differ beyond the stated
+  differences. The record refuses the same edit.
+
+The render tests need the chart tool, and they skip on a host without it.
 
 **One runtime replica under the target's rollout bounds.** The baseline keeps
 `runtime.rollout.maxUnavailable` 1 and `runtime.rollout.maxSurge` 0. Under
@@ -175,7 +352,7 @@ documents. It was not observed on a cluster.
 
 ## The rules
 
-A comparison record states seven rules, in this order:
+A comparison record states 11 rules, in this order:
 
 | Rule | Statement |
 |---|---|
@@ -186,22 +363,33 @@ A comparison record states seven rules, in this order:
 | `baseline-release-differs` | The two release documents differ only in the release identifier, the workload version, the contract digest, and the values digest. |
 | `baseline-topology-not-declared` | The baseline states two API replicas and one runtime replica. The target states two API replicas and two runtime replicas. Each contract states a replica range of one number. |
 | `baseline-version-not-distinct` | The baseline and the target name one workload and two workload versions. |
+| `baseline-install-inputs-refused` | The install description of the baseline and of the target is each a file that parses, that states each member this tool compares, and that states no other member in a block this tool reads. Each names a chart of this tree. |
+| `baseline-install-differs` | The two install descriptions differ only in the generated values file, and each names the generated values file of its own release. |
+| `baseline-effective-values-differ` | The effective values of the two sides differ only in the runtime replica count and the workload version, and they state the replica counts of each side. They are the chart's defaults, then the derived generated values, then the hand-written values. |
+| `baseline-readiness-input-unusable` | The effective values of each side hold each of 24 readiness inputs with a usable value: the 23 values that the two probe templates read, and the startup budget of the runtime. |
 
 The state of a rule is `held`, `not-held`, or `not-evaluated`. When the sources
-of one side derive no release, the last five rules are `not-evaluated`, and the
-result is `REFUSED`.
+of one side derive no release, seven rules are `not-evaluated`: the third to the
+seventh, and the last two. When the install description of one side is not read
+whole, the last three rules are `not-evaluated`. The result is `REFUSED` in both
+cases.
 
-`--check` adds two rules for the committed files:
+`--check` adds three rules for the committed files:
 
 | Rule | Statement |
 |---|---|
 | `baseline-release-drifted` | The committed baseline release is, byte for byte, what its declared sources derive. |
+| `baseline-target-release-drifted` | The committed target release is, byte for byte, what its declared sources derive. So the values file that the target's description names holds the generated values that were compared. |
 | `baseline-record-stale` | The committed comparison record is, byte for byte, the record that the files of this tree give. |
 
 **A change to both sides is comparable, and it is still reported.** A platform
 default moves both releases alike. The comparison holds. The committed baseline
 release and the committed record then no longer describe the tree, so `--check`
-fails until a person reads the difference and writes them again. The record
+fails until a person reads the difference and writes them again. The committed
+target release no longer describes the tree either, and
+`baseline-target-release-drifted` reports it. This tool does not write the
+target's release: `python -m tools.gitops_desired_state --write` with the
+release's key does. The record
 states the digests and the identifiers of both releases, so a change to the
 target alone makes the record stale too.
 
@@ -232,6 +420,34 @@ own declaration cannot state them.
   `./gitops/...` or a path with a backslash, and `GitOps/...` in another case.
 - **A list entry that one contract lacks** is `baseline-contract-differs` at the
   entry's index.
+- **A probe setting or another hand-written value that one description states
+  alone** is `baseline-install-differs` at the path in the description, and
+  `baseline-effective-values-differ` at the path in the values when the chart
+  then receives another value. A value that the chart's default already states
+  is `baseline-install-differs` alone.
+- **Another release name, namespace, cluster address, chart repository, chart
+  revision, or chart path in one description** is `baseline-install-differs`.
+- **A baseline description that names the target's generated values file** is
+  `baseline-install-differs`.
+- **A hand-written runtime replica count** is `baseline-effective-values-differ`
+  for the side that then states another count than its topology, whether one
+  description states it or both do.
+- **A null that removes a readiness input on one side** is
+  `baseline-install-differs`, `baseline-effective-values-differ`, and
+  `baseline-readiness-input-unusable`.
+- **A readiness input that the chart's defaults no longer state, or state with
+  a value of another type,** is `baseline-readiness-input-unusable` for both
+  sides.
+- **An absent description, a description that does not parse, a key stated
+  twice, a description that refers to itself, an absent member, another member
+  in a block that the tool reads, or a chart without a template, a values
+  schema, or a version** is `baseline-install-inputs-refused`.
+- **One change made to both descriptions, a changed chart file that moves no
+  effective value, or a changed project or sync policy of the Application** is
+  comparable, and `baseline-record-stale` reports it.
+- **A hand edit of the committed target values, or a missing target values
+  file,** is `baseline-target-release-drifted`. The comparison itself does not
+  change, because it derives the values.
 - **A hand edit of the committed baseline values or of the committed release
   document, or a file beside the two generated files,** is
   `baseline-release-drifted`.
@@ -260,7 +476,8 @@ uv run --locked python -m tools.baseline_profile --write
 `--record` prints one JSON record. Exit status 0 says that the result is
 `COMPARABLE`. Exit status 5 says that the result is `REFUSED`.
 
-`--write` writes the baseline release and the record again. It refuses to write
+`--write` writes the baseline release and the record again. It does not write
+the install description. It refuses to write
 when the comparison is `REFUSED`, and it refuses a profile directory that holds
 a file the platform did not write. A write replaces a hand edit without asking,
 so read the `--check` output first. It writes the release before the record. If
@@ -278,7 +495,8 @@ comparison, and it is a decision.
 | Not applied | Why | What it needs |
 |---|---|---|
 | An Application, or a desired-state path, for the baseline | No Application reads the profile. The one Application reads the target, and the Git desired state holds one release | A decision on how a run selects the baseline in the environment that the experiment names |
-| Hand-written values for the baseline | The target's hand-written values are inside its Application. The baseline declares none | The same values for both sides, where a run applies the baseline |
+| A procedure that installs the baseline from its install description | The description is compared, and nothing reads it to install a release | A decision on how a run selects the baseline, and a check that the run's inputs are the described ones |
+| One API image digest for both sides | No committed file states the digest. An operator supplies it at install | A run that gives both sides one digest, and that records it |
 | A caller profile | No caller profile exists in this repository | A caller profile, and a check that both sides are given the one revision of it |
 | The footprint of the baseline in the capacity preflight | [The capacity preflight](capacity-preflight.md) derives the footprint from the Application of the target | An Application for the baseline, or a footprint that the gate derives another way |
 | A run of the baseline | The profile is a render | An environment that holds it, and a frozen experiment record |
@@ -292,18 +510,34 @@ comparison, and it is a decision.
   and no run installed the baseline release.
 - What a caller observes when the one runtime pod of the baseline stops, or when
   one of the two runtime pods of the target stops.
-- That the two releases install with equal hand-written values. The baseline
-  declares none. The target's hand-written values are in its Application, and
-  this record does not compare them.
-- That the two releases install with one API image digest, one release name, and
-  one namespace. No compared document states one of them.
-- That the two releases install from one chart revision. The baseline names no
-  chart. The chart owns each probe, each request, and each template, and this
-  record compares none of them.
-- That the model cache claim is in one state for both sides. The claim is not a
-  compared input.
+- That the baseline is eligible for an experiment. The result is a statement
+  about committed inputs, and every record states the eligibility as
+  not-established.
+- That a run installs either release with the install inputs that this record
+  states. The record compares two committed descriptions. No procedure reads the
+  baseline's description, and nothing compares a cluster with either.
+- That the two releases install with one API image digest. No committed file
+  states the digest. An operator supplies it at install, and the record lists it
+  as unresolved.
+- That a cluster reads the chart files whose digest this record states. Each
+  description names a branch as the chart revision, and the digest is of the
+  files of the tree that the tool read.
+- That the two releases render equal probes. The record compares effective
+  values and one digest of the chart files. This tool does not run Helm, and it
+  parses a description as YAML 1.1, which Helm's parser does not do for every
+  plain scalar.
+- That the baseline is delivered as the target is. The record states the
+  project, the sync policy, and the name of the target's Application, and it
+  compares none of them. The baseline names no controller.
+- That an applied Application is the committed one. The procedure that applies
+  it adds the API image digest as one Helm parameter, and this tool reads the
+  committed file.
+- That a probe behaves as its settings state, or that a pod was Ready. No
+  cluster was read.
+- That the model cache claim is in one state for both sides. The claim's name
+  and its mount are compared. Its content and its state are not.
 - That one caller profile is applied to both sides. No caller profile exists in
-  this repository.
+  this repository, and the record lists it as unresolved.
 - That telemetry of the two sides is equal. The workload version differs, and it
   is a resource attribute of the API's telemetry.
 - That a cluster holds the baseline. The capacity preflight derives the
@@ -319,10 +553,10 @@ not part of the parsed document.
 ```sh
 uv run --locked python -m tools.baseline_profile --check
 uv run --locked python -m pytest tests/domain/test_baseline_profile.py -q
-uv run --locked python -m pytest tests/architecture/test_helm_chart.py -q -k baseline_profile
+uv run --locked python -m pytest tests/architecture/test_helm_chart.py -q -k baseline
 uv run --locked python -m pytest tests/domain/test_generated_release_drift.py tests/domain/test_renderer_input_boundary.py -q
 ```
 
 The default-lane suite holds each of these test modules, and one test runs the
-`--check` command. The render comparison needs the chart tool. It skips on a
+`--check` command. The render comparisons need the chart tool. They skip on a
 host without it.

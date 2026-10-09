@@ -181,7 +181,13 @@ generated release, with two API replicas and one runtime replica. It is derived 
 this release's declaration with the contract replaced. It is not in this tree, no
 Application reads it, and the tree still holds one release. A change to this release's
 binding, platform defaults, or revisions moves the baseline too, and
-`python -m tools.baseline_profile --check` fails until it is written again.
+`python -m tools.baseline_profile --check` fails until it is written again. Since
+`V2-S4-005-PR1` the baseline also states its install inputs in one file, and the
+check compares them with the inputs that this release's Application states. A change
+to the chart's repository, revision, or path, the release name, the namespace, the
+cluster address, or a hand-written value in the Application alone is refused until
+the baseline's file states the same. That check also holds that the committed files
+of this release are what its declared sources derive.
 
 ## The promotion boundary
 

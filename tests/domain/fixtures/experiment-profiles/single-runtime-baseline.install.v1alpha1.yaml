@@ -1,0 +1,53 @@
+# The install inputs of the single-runtime baseline profile.
+#
+# A release is installed from more than its generated values: a chart, a release
+# name, a namespace, and hand-written values. This file states each of them for
+# the baseline, and the cluster address that a release is installed to. The
+# target states the same inputs in its Application.
+# `python -m tools.baseline_profile --check` reads both descriptions and refuses
+# a difference at any path but `valuesFile`.
+#
+# This file is written by hand, and no command writes it. A change to an install
+# input of the target is made here too, in the same change, or the check refuses.
+#
+# The API image digest is not in this file, and it is not in the Application. No
+# InferOps API image is published, so the digest names a build on the operator's
+# host. The comparison record lists it as an unresolved input.
+#
+# No Application and no procedure reads this file. It installs nothing.
+apiVersion: inferops.io/baseline-install-inputs/v1alpha1
+kind: BaselineInstallInputs
+chart:
+  repository: https://github.com/asadhanif3188/InferOps.git
+  revision: main
+  path: charts/inferops-llm
+release:
+  name: inferops
+  namespace: inferops-release
+  server: https://kubernetes.default.svc
+valuesFile: tests/domain/fixtures/experiment-profiles/single-runtime-baseline/values.generated.yaml
+handWrittenValues:
+  api:
+    image:
+      repository: localhost/inferops-api
+      pullPolicy: Never
+  runtime:
+    image:
+      pullPolicy: IfNotPresent
+  model:
+    alias: qwen3-1.7b-q8_0
+    license:
+      spdx: Apache-2.0
+    acquisition:
+      enabled: true
+      source: download
+    cache:
+      mountPath: /models
+      readOnly: true
+    integrity:
+      verifyOnStart: sha256
+  telemetry:
+    scrapeAnnotations: true
+    collection:
+      collector:
+        deploy: true
