@@ -537,11 +537,21 @@ uv run --locked python -m tools.baseline_profile --record
 uv run --locked python -m tools.baseline_profile --write
 ```
 
-A change to the binding, to the platform defaults, to a revision of the desired-state
-release, or to either contract of the reference workload moves the baseline release or
-the comparison record. `--check` then fails. Read its findings, then run `--write` in
-the same change. Do not add a permitted path to obtain `COMPARABLE`: a new permitted
-path is a second variable of the comparison.
+`--check` fails in two ways, and the remedy differs.
+
+- **Stale.** A change to the binding, to the platform defaults, or to a revision of the
+  desired-state release moves both sides alike. So does a change to a contract at a
+  permitted path. The findings are `baseline-release-drifted` and
+  `baseline-record-stale`. Read them, then run `--write` in the same change.
+- **Refused.** A change to one contract of the reference workload at any other path,
+  such as a resource ceiling, makes the two sides differ. `--write` refuses. The
+  baseline is rendered from version `0.1.0` of the workload, so it can follow the
+  target only while every other member of the two contracts stays equal. Give the
+  other contract the same change, or decide another baseline contract. That is a
+  decision, and the first experiment's freeze record pins the `0.1.0` contract.
+
+A comment in a contract is not compared. Do not add a permitted path to obtain
+`COMPARABLE`: a new permitted path is a second variable of the comparison.
 [The baseline profile page](docs/environment/single-runtime-baseline-profile.md) states
 the permitted differences, the rules, and what a record does not establish.
 

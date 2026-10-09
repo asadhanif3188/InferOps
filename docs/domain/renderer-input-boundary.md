@@ -345,11 +345,17 @@ The tests assert each property directly:
   names the drift check and the desired-state tool to read the identity that the
   declared release gives
   [each serving runtime replica](../environment/runtime-model-cache-observation.md).
-  It writes nothing. Another reads every tracked file under `src`, `tools`, `scripts`,
+  It writes nothing. Since `V2-S4-003-PR2`, `tools/baseline_profile` is listed too:
+  it does not import the package, and it names the drift check and the
+  desired-state tool to derive
+  [the single-runtime baseline](../environment/single-runtime-baseline-profile.md)
+  and the desired-state release again. It writes one generated release outside the
+  Git desired state, through the drift check's writer, and one comparison record.
+  Another reads every tracked file under `src`, `tools`, `scripts`,
   `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, whatever its suffix,
-  and fails if any file outside the six tools names any of their packages as a whole
+  and fails if any file outside the seven tools names any of their packages as a whole
   word - so no module, script, chart, deployment or infrastructure file, workflow, or
-  project setting reaches any of them in turn. A file inside one of the six is not read, so
+  project setting reaches any of them in turn. A file inside one of the seven is not read, so
   the E01 runner may name the drift check's reader.
 
 ## The renderer interface

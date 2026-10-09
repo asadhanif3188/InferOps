@@ -6,10 +6,11 @@ no run installed the baseline release. The profile is an experiment baseline. It
 is not a product tier, and it is not desired state.**
 
 The desired-state release declares two platform API replicas and two serving
-runtime replicas. A later experiment compares the loss of one runtime pod under
-that topology with the loss of the one runtime pod under a baseline. That
-comparison means something only while the runtime replica count is the one
-variable that differs. This page describes the baseline, each difference that it
+runtime replicas. The baseline exists so that the loss of one runtime pod under
+that topology can be compared with the loss of the one runtime pod of a release
+with one. No experiment that makes that comparison is defined in this
+repository. Such a comparison means something only while the runtime replica
+count is the one variable that differs. This page describes the baseline, each difference that it
 is permitted to have, the check that refuses any other difference, and what a
 comparison record does not establish.
 
@@ -22,13 +23,16 @@ comparison record does not establish.
 | Tool | [`tools/baseline_profile`](../../tools/baseline_profile/core.py): `python -m tools.baseline_profile --check`, `--record`, and `--write` |
 | Tests | [`tests/domain/test_baseline_profile.py`](../../tests/domain/test_baseline_profile.py), and one render comparison in [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py) |
 | Validation record | [`v2-s4-003-pr2-validation.md`](../proof/environment/v2-s4-003-pr2-validation.md) |
-| Read by | Nothing. No Application reads the profile, and no procedure calls the tool |
+| Read by | No Application and no procedure. The two suites read the files |
 
 ## How the baseline is declared
 
-**The baseline is the target's declaration with one input replaced.** The tool
+**The baseline is the target's declaration with two fields replaced.** The tool
 takes the declaration of the desired-state release and replaces the contract and
 the directory. It keeps the binding, the platform defaults, and both revisions.
+So the declarations agree by construction, and the first rule below is a
+tripwire: it is not held when a later edit of the tool names another binding,
+another defaults file, or another revision for the baseline.
 
 | Declared input | Baseline | Target |
 |---|---|---|
@@ -48,6 +52,26 @@ they differ in version. The version is a rendered value. So the two releases
 differ in two values and not in one: the runtime replica count, and the workload
 version that follows it. A baseline that kept the target's version would give
 one version two contents, and the check refuses it.
+
+**What the workload version reaches.** The chart gives the version to the API as
+one ConfigMap value, `INFEROPS_WORKLOAD_VERSION`. The API states it as the
+resource attribute `inferops.workload.version` of its telemetry. So a telemetry
+record of the baseline states `0.1.0` and one of the target states `0.2.0`. The
+telemetry names keep the version off every operational metric series: it may
+label the identity metric only. No module of the API's request handling reads
+it. The ConfigMap
+value is hashed into the configuration checksum annotation of the API pod
+template and of the runtime pod template. So a change of one installed release
+from one side to the other gives the API Deployment a new pod template too, and
+not the runtime Deployment alone. Both statements are read from the chart and
+the API's source. Neither was observed on a cluster.
+
+**The baseline follows the target only while the two contracts stay equal
+elsewhere.** A change to the target's contract at a path that is not permitted,
+such as a resource ceiling in a later version, gives `REFUSED`. The `0.1.0`
+contract is a pinned input of the first experiment's freeze record and the
+contract of the reference release in the test fixtures. So the remedy then is a
+decision: the same change to that contract, or another baseline contract.
 
 The baseline release identifier is
 `acf6fbc799ea50ab43b76f5ab48e81bf82bb89bda808319c22f9ae42d22753fb`. The target
@@ -98,7 +122,10 @@ difference, as an edit of the baseline's contract is.
 ## What the two releases share
 
 The generated values of the two sides are equal at every path but two. A test
-compares the two committed values files as bytes: two lines differ.
+compares the two committed values files as bytes: two lines differ. Each row but
+the last is about the members that the generated values hold. A value that the
+target's Application states by hand, such as the cache mount path or the scrape
+annotations, is not in this table and is not compared.
 
 | Input | Where it is | State |
 |---|---|---|
@@ -110,23 +137,29 @@ compares the two committed values files as bytes: two lines differ.
 | API replica count and API rollout bounds | `api.replicaCount`, `api.rollout` | Equal: two replicas |
 | The API values that a caller meets: request timeout, drain timeout, and output-token ceiling | `api` | Equal |
 | Telemetry and secret references | `telemetry`, `security` | Equal |
-| Probes, requests, images of the other tiers, Services | The chart's templates and its other defaults | One chart for both sides. A render comparison holds it: see below |
+| Probes, requests, images of the other tiers, Services | The chart's templates and its other defaults | Not compared by the tool. One test renders both sides with the chart of the working tree: see below |
 
-**Readiness inputs are not in the generated values.** The chart's templates and
-defaults own each probe. Both sides are rendered by the one chart, so no path in
-a profile selects another probe. The tool does not run Helm. One test of the
-chart suite renders both releases with one hand-written values file and compares
-every object. The two renders differ in three objects: one ConfigMap value that
+**Readiness inputs are not in the generated values, and the tool does not
+compare them.** The chart's templates and defaults own each probe. The baseline
+names no chart, so nothing here binds a run to one chart revision for both
+sides. The tool does not run Helm. One test of the chart suite renders both
+releases with the chart of the working tree and one hand-written values file,
+the reference fixture, and compares every object. That test is equal by
+construction in everything but the generated values: it shows what the two
+generated files change in a render, and it plants no changed probe. The two renders differ in three objects: one ConfigMap value that
 carries the workload version, the configuration checksum annotation of the API
 pod template and of the runtime pod template, and the `replicas` line of the
 runtime Deployment. Each probe, each resource request and limit, each image, the
 model mount, both rollout strategies, and both Services are rendered the same.
 
 **One runtime replica under the target's rollout bounds.** The baseline keeps
-`runtime.rollout.maxUnavailable` 1 and `runtime.rollout.maxSurge` 0. With one
-replica, those bounds permit a rollout to remove the one runtime pod before its
-replacement exists. That is read from the render. It was not observed on a
-cluster.
+`runtime.rollout.maxUnavailable` 1 and `runtime.rollout.maxSurge` 0. Under
+`maxSurge` 0 a rollout creates no pod above the replica count. So with one
+replica, a rollout removes the one runtime pod before its replacement is
+created, and no runtime pod is Ready until the replacement loads the model.
+[The chart's page](../../charts/inferops-llm/README.md) states the same for its
+default of one replica. That is read from the render and from what Kubernetes
+documents. It was not observed on a cluster.
 
 ## The rules
 
@@ -160,8 +193,11 @@ fails until a person reads the difference and writes them again. The record
 states the digests and the identifiers of both releases, so a change to the
 target alone makes the record stale too.
 
-**What each accidental change is reported as.** The suite plants each of these
-in a copy of the inputs:
+**What each accidental change is reported as.** The suite plants each of these.
+A contract, a binding, a platform default, and a committed file are edited in a
+copy of the inputs. Another binding, another defaults file, another revision,
+and another directory are given as a replaced declaration, because the tool's
+own declaration cannot state them.
 
 - **A resource ceiling, the runtime image digest, the model identifier, the
   owner, or the tenant of the baseline contract** is `baseline-contract-differs`
@@ -177,11 +213,24 @@ in a copy of the inputs:
   sides.
 - **Another binding, another platform-defaults file, or another revision in the
   baseline declaration** is `baseline-declaration-differs`, and the value or the
-  release field that moves with it is refused under its own rule.
-- **A profile directory inside `gitops/`** is `baseline-declaration-differs`.
-- **A hand edit of the committed baseline values, or a file beside the two
-  generated files,** is `baseline-release-drifted`.
-- **An edited or a missing record** is `baseline-record-stale`.
+  release field that moves with it is refused under its own rule. The other
+  binding states one API replica, so it is `baseline-topology-not-declared` too.
+- **A profile directory inside `gitops/`** is `baseline-declaration-differs`. So
+  is a directory that is not one relative POSIX path of plain segments, such as
+  `./gitops/...` or a path with a backslash, and `GitOps/...` in another case.
+- **A list entry that one contract lacks** is `baseline-contract-differs` at the
+  entry's index.
+- **A hand edit of the committed baseline values or of the committed release
+  document, or a file beside the two generated files,** is
+  `baseline-release-drifted`.
+- **An edited record, a missing record, a record with another line ending, or a
+  directory at the record's path** is `baseline-record-stale`.
+
+**The comparison's walk does not rest on the parsers.** A release is derived
+before it is compared, so a contract that the render boundary refuses is never
+compared. The walk of two documents still tells apart a sequence and a mapping
+whose keys spell its indexes, a mapping with a key that is not text, and a whole
+number and a fraction of equal value. A test gives it each.
 
 ## How to run it
 
@@ -202,7 +251,9 @@ uv run --locked python -m tools.baseline_profile --write
 `--write` writes the baseline release and the record again. It refuses to write
 when the comparison is `REFUSED`, and it refuses a profile directory that holds
 a file the platform did not write. A write replaces a hand edit without asking,
-so read the `--check` output first.
+so read the `--check` output first. It writes the release before the record. If
+the record cannot be written, the two are out of step: `--check` reports it, and
+a second `--write` repairs it.
 
 Exit status 2 says that the arguments are not usable.
 
@@ -220,6 +271,8 @@ comparison, and it is a decision.
 | The footprint of the baseline in the capacity preflight | [The capacity preflight](capacity-preflight.md) derives the footprint from the Application of the target | An Application for the baseline, or a footprint that the gate derives another way |
 | A run of the baseline | The profile is a render | An environment that holds it, and a frozen experiment record |
 | A frozen experiment that names the profile | No experiment that uses the baseline is frozen | A freeze record that pins the profile's inputs |
+| A baseline that follows a changed target contract | The baseline is the `0.1.0` contract, which a freeze record pins | A decision, when the target's contract changes at a path that is not permitted |
+| A profile directory in the desired state | A rule and a test refuse it | A change of that rule, of the record, and of this page, with the decision on how a run selects the baseline |
 
 ## What a record does not establish
 
@@ -228,18 +281,26 @@ comparison, and it is a decision.
 - What a caller observes when the one runtime pod of the baseline stops, or when
   one of the two runtime pods of the target stops.
 - That the two releases install with equal hand-written values. The baseline
-  declares none. A run must give both sides the values that the target's
-  Application states.
+  declares none. The target's hand-written values are in its Application, and
+  this record does not compare them.
+- That the two releases install with one API image digest, one release name, and
+  one namespace. No compared document states one of them.
+- That the two releases install from one chart revision. The baseline names no
+  chart. The chart owns each probe, each request, and each template, and this
+  record compares none of them.
+- That the model cache claim is in one state for both sides. The claim is not a
+  compared input.
 - That one caller profile is applied to both sides. No caller profile exists in
   this repository.
+- That telemetry of the two sides is equal. The workload version differs, and it
+  is a resource attribute of the API's telemetry.
 - That a cluster holds the baseline. The capacity preflight derives the
   footprint of the target only.
 - That either recorded revision is the commit a release was rendered at, or that
   it names a commit.
 
 The record also does not compare a comment of a contract, because a comment is
-not part of the parsed document. It does not compare the chart's templates,
-because both sides name the one chart.
+not part of the parsed document.
 
 ## Where the profile is checked
 

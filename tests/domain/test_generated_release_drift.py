@@ -200,7 +200,7 @@ def test_every_committed_generated_file_is_in_a_declared_release_directory() -> 
     state under ``gitops/``, whose releases ``tools.gitops_desired_state`` declares
     and derives again through this package's check. One is the single-runtime
     baseline profile, which ``tools.baseline_profile`` declares and derives again
-    through this package's check. The other is an E01 run's
+    through this package's check. One is an E01 run's
     evidence, and only as a file the run's manifest records. Those renders are bound
     to the commit that ran them, so this check does not derive them again from
     today's sources; ``python -m tools.experiment_e01 --check`` holds each to its

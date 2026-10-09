@@ -25,10 +25,21 @@ differ in it too. That is the second permitted difference, and it follows the
 first.
 
 **What is not compared.** Comments in a contract are not part of the parsed
-document. The chart's templates and its defaults outside the platform defaults
-are one set of files for both sides: no path here selects another chart. This
-module does not run Helm; a test of the chart suite compares the two renders. No
-caller profile exists in this repository, so none is compared.
+document. The baseline names no chart, no hand-written values, no API image
+digest, no release name, and no namespace, so none of them is compared. This
+module does not run Helm; a test of the chart suite renders both releases with
+the chart of the working tree and one hand-written values file. No caller
+profile exists in this repository, so none is compared.
+
+**The declaration layer is a tripwire.** :func:`baseline_profile` builds the
+baseline from the target's declaration, so the two agree by construction. The
+layer is not held when a later edit of that function names another binding,
+another defaults file, or another revision.
+
+**The comparison rests on the parsers.** A release is derived before it is
+compared, so a contract that the render boundary refuses is never compared.
+The walk of two documents does not depend on that: a mapping beside a sequence,
+and a mapping with a key that is not text, are each compared whole.
 
 **Offline.** Every function reads files under the root it is given.
 :func:`write_profile` writes the declared profile directory and the comparison
@@ -236,10 +247,19 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "What a caller observes when the one runtime pod of the baseline stops, or "
     "when one of the two runtime pods of the target stops.",
     "That the two releases install with equal hand-written values. The baseline "
-    "declares none. A run must give both sides the values that the target's "
-    "Application states.",
+    "declares none. The target's hand-written values are in its Application, and "
+    "this record does not compare them.",
+    "That the two releases install with one API image digest, one release name, "
+    "and one namespace. No compared document states one of them.",
+    "That the two releases install from one chart revision. The baseline names no "
+    "chart. The chart owns each probe, each request, and each template, and this "
+    "record compares none of them.",
+    "That the model cache claim is in one state for both sides. The claim is not "
+    "a compared input.",
     "That one caller profile is applied to both sides. No caller profile exists "
     "in this repository.",
+    "That telemetry of the two sides is equal. The workload version differs, and "
+    "it is a resource attribute of the API's telemetry.",
     "That a cluster holds the baseline. The capacity preflight derives the "
     "footprint of the target only.",
     "That either recorded revision is the commit a release was rendered at, or "
@@ -288,25 +308,69 @@ def baseline_profile() -> DeclaredRelease:
 _ABSENT: Final = object()
 
 
-def _escaped(key: object) -> str:
+def _escaped(key: str) -> str:
     """One reference token of a JSON pointer."""
-    return str(key).replace("~", "~0").replace("/", "~1")
+    return key.replace("~", "~0").replace("/", "~1")
 
 
-def _leaves(document: Any, pointer: str = "") -> Iterator[tuple[str, Any]]:
-    """Every leaf of a parsed document, by JSON pointer.
+def _kind(document: Any) -> str:
+    """Whether a document is walked as a mapping, walked as a sequence, or a leaf.
 
     An empty mapping and an empty sequence are leaves, so a side that empties a
-    member differs from a side that fills it.
+    member differs from a side that fills it. A mapping with a key that is not
+    text is a leaf too: such a key has no pointer of its own, so the mapping is
+    compared whole.
     """
     if isinstance(document, Mapping) and document:
-        for key, value in document.items():
-            yield from _leaves(value, f"{pointer}/{_escaped(key)}")
-    elif isinstance(document, list) and document:
-        for index, value in enumerate(document):
-            yield from _leaves(value, f"{pointer}/{index}")
-    else:
-        yield pointer, document
+        return "mapping" if all(type(key) is str for key in document) else "leaf"
+    if isinstance(document, list) and document:
+        return "sequence"
+    return "leaf"
+
+
+def _children(document: Any, kind: str) -> dict[str, Any]:
+    """The members of a walked document, by reference token."""
+    if document is _ABSENT:
+        return {}
+    if kind == "mapping":
+        return {_escaped(key): value for key, value in document.items()}
+    return {str(index): value for index, value in enumerate(document)}
+
+
+def _pairs(
+    baseline: Any, target: Any, pointer: str = ""
+) -> Iterator[tuple[str, Any, Any]]:
+    """Every leaf path of two documents, with the value each side has there.
+
+    Both sides are walked together. A mapping on one side and a sequence on the
+    other are one leaf at their own path, so an index never meets a key of the
+    same spelling. A path that one side lacks is walked on the side that has it.
+    """
+    kinds = {_kind(side) for side in (baseline, target) if side is not _ABSENT}
+    if len(kinds) != 1 or kinds == {"leaf"}:
+        yield pointer, baseline, target
+        return
+    (kind,) = kinds
+    ours, theirs = _children(baseline, kind), _children(target, kind)
+    for token in sorted(ours.keys() | theirs.keys()):
+        yield from _pairs(
+            ours.get(token, _ABSENT), theirs.get(token, _ABSENT), f"{pointer}/{token}"
+        )
+
+
+def _plain(value: Any) -> Any:
+    """A value as a JSON record can state it.
+
+    A value that JSON cannot state without loss, such as a mapping with a key
+    that is not text, is stated as its Python text.
+    """
+    if value is None or type(value) in (str, int, float, bool):
+        return value
+    if isinstance(value, list):
+        return [_plain(member) for member in value]
+    if isinstance(value, Mapping) and all(type(key) is str for key in value):
+        return {key: _plain(member) for key, member in value.items()}
+    return repr(value)
 
 
 def _differences(
@@ -317,12 +381,13 @@ def _differences(
     A difference states the value of each side that has the path. A side that
     lacks the path states no value.
     """
-    left, right = dict(_leaves(baseline)), dict(_leaves(target))
     permitted = PERMITTED[layer]
     differences = []
-    paths = sorted(left.keys() | right.keys())
-    for path in paths:
-        ours, theirs = left.get(path, _ABSENT), right.get(path, _ABSENT)
+    count = 0
+    for path, ours, theirs in sorted(
+        _pairs(baseline, target), key=lambda pair: pair[0]
+    ):
+        count += 1
         # The absent marker has its own type, so it equals no stated value.
         if type(ours) is type(theirs) and ours == theirs:
             continue
@@ -330,11 +395,11 @@ def _differences(
         if path in permitted:
             entry["reason"] = permitted[path]
         if ours is not _ABSENT:
-            entry["baseline"] = ours
+            entry["baseline"] = _plain(ours)
         if theirs is not _ABSENT:
-            entry["target"] = theirs
+            entry["target"] = _plain(theirs)
         differences.append(entry)
-    return differences, len(paths)
+    return differences, count
 
 
 def _shown(entry: Mapping[str, Any], side: str) -> str:
@@ -397,30 +462,33 @@ def _topology_findings(
     findings = []
     stated: dict[str, dict[str, int | None]] = {}
     for side, expected in TOPOLOGY.items():
-        runtime = _whole(_member(values[side], "runtime", "replicaCount"))
-        api = _whole(_member(values[side], "api", "replicaCount"))
-        stated[side] = {"apiReplicas": api, "runtimeReplicas": runtime}
-        for name, found in stated[side].items():
-            if found != expected[name]:
+        raw = {
+            "apiReplicas": _member(values[side], "api", "replicaCount"),
+            "runtimeReplicas": _member(values[side], "runtime", "replicaCount"),
+        }
+        stated[side] = {name: _whole(found) for name, found in raw.items()}
+        for name, found in raw.items():
+            if _whole(found) != expected[name]:
                 findings.append(
                     Finding(
                         "baseline-topology-not-declared",
                         f"values: {side} {name}",
-                        f"the {side} states {json.dumps(found)}; the comparison "
-                        f"needs {expected[name]}",
+                        f"the {side} states {json.dumps(_plain(found))}; the "
+                        f"comparison needs the whole number {expected[name]}",
                     )
                 )
         scaling = _member(contracts[side], "spec", "scaling")
-        low = _whole(_member(scaling, "minimumReplicas"))
-        high = _whole(_member(scaling, "maximumReplicas"))
-        if low != expected["runtimeReplicas"] or high != expected["runtimeReplicas"]:
+        low = _member(scaling, "minimumReplicas")
+        high = _member(scaling, "maximumReplicas")
+        needed = expected["runtimeReplicas"]
+        if _whole(low) != needed or _whole(high) != needed:
             findings.append(
                 Finding(
                     "baseline-topology-not-declared",
                     f"contract: {side} /spec/scaling",
                     f"the {side} contract states a replica range of "
-                    f"{json.dumps(low)} to {json.dumps(high)}; the comparison needs "
-                    f"{expected['runtimeReplicas']} and {expected['runtimeReplicas']}",
+                    f"{json.dumps(_plain(low))} to {json.dumps(_plain(high))}; the "
+                    f"comparison needs the whole numbers {needed} and {needed}",
                 )
             )
     return findings, stated
@@ -459,17 +527,42 @@ def _declaration_findings(
     findings = _layer_findings(
         "baseline-declaration-differs", "declaration", differences
     )
-    tree = f"{DESIRED_STATE_ROOT}/"
-    if f"{baseline.directory}/".startswith(tree):
+    reason = _directory_refusal(baseline.directory)
+    if reason is not None:
         findings.append(
             Finding(
                 "baseline-declaration-differs",
                 "declaration: /directory",
-                f"{baseline.directory} is inside the Git desired state; an "
-                "Application reads that tree, and the baseline is not desired state",
+                f"{baseline.directory} {reason}",
             )
         )
     return findings
+
+
+def _directory_refusal(directory: str) -> str | None:
+    """Why a profile directory is refused, or ``None``.
+
+    The directory is one spelling: a relative POSIX path with no ``.`` and no
+    ``..`` segment. So no second spelling of a path names the desired state. The
+    first segment is compared without case, because a file system that ignores
+    case gives ``GitOps`` and ``gitops`` one directory.
+    """
+    segments = directory.split("/")
+    if (
+        chr(92) in directory
+        or ":" in directory
+        or any(segment in ("", ".", "..") for segment in segments)
+    ):
+        return (
+            "is not a relative POSIX path of plain segments, so the tree it is in "
+            "cannot be read from its spelling"
+        )
+    if segments[0].casefold() == DESIRED_STATE_ROOT.casefold():
+        return (
+            "is inside the Git desired state; an Application reads that tree, and "
+            "the baseline is not desired state"
+        )
+    return None
 
 
 def build_record(
@@ -506,7 +599,7 @@ def build_record(
             findings.append(
                 Finding(
                     "baseline-sources-refused",
-                    f"{side}: {declared.contract}",
+                    f"{side}: declared inputs",
                     f"nothing was compared: {refused.reason}",
                 )
             )
@@ -598,10 +691,6 @@ def _record_findings(record: Mapping[str, Any]) -> list[Finding]:
     ]
 
 
-def _lf(data: bytes) -> bytes:
-    return data.replace(b"\r\n", b"\n")
-
-
 def verify_profile(root: Path = REPO_ROOT) -> tuple[Finding, ...]:
     """Every way the committed profile under ``root`` breaks a rule.
 
@@ -628,7 +717,7 @@ def verify_profile(root: Path = REPO_ROOT) -> tuple[Finding, ...]:
                 "baseline-record-stale", RECORD_PATH, "the record is not a regular file"
             )
         )
-    elif _lf(path.read_bytes()) != record_text(record).encode("utf-8"):
+    elif path.read_bytes() != record_text(record).encode("utf-8"):
         findings.append(
             Finding(
                 "baseline-record-stale",
@@ -653,7 +742,9 @@ def write_profile(root: Path = REPO_ROOT) -> tuple[bool, bool]:
         RegenerationRefused: the profile directory holds something the platform
             did not write, or a staging directory is left beside it; nothing is
             touched.
-        OSError: a file could not be removed or written.
+        OSError: a file could not be removed or written. The release is written
+            before the record, so the two can then be out of step.
+            :func:`verify_profile` reports that, and a second write repairs it.
     """
     record = build_record(root)
     if record["result"] != COMPARABLE:

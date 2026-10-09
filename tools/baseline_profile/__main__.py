@@ -36,7 +36,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from tools.generated_release import RegenerationRefused, SourcesRefused
+from tools.generated_release import RegenerationRefused
 
 from .core import (
     CHECK_RULES,
@@ -46,9 +46,11 @@ from .core import (
     REFUSED_EXIT,
     REPO_ROOT,
     RULES,
+    TARGET_KEY,
     WriteRefused,
     build_record,
     record_text,
+    target_release,
     verify_profile,
     write_profile,
 )
@@ -81,19 +83,18 @@ def _check(root: Path) -> int:
 def _write(root: Path) -> int:
     try:
         release_written, record_written = write_profile(root)
-    except SourcesRefused as refused:
-        print(f"REFUSED  nothing was written: {refused.reason}")
-        return 1
     except (WriteRefused, RegenerationRefused) as refused:
         print("REFUSED  nothing was written")
         for finding in refused.findings:
             print(f"         {finding.rule_id}  {finding.subject}: {finding.detail}")
         return 1
     except OSError as error:
-        print(f"FAILED   {type(error).__name__}: {error}")
+        # The error's own text names a path of this host, so it is not printed.
+        print(f"FAILED   {type(error).__name__}: {error.strerror or 'no reason given'}")
         print(
-            "         the profile directory may be absent; run --write again, or "
-            "restore it from Git"
+            "         the release and the record may be out of step, or the profile "
+            "directory absent; run --check, then --write again, or restore both "
+            "from Git"
         )
         return 1
     print(f"{'WROTE    ' if release_written else 'UNCHANGED'} {PROFILE_DIRECTORY}")
@@ -131,6 +132,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     arguments = parser.parse_args(argv)
 
+    try:
+        target_release()
+    except KeyError:
+        print(f"REFUSED  no desired-state release has the key {TARGET_KEY}")
+        return 1
     if arguments.record:
         return _record(arguments.root)
     if arguments.check:

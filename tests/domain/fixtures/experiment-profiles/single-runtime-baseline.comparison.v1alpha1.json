@@ -121,8 +121,12 @@
   "doesNotEstablish": [
     "That a cluster ran the baseline. No Application reads the profile directory, and no run installed the baseline release.",
     "What a caller observes when the one runtime pod of the baseline stops, or when one of the two runtime pods of the target stops.",
-    "That the two releases install with equal hand-written values. The baseline declares none. A run must give both sides the values that the target's Application states.",
+    "That the two releases install with equal hand-written values. The baseline declares none. The target's hand-written values are in its Application, and this record does not compare them.",
+    "That the two releases install with one API image digest, one release name, and one namespace. No compared document states one of them.",
+    "That the two releases install from one chart revision. The baseline names no chart. The chart owns each probe, each request, and each template, and this record compares none of them.",
+    "That the model cache claim is in one state for both sides. The claim is not a compared input.",
     "That one caller profile is applied to both sides. No caller profile exists in this repository.",
+    "That telemetry of the two sides is equal. The workload version differs, and it is a resource attribute of the API's telemetry.",
     "That a cluster holds the baseline. The capacity preflight derives the footprint of the target only.",
     "That either recorded revision is the commit a release was rendered at, or that it names a commit."
   ],

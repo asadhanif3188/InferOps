@@ -449,9 +449,10 @@ def test_an_accidental_change_to_the_baseline_contract_is_refused(
     assert states(record) == {
         rule: NOT_HELD if rule in broken else HELD for rule in RULE_IDS
     }
-    # The same edit is drift in the committed release, and the record is stale.
+    # The same edit is drift in the committed release, because the release
+    # records the contract's digest, and the record is stale.
     check = {finding.rule_id for finding in verify_profile(root)}
-    assert "baseline-record-stale" in check
+    assert {"baseline-release-drifted", "baseline-record-stale"} <= check
     with pytest.raises(WriteRefused):
         write_profile(root)
 
@@ -485,9 +486,7 @@ def test_a_baseline_contract_that_does_not_render_refuses_the_comparison(
 ) -> None:
     edit(root / BASELINE_CONTRACT, *change)
     record = refused_by(root)
-    assert found(record) == [
-        ("baseline-sources-refused", f"baseline: {BASELINE_CONTRACT}")
-    ]
+    assert found(record) == [("baseline-sources-refused", "baseline: declared inputs")]
     assert states(record) == {
         "baseline-declaration-differs": HELD,
         "baseline-sources-refused": NOT_HELD,
@@ -500,11 +499,26 @@ def test_a_baseline_contract_that_does_not_render_refuses_the_comparison(
 def test_a_missing_baseline_contract_refuses_the_comparison(root: Path) -> None:
     (root / BASELINE_CONTRACT).unlink()
     record = refused_by(root)
-    assert found(record) == [
-        ("baseline-sources-refused", f"baseline: {BASELINE_CONTRACT}")
-    ]
+    assert found(record) == [("baseline-sources-refused", "baseline: declared inputs")]
     # The reason names the file under the root, and no path of this host.
+    assert BASELINE_CONTRACT in record["findings"][0]["detail"]
     assert str(root) not in json.dumps(record)
+    assert states(record) == {
+        "baseline-declaration-differs": HELD,
+        "baseline-sources-refused": NOT_HELD,
+        **dict.fromkeys(RULE_IDS[2:], NOT_EVALUATED),
+    }
+
+
+def test_a_missing_shared_input_refuses_both_sides(root: Path) -> None:
+    """Both sides read the one binding, so each side derives nothing."""
+    (root / BINDING).unlink()
+    record = refused_by(root)
+    assert found(record) == [
+        ("baseline-sources-refused", "baseline: declared inputs"),
+        ("baseline-sources-refused", "target: declared inputs"),
+    ]
+    assert all(BINDING in finding["detail"] for finding in record["findings"])
 
 
 @pytest.mark.parametrize(
@@ -696,6 +710,128 @@ def test_a_missing_profile_directory_is_refused_and_a_write_restores_it(
         ).read_bytes()
 
 
+def test_a_hand_edit_of_the_committed_baseline_release_is_refused(
+    root: Path,
+) -> None:
+    edit(
+        root / PROFILE_DIRECTORY / RELEASE,
+        'workloadVersion: "0.1.0"',
+        'workloadVersion: "0.2.0"',
+    )
+    findings = verify_profile(root)
+    assert {finding.rule_id for finding in findings} == {"baseline-release-drifted"}
+
+
+def test_a_record_with_another_line_ending_is_refused(root: Path) -> None:
+    """Byte for byte: the tool does not normalise the record before it compares."""
+    path = root / RECORD_PATH
+    path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    assert [(f.rule_id, f.subject) for f in verify_profile(root)] == [
+        ("baseline-record-stale", RECORD_PATH)
+    ]
+    assert write_profile(root) == (False, True)
+    assert verify_profile(root) == ()
+
+
+def test_a_record_path_that_is_a_directory_is_refused_and_not_written(
+    root: Path,
+) -> None:
+    (root / RECORD_PATH).unlink()
+    (root / RECORD_PATH).mkdir()
+    assert [(f.rule_id, f.subject) for f in verify_profile(root)] == [
+        ("baseline-record-stale", RECORD_PATH)
+    ]
+    with pytest.raises(WriteRefused):
+        write_profile(root)
+    assert (root / RECORD_PATH).is_dir()
+
+
+@pytest.mark.parametrize(
+    "directory",
+    [
+        "gitops/environments/local-docker-desktop/workloads/baseline",
+        "GitOps/environments/local-docker-desktop/workloads/baseline",
+        "./gitops/environments/local-docker-desktop/workloads/baseline",
+        "tests/../gitops/environments/local-docker-desktop/workloads/baseline",
+        "gitops\\environments\\local-docker-desktop\\workloads\\baseline",
+        "/gitops/environments/local-docker-desktop/workloads/baseline",
+        "C:/gitops/baseline",
+        "tests//baseline",
+        "",
+    ],
+)
+def test_each_spelling_of_a_directory_in_the_desired_state_is_refused(
+    root: Path, directory: str
+) -> None:
+    """The directory is one spelling, so no second spelling names that tree."""
+    record = build_record(
+        root, baseline=replace(baseline_profile(), directory=directory)
+    )
+    assert found(record) == [
+        ("baseline-declaration-differs", "declaration: /directory")
+    ]
+
+
+def test_a_list_entry_that_one_side_lacks_is_refused(root: Path) -> None:
+    edit(
+        root / BASELINE_CONTRACT,
+        "      - docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+        "      - docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md\n"
+        "      - docs/proof/serving/v1-s1-real-runtime-closure.md",
+    )
+    record = refused_by(root)
+    assert found(record) == [
+        ("baseline-contract-differs", "contract: /spec/evidence/proofRefs/1")
+    ]
+    [entry] = [d for d in record["differences"]["contract"] if not d["permitted"]]
+    assert "baseline" in entry and "target" not in entry
+
+
+#: Two documents that one flat list of pointers would read as equal.
+ALIASES = [
+    pytest.param(
+        {"a": ["x", "y"]}, {"a": {"0": "x", "1": "y"}}, "/a", id="list-and-keys"
+    ),
+    pytest.param(
+        {"a": {1: "evil", "1": "same"}}, {"a": {"1": "same"}}, "/a", id="number-key"
+    ),
+    pytest.param({None: "x"}, {"None": "x"}, "", id="null-key"),
+    pytest.param({"a": 1}, {"a": True}, "/a", id="number-and-boolean"),
+    pytest.param({"a": 1}, {"a": 1.0}, "/a", id="whole-and-fraction"),
+    pytest.param({"a": {}}, {"a": []}, "/a", id="empty-mapping-and-sequence"),
+    pytest.param({"a/b": 1}, {"a": {"b": 1}}, None, id="escaped-key"),
+]
+
+
+@pytest.mark.parametrize(("ours", "theirs", "path"), ALIASES)
+def test_two_documents_of_another_shape_are_never_read_as_equal(
+    ours: Any, theirs: Any, path: str | None
+) -> None:
+    """The comparison's walk, given documents that no parser of this tree lets
+    through. It does not rest on the parsers to tell them apart."""
+    from tools.baseline_profile.core import _differences
+
+    differences, _count = _differences("contract", ours, theirs)
+    assert differences, "the two documents were read as equal"
+    assert all(not entry["permitted"] for entry in differences)
+    if path is not None:
+        assert [entry["path"] for entry in differences] == [path]
+
+
+def test_a_replica_range_that_is_not_a_whole_number_is_shown_as_stated(
+    root: Path,
+) -> None:
+    edit(
+        root / BASELINE_CONTRACT,
+        "minimumReplicas: 1\n    maximumReplicas: 1",
+        "minimumReplicas: 1.0\n    maximumReplicas: 1.0",
+    )
+    record = build_record(root)
+    assert record["result"] == REFUSED
+    details = " ".join(finding["detail"] for finding in record["findings"])
+    assert "null" not in details
+
+
 # --------------------------------------------------------------------------
 # The command
 # --------------------------------------------------------------------------
@@ -765,6 +901,44 @@ def test_the_write_command_changes_nothing_in_a_current_tree(
     ]
 
 
+def test_a_failed_write_prints_no_path_of_the_host(
+    root: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The release is written before the record. A record that cannot be written
+    leaves the two out of step, and the command says so."""
+    edit(root / DEFAULTS, "requestTimeoutMs: 120000", "requestTimeoutMs: 60000")
+    written = Path.write_bytes
+
+    def refuse(self: Path, data: bytes) -> int:
+        if self.name.endswith(".comparison.v1alpha1.json"):
+            raise PermissionError(13, "Permission denied", str(self))
+        return written(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", refuse)
+    assert main(["--write", "--root", str(root)]) == 1
+    printed = capsys.readouterr().out
+    assert "FAILED   PermissionError: Permission denied" in printed
+    assert "out of step" in printed
+    assert str(root) not in printed
+    monkeypatch.undo()
+    assert {f.rule_id for f in verify_profile(root)} == {"baseline-record-stale"}
+    assert write_profile(root) == (False, True)
+    assert verify_profile(root) == ()
+
+
+def test_the_command_refuses_when_the_target_is_not_declared(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import tools.baseline_profile.__main__ as command
+
+    def missing() -> None:
+        raise KeyError("local-docker-desktop/support-assistant")
+
+    monkeypatch.setattr(command, "target_release", missing)
+    assert main(["--check"]) == 1
+    assert "REFUSED  no desired-state release has the key" in capsys.readouterr().out
+
+
 def test_the_command_takes_one_mode() -> None:
     for arguments in ([], ["--check", "--write"], ["--record", "extra"]):
         with pytest.raises(SystemExit) as stopped:
@@ -789,6 +963,23 @@ def test_the_profile_is_outside_the_desired_state_and_no_release_declares_it() -
     ]
 
 
+def test_the_profile_and_the_record_are_pinned_to_lf() -> None:
+    """A checkout that wrote CRLF would change the values digest and the record."""
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("git is not on PATH")
+    paths = [f"{PROFILE_DIRECTORY}/{name}" for name in GENERATED_FILES]
+    paths.append(RECORD_PATH)
+    result = subprocess.run(
+        [git, "check-attr", "eol", "--", *paths],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.splitlines() == [f"{path}: eol: lf" for path in paths]
+
+
 def test_no_application_reads_the_profile() -> None:
     """A tripwire. The baseline is applied nowhere, and the page says so. A change
     that gives it an Application must move this test and that statement."""
@@ -802,7 +993,7 @@ def test_no_application_reads_the_profile() -> None:
     assert "No Application reads the profile" in page
 
 
-def test_the_baseline_contract_is_not_edited_by_the_profile() -> None:
+def test_the_profile_adds_no_contract_document() -> None:
     """The baseline reuses the one-replica contract. It adds no contract document."""
     names = sorted(
         path.name
