@@ -161,6 +161,14 @@ configuration checksum annotation of the API and runtime pod templates. The runt
 Deployment also gains a second replica and a stated strategy. That is read from the
 render. It was not observed on a cluster.
 
+**The baseline beside this release.** Since `V2-S4-003-PR2`,
+[the single-runtime baseline profile](single-runtime-baseline-profile.md) is a second
+generated release, with two API replicas and one runtime replica. It is derived from
+this release's declaration with the contract replaced. It is not in this tree, no
+Application reads it, and the tree still holds one release. A change to this release's
+binding, platform defaults, or revisions moves the baseline too, and
+`python -m tools.baseline_profile --check` fails until it is written again.
+
 ## The promotion boundary
 
 ```text

@@ -525,6 +525,26 @@ restates its figures: update them with the change.
 [The capacity preflight page](docs/environment/capacity-preflight.md) states the rules,
 the units, and what a record does not establish.
 
+**The single-runtime baseline profile is held to the desired-state release.** The
+baseline is two API replicas and one runtime replica, derived from the target's own
+declaration with the contract replaced. A tool compares the two releases in four layers
+and refuses a difference that is not the runtime replica count or an identity that
+follows it:
+
+```sh
+uv run --locked python -m tools.baseline_profile --check
+uv run --locked python -m tools.baseline_profile --record
+uv run --locked python -m tools.baseline_profile --write
+```
+
+A change to the binding, to the platform defaults, to a revision of the desired-state
+release, or to either contract of the reference workload moves the baseline release or
+the comparison record. `--check` then fails. Read its findings, then run `--write` in
+the same change. Do not add a permitted path to obtain `COMPARABLE`: a new permitted
+path is a second variable of the comparison.
+[The baseline profile page](docs/environment/single-runtime-baseline-profile.md) states
+the permitted differences, the rules, and what a record does not establish.
+
 ### Experiment freeze records
 
 An experiment family is frozen before its first result-bearing run, in a record under

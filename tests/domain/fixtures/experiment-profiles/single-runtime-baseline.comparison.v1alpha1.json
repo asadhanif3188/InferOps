@@ -1,0 +1,281 @@
+{
+  "apiVersion": "inferops.io/baseline-profile-comparison/v1alpha1",
+  "declarations": {
+    "baseline": {
+      "bindingName": "local-docker-desktop",
+      "bindings": [
+        "contracts/environment/examples/valid/local-docker-desktop.yaml"
+      ],
+      "contract": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+      "directory": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline",
+      "platformDefaults": "charts/inferops-llm/values.yaml",
+      "platformDefaultsRevision": "40803f2fe9a95753da6480de1e5321efafb3cbf0",
+      "rendererRevision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+    },
+    "target": {
+      "bindingName": "local-docker-desktop",
+      "bindings": [
+        "contracts/environment/examples/valid/local-docker-desktop.yaml"
+      ],
+      "contract": "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
+      "directory": "gitops/environments/local-docker-desktop/workloads/support-assistant",
+      "platformDefaults": "charts/inferops-llm/values.yaml",
+      "platformDefaultsRevision": "40803f2fe9a95753da6480de1e5321efafb3cbf0",
+      "rendererRevision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+    }
+  },
+  "differences": {
+    "contract": [
+      {
+        "baseline": "Example synchronous LLM workload used to exercise the v1alpha1 contract.",
+        "path": "/metadata/description",
+        "permitted": true,
+        "reason": "prose-not-rendered",
+        "target": "Example synchronous LLM workload that declares two serving runtime replicas."
+      },
+      {
+        "baseline": "0.1.0",
+        "path": "/metadata/version",
+        "permitted": true,
+        "reason": "identity-of-a-different-content",
+        "target": "0.2.0"
+      },
+      {
+        "baseline": 1,
+        "path": "/spec/scaling/maximumReplicas",
+        "permitted": true,
+        "reason": "intended-variable",
+        "target": 2
+      },
+      {
+        "baseline": 1,
+        "path": "/spec/scaling/minimumReplicas",
+        "permitted": true,
+        "reason": "intended-variable",
+        "target": 2
+      }
+    ],
+    "declaration": [
+      {
+        "baseline": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
+        "path": "/contract",
+        "permitted": true,
+        "reason": "profile-declaration",
+        "target": "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml"
+      },
+      {
+        "baseline": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline",
+        "path": "/directory",
+        "permitted": true,
+        "reason": "profile-declaration",
+        "target": "gitops/environments/local-docker-desktop/workloads/support-assistant"
+      }
+    ],
+    "release": [
+      {
+        "baseline": "acf6fbc799ea50ab43b76f5ab48e81bf82bb89bda808319c22f9ae42d22753fb",
+        "path": "/metadata/releaseId",
+        "permitted": true,
+        "reason": "identity-of-a-different-content",
+        "target": "79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812"
+      },
+      {
+        "baseline": "0.1.0",
+        "path": "/metadata/workloadVersion",
+        "permitted": true,
+        "reason": "identity-of-a-different-content",
+        "target": "0.2.0"
+      },
+      {
+        "baseline": "c0f00c67faa97bcee38c3ee6de1a4bfd4e18733b4deb0ae2e9aba94b8eb99639",
+        "path": "/output/helmValues/sha256",
+        "permitted": true,
+        "reason": "identity-of-a-different-content",
+        "target": "314a34829e7b44c62402249f1e93ba4493ec5b019ca7becdd1a5595025d6b6f9"
+      },
+      {
+        "baseline": "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d",
+        "path": "/source/contract/sha256",
+        "permitted": true,
+        "reason": "identity-of-a-different-content",
+        "target": "818ef5d113b325781e7477c226467487e8a5fae4f42a090a7e06eb2a2fcf5085"
+      }
+    ],
+    "values": [
+      {
+        "baseline": "0.1.0",
+        "path": "/ownership/workloadVersion",
+        "permitted": true,
+        "reason": "identity-of-a-different-content",
+        "target": "0.2.0"
+      },
+      {
+        "baseline": 1,
+        "path": "/runtime/replicaCount",
+        "permitted": true,
+        "reason": "intended-variable",
+        "target": 2
+      }
+    ]
+  },
+  "doesNotEstablish": [
+    "That a cluster ran the baseline. No Application reads the profile directory, and no run installed the baseline release.",
+    "What a caller observes when the one runtime pod of the baseline stops, or when one of the two runtime pods of the target stops.",
+    "That the two releases install with equal hand-written values. The baseline declares none. A run must give both sides the values that the target's Application states.",
+    "That one caller profile is applied to both sides. No caller profile exists in this repository.",
+    "That a cluster holds the baseline. The capacity preflight derives the footprint of the target only.",
+    "That either recorded revision is the commit a release was rendered at, or that it names a commit."
+  ],
+  "findings": [],
+  "intendedVariable": {
+    "baseline": 1,
+    "name": "serving runtime replica count",
+    "target": 2
+  },
+  "kind": "BaselineProfileComparison",
+  "pathsCompared": {
+    "contract": 31,
+    "declaration": 7,
+    "release": 15,
+    "values": 31
+  },
+  "permittedDifferences": {
+    "contract": {
+      "/metadata/description": "prose-not-rendered",
+      "/metadata/version": "identity-of-a-different-content",
+      "/spec/scaling/maximumReplicas": "intended-variable",
+      "/spec/scaling/minimumReplicas": "intended-variable"
+    },
+    "declaration": {
+      "/contract": "profile-declaration",
+      "/directory": "profile-declaration"
+    },
+    "release": {
+      "/metadata/releaseId": "identity-of-a-different-content",
+      "/metadata/workloadVersion": "identity-of-a-different-content",
+      "/output/helmValues/sha256": "identity-of-a-different-content",
+      "/source/contract/sha256": "identity-of-a-different-content"
+    },
+    "values": {
+      "/ownership/workloadVersion": "identity-of-a-different-content",
+      "/runtime/replicaCount": "intended-variable"
+    }
+  },
+  "releases": {
+    "baseline": {
+      "apiVersion": "inferops.io/v1alpha1",
+      "kind": "RenderedWorkloadRelease",
+      "metadata": {
+        "releaseId": "acf6fbc799ea50ab43b76f5ab48e81bf82bb89bda808319c22f9ae42d22753fb",
+        "workloadId": "support-assistant",
+        "workloadVersion": "0.1.0"
+      },
+      "output": {
+        "helmValues": {
+          "path": "values.generated.yaml",
+          "sha256": "c0f00c67faa97bcee38c3ee6de1a4bfd4e18733b4deb0ae2e9aba94b8eb99639"
+        }
+      },
+      "source": {
+        "contract": {
+          "apiVersion": "inferops.io/v1alpha1",
+          "sha256": "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d"
+        },
+        "environmentBinding": {
+          "apiVersion": "inferops.io/v1alpha1",
+          "environment": "local",
+          "name": "local-docker-desktop",
+          "sha256": "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
+        },
+        "platformDefaults": {
+          "revision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+        },
+        "renderer": {
+          "revision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+        }
+      }
+    },
+    "target": {
+      "apiVersion": "inferops.io/v1alpha1",
+      "kind": "RenderedWorkloadRelease",
+      "metadata": {
+        "releaseId": "79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812",
+        "workloadId": "support-assistant",
+        "workloadVersion": "0.2.0"
+      },
+      "output": {
+        "helmValues": {
+          "path": "values.generated.yaml",
+          "sha256": "314a34829e7b44c62402249f1e93ba4493ec5b019ca7becdd1a5595025d6b6f9"
+        }
+      },
+      "source": {
+        "contract": {
+          "apiVersion": "inferops.io/v1alpha1",
+          "sha256": "818ef5d113b325781e7477c226467487e8a5fae4f42a090a7e06eb2a2fcf5085"
+        },
+        "environmentBinding": {
+          "apiVersion": "inferops.io/v1alpha1",
+          "environment": "local",
+          "name": "local-docker-desktop",
+          "sha256": "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
+        },
+        "platformDefaults": {
+          "revision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+        },
+        "renderer": {
+          "revision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+        }
+      }
+    }
+  },
+  "result": "COMPARABLE",
+  "rules": [
+    {
+      "id": "baseline-declaration-differs",
+      "state": "held",
+      "statement": "The baseline declaration states the bindings, the binding name, the platform defaults, and both revisions that the target declaration states, and its directory is outside the Git desired state."
+    },
+    {
+      "id": "baseline-sources-refused",
+      "state": "held",
+      "statement": "The declared sources of the baseline and of the target each derive a release."
+    },
+    {
+      "id": "baseline-contract-differs",
+      "state": "held",
+      "statement": "The two contract documents differ only in the replica range, the workload version, and the description."
+    },
+    {
+      "id": "baseline-values-differ",
+      "state": "held",
+      "statement": "The two generated values documents differ only in the runtime replica count and the workload version."
+    },
+    {
+      "id": "baseline-release-differs",
+      "state": "held",
+      "statement": "The two release documents differ only in the release identifier, the workload version, the contract digest, and the values digest."
+    },
+    {
+      "id": "baseline-topology-not-declared",
+      "state": "held",
+      "statement": "The baseline states two API replicas and one runtime replica. The target states two API replicas and two runtime replicas. Each contract states a replica range of one number."
+    },
+    {
+      "id": "baseline-version-not-distinct",
+      "state": "held",
+      "statement": "The baseline and the target name one workload and two workload versions."
+    }
+  ],
+  "targetKey": "local-docker-desktop/support-assistant",
+  "topology": {
+    "baseline": {
+      "apiReplicas": 2,
+      "runtimeReplicas": 1
+    },
+    "target": {
+      "apiReplicas": 2,
+      "runtimeReplicas": 2
+    }
+  }
+}

@@ -2640,6 +2640,104 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
 
 
+BASELINE_PROFILE_VALUES = (
+    REPO_ROOT
+    / "tests"
+    / "domain"
+    / "fixtures"
+    / "experiment-profiles"
+    / "single-runtime-baseline"
+    / "values.generated.yaml"
+)
+
+
+def _objects(render: str) -> dict[tuple[str, str], dict[str, Any]]:
+    """Each object of a render, by kind and name."""
+    documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
+    objects = {(d["kind"], d["metadata"]["name"]): d for d in documents}
+    assert len(objects) == len(documents)
+    return objects
+
+
+def test_the_baseline_profile_renders_the_target_with_one_runtime_replica() -> None:
+    """The single-runtime baseline, as the chart reads it, beside the target.
+
+    The two generated files differ in two values: the runtime replica count and
+    the workload version. So the two renders differ in the `replicas` line of
+    the runtime Deployment and in the lines that carry the workload version: one
+    ConfigMap value, and the configuration checksum annotations derived from it.
+    Nothing else differs. The API Deployment keeps two replicas. Each probe,
+    each resource request and limit, each image, the model mount, both rollout
+    strategies, and both Services are rendered the same.
+
+    Both sides are rendered with one hand-written values file, the reference
+    fixture. The baseline declares no hand-written values of its own, so this
+    does not establish that a run gives both sides equal ones.
+
+    This renders files. No cluster was asked, and no run installed the
+    baseline. This establishes the rendered difference and not what a caller
+    observes when a runtime pod is unavailable.
+    """
+    target = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    baseline = _template(BASELINE_PROFILE_VALUES, HAND_WRITTEN_VALUES)
+    before, after = target.splitlines(), baseline.splitlines()
+    assert len(before) == len(after)
+    changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
+    checksums = [pair for pair in changed if "configuration-checksum" in pair[0]]
+    assert len(checksums) == 2
+    assert all("configuration-checksum" in new for _old, new in checksums)
+    assert [pair for pair in changed if pair not in checksums] == [
+        (
+            '  INFEROPS_WORKLOAD_VERSION: "0.2.0"',
+            '  INFEROPS_WORKLOAD_VERSION: "0.1.0"',
+        ),
+        ("  replicas: 2", "  replicas: 1"),
+    ]
+
+    ours, theirs = _objects(baseline), _objects(target)
+    assert ours.keys() == theirs.keys()
+    differing = sorted(key for key in ours if ours[key] != theirs[key])
+    deployments = {
+        ours[key]["metadata"]["labels"]["app.kubernetes.io/component"]: key
+        for key in ours
+        if key[0] == "Deployment"
+    }
+    api, runtime = deployments["platform-api"], deployments["serving-runtime"]
+    [configuration] = [key for key in differing if key[0] == "ConfigMap"]
+    assert differing == sorted([configuration, api, runtime])
+
+    # The API Deployment differs in the checksum annotation and in nothing else.
+    assert ours[api]["spec"]["replicas"] == theirs[api]["spec"]["replicas"] == 2
+    for key in (api, runtime):
+        for side in (ours, theirs):
+            del side[key]["spec"]["template"]["metadata"]["annotations"][
+                "inferops.io/configuration-checksum"
+            ]
+    assert ours[api] == theirs[api]
+
+    # The runtime Deployment differs in that annotation and in the replica count.
+    assert ours[runtime]["spec"].pop("replicas") == 1
+    assert theirs[runtime]["spec"].pop("replicas") == 2
+    assert ours[runtime] == theirs[runtime]
+    # So the readiness inputs and the resources are one on both sides. Each is
+    # stated, so an equality of two absent members would not pass.
+    for key in (api, runtime):
+        [container] = ours[key]["spec"]["template"]["spec"]["containers"]
+        for probe in ("startupProbe", "readinessProbe", "livenessProbe"):
+            assert container[probe], (key, probe)
+        assert container["resources"]["requests"], key
+    # One runtime replica under the target's bounds: the rollout may remove the
+    # one pod before its replacement exists.
+    assert ours[runtime]["spec"]["strategy"] == {
+        "type": "RollingUpdate",
+        "rollingUpdate": {"maxUnavailable": 1, "maxSurge": 0},
+    }
+
+    lint = _lint(BASELINE_PROFILE_VALUES, HAND_WRITTEN_VALUES)
+    assert lint.returncode == 0, lint.stdout + lint.stderr
+    assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
+
+
 def _desired_state_runtime() -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """The runtime Deployment of the desired-state render, and every document."""
     rendered = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)

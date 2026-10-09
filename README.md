@@ -198,7 +198,13 @@ Since `V2-S4-003-PR1` a
 install, whether the stated requests and limits of that release, with its surge
 pods, fit in what one node allocates. It refuses a cluster that is short or that it
 cannot decide about, and it lowers no figure. An acceptance does not establish that
-a pod starts.
+a pod starts. Since `V2-S4-003-PR2` a
+[single-runtime baseline profile](docs/environment/single-runtime-baseline-profile.md)
+exists beside that release: two API replicas and one runtime replica, rendered from
+the same binding, platform defaults, and revisions. A check refuses any difference
+between the two that is not the runtime replica count or the workload version that
+follows it. The profile is an experiment baseline and not a product tier. No
+Application reads it, and no run installed it.
 
 ## Prerequisites
 

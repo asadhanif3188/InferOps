@@ -966,6 +966,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | What Argo CD reported about the Application, what it did not report, and when a manual change is permitted | [Reconciliation evidence](../environment/reconciliation-evidence.md) |
 | What two serving runtime replicas read from the one model cache claim, and the one run that observed it | [The model cache under two runtime replicas](../environment/runtime-model-cache-observation.md) |
 | Whether the stated requests and limits of the two-replica release fit in what one node allocates, decided before an install | [The capacity preflight](../environment/capacity-preflight.md) |
+| What the single-runtime baseline is, and which differences from the two-replica release it is permitted | [The single-runtime baseline profile](../environment/single-runtime-baseline-profile.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |
