@@ -7,7 +7,7 @@ topologies means something only while the runtime replica count is the one
 variable that differs. This module declares the baseline, derives both releases,
 and refuses each difference that is not stated here.
 
-**The baseline is declared as the target with one input replaced.**
+**The baseline is declared as the target with two fields replaced.**
 :func:`baseline_profile` takes the target's declaration and replaces the contract
 and the directory. The binding, the platform defaults, and both revisions stay the
 target's. The baseline's contract is version ``0.1.0`` of the target's workload,
@@ -28,17 +28,26 @@ first.
 **Each side states its install inputs.** A release is installed from a chart, a
 release name, a namespace, one generated values file, and hand-written values.
 The target states them in the Application that reads it. The baseline states
-them in :data:`INSTALL_PATH`, a file that a person writes. Each description is
-read whole: an absent file, a file that does not parse, an absent member, and a
-member that this module does not read each refuse the comparison. No value is
-taken from a default when a description does not state it. The chart is stated
-by its version and by the digest of the files that a render reads.
+them in :data:`INSTALL_PATH`, a file that a person writes. An absent file, a
+file that does not parse, a key stated twice, an absent member that this module
+compares, and another member in a block that this module reads each refuse the
+comparison. No install input is taken from a default when a description does
+not state it. The chart is stated by its version and by one digest of its
+files.
 
-**Effective values are the values that the chart receives.** They are the
-chart's defaults, then the generated values of the side, then its hand-written
-values, merged as Helm merges values documents. :data:`READINESS_INPUTS` names
-each probe path and each probe setting of the two tiers. Each side must state
-each of them, so two absent values are never read as two equal values.
+**Not every member of the Application is compared.** The project, the sync
+policy, and the name of the Application are how the target is delivered. The
+baseline names no controller, so the record states them for the target and
+compares none. The ``apiVersion`` of the Application is not read.
+
+**Effective values are derived, and they are not read from a cluster.** They
+are the chart's defaults, then the derived generated values of the side, then
+its hand-written values, merged as Helm merges values documents. This module
+does not open the values file that a description names. :func:`verify_profile`
+holds that each committed values file is the derived one.
+:data:`READINESS_INPUTS` names 24 values. The effective values of each side
+must hold each of them with a usable value, so two absent values are never read
+as two equal values. Today the chart's defaults supply all 24 for both sides.
 
 **``COMPARABLE`` is not eligibility.** The result is about committed inputs. A
 record lists each input that no committed file resolves:
@@ -58,10 +67,12 @@ baseline from the target's declaration, so the two agree by construction. The
 layer is not held when a later edit of that function names another binding,
 another defaults file, or another revision.
 
-**The comparison rests on the parsers.** A release is derived before it is
-compared, so a contract that the render boundary refuses is never compared.
-The walk of two documents does not depend on that: a mapping beside a sequence,
-and a mapping with a key that is not text, are each compared whole.
+**The walk of two documents does not rest on the parsers.** A release is
+derived before it is compared, so a contract that the render boundary refuses
+is never compared. The walk does not depend on that: a mapping beside a
+sequence, and a mapping with a key that is not text, are each compared whole.
+A description is parsed as YAML 1.1. Helm's parser reads some plain scalars in
+another way, and this module does not model that.
 
 **Offline.** Every function reads files under the root it is given.
 :func:`write_profile` writes the declared profile directory and the comparison
@@ -73,6 +84,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import os
+import re
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -251,19 +265,23 @@ def _probe_inputs(tier: str, *paths: str) -> tuple[str, ...]:
     )
 
 
-#: The readiness inputs: each value that the chart's probe templates read, as a
-#: JSON pointer into the effective values. A startup probe gates the other two,
-#: and a liveness probe restarts a container, so all three probes are named.
-#: Each side must state each path.
+#: The readiness inputs, as JSON pointers into the effective values: the 23
+#: values that the chart's two probe templates read, and the runtime's startup
+#: budget, which the chart's validation compares with the probe budget. A
+#: startup probe gates the other two, and a liveness probe restarts a container,
+#: so all three probes are named. The effective values of each side must hold
+#: each path with a usable value.
 READINESS_INPUTS: Final[tuple[str, ...]] = (
     *_probe_inputs("api", "readinessPath", "livenessPath"),
     *_probe_inputs("runtime", "healthPath", "startupBudgetMs"),
 )
 
-#: The members a description states, by the block that holds them. A member that
-#: is not named here is an install input that this module does not read, and it
-#: refuses the comparison.
+#: The members of each block of a description that this module reads. Another
+#: member in one of these blocks is an input that this module cannot compare,
+#: and it refuses the comparison. The ``apiVersion`` is admitted and not read.
 _APPLICATION_MEMBERS: Final[Mapping[str, frozenset[str]]] = {
+    "the document": frozenset({"apiVersion", "kind", "metadata", "spec"}),
+    "metadata": frozenset({"name", "namespace", "labels"}),
     "spec": frozenset({"project", "source", "destination", "syncPolicy"}),
     "spec.source": frozenset({"repoURL", "targetRevision", "path", "helm"}),
     "spec.source.helm": frozenset({"releaseName", "valueFiles", "valuesObject"}),
@@ -274,13 +292,18 @@ _INSTALL_MEMBERS: Final[Mapping[str, frozenset[str]]] = {
         {"apiVersion", "kind", "chart", "release", "valuesFile", "handWrittenValues"}
     ),
     "chart": frozenset({"repository", "revision", "path"}),
-    "release": frozenset({"name", "namespace"}),
+    "release": frozenset({"name", "namespace", "server"}),
 }
 
-#: The files of a chart that a render reads, beside its templates.
+#: The files that a chart must hold, and the directory that must hold a file.
 _CHART_FILES: Final = ("Chart.yaml", "values.yaml", "values.schema.json")
 _CHART_TEMPLATES: Final = "templates"
+#: What the chart digest leaves out: the chart's page, and its render fixtures.
+#: No render reads either.
+_CHART_UNREAD: Final = ("README.md", "ci")
 _API_IMAGE_DIGEST: Final = "/api/image/digest"
+_DIGEST: Final = re.compile(r"sha256:[0-9a-f]{64}")
+_READINESS_PATHS: Final = ("readinessPath", "livenessPath", "healthPath")
 
 
 @dataclass(frozen=True)
@@ -331,8 +354,9 @@ RULES: Final[tuple[Rule, ...]] = (
     Rule(
         "baseline-install-inputs-refused",
         "The install description of the baseline and of the target is each a "
-        "file that parses, that states each member this tool reads and no "
-        "other, and that names a chart of this tree.",
+        "file that parses, that states each member this tool compares, and that "
+        "states no other member in a block this tool reads. Each names a chart "
+        "of this tree.",
     ),
     Rule(
         "baseline-install-differs",
@@ -341,15 +365,16 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
     Rule(
         "baseline-effective-values-differ",
-        "The values that the chart receives on each side differ only in the "
-        "runtime replica count and the workload version, and they state the "
-        "replica counts of that side.",
+        "The effective values of the two sides differ only in the runtime "
+        "replica count and the workload version, and they state the replica "
+        "counts of each side. They are the chart's defaults, then the derived "
+        "generated values, then the hand-written values.",
     ),
     Rule(
-        "baseline-readiness-input-absent",
-        "The values that the chart receives on each side state each readiness "
-        "input: each probe path and each probe setting of the API and of the "
-        "runtime.",
+        "baseline-readiness-input-unusable",
+        "The effective values of each side hold each of 24 readiness inputs "
+        "with a usable value: the 23 values that the two probe templates read, "
+        "and the startup budget of the runtime.",
     ),
 )
 
@@ -368,6 +393,12 @@ CHECK_RULES: Final[tuple[Rule, ...]] = (
         "baseline-release-drifted",
         "The committed baseline release is, byte for byte, what its declared "
         "sources derive.",
+    ),
+    Rule(
+        "baseline-target-release-drifted",
+        "The committed target release is, byte for byte, what its declared "
+        "sources derive. So the values file that the target's description names "
+        "holds the generated values that were compared.",
     ),
     Rule(
         "baseline-record-stale",
@@ -394,13 +425,20 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "That a cluster reads the chart files whose digest this record states. Each "
     "description names a branch as the chart revision, and the digest is of the "
     "files of the tree that the tool read.",
-    "That the two releases render equal probes. The record compares the values "
-    "that the chart receives and the digest of the chart files. This tool does "
-    "not run Helm.",
+    "That the two releases render equal probes. The record compares effective "
+    "values and one digest of the chart files. This tool does not run Helm, and "
+    "it parses a description as YAML 1.1, which Helm's parser does not do for "
+    "every plain scalar.",
+    "That the baseline is delivered as the target is. The record states the "
+    "project, the sync policy, and the name of the target's Application, and it "
+    "compares none of them. The baseline names no controller.",
+    "That an applied Application is the committed one. The procedure that "
+    "applies it adds the API image digest as one Helm parameter, and this tool "
+    "reads the committed file.",
     "That a probe behaves as its settings state, or that a pod was Ready. No "
     "cluster was read.",
-    "That the model cache claim is in one state for both sides. The claim is not "
-    "a compared input.",
+    "That the model cache claim is in one state for both sides. The claim's name "
+    "and its mount are compared. Its content and its state are not.",
     "That one caller profile is applied to both sides. No caller profile exists "
     "in this repository, and the record lists it as unresolved.",
     "That telemetry of the two sides is equal. The workload version differs, and "
@@ -509,6 +547,8 @@ def _plain(value: Any) -> Any:
     A value that JSON cannot state without loss, such as a mapping with a key
     that is not text, is stated as its Python text.
     """
+    if type(value) is float and not math.isfinite(value):
+        return repr(value)
     if value is None or type(value) in (str, int, float, bool):
         return value
     if isinstance(value, list):
@@ -727,6 +767,32 @@ class _InstallRefused(Exception):
         self.reason = reason
 
 
+class _KeyStatedTwice(yaml.YAMLError):
+    """A mapping that states one key twice."""
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """The safe loader, which refuses a mapping that states one key twice.
+
+    The safe loader keeps the last of two equal keys. A reader of the file sees
+    two, and another parser can keep the first.
+    """
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> Any:
+        seen: set[Any] = set()
+        for key_node, _value in node.value:
+            key = self.construct_object(key_node, deep=True)
+            try:
+                marker = (type(key), key)
+                stated = marker in seen
+                seen.add(marker)
+            except TypeError:
+                continue
+            if stated:
+                raise _KeyStatedTwice(str(key))
+        return super().construct_mapping(node, deep)
+
+
 def _document(root: Path, relative: str) -> Any:
     """The parsed YAML of one file under the root.
 
@@ -736,14 +802,20 @@ def _document(root: Path, relative: str) -> Any:
     if path.is_symlink() or not path.is_file():
         raise _InstallRefused(f"{relative} is not a regular file")
     try:
-        return yaml.safe_load(path.read_bytes().decode("utf-8"))
+        text = path.read_bytes().decode("utf-8")
+        # The loader is the safe loader with one more refusal.
+        return yaml.load(text, Loader=_UniqueKeyLoader)
     except OSError as error:
         reason = error.strerror or "no reason given"
         raise _InstallRefused(f"{relative} was not read: {reason}") from error
     except UnicodeError as error:
         raise _InstallRefused(f"{relative} is not UTF-8 text") from error
+    except _KeyStatedTwice as error:
+        raise _InstallRefused(f"{relative} states the key {error} twice") from error
     except yaml.YAMLError as error:
         raise _InstallRefused(f"{relative} is not YAML") from error
+    except RecursionError as error:
+        raise _InstallRefused(f"{relative} is nested too deeply") from error
 
 
 def _block(
@@ -787,6 +859,8 @@ def _target_description(root: Path, source: str) -> dict[str, Any]:
     ):
         raise _InstallRefused(f"{source} is not an Application")
     members = _APPLICATION_MEMBERS
+    _block(application, "the document", source, members)
+    _block(application.get("metadata"), "metadata", source, members)
     spec = _block(application.get("spec"), "spec", source, members)
     chart = _block(spec.get("source"), "spec.source", source, members)
     helm = _block(chart.get("helm"), "spec.source.helm", source, members)
@@ -810,11 +884,33 @@ def _target_description(root: Path, source: str) -> dict[str, Any]:
         "release": {
             "name": _text(helm, "releaseName", "spec.source.helm", source),
             "namespace": _text(destination, "namespace", "spec.destination", source),
+            "server": _text(destination, "server", "spec.destination", source),
         },
         "valuesFile": files[0][1:],
         "handWrittenValues": _hand_written(
             helm, "valuesObject", "spec.source.helm", source
         ),
+    }
+
+
+def _target_delivery(root: Path, source: str | None) -> dict[str, Any]:
+    """How the target is delivered, as its Application states it.
+
+    These members are stated and not compared: the baseline names no
+    controller. An Application that is not read gives an empty statement.
+    """
+    if source is None:
+        return {}
+    try:
+        application = _document(root, source)
+    except _InstallRefused:
+        return {}
+    metadata = _member(application, "metadata")
+    spec = _member(application, "spec")
+    return {
+        "application": _plain(_member(metadata, "name")),
+        "project": _plain(_member(spec, "project")),
+        "syncPolicy": _plain(_member(spec, "syncPolicy")),
     }
 
 
@@ -841,6 +937,7 @@ def _baseline_description(root: Path, source: str) -> dict[str, Any]:
         "release": {
             "name": _text(release, "name", "release", source),
             "namespace": _text(release, "namespace", "release", source),
+            "server": _text(release, "server", "release", source),
         },
         "valuesFile": _text(document, "valuesFile", label, source),
         "handWrittenValues": _hand_written(
@@ -849,34 +946,63 @@ def _baseline_description(root: Path, source: str) -> dict[str, Any]:
     }
 
 
+def _spelled(root: Path, relative: str) -> bool:
+    """Whether each segment of a path is the name that its directory lists.
+
+    A file system that ignores case opens ``Charts`` as ``charts``. A host that
+    does not ignore case finds no such directory.
+    """
+    here = root
+    for segment in relative.split("/"):
+        try:
+            if segment not in os.listdir(here):
+                return False
+        except OSError:
+            return False
+        here = here / segment
+    return True
+
+
 def _chart_content(root: Path, directory: str, source: str) -> tuple[str, str, Any]:
     """The version of a chart, the digest of its files, and its default values.
 
-    The digest is over the files that a render reads: the chart document, the
-    default values, the values schema, and each file under the templates. Each
-    file is stated by its own SHA-256 and its path in the chart, in the order
-    of the paths.
+    The digest is over each file of the chart directory, but for the chart's
+    page and its render fixtures. So it holds the chart document, the default
+    values, the values schema, each template, the ignore file, and a subchart or
+    another file that a later change adds. Each file is stated by its own
+    SHA-256 and its path in the chart, in the order of the paths.
     """
     if not _plain_path(directory):
         raise _InstallRefused(
             f"{source} names a chart path that is not one relative POSIX path of "
             "plain segments"
         )
-    templates = root / directory / _CHART_TEMPLATES
-    names = list(_CHART_FILES)
-    if templates.is_dir() and not templates.is_symlink():
-        names.extend(
-            sorted(
-                path.relative_to(root / directory).as_posix()
-                for path in templates.rglob("*")
-                if not path.is_dir()
-            )
+    chart_root = root / directory
+    if chart_root.is_symlink() or not chart_root.is_dir():
+        raise _InstallRefused(f"{directory} is not a directory of this tree")
+    if not _spelled(root, directory):
+        raise _InstallRefused(
+            f"{source} names the chart path {directory} in another spelling than "
+            "the tree has"
         )
-    if len(names) == len(_CHART_FILES):
+    try:
+        names = sorted(
+            path.relative_to(chart_root).as_posix()
+            for path in chart_root.rglob("*")
+            if not path.is_dir() or path.is_symlink()
+        )
+    except OSError as error:
+        reason = error.strerror or "no reason given"
+        raise _InstallRefused(f"{directory} was not read: {reason}") from error
+    names = [name for name in names if name.split("/")[0] not in _CHART_UNREAD]
+    for name in _CHART_FILES:
+        if name not in names:
+            raise _InstallRefused(f"{directory}/{name} is not a regular file")
+    if not any(name.startswith(f"{_CHART_TEMPLATES}/") for name in names):
         raise _InstallRefused(f"{directory} holds no template")
     digest = hashlib.sha256()
     for name in names:
-        path = root / directory / name
+        path = chart_root / name
         if path.is_symlink() or not path.is_file():
             raise _InstallRefused(f"{directory}/{name} is not a regular file")
         try:
@@ -973,10 +1099,28 @@ def _effective_findings(
     return findings, stated
 
 
+def _usable(pointer: str, found: Any) -> str | None:
+    """Why a readiness input is not usable, or ``None``."""
+    name = pointer.rsplit("/", 1)[1]
+    if name in _READINESS_PATHS:
+        if type(found) is str and found.startswith("/"):
+            return None
+        return "a text that starts with a slash"
+    if name == "enabled":
+        return None if type(found) is bool else "true or false"
+    if type(found) is int and found > 0:
+        return None
+    return "a whole number above zero"
+
+
 def _readiness(
     effective: Mapping[str, Any],
 ) -> tuple[list[Finding], dict[str, dict[str, Any]]]:
-    """Each readiness input of each side, and a finding for each that is absent."""
+    """Each readiness input of each side, and a finding for each that is unusable.
+
+    An absent input and a null are not stated. An input of another type is
+    stated as the document has it, and it is refused too.
+    """
     findings = []
     stated: dict[str, dict[str, Any]] = {}
     for side in TOPOLOGY:
@@ -984,28 +1128,40 @@ def _readiness(
         for pointer in READINESS_INPUTS:
             found = _at(effective[side], pointer)
             if found is _ABSENT or found is None:
-                findings.append(
-                    Finding(
-                        "baseline-readiness-input-absent",
-                        f"effective: {side} {pointer}",
-                        f"no values document of the {side} states this readiness "
-                        "input, and no default is assumed for it",
-                    )
+                detail = (
+                    f"no values document of the {side} states this readiness "
+                    "input, and no default is assumed for it"
                 )
             else:
                 stated[side][pointer] = _plain(found)
+                needed = _usable(pointer, found)
+                if needed is None:
+                    continue
+                detail = (
+                    f"the {side} states {json.dumps(_plain(found))}; this "
+                    f"readiness input is {needed}"
+                )
+            findings.append(
+                Finding(
+                    "baseline-readiness-input-unusable",
+                    f"effective: {side} {pointer}",
+                    detail,
+                )
+            )
     return findings, stated
 
 
 def _unresolved(effective: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Each input of a controlled comparison that no committed file resolves."""
-    without_digest = [
-        side
+    digests = [
+        _at(effective[side], _API_IMAGE_DIGEST) if side in effective else _ABSENT
         for side in TOPOLOGY
-        if side not in effective
-        or type(_at(effective[side], _API_IMAGE_DIGEST)) is not str
-        or not _at(effective[side], _API_IMAGE_DIGEST)
     ]
+    resolved = (
+        all(type(d) is str and _DIGEST.fullmatch(d) for d in digests)
+        and len(set(digests)) == 1
+    )
+    without_digest = [] if resolved else list(TOPOLOGY)
     entries: list[dict[str, Any]] = []
     if without_digest:
         entries.append(
@@ -1013,8 +1169,9 @@ def _unresolved(effective: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "input": "api-image-digest",
                 "path": _API_IMAGE_DIGEST,
                 "sides": without_digest,
-                "statement": "No committed file states the API image digest of "
-                "this side. An operator supplies it at install. A run must give "
+                "statement": "The committed files do not give both sides one "
+                "API image digest of the form sha256 and 64 hexadecimal digits. "
+                "An operator supplies the digest at install. A run must give "
                 "both sides one digest.",
             }
         )
@@ -1092,12 +1249,18 @@ def build_record(
             description["chart"].update(version=version, contentSha256=digest)
             hand_written[side] = description["handWrittenValues"]
             install[side] = _plain(description)
-        except _InstallRefused as refused:
+        except (_InstallRefused, RecursionError) as refused:
+            reason = (
+                refused.reason
+                if isinstance(refused, _InstallRefused)
+                else f"{source} refers to itself or is nested too deeply"
+            )
+            install.pop(side, None)
             findings.append(
                 Finding(
                     "baseline-install-inputs-refused",
                     f"{side}: install inputs",
-                    f"no install input of this side was compared: {refused.reason}",
+                    f"no install input of this side was compared: {reason}",
                 )
             )
     if len(install) == len(sides):
@@ -1134,7 +1297,10 @@ def build_record(
         findings.extend(_version_findings(contracts))
         if len(install) == len(sides):
             evaluated.update(
-                ("baseline-effective-values-differ", "baseline-readiness-input-absent")
+                (
+                    "baseline-effective-values-differ",
+                    "baseline-readiness-input-unusable",
+                )
             )
             effective = {
                 side: _merged(_merged(defaults[side], values[side]), hand_written[side])
@@ -1170,6 +1336,7 @@ def build_record(
         "topology": topology,
         "installSources": sources,
         "installInputs": install,
+        "targetDelivery": _target_delivery(root, sources["target"]),
         "effectiveTopology": effective_topology,
         "readinessInputs": readiness,
         "unresolvedInputs": _unresolved(effective),
@@ -1224,8 +1391,9 @@ def verify_profile(root: Path = REPO_ROOT) -> tuple[Finding, ...]:
     """Every way the committed profile under ``root`` breaks a rule.
 
     An empty result means that the comparison is ``COMPARABLE``, that the
-    committed baseline release is what its declared sources derive, and that the
-    committed record is the record this tree gives. This reads files and writes
+    committed baseline release and the committed target release are each what
+    their declared sources derive, and that the committed record is the record
+    this tree gives. This reads files and writes
     none.
     """
     record = build_record(root)
@@ -1238,6 +1406,15 @@ def verify_profile(root: Path = REPO_ROOT) -> tuple[Finding, ...]:
             f"{finding.rule_id}: {finding.detail}",
         )
         for finding in verify(baseline, root)
+    )
+    target = target_release()
+    findings.extend(
+        Finding(
+            "baseline-target-release-drifted",
+            f"{target.directory}: {finding.subject}",
+            f"{finding.rule_id}: {finding.detail}",
+        )
+        for finding in verify(target, root)
     )
     path = root / RECORD_PATH
     if not path.is_file() or path.is_symlink():

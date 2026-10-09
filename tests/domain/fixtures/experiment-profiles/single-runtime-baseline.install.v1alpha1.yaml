@@ -2,7 +2,8 @@
 #
 # A release is installed from more than its generated values: a chart, a release
 # name, a namespace, and hand-written values. This file states each of them for
-# the baseline. The target states the same inputs in its Application.
+# the baseline, and the cluster address that a release is installed to. The
+# target states the same inputs in its Application.
 # `python -m tools.baseline_profile --check` reads both descriptions and refuses
 # a difference at any path but `valuesFile`.
 #
@@ -23,6 +24,7 @@ chart:
 release:
   name: inferops
   namespace: inferops-release
+  server: https://kubernetes.default.svc
 valuesFile: tests/domain/fixtures/experiment-profiles/single-runtime-baseline/values.generated.yaml
 handWrittenValues:
   api:

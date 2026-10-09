@@ -95,7 +95,9 @@ from `1.0.0`.
   replacement is created. The baseline can follow the target only while every
   other member of the two contracts stays equal.
   [The baseline profile page](docs/environment/single-runtime-baseline-profile.md)
-  states the permitted differences and the rules.
+  states the permitted differences and the rules. The figures of this entry are the
+  ones of that change. `V2-S4-005-PR1`, under Fixed below, adds the install inputs
+  and the readiness inputs that this entry says are not compared.
 - **A capacity preflight decides, before an install, whether the stated requests
   and limits of the two-replica release fit in what one node allocates. A
   cluster where they do not fit is refused, and no figure is lowered.**
@@ -1107,20 +1109,27 @@ from `1.0.0`.
   that states those inputs for the baseline, and `tools/baseline_profile` compares
   it with the inputs that the target's Application states. **Two layers are
   added, so six are compared.** The install layer holds the chart's repository,
-  revision, path, version, and the digest of the files that a render reads, the
-  release name, the namespace, the generated values file, and the hand-written
-  values. One path may differ there: the generated values file. The effective
-  layer holds the values that the chart receives: its defaults, then the
-  generated values, then the hand-written values. Two paths may differ there, as
-  in the generated values. 15 paths are permitted in all, and 12 were. **Four
-  rules are added, so a record states 11.** A description that is absent, that
-  does not parse, that lacks a member, or that states a member the tool does not
-  read refuses the comparison. Each side must state each of 24 readiness inputs,
-  so two absent values are not read as two equal values. A hand-written runtime
-  replica count is refused, on one side or on both. **A comparable record is not
-  eligibility.** Every record states `experimentEligibility` as
-  `not-established`, and lists the API image digest and the caller profile as
-  unresolved: no committed file states the first, and the second does not exist.
+  revision, path, version, and one digest of the chart's files, the release
+  name, the namespace, the cluster address, the generated values file, and the
+  hand-written values. One path may differ there: the generated values file. The
+  effective layer holds the chart's defaults, then the derived generated values,
+  then the hand-written values. Two paths may differ there, as in the generated
+  values. 15 paths are permitted in all, and 12 were. **Four rules are added, so
+  a record states 11, and the check adds 3 where it added 2.** A description
+  that is absent, that does not parse, that states a key twice, that lacks a
+  member, or that states another member in a block the tool reads refuses the
+  comparison. The project, the sync policy, and the name of the Application are
+  stated in the record and are not compared: the baseline names no controller.
+  The effective values of each side must hold each of 24 readiness inputs with a
+  usable value, so two absent values are not read as two equal values. The
+  chart's defaults supply all 24 today. A hand-written runtime replica count is
+  refused, on one side or on both. The check now holds the committed target
+  release to its declared sources too, because the tool derives the generated
+  values and does not open the file that a description names. **A comparable
+  record is not eligibility.** Every record states `experimentEligibility` as
+  `not-established`. The record of this tree lists the API image digest and the
+  caller profile as unresolved: no committed file states the first, and the
+  second does not exist.
   The render comparison of the chart suite now renders each side with the inputs
   of its own description, and two negative controls change one side. No chart
   file, contract, binding, Application, desired-state file, or freeze record is

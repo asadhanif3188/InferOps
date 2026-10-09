@@ -3,9 +3,11 @@
 The target is the desired-state release of the reference workload, with two API
 replicas and two serving runtime replicas. The baseline is an experiment profile
 with two API replicas and one serving runtime replica. This package declares the
-baseline, derives both releases from their declared inputs, and returns one
-comparison record. The result is ``COMPARABLE`` or ``REFUSED``. A difference
-that the package does not state as permitted refuses the comparison.
+baseline, derives both releases from their declared inputs, reads the install
+description of each side, and returns one comparison record. The result is
+``COMPARABLE`` or ``REFUSED``. A difference that the package does not state as
+permitted refuses the comparison. ``COMPARABLE`` is a statement about committed
+inputs, and it is not eligibility for an experiment.
 
 See docs/environment/single-runtime-baseline-profile.md, which describes the
 profile, the permitted differences, the rules, and the limits of a record, and

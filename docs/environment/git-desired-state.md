@@ -184,8 +184,10 @@ binding, platform defaults, or revisions moves the baseline too, and
 `python -m tools.baseline_profile --check` fails until it is written again. Since
 `V2-S4-005-PR1` the baseline also states its install inputs in one file, and the
 check compares them with the inputs that this release's Application states. A change
-to the chart, the release name, the namespace, or a hand-written value in the
-Application alone is refused until the baseline's file states the same.
+to the chart's repository, revision, or path, the release name, the namespace, the
+cluster address, or a hand-written value in the Application alone is refused until
+the baseline's file states the same. That check also holds that the committed files
+of this release are what its declared sources derive.
 
 ## The promotion boundary
 

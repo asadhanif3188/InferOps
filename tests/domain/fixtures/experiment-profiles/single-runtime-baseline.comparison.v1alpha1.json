@@ -150,9 +150,11 @@
     "That a run installs either release with the install inputs that this record states. The record compares two committed descriptions. No procedure reads the baseline's description, and nothing compares a cluster with either.",
     "That the two releases install with one API image digest. No committed file states the digest. An operator supplies it at install, and the record lists it as unresolved.",
     "That a cluster reads the chart files whose digest this record states. Each description names a branch as the chart revision, and the digest is of the files of the tree that the tool read.",
-    "That the two releases render equal probes. The record compares the values that the chart receives and the digest of the chart files. This tool does not run Helm.",
+    "That the two releases render equal probes. The record compares effective values and one digest of the chart files. This tool does not run Helm, and it parses a description as YAML 1.1, which Helm's parser does not do for every plain scalar.",
+    "That the baseline is delivered as the target is. The record states the project, the sync policy, and the name of the target's Application, and it compares none of them. The baseline names no controller.",
+    "That an applied Application is the committed one. The procedure that applies it adds the API image digest as one Helm parameter, and this tool reads the committed file.",
     "That a probe behaves as its settings state, or that a pod was Ready. No cluster was read.",
-    "That the model cache claim is in one state for both sides. The claim is not a compared input.",
+    "That the model cache claim is in one state for both sides. The claim's name and its mount are compared. Its content and its state are not.",
     "That one caller profile is applied to both sides. No caller profile exists in this repository, and the record lists it as unresolved.",
     "That telemetry of the two sides is equal. The workload version differs, and it is a resource attribute of the API's telemetry.",
     "That a cluster holds the baseline. The capacity preflight derives the footprint of the target only.",
@@ -173,7 +175,7 @@
   "installInputs": {
     "baseline": {
       "chart": {
-        "contentSha256": "caa9880825e7afd2b87c06f08e02065b4cac93ca01f12406dae1ac14c758b966",
+        "contentSha256": "1d947c7fc5e85e450982a4f6a18166a7c68c869d4cb500842849baf5a2329aa9",
         "path": "charts/inferops-llm",
         "repository": "https://github.com/asadhanif3188/InferOps.git",
         "revision": "main",
@@ -219,13 +221,14 @@
       },
       "release": {
         "name": "inferops",
-        "namespace": "inferops-release"
+        "namespace": "inferops-release",
+        "server": "https://kubernetes.default.svc"
       },
       "valuesFile": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline/values.generated.yaml"
     },
     "target": {
       "chart": {
-        "contentSha256": "caa9880825e7afd2b87c06f08e02065b4cac93ca01f12406dae1ac14c758b966",
+        "contentSha256": "1d947c7fc5e85e450982a4f6a18166a7c68c869d4cb500842849baf5a2329aa9",
         "path": "charts/inferops-llm",
         "repository": "https://github.com/asadhanif3188/InferOps.git",
         "revision": "main",
@@ -271,7 +274,8 @@
       },
       "release": {
         "name": "inferops",
-        "namespace": "inferops-release"
+        "namespace": "inferops-release",
+        "server": "https://kubernetes.default.svc"
       },
       "valuesFile": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
     }
@@ -290,7 +294,7 @@
     "contract": 31,
     "declaration": 7,
     "effective": 166,
-    "install": 20,
+    "install": 21,
     "release": 15,
     "values": 31
   },
@@ -485,7 +489,7 @@
     {
       "id": "baseline-install-inputs-refused",
       "state": "held",
-      "statement": "The install description of the baseline and of the target is each a file that parses, that states each member this tool reads and no other, and that names a chart of this tree."
+      "statement": "The install description of the baseline and of the target is each a file that parses, that states each member this tool compares, and that states no other member in a block this tool reads. Each names a chart of this tree."
     },
     {
       "id": "baseline-install-differs",
@@ -495,14 +499,24 @@
     {
       "id": "baseline-effective-values-differ",
       "state": "held",
-      "statement": "The values that the chart receives on each side differ only in the runtime replica count and the workload version, and they state the replica counts of that side."
+      "statement": "The effective values of the two sides differ only in the runtime replica count and the workload version, and they state the replica counts of each side. They are the chart's defaults, then the derived generated values, then the hand-written values."
     },
     {
-      "id": "baseline-readiness-input-absent",
+      "id": "baseline-readiness-input-unusable",
       "state": "held",
-      "statement": "The values that the chart receives on each side state each readiness input: each probe path and each probe setting of the API and of the runtime."
+      "statement": "The effective values of each side hold each of 24 readiness inputs with a usable value: the 23 values that the two probe templates read, and the startup budget of the runtime."
     }
   ],
+  "targetDelivery": {
+    "application": "local-docker-desktop-support-assistant",
+    "project": "inferops-workloads",
+    "syncPolicy": {
+      "automated": {
+        "prune": false,
+        "selfHeal": true
+      }
+    }
+  },
   "targetKey": "local-docker-desktop/support-assistant",
   "topology": {
     "baseline": {
@@ -522,7 +536,7 @@
         "baseline",
         "target"
       ],
-      "statement": "No committed file states the API image digest of this side. An operator supplies it at install. A run must give both sides one digest."
+      "statement": "The committed files do not give both sides one API image digest of the form sha256 and 64 hexadecimal digits. An operator supplies the digest at install. A run must give both sides one digest."
     },
     {
       "input": "caller-profile",

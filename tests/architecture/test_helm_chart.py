@@ -2980,7 +2980,20 @@ def test_a_hand_written_value_on_one_side_of_the_baseline_comparison_is_rendered
     baseline_render = _render_described(edited, tmp_path, "baseline-edited")
     differing = _beyond_the_permitted(baseline_render, target_render)
     assert differing, "a one-sided hand-written value changed no rendered object"
-    assert {kind for kind, _name in differing} <= {"Deployment", "Service"}
+    # The difference is the edited value: the scrape annotation is on the pod
+    # templates of the side that kept it, and on none of the other side.
+    annotated = {}
+    for name, render in (("baseline", baseline_render), ("target", target_render)):
+        annotated[name] = sorted(
+            kind_and_name
+            for kind_and_name, document in _objects(render).items()
+            if kind_and_name[0] == "Deployment"
+            and "prometheus.io/scrape"
+            in document["spec"]["template"]["metadata"]["annotations"]
+        )
+    assert annotated["baseline"] == []
+    assert annotated["target"]
+    assert set(annotated["target"]) <= set(differing)
 
 
 # --------------------------------------------------------------------------

@@ -2,8 +2,9 @@
 
 The baseline is two API replicas and one serving runtime replica. The target is
 the desired-state release, with two of each. ``tools.baseline_profile`` derives
-both releases and refuses each difference that is not the runtime replica count,
-or an identity that follows it.
+both releases, reads the install description of each side, and refuses each
+difference that is not the runtime replica count, an identity that follows it,
+or the generated values file that each side reads.
 
 These tests hold five things.
 
@@ -79,6 +80,7 @@ from tools.generated_release import (
     GENERATED_FILES,
     MATRIX_PATH,
     REPO_ROOT,
+    regenerate,
 )
 from tools.gitops_desired_state import DESIRED_STATE_RELEASES, DESIRED_STATE_ROOT
 
@@ -138,7 +140,7 @@ RULE_IDS = [
     "baseline-install-inputs-refused",
     "baseline-install-differs",
     "baseline-effective-values-differ",
-    "baseline-readiness-input-absent",
+    "baseline-readiness-input-unusable",
 ]
 #: The rules that need a derived release of each side.
 DERIVED_RULES = [*RULE_IDS[2:7], *RULE_IDS[9:]]
@@ -165,6 +167,7 @@ def copy_inputs(root: Path) -> Path:
         TARGET_CONTRACT,
         BINDING,
         OTHER_BINDING,
+        TARGET_DIRECTORY,
         CHART,
         APPLICATION,
         INSTALL,
@@ -746,8 +749,17 @@ def test_a_change_to_both_sides_is_comparable_and_is_still_reported(root: Path) 
     record = build_record(root)
     assert record["result"] == COMPARABLE
     rules = [finding.rule_id for finding in verify_profile(root)]
-    assert set(rules) == {"baseline-release-drifted", "baseline-record-stale"}
+    assert set(rules) == {
+        "baseline-release-drifted",
+        "baseline-target-release-drifted",
+        "baseline-record-stale",
+    }
     assert write_profile(root) == (True, True)
+    # This tool does not write the target's release. Its own command does.
+    assert {finding.rule_id for finding in verify_profile(root)} == {
+        "baseline-target-release-drifted"
+    }
+    assert regenerate(target_release(), root) is True
     assert verify_profile(root) == ()
     assert write_profile(root) == (False, False)
 
@@ -1011,8 +1023,12 @@ def test_a_failed_write_prints_no_path_of_the_host(
     assert "out of step" in printed
     assert str(root) not in printed
     monkeypatch.undo()
-    assert {f.rule_id for f in verify_profile(root)} == {"baseline-record-stale"}
+    assert {f.rule_id for f in verify_profile(root)} == {
+        "baseline-record-stale",
+        "baseline-target-release-drifted",
+    }
     assert write_profile(root) == (False, True)
+    assert regenerate(target_release(), root) is True
     assert verify_profile(root) == ()
 
 
@@ -1057,13 +1073,19 @@ REFUSED_TIMEOUT = [
 
 
 def chart_digest(root: Path) -> str:
-    """The digest of the chart files that a render reads, computed here again."""
+    """The digest of the chart's files, computed here again.
+
+    Each file of the chart directory but its page and its render fixtures.
+    """
     chart = root / CHART
-    names = ["Chart.yaml", "values.yaml", "values.schema.json"]
-    names += sorted(
+    names = sorted(
         path.relative_to(chart).as_posix()
-        for path in (chart / "templates").rglob("*")
+        for path in chart.rglob("*")
         if path.is_file()
+        and path.relative_to(chart).parts[0] not in ("README.md", "ci")
+    )
+    assert {"Chart.yaml", "values.yaml", "values.schema.json", ".helmignore"} <= set(
+        names
     )
     lines = [
         f"{hashlib.sha256((chart / name).read_bytes()).hexdigest()}  {name}\n"
@@ -1092,8 +1114,13 @@ def test_the_two_install_descriptions_state_one_set_of_install_inputs() -> None:
     assert baseline["release"] == {
         "name": source["helm"]["releaseName"],
         "namespace": application["spec"]["destination"]["namespace"],
+        "server": application["spec"]["destination"]["server"],
     }
-    assert baseline["release"] == {"name": "inferops", "namespace": "inferops-release"}
+    assert baseline["release"] == {
+        "name": "inferops",
+        "namespace": "inferops-release",
+        "server": "https://kubernetes.default.svc",
+    }
     assert baseline["handWrittenValues"] == source["helm"]["valuesObject"]
     assert baseline["valuesFile"] == f"{PROFILE_DIRECTORY}/{VALUES}"
     assert source["helm"]["valueFiles"] == [f"/{TARGET_DIRECTORY}/{VALUES}"]
@@ -1226,7 +1253,7 @@ ONE_SIDED = [
         [
             *REFUSED_TIMEOUT,
             (
-                "baseline-readiness-input-absent",
+                "baseline-readiness-input-unusable",
                 "effective: baseline /api/probes/readiness/timeoutSeconds",
             ),
         ],
@@ -1286,6 +1313,29 @@ ONE_SIDED = [
             ("baseline-effective-values-differ", "effective: baseline runtimeReplicas"),
         ],
         id="baseline-hand-written-replica-count",
+    ),
+    pytest.param(
+        INSTALL,
+        "    scrapeAnnotations: true\n",
+        "    scrapeAnnotations: false\n",
+        [
+            (
+                "baseline-install-differs",
+                "install: /handWrittenValues/telemetry/scrapeAnnotations",
+            ),
+            (
+                "baseline-effective-values-differ",
+                "effective: /telemetry/scrapeAnnotations",
+            ),
+        ],
+        id="baseline-scrape-annotations",
+    ),
+    pytest.param(
+        APPLICATION,
+        "server: https://kubernetes.default.svc",
+        "server: https://other-cluster.example:6443",
+        [("baseline-install-differs", "install: /release/server")],
+        id="target-cluster-address",
     ),
     pytest.param(
         INSTALL,
@@ -1446,6 +1496,11 @@ def cut(path: Path, start: str, end: str | None) -> None:
     path.write_bytes((head + kept).encode("utf-8"))
 
 
+def hand_written_as_a_list(path: Path) -> None:
+    cut(path, "handWrittenValues:\n", None)
+    path.write_bytes(path.read_bytes() + b"handWrittenValues: []\n")
+
+
 def replaced(old: str, new: str) -> Any:
     return lambda path: edit(path, old, new)
 
@@ -1520,7 +1575,7 @@ UNREADABLE = [
     pytest.param(
         "baseline",
         replaced(f"path: {CHART}", "path: charts/absent"),
-        "charts/absent holds no template",
+        "charts/absent is not a directory of this tree",
         id="baseline-chart-is-absent",
     ),
     pytest.param(
@@ -1531,7 +1586,70 @@ UNREADABLE = [
         "a values file that is not one relative POSIX path",
         id="baseline-values-file-is-absolute",
     ),
+    pytest.param(
+        "baseline",
+        replaced("  name: inferops\n", "  name: inferops\n  name: other\n"),
+        "states the key name twice",
+        id="baseline-states-a-key-twice",
+    ),
+    pytest.param(
+        "baseline",
+        replaced(
+            "handWrittenValues:\n", "handWrittenValues: &again\n  again: *again\n"
+        ),
+        "refers to itself or is nested too deeply",
+        id="baseline-refers-to-itself",
+    ),
+    pytest.param(
+        "baseline",
+        replaced(f"path: {CHART}", "path: Charts/inferops-llm"),
+        "Charts/inferops-llm",
+        id="baseline-chart-path-in-another-case",
+    ),
+    pytest.param(
+        "baseline",
+        hand_written_as_a_list,
+        "states no mapping at handWrittenValues",
+        id="baseline-hand-written-values-are-a-list",
+    ),
     pytest.param("target", Path.unlink, "is not a regular file", id="target-absent"),
+    pytest.param(
+        "target",
+        lambda path: path.write_bytes(
+            path.read_bytes() + b"operation:\n  sync:\n    revision: other\n"
+        ),
+        "does not read: operation",
+        id="target-states-an-operation",
+    ),
+    pytest.param(
+        "target",
+        replaced(
+            "  labels:\n", "  annotations:\n    example.invalid/option: x\n  labels:\n"
+        ),
+        "does not read: annotations",
+        id="target-states-an-annotation",
+    ),
+    pytest.param(
+        "target",
+        replaced("    server: https://kubernetes.default.svc\n", ""),
+        "states no text at server of spec.destination",
+        id="target-states-no-cluster-address",
+    ),
+    pytest.param(
+        "target",
+        replaced(
+            "      releaseName: inferops\n",
+            "      releaseName: inferops\n      releaseName: other\n",
+        ),
+        "states the key releaseName twice",
+        id="target-states-a-key-twice",
+    ),
+    pytest.param(
+        "target",
+        replaced("      valueFiles:\n        - /", "      valueFiles:\n        - "),
+        "does not name one values file",
+        id="target-values-file-is-not-from-the-root",
+    ),
     pytest.param(
         "target",
         replaced("kind: Application", "kind: ApplicationSet"),
@@ -1642,6 +1760,12 @@ def test_a_chart_that_is_not_read_whole_refuses_both_sides(
     ]
     assert all(reason in finding["detail"] for finding in record["findings"])
     assert record["installInputs"] == {}
+    assert states(record) == {
+        **dict.fromkeys(RULE_IDS, HELD),
+        "baseline-install-inputs-refused": NOT_HELD,
+        **dict.fromkeys(INSTALL_RULES, NOT_EVALUATED),
+    }
+    assert str(root) not in json.dumps(record)
 
 
 def test_an_absent_readiness_input_is_not_read_as_an_equal_one(root: Path) -> None:
@@ -1651,8 +1775,8 @@ def test_an_absent_readiness_input_is_not_read_as_an_equal_one(root: Path) -> No
     record = refused_by(root)
     pointer = "/api/probes/readiness/timeoutSeconds"
     assert found(record) == [
-        ("baseline-readiness-input-absent", f"effective: baseline {pointer}"),
-        ("baseline-readiness-input-absent", f"effective: target {pointer}"),
+        ("baseline-readiness-input-unusable", f"effective: baseline {pointer}"),
+        ("baseline-readiness-input-unusable", f"effective: target {pointer}"),
     ]
     assert all(entry["permitted"] for entry in record["differences"]["effective"])
     for side in ("baseline", "target"):
@@ -1667,14 +1791,204 @@ def test_the_chart_digest_follows_the_files_a_render_reads(root: Path) -> None:
     (root / CHART / "README.md").write_text("another page\n", encoding="utf-8")
     (root / CHART / "ci" / "real-values.yaml").write_text("{}\n", encoding="utf-8")
     assert build_record(root) == build_record()
-    with (root / CHART / "templates" / "api-service.yaml").open("ab") as template:
-        template.write(b"# one more line\n")
+    digests = [before]
+    #: A file of the chart, what is written to it, and whether it is appended.
+    edits = [
+        ("templates/api-service.yaml", b"# one more line\n", True),
+        # The ignore file decides which templates a render reads.
+        (".helmignore", b"networkpolicy.yaml\n", True),
+        # A subchart and a definition file are read by a render too.
+        ("charts/other/templates/x.yaml", b"a: 1\n", False),
+        ("crds/x.yaml", b"a: 1\n", False),
+    ]
+    for name, data, appended in edits:
+        path = root / CHART / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes((path.read_bytes() if appended else b"") + data)
+        record = build_record(root)
+        assert record["result"] == COMPARABLE
+        for side in ("baseline", "target"):
+            after = record["installInputs"][side]["chart"]["contentSha256"]
+            assert after == chart_digest(root)
+        assert after not in digests
+        digests.append(after)
+    assert [f.rule_id for f in verify_profile(root)] == ["baseline-record-stale"]
+
+
+def test_another_chart_path_on_one_side_is_refused(root: Path) -> None:
+    """A second chart directory with the same files. The two paths differ, and the
+    two digests do not."""
+    shutil.copytree(root / CHART, root / "charts" / "other")
+    edit(root / INSTALL, f"path: {CHART}", "path: charts/other")
+    record = refused_by(root)
+    assert found(record) == [("baseline-install-differs", "install: /chart/path")]
+    charts = [record["installInputs"][side]["chart"] for side in ("baseline", "target")]
+    assert charts[0]["contentSha256"] == charts[1]["contentSha256"]
+
+
+def test_how_the_target_is_delivered_is_stated_and_not_compared(root: Path) -> None:
+    """The project and the sync policy of the Application. The baseline names no
+    controller, so a change is not a difference. It makes the record stale."""
+    assert build_record()["targetDelivery"] == {
+        "application": "local-docker-desktop-support-assistant",
+        "project": "inferops-workloads",
+        "syncPolicy": {"automated": {"prune": False, "selfHeal": True}},
+    }
+    for old, new, member, stated in (
+        ("project: inferops-workloads", "project: default", "project", "default"),
+        (
+            "selfHeal: true",
+            "selfHeal: false",
+            "syncPolicy",
+            {"automated": {"prune": False, "selfHeal": False}},
+        ),
+    ):
+        edit(root / APPLICATION, old, new)
+        record = build_record(root)
+        assert record["result"] == COMPARABLE
+        assert record["targetDelivery"][member] == stated
+        assert [f.rule_id for f in verify_profile(root)] == ["baseline-record-stale"]
+
+
+def test_a_hand_edit_of_the_committed_target_values_is_refused(root: Path) -> None:
+    """The comparison derives the generated values. The check holds that the file
+    the target's description names is the derived one."""
+    path = root / TARGET_DIRECTORY / VALUES
+    edit(path, "  replicaCount: 2\n  resources:", "  replicaCount: 7\n  resources:")
+    assert build_record(root) == build_record()
+    assert {f.rule_id for f in verify_profile(root)} == {
+        "baseline-target-release-drifted"
+    }
+    path.unlink()
+    assert {f.rule_id for f in verify_profile(root)} == {
+        "baseline-target-release-drifted"
+    }
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "pointer", "stated"),
+    [
+        (
+            "      timeoutSeconds: 5\n",
+            '      timeoutSeconds: "5"\n',
+            "/api/probes/readiness/timeoutSeconds",
+            "5",
+        ),
+        (
+            "      timeoutSeconds: 5\n",
+            "      timeoutSeconds: 0\n",
+            "/api/probes/readiness/timeoutSeconds",
+            0,
+        ),
+        (
+            "      timeoutSeconds: 5\n",
+            "      timeoutSeconds: []\n",
+            "/api/probes/readiness/timeoutSeconds",
+            [],
+        ),
+        (
+            "  readinessPath: /health/ready\n",
+            '  readinessPath: ""\n',
+            "/api/readinessPath",
+            "",
+        ),
+        (
+            "  healthPath: /health\n",
+            "  healthPath: health\n",
+            "/runtime/healthPath",
+            "health",
+        ),
+    ],
+    ids=["text-for-a-number", "zero", "list", "empty-path", "path-without-a-slash"],
+)
+def test_a_readiness_input_of_an_unusable_value_is_refused_on_both_sides(
+    root: Path, old: str, new: str, pointer: str, stated: Any
+) -> None:
+    """Both sides hold one value, and it is not a value that a probe can use."""
+    edit(root / DEFAULTS, old, new)
+    record = refused_by(root)
+    assert found(record) == [
+        ("baseline-readiness-input-unusable", f"effective: baseline {pointer}"),
+        ("baseline-readiness-input-unusable", f"effective: target {pointer}"),
+    ]
+    for side in ("baseline", "target"):
+        assert record["readinessInputs"][side][pointer] == stated
+
+
+def test_probes_switched_to_a_text_on_both_sides_are_refused(root: Path) -> None:
+    """A plain ``n`` is a text for this parser and false for another one."""
+    addition = "probes:\n{0}  enabled: n\n"
+    edit(
+        root / APPLICATION,
+        "            pullPolicy: IfNotPresent\n",
+        "            pullPolicy: IfNotPresent\n" + " " * 10 + addition.format(" " * 10),
+    )
+    edit(
+        root / INSTALL,
+        BASELINE_RUNTIME_IMAGE,
+        BASELINE_RUNTIME_IMAGE + " " * 4 + addition.format(" " * 4),
+    )
+    assert found(refused_by(root)) == [
+        (
+            "baseline-readiness-input-unusable",
+            "effective: baseline /runtime/probes/enabled",
+        ),
+        (
+            "baseline-readiness-input-unusable",
+            "effective: target /runtime/probes/enabled",
+        ),
+    ]
+
+
+def test_a_text_that_is_not_a_digest_does_not_resolve_the_digest(root: Path) -> None:
+    digest = "digest: abc\n"
+    edit(root / APPLICATION, TARGET_API_IMAGE, TARGET_API_IMAGE + " " * 12 + digest)
+    edit(root / INSTALL, BASELINE_API_IMAGE, BASELINE_API_IMAGE + " " * 6 + digest)
     record = build_record(root)
     assert record["result"] == COMPARABLE
-    for side in ("baseline", "target"):
-        after = record["installInputs"][side]["chart"]["contentSha256"]
-        assert after == chart_digest(root) != before
-    assert [f.rule_id for f in verify_profile(root)] == ["baseline-record-stale"]
+    assert [entry["input"] for entry in record["unresolvedInputs"]] == [
+        "api-image-digest",
+        "caller-profile",
+    ]
+
+
+def test_the_target_has_one_application_and_an_undeclared_one_is_refused(
+    root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import tools.baseline_profile.core as core
+    from tools.capacity_preflight import APPLICATIONS
+
+    assert APPLICATIONS[TARGET_KEY] == APPLICATION
+    monkeypatch.setattr(core, "APPLICATIONS", {})
+    record = refused_by(root)
+    assert found(record) == [
+        ("baseline-install-inputs-refused", "target: install inputs")
+    ]
+    assert "no Application is declared for the key" in record["findings"][0]["detail"]
+    assert record["targetDelivery"] == {}
+
+
+def test_the_values_merge_is_the_one_the_capacity_preflight_uses() -> None:
+    """Two tools read one Application. Each holds its own copy of the merge, and
+    this holds the two copies equal in what they give."""
+    from tools.baseline_profile.core import _merged as ours
+    from tools.capacity_preflight.core import _merged as theirs
+
+    base = {"a": {"b": 1, "c": 2}, "d": [1, 2], "e": "x", "f": {"g": 1}}
+    overs: tuple[dict[str, Any], ...] = (
+        {"a": {"b": 9}},
+        {"a": {"b": None}},
+        {"a": None},
+        {"a": "scalar"},
+        {"d": [3]},
+        {"e": {"now": "a mapping"}},
+        {"f": {}},
+        {"new": {"h": None}},
+    )
+    for over in overs:
+        assert ours(base, over) == theirs(base, over), over
+    assert ours(base, {"a": {"b": None}})["a"] == {"c": 2}
+    assert ours(base, {"f": {}})["f"] == {"g": 1}
 
 
 # --------------------------------------------------------------------------
@@ -1750,6 +2064,7 @@ def test_the_page_states_each_rule() -> None:
     assert [rule.rule_id for rule in RULES] == RULE_IDS
     assert [rule.rule_id for rule in CHECK_RULES] == [
         "baseline-release-drifted",
+        "baseline-target-release-drifted",
         "baseline-record-stale",
     ]
     for rule in (*RULES, *CHECK_RULES):

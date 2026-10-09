@@ -543,8 +543,12 @@ uv run --locked python -m tools.baseline_profile --write
   desired-state release moves both sides alike. So does a change to a contract at a
   permitted path. The findings are `baseline-release-drifted` and
   `baseline-record-stale`. Read them, then run `--write` in the same change. A change
-  to a chart file that a render reads moves the chart digest of both sides, and it is
-  `baseline-record-stale` alone.
+  that moves the generated values of the target is `baseline-target-release-drifted`
+  too: write the target's release with `python -m tools.gitops_desired_state --write`
+  and its key. A change to a chart file moves the chart digest of both sides. When it
+  moves no effective value, it is `baseline-record-stale` alone. So is a change to the
+  project or the sync policy of the Application, which the record states and does not
+  compare.
 - **Refused.** A change to one contract of the reference workload at any other path,
   such as a resource ceiling, makes the two sides differ. `--write` refuses. The
   baseline is rendered from version `0.1.0` of the workload, so it can follow the
@@ -552,12 +556,13 @@ uv run --locked python -m tools.baseline_profile --write
   other contract the same change, or decide another baseline contract. That is a
   decision, and the first experiment's freeze record pins the `0.1.0` contract.
 - **Refused, for an install input.** The target states its chart, release name,
-  namespace, and hand-written values in its Application. The baseline states them in
+  namespace, cluster address, and hand-written values in its Application. The
+  baseline states them in
   `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.install.v1alpha1.yaml`,
   which a person writes. A change to one of the two alone is
   `baseline-install-differs`. Make the same change in the other file, in the same
-  change, then run `--write`. The tool reads each description whole: a member that it
-  does not read, such as a Helm parameter in the Application, is
+  change, then run `--write`. Another member in a block of the Application that the
+  tool reads, such as a Helm parameter, an annotation, or a top-level `operation`, is
   `baseline-install-inputs-refused`, and the remedy is a change to the tool and its
   page. Do not state the runtime replica count by hand in either file.
 
