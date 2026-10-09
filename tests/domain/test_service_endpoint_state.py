@@ -328,11 +328,94 @@ def test_each_committed_case_has_the_result_its_name_states(name: str) -> None:
     assert name.startswith(result.lower() + "-")
 
 
+#: The one collection that a cluster produced, and what its record states.
+#: Restated on purpose: the reading is evidence, and an edit of it fails here.
+CLUSTER_READING = "docs/proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1"
+CLUSTER_READING_PODS = {
+    API: [
+        (
+            "inferops-inferops-llm-b5fd5846f-m87hp",
+            "391d25be-c8df-4503-a780-565fb51c1525",
+        ),
+        (
+            "inferops-inferops-llm-b5fd5846f-rv46m",
+            "dce18d09-18cb-4e49-9241-1ee09775cf89",
+        ),
+    ],
+    RUNTIME: [
+        (
+            "inferops-inferops-llm-runtime-79846f98f6-7kms9",
+            "f0e96c01-7b5e-4a14-bf7a-a0cb2b712ba5",
+        ),
+        (
+            "inferops-inferops-llm-runtime-79846f98f6-gc7pq",
+            "8e204fbe-2b0d-40d5-b0e8-dce808e004c6",
+        ),
+    ],
+}
+
+
 def test_the_check_holds_each_committed_record_to_its_collection() -> None:
     assert state.committed_collections() == sorted(
-        f"tests/domain/fixtures/service-endpoint-state/{name}" for name in CASES
+        [f"tests/domain/fixtures/service-endpoint-state/{name}" for name in CASES]
+        + [CLUSTER_READING]
     )
     assert state.check_committed() == []
+
+
+def test_the_one_reading_of_a_cluster_states_two_ready_endpoints_for_each_tier() -> (
+    None
+):
+    """The committed reading of one cluster, on one provider, at one time.
+
+    It is what that cluster published. It is not a request that a caller sent,
+    and the record says so. The pods are compared with two reads of the pods
+    that the run kept beside the collection, which the tool does not read.
+    """
+    directory = REPO_ROOT / CLUSTER_READING
+    record = json.loads((directory / state.RECORD_FILE).read_text("utf-8"))
+    assert record == state.build_record(directory)
+    assert record["result"] == "OBSERVED" and record["refusedBy"] == []
+    assert not_held(record) == []
+    assert record["collection"] == {
+        "schema": "inferops.io/service-endpoint-state-collection/v1alpha1",
+        "provider": "docker-desktop",
+        "release": "inferops",
+        "namespace": "inferops-release",
+        "executingCommit": "25f2cfbfe587e0e0c76ceb519cb90f6ef0e09810",
+        "readStartedAt": "2026-10-09T14:33:15Z",
+        "readFinishedAt": "2026-10-09T14:33:16Z",
+    }
+    assert record["doesNotEstablish"] == list(state.DOES_NOT_ESTABLISH)
+    for name, pods in CLUSTER_READING_PODS.items():
+        found = tier(record, name)
+        assert found["state"] == "observed"
+        assert found["endpoints"] == {
+            "total": 2,
+            "ready": 2,
+            "notReady": 0,
+            "serving": 2,
+            "terminating": 0,
+        }
+        assert found["notReady"] == []
+        assert [(pod["podName"], pod["podUid"]) for pod in found["ready"]] == pods
+        for read in ("pods-before.json", "pods-after.json"):
+            listed = json.loads((directory / read).read_text("utf-8"))["items"]
+            ready = sorted(
+                (pod["metadata"]["name"], pod["metadata"]["uid"])
+                for pod in listed
+                if pod["metadata"]["labels"]["app.kubernetes.io/component"] == name
+                and "deletionTimestamp" not in pod["metadata"]
+                and any(
+                    condition["type"] == "Ready" and condition["status"] == "True"
+                    for condition in pod["status"]["conditions"]
+                )
+            )
+            assert ready == pods, (name, read)
+    # A record holds no address, though the reads beside it do.
+    text = (directory / state.RECORD_FILE).read_text("utf-8")
+    assert "10.244." not in text and "desktop-control-plane" not in text
+    assert "10.244." in (directory / "endpointslices.json").read_text("utf-8")
 
 
 def test_the_check_reports_a_record_that_its_collection_does_not_give(
@@ -1126,8 +1209,9 @@ def test_the_command_checks_the_committed_collections(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert main(["--check"]) == 0
+    # The synthetic cases, and the one reading of a cluster.
     assert capsys.readouterr().out.startswith(
-        f"PASSED: {len(CASES)} committed collection(s)"
+        f"PASSED: {len(CASES) + 1} committed collection(s)"
     )
 
 

@@ -1,0 +1,61 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "kind": "PersistentVolumeClaim",
+            "metadata": {
+                "annotations": {
+                    "inferops.io/managed-by-configuration": "infra/terraform/environments/local",
+                    "inferops.io/removed-by": "terraform destroy",
+                    "inferops.io/retention": "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside.",
+                    "pv.kubernetes.io/bind-completed": "yes",
+                    "pv.kubernetes.io/bound-by-controller": "yes",
+                    "volume.beta.kubernetes.io/storage-provisioner": "rancher.io/local-path",
+                    "volume.kubernetes.io/selected-node": "desktop-control-plane",
+                    "volume.kubernetes.io/storage-provisioner": "rancher.io/local-path"
+                },
+                "creationTimestamp": "2026-10-09T14:28:45Z",
+                "finalizers": [
+                    "kubernetes.io/pvc-protection"
+                ],
+                "labels": {
+                    "app.kubernetes.io/component": "model-cache-volume-claim",
+                    "app.kubernetes.io/managed-by": "Terraform",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "inferops.io/lifecycle": "prerequisite"
+                },
+                "name": "inferops-model-cache",
+                "namespace": "inferops-release",
+                "resourceVersion": "269242",
+                "uid": "cc340330-50e1-446d-ae90-bc61444fd06f"
+            },
+            "spec": {
+                "accessModes": [
+                    "ReadWriteOnce"
+                ],
+                "resources": {
+                    "requests": {
+                        "storage": "4Gi"
+                    }
+                },
+                "storageClassName": "standard",
+                "volumeMode": "Filesystem",
+                "volumeName": "pvc-cc340330-50e1-446d-ae90-bc61444fd06f"
+            },
+            "status": {
+                "accessModes": [
+                    "ReadWriteOnce"
+                ],
+                "capacity": {
+                    "storage": "4Gi"
+                },
+                "phase": "Bound"
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

@@ -223,8 +223,9 @@ It is not a caller's result. The chart also renders a
 [PodDisruptionBudget](docs/environment/disruption-budgets.md) for a tier of two or more
 replicas. Kubernetes documents that the eviction API then refuses an eviction that would
 leave the tier with no available pod. A budget does not protect a pod from a direct
-deletion, and on a cluster with one node it makes a drain wait. No endpoint of a cluster was read, and no eviction
-was requested.
+deletion, and on a cluster with one node it makes a drain wait. Since `V2-S4-005-PR2` one
+reading of one local cluster is committed: two Ready endpoints for each of the two Services,
+at one time. It is not a caller's result. No eviction was requested.
 
 ## Prerequisites
 

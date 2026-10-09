@@ -1,0 +1,799 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "annotations": {
+                    "argocd.argoproj.io/tracking-id": "local-docker-desktop-support-assistant:apps/Deployment:inferops-release/inferops-inferops-llm",
+                    "deployment.kubernetes.io/revision": "1",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{\"argocd.argoproj.io/tracking-id\":\"local-docker-desktop-support-assistant:apps/Deployment:inferops-release/inferops-inferops-llm\",\"inferops.io/cost-center\":\"demo-cost-center\",\"inferops.io/tenant\":\"demo\"},\"labels\":{\"app.kubernetes.io/component\":\"platform-api\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"},\"name\":\"inferops-inferops-llm\",\"namespace\":\"inferops-release\"},\"spec\":{\"progressDeadlineSeconds\":300,\"replicas\":2,\"selector\":{\"matchLabels\":{\"app.kubernetes.io/component\":\"platform-api\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/name\":\"inferops-llm\"}},\"strategy\":{\"rollingUpdate\":{\"maxSurge\":1,\"maxUnavailable\":0},\"type\":\"RollingUpdate\"},\"template\":{\"metadata\":{\"annotations\":{\"inferops.io/configuration-checksum\":\"ae48e347b0dba018c6021b47671e965f2a5db6e266dcef294c6ea2daf1ae631f\",\"inferops.io/cost-center\":\"demo-cost-center\",\"inferops.io/tenant\":\"demo\",\"prometheus.io/path\":\"/metrics\",\"prometheus.io/port\":\"8090\",\"prometheus.io/scrape\":\"true\"},\"labels\":{\"app.kubernetes.io/component\":\"platform-api\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"}},\"spec\":{\"automountServiceAccountToken\":false,\"containers\":[{\"env\":[{\"name\":\"INFEROPS_POD_NAME\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"metadata.name\"}}}],\"envFrom\":[{\"configMapRef\":{\"name\":\"inferops-inferops-llm-configuration\"}}],\"image\":\"localhost/inferops-api@sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56\",\"imagePullPolicy\":\"Never\",\"lifecycle\":{\"preStop\":{\"sleep\":{\"seconds\":5}}},\"livenessProbe\":{\"failureThreshold\":3,\"httpGet\":{\"path\":\"/health/live\",\"port\":\"http\"},\"periodSeconds\":10,\"timeoutSeconds\":2},\"name\":\"api\",\"ports\":[{\"containerPort\":8090,\"name\":\"http\",\"protocol\":\"TCP\"}],\"readinessProbe\":{\"failureThreshold\":3,\"httpGet\":{\"path\":\"/health/ready\",\"port\":\"http\"},\"periodSeconds\":10,\"timeoutSeconds\":5},\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"512Mi\"},\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"}},\"securityContext\":{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"readOnlyRootFilesystem\":true},\"startupProbe\":{\"failureThreshold\":12,\"httpGet\":{\"path\":\"/health/live\",\"port\":\"http\"},\"periodSeconds\":5,\"timeoutSeconds\":2},\"volumeMounts\":[{\"mountPath\":\"/tmp\",\"name\":\"tmp\"}]}],\"securityContext\":{\"fsGroup\":65534,\"runAsGroup\":65534,\"runAsNonRoot\":true,\"runAsUser\":65534,\"seccompProfile\":{\"type\":\"RuntimeDefault\"}},\"serviceAccountName\":\"inferops-inferops-llm-api\",\"terminationGracePeriodSeconds\":30,\"volumes\":[{\"emptyDir\":{\"medium\":\"Memory\",\"sizeLimit\":\"16Mi\"},\"name\":\"tmp\"}]}}}}\n"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/component": "platform-api",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant"
+                },
+                "name": "inferops-inferops-llm",
+                "namespace": "inferops-release",
+                "resourceVersion": "270063",
+                "uid": "aa367dbd-1a61-4571-8f39-24cec8eb8c95"
+            },
+            "spec": {
+                "progressDeadlineSeconds": 300,
+                "replicas": 2,
+                "revisionHistoryLimit": 10,
+                "selector": {
+                    "matchLabels": {
+                        "app.kubernetes.io/component": "platform-api",
+                        "app.kubernetes.io/instance": "inferops",
+                        "app.kubernetes.io/name": "inferops-llm"
+                    }
+                },
+                "strategy": {
+                    "rollingUpdate": {
+                        "maxSurge": 1,
+                        "maxUnavailable": 0
+                    },
+                    "type": "RollingUpdate"
+                },
+                "template": {
+                    "metadata": {
+                        "annotations": {
+                            "inferops.io/configuration-checksum": "ae48e347b0dba018c6021b47671e965f2a5db6e266dcef294c6ea2daf1ae631f",
+                            "inferops.io/cost-center": "demo-cost-center",
+                            "inferops.io/tenant": "demo",
+                            "prometheus.io/path": "/metrics",
+                            "prometheus.io/port": "8090",
+                            "prometheus.io/scrape": "true"
+                        },
+                        "labels": {
+                            "app.kubernetes.io/component": "platform-api",
+                            "app.kubernetes.io/instance": "inferops",
+                            "app.kubernetes.io/managed-by": "Helm",
+                            "app.kubernetes.io/name": "inferops-llm",
+                            "app.kubernetes.io/part-of": "inferops",
+                            "app.kubernetes.io/version": "0.1.0",
+                            "helm.sh/chart": "inferops-llm-0.6.0",
+                            "inferops.io/lifecycle": "release",
+                            "inferops.io/owner": "team-platform-demo",
+                            "inferops.io/profile": "real",
+                            "inferops.io/workload": "support-assistant"
+                        }
+                    },
+                    "spec": {
+                        "automountServiceAccountToken": false,
+                        "containers": [
+                            {
+                                "env": [
+                                    {
+                                        "name": "INFEROPS_POD_NAME",
+                                        "valueFrom": {
+                                            "fieldRef": {
+                                                "apiVersion": "v1",
+                                                "fieldPath": "metadata.name"
+                                            }
+                                        }
+                                    }
+                                ],
+                                "envFrom": [
+                                    {
+                                        "configMapRef": {
+                                            "name": "inferops-inferops-llm-configuration"
+                                        }
+                                    }
+                                ],
+                                "image": "localhost/inferops-api@sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56",
+                                "imagePullPolicy": "Never",
+                                "lifecycle": {
+                                    "preStop": {
+                                        "sleep": {
+                                            "seconds": 5
+                                        }
+                                    }
+                                },
+                                "livenessProbe": {
+                                    "failureThreshold": 3,
+                                    "httpGet": {
+                                        "path": "/health/live",
+                                        "port": "http",
+                                        "scheme": "HTTP"
+                                    },
+                                    "periodSeconds": 10,
+                                    "successThreshold": 1,
+                                    "timeoutSeconds": 2
+                                },
+                                "name": "api",
+                                "ports": [
+                                    {
+                                        "containerPort": 8090,
+                                        "name": "http",
+                                        "protocol": "TCP"
+                                    }
+                                ],
+                                "readinessProbe": {
+                                    "failureThreshold": 3,
+                                    "httpGet": {
+                                        "path": "/health/ready",
+                                        "port": "http",
+                                        "scheme": "HTTP"
+                                    },
+                                    "periodSeconds": 10,
+                                    "successThreshold": 1,
+                                    "timeoutSeconds": 5
+                                },
+                                "resources": {
+                                    "limits": {
+                                        "cpu": "1",
+                                        "memory": "512Mi"
+                                    },
+                                    "requests": {
+                                        "cpu": "100m",
+                                        "memory": "128Mi"
+                                    }
+                                },
+                                "securityContext": {
+                                    "allowPrivilegeEscalation": false,
+                                    "capabilities": {
+                                        "drop": [
+                                            "ALL"
+                                        ]
+                                    },
+                                    "readOnlyRootFilesystem": true
+                                },
+                                "startupProbe": {
+                                    "failureThreshold": 12,
+                                    "httpGet": {
+                                        "path": "/health/live",
+                                        "port": "http",
+                                        "scheme": "HTTP"
+                                    },
+                                    "periodSeconds": 5,
+                                    "successThreshold": 1,
+                                    "timeoutSeconds": 2
+                                },
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/tmp",
+                                        "name": "tmp"
+                                    }
+                                ]
+                            }
+                        ],
+                        "dnsPolicy": "ClusterFirst",
+                        "restartPolicy": "Always",
+                        "schedulerName": "default-scheduler",
+                        "securityContext": {
+                            "fsGroup": 65534,
+                            "runAsGroup": 65534,
+                            "runAsNonRoot": true,
+                            "runAsUser": 65534,
+                            "seccompProfile": {
+                                "type": "RuntimeDefault"
+                            }
+                        },
+                        "serviceAccount": "inferops-inferops-llm-api",
+                        "serviceAccountName": "inferops-inferops-llm-api",
+                        "terminationGracePeriodSeconds": 30,
+                        "volumes": [
+                            {
+                                "emptyDir": {
+                                    "medium": "Memory",
+                                    "sizeLimit": "16Mi"
+                                },
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                }
+            },
+            "status": {
+                "availableReplicas": 2,
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2026-10-09T14:32:02Z",
+                        "lastUpdateTime": "2026-10-09T14:32:02Z",
+                        "message": "Deployment has minimum availability.",
+                        "reason": "MinimumReplicasAvailable",
+                        "status": "True",
+                        "type": "Available"
+                    },
+                    {
+                        "lastTransitionTime": "2026-10-09T14:31:52Z",
+                        "lastUpdateTime": "2026-10-09T14:32:02Z",
+                        "message": "ReplicaSet \"inferops-inferops-llm-b5fd5846f\" has successfully progressed.",
+                        "reason": "NewReplicaSetAvailable",
+                        "status": "True",
+                        "type": "Progressing"
+                    }
+                ],
+                "observedGeneration": 1,
+                "readyReplicas": 2,
+                "replicas": 2,
+                "terminatingReplicas": 0,
+                "updatedReplicas": 2
+            }
+        },
+        {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "annotations": {
+                    "argocd.argoproj.io/tracking-id": "local-docker-desktop-support-assistant:apps/Deployment:inferops-release/inferops-inferops-llm-collector",
+                    "deployment.kubernetes.io/revision": "1",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{\"argocd.argoproj.io/tracking-id\":\"local-docker-desktop-support-assistant:apps/Deployment:inferops-release/inferops-inferops-llm-collector\",\"inferops.io/cost-center\":\"demo-cost-center\",\"inferops.io/tenant\":\"demo\"},\"labels\":{\"app.kubernetes.io/component\":\"telemetry-collector\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"},\"name\":\"inferops-inferops-llm-collector\",\"namespace\":\"inferops-release\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app.kubernetes.io/component\":\"telemetry-collector\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/name\":\"inferops-llm\"}},\"template\":{\"metadata\":{\"annotations\":{\"inferops.io/configuration-checksum\":\"c8455914a49af1d7038f7779237cd191069b7bda2b9c7be89757abf78422eb2b\",\"prometheus.io/path\":\"/metrics\",\"prometheus.io/port\":\"9090\",\"prometheus.io/scrape\":\"true\"},\"labels\":{\"app.kubernetes.io/component\":\"telemetry-collector\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"}},\"spec\":{\"automountServiceAccountToken\":false,\"containers\":[{\"args\":[\"--config.file=/etc/inferops/collector/prometheus.yaml\",\"--storage.tsdb.path=/prometheus\",\"--storage.tsdb.retention.time=2h\",\"--storage.tsdb.retention.size=512MB\",\"--web.listen-address=0.0.0.0:9090\",\"--no-web.enable-lifecycle\",\"--no-web.enable-admin-api\"],\"image\":\"prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996\",\"imagePullPolicy\":\"IfNotPresent\",\"livenessProbe\":{\"failureThreshold\":3,\"httpGet\":{\"path\":\"/-/healthy\",\"port\":\"http\"},\"periodSeconds\":10,\"timeoutSeconds\":3},\"name\":\"collector\",\"ports\":[{\"containerPort\":9090,\"name\":\"http\",\"protocol\":\"TCP\"}],\"readinessProbe\":{\"failureThreshold\":3,\"httpGet\":{\"path\":\"/-/ready\",\"port\":\"http\"},\"periodSeconds\":10,\"timeoutSeconds\":3},\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"512Mi\"},\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"}},\"securityContext\":{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"readOnlyRootFilesystem\":true},\"startupProbe\":{\"failureThreshold\":24,\"httpGet\":{\"path\":\"/-/ready\",\"port\":\"http\"},\"periodSeconds\":5,\"timeoutSeconds\":3},\"volumeMounts\":[{\"mountPath\":\"/etc/inferops/collector\",\"name\":\"collector-configuration\",\"readOnly\":true},{\"mountPath\":\"/etc/inferops/telemetry\",\"name\":\"telemetry-configuration\",\"readOnly\":true},{\"mountPath\":\"/prometheus\",\"name\":\"series\"},{\"mountPath\":\"/var/run/secrets/kubernetes.io/serviceaccount\",\"name\":\"kube-api-access\",\"readOnly\":true}]}],\"securityContext\":{\"fsGroup\":65534,\"runAsGroup\":65534,\"runAsNonRoot\":true,\"runAsUser\":65534,\"seccompProfile\":{\"type\":\"RuntimeDefault\"}},\"serviceAccountName\":\"inferops-inferops-llm-collector\",\"terminationGracePeriodSeconds\":30,\"volumes\":[{\"configMap\":{\"name\":\"inferops-inferops-llm-collector-configuration\"},\"name\":\"collector-configuration\"},{\"configMap\":{\"name\":\"inferops-inferops-llm-telemetry-scrape\"},\"name\":\"telemetry-configuration\"},{\"emptyDir\":{\"sizeLimit\":\"1024Mi\"},\"name\":\"series\"},{\"name\":\"kube-api-access\",\"projected\":{\"defaultMode\":420,\"sources\":[{\"serviceAccountToken\":{\"expirationSeconds\":3607,\"path\":\"token\"}},{\"configMap\":{\"items\":[{\"key\":\"ca.crt\",\"path\":\"ca.crt\"}],\"name\":\"kube-root-ca.crt\"}},{\"downwardAPI\":{\"items\":[{\"fieldRef\":{\"fieldPath\":\"metadata.namespace\"},\"path\":\"namespace\"}]}}]}}]}}}}\n"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/component": "telemetry-collector",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant"
+                },
+                "name": "inferops-inferops-llm-collector",
+                "namespace": "inferops-release",
+                "resourceVersion": "270049",
+                "uid": "688d4546-8945-4071-b613-6d339efb8786"
+            },
+            "spec": {
+                "progressDeadlineSeconds": 600,
+                "replicas": 1,
+                "revisionHistoryLimit": 10,
+                "selector": {
+                    "matchLabels": {
+                        "app.kubernetes.io/component": "telemetry-collector",
+                        "app.kubernetes.io/instance": "inferops",
+                        "app.kubernetes.io/name": "inferops-llm"
+                    }
+                },
+                "strategy": {
+                    "rollingUpdate": {
+                        "maxSurge": "25%",
+                        "maxUnavailable": "25%"
+                    },
+                    "type": "RollingUpdate"
+                },
+                "template": {
+                    "metadata": {
+                        "annotations": {
+                            "inferops.io/configuration-checksum": "c8455914a49af1d7038f7779237cd191069b7bda2b9c7be89757abf78422eb2b",
+                            "prometheus.io/path": "/metrics",
+                            "prometheus.io/port": "9090",
+                            "prometheus.io/scrape": "true"
+                        },
+                        "labels": {
+                            "app.kubernetes.io/component": "telemetry-collector",
+                            "app.kubernetes.io/instance": "inferops",
+                            "app.kubernetes.io/managed-by": "Helm",
+                            "app.kubernetes.io/name": "inferops-llm",
+                            "app.kubernetes.io/part-of": "inferops",
+                            "app.kubernetes.io/version": "0.1.0",
+                            "helm.sh/chart": "inferops-llm-0.6.0",
+                            "inferops.io/lifecycle": "release",
+                            "inferops.io/owner": "team-platform-demo",
+                            "inferops.io/profile": "real",
+                            "inferops.io/workload": "support-assistant"
+                        }
+                    },
+                    "spec": {
+                        "automountServiceAccountToken": false,
+                        "containers": [
+                            {
+                                "args": [
+                                    "--config.file=/etc/inferops/collector/prometheus.yaml",
+                                    "--storage.tsdb.path=/prometheus",
+                                    "--storage.tsdb.retention.time=2h",
+                                    "--storage.tsdb.retention.size=512MB",
+                                    "--web.listen-address=0.0.0.0:9090",
+                                    "--no-web.enable-lifecycle",
+                                    "--no-web.enable-admin-api"
+                                ],
+                                "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+                                "imagePullPolicy": "IfNotPresent",
+                                "livenessProbe": {
+                                    "failureThreshold": 3,
+                                    "httpGet": {
+                                        "path": "/-/healthy",
+                                        "port": "http",
+                                        "scheme": "HTTP"
+                                    },
+                                    "periodSeconds": 10,
+                                    "successThreshold": 1,
+                                    "timeoutSeconds": 3
+                                },
+                                "name": "collector",
+                                "ports": [
+                                    {
+                                        "containerPort": 9090,
+                                        "name": "http",
+                                        "protocol": "TCP"
+                                    }
+                                ],
+                                "readinessProbe": {
+                                    "failureThreshold": 3,
+                                    "httpGet": {
+                                        "path": "/-/ready",
+                                        "port": "http",
+                                        "scheme": "HTTP"
+                                    },
+                                    "periodSeconds": 10,
+                                    "successThreshold": 1,
+                                    "timeoutSeconds": 3
+                                },
+                                "resources": {
+                                    "limits": {
+                                        "cpu": "1",
+                                        "memory": "512Mi"
+                                    },
+                                    "requests": {
+                                        "cpu": "100m",
+                                        "memory": "128Mi"
+                                    }
+                                },
+                                "securityContext": {
+                                    "allowPrivilegeEscalation": false,
+                                    "capabilities": {
+                                        "drop": [
+                                            "ALL"
+                                        ]
+                                    },
+                                    "readOnlyRootFilesystem": true
+                                },
+                                "startupProbe": {
+                                    "failureThreshold": 24,
+                                    "httpGet": {
+                                        "path": "/-/ready",
+                                        "port": "http",
+                                        "scheme": "HTTP"
+                                    },
+                                    "periodSeconds": 5,
+                                    "successThreshold": 1,
+                                    "timeoutSeconds": 3
+                                },
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/etc/inferops/collector",
+                                        "name": "collector-configuration",
+                                        "readOnly": true
+                                    },
+                                    {
+                                        "mountPath": "/etc/inferops/telemetry",
+                                        "name": "telemetry-configuration",
+                                        "readOnly": true
+                                    },
+                                    {
+                                        "mountPath": "/prometheus",
+                                        "name": "series"
+                                    },
+                                    {
+                                        "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                                        "name": "kube-api-access",
+                                        "readOnly": true
+                                    }
+                                ]
+                            }
+                        ],
+                        "dnsPolicy": "ClusterFirst",
+                        "restartPolicy": "Always",
+                        "schedulerName": "default-scheduler",
+                        "securityContext": {
+                            "fsGroup": 65534,
+                            "runAsGroup": 65534,
+                            "runAsNonRoot": true,
+                            "runAsUser": 65534,
+                            "seccompProfile": {
+                                "type": "RuntimeDefault"
+                            }
+                        },
+                        "serviceAccount": "inferops-inferops-llm-collector",
+                        "serviceAccountName": "inferops-inferops-llm-collector",
+                        "terminationGracePeriodSeconds": 30,
+                        "volumes": [
+                            {
+                                "configMap": {
+                                    "defaultMode": 420,
+                                    "name": "inferops-inferops-llm-collector-configuration"
+                                },
+                                "name": "collector-configuration"
+                            },
+                            {
+                                "configMap": {
+                                    "defaultMode": 420,
+                                    "name": "inferops-inferops-llm-telemetry-scrape"
+                                },
+                                "name": "telemetry-configuration"
+                            },
+                            {
+                                "emptyDir": {
+                                    "sizeLimit": "1Gi"
+                                },
+                                "name": "series"
+                            },
+                            {
+                                "name": "kube-api-access",
+                                "projected": {
+                                    "defaultMode": 420,
+                                    "sources": [
+                                        {
+                                            "serviceAccountToken": {
+                                                "expirationSeconds": 3607,
+                                                "path": "token"
+                                            }
+                                        },
+                                        {
+                                            "configMap": {
+                                                "items": [
+                                                    {
+                                                        "key": "ca.crt",
+                                                        "path": "ca.crt"
+                                                    }
+                                                ],
+                                                "name": "kube-root-ca.crt"
+                                            }
+                                        },
+                                        {
+                                            "downwardAPI": {
+                                                "items": [
+                                                    {
+                                                        "fieldRef": {
+                                                            "apiVersion": "v1",
+                                                            "fieldPath": "metadata.namespace"
+                                                        },
+                                                        "path": "namespace"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "status": {
+                "availableReplicas": 1,
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2026-10-09T14:31:59Z",
+                        "lastUpdateTime": "2026-10-09T14:31:59Z",
+                        "message": "Deployment has minimum availability.",
+                        "reason": "MinimumReplicasAvailable",
+                        "status": "True",
+                        "type": "Available"
+                    },
+                    {
+                        "lastTransitionTime": "2026-10-09T14:31:52Z",
+                        "lastUpdateTime": "2026-10-09T14:31:59Z",
+                        "message": "ReplicaSet \"inferops-inferops-llm-collector-7c6d4cf598\" has successfully progressed.",
+                        "reason": "NewReplicaSetAvailable",
+                        "status": "True",
+                        "type": "Progressing"
+                    }
+                ],
+                "observedGeneration": 1,
+                "readyReplicas": 1,
+                "replicas": 1,
+                "terminatingReplicas": 0,
+                "updatedReplicas": 1
+            }
+        },
+        {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "annotations": {
+                    "argocd.argoproj.io/tracking-id": "local-docker-desktop-support-assistant:apps/Deployment:inferops-release/inferops-inferops-llm-runtime",
+                    "deployment.kubernetes.io/revision": "1",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{\"argocd.argoproj.io/tracking-id\":\"local-docker-desktop-support-assistant:apps/Deployment:inferops-release/inferops-inferops-llm-runtime\",\"inferops.io/cost-center\":\"demo-cost-center\",\"inferops.io/tenant\":\"demo\"},\"labels\":{\"app.kubernetes.io/component\":\"serving-runtime\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"},\"name\":\"inferops-inferops-llm-runtime\",\"namespace\":\"inferops-release\"},\"spec\":{\"progressDeadlineSeconds\":900,\"replicas\":2,\"selector\":{\"matchLabels\":{\"app.kubernetes.io/component\":\"serving-runtime\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/name\":\"inferops-llm\"}},\"strategy\":{\"rollingUpdate\":{\"maxSurge\":0,\"maxUnavailable\":1},\"type\":\"RollingUpdate\"},\"template\":{\"metadata\":{\"annotations\":{\"inferops.io/configuration-checksum\":\"ae48e347b0dba018c6021b47671e965f2a5db6e266dcef294c6ea2daf1ae631f\",\"inferops.io/cost-center\":\"demo-cost-center\",\"inferops.io/tenant\":\"demo\",\"prometheus.io/path\":\"/metrics\",\"prometheus.io/port\":\"8080\",\"prometheus.io/scrape\":\"true\"},\"labels\":{\"app.kubernetes.io/component\":\"serving-runtime\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"}},\"spec\":{\"automountServiceAccountToken\":false,\"containers\":[{\"args\":[\"--model\",\"/models/Qwen3-1.7B-Q8_0.gguf\",\"--alias\",\"qwen3-1.7b-q8_0\",\"--host\",\"0.0.0.0\",\"--port\",\"8080\",\"--ctx-size\",\"4096\",\"--threads\",\"6\",\"--parallel\",\"1\",\"--n-predict\",\"128\",\"--temp\",\"0\",\"--metrics\"],\"command\":[\"/app/llama-server\"],\"image\":\"ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"imagePullPolicy\":\"IfNotPresent\",\"lifecycle\":{\"preStop\":{\"sleep\":{\"seconds\":5}}},\"livenessProbe\":{\"failureThreshold\":3,\"periodSeconds\":10,\"tcpSocket\":{\"port\":\"http\"},\"timeoutSeconds\":3},\"name\":\"runtime\",\"ports\":[{\"containerPort\":8080,\"name\":\"http\",\"protocol\":\"TCP\"}],\"readinessProbe\":{\"failureThreshold\":3,\"httpGet\":{\"path\":\"/health\",\"port\":\"http\"},\"periodSeconds\":10,\"timeoutSeconds\":3},\"resources\":{\"limits\":{\"cpu\":\"6\",\"memory\":\"3Gi\"},\"requests\":{\"cpu\":\"1\",\"memory\":\"2Gi\"}},\"securityContext\":{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"readOnlyRootFilesystem\":true},\"startupProbe\":{\"failureThreshold\":60,\"httpGet\":{\"path\":\"/health\",\"port\":\"http\"},\"periodSeconds\":10,\"timeoutSeconds\":3},\"volumeMounts\":[{\"mountPath\":\"/models\",\"name\":\"model-cache\",\"readOnly\":true,\"subPath\":\"Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077\"},{\"mountPath\":\"/tmp\",\"name\":\"tmp\"}]}],\"initContainers\":[{\"command\":[\"/bin/sh\",\"-c\",\"set -eu\\nartifact='/models/Qwen3-1.7B-Q8_0.gguf'\\nif [ ! -f \\\"$artifact\\\" ]; then\\n  echo \\\"REFUSED: the mounted model cache holds no artifact for the declared revision\\\" \\u003e\\u00262\\n  exit 1\\nfi\\npresent=$(stat -c %s \\\"$artifact\\\")\\nif [ \\\"$present\\\" != \\\"1834426016\\\" ]; then\\n  echo \\\"REFUSED: the mounted model artifact does not match the pinned byte count\\\" \\u003e\\u00262\\n  exit 1\\nfi\\necho \\\"061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a  $artifact\\\" | sha256sum -c -\\necho \\\"model artifact verified: byte count and SHA-256\\\"\\n\"],\"image\":\"docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0\",\"imagePullPolicy\":\"IfNotPresent\",\"name\":\"verify-model\",\"resources\":{\"limits\":{\"cpu\":\"1\",\"memory\":\"64Mi\"},\"requests\":{\"cpu\":\"50m\",\"memory\":\"16Mi\"}},\"securityContext\":{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"readOnlyRootFilesystem\":true},\"volumeMounts\":[{\"mountPath\":\"/models\",\"name\":\"model-cache\",\"readOnly\":true,\"subPath\":\"Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077\"}]}],\"securityContext\":{\"fsGroup\":65534,\"runAsGroup\":65534,\"runAsNonRoot\":true,\"runAsUser\":65534,\"seccompProfile\":{\"type\":\"RuntimeDefault\"}},\"serviceAccountName\":\"inferops-inferops-llm-runtime\",\"terminationGracePeriodSeconds\":30,\"volumes\":[{\"name\":\"model-cache\",\"persistentVolumeClaim\":{\"claimName\":\"inferops-model-cache\",\"readOnly\":true}},{\"emptyDir\":{\"medium\":\"Memory\",\"sizeLimit\":\"64Mi\"},\"name\":\"tmp\"}]}}}}\n"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/component": "serving-runtime",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant"
+                },
+                "name": "inferops-inferops-llm-runtime",
+                "namespace": "inferops-release",
+                "resourceVersion": "270102",
+                "uid": "0dbb6b47-0553-496e-8ac4-d72095e1c5d0"
+            },
+            "spec": {
+                "progressDeadlineSeconds": 900,
+                "replicas": 2,
+                "revisionHistoryLimit": 10,
+                "selector": {
+                    "matchLabels": {
+                        "app.kubernetes.io/component": "serving-runtime",
+                        "app.kubernetes.io/instance": "inferops",
+                        "app.kubernetes.io/name": "inferops-llm"
+                    }
+                },
+                "strategy": {
+                    "rollingUpdate": {
+                        "maxSurge": 0,
+                        "maxUnavailable": 1
+                    },
+                    "type": "RollingUpdate"
+                },
+                "template": {
+                    "metadata": {
+                        "annotations": {
+                            "inferops.io/configuration-checksum": "ae48e347b0dba018c6021b47671e965f2a5db6e266dcef294c6ea2daf1ae631f",
+                            "inferops.io/cost-center": "demo-cost-center",
+                            "inferops.io/tenant": "demo",
+                            "prometheus.io/path": "/metrics",
+                            "prometheus.io/port": "8080",
+                            "prometheus.io/scrape": "true"
+                        },
+                        "labels": {
+                            "app.kubernetes.io/component": "serving-runtime",
+                            "app.kubernetes.io/instance": "inferops",
+                            "app.kubernetes.io/managed-by": "Helm",
+                            "app.kubernetes.io/name": "inferops-llm",
+                            "app.kubernetes.io/part-of": "inferops",
+                            "app.kubernetes.io/version": "0.1.0",
+                            "helm.sh/chart": "inferops-llm-0.6.0",
+                            "inferops.io/lifecycle": "release",
+                            "inferops.io/owner": "team-platform-demo",
+                            "inferops.io/profile": "real",
+                            "inferops.io/workload": "support-assistant"
+                        }
+                    },
+                    "spec": {
+                        "automountServiceAccountToken": false,
+                        "containers": [
+                            {
+                                "args": [
+                                    "--model",
+                                    "/models/Qwen3-1.7B-Q8_0.gguf",
+                                    "--alias",
+                                    "qwen3-1.7b-q8_0",
+                                    "--host",
+                                    "0.0.0.0",
+                                    "--port",
+                                    "8080",
+                                    "--ctx-size",
+                                    "4096",
+                                    "--threads",
+                                    "6",
+                                    "--parallel",
+                                    "1",
+                                    "--n-predict",
+                                    "128",
+                                    "--temp",
+                                    "0",
+                                    "--metrics"
+                                ],
+                                "command": [
+                                    "/app/llama-server"
+                                ],
+                                "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                                "imagePullPolicy": "IfNotPresent",
+                                "lifecycle": {
+                                    "preStop": {
+                                        "sleep": {
+                                            "seconds": 5
+                                        }
+                                    }
+                                },
+                                "livenessProbe": {
+                                    "failureThreshold": 3,
+                                    "periodSeconds": 10,
+                                    "successThreshold": 1,
+                                    "tcpSocket": {
+                                        "port": "http"
+                                    },
+                                    "timeoutSeconds": 3
+                                },
+                                "name": "runtime",
+                                "ports": [
+                                    {
+                                        "containerPort": 8080,
+                                        "name": "http",
+                                        "protocol": "TCP"
+                                    }
+                                ],
+                                "readinessProbe": {
+                                    "failureThreshold": 3,
+                                    "httpGet": {
+                                        "path": "/health",
+                                        "port": "http",
+                                        "scheme": "HTTP"
+                                    },
+                                    "periodSeconds": 10,
+                                    "successThreshold": 1,
+                                    "timeoutSeconds": 3
+                                },
+                                "resources": {
+                                    "limits": {
+                                        "cpu": "6",
+                                        "memory": "3Gi"
+                                    },
+                                    "requests": {
+                                        "cpu": "1",
+                                        "memory": "2Gi"
+                                    }
+                                },
+                                "securityContext": {
+                                    "allowPrivilegeEscalation": false,
+                                    "capabilities": {
+                                        "drop": [
+                                            "ALL"
+                                        ]
+                                    },
+                                    "readOnlyRootFilesystem": true
+                                },
+                                "startupProbe": {
+                                    "failureThreshold": 60,
+                                    "httpGet": {
+                                        "path": "/health",
+                                        "port": "http",
+                                        "scheme": "HTTP"
+                                    },
+                                    "periodSeconds": 10,
+                                    "successThreshold": 1,
+                                    "timeoutSeconds": 3
+                                },
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/models",
+                                        "name": "model-cache",
+                                        "readOnly": true,
+                                        "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+                                    },
+                                    {
+                                        "mountPath": "/tmp",
+                                        "name": "tmp"
+                                    }
+                                ]
+                            }
+                        ],
+                        "dnsPolicy": "ClusterFirst",
+                        "initContainers": [
+                            {
+                                "command": [
+                                    "/bin/sh",
+                                    "-c",
+                                    "set -eu\nartifact='/models/Qwen3-1.7B-Q8_0.gguf'\nif [ ! -f \"$artifact\" ]; then\n  echo \"REFUSED: the mounted model cache holds no artifact for the declared revision\" \u003e\u00262\n  exit 1\nfi\npresent=$(stat -c %s \"$artifact\")\nif [ \"$present\" != \"1834426016\" ]; then\n  echo \"REFUSED: the mounted model artifact does not match the pinned byte count\" \u003e\u00262\n  exit 1\nfi\necho \"061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a  $artifact\" | sha256sum -c -\necho \"model artifact verified: byte count and SHA-256\"\n"
+                                ],
+                                "image": "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+                                "imagePullPolicy": "IfNotPresent",
+                                "name": "verify-model",
+                                "resources": {
+                                    "limits": {
+                                        "cpu": "1",
+                                        "memory": "64Mi"
+                                    },
+                                    "requests": {
+                                        "cpu": "50m",
+                                        "memory": "16Mi"
+                                    }
+                                },
+                                "securityContext": {
+                                    "allowPrivilegeEscalation": false,
+                                    "capabilities": {
+                                        "drop": [
+                                            "ALL"
+                                        ]
+                                    },
+                                    "readOnlyRootFilesystem": true
+                                },
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/models",
+                                        "name": "model-cache",
+                                        "readOnly": true,
+                                        "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+                                    }
+                                ]
+                            }
+                        ],
+                        "restartPolicy": "Always",
+                        "schedulerName": "default-scheduler",
+                        "securityContext": {
+                            "fsGroup": 65534,
+                            "runAsGroup": 65534,
+                            "runAsNonRoot": true,
+                            "runAsUser": 65534,
+                            "seccompProfile": {
+                                "type": "RuntimeDefault"
+                            }
+                        },
+                        "serviceAccount": "inferops-inferops-llm-runtime",
+                        "serviceAccountName": "inferops-inferops-llm-runtime",
+                        "terminationGracePeriodSeconds": 30,
+                        "volumes": [
+                            {
+                                "name": "model-cache",
+                                "persistentVolumeClaim": {
+                                    "claimName": "inferops-model-cache",
+                                    "readOnly": true
+                                }
+                            },
+                            {
+                                "emptyDir": {
+                                    "medium": "Memory",
+                                    "sizeLimit": "64Mi"
+                                },
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                }
+            },
+            "status": {
+                "availableReplicas": 2,
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2026-10-09T14:32:13Z",
+                        "lastUpdateTime": "2026-10-09T14:32:13Z",
+                        "message": "Deployment has minimum availability.",
+                        "reason": "MinimumReplicasAvailable",
+                        "status": "True",
+                        "type": "Available"
+                    },
+                    {
+                        "lastTransitionTime": "2026-10-09T14:31:52Z",
+                        "lastUpdateTime": "2026-10-09T14:32:13Z",
+                        "message": "ReplicaSet \"inferops-inferops-llm-runtime-79846f98f6\" has successfully progressed.",
+                        "reason": "NewReplicaSetAvailable",
+                        "status": "True",
+                        "type": "Progressing"
+                    }
+                ],
+                "observedGeneration": 1,
+                "readyReplicas": 2,
+                "replicas": 2,
+                "terminatingReplicas": 0,
+                "updatedReplicas": 2
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

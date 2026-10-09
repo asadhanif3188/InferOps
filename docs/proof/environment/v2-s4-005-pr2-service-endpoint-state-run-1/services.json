@@ -1,0 +1,186 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "argocd.argoproj.io/tracking-id": "local-docker-desktop-support-assistant:/Service:inferops-release/inferops-inferops-llm",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"argocd.argoproj.io/tracking-id\":\"local-docker-desktop-support-assistant:/Service:inferops-release/inferops-inferops-llm\",\"inferops.io/cost-center\":\"demo-cost-center\",\"inferops.io/tenant\":\"demo\"},\"labels\":{\"app.kubernetes.io/component\":\"platform-api\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"},\"name\":\"inferops-inferops-llm\",\"namespace\":\"inferops-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":8090,\"protocol\":\"TCP\",\"targetPort\":\"http\"}],\"selector\":{\"app.kubernetes.io/component\":\"platform-api\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/name\":\"inferops-llm\"},\"type\":\"ClusterIP\"}}\n"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "labels": {
+                    "app.kubernetes.io/component": "platform-api",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant"
+                },
+                "name": "inferops-inferops-llm",
+                "namespace": "inferops-release",
+                "resourceVersion": "269917",
+                "uid": "ca2133c6-612b-45f8-8b09-96debbbcb301"
+            },
+            "spec": {
+                "clusterIP": "10.96.217.123",
+                "clusterIPs": [
+                    "10.96.217.123"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 8090,
+                        "protocol": "TCP",
+                        "targetPort": "http"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/component": "platform-api",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/name": "inferops-llm"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "argocd.argoproj.io/tracking-id": "local-docker-desktop-support-assistant:/Service:inferops-release/inferops-inferops-llm-collector",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"argocd.argoproj.io/tracking-id\":\"local-docker-desktop-support-assistant:/Service:inferops-release/inferops-inferops-llm-collector\",\"inferops.io/cost-center\":\"demo-cost-center\",\"inferops.io/tenant\":\"demo\"},\"labels\":{\"app.kubernetes.io/component\":\"telemetry-collector\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"},\"name\":\"inferops-inferops-llm-collector\",\"namespace\":\"inferops-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":9090,\"protocol\":\"TCP\",\"targetPort\":\"http\"}],\"selector\":{\"app.kubernetes.io/component\":\"telemetry-collector\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/name\":\"inferops-llm\"},\"type\":\"ClusterIP\"}}\n"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "labels": {
+                    "app.kubernetes.io/component": "telemetry-collector",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant"
+                },
+                "name": "inferops-inferops-llm-collector",
+                "namespace": "inferops-release",
+                "resourceVersion": "269911",
+                "uid": "03a615b2-e741-4d9e-b659-8587f3f0c532"
+            },
+            "spec": {
+                "clusterIP": "10.96.207.129",
+                "clusterIPs": [
+                    "10.96.207.129"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 9090,
+                        "protocol": "TCP",
+                        "targetPort": "http"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/component": "telemetry-collector",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/name": "inferops-llm"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "argocd.argoproj.io/tracking-id": "local-docker-desktop-support-assistant:/Service:inferops-release/inferops-inferops-llm-runtime",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"argocd.argoproj.io/tracking-id\":\"local-docker-desktop-support-assistant:/Service:inferops-release/inferops-inferops-llm-runtime\",\"inferops.io/cost-center\":\"demo-cost-center\",\"inferops.io/tenant\":\"demo\"},\"labels\":{\"app.kubernetes.io/component\":\"serving-runtime\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"inferops-llm\",\"app.kubernetes.io/part-of\":\"inferops\",\"app.kubernetes.io/version\":\"0.1.0\",\"helm.sh/chart\":\"inferops-llm-0.6.0\",\"inferops.io/lifecycle\":\"release\",\"inferops.io/owner\":\"team-platform-demo\",\"inferops.io/profile\":\"real\",\"inferops.io/workload\":\"support-assistant\"},\"name\":\"inferops-inferops-llm-runtime\",\"namespace\":\"inferops-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":8080,\"protocol\":\"TCP\",\"targetPort\":\"http\"}],\"selector\":{\"app.kubernetes.io/component\":\"serving-runtime\",\"app.kubernetes.io/instance\":\"inferops\",\"app.kubernetes.io/name\":\"inferops-llm\"},\"type\":\"ClusterIP\"}}\n"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "labels": {
+                    "app.kubernetes.io/component": "serving-runtime",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant"
+                },
+                "name": "inferops-inferops-llm-runtime",
+                "namespace": "inferops-release",
+                "resourceVersion": "269909",
+                "uid": "41e518dd-86f9-4e30-adee-a070ffec680d"
+            },
+            "spec": {
+                "clusterIP": "10.96.72.115",
+                "clusterIPs": [
+                    "10.96.72.115"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": "http"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/component": "serving-runtime",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/name": "inferops-llm"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

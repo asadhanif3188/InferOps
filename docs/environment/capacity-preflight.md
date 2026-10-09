@@ -1,6 +1,6 @@
 # The capacity preflight for the two-replica release
 
-Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. One reading of one cluster is committed: on 2026-10-09 the `docker-desktop` provider held no release and no Argo CD installation, and the record of that reading has the result `ACCEPTED`. That reading is not a qualification of that host. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
+Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. Three readings of one cluster are committed, each of 2026-10-09 on the `docker-desktop` provider and each with the result `ACCEPTED`. None is a qualification of that host. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
 
 The desired-state release declares two platform API replicas and two serving
 runtime replicas. This page describes the gate that decides, before anything is
@@ -369,6 +369,22 @@ the one committed reading below: the node's allocatable figures, and nine pods t
 Each case stores the footprint of chart version `0.5.0`. A later chart can
 declare other figures. The cases then show the gate's arithmetic on the stored
 footprint, and the suite builds its other cases from the footprint of the tree.
+
+## Two later readings
+
+> **Note, 2026-10-09 (`V2-S4-005-PR2`).** Two more readings are committed. Both were
+> taken on the `docker-desktop` provider at commit
+> `25f2cfbfe587e0e0c76ceb519cb90f6ef0e09810`, which is a commit of `main`, in the run
+> that read the [Service endpoints](service-endpoint-state.md#one-reading-of-a-cluster)
+> once. [The first](../proof/environment/v2-s4-005-pr2-capacity-preflight-run-1-before-install/record.v1alpha1.json)
+> was taken before anything was installed: `ACCEPTED`, with the claim rule
+> `not-observed`. [The second](../proof/environment/v2-s4-005-pr2-capacity-preflight-run-1-before-apply/record.v1alpha1.json)
+> was taken after the model cache claim was filled and the controller was installed,
+> and before the Application was applied: `ACCEPTED`, with each of the 13 rules `held`.
+> Both state 9,865,003,008 bytes required and 10,126,585,856 available. The release
+> was then installed, and both rollouts reported success. That is one install on one
+> host. It is not a qualification of that host. The section below describes the first
+> committed reading, of the change that added the gate.
 
 ## The one committed reading
 

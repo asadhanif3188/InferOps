@@ -1,6 +1,6 @@
 # The Ready endpoint state of the API Service and the runtime Service
 
-Status: **the collector and the record tool are implemented, and synthetic cases show a reading and each kind of refusal at evidence level C0. No Service and no EndpointSlice of a cluster was read: on 2026-10-09 the one cluster that was asked, `docker-desktop`, listed no release namespace. So no record on this page states what a cluster published.**
+Status: **the collector and the record tool are implemented, and synthetic cases show a reading and each kind of refusal at evidence level C0. One reading of one cluster is committed: on 2026-10-09 the `docker-desktop` provider, with the two-replica release installed, published two Ready endpoints for each of the two Services. That is one reading at one time, at evidence level C2. It is not a caller's result, and it registers no claim.**
 
 A release renders two Services: one for the platform API and one for the serving
 runtime. Kubernetes publishes, for each Service, the pods behind it and whether
@@ -273,8 +273,64 @@ The limits of one reading:
 - The two instants are the collecting host's clock. They are not compared with a
   clock of the cluster.
 - The record reads one namespace and the Services of one release in it.
-- No Service and no EndpointSlice of a cluster was read for this page. The collector was executed against stand-ins
-  for `kubectl` only, so its behaviour against an API server was not observed.
+- One cluster was read, once: see [one reading of a cluster](#one-reading-of-a-cluster).
+  No refusal was observed against an API server. Each refusal on this page is
+  shown by a synthetic case, or by the collector executed against stand-ins
+  for `kubectl`.
+
+## One reading of a cluster
+
+> **Note, 2026-10-09 (`V2-S4-005-PR2`).** Until this change no Service and no
+> EndpointSlice of a cluster had been read: the seven committed cases are
+> synthetic. A review of the sprint reported the missing reading; it was
+> reported to the author, and no file in this repository records that review.
+> The reading below was taken after it. It changes no earlier record.
+
+[`docs/proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/`](../proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/record.v1alpha1.json)
+holds one collection that the collector wrote against a cluster, and its record.
+[The transcript](../proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1-transcript.txt) holds the three
+invocations of [the driver](../proof/environment/v2-s4-005-pr2-service-endpoint-state-run-driver.txt)
+that installed the release, read it, and removed it.
+[The validation record](../proof/environment/v2-s4-005-pr2-validation.md) states
+the run and its limits.
+
+| Property | Value |
+|---|---|
+| Provider | `docker-desktop`, one cluster with one node, Kubernetes `v1.36.1` |
+| Release | `inferops` in `inferops-release`: the desired-state release, two API replicas and two runtime replicas, chart `0.6.0`, applied by the Application |
+| Commit | `25f2cfbfe587e0e0c76ceb519cb90f6ef0e09810` ran the collector, and the controller reported the same commit as the revision it read |
+| The two instants | `2026-10-09T14:33:15Z` and `2026-10-09T14:33:16Z`, the collecting host's clock |
+| Result | `OBSERVED`. Each of the 10 rules is `held` |
+| `platform-api` | One slice, `IPv4`. 2 endpoints, 2 Ready, 0 not Ready, 0 terminating |
+| `serving-runtime` | One slice, `IPv4`. 2 endpoints, 2 Ready, 0 not Ready, 0 terminating |
+
+**The pod identities were compared with the pods, without the tool.** The driver
+read the pods of the release before the endpoint read and after it, and both
+reads are in the directory. For each tier, the pod names and pod UIDs that the
+record states as Ready are the pods whose `Ready` condition was `True` in both
+reads, and no other pod of that tier existed.
+
+**What this reading establishes.** On that cluster, at that time, Kubernetes
+published two Ready endpoints for the API Service and two for the runtime
+Service, and those endpoints were the four pods of the two Deployments. The
+collector and the tool gave one record from an API server, and the check
+rebuilds that record from the committed reads.
+
+**What it does not establish.**
+
+- **That a caller was answered.** The run sent no request to the release.
+- **Availability, reliability, or any property over time.** It is one reading,
+  about one minute after the second rollout reported success. It holds no
+  transition.
+- **That a pod loss, an eviction, or a rollout keeps an endpoint Ready.** No
+  pod was deleted or evicted, and no fault was injected.
+- **Anything about another provider, another node count, or another release.**
+- **A refusal against an API server.** The reading is `OBSERVED`.
+
+**The directory holds more than a record does.** The raw reads hold cluster
+addresses of pods and Services, the node name `desktop-control-plane`, and the
+node's cluster address. Each is an address inside one local cluster. The record
+holds none of them.
 
 ## Where the capture is checked
 
