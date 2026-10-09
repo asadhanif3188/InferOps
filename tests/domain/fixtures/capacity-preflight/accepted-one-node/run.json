@@ -1,0 +1,9 @@
+{
+  "collectedAt": "2026-01-01T00:00:00Z",
+  "context": "synthetic",
+  "executingCommit": "0000000000000000000000000000000000000000",
+  "namespace": "inferops-release",
+  "provider": "synthetic",
+  "releaseKey": "local-docker-desktop/support-assistant",
+  "schema": "inferops.io/capacity-preflight-collection/v1alpha1"
+}

@@ -505,6 +505,26 @@ edit a committed collection. If the tool changes, build the record again and say
 [The observation page](docs/environment/runtime-model-cache-observation.md) states the
 rules and what a record does not establish.
 
+**Whether the stated requests and limits of the two-replica release fit on one node is
+decided before an install, by a script that changes nothing in the cluster and a tool
+that reads files.** The script writes a collection directory under `.artifacts/`, and the
+tool prints one record whose result is `ACCEPTED` or `REFUSED`. The script refuses a
+working tree that differs from its commit, because the requirement is read from files:
+
+```sh
+INFEROPS_PROVIDER=<provider> scripts/environment/capacity-preflight.sh
+uv run --locked python -m tools.capacity_preflight --footprint
+uv run --locked python -m tools.capacity_preflight DIRECTORY
+uv run --locked python -m tools.capacity_preflight --check
+```
+
+Exit status 5 is a refusal, and a refusal is a result: keep it. Do not lower a request,
+a limit, a replica count, or the reserve to obtain an acceptance. A change to the chart's
+resources, to a replica count, or to a rollout bound changes the footprint, and the suite
+restates its figures: update them with the change.
+[The capacity preflight page](docs/environment/capacity-preflight.md) states the rules,
+the units, and what a record does not establish.
+
 ### Experiment freeze records
 
 An experiment family is frozen before its first result-bearing run, in a record under

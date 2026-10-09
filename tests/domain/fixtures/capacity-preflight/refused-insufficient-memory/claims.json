@@ -1,0 +1,30 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "inferops-model-cache",
+        "namespace": "inferops-release"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "4Gi"
+          }
+        },
+        "storageClassName": "standard"
+      },
+      "status": {
+        "capacity": {
+          "storage": "4Gi"
+        },
+        "phase": "Bound"
+      }
+    }
+  ],
+  "kind": "List"
+}

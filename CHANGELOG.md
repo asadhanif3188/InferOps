@@ -10,6 +10,50 @@ from `1.0.0`.
 
 ### Added
 
+- **A capacity preflight decides, before an install, whether the stated requests
+  and limits of the two-replica release fit in what one node allocates. A
+  cluster where they do not fit is refused, and no figure is lowered.**
+  `V2-S4-003-PR1` adds `tools/capacity_preflight`,
+  `scripts/environment/capacity-preflight.sh`, six synthetic cases, two suites, and
+  one page. No chart file, contract, binding, Terraform file, Application, or
+  freeze record is edited, and the V1 preflight and its record are not changed.
+  **The requirement is derived from files of the working tree.** The footprint
+  is read from the Application of the desired-state release, the chart's
+  defaults, and the release's generated values: two API pods, two runtime pods,
+  one collector pod, the surge pods that the rollout bounds permit, the
+  acquisition hook's pod, and the test pod. The runtime's surge is zero, so the
+  footprint holds no third runtime pod. It does not count a pod that is
+  terminating. A test compares each pod template of a render of the chart with
+  the footprint. The tool gives no footprint for an Application that states a
+  member it does not read, or for a resource other than processor and memory.
+  **The gate holds three figures to one node**: the pod count, the processor
+  requests, and the memory limits. The processor and the memory figure each
+  include a reserve, 500 millicores and 512 MiB, which are the V1 preflight's
+  headroom figures. What the node already holds is the requests of its
+  unfinished pods. **13 rules, and two kinds of refusal.** `insufficient`: a
+  stated figure does not fit. `ambiguous`: a read was not made, a document has
+  another form than the tool reads, a quantity is not readable, the cluster has
+  no schedulable node or more than one, the node is not Ready, reports a
+  pressure condition, or states a taint with the effect `NoSchedule` or
+  `NoExecute`, the namespace holds a quota or a limit range, the release is
+  already installed, or the release states a placement constraint. One record
+  names every figure that is short. The script reads the cluster with
+  `kubectl get`, `kubectl version`, and `docker info`, and changes nothing in
+  the cluster or the engine. It refuses a working tree that differs from its
+  commit. The exit status of a refusal is 5, as in V1. **Limits.** The gate
+  compares stated requests and limits. It measures no use, it counts a pod that
+  states no request as zero, it reads no disk, and it decides for one node
+  only. It does not compare the working tree with the revision that the
+  Application names. For the processor it can accept a node below the V1 engine
+  minimum of 4 processors. No procedure calls the gate. The cases are synthetic
+  and are evidence at C0. **One reading of one cluster is committed.** On
+  2026-10-09 the `docker-desktop` provider held no release and no Argo CD
+  installation, and the record has the result `ACCEPTED`, with 261,582,848 bytes
+  of memory beyond the requirement. That is less than the reserve, and it is not
+  a qualification of that host: the reading ran no workload, and an Argo CD
+  installation that states no request would be counted as zero. This change
+  registers no claim and adds no baseline profile. See
+  [the capacity preflight](docs/environment/capacity-preflight.md).
 - **What two serving runtime replicas read from the model cache can be observed
   and recorded. The storage design is not changed.** `V2-S4-002-PR2` adds
   `tools/runtime_model_cache`, static tests, and one page. The V1 storage boundary
