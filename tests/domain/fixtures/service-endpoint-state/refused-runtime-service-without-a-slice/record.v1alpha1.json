@@ -50,9 +50,9 @@
       "statement": "The Service does not set publishNotReadyAddresses. Kubernetes documents that such a Service publishes each endpoint as ready, whatever its pod reports."
     },
     {
-      "detail": "held",
+      "detail": "serving-runtime: the read holds no EndpointSlice of the Service inferops-inferops-llm-runtime",
       "ruleId": "the-service-has-a-slice",
-      "state": "held",
+      "state": "not-held",
       "statement": "The read holds at least one EndpointSlice of the Service. A Service with no slice is not read as zero endpoints: the record cannot tell a Service with no pod from a Service whose slices were not written yet."
     },
     {
@@ -99,8 +99,10 @@
     "The ports and the hints of a slice.",
     "The name of the kubeconfig context. A context name can hold an account identifier."
   ],
-  "refusedBy": [],
-  "result": "OBSERVED",
+  "refusedBy": [
+    "the-service-has-a-slice"
+  ],
+  "result": "REFUSED",
   "schema": "inferops.io/service-endpoint-state/v1alpha1",
   "tiers": [
     {
@@ -131,34 +133,13 @@
       "tier": "platform-api"
     },
     {
-      "addressTypes": [
-        "IPv4"
-      ],
-      "endpoints": {
-        "notReady": 2,
-        "ready": 0,
-        "serving": 1,
-        "terminating": 1,
-        "total": 2
-      },
-      "notReady": [
-        {
-          "podName": "inferops-runtime-a",
-          "podUid": "00000000-0000-4000-8000-000000000011",
-          "serving": true,
-          "terminating": true
-        },
-        {
-          "podName": "inferops-runtime-c",
-          "podUid": "00000000-0000-4000-8000-000000000013",
-          "serving": false,
-          "terminating": false
-        }
-      ],
-      "ready": [],
+      "addressTypes": null,
+      "endpoints": null,
+      "notReady": null,
+      "ready": null,
       "service": "inferops-inferops-llm-runtime",
-      "slices": 1,
-      "state": "observed",
+      "slices": null,
+      "state": "refused",
       "tier": "serving-runtime"
     }
   ]

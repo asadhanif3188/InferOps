@@ -53,7 +53,7 @@ Eleven gates run on every change. All eleven are blocking.
 | `code-quality` | `ruff format --check`, `ruff check`, `mypy`, against the locked toolchain | — | none, stated | C0 |
 | `default-lane-tests` | `python -m pytest -q`, with no marker expression | unit, contract-and-schema, architecture-inventory, adapter, mock-integration, documentation | sixteen | C1 |
 | `expected-failures` | `python -m tools.ci_gates expected-failures` | contract-and-schema, architecture-inventory, documentation | four | C0 |
-| `helm-chart` | `helm lint` and `helm template` under both fixtures, `kubeconform` against pinned schemas, the Kubernetes controls, and the chart suite with no skip | architecture-inventory, documentation | two | C0 |
+| `helm-chart` | `helm lint` and `helm template` under both fixtures, `kubeconform` against pinned schemas, one more render of the real fixture with two replicas for each tier against the same schemas, the Kubernetes controls, and the chart suite with no skip | architecture-inventory, documentation | two | C0 |
 | `terraform` | `terraform fmt`, `init -backend=false`, `validate`, `tflint`, the Terraform controls, and the prerequisite suite with no skip | architecture-inventory | one | C0 |
 | `documentation` | link resolution, trailing whitespace, hard tabs | documentation | one | C0 |
 | `distribution-build` | `uv build`, then the wheel and the source distribution are inspected | — | none, stated | C0 |

@@ -61,10 +61,10 @@ One release is declared.
 
 | Key | Directory | Contract | Binding | Platform defaults | Revisions |
 |---|---|---|---|---|---|
-| `local-docker-desktop/support-assistant` | `gitops/environments/local-docker-desktop/workloads/support-assistant` | `contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml` | `local-docker-desktop`, the only binding offered | The `api` block and `runtime.rollout` of `charts/inferops-llm/values.yaml` | Both are `40803f2fe9a95753da6480de1e5321efafb3cbf0` |
+| `local-docker-desktop/support-assistant` | `gitops/environments/local-docker-desktop/workloads/support-assistant` | `contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml` | `local-docker-desktop`, the only binding offered | The `api` block and `runtime.rollout` of `charts/inferops-llm/values.yaml` | Both are `cdcfd62baf6fff56ca179711855510c93194ce80` |
 
 Its release identifier is
-`79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812`.
+`b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db`.
 
 **Why this binding.** `local-docker-desktop` names the one provider on which the
 Argo CD bootstrap was executed. No release is committed for `local-kind`.
@@ -92,6 +92,18 @@ At that commit the tree holds a release,
 still name `9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0`; that statement is false for that
 one commit. Its second commit recorded the first commit as both revisions, which moved
 the release identifier and no value. The same merge rule applies.
+
+`V2-S4-004-PR1` is a third such change. Its first commit,
+`cdcfd62baf6fff56ca179711855510c93194ce80`, moved the chart to `0.6.0`, which renders a
+PodDisruptionBudget for a tier of two or more replicas. It edited no platform default
+and no rendered value. It edited the chart version that the renderer states, which is
+the first line of the generated values file, so it regenerated the values. At that
+commit the tree holds the release
+`79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812` with a new values
+digest, and its two revisions still name `40803f2fe9a95753da6480de1e5321efafb3cbf0`;
+that statement is false for that one commit. Its second commit recorded the first
+commit as both revisions, which moved the release identifier and no value. The same
+merge rule applies.
 
 **The release this one replaced.** Until `V2-S4-001-PR1` the tree held the release
 `eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae`, rendered at
@@ -155,8 +167,10 @@ starts. An operator runs it. No procedure calls it.
 
 On a cluster where the Application is applied, a merge of this release changes the
 live release. The pod template of each Deployment carries the chart version label,
-which changes with chart `0.5.0`, so the render gives every Deployment a new pod
-template. The workload version is not a label: it changes one ConfigMap value and the
+which changed with chart `0.5.0` and again with chart `0.6.0`, so each of those
+renders gives every Deployment a new pod template. With chart `0.6.0` the render also
+holds one [PodDisruptionBudget](disruption-budgets.md) for each tier, and the
+Application applies them only where the project admits that kind. The workload version is not a label: it changes one ConfigMap value and the
 configuration checksum annotation of the API and runtime pod templates. The runtime
 Deployment also gains a second replica and a stated strategy. That is read from the
 render. It was not observed on a cluster.

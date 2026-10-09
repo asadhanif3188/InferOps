@@ -162,8 +162,8 @@ change that adds a kind fails the suite until the project is changed on purpose.
 > eight kinds. So the test now compares the project with those eight kinds and
 > the one budget kind. The rule of this decision is not changed: the project
 > admits the kinds that the release renders, and it was changed on purpose. The
-> other limits of the project are not changed. No cluster held the project when
-> the kind was added. The text above is this record's accepted text, and "eight"
+> other limits of the project are not changed. The one cluster that was asked
+> when the kind was added, `docker-desktop`, listed no `argocd` namespace. The text above is this record's accepted text, and "eight"
 > in the rest of this record describes the project as it was accepted.
 
 **This is the restriction that ADR 0017 D9 left open.** Terraform owns a

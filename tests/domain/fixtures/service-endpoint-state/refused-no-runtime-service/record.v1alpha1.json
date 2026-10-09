@@ -21,7 +21,7 @@
     "That a pod behind a Ready endpoint can serve inference. Ready states the result of the pod's readiness probe, as the kubelet reported it.",
     "The state before the read started or after it finished. A record is one reading. It is not a timeline, and it holds no transition.",
     "What a Prometheus `up` series states. That series says that one scrape of one pod's metrics port succeeded. It is not the state of a Service.",
-    "That the release is the declared release. The record reads no image, no revision, and no Argo CD state.",
+    "That the release is the declared release. The record reads no image, no revision, and no state of a GitOps controller.",
     "What a caller observes when a pod is deleted, evicted, or replaced, and that the release survives the loss of a node."
   ],
   "findings": [
@@ -35,7 +35,7 @@
       "detail": "held",
       "ruleId": "each-read-has-the-shape-of-its-kind",
       "state": "held",
-      "statement": "Each read is a list of objects of its kind, in the namespace that the collection names, and each member that a rule reads has its type."
+      "statement": "Each read is a list of objects of its kind, in the namespace that the collection names. Each member that a rule reads has its type, each object has a name of its own, and each slice names its Service."
     },
     {
       "detail": "serving-runtime: no Service of the release inferops carry this component label",
@@ -44,37 +44,43 @@
       "statement": "For each tier, exactly one Service of the release carries the component label of that tier."
     },
     {
-      "detail": "a tier has no one Service, so this rule was not read for it",
+      "detail": "not read for serving-runtime, which has no one Service; held for platform-api",
       "ruleId": "the-service-publishes-ready-addresses-only",
       "state": "not-observed",
       "statement": "The Service does not set publishNotReadyAddresses. Kubernetes documents that such a Service publishes each endpoint as ready, whatever its pod reports."
     },
     {
-      "detail": "a tier has no one Service, so this rule was not read for it",
+      "detail": "not read for serving-runtime, which has no one Service; held for platform-api",
+      "ruleId": "the-service-has-a-slice",
+      "state": "not-observed",
+      "statement": "The read holds at least one EndpointSlice of the Service. A Service with no slice is not read as zero endpoints: the record cannot tell a Service with no pod from a Service whose slices were not written yet."
+    },
+    {
+      "detail": "not read for serving-runtime, which has no one Service; held for platform-api",
       "ruleId": "the-slice-controller-wrote-each-slice",
       "state": "not-observed",
       "statement": "Each EndpointSlice of the Service carries the managed-by label of the Kubernetes EndpointSlice controller."
     },
     {
-      "detail": "a tier has no one Service, so this rule was not read for it",
+      "detail": "not read for serving-runtime, which has no one Service; held for platform-api",
       "ruleId": "each-endpoint-states-its-conditions",
       "state": "not-observed",
       "statement": "Each endpoint states ready, serving, and terminating, each as true or false. Kubernetes documents that a consumer reads an unstated ready as true. This record does not apply that reading."
     },
     {
-      "detail": "a tier has no one Service, so this rule was not read for it",
+      "detail": "not read for serving-runtime, which has no one Service; held for platform-api",
       "ruleId": "each-endpoint-names-one-pod",
       "state": "not-observed",
       "statement": "Each endpoint names one Pod of the namespace, by name and by UID."
     },
     {
-      "detail": "a tier has no one Service, so this rule was not read for it",
+      "detail": "not read for serving-runtime, which has no one Service; held for platform-api",
       "ruleId": "one-pod-has-one-state",
       "state": "not-observed",
       "statement": "A pod that more than one endpoint names has the same three conditions in each. One pod and one name have one UID."
     },
     {
-      "detail": "a tier has no one Service, so this rule was not read for it",
+      "detail": "not read for serving-runtime, which has no one Service; held for platform-api",
       "ruleId": "the-endpoint-count-is-within-the-bound",
       "state": "not-observed",
       "statement": "The Service has at most 32 pods behind it."
@@ -96,6 +102,7 @@
   "refusedBy": [
     "one-service-carries-each-tier",
     "the-service-publishes-ready-addresses-only",
+    "the-service-has-a-slice",
     "the-slice-controller-wrote-each-slice",
     "each-endpoint-states-its-conditions",
     "each-endpoint-names-one-pod",

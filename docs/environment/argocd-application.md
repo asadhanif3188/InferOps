@@ -120,10 +120,18 @@ replicas for each tier. A test compares the sets.
 
 The project is not desired state. A cluster where the project was applied before
 it admitted PodDisruptionBudget keeps the eight kinds until an operator runs
-`apply` again. Argo CD documents that it refuses to sync a kind that the project
-does not admit. So on such a cluster, the Application does not apply a revision
-that renders a budget until the project is applied again. This was not observed:
-no cluster held the project when the kind was added.
+`apply` again. Argo CD documents that a project restricts the kinds that an
+Application may deploy. A sync of a render that holds another kind is expected to
+fail as a whole, and not only for that kind. So on such a cluster, the Application
+would apply neither a revision that renders a budget nor a later one, until the
+project is applied again. **Apply the project before the revision reaches the
+branch that the Application follows.** This was not observed. The one cluster that was asked
+when the kind was added, `docker-desktop` on 2026-10-09, listed no `argocd`
+namespace.
+
+The sync policy does not prune. So a budget that leaves the render, when a tier
+goes back to one replica, stays in the cluster until a person deletes it:
+[the disruption budgets](disruption-budgets.md#under-the-argo-cd-application).
 
 The project does not narrow the application controller. That controller holds a
 cluster-wide grant, and a project or an Application that a person creates by hand

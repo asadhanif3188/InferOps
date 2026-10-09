@@ -301,7 +301,7 @@ would refuse every eviction of it, so a tier of one replica is not bounded for a
 eviction.
 
 **A budget bounds a voluntary eviction, and nothing else.** Kubernetes documents that the
-eviction API, which a node drain uses, refuses an eviction that would leave fewer
+eviction API, which `kubectl drain` uses, refuses an eviction that would leave fewer
 available pods than the budget states. Kubernetes also documents what a budget does not
 bound:
 
@@ -309,11 +309,20 @@ bound:
 - a Deployment's rolling update, whose bounds are `api.rollout` and `runtime.rollout`;
 - a node that fails, or a pod that the kubelet evicts under node pressure.
 
+**A budget can make a drain wait.** A drain marks the node unschedulable, so a
+replacement pod must become Ready on another node before the budget admits the second
+eviction. A cluster with one node has no other node. The two runtime pods also mount one
+`ReadWriteOnce` claim, which Kubernetes documents is not mounted by pods on two nodes. In
+both cases a drain evicts one pod of the tier and then does not end by itself. Helm
+removes a tier's budget on an upgrade to one replica. A release path that does not
+remove an object that leaves the render keeps it, over one pod, until a person deletes
+it.
+
 **What this is not.** A budget is configuration. No release that renders one was
 installed, and no eviction was requested. A budget is not evidence that a caller is
 served when a pod is deleted: a pod deletion is tested by deleting a pod under a caller.
 [The disruption budgets page](../../docs/environment/disruption-budgets.md) states the
-rule, the limits, and the change that the Argo CD project needed.
+rule, the limits, and what follows for a release that a controller reconciles from Git.
 
 Two committed values files under [`ci/`](ci/) are the render fixtures. Both carry
 a **placeholder API image digest** that resolves to no image, for the reason

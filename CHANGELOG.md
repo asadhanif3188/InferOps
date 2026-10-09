@@ -15,16 +15,16 @@ from `1.0.0`.
   PodDisruptionBudget. A budget bounds a voluntary eviction. It does not protect
   a pod from a direct deletion.** `V2-S4-004-PR1` adds
   `tools/service_endpoint_state`, `scripts/environment/service-endpoint-state.sh`,
-  six synthetic cases, two suites, two chart templates, and two pages. **The
+  seven synthetic cases, two suites, two chart templates, and two pages. **The
   record counts and does not judge.** The script reads the Services of the
   release and the EndpointSlices of its namespace, once, and changes nothing in
   the cluster. The tool states, for each of the two tiers, the number of
   endpoints, the number that are Ready, and the pod name and pod UID of each. A
   record with zero Ready endpoints is `OBSERVED`. A read that did not answer is
-  `REFUSED`, and it states no count. 9 rules decide the result. A Service that
-  publishes addresses that are not ready, an endpoint that states no `ready`, a
-  slice that the EndpointSlice controller did not write, and a pod with two
-  states each refuse the tier. **A record is not a caller's result, it is not a
+  `REFUSED`, and it states no count. 10 rules decide the result. A Service that
+  publishes addresses that are not ready, a Service with no slice in the read, an
+  endpoint that states no `ready`, a slice that the EndpointSlice controller did
+  not write, and a pod with two states each refuse the tier. **A record is not a caller's result, it is not a
   timeline, and it is not a Prometheus `up` series.** The script sends no request
   to the release, and the chart's scrape jobs read pods and no Service. A record
   holds no address, no node name, and no kubeconfig context, and it states at
@@ -38,13 +38,19 @@ from `1.0.0`.
   holds both budgets. The Argo CD project admits `PodDisruptionBudget` as a
   ninth namespaced kind, ADR 0019 carries a dated amendment, and the removal
   step of the Application procedure asks for budgets too. A cluster that holds
-  the earlier project does not apply a revision that renders a budget until the
-  project is applied again. The ownership inventory gains one row,
+  the earlier project is expected to apply no revision that renders a budget,
+  and no later one, until the project is applied again: apply the project first.
+  The Application does not prune, so a budget stays in a cluster when its tier
+  goes back to one replica, until a person deletes it. **A budget can make a
+  drain wait.** On a cluster with one node, and for the two runtime pods that
+  mount one `ReadWriteOnce` claim, a drain evicts one pod of the tier and then
+  does not end by itself. The ownership inventory gains one row,
   `workload-disruption-budget`, with the status `planned`. The workflow validates
   a two-replica render against the pinned Kubernetes schemas. **This is static
   evidence at C0, and it registers no claim.** No endpoint of a cluster was read, no release
   that renders a budget was installed, no eviction was requested, and no pod was
-  deleted. The one local cluster held no release on 2026-10-09. A budget is not
+  deleted. The one cluster that was asked, `docker-desktop` on 2026-10-09, listed
+  no release namespace and no `argocd` namespace. A budget is not
   evidence that a caller is served when a pod is deleted.
   [The endpoint-state page](docs/environment/service-endpoint-state.md) states the
   rules and the identities, and

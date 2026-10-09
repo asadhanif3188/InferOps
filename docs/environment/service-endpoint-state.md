@@ -1,6 +1,6 @@
 # The Ready endpoint state of the API Service and the runtime Service
 
-Status: **the collector and the record tool are implemented, and synthetic cases show a reading and each kind of refusal at evidence level C0. No Service and no EndpointSlice of a cluster was read: on 2026-10-09 the one local cluster held no release. So no record on this page states what a cluster published.**
+Status: **the collector and the record tool are implemented, and synthetic cases show a reading and each kind of refusal at evidence level C0. No Service and no EndpointSlice of a cluster was read: on 2026-10-09 the one cluster that was asked, `docker-desktop`, listed no release namespace. So no record on this page states what a cluster published.**
 
 A release renders two Services: one for the platform API and one for the serving
 runtime. Kubernetes publishes, for each Service, the pods behind it and whether
@@ -21,8 +21,9 @@ The capture has two parts.
 
 **A record counts. It does not judge.** It does not say whether a count is the
 expected count. A record with zero Ready endpoints is `OBSERVED`, because zero is
-a reading. A record is `REFUSED` only when the collection does not give one
-unambiguous reading.
+a reading. A record is `REFUSED` when a rule below is not held. The rules refuse
+each collection that the suite knows does not give one reading. They are not
+shown to refuse every such collection.
 
 ## What a record is not
 
@@ -101,10 +102,15 @@ For each tier, a record states:
 | `notReady` | The pod name, the pod UID, `serving`, and `terminating` of each other endpoint |
 
 A tier whose state is `refused` or `not-observed` states no figure and no pod:
-each of those members is null. A tier is `refused` when a rule is not held for
+`slices`, `addressTypes`, `endpoints`, `ready`, and `notReady` are null. A
+refused tier states `service` when exactly one Service carries the tier. A tier is `refused` when a rule is not held for
 it. A tier is `not-observed` when the collection gives no usable reads. When one
 tier is refused, the other tier can still be `observed`, and the result of the
 record is `REFUSED`. **Read `result` first.**
+
+A record also states `collection`, which is the header; `result`; `refusedBy`;
+`findings`, with one entry for each rule; `bounds`; `omitted`; `limitations`; and
+`doesNotEstablish`.
 
 **A pod is counted once.** A cluster with two address families writes one slice
 for each family, and each names the same pods. The tool counts a pod by its UID.
@@ -141,26 +147,36 @@ number with the schema.
 
 ## The rules
 
-Nine rules decide the result. The first two are about the collection, and the
+Ten rules decide the result. The first two are about the collection, and the
 others are evaluated for each tier. A rule has one of three states: `held`,
 `not-held`, or `not-observed`. A rule is `not-observed` when an earlier rule left
-it unread. The result is `OBSERVED` when every rule is held. In every other case
+it unread for a tier: a read that is not usable leaves every later rule unread,
+and a tier with no one Service leaves the later rules unread for that tier. The
+finding then names the tier, and it names the tier that the rule is held for. A
+rule that is not held for one tier is `not-held`. The result is `OBSERVED` when
+every rule is held. In every other case
 it is `REFUSED`, and `refusedBy` names each rule that is not held or not
 observed.
 
 | Rule | It holds when |
 |---|---|
 | `each-read-was-made` | The collection holds `services.json` and `endpointslices.json` |
-| `each-read-has-the-shape-of-its-kind` | Each read is a list of objects of its kind, in the namespace that the header names, and each member that a rule reads has its type |
+| `each-read-has-the-shape-of-its-kind` | Each read is a list of objects of its kind, in the namespace that the header names. Each member that a rule reads has its type, each object has a name of its own, and each slice names its Service by label |
 | `one-service-carries-each-tier` | For each tier, exactly one Service of the release carries the component label of that tier |
 | `the-service-publishes-ready-addresses-only` | The Service does not set `publishNotReadyAddresses` |
+| `the-service-has-a-slice` | The read holds at least one EndpointSlice of the Service |
 | `the-slice-controller-wrote-each-slice` | Each slice of the Service carries the managed-by label of the Kubernetes EndpointSlice controller |
 | `each-endpoint-states-its-conditions` | Each endpoint states `ready`, `serving`, and `terminating`, each as true or false |
 | `each-endpoint-names-one-pod` | Each endpoint names one Pod of the namespace, by name and by UID |
-| `one-pod-has-one-state` | A pod that more than one endpoint names has the same three conditions in each, and one pod name has one UID |
+| `one-pod-has-one-state` | A pod that more than one endpoint names has the same three conditions in each. One pod name has one UID, and one UID has one pod name |
 | `the-endpoint-count-is-within-the-bound` | The Service has at most 32 pods behind it |
 
-Four of these need a reason.
+Five of these need a reason.
+
+- **`the-service-has-a-slice`.** A slice with no endpoint states that the Service
+  has none, and that is a reading of zero. A read with no slice of the Service
+  states nothing: the record cannot tell a Service with no pod from a Service
+  whose slices were not written yet. So no slice is a refusal and not zero.
 
 - **`the-service-publishes-ready-addresses-only`.** Kubernetes documents that a
   Service with `publishNotReadyAddresses` publishes each endpoint as ready,
@@ -177,7 +193,9 @@ Four of these need a reason.
 
 **A member of another type is not read as absent.** A `ready` that is the text
 `"true"`, an `endpoints` member that is an object, or a slice in another
-namespace each break `each-read-has-the-shape-of-its-kind`. No tier is then read.
+namespace each break `each-read-has-the-shape-of-its-kind`. So does a slice that
+names no Service: its endpoints would otherwise be missing from a count. No tier
+is then read.
 
 ## How to run it
 
@@ -205,7 +223,8 @@ python -m tools.service_endpoint_state --check
 
 The first command prints the record, with the same exit statuses 0 and 5, and 1
 for a directory that is not a collection. `--check` builds the record of each
-committed collection again and compares it with the committed record.
+committed collection again and compares it with the committed record. It exits 1
+when one differs. Exit status 2 says that the arguments are not usable.
 
 A caller that samples a cluster repeatedly can use the function `observe` of the
 package for each sample. That function takes the items of the two reads, and it
@@ -213,7 +232,7 @@ does not hold them to their shape: `build_record` does that first.
 
 ## The committed cases
 
-Six collections are committed under
+Seven collections are committed under
 [`tests/domain/fixtures/service-endpoint-state/`](../../tests/domain/fixtures/service-endpoint-state/).
 **Each is written by the suite. The pod names, the UIDs, and the addresses are
 invented, and no case states what a cluster did.** A test holds that each
@@ -226,6 +245,7 @@ committed file is what the suite's builders give.
 | `observed-two-address-families` | `OBSERVED` | Two slices that name the same two pods: two pods, counted once each |
 | `refused-slice-read-not-made` | `REFUSED` | The EndpointSlice read did not answer: no count is stated |
 | `refused-no-runtime-service` | `REFUSED` | No Service carries the runtime tier |
+| `refused-runtime-service-without-a-slice` | `REFUSED` | The read holds no slice of the runtime Service: no count is stated |
 | `refused-service-publishes-not-ready-addresses` | `REFUSED` | The runtime Service sets `publishNotReadyAddresses` |
 
 ## What a record does not establish
@@ -260,7 +280,8 @@ The limits of one reading:
 
 - [`tests/domain/test_service_endpoint_state.py`](../../tests/domain/test_service_endpoint_state.py)
   holds the tool: the counts, each rule, the bound, the header, the omitted
-  members, the command, and this page's rule table.
+  members, and the command. It holds that this page names each rule. It does not
+  compare the wording of the rule table with the code.
 - [`tests/architecture/test_service_endpoint_state_collector.py`](../../tests/architecture/test_service_endpoint_state_collector.py)
   holds the collector: that each kubectl call is a read, that the script sends
   nothing to the release, that it agrees with the tool, and, executed against

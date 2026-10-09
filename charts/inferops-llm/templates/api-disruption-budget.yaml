@@ -5,15 +5,19 @@
 
 A PodDisruptionBudget bounds a voluntary eviction, and nothing else. Kubernetes
 documents that the eviction API refuses an eviction that would leave fewer than
-`minAvailable` selected pods available. A node drain uses that API. A direct pod
+`minAvailable` selected pods available. `kubectl drain` uses that API. A direct pod
 deletion does not use it, and this budget does not bound one. Kubernetes also
 documents that a Deployment's rolling update is not limited by a budget:
 `api.rollout` holds those bounds.
 
 It is rendered only when `api.replicaCount` is 2 or more. At one replica a
 budget of one available pod would refuse every eviction of the only API pod,
-and a node drain would then wait on it without end. So one replica renders no
+and `kubectl drain` would then wait on it without end. So one replica renders no
 budget, and the tier is not bounded for an eviction.
+
+Two replicas do not remove that wait on a cluster with one node. A drain marks
+the node unschedulable, so the replacement of the first evicted pod cannot
+become Ready there, and the budget refuses the second eviction.
 
 `minAvailable` is 1 at every count from 2, and no value sets it. The selector
 is the Deployment's own selector, so the budget counts the pods that the

@@ -40,7 +40,7 @@ another defaults file, or another revision for the baseline.
 | Directory | The profile directory | `gitops/environments/local-docker-desktop/workloads/support-assistant` |
 | Binding | `local-docker-desktop`, which states two API replicas | The same file |
 | Platform defaults | The `api` block and `runtime.rollout` of `charts/inferops-llm/values.yaml` | The same file |
-| Renderer revision and platform-defaults revision | The target's | `40803f2fe9a95753da6480de1e5321efafb3cbf0` for both |
+| Renderer revision and platform-defaults revision | The target's | `cdcfd62baf6fff56ca179711855510c93194ce80` for both |
 
 **The change adds no contract.** Version `0.1.0` of the reference workload
 declares a replica range of one and one. Version `0.2.0` declares two and two.
@@ -74,9 +74,20 @@ contract of the reference release in the test fixtures. So the remedy then is a
 decision: the same change to that contract, or another baseline contract.
 
 The baseline release identifier is
-`acf6fbc799ea50ab43b76f5ab48e81bf82bb89bda808319c22f9ae42d22753fb`. The target
+`ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465`. The target
 release identifier is
-`79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812`.
+`b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db`.
+
+> **Note, 2026-10-09 (`V2-S4-004-PR1`).** Chart `0.6.0` renders one
+> [PodDisruptionBudget](disruption-budgets.md) for a tier of two or more replicas. So
+> the target renders a budget for the runtime tier, and the baseline, with one runtime
+> replica, renders none. Both render the same budget for the API tier. This is a
+> difference of rendered objects and not of values: it follows from the runtime replica
+> count, which is the one intended variable. The comparison record compares values and
+> documents, and it compares no rendered object. One test of the chart suite renders
+> both sides and holds this difference. A budget bounds a voluntary eviction and not a
+> pod deletion. Both identifiers above moved with that change, because the two revisions
+> of the target moved.
 
 ## The permitted differences
 
@@ -138,6 +149,7 @@ annotations, is not in this table and is not compared.
 | The API values that a caller meets: request timeout, drain timeout, and output-token ceiling | `api` | Equal |
 | Telemetry and secret references | `telemetry`, `security` | Equal |
 | Probes, requests, images of the other tiers, Services | The chart's templates and its other defaults | Not compared by the tool. One test renders both sides with the chart of the working tree: see below |
+| The runtime tier's PodDisruptionBudget | The chart renders one for a tier of two or more replicas | Not equal, since chart `0.6.0`: the target renders it, and the baseline does not. It follows from the runtime replica count. See the note of 2026-10-09 above |
 
 **Readiness inputs are not in the generated values, and the tool does not
 compare them.** The chart's templates and defaults own each probe. The baseline

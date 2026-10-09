@@ -268,6 +268,9 @@ CASES: dict[str, Callable[[], dict[str, Any]]] = {
         "service_items": [service(API_SERVICE, API)],
         "slice_items": [slice_of(API_SERVICE, api_pods())],
     },
+    "refused-runtime-service-without-a-slice": lambda: {
+        "slice_items": [slice_of(API_SERVICE, api_pods())],
+    },
     "refused-service-publishes-not-ready-addresses": lambda: {
         "service_items": [
             service(API_SERVICE, API),
@@ -285,6 +288,10 @@ EXPECTED_RESULT = {
         ["each-read-was-made"],
     ),
     "refused-no-runtime-service": ("REFUSED", ["one-service-carries-each-tier"]),
+    "refused-runtime-service-without-a-slice": (
+        "REFUSED",
+        ["the-service-has-a-slice"],
+    ),
     "refused-service-publishes-not-ready-addresses": (
         "REFUSED",
         ["the-service-publishes-ready-addresses-only"],
@@ -436,14 +443,76 @@ def test_a_service_with_no_endpoint_has_zero_and_is_observed(
     assert tier(record, RUNTIME)["slices"] == 1
 
 
-def test_a_service_with_no_slice_has_zero_endpoints_and_states_no_slice(
+def test_a_service_with_no_slice_is_not_read_as_zero_endpoints(
     tmp_path: Path,
 ) -> None:
-    record = record_of(tmp_path, slice_items=[slice_of(API_SERVICE, api_pods())])
-    assert record["result"] == "OBSERVED"
+    """No slice is not an empty slice.
+
+    A slice with no endpoint states that the Service has none. A read with no
+    slice of the Service states nothing: the slices can be not written yet. So
+    the tier is refused, and it states no count.
+    """
+    record = record_of(tmp_path, **CASES["refused-runtime-service-without-a-slice"]())
+    assert record["result"] == "REFUSED"
+    assert not_held(record) == ["the-service-has-a-slice"]
     runtime = tier(record, RUNTIME)
-    assert (runtime["slices"], runtime["endpoints"]["total"]) == (0, 0)
-    assert runtime["addressTypes"] == []
+    assert runtime["state"] == "refused"
+    assert runtime["service"] == RUNTIME_SERVICE
+    assert runtime["endpoints"] is None and runtime["slices"] is None
+    assert tier(record, API)["endpoints"]["ready"] == 2
+
+
+def _without_labels(item: Document) -> None:
+    del item["metadata"]["labels"]
+
+
+def _null_labels(item: Document) -> None:
+    item["metadata"]["labels"] = None
+
+
+def _without_the_service_label(item: Document) -> None:
+    del item["metadata"]["labels"]["kubernetes.io/service-name"]
+
+
+def _empty_service_label(item: Document) -> None:
+    item["metadata"]["labels"]["kubernetes.io/service-name"] = ""
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [_without_labels, _null_labels, _without_the_service_label, _empty_service_label],
+)
+def test_a_slice_that_names_no_service_is_not_left_out_of_a_count(
+    tmp_path: Path, damage: Callable[[Document], None]
+) -> None:
+    """Such a slice holds Ready endpoints that no tier would count.
+
+    Without this refusal, the API tier below would be observed with zero
+    endpoints while the read holds two Ready ones.
+    """
+    items = slices()
+    damage(items[0])
+    record = record_of(tmp_path, slice_items=items)
+    assert record["result"] == "REFUSED"
+    assert not_held(record) == ["each-read-has-the-shape-of-its-kind"]
+    assert (
+        "does not name its Service"
+        in finding(record, "each-read-has-the-shape-of-its-kind")["detail"]
+    )
+    assert {entry["state"] for entry in record["tiers"]} == {"not-observed"}
+
+
+def test_two_objects_with_one_name_refuse_the_read(tmp_path: Path) -> None:
+    """An API server gives one object for one name. A file can hold two."""
+    unlabelled = service(API_SERVICE, API)
+    del unlabelled["metadata"]["labels"]
+    record = record_of(tmp_path / "a", service_items=[*services(), unlabelled])
+    assert not_held(record) == ["each-read-has-the-shape-of-its-kind"]
+    assert f"2 objects have the name {API_SERVICE}" in record["findings"][1]["detail"]
+
+    twice = [*slices(), slice_of(API_SERVICE, api_pods())]
+    record = record_of(tmp_path / "b", slice_items=twice)
+    assert not_held(record) == ["each-read-has-the-shape-of-its-kind"]
 
 
 def test_a_pod_that_two_address_families_name_is_one_pod(tmp_path: Path) -> None:
@@ -519,7 +588,20 @@ def _not_a_list(directory: Path) -> None:
     (directory / "services.json").write_text('{"kind": "Status"}', "utf-8")
 
 
-@pytest.mark.parametrize("damage", [_not_json, _not_a_list])
+def _a_list_of_another_kind(directory: Path) -> None:
+    document = listed(services())
+    document["kind"] = "PodList"
+    (directory / "services.json").write_text(json.dumps(document), "utf-8")
+
+
+def _nested_too_deeply(directory: Path) -> None:
+    depth = 100_000
+    (directory / "endpointslices.json").write_text("[" * depth + "]" * depth, "utf-8")
+
+
+@pytest.mark.parametrize(
+    "damage", [_not_json, _not_a_list, _a_list_of_another_kind, _nested_too_deeply]
+)
 def test_a_read_that_is_not_a_list_refuses_every_tier(
     tmp_path: Path, damage: Callable[[Path], None]
 ) -> None:
@@ -615,8 +697,45 @@ def test_a_missing_tier_refuses_that_tier_and_states_the_other(
     assert runtime["state"] == "refused"
     assert runtime["service"] is None
     assert runtime["endpoints"] is None and runtime["ready"] is None
-    later = [entry["state"] for entry in record["findings"][3:]]
-    assert later == ["not-observed"] * 6
+    # The later rules were read for the API tier and not for the runtime tier.
+    # Each finding says so, and none says only that the rule is held.
+    later = record["findings"][3:]
+    assert [entry["state"] for entry in later] == ["not-observed"] * 7
+    for entry in later:
+        assert entry["detail"] == (
+            "not read for serving-runtime, which has no one Service; "
+            "held for platform-api"
+        )
+
+
+def test_a_finding_names_the_tier_that_a_broken_rule_was_not_read_for(
+    tmp_path: Path,
+) -> None:
+    """One tier breaks a rule, and the other has no Service."""
+    record = record_of(
+        tmp_path,
+        service_items=[service(API_SERVICE, API, publishNotReadyAddresses=True)],
+        slice_items=[slice_of(API_SERVICE, api_pods())],
+    )
+    assert not_held(record) == [
+        "one-service-carries-each-tier",
+        "the-service-publishes-ready-addresses-only",
+    ]
+    detail = finding(record, "the-service-publishes-ready-addresses-only")["detail"]
+    assert detail.endswith("not read for serving-runtime, which has no one Service")
+    assert {entry["state"] for entry in record["tiers"]} == {"refused"}
+
+
+def test_no_service_at_all_reads_no_later_rule_for_either_tier(
+    tmp_path: Path,
+) -> None:
+    record = record_of(tmp_path, service_items=[], slice_items=[])
+    assert not_held(record) == ["one-service-carries-each-tier"]
+    for entry in record["findings"][3:]:
+        assert entry["state"] == "not-observed"
+        assert entry["detail"] == (
+            "not read for platform-api, serving-runtime, which has no one Service"
+        )
 
 
 def test_two_services_for_one_tier_refuse_that_tier(tmp_path: Path) -> None:
@@ -812,10 +931,14 @@ def test_a_header_without_a_member_is_not_a_collection(tmp_path: Path) -> None:
         state.build_record(write(tmp_path / "collection", run=run))
 
 
-@pytest.mark.parametrize("text", ["", "[]", "not json"])
+@pytest.mark.parametrize(
+    "text",
+    ["", "[]", "not json", pytest.param("[" * 100_000, id="nested-too-deeply")],
+)
 def test_a_header_that_is_not_an_object_is_not_a_collection(
     tmp_path: Path, text: str
 ) -> None:
+    """The last case is nested more deeply than the parser reads."""
     directory = write(tmp_path / "collection")
     (directory / "run.json").write_text(text, encoding="utf-8")
     with pytest.raises(state.CollectionRefused):
@@ -1086,8 +1209,8 @@ def test_the_page_states_each_rule_and_each_file_of_a_collection() -> None:
     ):
         assert f"`{name}`" in page, name
     assert f"`{state.RECORD_SCHEMA}`" in page
-    assert f"{len(state.RULES)} rules" in page or "Nine rules" in page
-    assert len(state.RULES) == 9
+    assert "Ten rules decide the result." in page
+    assert len(state.RULES) == 10
     assert str(state.MAX_ENDPOINTS) in page
 
 

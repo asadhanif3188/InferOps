@@ -131,7 +131,8 @@ RULES: Final[tuple[Rule, ...]] = (
     Rule(
         "each-read-has-the-shape-of-its-kind",
         "Each read is a list of objects of its kind, in the namespace that the "
-        "collection names, and each member that a rule reads has its type.",
+        "collection names. Each member that a rule reads has its type, each "
+        "object has a name of its own, and each slice names its Service.",
     ),
     Rule(
         "one-service-carries-each-tier",
@@ -143,6 +144,12 @@ RULES: Final[tuple[Rule, ...]] = (
         "The Service does not set publishNotReadyAddresses. Kubernetes documents "
         "that such a Service publishes each endpoint as ready, whatever its pod "
         "reports.",
+    ),
+    Rule(
+        "the-service-has-a-slice",
+        "The read holds at least one EndpointSlice of the Service. A Service with "
+        "no slice is not read as zero endpoints: the record cannot tell a Service "
+        "with no pod from a Service whose slices were not written yet.",
     ),
     Rule(
         "the-slice-controller-wrote-each-slice",
@@ -186,7 +193,7 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "What a Prometheus `up` series states. That series says that one scrape of "
     "one pod's metrics port succeeded. It is not the state of a Service.",
     "That the release is the declared release. The record reads no image, no "
-    "revision, and no Argo CD state.",
+    "revision, and no state of a GitOps controller.",
     "What a caller observes when a pod is deleted, evicted, or replaced, and "
     "that the release survives the loss of a node.",
 )
@@ -227,7 +234,7 @@ def _header(directory: Path) -> dict[str, str]:
         raise CollectionRefused(f"the directory holds no {HEADER_FILE}")
     try:
         header = json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as fault:
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as fault:
         raise CollectionRefused(f"{HEADER_FILE} is not JSON") from fault
     if not isinstance(header, dict):
         raise CollectionRefused(f"{HEADER_FILE} is not an object")
@@ -334,6 +341,12 @@ def _endpoint_shape(endpoint: object, label: str, faults: list[str]) -> None:
 
 
 def _slice_shape(item: Mapping[str, Any], label: str, faults: list[str]) -> None:
+    # A slice that names no Service cannot be given to a tier, and it is not
+    # left out: its endpoints would then be missing from a count.
+    labels = item["metadata"].get("labels")
+    named = labels.get(SERVICE_NAME_LABEL) if isinstance(labels, dict) else None
+    if not isinstance(named, str) or not named:
+        faults.append(f"{label}: the slice does not name its Service by label")
     if item.get("addressType") not in _ADDRESS_TYPES:
         faults.append(f"{label}: addressType is not one of {sorted(_ADDRESS_TYPES)}")
     endpoints = item.get("endpoints")
@@ -350,11 +363,16 @@ def _items(data: bytes, kind: str, what: str, faults: list[str]) -> list[Any] | 
     """The items of one read, or None when the read is not a list of objects."""
     try:
         document = json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError):
         faults.append(f"{what} is not JSON")
         return None
     if not isinstance(document, dict) or not isinstance(document.get("items"), list):
         faults.append(f"{what} is not a list of {kind} objects")
+        return None
+    # `kubectl get -o json` names a list of several objects `List`. The API
+    # names it after its kind.
+    if document.get("kind") not in ("List", f"{kind}List"):
+        faults.append(f"{what} is not a list of {kind} objects: its kind is another")
         return None
     return list(document["items"])
 
@@ -365,6 +383,16 @@ def _shape_faults(
     namespace: str,
     faults: list[str],
 ) -> None:
+    for file, items in ((SERVICES_FILE, services), (SLICES_FILE, slices)):
+        names = [
+            item["metadata"]["name"]
+            for item in items or ()
+            if isinstance(item, dict)
+            and isinstance(item.get("metadata"), dict)
+            and isinstance(item["metadata"].get("name"), str)
+        ]
+        for name in sorted({name for name in names if names.count(name) > 1}):
+            faults.append(f"{file}: {names.count(name)} objects have the name {name}")
     for index, item in enumerate(services or ()):
         label = f"{SERVICES_FILE}: item {index}"
         if _object_shape(item, "Service", namespace, label, faults):
@@ -425,9 +453,9 @@ def _tier(
 ) -> tuple[dict[str, Any], dict[str, list[str]]]:
     """The state of one tier, and the detail of each rule that it does not hold.
 
-    The rules are evaluated in their order. A rule that cannot be evaluated,
-    because an earlier one is not held, is absent from the returned mapping
-    and from the set of held rules: the caller states it as not observed.
+    A tier with no one Service is read no further: the later rules are not
+    evaluated for it, and the caller states that. For a tier with one Service,
+    every later rule is evaluated, also after one of them is not held.
     """
     broken: dict[str, list[str]] = {}
     refused = _empty_tier(tier, TIER_REFUSED)
@@ -454,6 +482,10 @@ def _tier(
         ]
 
     own = [item for item in slices if _label_of(item, SERVICE_NAME_LABEL) == name]
+    if not own:
+        broken["the-service-has-a-slice"] = [
+            f"{tier}: the read holds no EndpointSlice of the Service {name}"
+        ]
     foreign = sorted(
         item["metadata"]["name"]
         for item in own
@@ -644,12 +676,19 @@ def build_record(directory: Path) -> dict[str, Any]:
         tiers = [_empty_tier(tier, TIER_NOT_OBSERVED) for tier in TIERS]
 
     # A rule of a tier is not observed when an earlier rule left it unread: the
-    # collection rules for every tier, and the Service rule for that tier.
-    without_service = usable and any(tier["service"] is None for tier in tiers)
+    # collection rules for every tier, and the Service rule for that tier. A
+    # finding names each tier that its rule was not read for.
+    unread = [tier["tier"] for tier in tiers if usable and tier["service"] is None]
+    read = [name for name in TIERS if name not in unread]
     findings: list[dict[str, str]] = []
     for position, rule in enumerate(RULES):
         if rule.rule_id in broken:
-            findings.append(_finding(rule, NOT_HELD, "; ".join(broken[rule.rule_id])))
+            detail = "; ".join(broken[rule.rule_id])
+            if position > 2 and unread:
+                detail += (
+                    f"; not read for {', '.join(unread)}, which has no one Service"
+                )
+            findings.append(_finding(rule, NOT_HELD, detail))
         elif position == 1 and absent:
             findings.append(
                 _finding(
@@ -664,14 +703,11 @@ def build_record(directory: Path) -> dict[str, Any]:
                     "the collection gives no usable reads, so no tier was read",
                 )
             )
-        elif position > 2 and without_service:
-            findings.append(
-                _finding(
-                    rule,
-                    NOT_OBSERVED,
-                    "a tier has no one Service, so this rule was not read for it",
-                )
-            )
+        elif position > 2 and unread:
+            detail = f"not read for {', '.join(unread)}, which has no one Service"
+            if read:
+                detail += f"; held for {', '.join(read)}"
+            findings.append(_finding(rule, NOT_OBSERVED, detail))
         else:
             findings.append(_finding(rule, HELD, "held"))
 

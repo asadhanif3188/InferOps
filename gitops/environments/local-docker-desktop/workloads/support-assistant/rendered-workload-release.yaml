@@ -3,7 +3,7 @@
 apiVersion: "inferops.io/v1alpha1"
 kind: "RenderedWorkloadRelease"
 metadata:
-  releaseId: "79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812"
+  releaseId: "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db"
   workloadId: "support-assistant"
   workloadVersion: "0.2.0"
 output:
@@ -20,6 +20,6 @@ source:
     name: "local-docker-desktop"
     sha256: "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
   platformDefaults:
-    revision: "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+    revision: "cdcfd62baf6fff56ca179711855510c93194ce80"
   renderer:
-    revision: "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+    revision: "cdcfd62baf6fff56ca179711855510c93194ce80"

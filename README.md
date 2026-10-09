@@ -212,8 +212,9 @@ and the runtime Service as one record: the count of endpoints, the count that ar
 Ready, and the pod behind each. A record is one reading of what the cluster published.
 It is not a caller's result. The chart also renders a
 [PodDisruptionBudget](docs/environment/disruption-budgets.md) for a tier of two or more
-replicas, which keeps one pod available through a voluntary eviction. A budget does not
-protect a pod from a direct deletion. No endpoint of a cluster was read, and no eviction
+replicas. Kubernetes documents that the eviction API then refuses an eviction that would
+leave the tier with no available pod. A budget does not protect a pod from a direct
+deletion, and on a cluster with one node it makes a drain wait. No endpoint of a cluster was read, and no eviction
 was requested.
 
 ## Prerequisites

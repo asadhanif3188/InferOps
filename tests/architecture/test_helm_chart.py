@@ -2822,8 +2822,8 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica() -> N
 # --------------------------------------------------------------------------
 #
 # Everything in this section reads a render. Kubernetes documents that a
-# PodDisruptionBudget bounds a voluntary eviction: the eviction API, which a
-# node drain uses, refuses an eviction that would leave fewer available pods
+# PodDisruptionBudget bounds a voluntary eviction: the eviction API, which
+# `kubectl drain` uses, refuses an eviction that would leave fewer available pods
 # than the budget states. Kubernetes documents that a direct pod deletion does
 # not use that API, and that a Deployment's rolling update is not limited by a
 # budget. None of these tests installs the chart, requests an eviction, drains
@@ -2897,15 +2897,15 @@ def test_the_mock_profile_renders_no_budget_for_a_runtime_it_does_not_render() -
 
 @pytest.mark.parametrize("count", [2, 3, 16])
 @pytest.mark.parametrize("component", BOTH_TIERS)
-def test_each_budget_keeps_one_pod_of_its_own_deployment_available(
+def test_each_budget_states_one_available_pod_over_its_own_deployments_selector(
     component: str, count: int
 ) -> None:
     """One whole pod, over the pods that the tier's Deployment selects.
 
     `minAvailable` is 1 at every count from 2. It is a whole number and not a
     percentage, so it does not move when the replica count does. It is below
-    the replica count at every such count, so the budget always admits one
-    eviction while every pod of the tier is available.
+    the replica count at every such count. So at N replicas that are all
+    available, the stated bound admits N-1 evictions.
 
     The selector is the Deployment's selector, member for member. So the budget
     counts the pods that the Deployment counts, and no other.
@@ -2925,6 +2925,10 @@ def test_each_budget_keeps_one_pod_of_its_own_deployment_available(
     assert budget["metadata"]["name"] == deployment["metadata"]["name"]
     assert budget["metadata"]["namespace"] == deployment["metadata"]["namespace"]
     assert budget["metadata"]["labels"] == deployment["metadata"]["labels"]
+    # The tenant and the cost centre are annotations, and the budget carries
+    # the ones its Deployment carries. So it is no hook.
+    assert budget["metadata"]["annotations"] == deployment["metadata"]["annotations"]
+    assert budget["metadata"]["annotations"]
     assert not _is_hook(budget)
 
     selector = budget["spec"]["selector"]["matchLabels"]
@@ -3014,9 +3018,10 @@ def test_no_value_configures_a_budget() -> None:
 
 
 def test_a_budget_leaves_both_rollout_strategies_as_the_values_state_them() -> None:
-    """A budget is one more object. It changes no member of a Deployment.
+    """A budget is one more object. It leaves each stated strategy as it was.
 
-    Kubernetes documents that a rolling update is not limited by a budget. So
+    The two tests of a second replica hold that nothing else of a Deployment
+    changes. Kubernetes documents that a rolling update is not limited by a budget. So
     the runtime's rollout may make one runtime pod unavailable, as
     `runtime.rollout` states, whether or not the runtime's budget exists.
     """
@@ -3062,9 +3067,8 @@ def test_the_desired_state_release_renders_both_budgets_and_the_project_admits_t
 
     The desired-state release declares two replicas for each tier, so its
     render holds both budgets. The project admits exactly the kinds of that
-    render, without the `helm test` pod. An Application whose project does not
-    admit a rendered kind does not apply that render: Argo CD documents that it
-    refuses the sync.
+    render, without the `helm test` pod. Argo CD documents that a project
+    restricts the kinds that an Application may deploy.
 
     This renders files and reads the project manifest. No Application was
     applied, and no cluster held a budget.

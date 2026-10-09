@@ -12,8 +12,8 @@ deleted. No claim was registered.**
 | Date | 2026-10-09 |
 | Base | `70f6138`, the merge of pull request #131 |
 | Branch | `feat/v2-s4-004-endpoint-pdb-signals` |
-| Commits | The first commit: the two templates, chart `0.6.0`, the tool, the collector, the cases, the suites, and the pages. The second commit: the corrections of the independent review, and the desired-state release recorded at the first commit |
-| Host | One Windows workstation, Git Bash; Python 3.12.12 from `uv`; Helm `v3.19.0`; kubeconform `v0.8.0` |
+| Commits | `cdcfd62b`: the two templates, chart `0.6.0`, the tool, the collector, the cases, the suites, and the pages. A second commit: the corrections of the independent review, and the desired-state release recorded at the first commit. A third commit: the default lane |
+| Host | One Windows workstation, Git Bash; Python 3.12.12 from `uv`; Helm `v3.19.0`; a kubeconform binary that reports `development` on this host. The workflow pins kubeconform `v0.8.0` |
 | Evidence level | C0. Every check reads committed files, renders them with the chart tool, or executes a script against stand-ins for `kubectl` |
 | Claim effect | None. No claim, ledger, register row, dashboard row, or evidence-index entry was added or changed |
 
@@ -28,8 +28,9 @@ deleted. No claim was registered.**
 - [`tools/service_endpoint_state`](../../../tools/service_endpoint_state/__init__.py)
   reads a collection and prints one record: for each of the two tiers, the
   number of endpoints, the number that are Ready, and the pod name and pod UID of
-  each. 9 rules decide whether the result is `OBSERVED` or `REFUSED`.
-- Six synthetic cases under `tests/domain/fixtures/service-endpoint-state/`, two
+  each. 10 rules decide whether the result is `OBSERVED` or `REFUSED`. The first
+  commit held 9.
+- Seven synthetic cases, of which the first commit held six, under `tests/domain/fixtures/service-endpoint-state/`, two
   suites, and [the page](../../environment/service-endpoint-state.md).
 
 **The disruption budgets.**
@@ -58,9 +59,9 @@ restate the chart version.
 | Asked | Reached |
 |---|---|
 | The Ready endpoint counts and identities of the API Service and the runtime Service are capturable | Reached as a tool and a collector, at C0. A record states the counts and the pod name and pod UID of each endpoint, for both tiers. The collector was executed against stand-ins for `kubectl`. It was not executed against an API server, so what a cluster returns to it was not observed |
-| A budget keeps at least one replica available through a voluntary disruption, where supported | Reached as a render. A tier of two or more replicas renders `minAvailable: 1` over its Deployment's selector. The pinned `policy/v1` schema accepts both objects. No API server admitted one, and no eviction was requested, so that an eviction is refused was not observed |
+| A budget keeps at least one replica available through a voluntary disruption, where supported | Reached as a render, with a stated limit: on a cluster with one node a budget makes a drain wait, and it does not make a drain leave a caller served. A tier of two or more replicas renders `minAvailable: 1` over its Deployment's selector. The pinned `policy/v1` schema accepts both objects. No API server admitted one, and no eviction was requested, so that an eviction is refused was not observed |
 | The documents state that a budget does not establish resilience to a direct pod deletion | Reached. The disruption budgets page, the chart's README, both templates, the values comments, the inventory row, and the changelog each state it |
-| The signals are bounded in cardinality and safe to publish | Reached for the record, at C0. Two tiers, three tier states, two results, and at most 32 pods for one Service. A record holds no address, no node name, and no kubeconfig context, and a test holds each. A pod name and a pod UID are record values and not label values. No metric was added |
+| The signals are bounded in cardinality and hold nothing that must not be published | Reached for these properties of the record, at C0. Whether one record of one cluster is fit to publish is decided for that record: it states pod names, pod UIDs, the provider, and a commit. Two tiers, three tier states, two results, and at most 32 pods for one Service. A record holds no address, no node name, and no kubeconfig context, and a test holds each. A pod name and a pod UID are record values and not label values. No metric was added |
 | A Prometheus scrape `up` series is not used in place of endpoint or caller health | Reached. The tool reads no metric. A test holds that the chart's scrape jobs discover pods and not Services, and the page states what `up` says |
 
 ## Decisions taken in this change
@@ -94,17 +95,31 @@ restate the chart version.
    each sample.
 9. **The header names no kubeconfig context.** A context name can hold an
    account identifier.
-10. **The first experiment's freeze record is not revised.** This change moves
+10. **The budgets are rendered although a drain then waits on the one recorded
+    environment.** A drain marks the node unschedulable. On a cluster with one
+    node, and for two runtime pods on one `ReadWriteOnce` claim, the replacement
+    of the first evicted pod cannot become Ready, and the budget refuses the
+    second eviction. Without a budget such a drain ends, and the tier has no pod.
+    With a budget it waits, and one pod stays. The review found this, and the
+    first commit did not state it. The change keeps the budgets and states the
+    limit. The other answer is to render no budget for the runtime tier while its
+    claim is `ReadWriteOnce`.
+11. **The Argo CD sync policy is not changed.** It does not prune, so a budget
+    stays in a cluster when its tier goes back to one replica. The change states
+    that and changes no policy.
+12. **The first experiment's freeze record is not revised.** This change moves
     pinned inputs of freeze `r3`: the chart, the renderer, the desired-state
     release, the project manifest, and the Application procedure. `r3` is not
     edited, and no run was started.
 
 ## What was not done
 
-- **No Service and no EndpointSlice of a cluster was read.** One call was made
-  to the local cluster on 2026-10-09: `kubectl get namespaces`, which changes
-  nothing. It listed five namespaces, and none was the release namespace. So the
-  cluster held no release to read, and nothing was installed for this change.
+- **No Service and no EndpointSlice of a cluster was read.** Two calls were made
+  to the `docker-desktop` cluster on 2026-10-09, each `kubectl get namespaces`,
+  which changes nothing. Each listed five namespaces: `default`,
+  `kube-node-lease`, `kube-public`, `kube-system`, and `local-path-storage`.
+  Neither `inferops-release` nor `argocd` was among them. No transcript of the
+  calls is committed. Nothing was installed for this change.
 - **No eviction, no drain, and no pod deletion.**
 - **No timeline collector.** A record is one reading.
 - **No metric, no alert, and no dashboard row.**
@@ -134,19 +149,132 @@ Each command ran on the tree of the first commit, before it was committed.
 | `uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json` | 30 material files differ. The base held 25 |
 | `git diff --check` against the base | No whitespace error |
 
-`shellcheck` is not installed on this host, so the new script was not linted here.
-The workflow lints it.
+`shellcheck` is not installed on this host, and no workflow runs it over
+`scripts/`. So the new script was not linted. `bash -n` accepts it.
+
+**The first commit broke one suite that was not run before it.**
+`tests/architecture/test_argocd_bootstrap.py` holds that no file of the chart and
+no tool but two names the GitOps controller. The chart's README and the new tool's
+text each named it. The default lane would have reported this. The second commit
+removes both names.
 
 **The release names an earlier commit at the first commit.** The desired-state
 release was regenerated for chart `0.6.0`, and its two revisions still name
 `40803f2f`, where the renderer states chart `0.5.0`. That statement is false for
-the first commit. The second commit records the first commit as both revisions.
+the first commit. The second commit records the first commit as both revisions,
+which moves the release identifier to `b5457f49…` and no value.
 
 **One defect of an existing test was corrected.** `test_each_tier_block_requires_a_rollout`
 deleted the `rollout` block from a shallow copy of the chart's defaults, so it
 removed the block from the defaults that every later test of the module reads.
 No earlier test read the block after it. A new test did, and failed. The test now
 deletes from a deep copy.
+
+## What the independent review found
+
+Three reviewers read the first commit. One read the tool and the collector, one
+read the chart, the budgets, and the Argo CD files, and one read the documents
+against the code. None found a record that states a Ready endpoint that its
+collection does not hold. They found one wrong count, one design limit that no
+page stated, and false or stale statements.
+
+### What the tool got wrong
+
+- **A slice that named no Service was left out of every count.** A slice with no
+  labels, or without the service-name label, belonged to no tier. So a read that
+  held two Ready endpoints in such a slice gave a tier that was `observed` with
+  zero endpoints. The shape rule now refuses a slice that does not name its
+  Service.
+- **A Service with no slice was read as zero endpoints.** The first commit held a
+  test that required this. A read with no slice of a Service states nothing: the
+  slices can be not written yet. A tenth rule, `the-service-has-a-slice`, now
+  refuses it, and a seventh case shows it. A slice with no endpoint is still a
+  reading of zero.
+- **Three inputs ended in an exception and no record.** Two Services with one
+  name, and a read or a header nested too deeply to parse, each raised an error
+  that the command did not catch. Each is now a refusal.
+- **A list of another kind was read.** A `PodList` that held Service items was
+  accepted. The shape rule now reads the kind of the list.
+- **A finding contradicted its tier.** When one tier had no Service, the later
+  rules were stated as not observed, with no tier named, while the other tier was
+  `observed` under those rules. A finding now names the tier that its rule was
+  not read for, and the tier that it is held for.
+- **A docstring overstated the order of the rules.** It said that a rule is not
+  evaluated after an earlier one is not held. That is so only for the Service
+  rule.
+
+Noted, and not changed: one pod UID in both tiers is accepted, and the collector
+does not state why a read did not answer.
+
+### What the budgets did not say
+
+- **On a cluster with one node, a budget makes a drain wait without end.** The
+  first commit said that a drain "evicts one, and waits for its replacement to be
+  available before it evicts the other". On one node there is no place for the
+  replacement. The two runtime pods also mount one `ReadWriteOnce` claim, so the
+  same holds for them wherever they run. The page has a section for this, and the
+  templates, the values comments, the chart's README, the changelog, and decision
+  10 state it. The budgets are kept.
+- **Under the Application, a budget outlives its tier's second replica.** The
+  sync policy does not prune. The first commit said only that one replica renders
+  no budget. The page and the Application page now state it.
+- **The project must be applied before the revision.** The first commit said that
+  Argo CD "refuses to sync a kind". A sync that holds a kind outside the project
+  is expected to fail as a whole, so later revisions would not be applied either.
+  The pages say so, and say that it was not observed.
+- **How Argo CD reports a budget's health was not stated.** The source of the
+  pinned version was read, and the page states what it holds.
+- **The default of `unhealthyPodEvictionPolicy` was named, and its effect was
+  not.** The page now states it.
+
+### What the first commit said, and what is true
+
+| The first commit said | What is true |
+|---|---|
+| The README: a budget "keeps one pod available through a voluntary eviction" | A budget makes the eviction API refuse a request. Nothing was observed. The sentence now states what Kubernetes documents |
+| This record: "The workflow lints it", of the new script | No workflow runs `shellcheck` |
+| This record: kubeconform `v0.8.0` | The binary on this host reports `development`. `v0.8.0` is the workflow's pin |
+| This record and three pages: "no cluster was read", then "the one local cluster held no release" | Two `kubectl get namespaces` calls were made. They show that two namespaces were absent, and no more |
+| The budgets page: a budget "admits one eviction" | At N replicas it admits N-1 |
+| The budgets page: at any replica count, a replacement's load leaves one available pod | That is so at two replicas |
+| The budgets page: a container killed for its memory limit and a failed probe are involuntary disruptions that Kubernetes documents | Kubernetes lists neither. Such a pod is not Ready, and is not counted as available |
+| The values comment: a rolling update "does not use the eviction API", as documented | Kubernetes documents that a Deployment is not limited by a budget when it rolls pods |
+| "A node drain uses that API" | `kubectl drain` does, unless it is told to delete |
+| The endpoint-state page: a refused tier states null for each member | It states its Service when one Service carries the tier |
+| The endpoint-state page: the suite holds the page's rule table | The suite holds that the page names each rule |
+| Six pages and records outside the diff: the project admits "eight namespaced kinds" | Nine. Each present statement is corrected. The accepted text of two decision records is not changed |
+| The inventory rows of the chart suite and of the Application suite | Each described the tests as they were before this change. Both are corrected |
+| The baseline profile page and the desired-state page | Neither stated chart `0.6.0` or the budgets. Both do now |
+| A test name: a budget "keeps one pod ... available" | The test reads a stated bound. It is renamed |
+
+### Noted, and not changed
+
+- A release name long enough to truncate gives the two Deployments, the two
+  Services, and now the two budgets one name. The defect is older than this
+  change, and no test covers it.
+- The suite of the Application compares the project with eight rendered kinds
+  and one named kind. Only the chart suite, which needs Helm, renders the
+  desired-state release and compares its kinds with the project.
+- The workflow validates the real profile with two replicas, and not the mock
+  profile with two.
+
+## Validation at the second commit
+
+Each command ran on the tree of the second commit, before it was committed.
+
+| Command | Result |
+|---|---|
+| `uv run --locked ruff check .` | No finding |
+| `uv run --locked ruff format --check .` | No file to reformat |
+| `uv run --locked python -m mypy` | No issue in 375 source files |
+| `uv run --locked python -m pytest tests/domain/test_service_endpoint_state.py -q` | 110 passed. The first commit held 99 |
+| `uv run --locked python -m tools.service_endpoint_state --check` | `PASSED: 7 committed collection(s), each record is what its collection gives` |
+| `uv run --locked python -m tools.gitops_desired_state --check` | `OK       the tree holds the declared releases and nothing else` |
+| `uv run --locked python -m tools.baseline_profile --check` | `OK       the baseline differs from the target only at the permitted paths` |
+| `git diff --check` against the base | No whitespace error |
+
+The default lane is recorded after the second commit, because two suites read the
+commit that `HEAD` names.
 
 ## Privacy and publicability
 
