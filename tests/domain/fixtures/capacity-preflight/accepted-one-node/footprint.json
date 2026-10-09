@@ -163,7 +163,9 @@
   "sources": {
     "application": {
       "path": "infra/argocd/local-docker-desktop-support-assistant.yaml",
-      "sha256": "sha256:42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd"
+      "repoURL": "https://github.com/asadhanif3188/InferOps.git",
+      "sha256": "sha256:42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd",
+      "targetRevision": "main"
     },
     "chart": {
       "name": "inferops-llm",

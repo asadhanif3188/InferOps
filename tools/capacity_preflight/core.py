@@ -6,10 +6,12 @@ claims of the release namespace, and the declared footprint of the release. This
 module reads that directory. It reads no cluster. It returns one record, whose
 result is ``ACCEPTED`` or ``REFUSED``.
 
-**The footprint comes from committed files, and not from the cluster.**
+**The footprint comes from files of one working tree, and not from the cluster.**
 :func:`declared_footprint` reads the Application of one desired-state release,
 the chart's defaults, the values file that the Application names, and the values
-that the Application states. It states each pod the chart renders for those values, with the
+that the Application states. It reads the files as the tree holds them. It does
+not read a commit, and it does not compare the tree with the revision that the
+Application names. It states each pod the chart renders for those values, with the
 requests and limits of each container.
 
 **The gate compares stated figures.** It compares the requests and the memory
@@ -24,8 +26,13 @@ that is not ``held`` refuses the cluster.
 
 **A refusal has a category.** ``insufficient`` means that a stated figure does
 not fit. ``ambiguous`` means that the gate cannot decide from what it read: a
-read is absent, a quantity is not readable, or the cluster or the release has a
-property that this arithmetic does not describe.
+read is absent, a document does not have the form that this tool reads, a
+quantity is not readable, or the cluster or the release has a property that this
+arithmetic does not describe.
+
+**A member of another type is not read as absent.** A node or a pod whose kind,
+name, or member has another type than the one this tool reads refuses the
+cluster. It is not counted as zero.
 
 **No figure is lowered to obtain an acceptance.** The reserve is this module's
 constant, and a collection that states another reserve is not a collection. A
@@ -159,12 +166,18 @@ _STEADY: Final = "steady"
 _TRANSIENT: Final = "transient"
 _FINISHED: Final = frozenset({"Succeeded", "Failed"})
 _BLOCKING_EFFECTS: Final = frozenset({"NoSchedule", "NoExecute"})
-_PRESSURE_CONDITIONS: Final = (
-    "MemoryPressure",
-    "DiskPressure",
-    "PIDPressure",
-    "NetworkUnavailable",
-)
+_TAINT_EFFECTS: Final = _BLOCKING_EFFECTS | {"PreferNoSchedule"}
+#: The three pressure conditions. A node that reports one of them as anything
+#: other than False, or that does not report it, does not hold the node rule.
+_PRESSURE_CONDITIONS: Final = ("MemoryPressure", "DiskPressure", "PIDPressure")
+#: A condition that a node need not report, and that must be False when it does.
+_NETWORK_CONDITION: Final = "NetworkUnavailable"
+_RESOURCES: Final = frozenset({"cpu", "memory"})
+_APPLICATION_MEMBERS: Final[Mapping[str, frozenset[str]]] = {
+    "spec": frozenset({"project", "source", "destination", "syncPolicy"}),
+    "spec.source": frozenset({"repoURL", "targetRevision", "path", "helm"}),
+    "spec.source.helm": frozenset({"releaseName", "valueFiles", "valuesObject"}),
+}
 _PLACEMENT_MEMBERS: Final = ("nodeSelector", "tolerations", "affinity")
 _REVISION: Final = re.compile(r"[0-9a-f]{40}")
 _NAME: Final = re.compile(r"[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?")
@@ -220,11 +233,20 @@ RULES: Final[tuple[Rule, ...]] = (
         "The collection holds each of the four cluster reads, and each is a list.",
     ),
     Rule(
+        "reads-well-formed",
+        AMBIGUOUS,
+        True,
+        "Each node and each unfinished pod has the kind, the name, and the member "
+        "types that this tool reads, each placed pod names a node of the read, and "
+        "the pod list is not empty.",
+    ),
+    Rule(
         "quantities-readable",
         AMBIGUOUS,
         True,
-        "Each resource quantity of each node and of each unfinished pod is a "
-        "Kubernetes quantity that is not negative.",
+        "Each processor, memory, pod, and ephemeral-storage figure of each node, "
+        "each request of each counted pod, and each size of the model cache claim "
+        "is a Kubernetes quantity that is not negative.",
     ),
     Rule(
         "one-schedulable-node",
@@ -236,7 +258,9 @@ RULES: Final[tuple[Rule, ...]] = (
         "node-ready-without-pressure",
         AMBIGUOUS,
         True,
-        "The schedulable node reports Ready, and it reports no pressure condition.",
+        "The schedulable node reports Ready as True, it reports each of the memory, "
+        "disk, and process pressure conditions as False, and it does not report "
+        "the network as unavailable.",
     ),
     Rule(
         "node-states-no-blocking-taint",
@@ -288,7 +312,8 @@ RULES: Final[tuple[Rule, ...]] = (
         "model-cache-claim-holds-artifact",
         INSUFFICIENT,
         False,
-        "The model cache claim has at least the byte count of the model artifact.",
+        "The model cache claim is not Lost, and the smaller of its capacity and its "
+        "request is at least the byte count of the model artifact.",
     ),
 )
 
@@ -300,7 +325,15 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "The gate compares stated requests and stated limits with the figures that the "
     "node allocates.",
     "A record does not establish the use of a pod that states no request. The gate "
-    "counts that request as zero. The record states how many pods state none.",
+    "counts that request as zero. The record states how many counted pods have a "
+    "container or an init container that states none.",
+    "A record does not establish that the footprint is the release that a "
+    "controller applies. The footprint is read from the files of one working tree. "
+    "The record does not compare that tree with a commit, or with the revision "
+    "that the Application names.",
+    "A record does not establish capacity for a pod that is terminating. The "
+    "footprint counts the replicas and the surge pods. During a rollout, a pod "
+    "that is terminating can hold its request beside the pod that replaces it.",
     "A record does not establish that the node's disk holds the images, the volume "
     "of the model cache claim, or an emptyDir volume.",
     "A record does not establish capacity at another time. It is one reading, and "
@@ -396,7 +429,8 @@ def pod_request(spec: Mapping[str, Any], resource: str) -> tuple[Fraction, bool]
     pod's overhead is added.
 
     The second member is False when the pod states no request for itself and one
-    of its containers states none. That container is counted as zero.
+    of its containers or init containers states none. That container is counted
+    as zero.
 
     Raises:
         QuantityRefused: a stated request is not a quantity.
@@ -408,7 +442,8 @@ def pod_request(spec: Mapping[str, Any], resource: str) -> tuple[Fraction, bool]
         return parse_quantity(own) + overhead, True
 
     every = all(
-        _stated(container, "requests", resource) is not None for container in containers
+        _stated(container, "requests", resource) is not None
+        for container in (*containers, *_sequence(spec.get("initContainers")))
     )
     running = sum(
         (
@@ -504,6 +539,18 @@ def _whole(document: object, *path: str) -> int:
 def _container(values: object, name: str, *path: str) -> dict[str, Any]:
     resources = _member(values, *path)
     stated: dict[str, Any] = {"name": name, "source": ".".join(path)}
+    for kind in ("requests", "limits"):
+        block = _mapping(resources).get(kind)
+        if block is not None and not isinstance(block, Mapping):
+            raise FootprintRefused(
+                f"the value {'.'.join(path)}.{kind} is not a mapping"
+            )
+        other = sorted(set(_mapping(block)) - _RESOURCES)
+        if other:
+            raise FootprintRefused(
+                f"the value {'.'.join(path)}.{kind} states a resource that this gate "
+                f"does not compare: {', '.join(other)}"
+            )
     for kind, members in (("requests", ("cpu", "memory")), ("limits", ("memory",))):
         stated[kind] = {}
         for resource in members:
@@ -637,8 +684,28 @@ def declared_footprint(
     except (UnicodeError, yaml.YAMLError) as error:
         raise FootprintRefused(f"a committed file is not YAML: {error}") from error
 
+    if _mapping(application).get("kind") != "Application":
+        raise FootprintRefused(f"{application_path} is not an Application")
     source = _member(application, "spec", "source")
     helm = _member(source, "helm")
+    for label, block in (
+        ("spec", _member(application, "spec")),
+        ("spec.source", source),
+        ("spec.source.helm", helm),
+    ):
+        if not isinstance(block, Mapping):
+            raise FootprintRefused(f"{label} of {application_path} is not a mapping")
+        other = sorted(set(block) - _APPLICATION_MEMBERS[label])
+        if other:
+            raise FootprintRefused(
+                f"{application_path} states a member of {label} that this tool does "
+                f"not read: {', '.join(other)}"
+            )
+    overlay = helm.get("valuesObject", {})
+    if not isinstance(overlay, Mapping):
+        raise FootprintRefused(
+            f"spec.source.helm.valuesObject of {application_path} is not a mapping"
+        )
     chart_directory = _repository_path(
         _member(source, "path"), f"the chart path of {application_path}"
     )
@@ -669,12 +736,7 @@ def declared_footprint(
         raise FootprintRefused(f"a committed file was not read: {error}") from error
     except (UnicodeError, yaml.YAMLError) as error:
         raise FootprintRefused(f"a committed file is not YAML: {error}") from error
-    if "values" in helm or "parameters" in helm:
-        raise FootprintRefused(
-            f"{application_path} states values in a member that this tool does not "
-            "merge"
-        )
-    values = _merged(_merged(defaults, generated), _mapping(helm.get("valuesObject")))
+    values = _merged(_merged(defaults, generated), overlay)
     if _member(values, "profile") != "real":
         raise FootprintRefused("the release is not the real profile")
 
@@ -792,6 +854,8 @@ def declared_footprint(
                     "application": {
                         "path": application_path,
                         "sha256": _sha256(_lf(application_bytes)),
+                        "repoURL": str(_member(source, "repoURL")),
+                        "targetRevision": str(_member(source, "targetRevision")),
                     },
                 },
                 "topology": {
@@ -956,6 +1020,142 @@ def _stored_footprint(directory: Path) -> dict[str, Any]:
     return stored
 
 
+def _typed(value: object, kind: type, what: str, faults: list[str]) -> bool:
+    """True when a member is absent or has the type. Another type is a fault."""
+    if value is None or isinstance(value, kind):
+        return True
+    faults.append(f"{what} is not of the type that this tool reads")
+    return False
+
+
+def _name(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _node_shape(item: Mapping[str, Any], label: str, faults: list[str]) -> None:
+    if item.get("kind") != "Node":
+        faults.append(f"{label} is not a Node")
+    spec = item.get("spec")
+    status = item.get("status")
+    _typed(spec, Mapping, f"{label}: spec", faults)
+    if not isinstance(status, Mapping):
+        faults.append(f"{label}: status is not a mapping")
+    spec, status = _mapping(spec), _mapping(status)
+    _typed(spec.get("unschedulable"), bool, f"{label}: spec.unschedulable", faults)
+    if _typed(spec.get("taints"), list, f"{label}: spec.taints", faults):
+        for taint in _sequence(spec.get("taints")):
+            if (
+                not isinstance(taint, Mapping)
+                or taint.get("effect") not in _TAINT_EFFECTS
+            ):
+                faults.append(f"{label}: a taint states no effect that this tool reads")
+    for member in ("capacity", "allocatable"):
+        _typed(status.get(member), Mapping, f"{label}: status.{member}", faults)
+    conditions = status.get("conditions")
+    if _typed(conditions, list, f"{label}: status.conditions", faults):
+        seen: set[object] = set()
+        for condition in _sequence(conditions):
+            kind = _mapping(condition).get("type")
+            if (
+                not isinstance(condition, Mapping)
+                or _name(kind) is None
+                or _name(condition.get("status")) is None
+            ):
+                faults.append(f"{label}: a condition states no type or no status")
+            elif kind in seen:
+                faults.append(f"{label}: the condition {kind} is stated two times")
+            seen.add(kind)
+
+
+def _containers_shape(spec: Mapping[str, Any], label: str, faults: list[str]) -> None:
+    containers = spec.get("containers")
+    if not isinstance(containers, list) or not containers:
+        faults.append(f"{label}: spec.containers is not a list of containers")
+    _typed(spec.get("initContainers"), list, f"{label}: spec.initContainers", faults)
+    for member in ("overhead", "resources"):
+        _typed(spec.get(member), Mapping, f"{label}: spec.{member}", faults)
+    _typed(
+        _mapping(spec.get("resources")).get("requests"),
+        Mapping,
+        f"{label}: spec.resources.requests",
+        faults,
+    )
+    for container in (
+        *_sequence(containers),
+        *_sequence(spec.get("initContainers")),
+    ):
+        if not isinstance(container, Mapping):
+            faults.append(f"{label}: a container is not a mapping")
+            continue
+        resources = container.get("resources")
+        _typed(resources, Mapping, f"{label}: a container's resources", faults)
+        _typed(
+            _mapping(resources).get("requests"),
+            Mapping,
+            f"{label}: a container's requests",
+            faults,
+        )
+        _typed(
+            container.get("restartPolicy"),
+            str,
+            f"{label}: a container's restartPolicy",
+            faults,
+        )
+
+
+def _shape_faults(
+    nodes: Sequence[Mapping[str, Any]], pods: Sequence[Mapping[str, Any]]
+) -> list[str]:
+    """Each node and each unfinished pod that does not have the form this tool reads.
+
+    A member of another type is not read as absent. A pod list without a pod is
+    not read as a cluster that holds nothing: a cluster with a Ready node holds
+    the pods of its own system.
+    """
+    faults: list[str] = []
+    names: list[str] = []
+    for index, node in enumerate(nodes):
+        name = _name(_mapping(node.get("metadata")).get("name"))
+        label = f"node {name}" if name else f"node at index {index}"
+        if name is None:
+            faults.append(f"{label} states no name")
+        elif name in names:
+            faults.append(f"{label} is listed two times")
+        else:
+            names.append(name)
+        _node_shape(node, label, faults)
+    if not pods:
+        faults.append("the pod list holds no pod")
+    for index, pod in enumerate(pods):
+        metadata = _mapping(pod.get("metadata"))
+        name = _name(metadata.get("name"))
+        namespace = _name(metadata.get("namespace"))
+        label = (
+            f"pod {namespace}/{name}" if name and namespace else f"pod at index {index}"
+        )
+        if name is None or namespace is None:
+            faults.append(f"{label} states no name or no namespace")
+        if pod.get("kind") != "Pod":
+            faults.append(f"{label} is not a Pod")
+        status = pod.get("status")
+        if not isinstance(status, Mapping):
+            faults.append(f"{label}: status is not a mapping")
+            continue
+        _typed(status.get("phase"), str, f"{label}: status.phase", faults)
+        if status.get("phase") in _FINISHED:
+            continue
+        spec = pod.get("spec")
+        if not isinstance(spec, Mapping):
+            faults.append(f"{label}: spec is not a mapping")
+            continue
+        placed = spec.get("nodeName")
+        if placed is not None and placed not in names:
+            faults.append(f"{label}: nodeName names no node of the read")
+        _typed(metadata.get("labels"), Mapping, f"{label}: metadata.labels", faults)
+        _containers_shape(spec, label, faults)
+    return faults
+
+
 def _condition(node: Mapping[str, Any], name: str) -> str | None:
     for condition in _sequence(_mapping(node.get("status")).get("conditions")):
         if _mapping(condition).get("type") == name:
@@ -993,9 +1193,12 @@ def _node(node: Mapping[str, Any], faults: list[str]) -> dict[str, Any]:
         "schedulable": _mapping(node.get("spec")).get("unschedulable") is not True,
         "ready": _condition(node, "Ready"),
         "pressure": sorted(
-            condition
-            for condition in _PRESSURE_CONDITIONS
-            if _condition(node, condition) not in (None, "False")
+            f"{condition}={_condition(node, condition)}"
+            for condition in (*_PRESSURE_CONDITIONS, _NETWORK_CONDITION)
+            if _condition(node, condition) != "False"
+            and not (
+                condition == _NETWORK_CONDITION and _condition(node, condition) is None
+            )
         ),
         "blockingTaints": sorted(
             f"{_mapping(taint).get('key')}:{_mapping(taint).get('effect')}"
@@ -1014,7 +1217,11 @@ def _reservations(
     footprint: Mapping[str, Any],
     faults: list[str],
 ) -> dict[str, Any]:
-    """What the unfinished pods request on one node, by namespace."""
+    """What the unfinished pods request on one node, by namespace.
+
+    Without exactly one schedulable node there is no node to count against. The
+    counts are then null, and the pods of the release are still named.
+    """
     by_namespace: dict[str, dict[str, int]] = {}
     counted = finished = elsewhere = unscheduled = no_cpu = no_memory = 0
     release_pods: list[str] = []
@@ -1053,7 +1260,22 @@ def _reservations(
         row["pods"] += 1
         row["cpuRequestMillis"] += _up(cpu * 1000)
         row["memoryRequestBytes"] += _up(memory)
+    if node_name is None:
+        return {
+            "node": None,
+            "unfinishedPods": None,
+            "finishedPodsNotCounted": finished,
+            "podsOnAnotherNodeNotCounted": None,
+            "unscheduledPodsCounted": None,
+            "podsWithAContainerThatStatesNoCpuRequest": None,
+            "podsWithAContainerThatStatesNoMemoryRequest": None,
+            "cpuRequestMillis": None,
+            "memoryRequestBytes": None,
+            "byNamespace": [],
+            "releasePods": sorted(release_pods),
+        }
     return {
+        "node": node_name,
         "unfinishedPods": counted,
         "finishedPodsNotCounted": finished,
         "podsOnAnotherNodeNotCounted": elsewhere,
@@ -1161,6 +1383,7 @@ def _evaluate(
     *,
     footprint: Mapping[str, Any],
     absent: Sequence[str],
+    shape: Sequence[str] | None,
     faults: Sequence[str],
     nodes: Sequence[Mapping[str, Any]] | None,
     reservations: Mapping[str, Any] | None,
@@ -1185,6 +1408,13 @@ def _evaluate(
             else "each of the four reads is a list"
         ),
     )
+
+    if shape is None:
+        add("reads-well-formed", NOT_OBSERVED, "the nodes or the pods were not read")
+    elif shape:
+        add("reads-well-formed", NOT_HELD, "; ".join(shape))
+    else:
+        add("reads-well-formed", HELD, "each node and each unfinished pod was read")
 
     readable = nodes is not None and reservations is not None
     if not readable:
@@ -1220,8 +1450,8 @@ def _evaluate(
             add(
                 rule_id,
                 HELD if held else NOT_HELD,
-                f"Ready is {node['ready']}; pressure conditions that are not False: "
-                f"{', '.join(node['pressure']) or 'none'}",
+                f"Ready is {node['ready']}; conditions that are not reported as "
+                f"False: {', '.join(node['pressure']) or 'none'}",
             )
         else:
             add(
@@ -1274,6 +1504,8 @@ def _evaluate(
     usable = (
         node is not None
         and reservations is not None
+        and shape is not None
+        and not shape
         and not faults
         and all(
             node["allocatable"][name] is not None
@@ -1302,8 +1534,8 @@ def _evaluate(
             add(
                 rule_id,
                 NOT_OBSERVED,
-                "this rule needs one schedulable node whose allocatable figures are "
-                "stated, and readable quantities",
+                "this rule needs well-formed reads, one schedulable node whose "
+                "allocatable figures are stated, and readable quantities",
             )
             continue
         measure = _fit(
@@ -1333,14 +1565,27 @@ def _evaluate(
             "model-cache-claim-holds-artifact",
             NOT_OBSERVED,
             f"the namespace holds no claim named "
-            f"{footprint['model']['cacheClaimName']}",
+            f"{footprint['model']['cacheClaimName']}. Each serving runtime pod "
+            "mounts that claim, and the release does not create it.",
         )
     else:
-        size = claim["capacityStorageBytes"]
-        basis = "capacity"
-        if size is None:
-            size, basis = claim["requestedStorageBytes"], "request"
-        if size is None:
+        sizes = {
+            basis: claim[member]
+            for basis, member in (
+                ("capacity", "capacityStorageBytes"),
+                ("request", "requestedStorageBytes"),
+            )
+            if claim[member] is not None
+        }
+        basis = min(sizes, key=lambda name: sizes[name]) if sizes else ""
+        size = sizes.get(basis)
+        if claim["phase"] == "Lost":
+            add(
+                "model-cache-claim-holds-artifact",
+                NOT_HELD,
+                "the claim reports the phase Lost",
+            )
+        elif size is None:
             add(
                 "model-cache-claim-holds-artifact",
                 NOT_OBSERVED,
@@ -1427,23 +1672,28 @@ def build_record(directory: Path) -> dict[str, Any]:
         )
     )
     limits = reads["namespaceLimits"]
-    if limits is not None:
-        strangers = sorted(
-            {
-                str(_mapping(item.get("metadata")).get("namespace"))
-                for item in [*limits, *(reads["claims"] or [])]
-            }
-            - {release["namespace"]}
+    strangers = sorted(
+        {
+            str(_mapping(item.get("metadata")).get("namespace"))
+            for item in [*(limits or []), *(reads["claims"] or [])]
+        }
+        - {release["namespace"]}
+    )
+    if strangers:
+        raise CollectionRefused(
+            "a namespaced read holds an object of another namespace: "
+            + ", ".join(strangers)
         )
-        if strangers:
-            raise CollectionRefused(
-                "a namespaced read holds an object of another namespace: "
-                + ", ".join(strangers)
-            )
+    shape = (
+        None
+        if reads["nodes"] is None or reads["pods"] is None
+        else _shape_faults(reads["nodes"], reads["pods"])
+    )
     claim = _claim(reads["claims"], footprint["model"]["cacheClaimName"], faults)
     findings = _evaluate(
         footprint=footprint,
         absent=absent,
+        shape=shape,
         faults=faults,
         nodes=nodes,
         reservations=reservations,

@@ -4,13 +4,17 @@ Status: **the gate is implemented, and synthetic cases show an acceptance and ea
 
 The desired-state release declares two platform API replicas and two serving
 runtime replicas. This page describes the gate that decides, before anything is
-installed, whether one cluster can hold that release: what it reads, what it
-requires, each rule, each unit, and what a record does not establish.
+installed, whether the stated requests and limits of that release fit in what
+one node of a cluster allocates: what it reads, what it requires, each rule,
+each unit, and what a record does not establish.
 
 The gate has two parts.
 
 1. **`scripts/environment/capacity-preflight.sh` reads the cluster and writes one
-   directory, the collection.** It changes nothing in the cluster.
+   directory, the collection.** It changes nothing in the cluster or in the
+   container engine. It writes the collection under `.artifacts/`. Its target
+   verification writes the target's kubeconfig under `.kube/`, as it does for
+   every platform workflow.
 2. **`tools/capacity_preflight` reads the collection and prints one record.** It
    reads files and contacts no cluster. The result of a record is `ACCEPTED` or
    `REFUSED`.
@@ -21,13 +25,33 @@ until the cluster or the committed release changes.
 
 ## What the gate requires: the declared footprint
 
-The footprint is read from committed files, and not from the cluster.
+The footprint is read from files of the working tree, and not from the cluster.
 `python -m tools.capacity_preflight --footprint` prints it. The tool reads
 [the Application](argocd-application.md) of the desired-state release, which
 names the chart and one values file. The values are the chart's defaults, then
 the release's [generated values](git-desired-state.md), then the values that the
 Application states itself. A later document replaces a member of an earlier one,
-as Helm merges values documents.
+as Helm merges values documents, and a null removes a member.
+[ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
+states that order for the Application.
+
+**The tool reads the files as the tree holds them. It reads no commit.** The
+script records the commit that `HEAD` names, and it refuses a working tree that
+differs from that commit. Neither compares that commit with the revision that
+the Application names, which is a branch of a remote repository. The footprint
+states that revision and the repository address as the Application writes them.
+
+**The Application is read against a list of members.** The tool reads the
+project, the source, the destination, and the sync policy of `spec`; the
+repository address, the revision, the path, and the Helm block of the source;
+and the release name, the values file, and the values object of the Helm block.
+It gives no footprint for an Application that states another member, such as a
+second source, a parameter, or inline values. The procedure that applies the
+Application adds the API image digest as one Helm parameter. That parameter is
+not in the committed file, and the tool does not read the applied object.
+
+**The footprint states processor and memory only.** The tool gives no footprint
+for a container that requests or limits another resource. No rule compares one.
 
 The tool restates which pods the chart renders. A test renders the chart with
 the same values and compares each pod template of the render with the footprint:
@@ -52,14 +76,14 @@ container, `verify-model`, which is smaller than the runtime container.
 
 ### Rollout headroom
 
-A rollout creates pods beyond the replica count. The footprint states them as
-surge pods.
+The footprint states the pods that each Deployment's rollout bounds permit
+beyond its replica count, as surge pods. No rollout of this release was run
+under these bounds, so none of this was observed.
 
-- **The platform API surges by one pod.** Its strategy is 0 unavailable and 1
-  surge, so a rollout holds three API pods for a time.
-- **The serving runtime surges by no pod.** Its strategy is 1 unavailable and 0
-  surge. A rollout removes one runtime pod before it creates the next, so the
-  gate requires no third runtime and no third copy of the model in memory.
+- **The platform API surges by one pod.** Its strategy states 0 unavailable and
+  1 surge.
+- **The serving runtime surges by no pod.** Its strategy states 1 unavailable
+  and 0 surge, so the footprint holds no third runtime pod.
   [The chart's README](../../charts/inferops-llm/README.md) describes that
   strategy.
 - **The telemetry collector surges by one pod.** The chart states no strategy
@@ -67,16 +91,26 @@ surge pods.
   a Deployment as 25 percent of its replicas, rounded up, which is one pod for
   one replica.
 
+**The footprint does not count a pod that is terminating.** The Kubernetes
+documentation of the Deployment states that a terminating pod is not counted
+against the rollout bounds. The chart gives each pod a termination grace period
+of 30 seconds. So during a rollout a runtime pod that is terminating can hold
+its request beside the pod that replaces it, and the gate requires no room for
+that. A replacement that does not fit then waits until the old pod is gone.
+This was not observed.
+
 ### Transient pods
 
 The model acquisition hook is one Job pod. The chart's test hook is one pod. The
 gate counts both beside the Deployments and the surge pods.
 
-**This sum is an upper bound, and it was not observed.** The acquisition hook
-runs before an install and before an upgrade. Whether a hook pod, a surge pod,
-and a test pod exist at one time was not observed, so the gate requires room for
-all of them. On the one provider where the Application was applied, no pod of
-the test hook was listed ([the Application page](argocd-application.md)).
+**The gate requires room for all of them at one time. That was not observed.**
+The chart annotates the acquisition Job as a hook that runs before an install
+and before an upgrade. Whether a hook pod, a surge pod, and a test pod exist at
+one time was not observed. On the one provider where the Application was
+applied, Argo CD ran the hook before the sync, and no pod of the test hook was
+listed ([the Application page](argocd-application.md)). With the terminating
+pods above, the sum is not an upper bound on what a rollout can hold.
 
 ### The reserve and the requirement
 
@@ -93,8 +127,9 @@ enough was not measured.
 | The reserve | 0 | 500 | 536,870,912 | 536,870,912 |
 | **Required** | **9** | **3,110** | **5,553,258,496** | **9,865,003,008** |
 
-The gate holds two of these figures and the pod count to the node. It holds the
-**processor requests**, because the scheduler places a pod by its requests. It
+The gate holds two of these figures and the pod count to the node. The reserve
+applies to the processor and to memory, and not to the pod count. The gate
+holds the **processor requests**, which is the V1 preflight's rule. It
 holds the **memory limits**, and not the memory requests, because a serving
 runtime loads a model of 1,834,426,016 bytes and can use its whole limit.
 The tool gives no footprint for a pod whose memory limit is below its memory
@@ -104,14 +139,16 @@ rule reads them.
 ## What the gate reads: the collection
 
 The script verifies the selected target first, as every platform workflow does
-([the provider contract](local-cluster-provider-contract.md)). It then writes the
-footprint, and then it makes the reads. Each read is one `kubectl get` or
-`kubectl version`, or one `docker info`.
+([the provider contract](local-cluster-provider-contract.md)). That verification
+reads the cluster and the engine. The script then refuses a working tree that
+differs from the commit `HEAD` names, writes the footprint, and makes its own
+reads. Each of those is one `kubectl get` or `kubectl version`, or one
+`docker info`.
 
 | File | What it holds |
 |---|---|
 | `footprint.json` | What `python -m tools.capacity_preflight --footprint` printed before the script collected a read. Schema `inferops.io/capacity-preflight-footprint/v1alpha1` |
-| `run.json` | The provider, the context, the release key, the release namespace, the commit of the working tree, and the time. Schema `inferops.io/capacity-preflight-collection/v1alpha1` |
+| `run.json` | The provider, the context, the release key, the release namespace, the commit that `HEAD` named, and the time. Schema `inferops.io/capacity-preflight-collection/v1alpha1` |
 | `nodes.json` | Every node |
 | `pods.json` | Every pod of every namespace |
 | `namespace-limits.json` | Every ResourceQuota and every LimitRange of the release namespace |
@@ -123,6 +160,13 @@ footprint, and then it makes the reads. Each read is one `kubectl get` or
 **A read that does not answer is not an empty result.** The script writes no file
 for it. The tool reads an absent file, a file that is not JSON, and a file that
 is not a list as a read that was not made, and the record is `REFUSED`.
+
+**A document of another form is not read as absent.** A node or an unfinished pod
+whose kind, name, or member has another type than the tool reads refuses the
+cluster: a container list that is not a list, a taint that states no known
+effect, a pod that names a node the read does not hold. A pod list without a
+pod refuses too. A cluster with a Ready node holds the pods of its own system,
+so an empty list is not read as a cluster that holds nothing.
 
 The script writes into a new directory under
 `.artifacts/capacity-preflight/collections/`, and it refuses a name that exists.
@@ -147,8 +191,8 @@ digit that is not ASCII are refused.
 
 The gate adds figures for exactly one schedulable node. The figures are the
 node's `allocatable` processor, memory, and pod count. The record also states
-the node's `capacity` and its allocatable ephemeral storage, and no rule reads
-them.
+the node's `capacity` and its allocatable ephemeral storage. No sufficiency rule
+compares them. One that is not a readable quantity fails `quantities-readable`.
 
 **More than one schedulable node is refused as ambiguous.** The gate does not
 decide where a pod is placed among nodes. The model cache claim is
@@ -161,18 +205,22 @@ both runtime pods fit on one of them.
 A reservation is the request of a pod that the node already holds. The gate
 counts each pod that is not `Succeeded` or `Failed`, and that the one
 schedulable node holds or that no node holds yet. It does not count a pod on
-another node.
+another node. A pod that is terminating is counted until its phase is
+`Succeeded` or `Failed`. Without exactly one schedulable node there is no node
+to count against, and the record states no count.
 
 The request of one pod follows the arithmetic that the Kubernetes documentation
 gives. A request that the pod states for itself is its request. Without one, the
 request is the larger of two figures: the sum over the containers and the
 restartable init containers, and the largest init container beside the
 restartable init containers that start before it. The pod's overhead is added.
+A request that a pod states for itself is a feature that a cluster can have
+disabled. The tool reads the member when a pod states it.
 
 **A container that states no request is counted as zero.** The sum is a sum of
 stated requests, and such a container adds nothing to it. Its use is not
-measured. The record states how many counted pods have such a container, for the
-processor and for memory. On 2026-10-08, on
+measured. The record states how many counted pods have such a container or
+init container, for the processor and for memory. On 2026-10-08, on
 the provider where the Application was applied, the pods of the Argo CD
 installation stated no request ([Git desired state](git-desired-state.md)). The
 gate counts such an installation as zero.
@@ -194,13 +242,13 @@ does not read the memory limits of pods outside the footprint.
 
 ## The rules
 
-12 rules. 11 are required. Each rule has one of three states.
+13 rules. 12 are required. Each rule has one of three states.
 
 | State | Meaning |
 |---|---|
 | `held` | The reads show the statement |
 | `not-held` | One read contradicts the statement |
-| `not-observed` | A read that the rule needs was not made, or an earlier rule left the rule without one node to compare |
+| `not-observed` | The rule could not be decided. A read that it needs was not made; or, for a sufficiency rule, a document has another form, a quantity is not readable, an allocatable figure is absent, or there is not exactly one schedulable node; or, for the claim rule, the claim is absent or states no size |
 
 | Result | When |
 |---|---|
@@ -216,9 +264,10 @@ the first one only.**
 | Rule | Category | Statement |
 |---|---|---|
 | `cluster-reads-complete` | ambiguous | The collection holds each of the four cluster reads, and each is a list. |
-| `quantities-readable` | ambiguous | Each resource quantity of each node and of each unfinished pod is a Kubernetes quantity that is not negative. |
+| `reads-well-formed` | ambiguous | Each node and each unfinished pod has the kind, the name, and the member types that this tool reads, each placed pod names a node of the read, and the pod list is not empty. |
+| `quantities-readable` | ambiguous | Each processor, memory, pod, and ephemeral-storage figure of each node, each request of each counted pod, and each size of the model cache claim is a Kubernetes quantity that is not negative. |
 | `one-schedulable-node` | ambiguous | The cluster has exactly one schedulable node. |
-| `node-ready-without-pressure` | ambiguous | The schedulable node reports Ready, and it reports no pressure condition. |
+| `node-ready-without-pressure` | ambiguous | The schedulable node reports Ready as True, it reports each of the memory, disk, and process pressure conditions as False, and it does not report the network as unavailable. |
 | `node-states-no-blocking-taint` | ambiguous | The schedulable node states no taint with the effect NoSchedule or NoExecute. |
 | `release-states-no-placement-constraint` | ambiguous | The footprint states no node selector, no toleration, and no affinity. |
 | `namespace-states-no-quota-or-limit-range` | ambiguous | The release namespace holds no ResourceQuota and no LimitRange. |
@@ -226,14 +275,22 @@ the first one only.**
 | `pod-count-fits` | insufficient | The pods of the footprint fit in the pod count that the node allocates, less the unfinished pods that the node holds. |
 | `cpu-requests-fit` | insufficient | The processor requests of the footprint and the reserve fit in the processor that the node allocates, less the processor that the unfinished pods request. |
 | `memory-limits-fit` | insufficient | The memory limits of the footprint and the reserve fit in the memory that the node allocates, less the memory that the unfinished pods request. |
-| `model-cache-claim-holds-artifact` (not required) | insufficient | The model cache claim has at least the byte count of the model artifact. |
+| `model-cache-claim-holds-artifact` (not required) | insufficient | The model cache claim is not Lost, and the smaller of its capacity and its request is at least the byte count of the model artifact. |
 
 The last rule is not required, because the gate can run before
 [the prerequisite layer](platform-prerequisites.md) creates the claim. An absent
-claim is `not-observed` and does not refuse. A claim that exists and is smaller
-than the artifact refuses. The rule compares the claim's capacity, or its
-request when the claim states no capacity. It does not read the disk behind the
-claim.
+claim is `not-observed` and does not refuse. **An accepted record with an absent
+claim does not say that the release can start**: each serving runtime pod mounts
+that claim, and the release does not create it. A claim that exists refuses when
+its phase is `Lost`, or when the smaller of its capacity and its request is
+below the artifact's byte count. A claim that is not bound states a request and
+no capacity. The rule does not read the disk behind the claim.
+
+The node rule reads four conditions. The node must report `Ready` as `True` and
+each of `MemoryPressure`, `DiskPressure`, and `PIDPressure` as `False`. A
+pressure condition that the node does not report is not read as `False`.
+`NetworkUnavailable` is not a pressure condition, and a node need not report it.
+When a node reports it, it must be `False`.
 
 Why three of the `ambiguous` rules refuse:
 
@@ -262,7 +319,7 @@ INFEROPS_PROVIDER=<provider> scripts/environment/capacity-preflight.sh [--into N
 |---|---|
 | 0 | The record is `ACCEPTED` |
 | 5 | The record is `REFUSED`. The directory is kept |
-| 1 | No record was written: the target was not verified, the name exists, or the tool refused the directory |
+| 1 | No record was written. The script refuses an argument it does not know, a name that is not usable or that exists, a target that is not verified, a working tree whose commit or state it cannot read, a working tree that differs from its commit, and files that give no footprint. The tool refuses a directory that is not a collection |
 
 The tool alone:
 
@@ -274,11 +331,12 @@ uv run --locked python -m tools.capacity_preflight --check
 ```
 
 `DIRECTORY` prints the record, with the same exit statuses. Before it builds a
-record, it compares the stored footprint with the footprint that the committed
-files give now, and it prints no record when they differ. So a collection that
+record, it compares the stored footprint with the footprint that the files of
+the tree give now, and it prints no record when they differ. So a collection that
 was written for fewer replicas, or for smaller requests, is not a gate for the
 declared release. `--as-collected` skips that comparison, for a collection that
-an earlier tree wrote.
+an earlier tree wrote. **With `--as-collected`, exit status 0 says only that a
+record was printed.** It does not say that the result is `ACCEPTED`.
 
 **A stored footprint is not trusted for its arithmetic.** The tool computes each
 derived figure again from the stated quantities, and it requires its own
@@ -287,13 +345,16 @@ reserve. A footprint whose figures differ is not a collection.
 ## The committed cases
 
 `tests/domain/fixtures/capacity-preflight/` holds six collections that no
-cluster produced, each with its record. Their header states the provider
-`synthetic` and a commit of forty zeros. `--check` builds each record again and
-compares it with the committed record.
+cluster produced, each with its record. The suite's own builders wrote each
+document. Their header states the provider `synthetic` and a commit of forty
+zeros. `--check` builds each record again and compares it with the committed
+record. The figures of `accepted-one-node` were chosen to be those of
+one reading of `docker-desktop` that was made while the gate was written and that is not committed: the node's allocatable figures, and nine pods that request
+950 millicores and 304,087,040 bytes.
 
 | Case | Result | What it shows |
 |---|---|---|
-| `accepted-one-node` | `ACCEPTED` | One node with room, nine pods of a control plane, and a bound claim |
+| `accepted-one-node` | `ACCEPTED` | One node with room, nine system pods, and a bound claim |
 | `refused-insufficient-memory` | `REFUSED`, `insufficient` | The same cluster with 8 GiB of allocatable memory. The memory limits do not fit |
 | `refused-insufficient-processor-and-pods` | `REFUSED`, `insufficient` | A node with 4 processors and 16 pods. Two figures are short, and the record names both |
 | `refused-ambiguous-two-nodes` | `REFUSED`, `ambiguous` | Two schedulable nodes of 64 processors and 256 GiB each |
@@ -307,8 +368,10 @@ footprint, and the suite builds its other cases from the footprint of the tree.
 ## What this gate takes from the V1 preflight, and where it differs
 
 The V1 [multi-replica certification](../serving/kubernetes-multi-replica-certification.md#the-capacity-gate-and-why-it-is-a-gate)
-has a capacity preflight. That preflight is not changed, and its record of
-2026-09-12 is not changed.
+has a capacity preflight. That preflight is not changed, and the record of its
+refusal on 2026-09-12
+([the paved road on Docker Desktop](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md))
+is not changed.
 
 | | The V1 preflight | This gate |
 |---|---|---|
@@ -319,14 +382,16 @@ has a capacity preflight. That preflight is not changed, and its record of
 | Nodes | The sum over every schedulable node | Exactly one schedulable node. More is refused |
 | A pod on another node | Counted | Not counted |
 | A restartable init container, and pod overhead | Not read | Read |
-| A quantity that is not readable | The program fails | The record is `REFUSED`, and it names the quantity |
+| A quantity that is not readable | A blank is read as zero. For another text the program fails | The record is `REFUSED`, and it names the quantity |
+| A document of another form | Not checked | The record is `REFUSED` |
 | The container engine | A minimum processor count and a minimum memory | Stated in the record. No rule reads it |
 | The pod count | Not read | Held to the node |
 | Refusal exit status | 5 | 5 |
 
-Each requirement of this gate is larger than the V1 figure for the same
-Deployments: 300 millicores more, and 1,207,959,552 bytes (1,152 MiB) more of
-memory limits. A test holds both differences.
+Each requirement of this gate is larger than the V1 figure: 300 millicores
+more, and 1,207,959,552 bytes (1,152 MiB) more of memory limits. The V1 figure
+is the same three Deployments and one pod with the resources of the chart's
+test pod. A test holds both differences.
 
 **The engine minimum is the one V1 check that this gate does not make.** The V1
 preflight refuses an engine with fewer than 4 processors, or with less than
@@ -344,7 +409,9 @@ same four sums. A test runs the program that the V1 script holds.
 
 - A record does not establish that a pod of the release is scheduled, starts, becomes Ready, or answers a request.
 - A record does not establish the memory or the processor time that a pod uses. The gate compares stated requests and stated limits with the figures that the node allocates.
-- A record does not establish the use of a pod that states no request. The gate counts that request as zero. The record states how many pods state none.
+- A record does not establish the use of a pod that states no request. The gate counts that request as zero. The record states how many counted pods have a container or an init container that states none.
+- A record does not establish that the footprint is the release that a controller applies. The footprint is read from the files of one working tree. The record does not compare that tree with a commit, or with the revision that the Application names.
+- A record does not establish capacity for a pod that is terminating. The footprint counts the replicas and the surge pods. During a rollout, a pod that is terminating can hold its request beside the pod that replaces it.
 - A record does not establish that the node's disk holds the images, the volume of the model cache claim, or an emptyDir volume.
 - A record does not establish capacity at another time. It is one reading, and the cluster can change after it.
 - A record does not establish capacity for a pod that the footprint does not state. A load generator and an experiment driver are not in the footprint.
@@ -352,18 +419,26 @@ same four sums. A test runs the program that the V1 script holds.
 - A record does not establish throughput, latency, an overload threshold, or availability.
 - A record does not establish an evidence level, and it registers no claim.
 
-Four more limits are of the gate, and not of one record.
+Seven more limits are of the gate, and not of one record.
 
 - **The gate is not a model of inference capacity.** It adds stated requests and
   limits. It states nothing about how many requests a replica serves.
 - **The reserve is a fixed figure.** It is not derived from a measurement of
   this host or of this release.
 - **The record of a collection is built from the footprint that the collection
-  stores.** The command compares that footprint with the committed files. The
+  stores.** The command compares that footprint with the files of the tree. The
   check of the committed collections does not, because a later tree can declare
   other figures.
 - **The script is not the first reader of the cluster.** The target verification
   reads the cluster before the footprint is written.
+- **No procedure of this repository calls the gate.** An operator runs it. An
+  install or an apply that follows a refusal is not prevented by a tool.
+- **The check of a committed collection does not verify where it came from.** It
+  builds the record again from the committed files. It does not compare the
+  digests that the footprint states with the files of the commit that the
+  header names.
+- **A request below one millicore is rounded up for the pod, and not for each
+  container.**
 
 ## Where the gate is checked
 

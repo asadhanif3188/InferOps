@@ -505,10 +505,11 @@ edit a committed collection. If the tool changes, build the record again and say
 [The observation page](docs/environment/runtime-model-cache-observation.md) states the
 rules and what a record does not establish.
 
-**Whether a cluster can hold the two-replica release is decided before an install, by a
-script that only reads and a tool that reads files.** The script writes a collection
-directory under `.artifacts/`, and the tool prints one record whose result is `ACCEPTED`
-or `REFUSED`:
+**Whether the stated requests and limits of the two-replica release fit on one node is
+decided before an install, by a script that changes nothing in the cluster and a tool
+that reads files.** The script writes a collection directory under `.artifacts/`, and the
+tool prints one record whose result is `ACCEPTED` or `REFUSED`. The script refuses a
+working tree that differs from its commit, because the requirement is read from files:
 
 ```sh
 INFEROPS_PROVIDER=<provider> scripts/environment/capacity-preflight.sh

@@ -2,16 +2,22 @@
 # Reads whether the selected cluster can hold the two-replica release, before
 # anything is installed. It is the collector of the V2 capacity gate.
 #
-# Read-only: it changes nothing in the cluster and nothing in the container
-# engine. It reads the nodes, every pod, the quota and limit-range objects and
-# the claims of the release namespace, the server version, and the engine's
-# processor count and memory. It writes what each read returned into a new
-# directory under .artifacts/, and it writes the gate record beside them.
+# It changes nothing in the cluster and nothing in the container engine. It
+# reads the nodes, every pod, the quota and limit-range objects and the claims
+# of the release namespace, the server version, and the engine's processor
+# count and memory. It writes what each read returned into a new directory
+# under .artifacts/, and it writes the gate record beside them. The target
+# verification writes the target's kubeconfig under .kube/, as it does for
+# every platform workflow.
 #
-# The target is verified first. The declared footprint is then written, from
-# committed files, before the first read that this script collects.
-# tools/capacity_preflight builds the record from the directory. That tool decides. This script decides nothing, and it lowers no
-# figure.
+# The target is verified first, and that verification reads the cluster. The
+# declared footprint is then written, from the files of the working tree,
+# before the first read that this script collects. The script refuses a working
+# tree that differs from the commit it names. It does not compare that commit
+# with the revision that the Application names.
+#
+# tools/capacity_preflight builds the record from the directory. That tool
+# decides. This script decides nothing, and it lowers no figure.
 #
 # A read that does not answer is not an empty result. Its file is not written,
 # and the record states the read as not made. A record with a read that was not
@@ -78,6 +84,14 @@ inferops::section "Capacity preflight on ${INFEROPS_TARGET_PROVIDER}"
 if ! executing_commit="$(cd "${INFEROPS_ROOT}" && git rev-parse --verify HEAD 2>/dev/null)"; then
   inferops::fail "could not read the commit of this working tree. The collection names the commit that wrote it."
 fi
+
+# The footprint is read from files, and the collection names a commit. So the
+# files must be that commit's. An unanswered query is not a clean tree.
+if ! tree_changes="$(cd "${INFEROPS_ROOT}" && git status --porcelain 2>/dev/null)"; then
+  inferops::fail "could not read the state of this working tree. Nothing was collected."
+fi
+[ -z "${tree_changes}" ] ||
+  inferops::fail "the working tree differs from the commit ${executing_commit}. The footprint is read from files, and the collection names that commit. Commit or remove the changes, and run this again. No read was collected."
 
 mkdir -p "${collection_dir}"
 

@@ -4,8 +4,10 @@
 directory. ``tools.capacity_preflight`` decides from that directory. This suite
 holds the script to three properties.
 
-*It changes nothing.* Each kubectl call the script holds is a ``get`` or a
-``version``, and an executed run makes no other call.
+*It changes nothing in the cluster.* Each kubectl call the script holds is a
+``get`` or a ``version``. An executed run makes no kubectl call that is not a
+known read: the target verification adds ``config`` reads and its own ``get``
+calls. The verification also writes the target's kubeconfig under ``.kube/``.
 
 *It agrees with the tool.* The file names, the schema, and the refusal exit
 status are restated in the script, and each is compared with the tool's.
@@ -112,6 +114,7 @@ def test_each_docker_call_of_the_script_reads_the_engine() -> None:
 
 
 def test_the_script_removes_only_what_it_wrote_in_its_own_directory() -> None:
+    # The first removes the one file of a read that did not answer.
     removals = [line.strip() for line in code_lines() if re.search(r"\brm\b", line)]
     assert removals == [
         'rm -f "${collection_dir}/${file}"',
@@ -139,7 +142,7 @@ def test_the_script_restates_the_tools_names_and_each_agrees() -> None:
         assert f'"${{collection_dir}}/{file}"' in SCRIPT_TEXT, file
 
 
-def test_the_footprint_is_written_before_the_first_read_of_the_cluster() -> None:
+def test_the_footprint_is_written_before_the_first_collected_read() -> None:
     footprint = SCRIPT_TEXT.index("--footprint)")
     first_read = SCRIPT_TEXT.index("\ncollect nodes.json")
     assert SCRIPT_TEXT.index("inferops::resolve_target\n") < footprint < first_read
@@ -202,6 +205,13 @@ exit 0
 
 _GIT_STUB = """#!/usr/bin/env bash
 printf 'git %s\\n' "$*" >>"${INFEROPS_STUB_LOG}"
+case "$*" in
+  *"status --porcelain"*)
+    [ "${STUB_TREE:-}" = "unanswered" ] && exit 128
+    printf '%s' "${STUB_TREE:-}"
+    exit 0
+    ;;
+esac
 [ -z "${STUB_COMMIT}" ] && exit 128
 printf '%s\\n' "${STUB_COMMIT}"
 """
@@ -239,7 +249,12 @@ def one_node(memory: str = "16Gi") -> dict:
         "status": {
             "capacity": figures,
             "allocatable": figures,
-            "conditions": [{"type": "Ready", "status": "True"}],
+            "conditions": [
+                {"type": "MemoryPressure", "status": "False"},
+                {"type": "DiskPressure", "status": "False"},
+                {"type": "PIDPressure", "status": "False"},
+                {"type": "Ready", "status": "True"},
+            ],
             "nodeInfo": {"kubeletVersion": "v1.34.3"},
         },
     }
@@ -468,8 +483,8 @@ def test_an_accepted_reading_writes_each_read_and_changes_nothing(
     assert "does not establish that a pod starts" in run.output
 
     # The footprint is asked for before the first read that the script collects.
-    # Each kubectl call before it is the target verification's, which asks for
-    # none of the four lists.
+    # Each kubectl call before it is the target verification's. That reads the
+    # cluster too, and it asks for none of the four lists as JSON.
     footprint = run.index_of("python", "--footprint")
     assert [
         call for call in run.collected(run.calls[:footprint]) if call[0] == "get"
@@ -580,6 +595,27 @@ def test_a_working_tree_without_a_commit_means_no_read(sandbox: Path) -> None:
     assert "could not read the commit" in run.output
     assert not run.collected(run.calls) or run.collected(run.calls) == [["version"]]
     assert not (sandbox / ".artifacts").exists()
+
+
+@needs_bash
+@pytest.mark.parametrize(
+    ("tree", "message"),
+    [
+        (" M charts/inferops-llm/values.yaml\n", "differs from the commit"),
+        ("?? tools/capacity_preflight/extra.py\n", "differs from the commit"),
+        ("unanswered", "could not read the state of this working tree"),
+    ],
+)
+def test_a_working_tree_that_is_not_the_named_commit_means_no_read(
+    sandbox: Path, tree: str, message: str
+) -> None:
+    """The footprint is read from files, and the collection names a commit."""
+    run = run_script(sandbox, "--into", "reading-1", tree=tree)
+    assert run.returncode == 1
+    assert message in run.output
+    assert not run.collected(run.calls) or run.collected(run.calls) == [["version"]]
+    assert not (sandbox / ".artifacts").exists()
+    assert not [call for call in run.calls if call.startswith("python -m")]
 
 
 @needs_bash

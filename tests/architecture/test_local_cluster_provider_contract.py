@@ -117,7 +117,8 @@ PLATFORM_WORKFLOWS = (
 )
 
 # The platform workflows that mutate a target, as distinct from target-detect.sh,
-# which only ever reports. Every one of these must call the provider-aware guard
+# which only ever reports, and capacity-preflight.sh, which reads a verified target
+# and changes nothing in it. Every one of these must call the provider-aware guard
 # before its first mutation, and every one of them now acts on whichever provider
 # that guard verified. V1-S3-011-PR2 removed the last exception:
 # helm-upgrade-rollback.sh used to pass the front-door check and then refuse

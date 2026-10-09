@@ -138,7 +138,7 @@ selector, affinity, or topology spread for the runtime, so it states nothing abo
 where the two pods are placed. Two runtime pods on one claim were observed once, on one
 node: [the observation](runtime-model-cache-observation.md). At the
 chart's runtime requests, two runtime pods request 2 CPU and 4Gi. The change that
-declared the count ran no capacity check, and nothing in this tree refuses a cluster that cannot schedule them.
+declared the count ran no capacity check, and until `V2-S4-003-PR1` nothing in this tree refused a cluster where they do not fit.
 One earlier record bears on it: the V1
 [multi-replica certification](../serving/kubernetes-multi-replica-certification.md)
 ran a capacity gate for two API replicas and two runtime replicas on `docker-desktop`,
@@ -147,10 +147,11 @@ uncommitted memory. That record is of one host on one day. On 2026-10-08 the sam
 preflight passed on that provider, and no pod outside `kube-system` stated a request then: the
 Argo CD installation ran and states none. Since `V2-S4-003-PR1`,
 [the capacity preflight](capacity-preflight.md) is the check for this topology: it
-derives the footprint of this release, with its rollout headroom, and refuses a
+derives the footprint of this release, with its surge pods, and refuses a
 cluster where a stated figure does not fit or where it cannot decide. It counts a
-pod that states no request as zero. It compares stated figures, and it does not
-establish that a pod starts.
+pod that states no request as zero, and it does not count a pod that is
+terminating. It compares stated figures, and it does not establish that a pod
+starts. An operator runs it. No procedure calls it.
 
 On a cluster where the Application is applied, a merge of this release changes the
 live release. The pod template of each Deployment carries the chart version label,

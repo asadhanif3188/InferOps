@@ -7,15 +7,18 @@
 ``DIRECTORY`` is what a collector wrote. The command prints one JSON record.
 **Exit status 0 says that the result is ACCEPTED.** Exit status 5 says that the
 result is REFUSED, and the record states each rule that refuses. Exit status 1
-says that no record was printed: the directory is not a collection, or its
-footprint is not the footprint that the committed files give now.
+says that no record was printed: the directory is not a collection, its
+footprint is not the footprint that the files of this tree give now, or this
+tree gives no footprint.
 
 ``--as-collected`` prints the record of a collection whose footprint an earlier
-tree declared. It does not compare the footprint with this tree.
+tree declared. It does not compare the footprint with this tree. **With this
+option, exit status 0 says only that a record was printed.** It does not say
+that the result is ACCEPTED, because the footprint was not compared.
 
-``--footprint`` prints the footprint that the committed files declare for one
-desired-state release. A collector stores it before it reads the cluster. Exit
-status is 1 when the committed files give no footprint.
+``--footprint`` prints the footprint that the files of this tree declare for one
+desired-state release. A collector stores it before the first read that it
+collects. Exit status is 1 when the files give no footprint.
 
 ``--check`` builds the record of each committed collection again, and compares
 it with the committed record. Exit status is 1 when one differs.
@@ -121,6 +124,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"REFUSED  no-footprint: {refused}", file=sys.stderr)
         return 1
     sys.stdout.write(record_text(record))
+    if arguments.as_collected:
+        return 0
     return 0 if record["result"] == ACCEPTED else REFUSED_EXIT
 
 

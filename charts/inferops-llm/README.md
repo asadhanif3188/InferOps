@@ -252,10 +252,12 @@ At the limits a reference contract declares, 6 CPU and 3Gi each, two replicas ma
 CPU and 6Gi. Each runtime pod runs `runtime.threads` inference threads, six by default,
 so two pods run twelve. These are sums of values. This change ran no capacity check for
 them, and nothing in the chart refuses an environment that cannot schedule two runtime
-pods. Since `V2-S4-003-PR1` a check outside the chart does:
+pods. Since `V2-S4-003-PR1` a check outside the chart compares stated figures:
 [the capacity preflight](../../docs/environment/capacity-preflight.md) reads one cluster
-before an install and refuses it when the requests or the memory limits of the release,
-with one surge pod of the API and none of the runtime, do not fit on its one node. One
+before an install, and refuses it when the pod count, the processor requests, or the
+memory limits of this chart's pods do not fit in what its one node allocates. It counts
+one surge pod of the API, one of the collector, none of the runtime, the hook pod, the
+test pod, and a reserve. It does not establish that a pod is scheduled. One
 earlier record bears on it: the V1
 [multi-replica certification](../../docs/serving/kubernetes-multi-replica-certification.md)
 ran a capacity gate for two API replicas and two runtime replicas on `docker-desktop`,

@@ -409,6 +409,12 @@ def test_a_container_without_a_request_is_zero_and_is_reported() -> None:
     assert gate.pod_request(spec, "memory") == (Fraction(0), False)
 
 
+def test_an_init_container_without_a_request_is_reported() -> None:
+    spec = pod("p", container("100m", "64Mi"), init=[container("50m")])["spec"]
+    assert gate.pod_request(spec, "cpu") == (Fraction(1, 10), True)
+    assert gate.pod_request(spec, "memory") == (Fraction(64 * MI), False)
+
+
 def test_an_unreadable_request_is_refused_and_is_not_zero() -> None:
     spec = pod("p", container("100 m", "64Mi"))["spec"]
     with pytest.raises(gate.QuantityRefused):
@@ -485,6 +491,14 @@ def test_the_runtime_surge_is_zero_so_no_third_runtime_is_required() -> None:
 
 def test_the_footprint_names_the_bytes_of_each_file_it_was_read_from() -> None:
     sources = gate.declared_footprint()["sources"]
+    application = yaml.safe_load(
+        (REPO_ROOT / gate.APPLICATIONS[KEY]).read_text(encoding="utf-8")
+    )
+    assert sources["application"]["repoURL"] == application["spec"]["source"]["repoURL"]
+    assert (
+        sources["application"]["targetRevision"]
+        == (application["spec"]["source"]["targetRevision"])
+    )
     for name in ("chartDefaults", "generatedValues", "application"):
         data = (REPO_ROOT / sources[name]["path"]).read_bytes().replace(b"\r\n", b"\n")
         assert sources[name]["sha256"] == "sha256:" + hashlib.sha256(data).hexdigest()
@@ -512,6 +526,15 @@ def test_each_declared_application_reads_a_declared_desired_state_release() -> N
             f"{release.directory}/values.generated.yaml"
         )
         assert sources["chartDefaults"]["path"] == release.platform_defaults
+
+
+WORKLOAD_KINDS = {
+    "CronJob",
+    "DaemonSet",
+    "ReplicaSet",
+    "ReplicationController",
+    "StatefulSet",
+}
 
 
 def _values_object() -> dict[str, Any]:
@@ -582,7 +605,11 @@ def test_each_pod_of_the_render_is_a_component_of_the_footprint(tmp_path: Path) 
                 assert strategy["type"] == "RollingUpdate"
                 surge = strategy["rollingUpdate"]["maxSurge"]
         else:
-            assert "template" not in document.get("spec", {}), kind
+            # No other kind of the render creates a pod.
+            assert kind not in WORKLOAD_KINDS, kind
+            assert not {"template", "jobTemplate"} & set(document.get("spec") or {}), (
+                kind
+            )
             continue
         for member in ("nodeSelector", "tolerations", "affinity", "overhead"):
             assert not spec.get(member), (kind, member)
@@ -781,6 +808,48 @@ def _parameters(application: dict[str, Any]) -> None:
     ]
 
 
+def _second_source(application: dict[str, Any]) -> None:
+    application["spec"]["sources"] = [dict(application["spec"]["source"])]
+
+
+def _file_parameters(application: dict[str, Any]) -> None:
+    application["spec"]["source"]["helm"]["fileParameters"] = [
+        {"name": "runtime.replicaCount", "path": "one.txt"}
+    ]
+
+
+def _ignore_missing_values_file(application: dict[str, Any]) -> None:
+    application["spec"]["source"]["helm"]["ignoreMissingValueFiles"] = True
+
+
+def _chart_from_a_registry(application: dict[str, Any]) -> None:
+    application["spec"]["source"]["chart"] = "inferops-llm"
+
+
+def _values_object_as_text(application: dict[str, Any]) -> None:
+    application["spec"]["source"]["helm"]["valuesObject"] = "runtime: {}"
+
+
+def _values_object_as_a_list(application: dict[str, Any]) -> None:
+    application["spec"]["source"]["helm"]["valuesObject"] = []
+
+
+def _not_an_application(application: dict[str, Any]) -> None:
+    application["kind"] = "ApplicationSet"
+
+
+def _accelerator_request(values: dict[str, Any]) -> None:
+    values["runtime"]["resources"]["limits"]["nvidia.com/gpu"] = 1
+
+
+def _storage_request(values: dict[str, Any]) -> None:
+    values["api"]["resources"]["requests"]["ephemeral-storage"] = "900Gi"
+
+
+def _requests_as_a_list(values: dict[str, Any]) -> None:
+    values["api"]["resources"]["requests"] = ["100m"]
+
+
 def _mock_profile(values: dict[str, Any]) -> None:
     values["profile"] = "mock"
 
@@ -812,8 +881,18 @@ def _limit_removed_by_a_null(application: dict[str, Any]) -> None:
         (APPLICATION, _values_file_outside, "not a path inside the repository"),
         (APPLICATION, _chart_outside, "not a path inside the repository"),
         (APPLICATION, _other_chart, "was not read"),
-        (APPLICATION, _inline_values, "does not merge"),
-        (APPLICATION, _parameters, "does not merge"),
+        (APPLICATION, _inline_values, "a member of spec.source.helm"),
+        (APPLICATION, _parameters, "a member of spec.source.helm"),
+        (APPLICATION, _file_parameters, "a member of spec.source.helm"),
+        (APPLICATION, _ignore_missing_values_file, "a member of spec.source.helm"),
+        (APPLICATION, _second_source, "a member of spec that this tool"),
+        (APPLICATION, _chart_from_a_registry, "a member of spec.source that"),
+        (APPLICATION, _values_object_as_text, "valuesObject"),
+        (APPLICATION, _values_object_as_a_list, "valuesObject"),
+        (APPLICATION, _not_an_application, "is not an Application"),
+        (GENERATED, _accelerator_request, "does not compare: nvidia.com/gpu"),
+        (DEFAULTS, _storage_request, "does not compare: ephemeral-storage"),
+        (DEFAULTS, _requests_as_a_list, "is not a mapping"),
         (GENERATED, _mock_profile, "not the real profile"),
         (DEFAULTS, _unreadable_request, "not readable"),
         (DEFAULTS, _limit_below_request, "is below its memory request"),
@@ -828,7 +907,13 @@ def _limit_removed_by_a_null(application: dict[str, Any]) -> None:
 def test_committed_files_that_give_no_one_footprint_are_refused(
     tree: Path, path: str, change: Any, message: str
 ) -> None:
-    """A value that the gate cannot bound, or cannot attribute, gives no footprint."""
+    """A value that the gate cannot bound, or cannot attribute, gives no footprint.
+
+    The Application is read against a list of the members this tool reads. A
+    member outside it can change what a controller applies, so it is refused and
+    not ignored. A resource other than processor and memory is refused too: no
+    rule compares it.
+    """
     if change is _drop_runtime_limit:
         # The limit is the generated file's own member, over the chart's default.
         _edit(tree, DEFAULTS, _drop_runtime_limit)
@@ -1206,6 +1291,17 @@ def test_two_schedulable_nodes_are_refused_however_large_they_are(
     assert record["refusal"]["categories"] == [gate.AMBIGUOUS]
     assert record["refusal"]["rules"][0] == "one-schedulable-node"
     assert states(record)["one-schedulable-node"] == gate.NOT_HELD
+    # There is no one node to count against, so the record states no count.
+    reservations = record["reservations"]
+    assert reservations["node"] is None
+    for name in (
+        "unfinishedPods",
+        "podsOnAnotherNodeNotCounted",
+        "cpuRequestMillis",
+        "memoryRequestBytes",
+    ):
+        assert reservations[name] is None, name
+    assert reservations["byNamespace"] == []
     for rule_id in (
         "node-ready-without-pressure",
         "node-states-no-blocking-taint",
@@ -1251,6 +1347,240 @@ def test_a_node_that_does_not_accept_the_release_is_refused(
 ) -> None:
     record = gate.build_record(collection(tmp_path, nodes=listed([node(**change)])))
     refused_only_by(record, rule_id, gate.AMBIGUOUS)
+
+
+def _heavy() -> list[dict[str, Any]]:
+    """Three pods that request 6 processors and 12 GiB on the one node."""
+    return [pod(f"heavy-{index}", container("2", "4Gi")) for index in range(3)]
+
+
+def _small_node(**change: Any) -> dict[str, Any]:
+    return node(cpu="4", memory="10Gi", **change)
+
+
+def test_the_heavy_pods_refuse_the_small_node_when_they_are_read(
+    tmp_path: Path,
+) -> None:
+    """The control case of the cases below: read as they are, the pods do not fit."""
+    record = gate.build_record(
+        collection(tmp_path, nodes=listed([_small_node()]), pods=listed(_heavy()))
+    )
+    assert record["refusal"] == {
+        "categories": [gate.INSUFFICIENT],
+        "rules": ["cpu-requests-fit", "memory-limits-fit"],
+    }
+    assert record["reservations"]["cpuRequestMillis"] == 6000
+
+
+def _nameless(items: dict[str, Any]) -> None:
+    del items["nodes"][0]["metadata"]["name"]
+
+
+def _numbered_node(items: dict[str, Any]) -> None:
+    items["nodes"][0]["metadata"]["name"] = 7
+
+
+def _node_twice(items: dict[str, Any]) -> None:
+    items["nodes"].append(copy.deepcopy(items["nodes"][0]))
+    items["nodes"][1]["spec"]["unschedulable"] = True
+
+
+def _not_a_node(items: dict[str, Any]) -> None:
+    items["nodes"][0]["kind"] = "ConfigMap"
+
+
+def _cordon_as_text(items: dict[str, Any]) -> None:
+    items["nodes"].append(node("node-b"))
+    items["nodes"][1]["spec"]["unschedulable"] = "true"
+
+
+def _node_spec_as_a_list(items: dict[str, Any]) -> None:
+    items["nodes"][0]["spec"] = [{"unschedulable": True}]
+
+
+def _taints_as_a_mapping(items: dict[str, Any]) -> None:
+    items["nodes"][0]["spec"]["taints"] = {"key": "k", "effect": "NoSchedule"}
+
+
+def _taint_as_text(items: dict[str, Any]) -> None:
+    items["nodes"][0]["spec"]["taints"] = ["k:NoSchedule"]
+
+
+def _taint_in_another_case(items: dict[str, Any]) -> None:
+    items["nodes"][0]["spec"]["taints"] = [{"key": "k", "effect": "noschedule"}]
+
+
+def _condition_twice(items: dict[str, Any]) -> None:
+    items["nodes"][0]["status"]["conditions"].append(
+        {"type": "Ready", "status": "False"}
+    )
+
+
+def _condition_status_as_a_boolean(items: dict[str, Any]) -> None:
+    items["nodes"][0]["status"]["conditions"][0]["status"] = False
+
+
+def _conditions_as_a_mapping(items: dict[str, Any]) -> None:
+    items["nodes"][0]["status"]["conditions"] = {"Ready": "True"}
+
+
+def _allocatable_as_a_list(items: dict[str, Any]) -> None:
+    items["nodes"][0]["status"]["allocatable"] = ["12", "16Gi"]
+
+
+def _node_name_empty(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["nodeName"] = ""
+
+
+def _node_name_numbered(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["nodeName"] = 5
+
+
+def _node_name_in_another_case(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["nodeName"] = "Node-A"
+
+
+def _node_name_unknown(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["nodeName"] = "node-z"
+
+
+def _containers_as_a_mapping(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["containers"] = {
+        "c": items["pods"][0]["spec"]["containers"]
+    }
+
+
+def _containers_as_text(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["containers"] = ["c"]
+
+
+def _no_containers(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["containers"] = []
+
+
+def _pod_spec_as_a_list(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"] = [items["pods"][0]["spec"]]
+
+
+def _requests_as_text(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["containers"][0]["resources"]["requests"] = ["2", "4Gi"]
+
+
+def _init_containers_as_a_mapping(items: dict[str, Any]) -> None:
+    items["pods"][0]["spec"]["initContainers"] = {"name": "init"}
+
+
+def _not_a_pod(items: dict[str, Any]) -> None:
+    items["pods"][0]["kind"] = "Event"
+
+
+def _pod_without_a_name(items: dict[str, Any]) -> None:
+    del items["pods"][0]["metadata"]["name"]
+
+
+def _pod_status_as_text(items: dict[str, Any]) -> None:
+    items["pods"][0]["status"] = "Running"
+
+
+def _phase_as_a_number(items: dict[str, Any]) -> None:
+    items["pods"][0]["status"]["phase"] = 1
+
+
+def _no_pods(items: dict[str, Any]) -> None:
+    items["pods"].clear()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        _nameless,
+        _numbered_node,
+        _node_twice,
+        _not_a_node,
+        _cordon_as_text,
+        _node_spec_as_a_list,
+        _taints_as_a_mapping,
+        _taint_as_text,
+        _taint_in_another_case,
+        _condition_twice,
+        _condition_status_as_a_boolean,
+        _conditions_as_a_mapping,
+        _allocatable_as_a_list,
+        _node_name_empty,
+        _node_name_numbered,
+        _node_name_in_another_case,
+        _node_name_unknown,
+        _containers_as_a_mapping,
+        _containers_as_text,
+        _no_containers,
+        _pod_spec_as_a_list,
+        _requests_as_text,
+        _init_containers_as_a_mapping,
+        _not_a_pod,
+        _pod_without_a_name,
+        _pod_status_as_text,
+        _phase_as_a_number,
+        _no_pods,
+    ],
+)
+def test_a_document_of_another_form_is_refused_and_not_read_as_absent(
+    tmp_path: Path, change: Any
+) -> None:
+    """A member of another type would make a reservation, a taint, or a cordon vanish.
+
+    Each case starts from the control case above, in which three pods do not fit
+    the node. Read leniently, each change would hide a pod's request, the node's
+    taint, or the node's cordon. Each is refused, and no sufficiency rule is held.
+    """
+    items = {"nodes": [_small_node()], "pods": _heavy()}
+    change(items)
+    record = gate.build_record(
+        collection(tmp_path, nodes=listed(items["nodes"]), pods=listed(items["pods"]))
+    )
+    assert record["result"] == gate.REFUSED
+    assert states(record)["reads-well-formed"] == gate.NOT_HELD
+    assert "reads-well-formed" in record["refusal"]["rules"]
+    assert gate.AMBIGUOUS in record["refusal"]["categories"]
+    for rule_id in ("pod-count-fits", "cpu-requests-fit", "memory-limits-fit"):
+        assert states(record)[rule_id] == gate.NOT_OBSERVED, rule_id
+
+
+def test_a_document_of_another_form_in_a_finished_pod_decides_nothing(
+    tmp_path: Path,
+) -> None:
+    done = pod("done", container("1", "1Gi"), phase="Succeeded")
+    done["spec"]["containers"] = "none"
+    done["spec"]["nodeName"] = "node-gone"
+    record = gate.build_record(
+        collection(tmp_path, pods=listed([*system_pods(), done]))
+    )
+    assert record["result"] == gate.ACCEPTED
+
+
+@pytest.mark.parametrize("missing", ["MemoryPressure", "DiskPressure", "PIDPressure"])
+def test_a_pressure_condition_that_is_not_reported_is_not_read_as_false(
+    tmp_path: Path, missing: str
+) -> None:
+    silent = node()
+    silent["status"]["conditions"] = [
+        c for c in silent["status"]["conditions"] if c["type"] != missing
+    ]
+    record = gate.build_record(collection(tmp_path, nodes=listed([silent])))
+    refused_only_by(record, "node-ready-without-pressure", gate.AMBIGUOUS)
+    assert f"{missing}=None" in finding(record, "node-ready-without-pressure")["detail"]
+
+
+@pytest.mark.parametrize(("status", "accepted"), [("True", False), ("False", True)])
+def test_a_network_that_is_reported_unavailable_is_refused(
+    tmp_path: Path, status: str, accepted: bool
+) -> None:
+    """A node need not report this condition. When it does, it must be False."""
+    reporting = node()
+    reporting["status"]["conditions"].append(
+        {"type": "NetworkUnavailable", "status": status}
+    )
+    record = gate.build_record(collection(tmp_path, nodes=listed([reporting])))
+    assert (record["result"] == gate.ACCEPTED) is accepted
 
 
 def test_a_node_without_a_ready_condition_is_refused(tmp_path: Path) -> None:
@@ -1410,6 +1740,7 @@ def test_an_absent_claim_is_not_observed_and_does_not_refuse(tmp_path: Path) -> 
     assert rule["state"] == gate.NOT_OBSERVED
     assert rule["required"] is False
     assert "measure" not in rule
+    assert "the release does not create it" in rule["detail"]
     assert record["modelCache"]["claim"] is None
     assert record["result"] == gate.ACCEPTED
 
@@ -1425,8 +1756,10 @@ def test_a_claim_of_another_name_is_not_the_model_cache(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("capacity", "requested", "state", "basis"),
     [
-        (ARTIFACT, "1Mi", gate.HELD, "capacity"),
+        (ARTIFACT, "8Gi", gate.HELD, "capacity"),
         (ARTIFACT - 1, "8Gi", gate.NOT_HELD, "capacity"),
+        ("8Gi", ARTIFACT, gate.HELD, "request"),
+        ("8Gi", ARTIFACT - 1, gate.NOT_HELD, "request"),
         (None, ARTIFACT, gate.HELD, "request"),
         (None, ARTIFACT - 1, gate.NOT_HELD, "request"),
     ],
@@ -1434,7 +1767,10 @@ def test_a_claim_of_another_name_is_not_the_model_cache(tmp_path: Path) -> None:
 def test_a_claim_is_held_to_the_byte_count_of_the_artifact(
     tmp_path: Path, capacity: object, requested: object, state: str, basis: str
 ) -> None:
-    """The capacity of a bound claim is compared. An unbound claim states a request."""
+    """The smaller of the capacity and the request is compared.
+
+    A claim that is not bound states a request and no capacity.
+    """
     record = gate.build_record(
         collection(
             tmp_path, claims=listed([claim(capacity=capacity, request=requested)])
@@ -1449,6 +1785,14 @@ def test_a_claim_is_held_to_the_byte_count_of_the_artifact(
         assert rule["measure"]["shortfall"] == 1
     else:
         assert record["result"] == gate.ACCEPTED
+
+
+def test_a_lost_claim_is_refused_whatever_size_it_states(tmp_path: Path) -> None:
+    lost = claim(capacity="8Gi", request="8Gi")
+    lost["status"]["phase"] = "Lost"
+    record = gate.build_record(collection(tmp_path, claims=listed([lost])))
+    refused_only_by(record, "model-cache-claim-holds-artifact", gate.INSUFFICIENT)
+    assert "Lost" in finding(record, "model-cache-claim-holds-artifact")["detail"]
 
 
 def test_a_claim_with_an_unreadable_size_is_refused(tmp_path: Path) -> None:
@@ -1622,7 +1966,7 @@ def test_a_self_consistent_footprint_of_fewer_replicas_gives_a_record_but_is_sta
 
 def test_the_rules_are_distinct_and_each_has_one_of_two_categories() -> None:
     identifiers = [rule.rule_id for rule in gate.RULES]
-    assert len(identifiers) == len(set(identifiers)) == 12
+    assert len(identifiers) == len(set(identifiers)) == 13
     assert {rule.category for rule in gate.RULES} == {gate.AMBIGUOUS, gate.INSUFFICIENT}
     assert [rule.rule_id for rule in gate.RULES if not rule.required] == [
         "model-cache-claim-holds-artifact"
@@ -1851,6 +2195,22 @@ def test_the_command_refuses_a_footprint_that_the_committed_files_do_not_give(
     }
 
 
+def test_with_as_collected_exit_status_0_does_not_say_accepted(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The footprint was not compared, so the status is not a gate.
+
+    Without the option, exit status 0 is printed only for a footprint that the
+    files of the tree give. With it, a refused record and an accepted record
+    both exit 0, and a caller reads the record.
+    """
+    refused = collection(tmp_path / "r", nodes=listed([node(memory="8Gi")]))
+    assert main([str(refused)]) == gate.REFUSED_EXIT
+    capsys.readouterr()
+    assert main([str(refused), "--as-collected"]) == 0
+    assert json.loads(capsys.readouterr().out)["result"] == gate.REFUSED
+
+
 def test_the_command_prints_the_declared_footprint(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -1934,6 +2294,7 @@ EXPECTED_CASES = {
         [gate.AMBIGUOUS],
         [
             "cluster-reads-complete",
+            "reads-well-formed",
             "quantities-readable",
             "release-is-not-installed",
             "pod-count-fits",
