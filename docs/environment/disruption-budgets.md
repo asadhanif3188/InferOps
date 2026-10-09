@@ -1,6 +1,8 @@
 # The disruption budgets, and what they do not bound
 
-Status: **the chart renders the budgets, and tests hold the render at evidence level C0. No release that renders a budget was installed, no eviction was requested, and no node was drained. So nothing on this page was observed in a cluster.**
+Status: **the chart renders the budgets, and tests hold the render at evidence level C0. No eviction was requested, and no node was drained. So no statement on this page about what a budget does was observed in a cluster.**
+
+> **Note, 2026-10-09 (`V2-S4-005-PR2`).** A release that renders the two budgets was installed once, on the `docker-desktop` provider, for one reading of the Service endpoints. [The transcript of that run](../proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1-transcript.txt) lists both budget objects, each with `minAvailable` 1 and one allowed disruption, while two pods of each tier were Ready. That is one listing. No eviction was requested in that run, so it establishes nothing about what a budget refuses.
 
 Since chart `0.6.0`, a tier of two or more replicas renders one
 PodDisruptionBudget. This page states the rule, what Kubernetes documents that a
@@ -46,7 +48,8 @@ mechanism of that experiment, and a budget is not evidence for its result.
 The [desired-state release](git-desired-state.md) declares two replicas for each
 tier, so its render holds both budgets. The ownership inventory holds one row
 for them, `workload-disruption-budget`, with the status `planned`: the chart
-renders the objects, and no cluster has held one.
+renders the objects. One cluster held both for one run, which the note above
+states. No eviction was requested, so the row cites no evidence.
 
 ## What a budget bounds
 

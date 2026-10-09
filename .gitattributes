@@ -85,3 +85,9 @@ docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-* text eol=lf
 # pattern also holds the baseline's install description, which a person writes
 # and which is parsed and not compared as bytes.
 tests/domain/fixtures/experiment-profiles/** text eol=lf
+
+# The transcript of the endpoint reading states the SHA-256 of its driver, and
+# that digest is of the driver's bytes with LF. Pinned so a Windows checkout of
+# the driver has the bytes that the transcript names.
+docs/proof/environment/v2-s4-005-pr2-* text eol=lf
+docs/proof/environment/v2-s4-005-pr2-*/** text eol=lf

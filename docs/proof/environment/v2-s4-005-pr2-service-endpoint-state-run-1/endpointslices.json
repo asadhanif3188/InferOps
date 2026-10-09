@@ -1,0 +1,247 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "addressType": "IPv4",
+            "apiVersion": "discovery.k8s.io/v1",
+            "endpoints": [
+                {
+                    "addresses": [
+                        "10.244.0.17"
+                    ],
+                    "conditions": {
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false
+                    },
+                    "nodeName": "desktop-control-plane",
+                    "targetRef": {
+                        "kind": "Pod",
+                        "name": "inferops-inferops-llm-b5fd5846f-m87hp",
+                        "namespace": "inferops-release",
+                        "uid": "391d25be-c8df-4503-a780-565fb51c1525"
+                    }
+                },
+                {
+                    "addresses": [
+                        "10.244.0.18"
+                    ],
+                    "conditions": {
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false
+                    },
+                    "nodeName": "desktop-control-plane",
+                    "targetRef": {
+                        "kind": "Pod",
+                        "name": "inferops-inferops-llm-b5fd5846f-rv46m",
+                        "namespace": "inferops-release",
+                        "uid": "dce18d09-18cb-4e49-9241-1ee09775cf89"
+                    }
+                }
+            ],
+            "kind": "EndpointSlice",
+            "metadata": {
+                "annotations": {
+                    "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-09T14:32:01Z"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "generateName": "inferops-inferops-llm-",
+                "generation": 5,
+                "labels": {
+                    "app.kubernetes.io/component": "platform-api",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant",
+                    "kubernetes.io/service-name": "inferops-inferops-llm"
+                },
+                "name": "inferops-inferops-llm-4t64q",
+                "namespace": "inferops-release",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "Service",
+                        "name": "inferops-inferops-llm",
+                        "uid": "ca2133c6-612b-45f8-8b09-96debbbcb301"
+                    }
+                ],
+                "resourceVersion": "270061",
+                "uid": "7407d4a9-da2e-4f0d-82ce-438775b28276"
+            },
+            "ports": [
+                {
+                    "name": "http",
+                    "port": 8090,
+                    "protocol": "TCP"
+                }
+            ]
+        },
+        {
+            "addressType": "IPv4",
+            "apiVersion": "discovery.k8s.io/v1",
+            "endpoints": [
+                {
+                    "addresses": [
+                        "10.244.0.15"
+                    ],
+                    "conditions": {
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false
+                    },
+                    "nodeName": "desktop-control-plane",
+                    "targetRef": {
+                        "kind": "Pod",
+                        "name": "inferops-inferops-llm-collector-7c6d4cf598-kjnzt",
+                        "namespace": "inferops-release",
+                        "uid": "70d3b1e1-8ff1-4ec7-b485-db5b7d115311"
+                    }
+                }
+            ],
+            "kind": "EndpointSlice",
+            "metadata": {
+                "annotations": {
+                    "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-09T14:31:58Z"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "generateName": "inferops-inferops-llm-collector-",
+                "generation": 3,
+                "labels": {
+                    "app.kubernetes.io/component": "telemetry-collector",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant",
+                    "kubernetes.io/service-name": "inferops-inferops-llm-collector"
+                },
+                "name": "inferops-inferops-llm-collector-xnwhs",
+                "namespace": "inferops-release",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "Service",
+                        "name": "inferops-inferops-llm-collector",
+                        "uid": "03a615b2-e741-4d9e-b659-8587f3f0c532"
+                    }
+                ],
+                "resourceVersion": "270046",
+                "uid": "647b3687-af6e-471c-86ca-1979ff67f8ee"
+            },
+            "ports": [
+                {
+                    "name": "http",
+                    "port": 9090,
+                    "protocol": "TCP"
+                }
+            ]
+        },
+        {
+            "addressType": "IPv4",
+            "apiVersion": "discovery.k8s.io/v1",
+            "endpoints": [
+                {
+                    "addresses": [
+                        "10.244.0.16"
+                    ],
+                    "conditions": {
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false
+                    },
+                    "nodeName": "desktop-control-plane",
+                    "targetRef": {
+                        "kind": "Pod",
+                        "name": "inferops-inferops-llm-runtime-79846f98f6-7kms9",
+                        "namespace": "inferops-release",
+                        "uid": "f0e96c01-7b5e-4a14-bf7a-a0cb2b712ba5"
+                    }
+                },
+                {
+                    "addresses": [
+                        "10.244.0.19"
+                    ],
+                    "conditions": {
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false
+                    },
+                    "nodeName": "desktop-control-plane",
+                    "targetRef": {
+                        "kind": "Pod",
+                        "name": "inferops-inferops-llm-runtime-79846f98f6-gc7pq",
+                        "namespace": "inferops-release",
+                        "uid": "8e204fbe-2b0d-40d5-b0e8-dce808e004c6"
+                    }
+                }
+            ],
+            "kind": "EndpointSlice",
+            "metadata": {
+                "annotations": {
+                    "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-09T14:32:13Z"
+                },
+                "creationTimestamp": "2026-10-09T14:31:52Z",
+                "generateName": "inferops-inferops-llm-runtime-",
+                "generation": 5,
+                "labels": {
+                    "app.kubernetes.io/component": "serving-runtime",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant",
+                    "kubernetes.io/service-name": "inferops-inferops-llm-runtime"
+                },
+                "name": "inferops-inferops-llm-runtime-bvbcg",
+                "namespace": "inferops-release",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "Service",
+                        "name": "inferops-inferops-llm-runtime",
+                        "uid": "41e518dd-86f9-4e30-adee-a070ffec680d"
+                    }
+                ],
+                "resourceVersion": "270099",
+                "uid": "0d904016-ebe8-43c0-860d-d1ae2068c829"
+            },
+            "ports": [
+                {
+                    "name": "http",
+                    "port": 8080,
+                    "protocol": "TCP"
+                }
+            ]
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

@@ -1,0 +1,370 @@
+#!/usr/bin/env bash
+# Drives one observation of the Ready endpoint state of the API Service and the
+# runtime Service of the two-replica release, on the docker-desktop provider,
+# and prints one transcript. Run it from the repository root:
+#
+#   bash driver.sh up RUN        read capacity, prepare the cluster, apply the release
+#   bash driver.sh collect RUN   read the endpoint state once, and the pods beside it
+#   bash driver.sh down RUN      remove what `up` installed
+#
+# RUN is a short name such as run-1. The three phases are three invocations. It
+# was copied to a directory that Git ignores before it ran, so the working tree
+# was clean in step P1.
+#
+# It is written to download no model: one preparation Helm release fills the
+# model cache claim from the local seed image, and is uninstalled before the
+# Application is applied. The API image and the model seed image are built from
+# the local build cache and loaded into the node.
+#
+# What it reads, and how:
+#   - `up` and `down` change the cluster through the repository's own
+#     procedures. Each of them verifies the target before it writes.
+#   - `collect` sends read requests only. The endpoint state is read by
+#     scripts/environment/service-endpoint-state.sh, once. The pods, the
+#     Deployments, and the disruption budgets are read beside it with
+#     `kubectl get`. It sends no request to the release, opens no port-forward,
+#     and runs nothing in a pod.
+#
+# Outcome rules that it follows:
+#   - The capacity preflight is the V2 gate, scripts/environment/capacity-preflight.sh.
+#     It runs before anything is installed, and again before the Application is
+#     applied. When a reading is not ACCEPTED, `up` keeps that reading and ends.
+#     It installs nothing more, and it lowers no replica count, request, or limit.
+#   - A precondition or a preparation step that fails ends `up` before the
+#     Application is applied. Nothing is cleaned up: the operator reads the
+#     cluster first, and then runs `down`.
+#   - From the apply on, nothing ends `up` early. A step that fails is printed
+#     with its exit status.
+#   - The endpoint state is read once. A reading that is REFUSED is kept.
+#   - It computes no verdict. The tools that build the records state the results.
+set -u
+
+PHASE="${1:?give the phase: up, collect, or down}"
+RUN="${2:?give the run name, for example run-1}"
+EVIDENCE="docs/proof/environment/v2-s4-005-pr2-service-endpoint-state-${RUN}"
+CAPACITY_EVIDENCE="docs/proof/environment/v2-s4-005-pr2-capacity-preflight-${RUN}"
+WORK=".artifacts/service-endpoint-state/${RUN}-driver"
+STATE_COLLECTION=".artifacts/service-endpoint-state/collections/${RUN}"
+CAPACITY_COLLECTIONS=".artifacts/capacity-preflight/collections"
+ENDPOINT_SCRIPT="scripts/environment/service-endpoint-state.sh"
+CAPACITY_SCRIPT="scripts/environment/capacity-preflight.sh"
+APPLICATION_SCRIPT="scripts/environment/argocd-application.sh"
+BOOTSTRAP="scripts/environment/argocd-bootstrap.sh"
+PREREQUISITES="scripts/environment/terraform-prerequisites.sh"
+NAMESPACE="inferops-release"
+CONTROLLER_NAMESPACE="argocd"
+APPLICATION="local-docker-desktop-support-assistant"
+API_DEPLOYMENT="inferops-inferops-llm"
+RUNTIME_DEPLOYMENT="inferops-inferops-llm-runtime"
+INSTANCE_SELECTOR="app.kubernetes.io/instance=inferops"
+RELEASE_DIRECTORY="gitops/environments/local-docker-desktop/workloads/support-assistant"
+KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings,poddisruptionbudgets"
+ROLLOUT_BUDGET_SECONDS=900
+
+# A path that starts with a slash is an argument for a container here, and not
+# a path of this host.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
+step() { printf '\n##### %s\n' "$*"; }
+now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+# Runs one command, prints it, and prints its exit status. The status is also
+# left in LAST.
+run() {
+  printf '$ %s\n' "$*"
+  "$@"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+}
+
+refuse() {
+  printf '\nREFUSED: %s. Nothing after it was run, and nothing was cleaned up.\n' "$1"
+  printf 'The operator reads the state of the cluster first, and then runs: bash driver.sh down %s\n' "${RUN}"
+  run now
+  exit 1
+}
+
+# Runs one precondition or preparation command. A failure ends the phase.
+prepare() {
+  run "$@"
+  [ "${LAST}" -eq 0 ] || refuse "a precondition or a preparation step failed: $*"
+}
+
+k() { kubectl --context docker-desktop "$@"; }
+
+# Writes the output of one read to a file, with LF line ends, and prints the
+# command and its exit status. The file is not written when the read fails.
+read_into() {
+  local target="$1"
+  shift
+  printf '$ %s > %s\n' "$*" "${target}"
+  if "$@" >"${WORK}/read.tmp" 2>"${WORK}/read.err"; then
+    tr -d '\r' <"${WORK}/read.tmp" >"${target}"
+    LAST=0
+  else
+    LAST=$?
+    cat "${WORK}/read.err"
+  fi
+  printf '[exit %s]\n' "${LAST}"
+}
+
+# Copies one collection out of the ignored directory, file by file, with LF
+# line ends.
+keep_collection() {
+  local from="$1" into="$2" file
+  mkdir -p "${into}"
+  for file in "${from}"/*; do
+    tr -d '\r' <"${file}" >"${into}/$(basename "${file}")"
+  done
+  run ls "${into}"
+}
+
+independent_state() {
+  run k get namespaces -o name
+  run k get customresourcedefinitions -o name
+  run k get "${KINDS}" -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o name
+  run k get persistentvolumeclaims -n "${NAMESPACE}" -o name
+}
+
+# One reading of the V2 capacity gate, kept whatever its result. $1 names it.
+capacity_reading() {
+  local name="$1"
+  run bash "${CAPACITY_SCRIPT}" --into "${RUN}-${name}"
+  CAPACITY_EXIT="${LAST}"
+  # The reading stays in the ignored directory until `collect` or the operator
+  # keeps it. A file written under docs/ here would make the working tree
+  # differ from its commit, and the gate refuses such a tree.
+  if [ -d "${CAPACITY_COLLECTIONS}/${RUN}-${name}" ]; then
+    run ls "${CAPACITY_COLLECTIONS}/${RUN}-${name}"
+  else
+    printf 'The gate wrote no collection for this reading.\n'
+  fi
+  if [ "${CAPACITY_EXIT}" -ne 0 ]; then
+    printf '\nThe capacity gate exited %s at the reading %s. Nothing more is installed, and nothing is changed to fit.\n' "${CAPACITY_EXIT}" "${name}"
+    printf 'The reading is kept. Run: bash driver.sh down %s\n' "${RUN}"
+    run now
+    exit 0
+  fi
+}
+
+# --------------------------------------------------------------------------
+up() {
+  step "0. Start: the date and the tool versions"
+  run now
+  run kubectl version --client -o json
+  run helm version --short
+  run terraform version
+  run docker version --format '{{.Client.Version}} {{.Server.Version}}'
+  run uv --version
+  run uv run --locked python --version
+  run git --version
+
+  step "P1. The executing commit, the working tree, and the commit the controller will read"
+  prepare git rev-parse HEAD
+  HEAD_COMMIT="$(git rev-parse HEAD)"
+  prepare git status --porcelain --untracked-files=all
+  [ -z "$(git status --porcelain --untracked-files=all)" ] || refuse "the working tree is not clean"
+  prepare git ls-remote origin refs/heads/main
+  REMOTE_COMMIT="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
+  printf 'executing commit: %s\nremote main:      %s\n' "${HEAD_COMMIT}" "${REMOTE_COMMIT}"
+  # The controller reads the chart and the release from the remote main. The
+  # collector and this driver are read from the executing commit. The two
+  # commits may differ, and then the files the controller reads must not.
+  prepare git diff --stat --exit-code "${REMOTE_COMMIT}" HEAD -- charts gitops infra/argocd
+  [ ! -e "${EVIDENCE}" ] || refuse "the evidence directory exists"
+  [ ! -e "${WORK}/started-at" ] || refuse "the work directory of this run name was used before"
+  [ ! -e "${STATE_COLLECTION}" ] || refuse "a collection of this run name exists"
+  mkdir -p "${WORK}"
+  now >"${WORK}/started-at"
+  printf '%s' "${HEAD_COMMIT}" >"${WORK}/executing-commit"
+
+  step "P2. The files this run reads"
+  run sha256sum "$0" "${ENDPOINT_SCRIPT}" tools/service_endpoint_state/core.py \
+    tools/service_endpoint_state/__main__.py tools/service_endpoint_state/__init__.py \
+    "${CAPACITY_SCRIPT}" tools/capacity_preflight/core.py "${APPLICATION_SCRIPT}" "${BOOTSTRAP}" \
+    "${PREREQUISITES}" scripts/environment/lib.sh infra/argocd/local-docker-desktop-support-assistant.yaml \
+    infra/argocd/workloads-project.yaml charts/inferops-llm/Chart.yaml \
+    "${RELEASE_DIRECTORY}/values.generated.yaml" "${RELEASE_DIRECTORY}/rendered-workload-release.yaml"
+  prepare uv run --locked python -m tools.gitops_desired_state --check
+  prepare uv run --locked python -m tools.baseline_profile --check
+
+  step "P3. The provider, and the cluster before the run"
+  printf '$ export INFEROPS_PROVIDER=docker-desktop\n'
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  prepare kubectl version --context docker-desktop
+  prepare k get nodes -o wide
+  read_into "${WORK}/namespaces.before" k get namespaces -o name
+  [ "${LAST}" -eq 0 ] || refuse "the namespaces were not read"
+  run cat "${WORK}/namespaces.before"
+  read_into "${WORK}/crds.before" k get customresourcedefinitions -o name
+  [ "${LAST}" -eq 0 ] || refuse "the custom resource definitions were not read"
+  run cat "${WORK}/crds.before"
+  prepare k get storageclasses
+  prepare k get pods --all-namespaces
+  if grep -q -e "^namespace/${NAMESPACE}\$" -e "^namespace/${CONTROLLER_NAMESPACE}\$" "${WORK}/namespaces.before"; then
+    refuse "the cluster already holds the release namespace or the controller namespace"
+  fi
+
+  step "C1. The capacity gate, before anything is installed"
+  capacity_reading before-install
+
+  step "P4. The API image at the executing commit, and the model seed image"
+  prepare bash scripts/environment/api-image.sh build
+  prepare bash scripts/environment/api-image.sh load
+  prepare bash scripts/environment/api-image.sh digest
+  API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)" || refuse "api-image.sh digest failed"
+  printf '%s' "${API_IMAGE_DIGEST}" >"${WORK}/api-image-digest"
+  prepare bash scripts/environment/model-seed-image.sh build
+  prepare bash scripts/environment/model-seed-image.sh load
+  prepare bash scripts/environment/model-seed-image.sh digest
+
+  step "P5. The platform namespace and the model cache claim"
+  prepare bash "${PREREQUISITES}" apply
+  run k get persistentvolumeclaims -n "${NAMESPACE}" -o wide
+
+  step "P6. Fill the claim from the seed image with one preparation Helm release, and remove that release"
+  printf '$ bash scripts/environment/api-image.sh values > %s/api-image-values.yaml\n' "${WORK}"
+  bash scripts/environment/api-image.sh values >"${WORK}/api-image-values.yaml" || refuse "api-image.sh values failed"
+  printf '$ bash scripts/environment/model-seed-image.sh values > %s/model-seed-values.yaml\n' "${WORK}"
+  bash scripts/environment/model-seed-image.sh values >"${WORK}/model-seed-values.yaml" || refuse "model-seed-image.sh values failed"
+  # The preparation release is the V1 real values file: one API replica and one
+  # runtime replica. It is not the release this run observes.
+  prepare helm --kube-context docker-desktop install inferops charts/inferops-llm \
+    --namespace "${NAMESPACE}" \
+    --values charts/inferops-llm/ci/real-values.yaml \
+    --values "${WORK}/api-image-values.yaml" \
+    --values "${WORK}/model-seed-values.yaml" \
+    --set model.acquisition.resources.limits.memory=2Gi \
+    --wait --timeout 15m
+  prepare helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --wait --timeout 600s
+  printf '$ kubectl --context docker-desktop get %s -n %s -l %s -o name\n' "${KINDS}" "${NAMESPACE}" "${INSTANCE_SELECTOR}"
+  printf '  repeated every 2 seconds, at most 120 times, until it prints nothing\n'
+  left="unread"
+  for _ in $(seq 1 120); do
+    left="$(k get "${KINDS}" -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o name)" ||
+      refuse "the query for what the preparation release left did not answer"
+    [ -n "${left}" ] || break
+    sleep 2
+  done
+  printf 'What the preparation release left: %s\n' "${left:-nothing}"
+  [ -z "${left}" ] || refuse "the preparation release left an object"
+
+  step "P7. Install the GitOps controller with the bootstrap procedure, and verify it"
+  prepare bash "${BOOTSTRAP}" install
+  prepare bash "${BOOTSTRAP}" verify
+
+  step "C2. The capacity gate again, before the Application is applied"
+  capacity_reading before-apply
+
+  step "D1. Apply the project and the Application"
+  run now
+  run bash "${APPLICATION_SCRIPT}" apply --api-image-digest "$(cat "${WORK}/api-image-digest")"
+
+  step "D2. Wait for the two rollouts, with one bound each"
+  run k rollout status "deployment/${API_DEPLOYMENT}" -n "${NAMESPACE}" --timeout="${ROLLOUT_BUDGET_SECONDS}s"
+  run k rollout status "deployment/${RUNTIME_DEPLOYMENT}" -n "${NAMESPACE}" --timeout="${ROLLOUT_BUDGET_SECONDS}s"
+  run now
+
+  step "D3. What the controller reports, and the commit it read"
+  run bash "${APPLICATION_SCRIPT}" verify
+  k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" -o 'jsonpath={.status.sync.revision}' >"${WORK}/reported-revision"
+  run k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+    -o 'jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status} operation={.status.operationState.phase}{"\n"}'
+  run git cat-file -t "$(cat "${WORK}/reported-revision")"
+  run git diff --stat --exit-code "$(cat "${WORK}/reported-revision")" HEAD -- charts gitops infra/argocd
+  run k get pods -n "${NAMESPACE}" -o wide
+  run now
+}
+
+# --------------------------------------------------------------------------
+collect() {
+  [ -e "${WORK}/started-at" ] || { printf 'REFUSED: %s holds no start time. Run the phase up first.\n' "${WORK}"; exit 1; }
+  [ ! -e "${EVIDENCE}" ] || { printf 'REFUSED: %s exists. A collection is one reading.\n' "${EVIDENCE}"; exit 1; }
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  step "E0. Start of the collection"
+  run now
+  run git rev-parse HEAD
+  run git status --porcelain --untracked-files=all
+  run sha256sum "$0" "${ENDPOINT_SCRIPT}" tools/service_endpoint_state/core.py
+
+  step "E1. The pods of the release, before the endpoint read"
+  mkdir -p "${WORK}/context"
+  read_into "${WORK}/context/pods-before.json" k get pods -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json
+
+  step "E2. The endpoint state of the two Services, read once by the collector"
+  run bash "${ENDPOINT_SCRIPT}" --into "${RUN}"
+  STATE_EXIT="${LAST}"
+
+  step "E3. The pods of the release, after the endpoint read, and the objects beside them"
+  read_into "${WORK}/context/pods-after.json" k get pods -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json
+  read_into "${WORK}/context/deployments.json" k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json
+  run k get deployments,services,endpointslices.discovery.k8s.io,poddisruptionbudgets -n "${NAMESPACE}" -o wide
+  run k get pods -n "${NAMESPACE}" -o wide
+  run k get pods -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" \
+    -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}{.metadata.uid}{"\t"}{.metadata.labels.app\.kubernetes\.io/component}{"\t"}phase={.status.phase}{"\t"}ready={.status.conditions[?(@.type=="Ready")].status}{"\t"}restarts={range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}'
+  run k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" \
+    -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}replicas={.spec.replicas}{"\t"}ready={.status.readyReplicas}{"\t"}{range .spec.template.spec.containers[*]}{.image}{" "}{end}{"\n"}{end}'
+  run k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+    -o 'jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status}{"\n"}'
+
+  step "E4. Keep the collection, and build its record again from the kept files"
+  if [ -d "${STATE_COLLECTION}" ]; then
+    keep_collection "${STATE_COLLECTION}" "${EVIDENCE}"
+    for file in pods-before.json pods-after.json deployments.json; do
+      [ ! -e "${WORK}/context/${file}" ] || cp "${WORK}/context/${file}" "${EVIDENCE}/${file}"
+    done
+    printf '$ uv run --locked python -m tools.service_endpoint_state %s > %s/record.again.json\n' "${EVIDENCE}" "${WORK}"
+    uv run --locked python -m tools.service_endpoint_state "${EVIDENCE}" | tr -d '\r' >"${WORK}/record.again.json"
+    printf '[exit %s]\n' "${PIPESTATUS[0]}"
+    run diff "${EVIDENCE}/record.v1alpha1.json" "${WORK}/record.again.json"
+    run cat "${EVIDENCE}/run.json"
+    run cat "${EVIDENCE}/record.v1alpha1.json"
+  else
+    printf 'The collector wrote no collection. Nothing is kept.\n'
+  fi
+  for name in before-install before-apply; do
+    if [ -d "${CAPACITY_COLLECTIONS}/${RUN}-${name}" ]; then
+      keep_collection "${CAPACITY_COLLECTIONS}/${RUN}-${name}" "${CAPACITY_EVIDENCE}-${name}"
+    fi
+  done
+  printf 'The collector exited %s.\n' "${STATE_EXIT}"
+  run now
+}
+
+# --------------------------------------------------------------------------
+down() {
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  step "Z0. Start of the cleanup"
+  run now
+  independent_state
+
+  step "Z1. Remove the Application and what it applied, the controller, and the prerequisite layer"
+  run bash "${APPLICATION_SCRIPT}" remove --confirm
+  run helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --ignore-not-found --wait --timeout 600s
+  run bash "${BOOTSTRAP}" remove --confirm
+  run bash "${PREREQUISITES}" destroy --confirm
+
+  step "Z2. The cluster after the run, compared with what step P3 read"
+  independent_state
+  k get namespaces -o name | tr -d '\r' >"${WORK}/namespaces.after"
+  k get customresourcedefinitions -o name | tr -d '\r' >"${WORK}/crds.after"
+  run diff "${WORK}/namespaces.before" "${WORK}/namespaces.after"
+  run diff "${WORK}/crds.before" "${WORK}/crds.after"
+  run k get persistentvolumes -o name
+  run k get pods --all-namespaces
+  run now
+}
+
+case "${PHASE}" in
+  up) up ;;
+  collect) collect ;;
+  down) down ;;
+  *)
+    printf 'REFUSED: the phase is up, collect, or down.\n'
+    exit 2
+    ;;
+esac

@@ -3216,12 +3216,12 @@ def test_a_budget_leaves_both_rollout_strategies_as_the_values_state_them() -> N
         }
 
 
-def test_the_budgets_are_one_declared_row_that_no_cluster_has_held() -> None:
+def test_the_budgets_are_one_declared_row_that_cites_no_evidence() -> None:
     """The inventory row, the chart's declaration, and the row's status agree.
 
-    `planned` is the status of a row that a render holds and no cluster has
-    held. The row cites no evidence, because no release that renders a budget
-    was installed.
+    `planned` is the status of a row that no run has tested. The row cites no
+    evidence. A release that renders both budgets was installed once, for one
+    reading of the Service endpoints, and no eviction was requested in it.
     """
     [row] = [
         resource

@@ -318,8 +318,8 @@ removes a tier's budget on an upgrade to one replica. A release path that does n
 remove an object that leaves the render keeps it, over one pod, until a person deletes
 it.
 
-**What this is not.** A budget is configuration. No release that renders one was
-installed, and no eviction was requested. A budget is not evidence that a caller is
+**What this is not.** A budget is configuration. A release that renders both was
+installed once, on one provider, and no eviction was requested. A budget is not evidence that a caller is
 served when a pod is deleted: a pod deletion is tested by deleting a pod under a caller.
 [The disruption budgets page](../../docs/environment/disruption-budgets.md) states the
 rule, the limits, and what follows for a release that a controller reconciles from Git.

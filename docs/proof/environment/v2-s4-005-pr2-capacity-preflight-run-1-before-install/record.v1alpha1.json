@@ -1,0 +1,448 @@
+{
+  "collection": {
+    "collectedAt": "2026-10-09T14:23:50Z",
+    "context": "docker-desktop",
+    "executingCommit": "25f2cfbfe587e0e0c76ceb519cb90f6ef0e09810",
+    "namespace": "inferops-release",
+    "provider": "docker-desktop",
+    "releaseKey": "local-docker-desktop/support-assistant"
+  },
+  "doesNotEstablish": [
+    "A record does not establish that a pod of the release is scheduled, starts, becomes Ready, or answers a request.",
+    "A record does not establish the memory or the processor time that a pod uses. The gate compares stated requests and stated limits with the figures that the node allocates.",
+    "A record does not establish the use of a pod that states no request. The gate counts that request as zero. The record states how many counted pods have a container or an init container that states none.",
+    "A record does not establish that the footprint is the release that a controller applies. The footprint is read from the files of one working tree. The record does not compare that tree with a commit, or with the revision that the Application names.",
+    "A record does not establish capacity for a pod that is terminating. The footprint counts the replicas and the surge pods. During a rollout, a pod that is terminating can hold its request beside the pod that replaces it.",
+    "A record does not establish that the node's disk holds the images, the volume of the model cache claim, or an emptyDir volume.",
+    "A record does not establish capacity at another time. It is one reading, and the cluster can change after it.",
+    "A record does not establish capacity for a pod that the footprint does not state. A load generator and an experiment driver are not in the footprint.",
+    "A record does not establish capacity on more than one node, and it does not establish that the release continues to serve when the node fails.",
+    "A record does not establish throughput, latency, an overload threshold, or availability.",
+    "A record does not establish an evidence level, and it registers no claim."
+  ],
+  "environment": {
+    "containerEngine": {
+      "cpus": 12,
+      "memoryBytes": 10430672896
+    },
+    "kubernetesServerVersion": "v1.36.1",
+    "provider": "docker-desktop"
+  },
+  "findings": [
+    {
+      "category": "ambiguous",
+      "detail": "each of the four reads is a list",
+      "required": true,
+      "ruleId": "cluster-reads-complete",
+      "state": "held",
+      "statement": "The collection holds each of the four cluster reads, and each is a list."
+    },
+    {
+      "category": "ambiguous",
+      "detail": "each node and each unfinished pod was read",
+      "required": true,
+      "ruleId": "reads-well-formed",
+      "state": "held",
+      "statement": "Each node and each unfinished pod has the kind, the name, and the member types that this tool reads, each placed pod names a node of the read, and the pod list is not empty."
+    },
+    {
+      "category": "ambiguous",
+      "detail": "each stated quantity was read exactly",
+      "required": true,
+      "ruleId": "quantities-readable",
+      "state": "held",
+      "statement": "Each processor, memory, pod, and ephemeral-storage figure of each node, each request of each counted pod, and each size of the model cache claim is a Kubernetes quantity that is not negative."
+    },
+    {
+      "category": "ambiguous",
+      "detail": "the node desktop-control-plane",
+      "required": true,
+      "ruleId": "one-schedulable-node",
+      "state": "held",
+      "statement": "The cluster has exactly one schedulable node."
+    },
+    {
+      "category": "ambiguous",
+      "detail": "Ready is True; conditions that are not reported as False: none",
+      "required": true,
+      "ruleId": "node-ready-without-pressure",
+      "state": "held",
+      "statement": "The schedulable node reports Ready as True, it reports each of the memory, disk, and process pressure conditions as False, and it does not report the network as unavailable."
+    },
+    {
+      "category": "ambiguous",
+      "detail": "blocking taints: none",
+      "required": true,
+      "ruleId": "node-states-no-blocking-taint",
+      "state": "held",
+      "statement": "The schedulable node states no taint with the effect NoSchedule or NoExecute."
+    },
+    {
+      "category": "ambiguous",
+      "detail": "values that state a constraint: none",
+      "required": true,
+      "ruleId": "release-states-no-placement-constraint",
+      "state": "held",
+      "statement": "The footprint states no node selector, no toleration, and no affinity."
+    },
+    {
+      "category": "ambiguous",
+      "detail": "objects: none",
+      "required": true,
+      "ruleId": "namespace-states-no-quota-or-limit-range",
+      "state": "held",
+      "statement": "The release namespace holds no ResourceQuota and no LimitRange."
+    },
+    {
+      "category": "ambiguous",
+      "detail": "no unfinished pod of the release",
+      "required": true,
+      "ruleId": "release-is-not-installed",
+      "state": "held",
+      "statement": "The release namespace holds no unfinished pod of the release."
+    },
+    {
+      "category": "insufficient",
+      "detail": "9 pods required, 101 pods available",
+      "measure": {
+        "allocatable": 110,
+        "available": 101,
+        "requestedByUnfinishedPods": 9,
+        "required": 9,
+        "shortfall": 0,
+        "unit": "pods"
+      },
+      "required": true,
+      "ruleId": "pod-count-fits",
+      "state": "held",
+      "statement": "The pods of the footprint fit in the pod count that the node allocates, less the unfinished pods that the node holds."
+    },
+    {
+      "category": "insufficient",
+      "detail": "3110 millicores required, 11050 millicores available",
+      "measure": {
+        "allocatable": 12000,
+        "available": 11050,
+        "requestedByUnfinishedPods": 950,
+        "required": 3110,
+        "shortfall": 0,
+        "unit": "millicores"
+      },
+      "required": true,
+      "ruleId": "cpu-requests-fit",
+      "state": "held",
+      "statement": "The processor requests of the footprint and the reserve fit in the processor that the node allocates, less the processor that the unfinished pods request."
+    },
+    {
+      "category": "insufficient",
+      "detail": "9865003008 bytes required, 10126585856 bytes available",
+      "measure": {
+        "allocatable": 10430672896,
+        "available": 10126585856,
+        "requestedByUnfinishedPods": 304087040,
+        "required": 9865003008,
+        "shortfall": 0,
+        "unit": "bytes"
+      },
+      "required": true,
+      "ruleId": "memory-limits-fit",
+      "state": "held",
+      "statement": "The memory limits of the footprint and the reserve fit in the memory that the node allocates, less the memory that the unfinished pods request."
+    },
+    {
+      "category": "insufficient",
+      "detail": "the namespace holds no claim named inferops-model-cache. Each serving runtime pod mounts that claim, and the release does not create it.",
+      "required": false,
+      "ruleId": "model-cache-claim-holds-artifact",
+      "state": "not-observed",
+      "statement": "The model cache claim is not Lost, and the smaller of its capacity and its request is at least the byte count of the model artifact."
+    }
+  ],
+  "footprint": {
+    "components": [
+      {
+        "class": "steady",
+        "component": "platform-api",
+        "containers": [
+          {
+            "limits": {
+              "memory": "512Mi"
+            },
+            "name": "api",
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "source": "api.resources"
+          }
+        ],
+        "initContainers": [],
+        "kind": "Deployment",
+        "pod": {
+          "cpuRequestMillis": 100,
+          "memoryLimitBytes": 536870912,
+          "memoryRequestBytes": 134217728
+        },
+        "replicas": 2,
+        "surgePods": 1,
+        "surgeSource": "api.rollout.maxSurge"
+      },
+      {
+        "class": "steady",
+        "component": "serving-runtime",
+        "containers": [
+          {
+            "limits": {
+              "memory": "3Gi"
+            },
+            "name": "runtime",
+            "requests": {
+              "cpu": "1",
+              "memory": "2Gi"
+            },
+            "source": "runtime.resources"
+          }
+        ],
+        "initContainers": [
+          {
+            "limits": {
+              "memory": "64Mi"
+            },
+            "name": "verify-model",
+            "requests": {
+              "cpu": "50m",
+              "memory": "16Mi"
+            },
+            "source": "model.integrity.resources"
+          }
+        ],
+        "kind": "Deployment",
+        "pod": {
+          "cpuRequestMillis": 1000,
+          "memoryLimitBytes": 3221225472,
+          "memoryRequestBytes": 2147483648
+        },
+        "replicas": 2,
+        "surgePods": 0,
+        "surgeSource": "runtime.rollout.maxSurge"
+      },
+      {
+        "class": "steady",
+        "component": "telemetry-collector",
+        "containers": [
+          {
+            "limits": {
+              "memory": "512Mi"
+            },
+            "name": "collector",
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "source": "telemetry.collection.collector.resources"
+          }
+        ],
+        "initContainers": [],
+        "kind": "Deployment",
+        "pod": {
+          "cpuRequestMillis": 100,
+          "memoryLimitBytes": 536870912,
+          "memoryRequestBytes": 134217728
+        },
+        "replicas": 1,
+        "surgePods": 1,
+        "surgeSource": "Kubernetes default: the chart states no strategy for this Deployment, and the default surge is 25 percent of the replicas, rounded up"
+      },
+      {
+        "class": "transient",
+        "component": "model-acquisition",
+        "containers": [
+          {
+            "limits": {
+              "memory": "128Mi"
+            },
+            "name": "acquire-model",
+            "requests": {
+              "cpu": "100m",
+              "memory": "32Mi"
+            },
+            "source": "model.acquisition.resources"
+          }
+        ],
+        "initContainers": [],
+        "kind": "Job",
+        "pod": {
+          "cpuRequestMillis": 100,
+          "memoryLimitBytes": 134217728,
+          "memoryRequestBytes": 33554432
+        },
+        "replicas": 1,
+        "surgePods": 0,
+        "surgeSource": "none: a hook Job has no rollout"
+      },
+      {
+        "class": "transient",
+        "component": "connection-test",
+        "containers": [
+          {
+            "limits": {
+              "memory": "64Mi"
+            },
+            "name": "connection",
+            "requests": {
+              "cpu": "10m",
+              "memory": "16Mi"
+            },
+            "source": "tests.resources"
+          }
+        ],
+        "initContainers": [],
+        "kind": "Pod",
+        "pod": {
+          "cpuRequestMillis": 10,
+          "memoryLimitBytes": 67108864,
+          "memoryRequestBytes": 16777216
+        },
+        "replicas": 1,
+        "surgePods": 0,
+        "surgeSource": "none: a test pod has no rollout"
+      }
+    ],
+    "model": {
+      "artifactBytes": 1834426016,
+      "cacheClaimName": "inferops-model-cache",
+      "identifier": "qwen3-1-7b-q8-0"
+    },
+    "placementConstraints": [],
+    "release": {
+      "key": "local-docker-desktop/support-assistant",
+      "name": "inferops",
+      "namespace": "inferops-release"
+    },
+    "schema": "inferops.io/capacity-preflight-footprint/v1alpha1",
+    "sources": {
+      "application": {
+        "path": "infra/argocd/local-docker-desktop-support-assistant.yaml",
+        "repoURL": "https://github.com/asadhanif3188/InferOps.git",
+        "sha256": "sha256:42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd",
+        "targetRevision": "main"
+      },
+      "chart": {
+        "name": "inferops-llm",
+        "path": "charts/inferops-llm",
+        "version": "0.6.0"
+      },
+      "chartDefaults": {
+        "path": "charts/inferops-llm/values.yaml",
+        "sha256": "sha256:0031a614dec9813171f1e8147f11ed55d33bfa1730c8a39781064c43213cdccd"
+      },
+      "generatedValues": {
+        "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+        "sha256": "sha256:6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
+      }
+    },
+    "topology": {
+      "apiReplicas": 2,
+      "runtimeReplicas": 2
+    },
+    "totals": {
+      "required": {
+        "cpuRequestMillis": 3110,
+        "memoryLimitBytes": 9865003008,
+        "memoryRequestBytes": 5553258496,
+        "pods": 9
+      },
+      "reserve": {
+        "cpuMillis": 500,
+        "memoryBytes": 536870912
+      },
+      "rolloutHeadroom": {
+        "cpuRequestMillis": 200,
+        "memoryLimitBytes": 1073741824,
+        "memoryRequestBytes": 268435456,
+        "pods": 2
+      },
+      "steady": {
+        "cpuRequestMillis": 2300,
+        "memoryLimitBytes": 8053063680,
+        "memoryRequestBytes": 4697620480,
+        "pods": 5
+      },
+      "transient": {
+        "cpuRequestMillis": 110,
+        "memoryLimitBytes": 201326592,
+        "memoryRequestBytes": 50331648,
+        "pods": 2
+      }
+    }
+  },
+  "footprintSha256": "sha256:925c4f9bed4ae2db3958dd777bf5b6a994af0e91e7d46d4215c066456f604058",
+  "modelCache": {
+    "artifactBytes": 1834426016,
+    "claim": null,
+    "claimName": "inferops-model-cache"
+  },
+  "nodes": [
+    {
+      "allocatable": {
+        "cpuMillis": 12000,
+        "ephemeralStorageBytes": 1081101176832,
+        "memoryBytes": 10430672896,
+        "pods": 110
+      },
+      "blockingTaints": [],
+      "capacity": {
+        "cpuMillis": 12000,
+        "ephemeralStorageBytes": 1081101176832,
+        "memoryBytes": 10430672896,
+        "pods": 110
+      },
+      "kubeletVersion": "v1.36.1",
+      "name": "desktop-control-plane",
+      "pressure": [],
+      "ready": "True",
+      "schedulable": true
+    }
+  ],
+  "refusal": {
+    "categories": [],
+    "rules": []
+  },
+  "reservations": {
+    "byNamespace": [
+      {
+        "cpuRequestMillis": 950,
+        "memoryRequestBytes": 304087040,
+        "namespace": "kube-system",
+        "pods": 8
+      },
+      {
+        "cpuRequestMillis": 0,
+        "memoryRequestBytes": 0,
+        "namespace": "local-path-storage",
+        "pods": 1
+      }
+    ],
+    "cpuRequestMillis": 950,
+    "finishedPodsNotCounted": 0,
+    "memoryRequestBytes": 304087040,
+    "node": "desktop-control-plane",
+    "podsOnAnotherNodeNotCounted": 0,
+    "podsWithAContainerThatStatesNoCpuRequest": 2,
+    "podsWithAContainerThatStatesNoMemoryRequest": 5,
+    "releasePods": [],
+    "unfinishedPods": 9,
+    "unscheduledPodsCounted": 0
+  },
+  "result": "ACCEPTED",
+  "schema": "inferops.io/capacity-preflight/v1alpha1",
+  "units": {
+    "cpuMillis": "millicores: one thousandth of one processor",
+    "cpuRequestMillis": "millicores: one thousandth of one processor",
+    "memoryBytes": "bytes",
+    "memoryLimitBytes": "bytes",
+    "memoryRequestBytes": "bytes",
+    "pods": "pods",
+    "storageBytes": "bytes"
+  }
+}
