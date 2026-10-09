@@ -106,7 +106,7 @@ from .values_yaml import canonical_yaml
 #: compares both with ``charts/inferops-llm/Chart.yaml``, so a chart change fails the
 #: build until somebody reads this mapping against it.
 CHART_NAME: Final = "inferops-llm"
-CHART_VERSION: Final = "0.5.0"
+CHART_VERSION: Final = "0.6.0"
 
 #: What the renderer takes: today's input versions and the synchronous profile only.
 HELM_VALUES_SUPPORT: Final = RendererSupport(

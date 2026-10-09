@@ -9,7 +9,7 @@ metadata:
 output:
   helmValues:
     path: "values.generated.yaml"
-    sha256: "c0f00c67faa97bcee38c3ee6de1a4bfd4e18733b4deb0ae2e9aba94b8eb99639"
+    sha256: "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
 source:
   contract:
     apiVersion: "inferops.io/v1alpha1"

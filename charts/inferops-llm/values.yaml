@@ -37,6 +37,11 @@ namespacePrefixCheck: true
 
 # -- the platform API -------------------------------------------------------
 api:
+  # At 2 or more, the chart also renders one PodDisruptionBudget for this tier,
+  # with `minAvailable: 1`. No value sets that number, and no value turns the
+  # budget off. At 1 the chart renders no budget: a budget of one available pod
+  # over one pod would refuse every eviction of it. A budget bounds a voluntary
+  # eviction. It does not bound a pod deletion, a node loss, or a rollout.
   replicaCount: 1
 
   # The bounds the Deployment controller is given for a rollout of API pods.
@@ -167,6 +172,10 @@ api:
 
 # -- the serving runtime (profile: real only) -------------------------------
 runtime:
+  # At 2 or more, the chart also renders one PodDisruptionBudget for this tier,
+  # with `minAvailable: 1`, on the same rule as `api.replicaCount` and with the
+  # same limits. `runtime.rollout` below is not limited by it: Kubernetes
+  # documents that a Deployment's rolling update does not use the eviction API.
   replicaCount: 1
 
   # The bounds the Deployment controller is given for a rollout of runtime pods.

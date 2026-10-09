@@ -109,11 +109,21 @@ The project limits what an Application in it may read and change.
 |---|---|
 | Source repositories | `https://github.com/asadhanif3188/InferOps.git` |
 | Destinations | The namespace `inferops-release`, on the cluster that Argo CD runs in |
-| Namespaced kinds | ConfigMap, Service, ServiceAccount, Deployment, Job, NetworkPolicy, Role, RoleBinding |
+| Namespaced kinds | ConfigMap, Service, ServiceAccount, Deployment, Job, NetworkPolicy, PodDisruptionBudget, Role, RoleBinding |
 | Cluster-scoped kinds | None |
 
-The eight kinds are the kinds of the committed render of the chart's real
-profile, without the `helm test` pod. A test compares the two sets.
+Eight of the nine kinds are the kinds of the committed render of the chart's real
+profile, without the `helm test` pod. That render has one replica for each tier.
+The ninth kind is PodDisruptionBudget. Since chart `0.6.0` the chart renders one
+for a tier of two or more replicas, and the desired-state release declares two
+replicas for each tier. A test compares the sets.
+
+The project is not desired state. A cluster where the project was applied before
+it admitted PodDisruptionBudget keeps the eight kinds until an operator runs
+`apply` again. Argo CD documents that it refuses to sync a kind that the project
+does not admit. So on such a cluster, the Application does not apply a revision
+that renders a budget until the project is applied again. This was not observed:
+no cluster held the project when the kind was added.
 
 The project does not narrow the application controller. That controller holds a
 cluster-wide grant, and a project or an Application that a person creates by hand

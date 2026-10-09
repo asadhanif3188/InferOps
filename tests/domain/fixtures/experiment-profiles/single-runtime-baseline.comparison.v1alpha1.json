@@ -87,11 +87,11 @@
         "target": "0.2.0"
       },
       {
-        "baseline": "c0f00c67faa97bcee38c3ee6de1a4bfd4e18733b4deb0ae2e9aba94b8eb99639",
+        "baseline": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6",
         "path": "/output/helmValues/sha256",
         "permitted": true,
         "reason": "identity-of-a-different-content",
-        "target": "314a34829e7b44c62402249f1e93ba4493ec5b019ca7becdd1a5595025d6b6f9"
+        "target": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
       },
       {
         "baseline": "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d",
@@ -177,7 +177,7 @@
       "output": {
         "helmValues": {
           "path": "values.generated.yaml",
-          "sha256": "c0f00c67faa97bcee38c3ee6de1a4bfd4e18733b4deb0ae2e9aba94b8eb99639"
+          "sha256": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
         }
       },
       "source": {
@@ -210,7 +210,7 @@
       "output": {
         "helmValues": {
           "path": "values.generated.yaml",
-          "sha256": "314a34829e7b44c62402249f1e93ba4493ec5b019ca7becdd1a5595025d6b6f9"
+          "sha256": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
         }
       },
       "source": {

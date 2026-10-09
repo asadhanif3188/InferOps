@@ -1,0 +1,159 @@
+{
+  "bounds": {
+    "maxEndpointsPerService": 32,
+    "tiers": [
+      "platform-api",
+      "serving-runtime"
+    ]
+  },
+  "collection": {
+    "executingCommit": "1111111111111111111111111111111111111111",
+    "namespace": "inferops-release",
+    "provider": "docker-desktop",
+    "readFinishedAt": "2026-01-01T00:00:01Z",
+    "readStartedAt": "2026-01-01T00:00:00Z",
+    "release": "inferops",
+    "schema": "inferops.io/service-endpoint-state-collection/v1alpha1"
+  },
+  "doesNotEstablish": [
+    "That a caller obtains a completion. A Ready endpoint is a pod whose readiness the cluster published. It is not a request that was sent and answered, and this record sends none.",
+    "That a request reaches a Ready endpoint. The node's proxy applies a slice after the slice changes, and this record does not read the proxy.",
+    "That a pod behind a Ready endpoint can serve inference. Ready states the result of the pod's readiness probe, as the kubelet reported it.",
+    "The state before the read started or after it finished. A record is one reading. It is not a timeline, and it holds no transition.",
+    "What a Prometheus `up` series states. That series says that one scrape of one pod's metrics port succeeded. It is not the state of a Service.",
+    "That the release is the declared release. The record reads no image, no revision, and no Argo CD state.",
+    "What a caller observes when a pod is deleted, evicted, or replaced, and that the release survives the loss of a node."
+  ],
+  "findings": [
+    {
+      "detail": "held",
+      "ruleId": "each-read-was-made",
+      "state": "held",
+      "statement": "The collection holds the Service read and the EndpointSlice read. A read that did not answer is not an empty list."
+    },
+    {
+      "detail": "held",
+      "ruleId": "each-read-has-the-shape-of-its-kind",
+      "state": "held",
+      "statement": "Each read is a list of objects of its kind, in the namespace that the collection names, and each member that a rule reads has its type."
+    },
+    {
+      "detail": "held",
+      "ruleId": "one-service-carries-each-tier",
+      "state": "held",
+      "statement": "For each tier, exactly one Service of the release carries the component label of that tier."
+    },
+    {
+      "detail": "held",
+      "ruleId": "the-service-publishes-ready-addresses-only",
+      "state": "held",
+      "statement": "The Service does not set publishNotReadyAddresses. Kubernetes documents that such a Service publishes each endpoint as ready, whatever its pod reports."
+    },
+    {
+      "detail": "held",
+      "ruleId": "the-slice-controller-wrote-each-slice",
+      "state": "held",
+      "statement": "Each EndpointSlice of the Service carries the managed-by label of the Kubernetes EndpointSlice controller."
+    },
+    {
+      "detail": "held",
+      "ruleId": "each-endpoint-states-its-conditions",
+      "state": "held",
+      "statement": "Each endpoint states ready, serving, and terminating, each as true or false. Kubernetes documents that a consumer reads an unstated ready as true. This record does not apply that reading."
+    },
+    {
+      "detail": "held",
+      "ruleId": "each-endpoint-names-one-pod",
+      "state": "held",
+      "statement": "Each endpoint names one Pod of the namespace, by name and by UID."
+    },
+    {
+      "detail": "held",
+      "ruleId": "one-pod-has-one-state",
+      "state": "held",
+      "statement": "A pod that more than one endpoint names has the same three conditions in each. One pod and one name have one UID."
+    },
+    {
+      "detail": "held",
+      "ruleId": "the-endpoint-count-is-within-the-bound",
+      "state": "held",
+      "statement": "The Service has at most 32 pods behind it."
+    }
+  ],
+  "limitations": [
+    "The two reads are two calls. They are not one atomic reading, and a pod can change between them.",
+    "The two instants are the collecting host's clock, to one second. They are not compared with a clock of the cluster.",
+    "An identity is a pod name and a pod UID. It is valid for the life of that pod on that cluster, and it is not a stable identity of a replica.",
+    "The record reads one namespace and the Services of one release in it.",
+    "A Service with more than 32 pods behind it is refused."
+  ],
+  "omitted": [
+    "The addresses of an endpoint.",
+    "The node name, the zone, and the hostname of an endpoint.",
+    "The ports and the hints of a slice.",
+    "The name of the kubeconfig context. A context name can hold an account identifier."
+  ],
+  "refusedBy": [],
+  "result": "OBSERVED",
+  "schema": "inferops.io/service-endpoint-state/v1alpha1",
+  "tiers": [
+    {
+      "addressTypes": [
+        "IPv4"
+      ],
+      "endpoints": {
+        "notReady": 0,
+        "ready": 2,
+        "serving": 2,
+        "terminating": 0,
+        "total": 2
+      },
+      "notReady": [],
+      "ready": [
+        {
+          "podName": "inferops-api-a",
+          "podUid": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "podName": "inferops-api-b",
+          "podUid": "00000000-0000-4000-8000-000000000002"
+        }
+      ],
+      "service": "inferops-inferops-llm",
+      "slices": 1,
+      "state": "observed",
+      "tier": "platform-api"
+    },
+    {
+      "addressTypes": [
+        "IPv4"
+      ],
+      "endpoints": {
+        "notReady": 2,
+        "ready": 0,
+        "serving": 1,
+        "terminating": 1,
+        "total": 2
+      },
+      "notReady": [
+        {
+          "podName": "inferops-runtime-a",
+          "podUid": "00000000-0000-4000-8000-000000000011",
+          "serving": true,
+          "terminating": true
+        },
+        {
+          "podName": "inferops-runtime-c",
+          "podUid": "00000000-0000-4000-8000-000000000013",
+          "serving": false,
+          "terminating": false
+        }
+      ],
+      "ready": [],
+      "service": "inferops-inferops-llm-runtime",
+      "slices": 1,
+      "state": "observed",
+      "tier": "serving-runtime"
+    }
+  ]
+}

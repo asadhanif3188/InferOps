@@ -58,6 +58,7 @@ absent — the same arrangement `kubeconform` and `shellcheck` already have.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
@@ -275,6 +276,11 @@ ROW_FOR_RENDERED = {
     ("Service", "platform-api"): "platform-api-service",
     ("Deployment", "serving-runtime"): "serving-runtime-deployment",
     ("Service", "serving-runtime"): "serving-runtime-service",
+    # One row, two objects: the budget of each tier that declares two or more
+    # replicas. Neither committed render holds one, because each renders one
+    # replica for each tier. The budget tests below render the larger counts.
+    ("PodDisruptionBudget", "platform-api"): "workload-disruption-budget",
+    ("PodDisruptionBudget", "serving-runtime"): "workload-disruption-budget",
     # One row, six kinds. `telemetry-collector` is a platform service rather than
     # a single object -- it needs an identity, a permission, a binding, a
     # configuration, a Service and a Deployment to be one thing -- and the
@@ -1665,15 +1671,22 @@ def test_no_committed_values_file_adds_a_runtime_pod_above_the_replica_count() -
     assert "HorizontalPodAutoscaler" not in kinds
 
 
-def test_the_chart_renders_no_disruption_budget() -> None:
-    """A PodDisruptionBudget bounds a voluntary eviction and nothing else.
+def test_the_committed_renders_hold_no_disruption_budget() -> None:
+    """One replica for each tier renders no PodDisruptionBudget.
 
-    This chart renders none, for either tier. Two replicas and a rollout policy
-    do not bound an eviction, and a later change that adds a budget has to say
-    what it bounds. It would not bound a pod deletion either.
+    Both committed renders use the chart's default replica counts, which are 1.
+    A budget of one available pod over one pod would refuse every eviction of
+    it. The chart renders a budget only for a tier of two or more replicas, and
+    the tests under "The disruption budgets" hold that.
     """
+    assert VALUES["api"]["replicaCount"] == 1
+    assert VALUES["runtime"]["replicaCount"] == 1
+    for name in ("mock-values.yaml", "real-values.yaml"):
+        fixture = _load_yaml(CI_DIR / name)
+        for tier in ("api", "runtime"):
+            assert "replicaCount" not in (fixture.get(tier) or {}), (name, tier)
     kinds = {document["kind"] for _profile, document in ALL_RENDERED}
-    assert "PodDisruptionBudget" not in kinds
+    assert BUDGET_KIND not in kinds
 
 
 @pytest.mark.parametrize(
@@ -1717,7 +1730,10 @@ def test_each_tier_block_requires_a_rollout(tier: str) -> None:
     assert SCHEMA["properties"][tier]["properties"]["rollout"] == {
         "$ref": "#/$defs/rollout"
     }
-    without = _merge(VALUES, {})
+    # A deep copy. The merge shares each nested mapping with `VALUES`, so a
+    # deletion in its result removed the block from the defaults that every
+    # later test of this module reads.
+    without = copy.deepcopy(VALUES)
     del without[tier]["rollout"]
     errors = list(jsonschema.Draft202012Validator(SCHEMA).iter_errors(without))
     assert any("rollout" in error.message for error in errors)
@@ -1836,17 +1852,52 @@ def test_a_runtime_request_above_its_limit_renders_and_nothing_here_refuses_it()
     assert "/runtime/resources/limits/memory" in malformed.stderr
 
 
+BUDGET_KIND = "PodDisruptionBudget"
+
+
+def _without_budgets(render: str) -> tuple[str, list[dict]]:
+    """A render without its PodDisruptionBudget documents, and those documents.
+
+    Helm separates the documents of a render with a `---` line. A budget is a
+    whole document, so it is taken out whole and the other lines are not
+    changed.
+    """
+    kept: list[str] = []
+    budgets: list[dict] = []
+    for chunk in render.replace("\r\n", "\n").split("\n---\n"):
+        document = yaml.safe_load(chunk)
+        if isinstance(document, dict) and document.get("kind") == BUDGET_KIND:
+            budgets.append(document)
+        else:
+            kept.append(chunk)
+    return "\n---\n".join(kept), budgets
+
+
+def _budget_components(budgets: list[dict]) -> list[str]:
+    return sorted(
+        budget["metadata"]["labels"]["app.kubernetes.io/component"]
+        for budget in budgets
+    )
+
+
 def _runtime_render(count: int) -> tuple[list[str], list[dict]]:
+    """The lines and the documents of a render, both without its budgets."""
     result = _render(f"runtime.replicaCount={count}")
     assert result.returncode == 0, result.stderr
-    text = result.stdout.replace("\r\n", "\n")
+    text, _budgets = _without_budgets(result.stdout)
     return text.splitlines(), [
         d for d in yaml.safe_load_all(text) if isinstance(d, dict)
     ]
 
 
-def test_a_second_runtime_replica_changes_the_replica_count_and_nothing_else() -> None:
-    """Two runtime replicas are one field of one object.
+def test_a_second_runtime_replica_changes_the_replica_count_and_adds_one_budget() -> (
+    None
+):
+    """Two runtime replicas are one field of one object, and one more object.
+
+    The second object is the runtime tier's PodDisruptionBudget, which the chart
+    renders from two replicas. The comparison below is made without it, and the
+    tests under "The disruption budgets" hold its content.
 
     The Service, its selector, the pod template, the probes, the model mount, the
     integrity check, the network policies, and the API are the same bytes at one
@@ -1864,6 +1915,11 @@ def test_a_second_runtime_replica_changes_the_replica_count_and_nothing_else() -
     assert len(before) == len(after)
     changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
     assert changed == [("  replicas: 1", "  replicas: 2")]
+    for count, expected in ((1, []), (2, ["serving-runtime"])):
+        _text, budgets = _without_budgets(
+            _render(f"runtime.replicaCount={count}").stdout
+        )
+        assert _budget_components(budgets) == expected, count
 
     [deployment] = [
         d
@@ -1952,8 +2008,11 @@ def test_the_runtime_service_selects_every_replica_and_names_none() -> None:
     }
 
 
-def test_a_second_api_replica_changes_the_replica_count_and_nothing_else() -> None:
-    """Two API replicas are one field of one object.
+def test_a_second_api_replica_changes_the_replica_count_and_adds_one_budget() -> None:
+    """Two API replicas are one field of one object, and one more object.
+
+    The second object is the API tier's PodDisruptionBudget, which the chart
+    renders from two replicas. The comparison below is made without it.
 
     The Service, its selector, the pod template, the probes, the configuration,
     the network policies, and the runtime are the same bytes at one replica and
@@ -1964,13 +2023,16 @@ def test_a_second_api_replica_changes_the_replica_count_and_nothing_else() -> No
     two = _render("api.replicaCount=2")
     assert one.returncode == 0, one.stderr
     assert two.returncode == 0, two.stderr
-    before = one.stdout.replace("\r\n", "\n").splitlines()
-    after = two.stdout.replace("\r\n", "\n").splitlines()
+    one_text, one_budgets = _without_budgets(one.stdout)
+    two_text, two_budgets = _without_budgets(two.stdout)
+    assert one_budgets == []
+    assert _budget_components(two_budgets) == ["platform-api"]
+    before, after = one_text.splitlines(), two_text.splitlines()
     assert len(before) == len(after)
     changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
     assert changed == [("  replicas: 1", "  replicas: 2")]
 
-    documents = [d for d in yaml.safe_load_all(two.stdout) if isinstance(d, dict)]
+    documents = [d for d in yaml.safe_load_all(two_text) if isinstance(d, dict)]
     [deployment] = [
         d
         for d in documents
@@ -2580,8 +2642,10 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     runtime replica count, and the workload version. So the two renders differ
     in the `replicas` line of each Deployment and in the lines that carry the
     workload version: one ConfigMap value, and the configuration checksum
-    annotations derived from it. The workload version is not a label. Nothing
-    else differs. The Services, the probes, the model mount, and the pins are
+    annotations derived from it. The workload version is not a label. The
+    desired-state render also holds two more objects: one PodDisruptionBudget
+    for each tier, because each tier declares two replicas. Nothing else
+    differs. The Services, the probes, the model mount, and the pins are
     rendered the same.
 
     This renders files. No cluster was asked, and no release with two replicas
@@ -2589,8 +2653,12 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     run applied it once, on one provider. This establishes the rendered
     topology and not what a caller observes when a pod is unavailable.
     """
-    desired = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
-    fixture = _template(GENERATED_VALUES, HAND_WRITTEN_VALUES)
+    desired, budgets = _without_budgets(
+        _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    )
+    fixture, none = _without_budgets(_template(GENERATED_VALUES, HAND_WRITTEN_VALUES))
+    assert none == []
+    assert _budget_components(budgets) == ["platform-api", "serving-runtime"]
     before, after = fixture.splitlines(), desired.splitlines()
     assert len(before) == len(after)
     changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
@@ -2666,6 +2734,11 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica() -> N
     the workload version. So the two renders differ in the `replicas` line of
     the runtime Deployment and in the lines that carry the workload version: one
     ConfigMap value, and the configuration checksum annotations derived from it.
+    The target also renders one object that the baseline does not: the runtime
+    tier's PodDisruptionBudget, because the chart renders a budget only for a
+    tier of two or more replicas. So the baseline's one runtime pod is not
+    bounded for an eviction, and the target's two are. Both sides render the
+    API tier's budget, and it is the same on both.
     Nothing else differs. The API Deployment keeps two replicas. Each probe,
     each resource request and limit, each image, the model mount, both rollout
     strategies, and both Services are rendered the same.
@@ -2678,8 +2751,14 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica() -> N
     baseline. This establishes the rendered difference and not what a caller
     observes when a runtime pod is unavailable.
     """
-    target = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
-    baseline = _template(BASELINE_PROFILE_VALUES, HAND_WRITTEN_VALUES)
+    target_render = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    baseline_render = _template(BASELINE_PROFILE_VALUES, HAND_WRITTEN_VALUES)
+    target, target_budgets = _without_budgets(target_render)
+    baseline, baseline_budgets = _without_budgets(baseline_render)
+    assert _budget_components(target_budgets) == ["platform-api", "serving-runtime"]
+    assert _budget_components(baseline_budgets) == ["platform-api"]
+    [shared] = baseline_budgets
+    assert shared in target_budgets
     before, after = target.splitlines(), baseline.splitlines()
     assert len(before) == len(after)
     changed = [(a, b) for a, b in zip(before, after, strict=True) if a != b]
@@ -2736,6 +2815,282 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica() -> N
     lint = _lint(BASELINE_PROFILE_VALUES, HAND_WRITTEN_VALUES)
     assert lint.returncode == 0, lint.stdout + lint.stderr
     assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
+
+
+# --------------------------------------------------------------------------
+# The disruption budgets
+# --------------------------------------------------------------------------
+#
+# Everything in this section reads a render. Kubernetes documents that a
+# PodDisruptionBudget bounds a voluntary eviction: the eviction API, which a
+# node drain uses, refuses an eviction that would leave fewer available pods
+# than the budget states. Kubernetes documents that a direct pod deletion does
+# not use that API, and that a Deployment's rolling update is not limited by a
+# budget. None of these tests installs the chart, requests an eviction, drains
+# a node, or deletes a pod. So none of them establishes that an eviction is
+# refused, and none establishes what a caller observes when a pod is deleted.
+
+ARGOCD_PROJECT_PATH = REPO_ROOT / "infra" / "argocd" / "workloads-project.yaml"
+
+BOTH_TIERS = ["platform-api", "serving-runtime"]
+
+
+def _tier_documents(api: int, runtime: int) -> list[dict]:
+    """Every document of the real fixture's render at the two replica counts."""
+    result = _render(f"api.replicaCount={api}", f"runtime.replicaCount={runtime}")
+    assert result.returncode == 0, result.stderr
+    return [d for d in yaml.safe_load_all(result.stdout) if isinstance(d, dict)]
+
+
+def _budgets(documents: list[dict]) -> dict[str, dict]:
+    """The budgets of a render, by the component label each carries."""
+    budgets = [d for d in documents if d["kind"] == BUDGET_KIND]
+    by_component = {
+        d["metadata"]["labels"]["app.kubernetes.io/component"]: d for d in budgets
+    }
+    assert len(by_component) == len(budgets), "two budgets carry one component"
+    return by_component
+
+
+def _deployment(documents: list[dict], component: str) -> dict:
+    [deployment] = [
+        d
+        for d in documents
+        if d["kind"] == "Deployment"
+        and d["metadata"]["labels"].get("app.kubernetes.io/component") == component
+    ]
+    return deployment
+
+
+@pytest.mark.parametrize(
+    "api,runtime,expected",
+    [
+        (1, 1, []),
+        (2, 1, ["platform-api"]),
+        (1, 2, ["serving-runtime"]),
+        (2, 2, BOTH_TIERS),
+        (3, 3, BOTH_TIERS),
+        (16, 16, BOTH_TIERS),
+    ],
+)
+def test_a_tier_renders_one_budget_from_two_replicas_and_none_at_one(
+    api: int, runtime: int, expected: list[str]
+) -> None:
+    """The replica count of a tier decides whether its budget is rendered.
+
+    At one replica a budget of one available pod would refuse every eviction of
+    the only pod, so none is rendered and that tier is not bounded for an
+    eviction. Sixteen is the largest count that the values schema admits.
+    """
+    assert sorted(_budgets(_tier_documents(api, runtime))) == expected
+
+
+def test_the_mock_profile_renders_no_budget_for_a_runtime_it_does_not_render() -> None:
+    """The mock profile installs no runtime, whatever `runtime.replicaCount` says."""
+    render = _template(
+        CI_DIR / "mock-values.yaml",
+        overrides=("api.replicaCount=2", "runtime.replicaCount=2"),
+    )
+    documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
+    assert sorted(_budgets(documents)) == ["platform-api"]
+
+
+@pytest.mark.parametrize("count", [2, 3, 16])
+@pytest.mark.parametrize("component", BOTH_TIERS)
+def test_each_budget_keeps_one_pod_of_its_own_deployment_available(
+    component: str, count: int
+) -> None:
+    """One whole pod, over the pods that the tier's Deployment selects.
+
+    `minAvailable` is 1 at every count from 2. It is a whole number and not a
+    percentage, so it does not move when the replica count does. It is below
+    the replica count at every such count, so the budget always admits one
+    eviction while every pod of the tier is available.
+
+    The selector is the Deployment's selector, member for member. So the budget
+    counts the pods that the Deployment counts, and no other.
+    """
+    documents = _tier_documents(count, count)
+    budget = _budgets(documents)[component]
+    deployment = _deployment(documents, component)
+
+    assert budget["apiVersion"] == "policy/v1"
+    assert budget["spec"] == {
+        "minAvailable": 1,
+        "selector": {"matchLabels": deployment["spec"]["selector"]["matchLabels"]},
+    }
+    assert type(budget["spec"]["minAvailable"]) is int
+    assert budget["spec"]["minAvailable"] < deployment["spec"]["replicas"] == count
+
+    assert budget["metadata"]["name"] == deployment["metadata"]["name"]
+    assert budget["metadata"]["namespace"] == deployment["metadata"]["namespace"]
+    assert budget["metadata"]["labels"] == deployment["metadata"]["labels"]
+    assert not _is_hook(budget)
+
+    selector = budget["spec"]["selector"]["matchLabels"]
+    assert selector, "an empty selector selects every pod of the namespace"
+    pod_labels = deployment["spec"]["template"]["metadata"]["labels"]
+    assert selector.items() <= pod_labels.items()
+
+
+def test_a_budget_selects_the_pods_of_one_tier_and_no_other_pod() -> None:
+    """Each pod template of the release is selected by its own budget or by none.
+
+    The real fixture also renders the collector, the acquisition hook, and the
+    `helm test` pod. A budget that selected one of them would count a pod that
+    is not a replica of its tier. The collector has one replica and no budget.
+    """
+    documents = _tier_documents(2, 2)
+    budgets = _budgets(documents)
+    assert sorted(budgets) == BOTH_TIERS
+    seen: dict[str, int] = {}
+    for document in documents:
+        if document["kind"] == "Pod":
+            labels = document["metadata"]["labels"]
+        else:
+            labels = _dig(document, "spec.template.metadata.labels")
+        if not isinstance(labels, dict):
+            continue
+        selecting = sorted(
+            component
+            for component, budget in budgets.items()
+            if budget["spec"]["selector"]["matchLabels"].items() <= labels.items()
+        )
+        component = str(labels.get("app.kubernetes.io/component"))
+        expected = [component] if component in budgets else []
+        assert selecting == expected, _subject(document)
+        seen[component] = seen.get(component, 0) + 1
+    assert seen["platform-api"] == seen["serving-runtime"] == 1
+    assert set(seen) - set(budgets), "no other pod template was read"
+
+
+def test_a_budget_states_one_bound_and_leaves_the_rest_to_kubernetes() -> None:
+    """`minAvailable` and the selector, and no other member.
+
+    The budget states no `maxUnavailable`: Kubernetes refuses a budget that
+    states both bounds. It states no `unhealthyPodEvictionPolicy`, so the
+    Kubernetes default applies to a pod that runs and is not Ready. That policy
+    is not decided here. A change that states one fails this test, and has to
+    say what it decides.
+    """
+    for budget in _budgets(_tier_documents(2, 2)).values():
+        assert set(budget) == {"apiVersion", "kind", "metadata", "spec"}
+        assert set(budget["spec"]) == {"minAvailable", "selector"}
+        assert set(budget["spec"]["selector"]) == {"matchLabels"}
+
+
+def test_no_value_configures_a_budget() -> None:
+    """The budget is derived from the replica count, and nothing else sets it.
+
+    The values contract holds no member for it, in the defaults or in the
+    schema, and the schema refuses one that a caller adds. So no values file
+    can raise `minAvailable` to the replica count, which would refuse every
+    eviction, and none can turn a budget off. A change that adds such a value
+    fails this test, and has to state who owns it.
+    """
+
+    def names(node: object) -> set[str]:
+        found: set[str] = set()
+        if isinstance(node, dict):
+            for key, value in node.items():
+                found.add(str(key))
+                found |= names(value)
+        elif isinstance(node, list):
+            for value in node:
+                found |= names(value)
+        return found
+
+    for source in (VALUES, SCHEMA):
+        for name in names(source):
+            lowered = name.lower()
+            assert "disruption" not in lowered, name
+            assert "minavailable" not in lowered, name
+            assert lowered not in ("budget", "pdb"), name
+    for tier in ("api", "runtime"):
+        assert SCHEMA["properties"][tier]["additionalProperties"] is False
+        refused = _render(f"{tier}.replicaCount=2", f"{tier}.minAvailable=2")
+        assert refused.returncode != 0, tier
+        assert "minAvailable" in refused.stderr, refused.stderr
+
+
+def test_a_budget_leaves_both_rollout_strategies_as_the_values_state_them() -> None:
+    """A budget is one more object. It changes no member of a Deployment.
+
+    Kubernetes documents that a rolling update is not limited by a budget. So
+    the runtime's rollout may make one runtime pod unavailable, as
+    `runtime.rollout` states, whether or not the runtime's budget exists.
+    """
+    with_budgets = _tier_documents(2, 2)
+    for component, tier in (("platform-api", "api"), ("serving-runtime", "runtime")):
+        rollout = VALUES[tier]["rollout"]
+        assert _deployment(with_budgets, component)["spec"]["strategy"] == {
+            "type": "RollingUpdate",
+            "rollingUpdate": {
+                "maxUnavailable": rollout["maxUnavailable"],
+                "maxSurge": rollout["maxSurge"],
+            },
+        }
+
+
+def test_the_budgets_are_one_declared_row_that_no_cluster_has_held() -> None:
+    """The inventory row, the chart's declaration, and the row's status agree.
+
+    `planned` is the status of a row that a render holds and no cluster has
+    held. The row cites no evidence, because no release that renders a budget
+    was installed.
+    """
+    [row] = [
+        resource
+        for resource in INVENTORY["resources"]
+        if resource["resourceId"] == "workload-disruption-budget"
+    ]
+    assert row["kind"] == "policy/v1 PodDisruptionBudget"
+    assert (row["owner"], row["lifecycle"]) == ("helm", "release")
+    assert row["v1Status"] == "planned"
+    assert row["evidenceRef"] is None
+    assert row["resourceId"] in DECLARED_OWNED
+    for component, budget in _budgets(_tier_documents(2, 2)).items():
+        assert ROW_FOR_RENDERED[(budget["kind"], component)] == row["resourceId"]
+        api_version = budget["apiVersion"]
+        assert f"{api_version} {budget['kind']}" == row["kind"]
+
+
+def test_the_desired_state_release_renders_both_budgets_and_the_project_admits_them() -> (
+    None
+):
+    """The release that the Application names, and the kinds its project admits.
+
+    The desired-state release declares two replicas for each tier, so its
+    render holds both budgets. The project admits exactly the kinds of that
+    render, without the `helm test` pod. An Application whose project does not
+    admit a rendered kind does not apply that render: Argo CD documents that it
+    refuses the sync.
+
+    This renders files and reads the project manifest. No Application was
+    applied, and no cluster held a budget.
+    """
+    render = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
+    assert sorted(_budgets(documents)) == BOTH_TIERS
+    rendered = {
+        (d["apiVersion"].rpartition("/")[0], d["kind"])
+        for d in documents
+        if _mapping(d, "metadata.annotations").get(HOOK_ANNOTATION) != "test"
+    }
+    project = _load_yaml(ARGOCD_PROJECT_PATH)
+    admitted = {
+        (entry["group"], entry["kind"])
+        for entry in project["spec"]["namespaceResourceWhitelist"]
+    }
+    assert ("policy", BUDGET_KIND) in admitted
+    assert rendered == admitted
+
+
+def test_the_workload_policy_accepts_a_render_that_holds_both_budgets() -> None:
+    """The policy reads workloads. A budget is not one, and adds no finding."""
+    documents = _tier_documents(2, 2)
+    assert sorted(_budgets(documents)) == BOTH_TIERS
+    assert not check_documents(documents)
 
 
 def _desired_state_runtime() -> tuple[dict[str, Any], list[dict[str, Any]]]:

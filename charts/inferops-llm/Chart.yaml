@@ -36,7 +36,17 @@ type: application
 # no install was run. The render is not the same one: 0.4.0 left the runtime's
 # strategy to the Kubernetes default, which may add a runtime pod above the replica
 # count. No 0.5.0 release has been installed anywhere.
-version: 0.5.0
+#
+# (That last sentence described the day 0.5.0 was written. A run on 2026-10-08
+# installed chart 0.5.0 on `docker-desktop`.)
+#
+# 0.6.0 rather than 0.5.1: the chart renders a kind it did not render before. A
+# tier with two or more replicas now renders one PodDisruptionBudget. The values
+# contract is not changed, and a values file written against 0.5.0 renders the
+# same objects plus that budget for each such tier. At one replica, which is the
+# default of both tiers, the render differs from 0.5.0 only in the chart label.
+# No 0.6.0 release was installed by the change that added it.
+version: 0.6.0
 
 # What this chart installs. `platform-api-container-image` is `implemented` in the
 # ownership inventory: `deploy/api/Dockerfile` builds one and `V1-S3-011` loaded it
@@ -65,5 +75,6 @@ annotations:
     workload-service-account,workload-network-policy,platform-api-deployment,
     platform-api-service,serving-runtime-deployment,serving-runtime-service,
     runtime-configuration,telemetry-scrape-configuration,model-acquisition-job,
-    model-acquisition-service-account,telemetry-collector
+    model-acquisition-service-account,telemetry-collector,
+    workload-disruption-budget
   inferops.io/deferred-resources: ""

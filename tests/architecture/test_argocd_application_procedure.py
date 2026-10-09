@@ -1039,7 +1039,7 @@ def test_observation_reads_a_bounded_number_of_times_and_changes_nothing(
             if call[:2]
             == [
                 "get",
-                "deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings",
+                "deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,poddisruptionbudgets,roles,rolebindings",
             ]
         )
         == 3

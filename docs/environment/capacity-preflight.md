@@ -64,7 +64,7 @@ the replicas, the surge, and the name, the requests, and the memory limit of
 each container. A pod that the chart renders and the footprint does not state
 fails that test.
 
-At chart version `0.5.0` the footprint is:
+At chart version `0.6.0` the footprint is:
 
 | Component | Kind | Class | Replicas | Surge pods | Processor request of one pod (millicores) | Memory request of one pod (bytes) | Memory limit of one pod (bytes) |
 |---|---|---|---|---|---|---|---|

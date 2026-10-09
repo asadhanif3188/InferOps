@@ -206,7 +206,15 @@ contracts, the two generated values files, and the two release documents, and it
 refuses a difference at any path but twelve stated ones: the runtime replica count,
 the workload version and the digests that follow it, and the contract's description.
 The profile is an experiment baseline and not a product tier. No Application reads
-it, and no run installed it.
+it, and no run installed it. Since `V2-S4-004-PR1` a script and a tool capture the
+[Ready endpoint state](docs/environment/service-endpoint-state.md) of the API Service
+and the runtime Service as one record: the count of endpoints, the count that are
+Ready, and the pod behind each. A record is one reading of what the cluster published.
+It is not a caller's result. The chart also renders a
+[PodDisruptionBudget](docs/environment/disruption-budgets.md) for a tier of two or more
+replicas, which keeps one pod available through a voluntary eviction. A budget does not
+protect a pod from a direct deletion. No endpoint of a cluster was read, and no eviction
+was requested.
 
 ## Prerequisites
 
