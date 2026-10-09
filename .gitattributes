@@ -77,3 +77,9 @@ gitops/** text eol=lf
 # record and of the driver, so the bytes of these files are the same on every
 # host.
 docs/proof/environment/v2-s3-003-pr2-reconciliation-observation-* text eol=lf
+
+# The single-runtime baseline profile is a generated release and a comparison
+# record. Each is compared byte for byte with what the tool derives, and the
+# release records the SHA-256 of its values file's bytes. Pinned so a Windows
+# checkout cannot turn either into a CRLF copy that no derivation matches.
+tests/domain/fixtures/experiment-profiles/** text eol=lf

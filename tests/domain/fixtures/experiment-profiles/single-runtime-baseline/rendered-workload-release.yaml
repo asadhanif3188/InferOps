@@ -1,0 +1,25 @@
+# Generated RenderedWorkloadRelease: what the values beside it were rendered from.
+# Do not edit by hand: render the release again from the sources it names.
+apiVersion: "inferops.io/v1alpha1"
+kind: "RenderedWorkloadRelease"
+metadata:
+  releaseId: "acf6fbc799ea50ab43b76f5ab48e81bf82bb89bda808319c22f9ae42d22753fb"
+  workloadId: "support-assistant"
+  workloadVersion: "0.1.0"
+output:
+  helmValues:
+    path: "values.generated.yaml"
+    sha256: "c0f00c67faa97bcee38c3ee6de1a4bfd4e18733b4deb0ae2e9aba94b8eb99639"
+source:
+  contract:
+    apiVersion: "inferops.io/v1alpha1"
+    sha256: "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d"
+  environmentBinding:
+    apiVersion: "inferops.io/v1alpha1"
+    environment: "local"
+    name: "local-docker-desktop"
+    sha256: "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
+  platformDefaults:
+    revision: "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+  renderer:
+    revision: "40803f2fe9a95753da6480de1e5321efafb3cbf0"

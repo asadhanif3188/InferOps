@@ -10,6 +10,46 @@ from `1.0.0`.
 
 ### Added
 
+- **A single-runtime baseline profile exists beside the two-replica release: two
+  API replicas and one serving runtime replica. A check refuses each difference
+  between the two that is not the runtime replica count, or an identity that
+  follows it.** `V2-S4-003-PR2` adds `tools/baseline_profile`, one generated
+  release under `tests/domain/fixtures/experiment-profiles/`, one comparison
+  record beside it, one suite, one render comparison in the chart suite, and one
+  page. No chart file, contract, binding, Application, Terraform file, desired-state
+  file, or freeze record is edited. **The baseline is the target's declaration
+  with the contract replaced.** It is rendered from version `0.1.0` of the
+  reference workload, which declares a replica range of one and one, on the
+  binding, the platform defaults, and the two revisions of the desired-state
+  release. No contract is added. **Four layers are compared**: the declarations,
+  the contract documents, the generated values, and the release documents. 12
+  paths may differ. The two generated values files differ in two values: the
+  runtime replica count, and the workload version, which differs because one
+  version names one content. A resource ceiling, a runtime image, a model
+  identifier, an owner, or a tenant that one contract states and the other
+  does not is refused at its path, and so is a baseline with another replica
+  count. The binding, the platform defaults with their API values, and the
+  revisions are one for both sides by declaration, so a change to one of them
+  moves both sides. **7 rules in a record, and 2 more for the committed
+  files.** The record's result is `COMPARABLE` or `REFUSED`. A change that moves
+  both sides alike stays comparable and still fails the check until the release
+  and the record are written again.
+  A render of both releases with one hand-written values file differs in one
+  ConfigMap value, two checksum annotations, and the replica line of the runtime
+  Deployment. Each probe and each resource figure is rendered the same. **This
+  is static evidence at C0, and it registers no claim.** The profile is an
+  experiment baseline. It is not a product tier and not desired state: no
+  Application reads it, and no run installed it. The baseline declares no
+  hand-written values, no chart revision, no API image digest, no release name,
+  and no namespace, so the record compares none of them. No caller profile
+  exists, and the capacity preflight gives no footprint for the baseline. The
+  workload version is also a resource attribute of the API's telemetry, so
+  telemetry of the two sides differs in it. Under the target's rollout bounds,
+  a rollout of one runtime replica removes the one runtime pod before its
+  replacement is created. The baseline can follow the target only while every
+  other member of the two contracts stays equal.
+  [The baseline profile page](docs/environment/single-runtime-baseline-profile.md)
+  states the permitted differences and the rules.
 - **A capacity preflight decides, before an install, whether the stated requests
   and limits of the two-replica release fit in what one node allocates. A
   cluster where they do not fit is refused, and no figure is lowered.**

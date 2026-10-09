@@ -23,6 +23,11 @@ The gate has two parts.
 and no reserve to obtain an acceptance. A cluster that is refused stays refused
 until the cluster or the committed release changes.
 
+The gate derives the footprint of the desired-state release only. Since
+`V2-S4-003-PR2` a [single-runtime baseline profile](single-runtime-baseline-profile.md)
+exists, with one runtime replica. No Application names it, so the gate gives no
+footprint for it.
+
 ## What the gate requires: the declared footprint
 
 The footprint is read from files of the working tree, and not from the cluster.

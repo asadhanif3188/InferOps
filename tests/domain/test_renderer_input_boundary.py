@@ -1577,7 +1577,15 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
 #:   names ``generated_release`` and ``gitops_desired_state`` to read the
 #:   identity that the declared desired-state release gives each replica, which
 #:   is why it is listed. No procedure calls it.
+#: - ``baseline_profile`` derives the single-runtime baseline and the
+#:   desired-state release again, and compares the two. It writes one profile
+#:   directory outside the Git desired state, and the comparison record beside
+#:   it. It does not import the render package: it names ``generated_release``
+#:   and ``gitops_desired_state`` for the declared target and the derivation,
+#:   which is why it is listed. No Application reads what it writes, and no
+#:   procedure calls it.
 REPOSITORY_CHECKS: tuple[str, ...] = (
+    "baseline_profile",
     "desired_state_provenance",
     "experiment_e01",
     "generated_release",

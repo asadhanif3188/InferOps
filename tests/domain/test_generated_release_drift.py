@@ -49,6 +49,7 @@ from inferops.domain.workload import (
     get_matrix_loader,
     set_matrix_loader,
 )
+from tools.baseline_profile import baseline_profile
 from tools.experiment_e01 import RUNS_DIR, committed_runs
 from tools.generated_release import (
     BLOCKING_RULES,
@@ -195,9 +196,11 @@ RUN_RENDERS = frozenset({"render-a", "render-b", "mutation"})
 def test_every_committed_generated_file_is_in_a_declared_release_directory() -> None:
     """A release nobody declared would never be compared, so none may exist.
 
-    A generated file may be committed in two other places. One is the Git desired
+    A generated file may be committed in three other places. One is the Git desired
     state under ``gitops/``, whose releases ``tools.gitops_desired_state`` declares
-    and derives again through this package's check. The other is an E01 run's
+    and derives again through this package's check. One is the single-runtime
+    baseline profile, which ``tools.baseline_profile`` declares and derives again
+    through this package's check. One is an E01 run's
     evidence, and only as a file the run's manifest records. Those renders are bound
     to the commit that ran them, so this check does not derive them again from
     today's sources; ``python -m tools.experiment_e01 --check`` holds each to its
@@ -213,7 +216,11 @@ def test_every_committed_generated_file_is_in_a_declared_release_directory() -> 
     committed = sorted(result.stdout.splitlines())
     declared = [
         f"{release.directory}/{name}"
-        for release in (*DECLARED_RELEASES, *DESIRED_STATE_RELEASES)
+        for release in (
+            *DECLARED_RELEASES,
+            *DESIRED_STATE_RELEASES,
+            baseline_profile(),
+        )
         for name in GENERATED_FILES
     ]
     run_evidence = [

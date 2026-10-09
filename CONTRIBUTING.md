@@ -525,6 +525,36 @@ restates its figures: update them with the change.
 [The capacity preflight page](docs/environment/capacity-preflight.md) states the rules,
 the units, and what a record does not establish.
 
+**The single-runtime baseline profile is held to the desired-state release.** The
+baseline is two API replicas and one runtime replica, derived from the target's own
+declaration with the contract replaced. A tool compares the two releases in four layers
+and refuses a difference that is not the runtime replica count or an identity that
+follows it:
+
+```sh
+uv run --locked python -m tools.baseline_profile --check
+uv run --locked python -m tools.baseline_profile --record
+uv run --locked python -m tools.baseline_profile --write
+```
+
+`--check` fails in two ways, and the remedy differs.
+
+- **Stale.** A change to the binding, to the platform defaults, or to a revision of the
+  desired-state release moves both sides alike. So does a change to a contract at a
+  permitted path. The findings are `baseline-release-drifted` and
+  `baseline-record-stale`. Read them, then run `--write` in the same change.
+- **Refused.** A change to one contract of the reference workload at any other path,
+  such as a resource ceiling, makes the two sides differ. `--write` refuses. The
+  baseline is rendered from version `0.1.0` of the workload, so it can follow the
+  target only while every other member of the two contracts stays equal. Give the
+  other contract the same change, or decide another baseline contract. That is a
+  decision, and the first experiment's freeze record pins the `0.1.0` contract.
+
+A comment in a contract is not compared. Do not add a permitted path to obtain
+`COMPARABLE`: a new permitted path is a second variable of the comparison.
+[The baseline profile page](docs/environment/single-runtime-baseline-profile.md) states
+the permitted differences, the rules, and what a record does not establish.
+
 ### Experiment freeze records
 
 An experiment family is frozen before its first result-bearing run, in a record under
