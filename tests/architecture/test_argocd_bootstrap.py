@@ -169,11 +169,23 @@ BUILD_ROOTS = (
 #: The directories a request is served from.
 SERVING_ROOTS = ("src", "charts", "deploy")
 
+#: The capacity preflight's tool. It names one of the two manifests by path,
+#: because it reads the values that the Application gives the chart. It reads
+#: that file from the working tree and addresses no controller, and a test below
+#: holds that the path is its only reference.
+CAPACITY_TOOL_REL = "tools/capacity_preflight/core.py"
+
 #: The build files that may name the controller: the two manifests that ADR 0019
-#: decided, the procedure that applies them, and the procedure that installs the
-#: controller. A fifth file is a fifth thing that addresses Argo CD, and no suite
-#: reads it. None of the four is under a directory a request is served from.
-ALLOWED_REFERENCES = [*ARGOCD_MANIFESTS, APPLICATION_PROCEDURE_REL, PROCEDURE_REL]
+#: decided, the procedure that applies them, the procedure that installs the
+#: controller, and the one tool that reads a manifest as a file. A sixth file is
+#: a sixth thing that names Argo CD, and no suite reads it. None of the five is
+#: under a directory a request is served from.
+ALLOWED_REFERENCES = [
+    *ARGOCD_MANIFESTS,
+    APPLICATION_PROCEDURE_REL,
+    PROCEDURE_REL,
+    CAPACITY_TOOL_REL,
+]
 
 #: The modules a rule may name as its enforcement: this one, which reads files,
 #: the one that executes the procedure against stubs, and the one that reads the
@@ -788,6 +800,23 @@ def test_no_serving_component_refers_to_argocd() -> None:
     assert references_to_argocd(BUILD_ROOTS) == ALLOWED_REFERENCES
     for allowed in ALLOWED_REFERENCES:
         assert allowed.split("/", 1)[0] not in SERVING_ROOTS, allowed
+
+
+def test_the_capacity_tool_names_a_manifest_by_path_and_nothing_else() -> None:
+    """The one tool on the list reads a committed file. It addresses no controller.
+
+    Each place where the tool's text names Argo CD is the path of one of the two
+    manifests. An address, an API group, a namespace of the controller, or a
+    command would be a second kind of reference, and it fails here.
+    """
+    text = text_of(REPO_ROOT / CAPACITY_TOOL_REL)
+    matches = list(ARGOCD_REFERENCE.finditer(text))
+    assert matches, "the tool no longer names a manifest; remove it from the list"
+    for match in matches:
+        line = text[
+            text.rfind("\n", 0, match.start()) + 1 : text.find("\n", match.end())
+        ]
+        assert any(f'"{manifest}"' in line for manifest in ARGOCD_MANIFESTS), line
 
 
 @pytest.mark.parametrize(

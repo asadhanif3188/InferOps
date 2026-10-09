@@ -1,6 +1,6 @@
 # The capacity preflight for the two-replica release
 
-Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. No reading of a cluster is recorded on this page. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
+Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. One reading of one cluster is committed: on 2026-10-09 the `docker-desktop` provider held no release and no Argo CD installation, and the record of that reading has the result `ACCEPTED`. That reading is not a qualification of that host. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
 
 The desired-state release declares two platform API replicas and two serving
 runtime replicas. This page describes the gate that decides, before anything is
@@ -348,8 +348,8 @@ reserve. A footprint whose figures differ is not a collection.
 cluster produced, each with its record. The suite's own builders wrote each
 document. Their header states the provider `synthetic` and a commit of forty
 zeros. `--check` builds each record again and compares it with the committed
-record. The figures of `accepted-one-node` were chosen to be those of
-one reading of `docker-desktop` that was made while the gate was written and that is not committed: the node's allocatable figures, and nine pods that request
+record. The figures of `accepted-one-node` are also those of
+the one committed reading below: the node's allocatable figures, and nine pods that request
 950 millicores and 304,087,040 bytes.
 
 | Case | Result | What it shows |
@@ -364,6 +364,43 @@ one reading of `docker-desktop` that was made while the gate was written and tha
 Each case stores the footprint of chart version `0.5.0`. A later chart can
 declare other figures. The cases then show the gate's arithmetic on the stored
 footprint, and the suite builds its other cases from the footprint of the tree.
+
+## The one committed reading
+
+[`docs/proof/environment/v2-s4-003-pr1-capacity-preflight-run-1/`](../proof/environment/v2-s4-003-pr1-capacity-preflight-run-1/record.v1alpha1.json)
+holds one collection that the script wrote on 2026-10-09 on the `docker-desktop`
+provider, with its record.
+[The transcript](../proof/environment/v2-s4-003-pr1-capacity-preflight-run-1-transcript.txt)
+is what the script printed. `--check` builds the record again from the
+collection.
+
+| Property | Value |
+|---|---|
+| Result | `ACCEPTED`. 12 rules `held`, and the claim rule `not-observed` |
+| Commit of the working tree | `479ffda591b484edcd9ee19e1e040b6aee542124`, a commit of the branch of this change. It is not a commit of `main`, which is the revision that the Application names. At that commit the files of the footprint are the same on both |
+| Cluster | One node, server `v1.36.1`. Nine unfinished pods, all of the cluster's own system. No pod of this project, and no Argo CD installation |
+| The node allocates | 12,000 millicores, 10,430,672,896 bytes, 110 pods |
+| The nine pods request | 950 millicores and 304,087,040 bytes. Two state no processor request, and five state no memory request |
+| Pod count | 9 required, 101 available |
+| Processor requests | 3,110 millicores required, 11,050 available |
+| Memory limits | 9,865,003,008 bytes required, 10,126,585,856 available: 261,582,848 bytes (about 249 MiB) more than required |
+| Model cache claim | The read of the release namespace returned no claim, so the claim was not observed |
+
+**What this reading does not establish.**
+
+- It does not establish that the release fits on that host when it is
+  reconciled. A reconciled release needs an Argo CD installation. On 2026-10-08
+  its pods stated no request, so the gate would count them as zero, and their
+  use is not measured. The memory margin of this reading is smaller than the
+  512 MiB reserve.
+- It does not establish that two runtime pods start there. In the one run that
+  started them, on 2026-10-08, both API pods were restarted once by their
+  startup probe ([the record](../proof/environment/v2-s4-002-pr2-validation.md)).
+  This gate reads no such thing.
+- It is one reading. The V1 preflight refused the same provider on 2026-09-12,
+  when other workloads held memory there.
+- It is not the qualification of an environment for an experiment. No
+  experiment was run, and no claim is registered.
 
 ## What this gate takes from the V1 preflight, and where it differs
 

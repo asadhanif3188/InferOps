@@ -46,8 +46,14 @@ from `1.0.0`.
   only. It does not compare the working tree with the revision that the
   Application names. For the processor it can accept a node below the V1 engine
   minimum of 4 processors. No procedure calls the gate. The cases are synthetic
-  and are evidence at C0. This change registers no claim and adds no baseline
-  profile. See [the capacity preflight](docs/environment/capacity-preflight.md).
+  and are evidence at C0. **One reading of one cluster is committed.** On
+  2026-10-09 the `docker-desktop` provider held no release and no Argo CD
+  installation, and the record has the result `ACCEPTED`, with 261,582,848 bytes
+  of memory beyond the requirement. That is less than the reserve, and it is not
+  a qualification of that host: the reading ran no workload, and an Argo CD
+  installation that states no request would be counted as zero. This change
+  registers no claim and adds no baseline profile. See
+  [the capacity preflight](docs/environment/capacity-preflight.md).
 - **What two serving runtime replicas read from the model cache can be observed
   and recorded. The storage design is not changed.** `V2-S4-002-PR2` adds
   `tools/runtime_model_cache`, static tests, and one page. The V1 storage boundary

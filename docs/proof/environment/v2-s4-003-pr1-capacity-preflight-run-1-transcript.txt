@@ -1,0 +1,27 @@
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Capacity preflight on docker-desktop ===
+[inferops] release local-docker-desktop/support-assistant, namespace inferops-release
+[inferops] read nodes.json
+[inferops] read pods.json
+[inferops] read namespace-limits.json
+[inferops] read claims.json
+[inferops] read version.json
+[inferops] read engine.json
+[inferops] held          cluster-reads-complete: each of the four reads is a list
+[inferops] held          reads-well-formed: each node and each unfinished pod was read
+[inferops] held          quantities-readable: each stated quantity was read exactly
+[inferops] held          one-schedulable-node: the node desktop-control-plane
+[inferops] held          node-ready-without-pressure: Ready is True; conditions that are not reported as False: none
+[inferops] held          node-states-no-blocking-taint: blocking taints: none
+[inferops] held          release-states-no-placement-constraint: values that state a constraint: none
+[inferops] held          namespace-states-no-quota-or-limit-range: objects: none
+[inferops] held          release-is-not-installed: no unfinished pod of the release
+[inferops] held          pod-count-fits: 9 pods required, 101 pods available
+[inferops] held          cpu-requests-fit: 3110 millicores required, 11050 millicores available
+[inferops] held          memory-limits-fit: 9865003008 bytes required, 10126585856 bytes available
+[inferops] not-observed  model-cache-claim-holds-artifact: the namespace holds no claim named inferops-model-cache. Each serving runtime pod mounts that claim, and the release does not create it.
+[inferops] result: ACCEPTED
+[inferops] the collection and its record are in .artifacts/capacity-preflight/collections/run-1
+[inferops] the cluster is ACCEPTED for this release. This is one reading of stated figures. It does not establish that a pod starts.
+exit=0

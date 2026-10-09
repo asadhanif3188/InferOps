@@ -2,7 +2,7 @@
 
 Status: **the capacity gate for the two-replica release is implemented, and
 synthetic cases show one acceptance and each kind of refusal. This is evidence at
-C0.** No reading of a cluster is recorded. No chart file, contract, binding, Terraform file,
+C0.** One reading of the `docker-desktop` provider, with no release and no Argo CD installation on it, is committed, and its record has the result `ACCEPTED`. That reading is not a qualification of that host. No chart file, contract, binding, Terraform file,
 Application, or freeze record was changed, and no claim was registered. The
 controlled baseline profile with one serving runtime replica is not in this
 change. An independent review found that the first commit could accept a cluster
@@ -14,9 +14,9 @@ checked: see [what the independent review found](#what-the-independent-review-fo
 | Date | 2026-10-09 |
 | Base | `e515776cfb6ebf6ca97085f5d0da8b6af6524dcb`, the merge of pull request #129 |
 | Branch | `feat/v2-s4-003-capacity-preflight` |
-| Commits | `170a96c7`: the gate, the cases, the suites, and the page. A second commit: the corrections of the independent review |
+| Commits | `170a96c7`: the gate, the cases, the suites, and the page. `479ffda5`: the corrections of the independent review. A third commit: one reading of a cluster, made from the second commit, and the default lane |
 | Host | One Windows workstation, Git Bash (GNU bash 5.2.26); Python 3.12.12 from `uv` 0.9.16; Helm `v3.19.0`; Docker engine `29.8.1`; `kubectl` client `v1.36.1` |
-| Evidence level | C0 for the two suites and the six synthetic cases. No reading of a cluster is recorded |
+| Evidence level | C0 for the two suites and the six synthetic cases. The one reading read a real cluster and ran no workload. It is assigned no level, and it is not evidence that a pod runs |
 | Claim effect | None. No claim, ledger, register row, dashboard row, or evidence-index entry was added or changed |
 
 ## What changed
@@ -142,6 +142,32 @@ ran nothing of this project. It states that the stated figures fit on that day.
 It does not establish that two runtime pods start there, and Argo CD, which a
 reconciled release needs, stated no request on 2026-10-08 and would be counted as
 zero.
+
+## The one committed reading
+
+After the second commit, the collector was run once against the local
+`docker-desktop` cluster, from a clean working tree at
+`479ffda591b484edcd9ee19e1e040b6aee542124`. It made reads only.
+[The collection and its record](v2-s4-003-pr1-capacity-preflight-run-1/record.v1alpha1.json)
+and [the transcript](v2-s4-003-pr1-capacity-preflight-run-1-transcript.txt) are
+committed. It was the first run of the corrected script, and it was not repeated.
+
+- **The record has the result `ACCEPTED`.** 12 rules are `held`. The claim rule
+  is `not-observed`: the read of the release namespace returned no claim.
+- **The figures are those of the second development reading.** The node
+  allocated 12,000 millicores and 10,430,672,896 bytes, nine system pods
+  requested 950 millicores and 304,087,040 bytes, and 261,582,848 bytes of
+  memory were available beyond the requirement.
+- **The commit is a commit of this branch.** The Application names `main`. The
+  chart's values, its `Chart.yaml`, the generated values, and the Application are
+  the same files at both.
+
+**This is not a qualification of that host, and it is not the result of an
+experiment.** The cluster held no Argo CD installation and no pod of this
+project. [The page](../../environment/capacity-preflight.md#the-one-committed-reading)
+states what the reading does not establish. The memory margin is smaller than
+the reserve, and an Argo CD installation that states no request would be counted
+as zero.
 
 ## What the independent review found
 
@@ -307,19 +333,56 @@ refusing rules it had, except that the case without `pods.json` now also names
 **Not run at the second commit.** The whole default lane, `shellcheck`, and
 `gitleaks`, for the reasons above. Hosted CI was not read.
 
+## The default lane
+
+`uv run --locked python -m pytest -q` ran once on the working tree of the third
+commit, before the correction below: 19,691 passed, 2 failed, 37 skipped, and 14
+deselected, in 28 minutes.
+
+**Both failures were one finding, and neither targeted run had shown it.**
+`tests/architecture/test_argocd_bootstrap.py` holds a list of the build files
+that may name Argo CD: the two manifests, and the two procedures. The tool names
+one manifest by its path, because it reads the values that the Application gives
+the chart. So the tool was a fifth file, and two tests failed. The first two
+commits carry that failure.
+
+**The list was changed on purpose, and not the tool.** The tool is added to the
+list. A new test holds that each place where the tool's text names Argo CD is
+the path of one of the two manifests, so an address, an API group, or a command
+of the controller in the tool fails. The tool reads a committed file. It
+addresses no controller. After the correction, that suite gave 101 passed, and
+`ruff` and `mypy` gave no finding. The whole lane was not run again after this
+one edit of one test module.
+
+The 37 skipped tests are the ones that the lane skipped before this change: 25
+fixtures that are not of the layer a test reads, 10 that need a symbolic link
+that this host does not permit, 1 that needs a signal that Windows does not
+deliver, and 1 that a later pin supersedes. No test of
+this change was skipped: `helm` and `bash` are installed.
+
+[The Argo CD bootstrap page](../../environment/argocd-bootstrap.md) still says
+that a test "fails when a second build file names Argo CD". That sentence was
+already behind the list, which held four files. It is not edited here.
+
 ## Privacy and publicability
 
 The diff was read for private material.
 
 - The six cases are synthetic. Their node is named `node-a`, their provider is
   `synthetic`, and their commit is forty zeros. No cluster produced them.
+- The committed reading holds the node's name, two addresses of the node inside
+  the engine's network, pod addresses, image names, and the server version. Each
+  names an object of the local cluster. None is a path of the workstation. The
+  images that the node lists are images of this project and of the cluster.
+- The transcript is what the script printed, with one line added that states
+  the exit status.
 - No credential, secret value, cloud account identifier, model artifact, or path
   of the workstation is in the diff.
 - No planning text, prompt, or identifier of a later change is in the diff.
 
 ## What this does not establish
 
-- **That a cluster can hold the release.** No reading of a cluster is recorded. The cases are synthetic.
+- **That a cluster can hold the release.** One reading is committed. It compares stated figures on one day, on a cluster that ran nothing of this project. The cases are synthetic.
 - **That a pod of the release is scheduled, starts, or becomes Ready.** The gate
   compares stated figures.
 - **That the reserve is enough.** It is a fixed figure.
