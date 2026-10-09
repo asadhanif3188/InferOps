@@ -48,7 +48,8 @@ mechanism of that experiment, and a budget is not evidence for its result.
 The [desired-state release](git-desired-state.md) declares two replicas for each
 tier, so its render holds both budgets. The ownership inventory holds one row
 for them, `workload-disruption-budget`, with the status `planned`: the chart
-renders the objects, and no cluster has held one.
+renders the objects. One cluster held both for one run, which the note above
+states. No eviction was requested, so the row cites no evidence.
 
 ## What a budget bounds
 

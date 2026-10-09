@@ -1,7 +1,10 @@
 Transcript of run-1. Three invocations of the driver, one after the other:
 each phase printed its last line before the next one started.
 Redacted: terminal colour codes are removed, and the absolute path of the
-checkout is written as <repository>. Nothing else is changed.
+checkout is written as <repository>. Carriage returns and spaces at the end of
+a line are removed. These four lines, the line that names each phase, and the
+line `driver exit` after each phase were not printed by the driver: the
+command that ran each phase added them. Nothing else is changed.
 
 =============== PHASE up ===============
 

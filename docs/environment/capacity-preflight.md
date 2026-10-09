@@ -1,6 +1,6 @@
 # The capacity preflight for the two-replica release
 
-Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. Three readings of one cluster are committed, each of 2026-10-09 on the `docker-desktop` provider and each with the result `ACCEPTED`. None is a qualification of that host. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
+Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. Three readings of one cluster are committed, each of 2026-10-09 on the `docker-desktop` provider and each with the result `ACCEPTED`. Two are whole collections, and one is a record with part of its collection. None is a qualification of that host. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
 
 The desired-state release declares two platform API replicas and two serving
 runtime replicas. This page describes the gate that decides, before anything is
@@ -354,7 +354,7 @@ cluster produced, each with its record. The suite's own builders wrote each
 document. Their header states the provider `synthetic` and a commit of forty
 zeros. `--check` builds each record again and compares it with the committed
 record. The figures of `accepted-one-node` are also those of
-the one committed reading below: the node's allocatable figures, and nine pods that request
+the first committed reading below: the node's allocatable figures, and nine pods that request
 950 millicores and 304,087,040 bytes.
 
 | Case | Result | What it shows |
@@ -378,13 +378,16 @@ footprint, and the suite builds its other cases from the footprint of the tree.
 > that read the [Service endpoints](service-endpoint-state.md#one-reading-of-a-cluster)
 > once. [The first](../proof/environment/v2-s4-005-pr2-capacity-preflight-run-1-before-install/record.v1alpha1.json)
 > was taken before anything was installed: `ACCEPTED`, with the claim rule
-> `not-observed`. [The second](../proof/environment/v2-s4-005-pr2-capacity-preflight-run-1-before-apply/record.v1alpha1.json)
+> `not-observed`. [The second](../proof/environment/v2-s4-005-pr2-capacity-gate-before-apply/record.v1alpha1.json)
 > was taken after the model cache claim was filled and the controller was installed,
 > and before the Application was applied: `ACCEPTED`, with each of the 13 rules `held`.
 > Both state 9,865,003,008 bytes required and 10,126,585,856 available. The release
 > was then installed, and both rollouts reported success. That is one install on one
-> host. It is not a qualification of that host. The section below describes the first
-> committed reading, of the change that added the gate.
+> host. It is not a qualification of that host. The second reading is committed without
+> its read of every pod of the cluster, so `--check` does not build its record again:
+> [the validation record](../proof/environment/v2-s4-005-pr2-validation.md#what-is-committed)
+> states why. The section below describes the first committed reading, of the change
+> that added the gate.
 
 ## The one committed reading
 

@@ -1104,14 +1104,19 @@ from `1.0.0`.
   added the collector read no cluster. `V2-S4-005-PR2` installs the two-replica
   release once on the `docker-desktop` provider, through the committed
   procedures, reads the API Service, the runtime Service, and their
-  EndpointSlices once with the merged collector, and removes what it installed.
+  EndpointSlices once with the merged collector, and removes the objects that
+  it installed. The two images that it loaded stay in the node.
   **The record is `OBSERVED`: two Ready endpoints of two for each Service, at
   one time.** The pod names and pod UIDs of the record are the Ready pods of
   two reads of the pods, taken before and after. The capacity gate ran before
   the install and before the apply, and both readings are `ACCEPTED` and kept.
-  No collector code, tool code, or chart file changed. One suite gains one
+  The second is kept without its read of every pod of the cluster, which holds
+  the pod specifications of the controller.
+  A capacity reading is assigned no evidence level.
+  No collector code, tool code, chart template, or chart value changed. One suite gains one
   test, which holds the committed reading. **This is one
-  reading at evidence level C2, and it registers no claim.** The run sent no
+  reading at evidence level C2, because the pods behind the endpoints ran the
+  pinned images and the pinned model, and it registers no claim.** The run sent no
   request to the release, deleted and evicted no pod, and injected no fault. So
   it establishes nothing about a caller, about availability or reliability,
   about a pod loss, or about another provider. See

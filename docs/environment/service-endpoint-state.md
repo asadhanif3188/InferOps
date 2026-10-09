@@ -1,6 +1,6 @@
 # The Ready endpoint state of the API Service and the runtime Service
 
-Status: **the collector and the record tool are implemented, and synthetic cases show a reading and each kind of refusal at evidence level C0. One reading of one cluster is committed: on 2026-10-09 the `docker-desktop` provider, with the two-replica release installed, published two Ready endpoints for each of the two Services. That is one reading at one time, at evidence level C2. It is not a caller's result, and it registers no claim.**
+Status: **the collector and the record tool are implemented, and synthetic cases show a reading and each kind of refusal at evidence level C0. One reading of one cluster is committed: on 2026-10-09 the `docker-desktop` provider, with the two-replica release installed, published two Ready endpoints for each of the two Services. That is one reading at one time. Its level is C2, because the pods behind the endpoints ran the pinned images and the pinned model on a real cluster. It is not a caller's result, and it registers no claim.**
 
 A release renders two Services: one for the platform API and one for the serving
 runtime. Kubernetes publishes, for each Service, the pods behind it and whether

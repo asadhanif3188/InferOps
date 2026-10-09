@@ -20,9 +20,9 @@ no node name, and no kubeconfig context.
 *It says what it is not.* A record is not a request that a caller sent, it is
 not a timeline, and it is not a Prometheus ``up`` series.
 
-Every collection here is written by this suite. The pod names, the UIDs, and
-the addresses are invented. No test contacts a cluster, and no record here
-states what a cluster did.
+Every synthetic collection is written by this suite, with invented pod names,
+UIDs, and addresses. One committed collection was written by the collector
+against a cluster, and one test holds it. No test contacts a cluster.
 """
 
 from __future__ import annotations
@@ -368,9 +368,11 @@ def test_the_one_reading_of_a_cluster_states_two_ready_endpoints_for_each_tier()
 ):
     """The committed reading of one cluster, on one provider, at one time.
 
-    It is what that cluster published. It is not a request that a caller sent,
-    and the record says so. The pods are compared with two reads of the pods
-    that the run kept beside the collection, which the tool does not read.
+    This holds that the record is what the tool gives for the committed reads,
+    and that those reads agree with two reads of the pods that the run kept
+    beside the collection, which the tool does not read. It does not hold that
+    the files are what the cluster reported: nothing here contacts a cluster.
+    The record is not a request that a caller sent, and it says so.
     """
     directory = REPO_ROOT / CLUSTER_READING
     record = json.loads((directory / state.RECORD_FILE).read_text("utf-8"))
@@ -414,7 +416,9 @@ def test_the_one_reading_of_a_cluster_states_two_ready_endpoints_for_each_tier()
             assert ready == pods, (name, read)
     # A record holds no address, though the reads beside it do.
     text = (directory / state.RECORD_FILE).read_text("utf-8")
-    assert "10.244." not in text and "desktop-control-plane" not in text
+    for held_by_the_reads in ("10.244.", "10.96.", "172.20.", "fc00:"):
+        assert held_by_the_reads not in text, held_by_the_reads
+    assert "desktop-control-plane" not in text
     assert "10.244." in (directory / "endpointslices.json").read_text("utf-8")
 
 
