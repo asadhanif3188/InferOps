@@ -193,6 +193,12 @@ count. That is configuration. One run on `docker-desktop` on 2026-10-08 applied 
 release once, and two pods of each tier became Ready on one node:
 [the record](docs/proof/environment/v2-s4-002-pr2-validation.md). It establishes
 nothing about what a caller observes when an API pod or a runtime pod is lost.
+Since `V2-S4-003-PR1` a
+[capacity preflight](docs/environment/capacity-preflight.md) decides, before an
+install, whether one cluster can hold that release with its rollout headroom. It
+compares stated requests and limits with what one node allocates, it refuses a
+cluster that is short or that it cannot decide about, and it lowers no figure. An
+acceptance does not establish that a pod starts.
 
 ## Prerequisites
 

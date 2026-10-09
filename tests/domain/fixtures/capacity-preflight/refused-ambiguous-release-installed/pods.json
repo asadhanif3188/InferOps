@@ -1,0 +1,249 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "dns-1",
+        "namespace": "kube-system"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {
+                "cpu": "100m",
+                "memory": "70Mi"
+              }
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "dns-2",
+        "namespace": "kube-system"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {
+                "cpu": "100m",
+                "memory": "70Mi"
+              }
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "etcd",
+        "namespace": "kube-system"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {
+                "cpu": "100m",
+                "memory": "100Mi"
+              }
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "network",
+        "namespace": "kube-system"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {
+                "cpu": "100m",
+                "memory": "50Mi"
+              }
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "api-server",
+        "namespace": "kube-system"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {
+                "cpu": "250m"
+              }
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "controller",
+        "namespace": "kube-system"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {
+                "cpu": "200m"
+              }
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "proxy",
+        "namespace": "kube-system"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {}
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "scheduler",
+        "namespace": "kube-system"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {
+                "cpu": "100m"
+              }
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {},
+        "name": "provisioner",
+        "namespace": "local-path-storage"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {}
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/instance": "inferops"
+        },
+        "name": "inferops-inferops-llm-runtime-7d9c5b6f4-abcde",
+        "namespace": "inferops-release"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "c",
+            "resources": {
+              "requests": {
+                "cpu": "1",
+                "memory": "2Gi"
+              }
+            }
+          }
+        ],
+        "nodeName": "node-a"
+      },
+      "status": {
+        "phase": "Running"
+      }
+    }
+  ],
+  "kind": "List"
+}

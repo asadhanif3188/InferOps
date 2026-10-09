@@ -80,13 +80,19 @@ ENTRY_POINTS = (
     "clean-clone.sh",
     "argocd-bootstrap.sh",
     "argocd-application.sh",
+    "capacity-preflight.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
 # the one script a contributor is invited to run repeatedly against a cluster
 # they care about, and verify-clean.sh is what certifies a teardown. Either one
 # acquiring the ability to change something would go unnoticed.
-READ_ONLY_SCRIPTS = ("cluster-verify.sh", "verify-clean.sh", "preflight.sh")
+READ_ONLY_SCRIPTS = (
+    "cluster-verify.sh",
+    "verify-clean.sh",
+    "preflight.sh",
+    "capacity-preflight.sh",
+)
 
 # kubectl subcommands that change cluster state. `exec` and `cp` are here because
 # both reach inside a running container, and `port-forward` is not because it

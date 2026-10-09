@@ -10,6 +10,36 @@ from `1.0.0`.
 
 ### Added
 
+- **A capacity preflight decides, before an install, whether one cluster can hold
+  the two-replica release. A cluster that does not fit is refused, and no figure
+  is lowered.** `V2-S4-003-PR1` adds `tools/capacity_preflight`,
+  `scripts/environment/capacity-preflight.sh`, six synthetic cases, two suites, and
+  one page. No chart file, contract, binding, Terraform file, Application, or
+  freeze record is edited, and the V1 preflight and its record are not changed.
+  **The requirement is derived from committed files.** The footprint is read from
+  the Application of the desired-state release, the chart's defaults, and the
+  release's generated values: two API pods, two runtime pods, one collector pod,
+  the surge pods of a rollout, the acquisition hook's pod, and the test pod. The
+  runtime's surge is zero, so no third runtime is required. A test compares each
+  pod template of a render of the chart with the footprint. **The gate holds three
+  figures to one node**: the pod count, the processor requests, and the memory
+  limits, each with the footprint, the rollout headroom, and a reserve of 500
+  millicores and 512 MiB, which are the V1 preflight's headroom figures. What the
+  node already holds is the requests of its unfinished pods. **12 rules, and two
+  kinds of refusal.** `insufficient`: a stated figure does not fit. `ambiguous`:
+  a read was not made, a quantity is not readable, the cluster has no schedulable
+  node or more than one, the node is not Ready or is tainted, the namespace holds
+  a quota or a limit range, the release is already installed, or the release
+  states a placement constraint. One record names every figure that is short.
+  The script reads the cluster with `kubectl get`, `kubectl version`, and
+  `docker info`, and changes nothing. The exit status of a refusal is 5, as in
+  V1. **Limits.** The gate compares stated requests and limits. It measures no
+  use, it counts a pod that states no request as zero, it reads no disk, and it
+  decides for one node only. For the processor it can accept a node below the V1
+  engine minimum of 4 processors. The cases are synthetic and are evidence at C0.
+  This change records no reading of a cluster, registers no claim, and adds no
+  baseline profile. See
+  [the capacity preflight](docs/environment/capacity-preflight.md).
 - **What two serving runtime replicas read from the model cache can be observed
   and recorded. The storage design is not changed.** `V2-S4-002-PR2` adds
   `tools/runtime_model_cache`, static tests, and one page. The V1 storage boundary

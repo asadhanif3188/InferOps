@@ -113,6 +113,7 @@ PLATFORM_WORKFLOWS = (
     "clean-clone.sh",
     "argocd-bootstrap.sh",
     "argocd-application.sh",
+    "capacity-preflight.sh",
 )
 
 # The platform workflows that mutate a target, as distinct from target-detect.sh,

@@ -145,8 +145,12 @@ ran a capacity gate for two API replicas and two runtime replicas on `docker-des
 the provider this release names, and the gate refused that host for lack of
 uncommitted memory. That record is of one host on one day. On 2026-10-08 the same
 preflight passed on that provider, and no pod outside `kube-system` stated a request then: the
-Argo CD installation ran and states none. No capacity
-check exists for this topology. A later change owns one.
+Argo CD installation ran and states none. Since `V2-S4-003-PR1`,
+[the capacity preflight](capacity-preflight.md) is the check for this topology: it
+derives the footprint of this release, with its rollout headroom, and refuses a
+cluster where a stated figure does not fit or where it cannot decide. It counts a
+pod that states no request as zero. It compares stated figures, and it does not
+establish that a pod starts.
 
 On a cluster where the Application is applied, a merge of this release changes the
 live release. The pod template of each Deployment carries the chart version label,

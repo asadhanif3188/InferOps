@@ -64,6 +64,11 @@ not a procedure of this repository.
 
 ### The capacity preflight
 
+> **Note, 2026-10-09.** When `run-1` executed, no capacity gate existed for the V2
+> topology, and the paragraphs below describe that run. `V2-S4-003-PR1` added
+> [the capacity preflight](capacity-preflight.md) for the two-replica release. No
+> run of this observation has used it, and `run-1` is not changed.
+
 No capacity gate exists for the V2 topology. The driver runs the V1 multi-replica
 preflight before it applies the Application, with the V1 measuring program and
 the V1 figures
