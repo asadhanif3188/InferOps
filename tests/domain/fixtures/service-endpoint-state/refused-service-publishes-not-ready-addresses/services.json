@@ -1,0 +1,39 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/component": "platform-api",
+          "app.kubernetes.io/instance": "inferops"
+        },
+        "name": "inferops-inferops-llm",
+        "namespace": "inferops-release"
+      },
+      "spec": {
+        "clusterIP": "10.96.0.10",
+        "type": "ClusterIP"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/component": "serving-runtime",
+          "app.kubernetes.io/instance": "inferops"
+        },
+        "name": "inferops-inferops-llm-runtime",
+        "namespace": "inferops-release"
+      },
+      "spec": {
+        "clusterIP": "10.96.0.10",
+        "publishNotReadyAddresses": true,
+        "type": "ClusterIP"
+      }
+    }
+  ],
+  "kind": "List"
+}

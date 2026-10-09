@@ -81,6 +81,7 @@ ENTRY_POINTS = (
     "argocd-bootstrap.sh",
     "argocd-application.sh",
     "capacity-preflight.sh",
+    "service-endpoint-state.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
@@ -92,6 +93,7 @@ READ_ONLY_SCRIPTS = (
     "verify-clean.sh",
     "preflight.sh",
     "capacity-preflight.sh",
+    "service-endpoint-state.sh",
 )
 
 # kubectl subcommands that change cluster state. `exec` and `cp` are here because

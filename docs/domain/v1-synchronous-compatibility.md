@@ -10,7 +10,7 @@ installed, and nothing here establishes that a generated release serves a reques
 | Property | Value |
 |---|---|
 | Record | [`v1-synchronous-compatibility.v1alpha1.json`](v1-synchronous-compatibility.v1alpha1.json) |
-| Target | The V1 real workload's values: the V1 [real values file](../../charts/inferops-llm/ci/real-values.yaml) over the [defaults](../../charts/inferops-llm/values.yaml) of the [`inferops-llm`](../../charts/inferops-llm/Chart.yaml) chart at its current version, `0.5.0`. `v1.0.0` released chart `0.3.0`: see the amendments of 2026-10-07 and 2026-10-08 |
+| Target | The V1 real workload's values: the V1 [real values file](../../charts/inferops-llm/ci/real-values.yaml) over the [defaults](../../charts/inferops-llm/values.yaml) of the [`inferops-llm`](../../charts/inferops-llm/Chart.yaml) chart at its current version, `0.6.0`. `v1.0.0` released chart `0.3.0`: see the amendments of 2026-10-07, 2026-10-08, and 2026-10-09 |
 | V2 inputs | The [reference contract](../../contracts/workload/examples/valid/synchronous-llm-local.yaml), the [`local-kind` binding](../../contracts/environment/examples/valid/local-kind.yaml), and the chart's `api` defaults and runtime rollout bounds: the [declared reference release](helm-values-renderer.md#verifying-a-committed-release) |
 | V2 release input | The generated [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the hand-written [`support-assistant-local.manual-values.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.manual-values.yaml) installed after it |
 | Tests | [`tests/domain/test_v1_sync_compatibility.py`](../../tests/domain/test_v1_sync_compatibility.py) for the record; the Helm lint and render in [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py) |
@@ -58,6 +58,17 @@ installed, and nothing here establishes that a generated release serves a reques
 > replica. So a rollout of the V1 workload on chart `0.5.0` may remove the one runtime
 > pod before its replacement is Ready. No rollout was run on either chart for this page.
 
+> **Amendment, 2026-10-09 (`V2-S4-004-PR1`).** The chart moved again. Chart `0.6.0`
+> renders one PodDisruptionBudget for a tier that declares two or more replicas. It
+> changes no value and no row of the record. The V1 values file and the reference
+> contract on this page each declare one replica for each tier, so neither side of this
+> page's comparison renders a budget, and the comparison between them is unchanged.
+> Rendered with the V1 values file, chart `0.6.0` differs from chart `0.3.0` in the ten
+> lines of the two strategies and in the chart version label; that was measured with
+> `helm template` over the chart at the `v1.0.0` tag and the chart in this tree. The
+> record's chart version is the amended state. Nothing was installed with chart `0.6.0`
+> by that change.
+
 ## The question
 
 A V1 release is installed from a values file somebody wrote by hand. That file states the
@@ -77,8 +88,8 @@ The V1 real values file, the reference contract, the compatibility matrix, the
 model-source record, and the runtime-profile record are byte for byte what `v1.0.0`
 released. The first validation record shows the `git diff` that measured this for the
 whole chart directory as well. That no longer holds for the chart: its templates, its
-values, and its values schema changed in `0.4.0` and again in `0.5.0`, as the amendments
-above state. One test
+values, and its values schema changed in `0.4.0` and again in `0.5.0`, and `0.6.0` added
+two templates, as the amendments above state. One test
 reads the tag for the chart version and the API Deployment template, and skips in a
 checkout that does not hold the tag. The
 target is the committed V1 values file, not a deployment of it. A V1 deployment also took
@@ -241,7 +252,7 @@ configuration-checksum annotations derived from them.
 - **That anything was installed or served.** The comparison is of values and rendered
   manifests. No cluster read them. A real deployment of a generated release is later work.
 - **That a generated release renders what `v1.0.0` rendered.** Both sides of this
-  comparison use chart `0.5.0`. Against chart `0.3.0`, each differs in the stated
+  comparison use chart `0.6.0`. Against chart `0.3.0`, each differs in the stated
   rollout strategy of the API Deployment and of the runtime Deployment, and in the chart
   version label.
 - **Anything about a rollout.** The four rollout bounds are configuration. No rollout was

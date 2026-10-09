@@ -95,7 +95,11 @@ TREE_DOCUMENT: Final = f"{DESIRED_STATE_ROOT}/README.md"
 #: bounds and the release took the two-replica contract: this is the commit that
 #: made those edits, and the release was regenerated in the commit after it. The
 #: earlier releases named ``c056b977`` and then ``9bc07a57``, and are in Git history.
-_REFERENCE_RENDER_REVISION: Final = "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+#: It was rendered once more when the chart moved to ``0.6.0``, which renders a
+#: PodDisruptionBudget for a tier of two or more replicas and changes no value. The
+#: renderer states the chart version, so the commit that made that edit is recorded
+#: here. The release before it named ``40803f2f``, and is in Git history.
+_REFERENCE_RENDER_REVISION: Final = "cdcfd62baf6fff56ca179711855510c93194ce80"
 
 #: Every desired-state release, and the inputs each is derived from.
 #:

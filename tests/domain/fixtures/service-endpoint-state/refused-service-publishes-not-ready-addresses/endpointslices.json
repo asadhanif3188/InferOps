@@ -1,0 +1,118 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "addressType": "IPv4",
+      "apiVersion": "discovery.k8s.io/v1",
+      "endpoints": [
+        {
+          "addresses": [
+            "10.1.0.1"
+          ],
+          "conditions": {
+            "ready": true,
+            "serving": true,
+            "terminating": false
+          },
+          "nodeName": "invented-node-name",
+          "targetRef": {
+            "kind": "Pod",
+            "name": "inferops-api-a",
+            "namespace": "inferops-release",
+            "uid": "00000000-0000-4000-8000-000000000001"
+          }
+        },
+        {
+          "addresses": [
+            "10.1.0.2"
+          ],
+          "conditions": {
+            "ready": true,
+            "serving": true,
+            "terminating": false
+          },
+          "nodeName": "invented-node-name",
+          "targetRef": {
+            "kind": "Pod",
+            "name": "inferops-api-b",
+            "namespace": "inferops-release",
+            "uid": "00000000-0000-4000-8000-000000000002"
+          }
+        }
+      ],
+      "kind": "EndpointSlice",
+      "metadata": {
+        "labels": {
+          "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+          "kubernetes.io/service-name": "inferops-inferops-llm"
+        },
+        "name": "inferops-inferops-llm-abcde",
+        "namespace": "inferops-release"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080,
+          "protocol": "TCP"
+        }
+      ]
+    },
+    {
+      "addressType": "IPv4",
+      "apiVersion": "discovery.k8s.io/v1",
+      "endpoints": [
+        {
+          "addresses": [
+            "10.1.0.11"
+          ],
+          "conditions": {
+            "ready": true,
+            "serving": true,
+            "terminating": false
+          },
+          "nodeName": "invented-node-name",
+          "targetRef": {
+            "kind": "Pod",
+            "name": "inferops-runtime-a",
+            "namespace": "inferops-release",
+            "uid": "00000000-0000-4000-8000-000000000011"
+          }
+        },
+        {
+          "addresses": [
+            "10.1.0.12"
+          ],
+          "conditions": {
+            "ready": true,
+            "serving": true,
+            "terminating": false
+          },
+          "nodeName": "invented-node-name",
+          "targetRef": {
+            "kind": "Pod",
+            "name": "inferops-runtime-b",
+            "namespace": "inferops-release",
+            "uid": "00000000-0000-4000-8000-000000000012"
+          }
+        }
+      ],
+      "kind": "EndpointSlice",
+      "metadata": {
+        "labels": {
+          "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+          "kubernetes.io/service-name": "inferops-inferops-llm-runtime"
+        },
+        "name": "inferops-inferops-llm-runtime-abcde",
+        "namespace": "inferops-release"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080,
+          "protocol": "TCP"
+        }
+      ]
+    }
+  ],
+  "kind": "List"
+}

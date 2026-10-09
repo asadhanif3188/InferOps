@@ -39,6 +39,7 @@ release; neither may create what the other owns.
 | `serving-runtime-deployment` | `Deployment` | real only |
 | `serving-runtime-service` | `Service`, `ClusterIP` | real only |
 | `telemetry-scrape-configuration` | `ConfigMap` | both |
+| `workload-disruption-budget` | `PodDisruptionBudget`, one for each tier of two or more replicas | both for the API tier, real only for the runtime tier |
 
 One Helm-owned row is deliberately absent, and the chart declares it in its own
 `Chart.yaml` annotations so that the omission is a statement rather than an
@@ -187,8 +188,10 @@ Ready on one node, after each was restarted once by its startup probe:
 establishes that a
 rollout leaves a caller served, or what a caller observes when an API pod is deleted
 or a node is lost. A rollout policy bounds a template change. It does not bound a pod
-deletion, and the chart renders no PodDisruptionBudget, so it does not bound an
-eviction either. The runtime Deployment's strategy is the next section's.
+deletion or an eviction. Since chart `0.6.0` a tier of two or more replicas renders a
+PodDisruptionBudget, which bounds an eviction and not a deletion:
+[the disruption budgets](#the-disruption-budgets). The runtime Deployment's strategy is
+the next section's.
 
 ### The runtime tier's replicas and rollout
 
@@ -280,6 +283,46 @@ a caller observes when a runtime pod is deleted or a node is lost. The chart's s
 limit, so a values file given to Helm directly can state a runtime limit below the
 runtime request. Kubernetes documents that it refuses such a pod; that was not observed.
 The renderer refuses a contract that asks for it.
+
+### The disruption budgets
+
+Since chart `0.6.0` the chart renders one PodDisruptionBudget for a tier that declares
+two or more replicas:
+
+| Tier | Rendered when | The budget |
+|---|---|---|
+| Platform API | `api.replicaCount` is 2 or more | `minAvailable: 1`, over the pods the API Deployment selects |
+| Serving runtime | `profile` is `real` and `runtime.replicaCount` is 2 or more | `minAvailable: 1`, over the pods the runtime Deployment selects |
+
+No value sets `minAvailable`, and no value turns a budget off: the values contract
+holds no member for it, and the schema refuses one. At one replica, which is the default
+of both tiers, the chart renders no budget. A budget of one available pod over one pod
+would refuse every eviction of it, so a tier of one replica is not bounded for an
+eviction.
+
+**A budget bounds a voluntary eviction, and nothing else.** Kubernetes documents that the
+eviction API, which `kubectl drain` uses, refuses an eviction that would leave fewer
+available pods than the budget states. Kubernetes also documents what a budget does not
+bound:
+
+- a direct pod deletion, which does not go through the eviction API;
+- a Deployment's rolling update, whose bounds are `api.rollout` and `runtime.rollout`;
+- a node that fails, or a pod that the kubelet evicts under node pressure.
+
+**A budget can make a drain wait.** A drain marks the node unschedulable, so a
+replacement pod must become Ready on another node before the budget admits the second
+eviction. A cluster with one node has no other node. The two runtime pods also mount one
+`ReadWriteOnce` claim, which Kubernetes documents is not mounted by pods on two nodes. In
+both cases a drain evicts one pod of the tier and then does not end by itself. Helm
+removes a tier's budget on an upgrade to one replica. A release path that does not
+remove an object that leaves the render keeps it, over one pod, until a person deletes
+it.
+
+**What this is not.** A budget is configuration. No release that renders one was
+installed, and no eviction was requested. A budget is not evidence that a caller is
+served when a pod is deleted: a pod deletion is tested by deleting a pod under a caller.
+[The disruption budgets page](../../docs/environment/disruption-budgets.md) states the
+rule, the limits, and what follows for a release that a controller reconciles from Git.
 
 Two committed values files under [`ci/`](ci/) are the render fixtures. Both carry
 a **placeholder API image digest** that resolves to no image, for the reason

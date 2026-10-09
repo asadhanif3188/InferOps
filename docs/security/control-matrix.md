@@ -89,7 +89,7 @@ declared an Argo CD custom resource. On 2026-10-04 one Application and its
 project were committed, and the control became
 `restrict-the-argocd-application-to-one-destination`. It now holds that those two
 files are the only ones that declare an Argo CD custom resource, and that the
-project admits one destination namespace, eight namespaced kinds, and no
+project admits one destination namespace, nine namespaced kinds, and no
 cluster-scoped kind. It reads files and no cluster. It restricts one Application
 and does not narrow the controller.
 

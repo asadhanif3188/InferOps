@@ -26,7 +26,7 @@ about an installed render, and it is not this page's.
 | Entry points | `HelmValuesRenderer(revision).render(context)`, or `render_with(renderer, ...)` on documents; `generate_release(renderer, ...)` for the values and their release, and `write_release(generated, directory)` to write both; `admit_manual_values(values, manual)` to pair a hand-written file with them, and `manual_value_findings(manual)` for its findings |
 | Input | A `RenderContext` from [the renderer input boundary](renderer-input-boundary.md), for a `synchronous-llm` contract |
 | Output | `GeneratedHelmValues`: 31 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
-| Chart | `inferops-llm` `0.5.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
+| Chart | `inferops-llm` `0.6.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
 | Refusal | `RenderRefused`, under the boundary's vocabulary; four rules are the renderer's own |
 | Golden output | The release directory [`support-assistant-local-kind/`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/): [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the release naming it, [`rendered-workload-release.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/rendered-workload-release.yaml) |
 | Drift check | [`tools/generated_release`](../../tools/generated_release/core.py): `python -m tools.generated_release --check`, and `--write NAME` to regenerate |
@@ -57,7 +57,7 @@ on the [`local-kind` binding](../../contracts/environment/examples/valid/local-k
 the chart's platform defaults - the output is the committed golden file, byte for byte:
 
 ```yaml
-# Generated Helm values for the inferops-llm chart, version 0.5.0.
+# Generated Helm values for the inferops-llm chart, version 0.6.0.
 # Do not edit by hand: change the WorkloadContract, the EnvironmentBinding, or
 # the platform defaults they were rendered from, and render them again.
 api:
@@ -295,7 +295,7 @@ metadata:
 output:
   helmValues:
     path: "values.generated.yaml"
-    sha256: "49538bea8fae419d021f3d3bd8d28184fe328109b76a1eeef7f68cce4b9ac9eb"
+    sha256: "9ea8cd6a0882c21e475687a59f01373c776018675da79c0fc76c520e554c13a8"
 source:
   contract:
     apiVersion: "inferops.io/v1alpha1"

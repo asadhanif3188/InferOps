@@ -619,7 +619,7 @@
         "restrict-the-argocd-application-to-one-destination",
         "narrow-the-argocd-controller-grant"
       ],
-      "residualRisk": "The grant is the upstream default and is not narrowed. The one enforced control restricts the one committed Application: its project admits one destination namespace, eight namespaced kinds, and no cluster-scoped kind. That control reads files. It does not narrow the controller, and it does not see an Application or a project that a person creates in the cluster by hand. On a cluster where the Application is applied, whoever can change the followed branch changes what runs in that namespace.",
+      "residualRisk": "The grant is the upstream default and is not narrowed. The one enforced control restricts the one committed Application: its project admits one destination namespace, nine namespaced kinds, and no cluster-scoped kind. That control reads files. It does not narrow the controller, and it does not see an Application or a project that a person creates in the cluster by hand. On a cluster where the Application is applied, whoever can change the followed branch changes what runs in that namespace.",
       "deferredRiskRef": "DR-14"
     },
     {
@@ -1598,7 +1598,7 @@
     },
     {
       "controlId": "restrict-the-argocd-application-to-one-destination",
-      "statement": "The only tracked files that declare an Argo CD custom resource are one Application and its project. The project admits one source repository, one destination namespace that is not argocd, eight namespaced kinds, and no cluster-scoped kind, so that Application reaches no object that Terraform or the bootstrap owns.",
+      "statement": "The only tracked files that declare an Argo CD custom resource are one Application and its project. The project admits one source repository, one destination namespace that is not argocd, nine namespaced kinds, and no cluster-scoped kind, so that Application reaches no object that Terraform or the bootstrap owns.",
       "boundaryId": "B2",
       "threats": [
         "T-24"
@@ -1803,7 +1803,7 @@
       "threats": [
         "T-24"
       ],
-      "whyDeferred": "The grant is the upstream default of the pinned core manifest, which is applied unmodified. The ownership inventory says who may create and destroy an object, and it does not stop a controller that holds a wider grant. Since 2026-10-04 one Application is committed, and its project limits that Application to one destination namespace and eight namespaced kinds. The project does not narrow the grant: the controller holds it whatever a project says, and a second project is held by nothing. A namespace-scoped installation would narrow the grant. It is not decided, and ADR 0017 carries this as R1. The manifest declares four network policies. The network plugin the local providers run was measured not to enforce the release's policy (DR-04), so these four are expected to be inert as well. That is an inference: no run tested them.",
+      "whyDeferred": "The grant is the upstream default of the pinned core manifest, which is applied unmodified. The ownership inventory says who may create and destroy an object, and it does not stop a controller that holds a wider grant. Since 2026-10-04 one Application is committed, and its project limits that Application to one destination namespace and nine namespaced kinds. The project does not narrow the grant: the controller holds it whatever a project says, and a second project is held by nothing. A namespace-scoped installation would narrow the grant. It is not decided, and ADR 0017 carries this as R1. The manifest declares four network policies. The network plugin the local providers run was measured not to enforce the release's policy (DR-04), so these four are expected to be inert as well. That is an inference: no run tested them.",
       "whatWouldHaveToBeTrue": "A decision that narrows the grant itself: an installation whose roles are namespace-scoped. The project that ADR 0019 committed restricts one Application, and it is not that decision. A network plugin that enforces the manifest's policies.",
       "notClaimed": "No least-privilege property is claimed for Argo CD. No isolation between the controller and the objects Terraform, Helm, or the bootstrap owns is claimed.",
       "blocksProductionUse": true

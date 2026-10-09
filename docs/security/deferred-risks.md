@@ -372,7 +372,7 @@ either image.
 which is applied unmodified. The ownership inventory says who may create and
 destroy an object. It does not stop a controller that holds a wider grant.
 Since 2026-10-04 one Application is committed, and its project limits that
-Application to one destination namespace and eight namespaced kinds. The project
+Application to one destination namespace and nine namespaced kinds. The project
 does not narrow the grant: the controller holds it whatever a project says, and
 a second project is held by nothing. A namespace-scoped installation would
 narrow the grant. It is not decided, and ADR 0017 carries this as R1. The

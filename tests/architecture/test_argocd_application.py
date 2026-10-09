@@ -309,13 +309,26 @@ def rendered_kinds() -> set[tuple[str, str]]:
     return kinds
 
 
+#: The one admitted kind that the committed real render does not hold. That
+#: render has one replica for each tier, and the chart renders a budget only for
+#: a tier of two or more. The desired-state release declares two for each.
+BUDGET_KIND = ("policy", "PodDisruptionBudget")
+
+
 def test_the_project_admits_exactly_the_kinds_the_real_profile_renders() -> None:
+    """Eight kinds from the committed render, and the budget of a two-replica tier.
+
+    The committed real render is a file. `tests/architecture/test_helm_chart.py`
+    renders the desired-state release with Helm, where Helm is installed, and
+    holds that its kinds are these nine.
+    """
     admitted = {
         (entry["group"], entry["kind"])
         for entry in PROJECT["spec"]["namespaceResourceWhitelist"]
     }
     assert len(admitted) == len(PROJECT["spec"]["namespaceResourceWhitelist"])
-    assert admitted == rendered_kinds()
+    assert BUDGET_KIND not in rendered_kinds()
+    assert admitted == rendered_kinds() | {BUDGET_KIND}
 
 
 def test_the_application_reaches_no_object_another_owner_holds() -> None:
@@ -426,6 +439,7 @@ def test_the_procedure_asks_for_every_kind_the_project_admits() -> None:
         "Deployment": "deployments",
         "Job": "jobs",
         "NetworkPolicy": "networkpolicies",
+        "PodDisruptionBudget": "poddisruptionbudgets",
         "Role": "roles",
         "RoleBinding": "rolebindings",
     }

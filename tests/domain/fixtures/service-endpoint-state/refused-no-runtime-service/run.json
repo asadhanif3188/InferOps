@@ -1,0 +1,9 @@
+{
+  "executingCommit": "1111111111111111111111111111111111111111",
+  "namespace": "inferops-release",
+  "provider": "docker-desktop",
+  "readFinishedAt": "2026-01-01T00:00:01Z",
+  "readStartedAt": "2026-01-01T00:00:00Z",
+  "release": "inferops",
+  "schema": "inferops.io/service-endpoint-state-collection/v1alpha1"
+}

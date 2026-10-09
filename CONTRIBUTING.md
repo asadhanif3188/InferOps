@@ -555,6 +555,31 @@ A comment in a contract is not compared. Do not add a permitted path to obtain
 [The baseline profile page](docs/environment/single-runtime-baseline-profile.md) states
 the permitted differences, the rules, and what a record does not establish.
 
+**The Ready endpoint state of the two Services is captured by a script that changes
+nothing in the cluster and a tool that reads files.** The script writes a collection
+directory under `.artifacts/`, and the tool prints one record whose result is `OBSERVED`
+or `REFUSED`:
+
+```sh
+INFEROPS_PROVIDER=<provider> scripts/environment/service-endpoint-state.sh
+uv run --locked python -m tools.service_endpoint_state DIRECTORY
+uv run --locked python -m tools.service_endpoint_state --check
+```
+
+Exit status 0 says that the reading is usable. It does not say that a Service has a
+Ready endpoint: zero Ready endpoints is a reading. Exit status 5 is a refusal, and a
+read that did not answer is a refusal and not zero endpoints. Do not use a record as a
+caller's result, and do not use a Prometheus `up` series in place of a record.
+[The endpoint-state page](docs/environment/service-endpoint-state.md) states the rules,
+the identities, and what a record does not establish.
+
+**A tier of two or more replicas renders a PodDisruptionBudget.** No value configures
+it. A change that adds a kind to the chart's render must also add it to the Argo CD
+project, to the residue kinds of the Application procedure, and to the ownership
+inventory: three tests fail until it does. A budget bounds a voluntary eviction and not
+a pod deletion, so do not cite one as evidence for a pod-loss result.
+[The disruption budgets page](docs/environment/disruption-budgets.md) states the rule.
+
 ### Experiment freeze records
 
 An experiment family is frozen before its first result-bearing run, in a record under

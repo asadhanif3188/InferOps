@@ -154,6 +154,18 @@ The eight kinds are the kinds of the committed render of the chart's real
 profile, without the `helm test` pod. A test compares the two sets, so a chart
 change that adds a kind fails the suite until the project is changed on purpose.
 
+> **Amended 2026-10-09 (`V2-S4-004-PR1`).** The project now admits nine namespaced
+> kinds: the eight above, and PodDisruptionBudget in the group `policy`. Chart
+> `0.6.0` renders one budget for a tier of two or more replicas, and the
+> desired-state release declares two replicas for each tier. The committed render
+> of the chart's real profile has one replica for each tier and still holds the
+> eight kinds. So the test now compares the project with those eight kinds and
+> the one budget kind. The rule of this decision is not changed: the project
+> admits the kinds that the release renders, and it was changed on purpose. The
+> other limits of the project are not changed. The one cluster that was asked
+> when the kind was added, `docker-desktop`, listed no `argocd` namespace. The text above is this record's accepted text, and "eight"
+> in the rest of this record describes the project as it was accepted.
+
 **This is the restriction that ADR 0017 D9 left open.** Terraform owns a
 Namespace and a claim. The bootstrap owns a Namespace, three definitions, a
 cluster role and its binding, and the objects in `argocd`. The project admits no

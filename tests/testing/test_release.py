@@ -261,8 +261,11 @@ def test_the_notes_state_the_counts_the_data_holds() -> None:
 #: release quotes chart `0.4.0` or `0.5.0`. No record names an installed chart
 #: `0.4.0`. One run record of 2026-10-08 holds pods that carry the label of chart
 #: `0.5.0`; it is the record of one observation and not of a release.
+#: `V2-S4-004-PR1` moved the chart to `0.6.0`, which renders a PodDisruptionBudget
+#: for a tier of two or more replicas. No release quotes chart `0.6.0`, and no
+#: record names an installed chart `0.6.0`.
 MOVED_SINCE_THE_RELEASE: dict[str, dict[str, str]] = {
-    "chart": {"charts/inferops-llm/Chart.yaml": "version: 0.5.0"},
+    "chart": {"charts/inferops-llm/Chart.yaml": "version: 0.6.0"},
 }
 
 

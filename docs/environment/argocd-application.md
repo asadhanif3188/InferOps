@@ -109,11 +109,29 @@ The project limits what an Application in it may read and change.
 |---|---|
 | Source repositories | `https://github.com/asadhanif3188/InferOps.git` |
 | Destinations | The namespace `inferops-release`, on the cluster that Argo CD runs in |
-| Namespaced kinds | ConfigMap, Service, ServiceAccount, Deployment, Job, NetworkPolicy, Role, RoleBinding |
+| Namespaced kinds | ConfigMap, Service, ServiceAccount, Deployment, Job, NetworkPolicy, PodDisruptionBudget, Role, RoleBinding |
 | Cluster-scoped kinds | None |
 
-The eight kinds are the kinds of the committed render of the chart's real
-profile, without the `helm test` pod. A test compares the two sets.
+Eight of the nine kinds are the kinds of the committed render of the chart's real
+profile, without the `helm test` pod. That render has one replica for each tier.
+The ninth kind is PodDisruptionBudget. Since chart `0.6.0` the chart renders one
+for a tier of two or more replicas, and the desired-state release declares two
+replicas for each tier. A test compares the sets.
+
+The project is not desired state. A cluster where the project was applied before
+it admitted PodDisruptionBudget keeps the eight kinds until an operator runs
+`apply` again. Argo CD documents that a project restricts the kinds that an
+Application may deploy. A sync of a render that holds another kind is expected to
+fail as a whole, and not only for that kind. So on such a cluster, the Application
+would apply neither a revision that renders a budget nor a later one, until the
+project is applied again. **Apply the project before the revision reaches the
+branch that the Application follows.** This was not observed. The one cluster that was asked
+when the kind was added, `docker-desktop` on 2026-10-09, listed no `argocd`
+namespace.
+
+The sync policy does not prune. So a budget that leaves the render, when a tier
+goes back to one replica, stays in the cluster until a person deletes it:
+[the disruption budgets](disruption-budgets.md#under-the-argo-cd-application).
 
 The project does not narrow the application controller. That controller holds a
 cluster-wide grant, and a project or an Application that a person creates by hand

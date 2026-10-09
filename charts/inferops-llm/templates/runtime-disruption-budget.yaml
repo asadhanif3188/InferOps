@@ -1,0 +1,50 @@
+{{- include "inferops-llm.validate" . -}}
+{{- if and (eq .Values.profile "real") (gt (int .Values.runtime.replicaCount) 1) }}
+{{/*
+`workload-disruption-budget` in the ownership inventory: the runtime tier's.
+
+A PodDisruptionBudget bounds a voluntary eviction, and nothing else. Kubernetes
+documents that the eviction API refuses an eviction that would leave fewer than
+`minAvailable` selected pods available. `kubectl drain` uses that API. A direct pod
+deletion does not use it, and this budget does not bound one. Kubernetes also
+documents that a Deployment's rolling update is not limited by a budget:
+`runtime.rollout` holds those bounds, and they allow one runtime pod to be
+unavailable during a rollout whether or not this budget exists.
+
+It is rendered only under the real profile, and only when
+`runtime.replicaCount` is 2 or more. The mock profile renders no runtime. At
+one replica a budget of one available pod would refuse every eviction of the
+only runtime pod, and `kubectl drain` would then wait on it without end. So one
+replica renders no budget, and the tier is not bounded for an eviction.
+
+Two replicas do not remove that wait where the replacement cannot run on
+another node. Both runtime pods mount one model cache claim. The prerequisite
+layer creates it as ReadWriteOnce, and Kubernetes documents that such a claim
+is not mounted by pods on two nodes. So a drain of the node that holds the
+runtime pods evicts one and then waits on the other.
+
+`minAvailable` is 1 at every count from 2, and no value sets it. The selector
+is the Deployment's own selector, so the budget counts the pods that the
+Deployment counts. A runtime pod is available only after it has loaded the
+model, because its readiness probe answers 503 until then.
+
+No eviction was requested against a release that renders this object.
+*/}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "inferops-llm.runtimeServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: serving-runtime
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "inferops-llm.runtime.selectorLabels" . | nindent 6 }}
+{{- end }}

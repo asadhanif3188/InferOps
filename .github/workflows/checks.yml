@@ -168,6 +168,14 @@ jobs:
           for profile in real mock; do
             helm template inferops charts/inferops-llm --namespace inferops-platform --values "charts/inferops-llm/ci/${profile}-values.yaml" | kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location "${KUBECONFORM_SCHEMA_LOCATION}" -
           done
+      # Both fixtures render one replica for each tier, and the chart renders a
+      # PodDisruptionBudget only for a tier of two or more. So this render is the
+      # one that holds both budgets to the pinned `policy/v1` schema. It validates
+      # a file: no API server admits anything here.
+      - name: Render two replicas of each tier and validate its disruption budgets
+        run: |
+          set -euo pipefail
+          helm template inferops charts/inferops-llm --namespace inferops-platform --values charts/inferops-llm/ci/real-values.yaml --set api.replicaCount=2 --set runtime.replicaCount=2 | kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location "${KUBECONFORM_SCHEMA_LOCATION}" -
       - name: Validate the smoke manifests against the same schemas
         run: kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location "${KUBECONFORM_SCHEMA_LOCATION}" deploy/smoke/hello-world.yaml deploy/smoke/verify-job.yaml
       # Invalid values refused by the schema and by the chart's guards, a render

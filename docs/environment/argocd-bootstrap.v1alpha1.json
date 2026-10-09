@@ -499,7 +499,7 @@
       "enforcement": "tested",
       "enforcedBy": "tests/architecture/test_argocd_application.py::test_the_application_reaches_no_object_another_owner_holds",
       "owedBy": null,
-      "limit": "Until 2026-10-04 this rule was held by an absence: no Argo CD custom resource was committed. ADR 0019 added one Application and its project, and the test now reads them. The project admits one destination namespace, which is not argocd, eight namespaced kinds, and no cluster-scoped kind. So the one Application is refused the installation, the definitions, the cluster role, a Namespace, and a claim. A second test holds that no other tracked file declares an Argo CD custom resource. The tests read files. They do not narrow the grant of the application controller, and they do not see an Application that a person creates in the cluster by hand."
+      "limit": "Until 2026-10-04 this rule was held by an absence: no Argo CD custom resource was committed. ADR 0019 added one Application and its project, and the test now reads them. The project admits one destination namespace, which is not argocd, nine namespaced kinds, and no cluster-scoped kind. So the one Application is refused the installation, the definitions, the cluster role, a Namespace, and a claim. A second test holds that no other tracked file declares an Argo CD custom resource. The tests read files. They do not narrow the grant of the application controller, and they do not see an Application that a person creates in the cluster by hand."
     },
     {
       "ruleId": "no-application-set-and-no-second-cluster",

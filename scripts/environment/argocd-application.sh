@@ -101,7 +101,7 @@ readonly INFEROPS_GITOPS_DIGEST_PARAMETER="api.image.digest"
 
 # The kinds the project lets the Application manage, and the pods and replica
 # sets that Kubernetes derives from them. The removal asks for all of them.
-readonly INFEROPS_GITOPS_RESIDUE_KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings"
+readonly INFEROPS_GITOPS_RESIDUE_KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,poddisruptionbudgets,roles,rolebindings"
 
 # One budget for the first sync. It must outlast the acquisition hook, which
 # hashes the model artifact, and one fetch of the repository.

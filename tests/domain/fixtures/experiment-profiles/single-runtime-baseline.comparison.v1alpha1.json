@@ -9,8 +9,8 @@
       "contract": "contracts/workload/examples/valid/synchronous-llm-local.yaml",
       "directory": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline",
       "platformDefaults": "charts/inferops-llm/values.yaml",
-      "platformDefaultsRevision": "40803f2fe9a95753da6480de1e5321efafb3cbf0",
-      "rendererRevision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+      "platformDefaultsRevision": "cdcfd62baf6fff56ca179711855510c93194ce80",
+      "rendererRevision": "cdcfd62baf6fff56ca179711855510c93194ce80"
     },
     "target": {
       "bindingName": "local-docker-desktop",
@@ -20,8 +20,8 @@
       "contract": "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
       "directory": "gitops/environments/local-docker-desktop/workloads/support-assistant",
       "platformDefaults": "charts/inferops-llm/values.yaml",
-      "platformDefaultsRevision": "40803f2fe9a95753da6480de1e5321efafb3cbf0",
-      "rendererRevision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+      "platformDefaultsRevision": "cdcfd62baf6fff56ca179711855510c93194ce80",
+      "rendererRevision": "cdcfd62baf6fff56ca179711855510c93194ce80"
     }
   },
   "differences": {
@@ -73,11 +73,11 @@
     ],
     "release": [
       {
-        "baseline": "acf6fbc799ea50ab43b76f5ab48e81bf82bb89bda808319c22f9ae42d22753fb",
+        "baseline": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
         "path": "/metadata/releaseId",
         "permitted": true,
         "reason": "identity-of-a-different-content",
-        "target": "79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812"
+        "target": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db"
       },
       {
         "baseline": "0.1.0",
@@ -87,11 +87,11 @@
         "target": "0.2.0"
       },
       {
-        "baseline": "c0f00c67faa97bcee38c3ee6de1a4bfd4e18733b4deb0ae2e9aba94b8eb99639",
+        "baseline": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6",
         "path": "/output/helmValues/sha256",
         "permitted": true,
         "reason": "identity-of-a-different-content",
-        "target": "314a34829e7b44c62402249f1e93ba4493ec5b019ca7becdd1a5595025d6b6f9"
+        "target": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
       },
       {
         "baseline": "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d",
@@ -170,14 +170,14 @@
       "apiVersion": "inferops.io/v1alpha1",
       "kind": "RenderedWorkloadRelease",
       "metadata": {
-        "releaseId": "acf6fbc799ea50ab43b76f5ab48e81bf82bb89bda808319c22f9ae42d22753fb",
+        "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
         "workloadId": "support-assistant",
         "workloadVersion": "0.1.0"
       },
       "output": {
         "helmValues": {
           "path": "values.generated.yaml",
-          "sha256": "c0f00c67faa97bcee38c3ee6de1a4bfd4e18733b4deb0ae2e9aba94b8eb99639"
+          "sha256": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
         }
       },
       "source": {
@@ -192,10 +192,10 @@
           "sha256": "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
         },
         "platformDefaults": {
-          "revision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+          "revision": "cdcfd62baf6fff56ca179711855510c93194ce80"
         },
         "renderer": {
-          "revision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+          "revision": "cdcfd62baf6fff56ca179711855510c93194ce80"
         }
       }
     },
@@ -203,14 +203,14 @@
       "apiVersion": "inferops.io/v1alpha1",
       "kind": "RenderedWorkloadRelease",
       "metadata": {
-        "releaseId": "79b1e3890f1f820a64115c4e5a362a6ddf114ba48cbeecf1788106a173e66812",
+        "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
         "workloadId": "support-assistant",
         "workloadVersion": "0.2.0"
       },
       "output": {
         "helmValues": {
           "path": "values.generated.yaml",
-          "sha256": "314a34829e7b44c62402249f1e93ba4493ec5b019ca7becdd1a5595025d6b6f9"
+          "sha256": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
         }
       },
       "source": {
@@ -225,10 +225,10 @@
           "sha256": "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
         },
         "platformDefaults": {
-          "revision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+          "revision": "cdcfd62baf6fff56ca179711855510c93194ce80"
         },
         "renderer": {
-          "revision": "40803f2fe9a95753da6480de1e5321efafb3cbf0"
+          "revision": "cdcfd62baf6fff56ca179711855510c93194ce80"
         }
       }
     }

@@ -6,7 +6,9 @@
 #
 #   - one source repository;
 #   - one destination: the platform namespace of the cluster that Argo CD runs in;
-#   - the eight namespaced kinds that the chart's real profile renders;
+#   - the eight namespaced kinds that the chart's real profile renders at one
+#     replica for each tier, and PodDisruptionBudget, which the chart renders
+#     for a tier of two or more replicas;
 #   - no cluster-scoped kind.
 #
 # It does not narrow the grant of the application controller. That grant is
@@ -43,6 +45,8 @@ spec:
       kind: Job
     - group: networking.k8s.io
       kind: NetworkPolicy
+    - group: policy
+      kind: PodDisruptionBudget
     - group: rbac.authorization.k8s.io
       kind: Role
     - group: rbac.authorization.k8s.io

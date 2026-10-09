@@ -1,4 +1,4 @@
-# Generated Helm values for the inferops-llm chart, version 0.5.0.
+# Generated Helm values for the inferops-llm chart, version 0.6.0.
 # Do not edit by hand: change the WorkloadContract, the EnvironmentBinding, or
 # the platform defaults they were rendered from, and render them again.
 api:
