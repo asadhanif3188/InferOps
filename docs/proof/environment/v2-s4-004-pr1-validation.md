@@ -12,7 +12,7 @@ deleted. No claim was registered.**
 | Date | 2026-10-09 |
 | Base | `70f6138`, the merge of pull request #131 |
 | Branch | `feat/v2-s4-004-endpoint-pdb-signals` |
-| Commits | `cdcfd62b`: the two templates, chart `0.6.0`, the tool, the collector, the cases, the suites, and the pages. A second commit: the corrections of the independent review, and the desired-state release recorded at the first commit. A third commit: the default lane |
+| Commits | `cdcfd62b`: the two templates, chart `0.6.0`, the tool, the collector, the cases, the suites, and the pages. `ded96a9c`: the corrections of the independent review, and the desired-state release recorded at the first commit. A third commit: the default lane |
 | Host | One Windows workstation, Git Bash; Python 3.12.12 from `uv`; Helm `v3.19.0`; a kubeconform binary that reports `development` on this host. The workflow pins kubeconform `v0.8.0` |
 | Evidence level | C0. Every check reads committed files, renders them with the chart tool, or executes a script against stand-ins for `kubectl` |
 | Claim effect | None. No claim, ledger, register row, dashboard row, or evidence-index entry was added or changed |
@@ -275,6 +275,21 @@ Each command ran on the tree of the second commit, before it was committed.
 
 The default lane is recorded after the second commit, because two suites read the
 commit that `HEAD` names.
+
+## The default lane
+
+The lane ran on the committed tree of the second commit, `ded96a9c`, with a clean
+working tree.
+
+| Command | Result |
+|---|---|
+| `uv run --locked python -m pytest -q` | 19,975 passed, 37 skipped, 14 deselected, 0 failed, in 49 minutes |
+
+The lane holds the two provenance tests that failed before the first commit, and
+the suite that the first commit broke. Both passed. The lane ran on one Windows
+host. The skipped tests are the ones that this host cannot run, and the
+deselected tests need a cluster or a model. The workflow did not run before the
+push, so no hosted result is stated here.
 
 ## Privacy and publicability
 
