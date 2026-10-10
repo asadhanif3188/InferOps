@@ -775,6 +775,17 @@ every dispatched request in the record with exactly one outcome, keep the prompt
 the completion out of it, and never publish a figure it produces as capacity, an
 SLO, or a benchmark.
 
+The [RP-1 reliability workload](docs/serving/reliability-workload-rp-1.md) is the
+caller profile for reliability experiments. It pins the load profile above by
+content digest, so a change of that file, other than its line endings, refuses it.
+Check it without
+contacting anything with `uv run --locked python -m tools.reliability_profile check`.
+Keep its concurrency at 2. To change a value, or to accept a changed load profile,
+add a revision: add 1 to `profileRevision`, state the difference on the page, and
+register the new digest in `tools/reliability_profile/core.py` without changing an
+earlier one. Do this before a run uses the revision. Never present the profile as
+a representative workload, an overload test, or a benchmark.
+
 The [performance scenarios](docs/serving/performance-scenarios.md) run that load
 profile against a release the workflow installs, beside the node's resource counters
 and the release collector's readings. Validate the matrix with

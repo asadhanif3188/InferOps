@@ -1,0 +1,52 @@
+{
+  "cases": [
+    {
+      "case": "committed-files",
+      "edit": "none",
+      "result": "ACCEPTED",
+      "rule": ""
+    },
+    {
+      "case": "v1-file-one-more-byte",
+      "edit": "one space after the last byte of the V1 load profile",
+      "result": "REFUSED",
+      "rule": "rp1-source-pin-differs"
+    },
+    {
+      "case": "v1-file-another-prompt",
+      "edit": "fixture.messages[0].content of the V1 load profile",
+      "result": "REFUSED",
+      "rule": "rp1-source-pin-differs"
+    },
+    {
+      "case": "v1-file-deadline-below-the-api",
+      "edit": "timeouts.requestTimeoutMs of the V1 load profile set to 100000",
+      "result": "REFUSED",
+      "rule": "rp1-source-refused"
+    },
+    {
+      "case": "rp1-concurrency-4",
+      "edit": "caller.concurrency of the RP-1 profile set to 4",
+      "result": "REFUSED",
+      "rule": "rp1-concurrency-not-fixed"
+    },
+    {
+      "case": "rp1-representative",
+      "edit": "representativeWorkload of the RP-1 profile set to true",
+      "result": "REFUSED",
+      "rule": "rp1-purpose-overstated"
+    },
+    {
+      "case": "rp1-port-forward",
+      "edit": "target.portForward of the RP-1 profile set to true",
+      "result": "REFUSED",
+      "rule": "rp1-target-not-api-service"
+    },
+    {
+      "case": "rp1-output-tokens-64",
+      "edit": "generation.maxOutputTokens of the RP-1 profile set to 64",
+      "result": "REFUSED",
+      "rule": "rp1-generation-differs"
+    }
+  ]
+}

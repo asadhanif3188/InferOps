@@ -71,7 +71,7 @@ record lists each input that no committed file resolves:
 ``experimentEligibility`` as ``not-established`` in every record.
 
 **What is not compared.** Comments in a contract are not part of the parsed
-document. No caller profile exists in this repository, so it is listed as
+document. This module reads no caller profile, so it is listed as
 unresolved. This module does not run Helm, so it compares no rendered object;
 a test of the chart suite renders each side with its own install description.
 Nothing here reads a cluster, so nothing compares an installed release with a
@@ -507,8 +507,8 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "cluster was read.",
     "That the model cache claim is in one state for both sides. The claim's name "
     "and its mount are compared. Its content and its state are not.",
-    "That one caller profile is applied to both sides. No caller profile exists "
-    "in this repository, and the record lists it as unresolved.",
+    "That one caller profile is applied to both sides. This tool reads no caller "
+    "profile, and the record lists it as unresolved.",
     "That telemetry of the two sides is equal. The workload version differs, and "
     "it is a resource attribute of the API's telemetry.",
     "That a cluster holds the baseline. The capacity preflight derives the "
@@ -1384,8 +1384,8 @@ def _unresolved(identity: Mapping[str, Any]) -> list[dict[str, Any]]:
         {
             "input": "caller-profile",
             "sides": list(TOPOLOGY),
-            "statement": "No caller profile exists in this repository. A run "
-            "must give both sides one revision of one caller profile.",
+            "statement": "This tool reads no caller profile. A run must give "
+            "both sides one revision of one caller profile.",
         }
     )
     return entries

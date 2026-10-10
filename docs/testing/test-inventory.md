@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are eighty, and they are listed in their own section rather than
+empty list. There are eighty-one, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -231,7 +231,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Fifty-three modules. Committed machine-readable data checked against the documents
+Fifty-four modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -381,6 +381,7 @@ matrix is complete needs to see them together.
 | [`tests/serving/test_runtime_certification.py`](../../tests/serving/test_runtime_certification.py) | The C2 certification descriptor, its refusal of a weakened level or waived assertion, the hardware refusal, the mock-identity prohibition, and the record it writes. The `local-real-cpu` label it exercises is truthful only for an authorized run |
 | [`tests/serving/test_serving_baseline.py`](../../tests/serving/test_serving_baseline.py) | The registered baseline's agreement with the composition it measures, its percentile arithmetic, and its deterministic summary. Every request is answered by an injected seam, so no latency here is a serving measurement |
 | [`tests/serving/test_llm_load.py`](../../tests/serving/test_llm_load.py) | The repeatable LLM load profile's agreement with the chart and the runtime profile, the fixed order every response is classified in, exactly one outcome for every dispatched request, the raw reader's refusals, and a rehearsal over loopback HTTP. Every answer comes from an injected function or an in-process stub, so no latency here describes serving and the committed example is synthetic |
+| [`tests/serving/test_reliability_profile.py`](../../tests/serving/test_reliability_profile.py) | The RP-1 reliability caller profile, through `tools/reliability_profile`: its concurrency of 2, its API Service target, and its denial of a representative workload and a benchmark; the agreement of its fixture, generation settings, client deadline, and four of the five members of its success rule with the V1 load profile that it pins by digest; what the V1 harness and the V1 transport send; one disposition for each member of the V1 file; and refusal of one drifted member at a time. No request reaches a model, and no run executed under the profile |
 | [`tests/serving/test_performance_scenarios.py`](../../tests/serving/test_performance_scenarios.py) | The performance scenario matrix's agreement with the load profile and chart it pins, the load facts and environment derived from the cluster's own answers, the node cgroup sample parser, CPU placed strictly inside each phase window, a record that is not usable when pods change, counters disagree, or samples leave a gap, and the committed record regenerating from its inputs. Every raw set, cluster answer, and collector reading in its other tests is constructed, so no figure they produce describes serving; the committed record it regenerates is local real evidence and certifies no claim |
 | [`tests/serving/test_performance_findings.py`](../../tests/serving/test_performance_findings.py) | The figures derived from the committed performance record and the report publishing them: derivation refused unless the record regenerates from its inputs, is usable, and claims no benchmark, capacity, or saturation judgement; the ratio, gap, gauge, and counter arithmetic; every row of its results tables, its setup table's figures, and the figures its prose quotes agreeing with the findings file. The record is local real evidence; the report's degradation statement is checked by review only and certifies no claim |
 | [`tests/serving/test_model_lifecycle.py`](../../tests/serving/test_model_lifecycle.py) | The accepted lifecycle state model against the package, the model record, and the API's drain budget; the rule that liveness passes while readiness is false during a load; and two measurements whose every timing is arithmetic on a fake clock, including the full ordered sequence of probes and artifact reads a restart comparison performs — which is what shows that the start procedure reads the artifact before every start |

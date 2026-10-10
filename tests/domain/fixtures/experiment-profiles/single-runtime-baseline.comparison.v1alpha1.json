@@ -177,7 +177,7 @@
     "That an applied Application is the committed one. The procedure that applies it adds the API image digest as one Helm parameter, and this tool reads the committed file.",
     "That a probe behaves as its settings state, or that a pod was Ready. No cluster was read.",
     "That the model cache claim is in one state for both sides. The claim's name and its mount are compared. Its content and its state are not.",
-    "That one caller profile is applied to both sides. No caller profile exists in this repository, and the record lists it as unresolved.",
+    "That one caller profile is applied to both sides. This tool reads no caller profile, and the record lists it as unresolved.",
     "That telemetry of the two sides is equal. The workload version differs, and it is a resource attribute of the API's telemetry.",
     "That a cluster holds the baseline. The capacity preflight derives the footprint of the target only.",
     "That either recorded revision is the commit a release was rendered at, or that it names a commit."
@@ -567,7 +567,7 @@
         "baseline",
         "target"
       ],
-      "statement": "No caller profile exists in this repository. A run must give both sides one revision of one caller profile."
+      "statement": "This tool reads no caller profile. A run must give both sides one revision of one caller profile."
     }
   ]
 }
