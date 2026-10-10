@@ -1,0 +1,346 @@
+[
+  {
+    "case": "committed-inputs",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 0,
+    "result": "COMPARABLE",
+    "checkExit": 0,
+    "findings": [],
+    "apiImageIdentity": {
+      "bound": true,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "description-both-malformed-abc",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-contradicted @ effective: baseline /api/image/digest",
+      "baseline-api-image-digest-contradicted @ effective: target /api/image/digest"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {
+        "baseline": "abc",
+        "target": "abc"
+      }
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "description-both-valid-not-declared",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-contradicted @ effective: baseline /api/image/digest",
+      "baseline-api-image-digest-contradicted @ effective: target /api/image/digest"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {
+        "baseline": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "target": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "description-target-only-valid",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-install-differs @ install: /handWrittenValues/api/image/digest",
+      "baseline-effective-values-differ @ effective: /api/image/digest",
+      "baseline-api-image-digest-contradicted @ effective: target /api/image/digest"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {
+        "target": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "description-target-readiness-timeout-1",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-install-differs @ install: /handWrittenValues/api/probes/readiness/timeoutSeconds",
+      "baseline-effective-values-differ @ effective: /api/probes/readiness/timeoutSeconds"
+    ],
+    "apiImageIdentity": {
+      "bound": true,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-digest-restated-in-both-descriptions",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 0,
+    "result": "COMPARABLE",
+    "checkExit": 1,
+    "findings": [],
+    "apiImageIdentity": {
+      "bound": true,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {
+        "baseline": "sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56",
+        "target": "sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56"
+      }
+    },
+    "unresolvedInputs": [
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-both-another-valid-digest",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 0,
+    "result": "COMPARABLE",
+    "checkExit": 1,
+    "findings": [],
+    "apiImageIdentity": {
+      "bound": true,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-baseline-absent",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest/baseline"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "absent",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-target-absent",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest/target"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "absent"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-both-absent",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest/baseline",
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest/target"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "absent",
+        "target": "absent"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-baseline-malformed",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest/baseline"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "malformed",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-target-malformed",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest/target"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "malformed"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-both-one-malformed-text",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest/baseline",
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest/target"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "malformed",
+        "target": "malformed"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-two-valid-digests-that-differ",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-api-image-digest-unbound @ comparison inputs: /apiImageDigest"
+    ],
+    "apiImageIdentity": {
+      "bound": false,
+      "category": "declared-comparison-input",
+      "sides": {
+        "baseline": "valid",
+        "target": "valid"
+      },
+      "statedByEffectiveValues": {}
+    },
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  }
+]

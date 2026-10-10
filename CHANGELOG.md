@@ -1123,6 +1123,42 @@ from `1.0.0`.
   [the endpoint-state page](docs/environment/service-endpoint-state.md#one-reading-of-a-cluster)
   and
   [the validation record](docs/proof/environment/v2-s4-005-pr2-validation.md).
+- **The baseline comparison gave `COMPARABLE` with no API image digest, and with
+  one malformed text as the digest of both sides. It now requires one usable
+  digest from each side, and the two must be equal.** No committed input of
+  the comparison stated an API image digest. The comparison record listed the digest as unresolved,
+  and the result stayed `COMPARABLE` at exit status 0. Two descriptions that
+  both stated `abc` gave the same result, and one test expected it.
+  `V2-S4-006-PR1` adds one hand-written file,
+  `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison-inputs.v1alpha1.yaml`,
+  that states one API image digest for the baseline and one for the target, and
+  `tools/baseline_profile` reads it. A usable digest is `sha256:` and 64
+  lowercase hexadecimal digits, which is the form that the procedure that
+  applies the Application accepts. **Two rules are added, so a record states
+  13.** `baseline-api-image-digest-unbound` refuses a side that states no
+  digest, a digest of another form, two usable digests that differ, and a file
+  that is not read whole. Equality is not validity: two equal texts that are
+  not digests are refused. No digest is taken from a default.
+  `baseline-api-image-digest-contradicted` refuses a description whose
+  effective values state a digest that is not the declared one of its side. A
+  record states the identity under `apiImageIdentity`, and it lists the digest
+  as unresolved only when it is not bound. The caller profile stays unresolved,
+  and `experimentEligibility` stays `not-established`. **The digest is a
+  declared comparison input. It is not an install input, and it is not an
+  observed runtime identity.** The Application still states no digest, and the
+  procedure that applies it still takes the digest from the operator and reads
+  no committed file. The declared value is the one that a cluster reported for
+  the two API pods of the target in the retained endpoint reading of
+  2026-10-09. It names one local build on one host, it was not observed for the
+  baseline, and another build can have another digest. So a `COMPARABLE` record does
+  not establish that a run installs either side with the declared digest. No
+  Application, procedure, chart file, contract, binding, desired-state file,
+  freeze record, or retained evidence file is edited, the committed baseline
+  release is the same bytes, and the committed record is written again. **This
+  is static evidence at C0, and it registers no claim.** See
+  [the baseline profile page](docs/environment/single-runtime-baseline-profile.md#the-api-image-digest)
+  and
+  [the validation record](docs/proof/environment/v2-s4-006-pr1-validation.md).
 - **The baseline comparison did not read an install input or a readiness input,
   and it now refuses one that a side states alone.** The single-runtime baseline
   named no chart, no hand-written values, no release name, and no namespace. So

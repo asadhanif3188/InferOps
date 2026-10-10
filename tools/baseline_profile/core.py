@@ -49,14 +49,29 @@ holds that each committed values file is the derived one.
 must hold each of them with a usable value, so two absent values are never read
 as two equal values. Today the chart's defaults supply all 24 for both sides.
 
+**Each side declares its API image digest.** Neither install description states
+the digest: the procedure that applies the target adds it as one Helm parameter,
+and the Application does not hold it. So :data:`COMPARISON_INPUTS_PATH`, a file
+that a person writes, states one digest for the baseline and one for the target.
+A digest is usable when it is ``sha256:`` and 64 lowercase hexadecimal digits.
+An absent digest, a malformed digest, a file that is not read whole, and two
+usable digests that differ each refuse the comparison. Two equal texts that are
+not digests refuse it too: equality is not validity. No digest is taken from a
+default. A description that states a digest of its own must state the declared
+one of its side.
+
+**The digest is a declared comparison input.** It is a value that a committed
+file states. It is not an install input: no procedure reads the file. It is not
+an observed runtime identity: this module reads no cluster. A record states the
+category under ``apiImageIdentity``.
+
 **``COMPARABLE`` is not eligibility.** The result is about committed inputs. A
 record lists each input that no committed file resolves:
 :func:`build_record` states them under ``unresolvedInputs``, and it states
 ``experimentEligibility`` as ``not-established`` in every record.
 
 **What is not compared.** Comments in a contract are not part of the parsed
-document. No committed file states the API image digest, so it is listed as
-unresolved. No caller profile exists in this repository, so it is listed as
+document. No caller profile exists in this repository, so it is listed as
 unresolved. This module does not run Helm, so it compares no rendered object;
 a test of the chart suite renders each side with its own install description.
 Nothing here reads a cluster, so nothing compares an installed release with a
@@ -113,6 +128,10 @@ __all__ = [
     "BASELINE_CONTRACT",
     "CHECK_RULES",
     "COMPARABLE",
+    "COMPARISON_INPUTS_PATH",
+    "COMPARISON_INPUTS_SCHEMA",
+    "DIGEST_CATEGORY",
+    "DIGEST_STATES",
     "DOES_NOT_ESTABLISH",
     "ELIGIBILITY",
     "HELD",
@@ -171,6 +190,28 @@ INSTALL_PATH: Final = f"{PROFILE_DIRECTORY}.install.v1alpha1.yaml"
 
 #: The schema name the baseline's install description states.
 INSTALL_SCHEMA: Final = "inferops.io/baseline-install-inputs/v1alpha1"
+
+#: The declared comparison inputs, beside the profile directory. A person writes
+#: this file. It states the API image digest of each side, which neither install
+#: description states.
+COMPARISON_INPUTS_PATH: Final = f"{PROFILE_DIRECTORY}.comparison-inputs.v1alpha1.yaml"
+
+#: The schema name the declared comparison inputs state.
+COMPARISON_INPUTS_SCHEMA: Final = "inferops.io/baseline-comparison-inputs/v1alpha1"
+
+#: What an API image digest of a record is: a value that a committed comparison
+#: input states. It is not the value that an operator gives to the procedure
+#: that applies the target, and it is not a value that a cluster reported.
+DIGEST_CATEGORY: Final = "declared-comparison-input"
+
+_VALID: Final = "valid"
+_NOT_STATED: Final = "absent"
+_MALFORMED: Final = "malformed"
+_NOT_READ: Final = "not-read"
+
+#: The states of the declared digest of one side. ``not-read`` is the state of
+#: both sides when the declared comparison inputs are not read whole.
+DIGEST_STATES: Final = (_VALID, _NOT_STATED, _MALFORMED, _NOT_READ)
 
 #: What every record states about eligibility. This tool resolves no caller
 #: profile, so no record of it states another value.
@@ -294,6 +335,10 @@ _INSTALL_MEMBERS: Final[Mapping[str, frozenset[str]]] = {
     "chart": frozenset({"repository", "revision", "path"}),
     "release": frozenset({"name", "namespace", "server"}),
 }
+_COMPARISON_INPUT_MEMBERS: Final[Mapping[str, frozenset[str]]] = {
+    "the document": frozenset({"apiVersion", "kind", "apiImageDigest"}),
+    "apiImageDigest": frozenset({"baseline", "target"}),
+}
 
 #: The files that a chart must hold, and the directory that must hold a file.
 _CHART_FILES: Final = ("Chart.yaml", "values.yaml", "values.schema.json")
@@ -302,7 +347,12 @@ _CHART_TEMPLATES: Final = "templates"
 #: No render reads either.
 _CHART_UNREAD: Final = ("README.md", "ci")
 _API_IMAGE_DIGEST: Final = "/api/image/digest"
+#: The one form of a usable digest. The procedure that applies the target
+#: accepts the same form for its digest argument, and no other.
 _DIGEST: Final = re.compile(r"sha256:[0-9a-f]{64}")
+_DIGEST_FORM: Final = "sha256: and 64 lowercase hexadecimal digits"
+_DIGEST_UNBOUND: Final = "baseline-api-image-digest-unbound"
+_DIGEST_CONTRADICTED: Final = "baseline-api-image-digest-contradicted"
 _READINESS_PATHS: Final = ("readinessPath", "livenessPath", "healthPath")
 
 
@@ -376,6 +426,18 @@ RULES: Final[tuple[Rule, ...]] = (
         "with a usable value: the 23 values that the two probe templates read, "
         "and the startup budget of the runtime.",
     ),
+    Rule(
+        _DIGEST_UNBOUND,
+        "The declared comparison inputs are a file that parses and that states "
+        "no member this tool does not read. They state one API image digest for "
+        "the baseline and one for the target. Each digest is sha256: and 64 "
+        "lowercase hexadecimal digits, and the two digests are equal.",
+    ),
+    Rule(
+        _DIGEST_CONTRADICTED,
+        "The effective values of each side state no API image digest, or they "
+        "state the declared digest of that side.",
+    ),
 )
 
 #: The rules that are evaluated only when each side derives a release.
@@ -419,9 +481,15 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "That a run installs either release with the install inputs that this record "
     "states. The record compares two committed descriptions. No procedure reads "
     "the baseline's description, and nothing compares a cluster with either.",
-    "That the two releases install with one API image digest. No committed file "
-    "states the digest. An operator supplies it at install, and the record lists "
-    "it as unresolved.",
+    "That a run installs either release with the declared API image digest. The "
+    "digest is a declared comparison input: a committed file states it. The "
+    "procedure that applies the target takes its digest from the operator, and "
+    "it does not read that file. No procedure installs the baseline.",
+    "That a cluster ran a pod of the declared API image on either side. The "
+    "record states no observed runtime identity, and no cluster was read.",
+    "That the declared API image digest names an image that exists, an image "
+    "that was built from this tree, or the image that a later build gives. The "
+    "tool checks the form of the digest, and it reads no image.",
     "That a cluster reads the chart files whose digest this record states. Each "
     "description names a branch as the chart revision, and the digest is of the "
     "files of the tree that the tool read.",
@@ -1151,28 +1219,165 @@ def _readiness(
     return findings, stated
 
 
-def _unresolved(effective: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Each input of a controlled comparison that no committed file resolves."""
-    digests = [
-        _at(effective[side], _API_IMAGE_DIGEST) if side in effective else _ABSENT
-        for side in TOPOLOGY
-    ]
-    resolved = (
-        all(type(d) is str and _DIGEST.fullmatch(d) for d in digests)
-        and len(set(digests)) == 1
-    )
-    without_digest = [] if resolved else list(TOPOLOGY)
+def _declared_digests(root: Path) -> tuple[dict[str, Any], str | None]:
+    """What the declared comparison inputs state as the API image digest of each side.
+
+    A side that the file does not state, or states as a null, has the absent
+    marker. So has each side of a file that states no digest block. A file that
+    is not read whole gives no side and the reason. No side is given a default.
+    """
+    source = COMPARISON_INPUTS_PATH
+    members = _COMPARISON_INPUT_MEMBERS
+    try:
+        document = _block(_document(root, source), "the document", source, members)
+        if (
+            document.get("apiVersion") != COMPARISON_INPUTS_SCHEMA
+            or document.get("kind") != "BaselineComparisonInputs"
+        ):
+            raise _InstallRefused(
+                f"{source} is not a BaselineComparisonInputs document of "
+                f"{COMPARISON_INPUTS_SCHEMA}"
+            )
+        # A file that states no digest block, or an empty one, was read: each
+        # side is absent. A block that is not a mapping names no side.
+        stated = document.get("apiImageDigest")
+        block = _block(
+            {} if stated is None else stated, "apiImageDigest", source, members
+        )
+    except _InstallRefused as refused:
+        return {}, refused.reason
+    return {
+        side: _ABSENT if block.get(side) is None else block[side] for side in TOPOLOGY
+    }, None
+
+
+def _stated(value: Any) -> str:
+    """A value that is not a usable digest, as a finding states it.
+
+    A value that is not a scalar is named by its kind and is not walked, so a
+    document that refers to itself is stated too.
+    """
+    if value is None or type(value) in (str, int, float, bool):
+        return json.dumps(_plain(value))
+    return "a mapping" if isinstance(value, Mapping) else "a value that is not a text"
+
+
+def _api_image_identity(
+    root: Path, effective: Mapping[str, Any]
+) -> tuple[list[Finding], dict[str, Any]]:
+    """The declared API image digest of each side, and each way it is not bound.
+
+    The identity is bound when each side declares a usable digest, the two are
+    equal, and the effective values of both sides were read and state no other.
+    An empty mapping of effective values leaves that part unread. The identity
+    is then not bound, and the statement says that no description was compared.
+    """
+    source = COMPARISON_INPUTS_PATH
+    declared, reason = _declared_digests(root)
+    findings = []
+    sides: dict[str, dict[str, Any]] = {}
+    if reason is not None:
+        findings.append(
+            Finding(
+                _DIGEST_UNBOUND,
+                "comparison inputs",
+                f"no declared API image digest was read: {reason}",
+            )
+        )
+    for side in TOPOLOGY:
+        if reason is not None:
+            sides[side] = {"state": _NOT_READ}
+            continue
+        value = declared[side]
+        if type(value) is str and _DIGEST.fullmatch(value):
+            sides[side] = {"state": _VALID, "digest": value}
+            continue
+        if value is _ABSENT:
+            sides[side] = {"state": _NOT_STATED}
+            detail = (
+                f"{source} states no API image digest for the {side}, and no "
+                "default is assumed for it"
+            )
+        else:
+            sides[side] = {"state": _MALFORMED, "stated": _stated(value)}
+            detail = (
+                f"{source} states {_stated(value)} for the {side}; an API image "
+                f"digest is {_DIGEST_FORM}"
+            )
+        findings.append(
+            Finding(
+                _DIGEST_UNBOUND, f"comparison inputs: /apiImageDigest/{side}", detail
+            )
+        )
+    digests = [sides[side].get("digest") for side in TOPOLOGY]
+    if None not in digests and len(set(digests)) != 1:
+        findings.append(
+            Finding(
+                _DIGEST_UNBOUND,
+                "comparison inputs: /apiImageDigest",
+                f"the baseline declares {digests[0]} and the target declares "
+                f"{digests[1]}; the two sides need one digest",
+            )
+        )
+    restated: dict[str, Any] = {}
+    for side in TOPOLOGY if effective else ():
+        found = _at(effective[side], _API_IMAGE_DIGEST)
+        # The chart's default is the empty text, which states no digest.
+        if found is _ABSENT or found is None or (type(found) is str and not found):
+            continue
+        restated[side] = _plain(found)
+        if found != sides[side].get("digest"):
+            findings.append(
+                Finding(
+                    _DIGEST_CONTRADICTED,
+                    f"effective: {side} {_API_IMAGE_DIGEST}",
+                    f"the effective values of the {side} state "
+                    f"{json.dumps(_plain(found))}; the declared digest of that "
+                    f"side is {sides[side].get('digest', 'not a usable digest')}",
+                )
+            )
+    # A declared digest that no effective values were compared with is not
+    # bound: a description that was not read can state another.
+    bound = not findings and bool(effective)
+    statement: dict[str, Any] = {
+        "category": DIGEST_CATEGORY,
+        "source": source,
+        "form": _DIGEST_FORM,
+        "bound": bound,
+        "sides": sides,
+        "effectiveValuesCompared": bool(effective),
+        "statedByEffectiveValues": restated,
+        "boundary": "The digest is a declared comparison input: a committed file "
+        "states it. It is not an install input, and it is not an observed "
+        "runtime identity. This record does not establish that a run installs "
+        "either release with it.",
+    }
+    if bound:
+        statement["digest"] = digests[0]
+    return findings, statement
+
+
+def _unresolved(identity: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Each input of a controlled comparison that no committed file resolves.
+
+    The API image digest is listed unless it is bound. A record that lists it
+    is ``REFUSED``.
+    """
     entries: list[dict[str, Any]] = []
-    if without_digest:
+    if not identity["bound"]:
+        without = [
+            side for side in TOPOLOGY if identity["sides"][side]["state"] != _VALID
+        ]
         entries.append(
             {
                 "input": "api-image-digest",
                 "path": _API_IMAGE_DIGEST,
-                "sides": without_digest,
+                "sides": without or list(TOPOLOGY),
                 "statement": "The committed files do not give both sides one "
-                "API image digest of the form sha256 and 64 hexadecimal digits. "
-                "An operator supplies the digest at install. A run must give "
-                "both sides one digest.",
+                f"API image digest of the form {_DIGEST_FORM}. The comparison "
+                "is refused until the declared comparison inputs state one "
+                "usable digest for both sides, and the effective values of "
+                "both sides are read and state no other.",
             }
         )
     entries.append(
@@ -1315,6 +1520,11 @@ def build_record(
             findings.extend(found)
             found, readiness = _readiness(effective)
             findings.extend(found)
+            evaluated.add(_DIGEST_CONTRADICTED)
+
+    evaluated.add(_DIGEST_UNBOUND)
+    found, identity = _api_image_identity(root, effective)
+    findings.extend(found)
 
     order = {rule.rule_id: index for index, rule in enumerate(RULES)}
     findings.sort(key=lambda finding: (order[finding.rule_id], finding.subject))
@@ -1339,7 +1549,8 @@ def build_record(
         "targetDelivery": _target_delivery(root, sources["target"]),
         "effectiveTopology": effective_topology,
         "readinessInputs": readiness,
-        "unresolvedInputs": _unresolved(effective),
+        "apiImageIdentity": identity,
+        "unresolvedInputs": _unresolved(identity),
         "experimentEligibility": ELIGIBILITY,
         "pathsCompared": compared,
         "differences": {

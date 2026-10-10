@@ -1,4 +1,24 @@
 {
+  "apiImageIdentity": {
+    "bound": true,
+    "boundary": "The digest is a declared comparison input: a committed file states it. It is not an install input, and it is not an observed runtime identity. This record does not establish that a run installs either release with it.",
+    "category": "declared-comparison-input",
+    "digest": "sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56",
+    "effectiveValuesCompared": true,
+    "form": "sha256: and 64 lowercase hexadecimal digits",
+    "sides": {
+      "baseline": {
+        "digest": "sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56",
+        "state": "valid"
+      },
+      "target": {
+        "digest": "sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56",
+        "state": "valid"
+      }
+    },
+    "source": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison-inputs.v1alpha1.yaml",
+    "statedByEffectiveValues": {}
+  },
   "apiVersion": "inferops.io/baseline-profile-comparison/v1alpha1",
   "declarations": {
     "baseline": {
@@ -148,7 +168,9 @@
     "What a caller observes when the one runtime pod of the baseline stops, or when one of the two runtime pods of the target stops.",
     "That the baseline is eligible for an experiment. The result is a statement about committed inputs, and every record states the eligibility as not-established.",
     "That a run installs either release with the install inputs that this record states. The record compares two committed descriptions. No procedure reads the baseline's description, and nothing compares a cluster with either.",
-    "That the two releases install with one API image digest. No committed file states the digest. An operator supplies it at install, and the record lists it as unresolved.",
+    "That a run installs either release with the declared API image digest. The digest is a declared comparison input: a committed file states it. The procedure that applies the target takes its digest from the operator, and it does not read that file. No procedure installs the baseline.",
+    "That a cluster ran a pod of the declared API image on either side. The record states no observed runtime identity, and no cluster was read.",
+    "That the declared API image digest names an image that exists, an image that was built from this tree, or the image that a later build gives. The tool checks the form of the digest, and it reads no image.",
     "That a cluster reads the chart files whose digest this record states. Each description names a branch as the chart revision, and the digest is of the files of the tree that the tool read.",
     "That the two releases render equal probes. The record compares effective values and one digest of the chart files. This tool does not run Helm, and it parses a description as YAML 1.1, which Helm's parser does not do for every plain scalar.",
     "That the baseline is delivered as the target is. The record states the project, the sync policy, and the name of the target's Application, and it compares none of them. The baseline names no controller.",
@@ -505,6 +527,16 @@
       "id": "baseline-readiness-input-unusable",
       "state": "held",
       "statement": "The effective values of each side hold each of 24 readiness inputs with a usable value: the 23 values that the two probe templates read, and the startup budget of the runtime."
+    },
+    {
+      "id": "baseline-api-image-digest-unbound",
+      "state": "held",
+      "statement": "The declared comparison inputs are a file that parses and that states no member this tool does not read. They state one API image digest for the baseline and one for the target. Each digest is sha256: and 64 lowercase hexadecimal digits, and the two digests are equal."
+    },
+    {
+      "id": "baseline-api-image-digest-contradicted",
+      "state": "held",
+      "statement": "The effective values of each side state no API image digest, or they state the declared digest of that side."
     }
   ],
   "targetDelivery": {
@@ -529,15 +561,6 @@
     }
   },
   "unresolvedInputs": [
-    {
-      "input": "api-image-digest",
-      "path": "/api/image/digest",
-      "sides": [
-        "baseline",
-        "target"
-      ],
-      "statement": "The committed files do not give both sides one API image digest of the form sha256 and 64 hexadecimal digits. An operator supplies the digest at install. A run must give both sides one digest."
-    },
     {
       "input": "caller-profile",
       "sides": [
