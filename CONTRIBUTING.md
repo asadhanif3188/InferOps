@@ -777,7 +777,8 @@ SLO, or a benchmark.
 
 The [RP-1 reliability workload](docs/serving/reliability-workload-rp-1.md) is the
 caller profile for reliability experiments. It pins the load profile above by
-content digest, so a change of one byte of that file refuses it. Check it without
+content digest, so a change of that file, other than its line endings, refuses it.
+Check it without
 contacting anything with `uv run --locked python -m tools.reliability_profile check`.
 Keep its concurrency at 2. To change a value, or to accept a changed load profile,
 add a revision: add 1 to `profileRevision`, state the difference on the page, and

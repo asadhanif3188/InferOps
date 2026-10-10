@@ -231,8 +231,9 @@ reading of one local cluster is committed: two Ready endpoints for each of the t
 at one time. It is not a caller's result. No eviction was requested. Since `V2-S5-001-PR1`
 one caller profile for reliability experiments is committed:
 [RP-1](docs/serving/reliability-workload-rp-1.md). It reuses the fixture, the generation
-settings, the client deadline, and the success rule of the V1 load profile, pins that
-file by content digest, and fixes the concurrency at 2 closed-loop workers. It is a
+settings, the client deadline, and four of the five members of the success rule of the
+V1 load profile. It pins that file by content digest, changes the target to the API
+Service, and fixes the concurrency at 2 closed-loop workers. It is a
 reliability workload, and not a representative production workload, an overload test,
 or a benchmark. No runner reads it yet, and no run executed under it.
 

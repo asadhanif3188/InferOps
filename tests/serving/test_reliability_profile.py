@@ -8,8 +8,9 @@ The suite does three things:
 
 - **origin** -- it holds each reused value of the profile against the V1 load
   profile, and it holds the request semantics against what the V1 load harness sends:
-  the method, the path, the body, the header names, the deadline, and the connection
-  behaviour of the V1 transport;
+  the method, the path, the body, the header names, the content type, the deadline,
+  and the connection behaviour of the V1 transport. It does not exercise the closed
+  loop of the V1 harness, and it holds no V1 value that the profile does not carry;
 - **refusal** -- it gives the loader one drift at a time, and it requires the rule
   that names that drift;
 - **documents** -- it holds the guide against the profile, the rules, and the two
@@ -21,6 +22,9 @@ from __future__ import annotations
 import copy
 import http.server
 import json
+import os
+import subprocess
+import sys
 import threading
 from collections.abc import Iterator, Mapping
 from pathlib import Path
@@ -93,9 +97,19 @@ def refusal(tmp_path: Path, document: Mapping[str, Any]) -> str:
 
 
 class _Handler(http.server.BaseHTTPRequestHandler):
+    # HTTP/1.1, so that the server keeps a connection open unless the client asks
+    # for it to be closed. Under HTTP/1.0 each connection closes whatever is asked.
+    protocol_version = "HTTP/1.1"
+
     def do_POST(self) -> None:
         server: Any = self.server
-        server.requests.append((self.path, self.headers.get("Connection")))
+        server.requests.append(
+            (
+                self.path,
+                self.headers.get("Connection"),
+                self.headers.get("Content-Type"),
+            )
+        )
         length = int(self.headers.get("Content-Length", "0"))
         self.rfile.read(length)
         if self.path == "/redirect":
@@ -119,7 +133,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 class _Server(http.server.ThreadingHTTPServer):
     def __init__(self) -> None:
         super().__init__(("127.0.0.1", 0), _Handler)
-        self.requests: list[tuple[str, str | None]] = []
+        self.requests: list[tuple[str, str | None, str | None]] = []
         self.connections = 0
 
     def get_request(self) -> Any:
@@ -167,7 +181,7 @@ def test_the_concurrency_is_two_closed_loop_workers() -> None:
     }
 
 
-def test_the_concurrency_is_one_the_v1_harness_ran_as_a_level() -> None:
+def test_the_concurrency_is_the_one_the_v1_profile_declares_as_level_c2() -> None:
     levels = {level.level_id: level.concurrency for level in SOURCE.levels}
     assert levels["c2"] == PROFILE.concurrency
 
@@ -259,7 +273,11 @@ def test_no_committed_runtime_argument_sets_a_sampling_seed() -> None:
     arguments = runtime["runtime"]["arguments"]
     assert "--temp" in arguments
     assert arguments[arguments.index("--temp") + 1] == "0"
-    assert not {"--seed", "-s"} & set(arguments)
+    assert not [
+        argument
+        for argument in arguments
+        if argument == "-s" or argument.startswith("--seed")
+    ]
     assert DOCUMENT["generation"]["samplingSeed"] == "not-set"
 
 
@@ -280,7 +298,29 @@ def test_the_deadline_and_the_success_rule_are_the_v1_values() -> None:
     # The V1 harness requires the runtime name of the identity probe, and not of an
     # answer. The profile does not carry it.
     del source["requiredRuntimeName"]
+    # The V1 file has no member for the first choice. The V1 classification requires
+    # one, and the next test holds that.
+    source["requireChoice"] = True
     assert DOCUMENT["success"] == source
+
+
+def test_the_v1_classification_requires_a_choice_of_a_success() -> None:
+    body = {
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+        EXTENSION_MEMBER: {
+            EXTENSION_ADAPTER_KIND: "real",
+            EXTENSION_MODEL_REF: SOURCE.fixture.model,
+        },
+    }
+    for choices, outcome in (
+        ([{"finish_reason": "stop"}], source_core.OUTCOME_SUCCESS),
+        ([], source_core.OUTCOME_INVALID),
+        (None, source_core.OUTCOME_INVALID),
+    ):
+        answer = source_core.HttpAnswer(200, {**body, "choices": choices})
+        result = source_core.classify(SOURCE, answer=answer, failure=None, latency_ms=1)
+        assert result.outcome == outcome
+    assert DOCUMENT["success"]["requireChoice"] is True
 
 
 def test_the_v1_harness_sends_the_request_the_profile_states() -> None:
@@ -317,18 +357,30 @@ def test_the_v1_harness_sends_the_request_the_profile_states() -> None:
     assert timeout_seconds * 1000 == PROFILE.request_timeout_ms
 
 
-def test_the_v1_classification_refuses_an_answer_after_the_deadline() -> None:
-    answer = source_core.HttpAnswer(
-        200,
-        {
-            "choices": [{"finish_reason": "stop"}],
-            "usage": {"prompt_tokens": 1, "completion_tokens": 1},
-            EXTENSION_MEMBER: {
-                EXTENSION_ADAPTER_KIND: "real",
-                EXTENSION_MODEL_REF: SOURCE.fixture.model,
+def test_the_v1_classification_gives_no_late_answer_the_outcome_success() -> None:
+    def completion(adapter_kind: str) -> source_core.HttpAnswer:
+        return source_core.HttpAnswer(
+            200,
+            {
+                "choices": [{"finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+                EXTENSION_MEMBER: {
+                    EXTENSION_ADAPTER_KIND: adapter_kind,
+                    EXTENSION_MODEL_REF: SOURCE.fixture.model,
+                },
             },
-        },
+        )
+
+    answer = completion("real")
+    # A late answer that names another adapter is not a timeout. The V1
+    # classification reads the adapter before the deadline.
+    other = source_core.classify(
+        SOURCE,
+        answer=completion("mock"),
+        failure=None,
+        latency_ms=PROFILE.request_timeout_ms + 1,
     )
+    assert other.outcome == source_core.OUTCOME_IDENTITY
     in_time = source_core.classify(SOURCE, answer=answer, failure=None, latency_ms=1)
     late = source_core.classify(
         SOURCE,
@@ -347,9 +399,12 @@ def test_the_v1_transport_sends_json_on_a_new_connection_each_time(
     for _ in range(2):
         source_core.http_transport("POST", url(loopback, "/ok"), {"a": 1}, {}, 5)
     assert loopback.connections == 2
-    assert [connection for _, connection in loopback.requests] == ["close", "close"]
+    assert [connection for _, connection, _ in loopback.requests] == ["close"] * 2
     assert CONNECTION["newConnectionPerRequest"] is True
-    assert DOCUMENT["request"]["contentType"] == "application/json"
+    assert [content for _, _, content in loopback.requests] == [
+        DOCUMENT["request"]["contentType"]
+    ] * 2
+    assert DOCUMENT["request"]["contentType"] == core.REQUEST_CONTENT_TYPE
 
 
 def test_the_v1_transport_follows_no_redirect(loopback: _Server) -> None:
@@ -357,26 +412,61 @@ def test_the_v1_transport_follows_no_redirect(loopback: _Server) -> None:
         "POST", url(loopback, "/redirect"), {"a": 1}, {}, 5
     )
     assert answer.status == 302
-    assert [path for path, _ in loopback.requests] == ["/redirect"]
+    assert [path for path, _, _ in loopback.requests] == ["/redirect"]
     assert CONNECTION["followRedirects"] is False
 
 
-def test_the_v1_transport_sends_a_refused_request_once(loopback: _Server) -> None:
+def test_the_v1_transport_sends_a_request_that_gets_a_503_once(
+    loopback: _Server,
+) -> None:
+    # One status only. A connection failure and a timeout are not given here: the V1
+    # transport raises on each, and its code has no loop.
     answer = source_core.http_transport("POST", url(loopback, "/busy"), {"a": 1}, {}, 5)
     assert answer.status == 503
     assert len(loopback.requests) == 1
     assert CONNECTION["retries"] == 0
 
 
-def test_the_v1_transport_reads_no_proxy_variable(
-    loopback: _Server, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    for name in ("HTTP_PROXY", "http_proxy", "ALL_PROXY"):
-        monkeypatch.setenv(name, "http://10.255.255.1:9")
-    monkeypatch.delenv("NO_PROXY", raising=False)
-    monkeypatch.delenv("no_proxy", raising=False)
-    answer = source_core.http_transport("POST", url(loopback, "/ok"), {"a": 1}, {}, 5)
-    assert answer.status == 200
+def test_the_v1_transport_reads_no_proxy_variable(loopback: _Server) -> None:
+    # The V1 transport builds its opener when the module is imported. A variable
+    # that a test sets after the import cannot reach that opener, so each request
+    # here is sent by a new interpreter that starts with the variable set. The
+    # first interpreter is the control: the default opener of the standard library
+    # reads the variable, and its request does not arrive.
+    proxied = {"http_proxy", "https_proxy", "all_proxy", "no_proxy"}
+    environment = {
+        name: value for name, value in os.environ.items() if name.lower() not in proxied
+    }
+    environment["HTTP_PROXY"] = "http://127.0.0.1:9"
+    environment["ALL_PROXY"] = "http://127.0.0.1:9"
+    target = url(loopback, "/ok")
+
+    def child(script: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-c", script, target],
+            cwd=REPO_ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    control = child(
+        "import sys, urllib.request\n"
+        "request = urllib.request.Request(sys.argv[1], data=b'{}', method='POST')\n"
+        "print(urllib.request.build_opener().open(request, timeout=20).status)\n"
+    )
+    assert control.returncode != 0
+    assert loopback.requests == []
+
+    transport = child(
+        "import sys\n"
+        "from tools.llm_load import core\n"
+        "print(core.http_transport('POST', sys.argv[1], {'a': 1}, {}, 20).status)\n"
+    )
+    assert transport.stdout.strip() == "200", transport.stderr
+    assert [path for path, _, _ in loopback.requests] == ["/ok"]
     assert CONNECTION["proxyFromEnvironment"] is False
 
 
@@ -399,13 +489,29 @@ def test_each_member_of_the_v1_file_has_exactly_one_disposition() -> None:
         assert entry["reason"].endswith(".")
 
 
-def test_a_v1_member_this_tool_does_not_know_is_refused() -> None:
+def test_a_v1_member_with_no_registered_disposition_is_refused() -> None:
+    # The V1 loader of this tree refuses a member that it does not know, so the
+    # loader of this tool cannot be given this case. The helper is called directly.
+    stated = [
+        *DOCUMENT["sourceDisposition"],
+        {"member": "burst", "disposition": "not-carried", "reason": "None."},
+    ]
     with pytest.raises(ProfileError) as refused:
-        core._check_disposition(
-            DOCUMENT["sourceDisposition"], set(SOURCE_DOCUMENT) | {"burst"}
-        )
+        core._check_disposition(stated, set(SOURCE_DOCUMENT) | {"burst"})
     assert refused.value.rule == core.RULE_DISPOSITION
-    assert "'burst'" in str(refused.value)
+    assert "registers no disposition" in str(refused.value)
+
+
+def test_a_disposition_entry_of_another_shape_is_refused(tmp_path: Path) -> None:
+    entries = DOCUMENT["sourceDisposition"]
+    for value in (
+        {"warmup": "not-carried"},
+        [{**entries[0], "note": "More."}, *entries[1:]],
+        [{**entries[0], "reason": ""}, *entries[1:]],
+        ["schemaVersion", *entries[1:]],
+    ):
+        document = mutated(("sourceDisposition",), value)
+        assert refusal(tmp_path, document) == core.RULE_MEMBERS
 
 
 def test_a_missing_a_repeated_and_an_extra_disposition_are_each_refused(
@@ -469,6 +575,7 @@ DRIFTS: tuple[tuple[tuple[str, ...], Any, str], ...] = (
     (("request", "correlationIdHeader"), "X-Correlation-ID", core.RULE_REQUEST),
     (("request", "body", "model"), "another-model", core.RULE_REQUEST),
     (("request", "body", "stream"), True, core.RULE_REQUEST),
+    (("request", "body", "stream"), 0, core.RULE_REQUEST),
     (
         ("request", "body", "messages"),
         [{"role": "user", "content": "Another prompt."}],
@@ -477,7 +584,10 @@ DRIFTS: tuple[tuple[tuple[str, ...], Any, str], ...] = (
     (("request", "body", "max_tokens"), 128, core.RULE_REQUEST),
     (("generation", "sentInRequest"), True, core.RULE_GENERATION),
     (("generation", "maxOutputTokens"), 64, core.RULE_GENERATION),
+    (("generation", "maxOutputTokens"), 128.0, core.RULE_GENERATION),
     (("generation", "temperature"), 0.7, core.RULE_GENERATION),
+    (("generation", "temperature"), 0.0, core.RULE_GENERATION),
+    (("generation", "temperature"), False, core.RULE_MEMBERS),
     (("generation", "samplingSeed"), "42", core.RULE_GENERATION),
     (("generation", "contextSizeTokens"), 8192, core.RULE_GENERATION),
     (("generation", "parallelSlots"), 2, core.RULE_GENERATION),
@@ -491,7 +601,11 @@ DRIFTS: tuple[tuple[tuple[str, ...], Any, str], ...] = (
     (("success", "requiredStatus"), 204, core.RULE_SUCCESS),
     (("success", "requiredAdapterKind"), "mock", core.RULE_SUCCESS),
     (("success", "requiredModelRef"), "another-model", core.RULE_SUCCESS),
+    (("success", "requiredStatus"), 200.0, core.RULE_SUCCESS),
     (("success", "requireUsage"), False, core.RULE_SUCCESS),
+    (("success", "requireUsage"), 1, core.RULE_SUCCESS),
+    (("success", "requireChoice"), False, core.RULE_SUCCESS),
+    (("success", "requireChoice"), 1, core.RULE_SUCCESS),
     (("results", "promptText"), True, core.RULE_RESULTS),
     (("results", "completionText"), True, core.RULE_RESULTS),
 )
@@ -550,6 +664,48 @@ def test_a_file_that_is_absent_or_not_an_object_is_unreadable(tmp_path: Path) ->
         assert refused.value.rule == core.RULE_UNREADABLE
 
 
+def test_a_member_that_the_file_states_twice_is_refused(tmp_path: Path) -> None:
+    text = PROFILE_PATH.read_text(encoding="utf-8")
+    for once, twice in (
+        ('"profileRevision": 1,', '"profileRevision": 1, "profileRevision": 1,'),
+        ('"stream": false', '"stream": true, "stream": false'),
+    ):
+        assert text.count(once) == 1
+        path = tmp_path / "profile.json"
+        path.write_text(text.replace(once, twice), encoding="utf-8")
+        with pytest.raises(ProfileError) as refused:
+            load_profile(path)
+        assert refused.value.rule == core.RULE_MEMBERS
+        assert "twice" in str(refused.value)
+
+
+def test_a_file_that_the_json_reader_cannot_hold_is_unreadable(tmp_path: Path) -> None:
+    text = PROFILE_PATH.read_text(encoding="utf-8")
+    huge = text.replace('"profileRevision": 1,', f'"profileRevision": {"9" * 5000},')
+    assert huge != text
+    for name, content in (("huge.json", huge), ("deep.json", "[" * 100_000)):
+        (tmp_path / name).write_text(content, encoding="utf-8")
+        with pytest.raises(ProfileError) as refused:
+            load_profile(tmp_path / name)
+        assert refused.value.rule == core.RULE_UNREADABLE
+
+
+def test_a_v1_file_that_the_json_reader_cannot_hold_is_refused(tmp_path: Path) -> None:
+    source = tmp_path / "source.json"
+    source.write_text("[" * 100_000, encoding="utf-8")
+    with pytest.raises(ProfileError) as refused:
+        load_profile(source_path=source)
+    assert refused.value.rule == core.RULE_SOURCE_REFUSED
+
+
+def test_each_rule_constant_is_listed_once() -> None:
+    constants = [
+        value for name, value in vars(core).items() if name.startswith("RULE_")
+    ]
+    assert sorted(constants) == sorted(RULES)
+    assert len(set(RULES)) == len(RULES)
+
+
 def test_a_change_that_no_other_rule_sees_is_refused_by_the_revision_digest(
     tmp_path: Path,
 ) -> None:
@@ -600,7 +756,7 @@ def test_a_v1_profile_with_another_prompt_is_refused(tmp_path: Path) -> None:
 
 
 def test_a_v1_profile_without_a_level_at_concurrency_two_is_refused(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     document = copy.deepcopy(SOURCE_DOCUMENT)
     document["levels"] = [
@@ -621,7 +777,7 @@ def test_a_v1_profile_without_a_level_at_concurrency_two_is_refused(
 # --------------------------------------------------------------------------
 
 
-def test_the_check_command_prints_the_values_and_sends_nothing(
+def test_the_check_command_prints_the_identity_and_the_main_values(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert cli.main(["check"]) == cli.EXIT_OK
@@ -645,6 +801,20 @@ def test_the_check_command_exits_3_and_names_the_rule_of_a_refusal(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == "REFUSED  rp1-source-pin-differs: the pin differs\n"
+
+
+def test_the_check_command_exits_4_for_a_failure_that_no_rule_names(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fail() -> core.ReliabilityProfile:
+        raise RuntimeError("a detail that the command does not print")
+
+    monkeypatch.setattr(cli, "load_profile", fail)
+    assert cli.main(["check"]) == cli.EXIT_FAILED
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "unexpected local failure" in captured.err
+    assert "a detail" not in captured.err
 
 
 def test_the_command_refuses_arguments_it_does_not_know() -> None:

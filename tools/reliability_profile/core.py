@@ -2,21 +2,28 @@
 
 The committed profile at ``deploy/serving/reliability/rp-1-profile.v1.json`` states
 what one caller request is, how many callers send it, and what counts as a success.
-It reuses the fixture, the generation settings, the client deadline, and the success
-rule of the V1 load profile at ``deploy/serving/load/llm-load-profile.v1.json``, and it
-pins that file by content digest.
+It reuses the fixture, the generation settings, the client deadline, and four of the
+five members of the success rule of the V1 load profile at
+``deploy/serving/load/llm-load-profile.v1.json``, and it pins that file by content
+digest.
 
-Loading reads committed files and nothing else. It sends no request, contacts no
-cluster, and reads no model byte. The steps are, in this order:
+With its default arguments, loading reads committed files and nothing else. It
+sends no request, contacts no cluster, and reads no model byte. The steps are:
 
-1. The profile file is read with exact member sets. An unknown member is refused.
+1. The profile file is read with exact member sets. An unknown member and a member
+   that the file states twice are refused.
 2. The V1 load profile is loaded by its own loader, which compares it with the
    runtime profile, the chart values, and the request parser of the API.
-3. Each reused value of this profile is compared with the loaded V1 value.
-4. Each member that the V1 file states is given one disposition: reused, pinned,
-   changed, or not carried.
+3. The request body, the generation settings, the client deadline, and the success
+   rule of this profile are compared with the V1 file, in value and in JSON type.
+   The other members are compared with constants of this module.
+4. Each member that the V1 file states is given one disposition: reused, reused in
+   part, pinned, changed, or not carried.
 5. The content digest of the profile file is compared with the digest that this
    module registers for the profile's revision.
+
+The loader reads a member when a rule needs it. So a member of a wrong type can be
+refused after an earlier rule accepted the rest of the profile.
 
 **The revision digest is a tripwire and not a lock.** A change that edits the profile
 and the registered digest together passes this module. The digest makes such a change
@@ -31,16 +38,12 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from inferops.api.surface import (
-    CHAT_COMPLETIONS_PATH,
-    CORRELATION_ID_HEADER,
-    REQUEST_ID_HEADER,
-)
+from inferops.api.surface import CORRELATION_ID_HEADER, REQUEST_ID_HEADER
 from tools import llm_load
 from tools.llm_load import core as source_core
 from tools.model_acquisition import ModelAcquisitionError
@@ -85,7 +88,8 @@ REQUEST_CONTENT_TYPE = "application/json"
 SAMPLING_SEED = "not-set"
 
 #: What the V1 transport does on each request. The suite holds each of these four
-#: values against that transport. This module compares the profile with them.
+#: values against that transport: three over loopback HTTP in its own process, and
+#: the proxy value in a new interpreter. This module compares the profile with them.
 CONNECTION: Mapping[str, object] = {
     "newConnectionPerRequest": True,
     "followRedirects": False,
@@ -93,8 +97,9 @@ CONNECTION: Mapping[str, object] = {
     "retries": 0,
 }
 
-#: The V1 classification gives an answer that arrives after the deadline the outcome
-#: `timeout`, whatever the answer says.
+#: The V1 classification gives no late answer the outcome `success`. A late answer
+#: from the required adapter is a `timeout`. A late answer that names another adapter
+#: is `identity-refused`.
 ANSWER_AFTER_DEADLINE = "not-a-success"
 
 REUSED = "reused"
@@ -135,7 +140,7 @@ SOURCE_DISPOSITION: Mapping[str, str] = {
 #: each CRLF replaced by LF. A revision is added here when it is committed, and its
 #: digest is not changed afterwards.
 REGISTERED_REVISIONS: Mapping[int, str] = {
-    1: "853b6e92c8ef45790a80756fffa4d5001fcc572dac95fc86625613eda70deb22",
+    1: "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
 }
 
 RULE_UNREADABLE = "rp1-profile-unreadable"
@@ -155,8 +160,8 @@ RULE_RESULTS = "rp1-results-hold-content"
 RULE_DISPOSITION = "rp1-disposition-incomplete"
 RULE_REVISION = "rp1-revision-digest-differs"
 
-#: Each rule, in the order the loader applies it. The loader stops at the first rule
-#: that refuses.
+#: Each rule, in the order the loader reaches it for a profile whose members have the
+#: expected types. The loader stops at the first refusal.
 RULES: tuple[str, ...] = (
     RULE_UNREADABLE,
     RULE_MEMBERS,
@@ -256,6 +261,38 @@ def _number(value: Any, field: str) -> float:
     return float(value)
 
 
+def _same(stated: Any, expected: Any) -> bool:
+    """Whether two JSON values are equal in value and in type.
+
+    Python equality gives ``0 == False`` and ``0 == 0.0``. A profile that states
+    ``"stream": 0`` does not state the V1 body.
+    """
+    if type(stated) is not type(expected):
+        return False
+    if isinstance(stated, dict):
+        return set(stated) == set(expected) and all(
+            _same(stated[key], expected[key]) for key in stated
+        )
+    if isinstance(stated, list):
+        return len(stated) == len(expected) and all(
+            _same(left, right) for left, right in zip(stated, expected, strict=True)
+        )
+    return bool(stated == expected)
+
+
+class _Repeated(ValueError):
+    """One JSON object states one member twice."""
+
+
+def _no_repeat(pairs: Sequence[tuple[str, Any]]) -> dict[str, Any]:
+    document: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in document:
+            raise _Repeated(name)
+        document[name] = value
+    return document
+
+
 def profile_digest(path: Path) -> str:
     """The SHA-256 of a profile file with each CRLF replaced by LF.
 
@@ -273,8 +310,16 @@ def profile_digest(path: Path) -> str:
 
 def _read(path: Path) -> dict[str, Any]:
     try:
-        loaded = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        loaded = json.loads(
+            path.read_text(encoding="utf-8"), object_pairs_hook=_no_repeat
+        )
+    except _Repeated as error:
+        raise ProfileError(
+            RULE_MEMBERS, f"the profile states the member '{error}' twice"
+        ) from error
+    # A number of too many digits raises ValueError, and a file of too many nested
+    # brackets raises RecursionError. Neither is a JSONDecodeError.
+    except (OSError, ValueError, RecursionError) as error:
         raise ProfileError(
             RULE_UNREADABLE, "the reliability profile is unreadable"
         ) from error
@@ -296,16 +341,21 @@ def _load_source(source_path: Path, repo_root: Path) -> source_core.Profile:
         raise ProfileError(
             RULE_SOURCE_REFUSED, f"the V1 load profile is refused: {error}"
         ) from error
-
-
-def _source_members(source_path: Path) -> set[str]:
-    try:
-        loaded = json.loads(source_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+    except (ValueError, RecursionError) as error:
         raise ProfileError(
             RULE_SOURCE_REFUSED, "the V1 load profile is unreadable"
         ) from error
-    return set(cast(dict[str, Any], loaded))
+
+
+def _source_document(source_path: Path) -> dict[str, Any]:
+    """The V1 file as JSON, after the V1 loader accepted it."""
+    try:
+        loaded = json.loads(source_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, RecursionError) as error:
+        raise ProfileError(
+            RULE_SOURCE_REFUSED, "the V1 load profile is unreadable"
+        ) from error
+    return cast(dict[str, Any], loaded)
 
 
 def _check_disposition(value: Any, source_members: set[str]) -> None:
@@ -323,27 +373,33 @@ def _check_disposition(value: Any, source_members: set[str]) -> None:
                 RULE_DISPOSITION, f"the V1 member '{member}' has two dispositions"
             )
         stated[member] = _string(entry.get("disposition"), f"{field}.disposition")
-    for member in sorted(source_members - set(SOURCE_DISPOSITION)):
+    missing = sorted(source_members - set(stated))
+    if missing:
+        raise ProfileError(
+            RULE_DISPOSITION, f"the V1 member '{missing[0]}' has no disposition"
+        )
+    extra = sorted(set(stated) - source_members)
+    if extra:
         raise ProfileError(
             RULE_DISPOSITION,
-            f"the V1 load profile states '{member}', and this tool has no "
-            "disposition for it",
-        )
-    for member in sorted(source_members - set(stated)):
-        raise ProfileError(
-            RULE_DISPOSITION, f"the V1 member '{member}' has no disposition"
-        )
-    for member in sorted(set(stated) - source_members):
-        raise ProfileError(
-            RULE_DISPOSITION,
-            f"'{member}' has a disposition, and the V1 load profile does not state it",
+            f"'{extra[0]}' has a disposition, and the V1 load profile does not "
+            "state it",
         )
     for member, disposition in sorted(stated.items()):
-        if disposition != SOURCE_DISPOSITION[member]:
+        registered = SOURCE_DISPOSITION.get(member)
+        # The V1 loader refuses a member that it does not know, so the loader of
+        # this module does not reach this refusal with the V1 loader of this tree.
+        # It is here for a V1 loader that accepts a new member.
+        if registered is None:
             raise ProfileError(
                 RULE_DISPOSITION,
-                f"the V1 member '{member}' must have the disposition "
-                f"'{SOURCE_DISPOSITION[member]}'",
+                f"the V1 load profile states '{member}', and this tool registers "
+                "no disposition for it",
+            )
+        if disposition != registered:
+            raise ProfileError(
+                RULE_DISPOSITION,
+                f"the V1 member '{member}' must have the disposition '{registered}'",
             )
 
 
@@ -356,8 +412,9 @@ def load_profile(
     """Load the RP-1 profile and compare it with the V1 load profile it pins.
 
     ``source_path`` is where the V1 load profile is read from. It defaults to the
-    committed file under ``repo_root``. The profile's ``source.profileRef`` must still
-    name the committed path.
+    committed file under ``repo_root``. The text of the profile's
+    ``source.profileRef`` must name the committed path, whatever file is read: a copy
+    of the committed bytes at another path is accepted.
     """
     record = _read(path)
     _members(
@@ -432,7 +489,13 @@ def load_profile(
     _members(
         success,
         "success",
-        {"requiredStatus", "requiredAdapterKind", "requiredModelRef", "requireUsage"},
+        {
+            "requiredStatus",
+            "requiredAdapterKind",
+            "requiredModelRef",
+            "requireUsage",
+            "requireChoice",
+        },
     )
     _members(results, "results", {"promptText", "completionText"})
     body = _object(request.get("body"), "request.body")
@@ -472,6 +535,10 @@ def load_profile(
     if source_path is None:
         source_path = repo_root / SOURCE_PROFILE_REF
     loaded = _load_source(source_path, repo_root)
+    document = _source_document(source_path)
+    source_fixture = document["fixture"]
+    source_generation = document["generation"]
+    source_success = document["success"]
     if (
         _string(source.get("profileRef"), "source.profileRef") != SOURCE_PROFILE_REF
         or _string(source.get("profileId"), "source.profileId") != loaded.profile_id
@@ -493,7 +560,6 @@ def load_profile(
         or _string(caller.get("loop"), "caller.loop") != CALLER_LOOP
         or concurrency != CONCURRENCY
         or concurrency not in {level.concurrency for level in loaded.levels}
-        or concurrency > source_core.MAXIMUM_CONCURRENCY
     ):
         raise ProfileError(
             RULE_CALLER,
@@ -517,14 +583,20 @@ def load_profile(
         != loaded.fixture.fixture_id
         or _string(request.get("method"), "request.method") != REQUEST_METHOD
         or _string(request.get("path"), "request.path") != loaded.fixture.request_path
-        or loaded.fixture.request_path != CHAT_COMPLETIONS_PATH
         or _string(request.get("contentType"), "request.contentType")
         != REQUEST_CONTENT_TYPE
         or _string(request.get("requestIdHeader"), "request.requestIdHeader")
         != REQUEST_ID_HEADER
         or _string(request.get("correlationIdHeader"), "request.correlationIdHeader")
         != CORRELATION_ID_HEADER
-        or body != loaded.fixture.body()
+        or not _same(
+            body,
+            {
+                "model": source_fixture["model"],
+                "messages": source_fixture["messages"],
+                "stream": source_fixture["stream"],
+            },
+        )
     ):
         raise ProfileError(
             RULE_REQUEST,
@@ -534,15 +606,17 @@ def load_profile(
     temperature = _number(generation.get("temperature"), "generation.temperature")
     if (
         _boolean(generation.get("sentInRequest"), "generation.sentInRequest")
-        or _integer(generation.get("maxOutputTokens"), "generation.maxOutputTokens")
-        != loaded.max_output_tokens
-        or temperature != loaded.temperature
         or _string(generation.get("samplingSeed"), "generation.samplingSeed")
         != SAMPLING_SEED
-        or _integer(generation.get("contextSizeTokens"), "generation.contextSizeTokens")
-        != loaded.context_size_tokens
-        or _integer(generation.get("parallelSlots"), "generation.parallelSlots")
-        != loaded.parallel_slots
+        or any(
+            not _same(generation.get(member), source_generation[member])
+            for member in (
+                "maxOutputTokens",
+                "temperature",
+                "contextSizeTokens",
+                "parallelSlots",
+            )
+        )
     ):
         raise ProfileError(
             RULE_GENERATION,
@@ -568,14 +642,18 @@ def load_profile(
             "after the deadline is not stated as not a success",
         )
     if (
-        _integer(success.get("requiredStatus"), "success.requiredStatus")
-        != loaded.required_status
-        or _string(success.get("requiredAdapterKind"), "success.requiredAdapterKind")
-        != loaded.required_adapter_kind
-        or _string(success.get("requiredModelRef"), "success.requiredModelRef")
-        != loaded.required_model_ref
-        or _boolean(success.get("requireUsage"), "success.requireUsage")
-        != loaded.require_usage
+        any(
+            not _same(success.get(member), source_success[member])
+            for member in (
+                "requiredStatus",
+                "requiredAdapterKind",
+                "requiredModelRef",
+                "requireUsage",
+            )
+        )
+        # The V1 classification requires a first choice of a success. The V1 file
+        # has no member for it, so this is a constant.
+        or success.get("requireChoice") is not True
     ):
         raise ProfileError(
             RULE_SUCCESS, "the success rule differs from the V1 load profile"
@@ -589,7 +667,7 @@ def load_profile(
             "text",
         )
 
-    _check_disposition(record.get("sourceDisposition"), _source_members(source_path))
+    _check_disposition(record.get("sourceDisposition"), set(document))
 
     digest = profile_digest(path)
     if digest != REGISTERED_REVISIONS[revision]:

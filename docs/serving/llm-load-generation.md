@@ -34,9 +34,10 @@ here makes it early.
 
 Since `V2-S5-001-PR1`,
 [the RP-1 reliability workload](reliability-workload-rp-1.md) pins this profile by
-content digest and reuses its fixture, generation settings, deadline, and success
-rule. A change of one byte of the profile file refuses RP-1 until a new revision of
-RP-1 states the difference.
+content digest. It reuses the fixture, the generation settings, the deadline, and
+four of the five members of the success rule. A change of the profile file, other
+than its line endings, refuses RP-1 until a new revision of RP-1 states the
+difference.
 
 ## What the profile fixes
 

@@ -68,7 +68,8 @@
     "requiredStatus": 200,
     "requiredAdapterKind": "real",
     "requiredModelRef": "qwen3-1-7b-q8-0",
-    "requireUsage": true
+    "requireUsage": true,
+    "requireChoice": true
   },
   "results": {
     "promptText": false,
@@ -173,7 +174,7 @@
     {
       "member": "success",
       "disposition": "reused-in-part",
-      "reason": "The same status, adapter kind, model reference, and usage rule. requiredRuntimeName is not carried: the source requires it of the identity probe, not of an answer."
+      "reason": "The same status, adapter kind, model reference, and usage rule. requiredRuntimeName is not carried: the source requires it of the identity probe, not of an answer. requireChoice states a rule of the source classification that the source file has no member for."
     },
     {
       "member": "results",
