@@ -469,6 +469,16 @@ NUMBER_WORDS: dict[int, str] = {
     78: "seventy-eight",
     79: "seventy-nine",
     80: "eighty",
+    81: "eighty-one",
+    82: "eighty-two",
+    83: "eighty-three",
+    84: "eighty-four",
+    85: "eighty-five",
+    86: "eighty-six",
+    87: "eighty-seven",
+    88: "eighty-eight",
+    89: "eighty-nine",
+    90: "ninety",
 }
 
 WORD_NUMBERS: dict[str, int] = {word: value for value, word in NUMBER_WORDS.items()}

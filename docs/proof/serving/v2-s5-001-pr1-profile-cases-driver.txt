@@ -1,0 +1,128 @@
+"""Give the RP-1 loader the committed files and seven changed copies of them.
+
+Run from the repository root, with an empty directory for the copies:
+
+    PYTHONPATH=. uv run --locked python -B <this file> <empty directory>
+
+The driver writes each copy into the directory. It edits no committed file, it sends
+no request, and it contacts no cluster. It prints one JSON document: for each case,
+whether the loader accepted the files, and the rule that refused them.
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from tools.reliability_profile import ProfileError, load_profile
+from tools.reliability_profile.core import PROFILE_PATH, REPO_ROOT, SOURCE_PROFILE_REF
+
+SOURCE_BYTES = (REPO_ROOT / SOURCE_PROFILE_REF).read_bytes().replace(b"\r\n", b"\n")
+SOURCE: dict[str, Any] = json.loads(SOURCE_BYTES)
+PROFILE: dict[str, Any] = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
+
+
+def attempt(case: str, edit: str, **paths: Path) -> dict[str, str]:
+    try:
+        load_profile(**paths)
+    except ProfileError as refused:
+        return {"case": case, "edit": edit, "result": "REFUSED", "rule": refused.rule}
+    return {"case": case, "edit": edit, "result": "ACCEPTED", "rule": ""}
+
+
+def changed_source(directory: Path, name: str, members: tuple[str, ...], value: Any) -> Path:
+    document = copy.deepcopy(SOURCE)
+    holder: Any = document
+    for member in members[:-1]:
+        holder = holder[member]
+    holder[members[-1]] = value
+    path = directory / name
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def changed_profile(directory: Path, name: str, members: tuple[str, ...], value: Any) -> Path:
+    document = copy.deepcopy(PROFILE)
+    holder: Any = document
+    for member in members[:-1]:
+        holder = holder[member]
+    holder[members[-1]] = value
+    path = directory / name
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def main(directory: Path) -> int:
+    if not directory.is_dir() or any(directory.iterdir()):
+        print("give one empty directory", file=sys.stderr)
+        return 2
+    space = directory / "source-one-more-byte.json"
+    space.write_bytes(SOURCE_BYTES + b" ")
+    cases = [
+        attempt("committed-files", "none"),
+        attempt(
+            "v1-file-one-more-byte",
+            "one space after the last byte of the V1 load profile",
+            source_path=space,
+        ),
+        attempt(
+            "v1-file-another-prompt",
+            "fixture.messages[0].content of the V1 load profile",
+            source_path=changed_source(
+                directory,
+                "source-another-prompt.json",
+                ("fixture", "messages"),
+                [{"role": "user", "content": "Another prompt."}],
+            ),
+        ),
+        attempt(
+            "v1-file-deadline-below-the-api",
+            "timeouts.requestTimeoutMs of the V1 load profile set to 100000",
+            source_path=changed_source(
+                directory,
+                "source-deadline.json",
+                ("timeouts", "requestTimeoutMs"),
+                100000,
+            ),
+        ),
+        attempt(
+            "rp1-concurrency-4",
+            "caller.concurrency of the RP-1 profile set to 4",
+            path=changed_profile(
+                directory, "rp1-concurrency-4.json", ("caller", "concurrency"), 4
+            ),
+        ),
+        attempt(
+            "rp1-representative",
+            "representativeWorkload of the RP-1 profile set to true",
+            path=changed_profile(
+                directory, "rp1-representative.json", ("representativeWorkload",), True
+            ),
+        ),
+        attempt(
+            "rp1-port-forward",
+            "target.portForward of the RP-1 profile set to true",
+            path=changed_profile(
+                directory, "rp1-port-forward.json", ("target", "portForward"), True
+            ),
+        ),
+        attempt(
+            "rp1-output-tokens-64",
+            "generation.maxOutputTokens of the RP-1 profile set to 64",
+            path=changed_profile(
+                directory,
+                "rp1-output-tokens-64.json",
+                ("generation", "maxOutputTokens"),
+                64,
+            ),
+        ),
+    ]
+    print(json.dumps({"cases": cases}, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(Path(sys.argv[1])))

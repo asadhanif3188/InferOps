@@ -1,0 +1,184 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "kind": "ReliabilityCallerProfile",
+  "profileId": "RP-1",
+  "profileRevision": 1,
+  "workloadClass": "reliability",
+  "evidenceLevelCeiling": "C2",
+  "representativeWorkload": false,
+  "overloadBenchmark": false,
+  "productionBenchmark": false,
+  "portableCapacityClaim": false,
+  "boundary": "RP-1 is a reliability workload: one fixed public request, sent by two closed-loop workers. It is not a representative production workload, an overload test, or a benchmark. Concurrency 2 is a fixed choice and not a measured threshold. No figure from a run under it is a portable capacity figure or a production SLO.",
+  "boundariesRef": "docs/architecture/project-boundaries.md",
+  "source": {
+    "profileRef": "deploy/serving/load/llm-load-profile.v1.json",
+    "profileId": "inferops-llm-load",
+    "profileVersion": "1.0.0",
+    "contentSha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5"
+  },
+  "caller": {
+    "location": "in-cluster",
+    "loop": "closed",
+    "concurrency": 2
+  },
+  "target": {
+    "kind": "api-service",
+    "scheme": "http",
+    "podAddress": false,
+    "portForward": false
+  },
+  "request": {
+    "fixtureId": "llm-load-single-turn-v1",
+    "method": "POST",
+    "path": "/v1/chat/completions",
+    "contentType": "application/json",
+    "requestIdHeader": "X-InferOps-Request-ID",
+    "correlationIdHeader": "X-InferOps-Correlation-ID",
+    "body": {
+      "model": "qwen3-1-7b-q8-0",
+      "messages": [
+        {
+          "role": "user",
+          "content": "You are a terse assistant. Answer in at most two sentences. Name three things a Kubernetes readiness probe is for."
+        }
+      ],
+      "stream": false
+    }
+  },
+  "generation": {
+    "sentInRequest": false,
+    "maxOutputTokens": 128,
+    "temperature": 0,
+    "samplingSeed": "not-set",
+    "contextSizeTokens": 4096,
+    "parallelSlots": 1
+  },
+  "connection": {
+    "newConnectionPerRequest": true,
+    "followRedirects": false,
+    "proxyFromEnvironment": false,
+    "retries": 0
+  },
+  "timeouts": {
+    "requestTimeoutMs": 150000,
+    "answerAfterDeadline": "not-a-success"
+  },
+  "success": {
+    "requiredStatus": 200,
+    "requiredAdapterKind": "real",
+    "requiredModelRef": "qwen3-1-7b-q8-0",
+    "requireUsage": true
+  },
+  "results": {
+    "promptText": false,
+    "completionText": false
+  },
+  "sourceDisposition": [
+    {
+      "member": "schemaVersion",
+      "disposition": "reused",
+      "reason": "The same schema version string."
+    },
+    {
+      "member": "profileId",
+      "disposition": "pinned",
+      "reason": "Stated in source, beside the content digest of the source file."
+    },
+    {
+      "member": "profileVersion",
+      "disposition": "pinned",
+      "reason": "Stated in source, beside the content digest of the source file."
+    },
+    {
+      "member": "evidenceClass",
+      "disposition": "not-carried",
+      "reason": "A profile names no environment. A run states the environment it executed in."
+    },
+    {
+      "member": "evidenceLabel",
+      "disposition": "not-carried",
+      "reason": "A profile names no environment. A run states the environment it executed in."
+    },
+    {
+      "member": "certificationCeiling",
+      "disposition": "reused",
+      "reason": "The same level, C2, in evidenceLevelCeiling. The workload is not representative, so a run under it cannot support C3."
+    },
+    {
+      "member": "productionBenchmark",
+      "disposition": "reused",
+      "reason": "The same value, false."
+    },
+    {
+      "member": "portableCapacityClaim",
+      "disposition": "reused",
+      "reason": "The same value, false."
+    },
+    {
+      "member": "boundary",
+      "disposition": "changed",
+      "reason": "The source sentence bounds a load observation. This profile states its own sentence, which also denies a representative workload and an overload test."
+    },
+    {
+      "member": "boundariesRef",
+      "disposition": "reused",
+      "reason": "The same document."
+    },
+    {
+      "member": "providerContractRef",
+      "disposition": "not-carried",
+      "reason": "A profile names no provider. A run states the provider it executed on."
+    },
+    {
+      "member": "release",
+      "disposition": "not-carried",
+      "reason": "The source loader compares the source with the chart and the runtime profile. This profile is compared with the source, and it repeats no chart reference."
+    },
+    {
+      "member": "target",
+      "disposition": "changed",
+      "reason": "The source targets a loopback forward, which reaches one selected pod. This profile targets the API Service from inside the cluster. The source identity probe is part of the shape of a source run, and it is not carried."
+    },
+    {
+      "member": "fixture",
+      "disposition": "reused",
+      "reason": "The same fixture identifier, request path, model, stream flag, and messages."
+    },
+    {
+      "member": "generation",
+      "disposition": "reused",
+      "reason": "The same four values. The request does not send them: the release holds them."
+    },
+    {
+      "member": "warmup",
+      "disposition": "not-carried",
+      "reason": "This profile has no warm-up phase. Each request that a caller sends is a caller result."
+    },
+    {
+      "member": "levels",
+      "disposition": "changed",
+      "reason": "The source rises through concurrency 1, 2, and 4. This profile has one fixed concurrency, 2, which is the concurrency of the source level c2."
+    },
+    {
+      "member": "measured",
+      "disposition": "not-carried",
+      "reason": "This profile states no duration and no request ceiling. The experiment that selects the profile bounds its run."
+    },
+    {
+      "member": "timeouts",
+      "disposition": "reused",
+      "reason": "The same client deadline, 150000 ms."
+    },
+    {
+      "member": "success",
+      "disposition": "reused-in-part",
+      "reason": "The same status, adapter kind, model reference, and usage rule. requiredRuntimeName is not carried: the source requires it of the identity probe, not of an answer."
+    },
+    {
+      "member": "results",
+      "disposition": "not-carried",
+      "reason": "This profile states no result layout and no percentile. It states only that a result holds no prompt text and no completion text."
+    }
+  ]
+}

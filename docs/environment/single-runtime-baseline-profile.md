@@ -332,7 +332,7 @@ committed file resolves under `unresolvedInputs`:
 
 | Input | Path | Statement |
 |---|---|---|
-| `caller-profile` | None | No caller profile exists in this repository. A run must give both sides one revision of one caller profile. |
+| `caller-profile` | None | This tool reads no caller profile. A run must give both sides one revision of one caller profile. |
 
 The caller profile is listed in every record, because this tool reads none.
 The record of the committed tree lists no other input: the API image digest is
@@ -610,7 +610,7 @@ comparison, and it is a decision.
 | An Application, or a desired-state path, for the baseline | No Application reads the profile. The one Application reads the target, and the Git desired state holds one release | A decision on how a run selects the baseline in the environment that the experiment names |
 | A procedure that installs the baseline from its install description | The description is compared, and nothing reads it to install a release | A decision on how a run selects the baseline, and a check that the run's inputs are the described ones |
 | A check that a run installs both sides with the declared API image digest | The digest is a declared comparison input. The procedure that applies the Application takes its digest from the operator, and it does not read the comparison inputs | A run that gives both sides the declared digest, a record of the digest that each side's pods reported, and a check of the two |
-| A caller profile | No caller profile exists in this repository | A caller profile, and a check that both sides are given the one revision of it |
+| A check of the caller profile | [The RP-1 reliability workload](../serving/reliability-workload-rp-1.md) is defined since `V2-S5-001-PR1`. This tool does not read it, and no runner sends it | A check that both sides are given the one revision of it |
 | The footprint of the baseline in the capacity preflight | [The capacity preflight](capacity-preflight.md) derives the footprint from the Application of the target | An Application for the baseline, or a footprint that the gate derives another way |
 | A run of the baseline | The profile is a render | An environment that holds it, and a frozen experiment record |
 | A frozen experiment that names the profile | No experiment that uses the baseline is frozen | A freeze record that pins the profile's inputs |
@@ -655,8 +655,8 @@ comparison, and it is a decision.
   cluster was read.
 - That the model cache claim is in one state for both sides. The claim's name
   and its mount are compared. Its content and its state are not.
-- That one caller profile is applied to both sides. No caller profile exists in
-  this repository, and the record lists it as unresolved.
+- That one caller profile is applied to both sides. This tool reads no caller
+  profile, and the record lists it as unresolved.
 - That telemetry of the two sides is equal. The workload version differs, and it
   is a resource attribute of the API's telemetry.
 - That a cluster holds the baseline. The capacity preflight derives the

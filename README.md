@@ -215,7 +215,7 @@ hold with a usable value. Since `V2-S4-006-PR1` each side also declares one API 
 digest to the comparison, and a digest that is absent, malformed, or not the digest of
 the other side is refused. That digest is a declared comparison input. No install
 procedure reads it, and no cluster reported it for the baseline. A comparable record is a statement about committed files.
-It is not eligibility for an experiment: no caller profile exists, and no record
+It is not eligibility for an experiment: the comparison reads no caller profile, and no record
 shows that a run installed either side with the declared digest.
 The profile is an experiment baseline and not a product tier. No Application reads
 it, and no run installed it. Since `V2-S4-004-PR1` a script and a tool capture the
@@ -228,7 +228,13 @@ replicas. Kubernetes documents that the eviction API then refuses an eviction th
 leave the tier with no available pod. A budget does not protect a pod from a direct
 deletion, and on a cluster with one node it makes a drain wait. Since `V2-S4-005-PR2` one
 reading of one local cluster is committed: two Ready endpoints for each of the two Services,
-at one time. It is not a caller's result. No eviction was requested.
+at one time. It is not a caller's result. No eviction was requested. Since `V2-S5-001-PR1`
+one caller profile for reliability experiments is committed:
+[RP-1](docs/serving/reliability-workload-rp-1.md). It reuses the fixture, the generation
+settings, the client deadline, and the success rule of the V1 load profile, pins that
+file by content digest, and fixes the concurrency at 2 closed-loop workers. It is a
+reliability workload, and not a representative production workload, an overload test,
+or a benchmark. No runner reads it yet, and no run executed under it.
 
 ## Prerequisites
 

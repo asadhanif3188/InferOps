@@ -10,6 +10,38 @@ from `1.0.0`.
 
 ### Added
 
+- **RP-1, the caller workload for reliability experiments, is defined as one
+  versioned profile. It is a reliability workload. It is not a representative
+  production workload, an overload test, or a benchmark.** `V2-S5-001-PR1` adds
+  `deploy/serving/reliability/rp-1-profile.v1.json`, `tools/reliability_profile`,
+  one suite, and one page. **The profile reuses the V1 load profile and changes
+  no value of it.** The fixture, the request path, the model, the four
+  generation settings, the client deadline of 150,000 ms, and the success rule
+  are the V1 values, and the profile pins the V1 file by content digest. A
+  change of one byte of the V1 file refuses RP-1 until a new revision of RP-1
+  states the difference. The V1 file at the `v1.0.0` tag has the pinned digest,
+  and this change does not edit it. **Concurrency is fixed at 2 closed-loop
+  workers.** The value is a constant of the tool, and the profile cannot choose
+  another. It is a choice and not a measured threshold. The profile states the
+  API Service as the target, and a caller inside the cluster. It states no
+  warm-up, no duration, no request ceiling, and no stop rule: the experiment
+  that selects the profile bounds its run. Each of the 21 members of the V1
+  file has one disposition in the profile, and the loader refuses a profile that
+  leaves one out. No committed record sets a sampling seed, and the profile says
+  `not-set`. 16 rules refuse a drifted profile, and the first one that refuses
+  names itself. The tool registers the content digest of revision 1. **That
+  digest is a tripwire and not a lock**: a change that edits the profile and the
+  digest together passes. **This is static evidence at C0, and it registers no
+  claim.** No request was sent under RP-1, no runner reads the profile, and no
+  experiment freeze record selects it. The target, the caller location, and the
+  connection behaviour are statements that a runner must meet, and no check
+  inspects a runner. The same change corrects a sentence that it made false: the
+  single-runtime baseline tool, its committed comparison record, its page, and
+  the README said that no caller profile exists. They now say that the
+  comparison reads no caller profile. The record still lists the caller profile
+  as unresolved, and its eligibility is still `not-established`.
+  [The RP-1 page](docs/serving/reliability-workload-rp-1.md) states each value
+  and its origin.
 - **The Ready endpoint state of the API Service and the runtime Service can be
   captured as one record, and a tier of two or more replicas renders a
   PodDisruptionBudget. A budget bounds a voluntary eviction. It does not protect
