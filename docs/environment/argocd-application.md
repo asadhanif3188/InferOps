@@ -105,7 +105,11 @@ compares none of them. Another member of the document, of `metadata`, of `spec`,
 parameter or an annotation, refuses the comparison until the tool reads it. The
 check reads this file. It does not read the Application that a cluster holds, which
 carries the API image digest as a parameter. No procedure reads the baseline's
-description, and it installs nothing.
+description, and it installs nothing. Since `V2-S4-006-PR1` the check also requires
+one usable API image digest for each side, and it reads them from
+[the declared comparison inputs](single-runtime-baseline-profile.md#the-api-image-digest),
+not from this manifest. That digest is a declared comparison input. `apply` does not
+read it, so it is not the digest that an operator gives to `apply`.
 
 **The API image digest is not in Git.** No InferOps API image is published. The
 digest names an image that the operator built and loaded into the node, and

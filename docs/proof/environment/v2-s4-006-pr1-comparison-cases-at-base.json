@@ -1,0 +1,113 @@
+[
+  {
+    "case": "committed-inputs",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 0,
+    "result": "COMPARABLE",
+    "checkExit": 0,
+    "findings": [],
+    "apiImageIdentity": null,
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "description-both-malformed-abc",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 0,
+    "result": "COMPARABLE",
+    "checkExit": 1,
+    "findings": [],
+    "apiImageIdentity": null,
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "description-both-valid-not-declared",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 0,
+    "result": "COMPARABLE",
+    "checkExit": 1,
+    "findings": [],
+    "apiImageIdentity": null,
+    "unresolvedInputs": [
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "description-target-only-valid",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-install-differs @ install: /handWrittenValues/api/image/digest",
+      "baseline-effective-values-differ @ effective: /api/image/digest"
+    ],
+    "apiImageIdentity": null,
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "description-target-readiness-timeout-1",
+    "recordCommand": "python -B -m tools.baseline_profile --record --root <case-copy>",
+    "recordExit": 5,
+    "result": "REFUSED",
+    "checkExit": 1,
+    "findings": [
+      "baseline-install-differs @ install: /handWrittenValues/api/probes/readiness/timeoutSeconds",
+      "baseline-effective-values-differ @ effective: /api/probes/readiness/timeoutSeconds"
+    ],
+    "apiImageIdentity": null,
+    "unresolvedInputs": [
+      "api-image-digest",
+      "caller-profile"
+    ],
+    "experimentEligibility": "not-established"
+  },
+  {
+    "case": "declared-digest-restated-in-both-descriptions",
+    "skipped": "this tree has no declared inputs"
+  },
+  {
+    "case": "declared-both-another-valid-digest",
+    "skipped": "this tree has no declared inputs"
+  },
+  {
+    "case": "declared-baseline-absent",
+    "skipped": "this tree has no declared inputs"
+  },
+  {
+    "case": "declared-target-absent",
+    "skipped": "this tree has no declared inputs"
+  },
+  {
+    "case": "declared-both-absent",
+    "skipped": "this tree has no declared inputs"
+  },
+  {
+    "case": "declared-baseline-malformed",
+    "skipped": "this tree has no declared inputs"
+  },
+  {
+    "case": "declared-target-malformed",
+    "skipped": "this tree has no declared inputs"
+  },
+  {
+    "case": "declared-both-one-malformed-text",
+    "skipped": "this tree has no declared inputs"
+  },
+  {
+    "case": "declared-two-valid-digests-that-differ",
+    "skipped": "this tree has no declared inputs"
+  }
+]

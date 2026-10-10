@@ -9,21 +9,26 @@ checkout. The suite uses it to plant defects without touching the committed file
 
 ``--record`` prints one JSON record: the differences between the baseline and the
 target in each layer, the install inputs and the readiness inputs of each side,
-each unresolved input, the state of each rule, and each finding. **Exit status 0
-says that the result is COMPARABLE.** Exit status 5 says that the result is
-REFUSED, and the record states each rule that refuses. COMPARABLE is a statement
+the declared API image digest of each side, each unresolved input, the state of
+each rule, and each finding. **Exit status 0 says that the result is
+COMPARABLE.** Exit status 5 says that the result is REFUSED, and the record
+states each rule that refuses. An API image digest that is absent, malformed,
+or not the digest of the other side gives REFUSED. COMPARABLE is a statement
 about committed inputs. It is not eligibility for an experiment, and every
-record states the eligibility as not-established.
+record states the eligibility as not-established. The digest is a declared
+comparison input: no mode reads an installed release or a cluster.
 
 ``--check`` verifies the committed profile: that the comparison is COMPARABLE,
 that the committed baseline release is byte for byte what its declared sources
 derive, and that the committed record is the record this tree gives. Exit status
 is 0 when no rule is broken and 1 when one is. ``--check`` writes nothing and
-repairs nothing.
+repairs nothing. Exit status 0 of ``--check`` says that the committed profile is
+current and comparable. A refused comparison is reported by ``--record`` with
+exit status 5, and by ``--check`` with exit status 1.
 
 ``--write`` is the only mode that touches a file. It writes the baseline release
 and the comparison record again. It does not write the baseline's install
-description, which a person writes. It refuses to write when the comparison is
+description or the declared comparison inputs, which a person writes. It refuses to write when the comparison is
 REFUSED. Read the ``--check`` output first, because a write replaces a hand edit
 without asking.
 
@@ -45,6 +50,7 @@ from tools.generated_release import RegenerationRefused
 from .core import (
     CHECK_RULES,
     COMPARABLE,
+    COMPARISON_INPUTS_PATH,
     INSTALL_PATH,
     PROFILE_DIRECTORY,
     RECORD_PATH,
@@ -73,9 +79,11 @@ def _check(root: Path) -> int:
         print(f"OK       {PROFILE_DIRECTORY}")
         print(f"OK       {RECORD_PATH}")
         print(f"OK       {INSTALL_PATH}")
+        print(f"OK       {COMPARISON_INPUTS_PATH}")
         print(
             "OK       the baseline differs from the target only at the permitted paths"
         )
+        print("OK       both sides declare one API image digest of the usable form")
         return 0
     statements = {rule.rule_id: rule.statement for rule in (*RULES, *CHECK_RULES)}
     for finding in findings:
@@ -113,7 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m tools.baseline_profile",
         description=(
             "Compare the single-runtime baseline profile with the target release, "
-            "and refuse a difference that is not the runtime replica count."
+            "and refuse a difference that is not the runtime replica count, or "
+            "an API image digest that is absent, malformed, or not equal."
         ),
     )
     group = parser.add_mutually_exclusive_group(required=True)

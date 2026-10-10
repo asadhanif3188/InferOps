@@ -529,7 +529,8 @@ the units, and what a record does not establish.
 baseline is two API replicas and one runtime replica, derived from the target's own
 declaration with the contract replaced. A tool compares the two sides in six layers
 and refuses a difference that is not the runtime replica count, an identity that
-follows it, or the generated values file that each side reads:
+follows it, or the generated values file that each side reads. It also requires one
+usable API image digest from each side, and the two must be equal:
 
 ```sh
 uv run --locked python -m tools.baseline_profile --check
@@ -565,6 +566,15 @@ uv run --locked python -m tools.baseline_profile --write
   tool reads, such as a Helm parameter, an annotation, or a top-level `operation`, is
   `baseline-install-inputs-refused`, and the remedy is a change to the tool and its
   page. Do not state the runtime replica count by hand in either file.
+- **Refused, for the API image digest.** Each side declares its digest in
+  `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison-inputs.v1alpha1.yaml`,
+  which a person writes. A digest that is absent, that is not `sha256:` and 64
+  lowercase hexadecimal digits, or that is not the digest of the other side is
+  `baseline-api-image-digest-unbound`. State one usable digest for both sides, and
+  state where the value comes from in that file and on the page. One test holds the
+  committed value to the retained read that it was taken from, so a new value moves
+  that test too. The digest is a declared comparison input: do not put it into the
+  Application, and do not describe it as an installed or an observed digest.
 
 A comment in a contract is not compared. Do not add a permitted path to obtain
 `COMPARABLE`: a new permitted path is a second variable of the comparison.

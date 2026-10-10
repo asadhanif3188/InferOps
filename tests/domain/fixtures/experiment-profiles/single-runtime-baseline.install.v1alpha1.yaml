@@ -12,7 +12,9 @@
 #
 # The API image digest is not in this file, and it is not in the Application. No
 # InferOps API image is published, so the digest names a build on the operator's
-# host. The comparison record lists it as an unresolved input.
+# host. Each side declares its digest to the comparison in the file
+# single-runtime-baseline.comparison-inputs.v1alpha1.yaml, beside this one. A
+# digest that is stated here too must be the declared one, or the check refuses.
 #
 # No Application and no procedure reads this file. It installs nothing.
 apiVersion: inferops.io/baseline-install-inputs/v1alpha1

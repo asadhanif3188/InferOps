@@ -1,0 +1,177 @@
+"""Run the baseline comparison on isolated copies of its inputs, one case each.
+
+Usage, from the root of a working tree of this repository:
+
+    python -B comparison_cases.py WORK_DIRECTORY OUTPUT.json
+
+Each case copies the inputs of the comparison into a new directory under
+WORK_DIRECTORY, with the copy function of the comparator suite of that tree.
+It edits the copy in one way, and then it runs two commands on the copy:
+
+    python -B -m tools.baseline_profile --record --root <case-copy>
+    python -B -m tools.baseline_profile --check --root <case-copy>
+
+The committed files of the tree are not edited. Nothing contacts a cluster, a
+registry, or a network, and nothing runs Helm. The output states no path of
+the host: a copy is named ``<case-copy>``.
+
+Cases whose name starts with ``description-`` edit the two install
+descriptions. Cases whose name starts with ``declared-`` edit the declared
+comparison inputs, and they are skipped in a tree that has no such file.
+"""
+
+from __future__ import annotations
+
+import json
+import runpy
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+TREE = Path.cwd()
+WORK = Path(sys.argv[1])
+OUTPUT = Path(sys.argv[2])
+INPUTS = (
+    "tests/domain/fixtures/experiment-profiles/"
+    "single-runtime-baseline.comparison-inputs.v1alpha1.yaml"
+)
+VALID_A = "sha256:" + "a" * 64
+VALID_C = "sha256:" + "c" * 64
+
+sys.path[:0] = [str(TREE), str(TREE / "src")]
+helpers = runpy.run_path(str(TREE / "tests" / "domain" / "test_baseline_profile.py"))
+
+
+def load(path: Path) -> Any:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def dump(path: Path, document: Any) -> None:
+    path.write_bytes(yaml.safe_dump(document, sort_keys=False).encode("utf-8"))
+
+
+def describe(
+    root: Path, baseline: str | None, target: str | None, timeout: int | None = None
+) -> None:
+    """State a digest in the hand-written values of a description, or a timeout."""
+    application_path = root / helpers["APPLICATION"]
+    install_path = root / helpers["INSTALL"]
+    application, install = load(application_path), load(install_path)
+    target_values = application["spec"]["source"]["helm"]["valuesObject"]
+    if target is not None:
+        target_values["api"]["image"]["digest"] = target
+    if baseline is not None:
+        install["handWrittenValues"]["api"]["image"]["digest"] = baseline
+    if timeout is not None:
+        target_values["api"].setdefault("probes", {}).setdefault("readiness", {})[
+            "timeoutSeconds"
+        ] = timeout
+    dump(application_path, application)
+    dump(install_path, install)
+
+
+#: ``KEEP`` leaves the committed member of a side as it is.
+KEEP = object()
+
+
+def declare(root: Path, baseline: Any, target: Any) -> None:
+    """State the declared digest of each side again. ``None`` removes the member."""
+    path = root / INPUTS
+    document = load(path)
+    for side, value in (("baseline", baseline), ("target", target)):
+        if value is None:
+            del document["apiImageDigest"][side]
+        elif value is not KEEP:
+            document["apiImageDigest"][side] = value
+    dump(path, document)
+
+
+def restate_declared(root: Path) -> None:
+    """State the declared digest of each side in its description too."""
+    declared = load(root / INPUTS)["apiImageDigest"]
+    describe(root, declared["baseline"], declared["target"])
+
+
+CASES: list[tuple[str, Any]] = [
+    ("committed-inputs", lambda root: None),
+    ("description-both-malformed-abc", lambda root: describe(root, "abc", "abc")),
+    ("description-both-valid-not-declared", lambda root: describe(root, VALID_A, VALID_A)),
+    ("description-target-only-valid", lambda root: describe(root, None, VALID_A)),
+    ("description-target-readiness-timeout-1", lambda root: describe(root, None, None, 1)),
+    ("declared-digest-restated-in-both-descriptions", restate_declared),
+    ("declared-both-another-valid-digest", lambda root: declare(root, VALID_C, VALID_C)),
+    ("declared-baseline-absent", lambda root: declare(root, None, KEEP)),
+    ("declared-target-absent", lambda root: declare(root, KEEP, None)),
+    ("declared-both-absent", lambda root: declare(root, None, None)),
+    ("declared-baseline-malformed", lambda root: declare(root, "abc", KEEP)),
+    ("declared-target-malformed", lambda root: declare(root, KEEP, "abc")),
+    ("declared-both-one-malformed-text", lambda root: declare(root, "abc", "abc")),
+    ("declared-two-valid-digests-that-differ", lambda root: declare(root, KEEP, VALID_C)),
+]
+
+
+def run(mode: str, root: Path) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        [sys.executable, "-B", "-m", "tools.baseline_profile", mode, "--root", str(root)],
+        cwd=TREE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+
+
+def main() -> None:
+    if WORK.exists():
+        raise SystemExit("refusing: the work directory exists")
+    has_inputs = (TREE / INPUTS).is_file()
+    results = []
+    for name, mutate in CASES:
+        if name.startswith("declared-") and not has_inputs:
+            results.append({"case": name, "skipped": "this tree has no declared inputs"})
+            continue
+        root = WORK / name
+        helpers["copy_inputs"](root)
+        mutate(root)
+        record_run = run("--record", root)
+        record = json.loads(record_run.stdout)
+        check_run = run("--check", root)
+        identity = record.get("apiImageIdentity")
+        results.append(
+            {
+                "case": name,
+                "recordCommand": "python -B -m tools.baseline_profile --record "
+                "--root <case-copy>",
+                "recordExit": record_run.returncode,
+                "result": record["result"],
+                "checkExit": check_run.returncode,
+                "findings": [
+                    f"{finding['rule']} @ {finding['subject']}"
+                    for finding in record["findings"]
+                ],
+                "apiImageIdentity": None
+                if identity is None
+                else {
+                    "bound": identity["bound"],
+                    "category": identity["category"],
+                    "sides": {
+                        side: stated["state"]
+                        for side, stated in identity["sides"].items()
+                    },
+                    "statedByEffectiveValues": identity["statedByEffectiveValues"],
+                },
+                "unresolvedInputs": [
+                    entry["input"] for entry in record["unresolvedInputs"]
+                ],
+                "experimentEligibility": record["experimentEligibility"],
+            }
+        )
+        print(name, record_run.returncode, record["result"], check_run.returncode)
+    text = json.dumps(results, indent=2) + "\n"
+    assert str(WORK) not in text and str(TREE) not in text
+    OUTPUT.write_bytes(text.encode("utf-8"))
+
+
+main()

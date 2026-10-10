@@ -4,9 +4,11 @@ The baseline is two API replicas and one serving runtime replica. The target is
 the desired-state release, with two of each. ``tools.baseline_profile`` derives
 both releases, reads the install description of each side, and refuses each
 difference that is not the runtime replica count, an identity that follows it,
-or the generated values file that each side reads.
+or the generated values file that each side reads. It reads the API image
+digest that each side declares, and it refuses a digest that is absent,
+malformed, or not the digest of the other side.
 
-These tests hold five things.
+These tests hold six things.
 
 1. **The committed profile.** The baseline release and the comparison record are
    what the tool derives, and the differences are the ones restated here.
@@ -20,9 +22,13 @@ These tests hold five things.
    hand-written value, the release name, the namespace, or the chart. An absent
    description, a description that does not parse, and an absent readiness
    input each refuse the comparison too.
-4. **The profile is not desired state.** It is outside ``gitops/``, no
+4. **The API image digest of each side is required, valid, and equal.** The
+   declared comparison inputs state one digest for each side. A copy is edited
+   so that a digest is absent, malformed, or another digest, on one side or on
+   both. Two equal texts that are not digests are refused too.
+5. **The profile is not desired state.** It is outside ``gitops/``, no
    desired-state release names it, and no Application reads it.
-5. **The page says what the tool does.** Each rule and each permitted path is in
+6. **The page says what the tool does.** Each rule and each permitted path is in
    the document.
 
 Everything here reads files. Nothing contacts a cluster, and nothing runs Helm.
@@ -48,6 +54,10 @@ from tools.baseline_profile import (
     BASELINE_CONTRACT,
     CHECK_RULES,
     COMPARABLE,
+    COMPARISON_INPUTS_PATH,
+    COMPARISON_INPUTS_SCHEMA,
+    DIGEST_CATEGORY,
+    DIGEST_STATES,
     DOES_NOT_ESTABLISH,
     ELIGIBILITY,
     HELD,
@@ -104,6 +114,18 @@ INSTALL = (
     "tests/domain/fixtures/experiment-profiles/"
     "single-runtime-baseline.install.v1alpha1.yaml"
 )
+INPUTS = (
+    "tests/domain/fixtures/experiment-profiles/"
+    "single-runtime-baseline.comparison-inputs.v1alpha1.yaml"
+)
+#: The digest that the committed comparison inputs declare for both sides, and
+#: the retained read that it was taken from.
+DECLARED_DIGEST = (
+    "sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56"
+)
+DIGEST_ORIGIN = (
+    "docs/proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/pods-before.json"
+)
 VALUES = "values.generated.yaml"
 RELEASE = "rendered-workload-release.yaml"
 
@@ -141,11 +163,15 @@ RULE_IDS = [
     "baseline-install-differs",
     "baseline-effective-values-differ",
     "baseline-readiness-input-unusable",
+    "baseline-api-image-digest-unbound",
+    "baseline-api-image-digest-contradicted",
 ]
-#: The rules that need a derived release of each side.
-DERIVED_RULES = [*RULE_IDS[2:7], *RULE_IDS[9:]]
+UNBOUND, CONTRADICTED = RULE_IDS[11:]
+#: The rules that need a derived release of each side. The rule that reads the
+#: declared digests needs neither a release nor a description.
+DERIVED_RULES = [*RULE_IDS[2:7], *RULE_IDS[9:11], CONTRADICTED]
 #: The rules that need the install description of each side.
-INSTALL_RULES = RULE_IDS[8:]
+INSTALL_RULES = [*RULE_IDS[8:11], CONTRADICTED]
 
 
 # --------------------------------------------------------------------------
@@ -156,8 +182,8 @@ INSTALL_RULES = RULE_IDS[8:]
 def copy_inputs(root: Path) -> Path:
     """Copy the profile, the record, and every input of either side.
 
-    The inputs are the files that each release is derived from, the chart, and
-    the install description of each side.
+    The inputs are the files that each release is derived from, the chart, the
+    install description of each side, and the declared comparison inputs.
     """
     relatives = {
         PROFILE_DIRECTORY,
@@ -171,6 +197,7 @@ def copy_inputs(root: Path) -> Path:
         CHART,
         APPLICATION,
         INSTALL,
+        INPUTS,
     }
     for relative in sorted(relatives):
         source, target = REPO_ROOT / relative, root / relative
@@ -1191,17 +1218,15 @@ def test_the_readiness_inputs_are_the_values_the_probe_templates_read() -> None:
 
 
 def test_every_record_states_eligibility_as_not_established() -> None:
-    """COMPARABLE is about committed inputs. Two inputs are resolved by no file."""
+    """COMPARABLE is about committed inputs. No file resolves the caller profile."""
     record = build_record()
     assert record["result"] == COMPARABLE
     assert record["experimentEligibility"] == ELIGIBILITY == "not-established"
     assert [
         (entry["input"], entry["sides"]) for entry in record["unresolvedInputs"]
     ] == [
-        ("api-image-digest", ["baseline", "target"]),
         ("caller-profile", ["baseline", "target"]),
     ]
-    assert record["unresolvedInputs"][0]["path"] == "/api/image/digest"
 
 
 #: An addition to the hand-written values of one description, by the file and
@@ -1296,6 +1321,7 @@ ONE_SIDED = [
                 "install: /handWrittenValues/api/image/digest",
             ),
             ("baseline-effective-values-differ", "effective: /api/image/digest"),
+            (CONTRADICTED, "effective: baseline /api/image/digest"),
         ],
         id="baseline-api-image-digest",
     ),
@@ -1473,18 +1499,49 @@ def test_a_hand_written_replica_count_on_both_sides_is_refused(root: Path) -> No
     assert record["effectiveTopology"]["baseline"]["runtimeReplicas"] == 2
 
 
-def test_one_digest_on_both_sides_resolves_that_input_and_not_eligibility(
+def restate(root: Path, digest: str) -> None:
+    """State one API image digest in the hand-written values of both descriptions."""
+    line = f"digest: {digest}\n"
+    edit(root / APPLICATION, TARGET_API_IMAGE, TARGET_API_IMAGE + " " * 12 + line)
+    edit(root / INSTALL, BASELINE_API_IMAGE, BASELINE_API_IMAGE + " " * 6 + line)
+
+
+def test_two_descriptions_that_state_the_declared_digest_are_comparable(
     root: Path,
 ) -> None:
-    digest = "digest: sha256:" + "b" * 64 + "\n"
-    edit(root / APPLICATION, TARGET_API_IMAGE, TARGET_API_IMAGE + " " * 12 + digest)
-    edit(root / INSTALL, BASELINE_API_IMAGE, BASELINE_API_IMAGE + " " * 6 + digest)
+    """A description may state the digest too. It must be the declared one."""
+    restate(root, DECLARED_DIGEST)
     record = build_record(root)
     assert record["result"] == COMPARABLE
+    assert record["apiImageIdentity"]["statedByEffectiveValues"] == {
+        "baseline": DECLARED_DIGEST,
+        "target": DECLARED_DIGEST,
+    }
     assert [entry["input"] for entry in record["unresolvedInputs"]] == [
         "caller-profile"
     ]
     assert record["experimentEligibility"] == "not-established"
+
+
+def test_two_descriptions_that_state_another_valid_digest_are_refused(
+    root: Path,
+) -> None:
+    """Two descriptions agree with each other and not with the declared digest.
+
+    The install layer and the effective layer hold, because the two sides are
+    equal there. The comparison is refused, because two digests are stated for
+    each side.
+    """
+    restate(root, "sha256:" + "b" * 64)
+    record = refused_by(root)
+    assert found(record) == [
+        (CONTRADICTED, "effective: baseline /api/image/digest"),
+        (CONTRADICTED, "effective: target /api/image/digest"),
+    ]
+    assert states(record) == {**dict.fromkeys(RULE_IDS, HELD), CONTRADICTED: NOT_HELD}
+    assert record["apiImageIdentity"]["bound"] is False
+    assert "digest" not in record["apiImageIdentity"]
+    assert record["unresolvedInputs"][0]["sides"] == ["baseline", "target"]
 
 
 def cut(path: Path, start: str, end: str | None) -> None:
@@ -1719,8 +1776,14 @@ def test_a_description_that_is_not_read_whole_refuses_the_comparison(
         "release",
     }
     assert record["readinessInputs"] == {} and record["effectiveTopology"] == {}
-    # Nothing resolved the digest of either side, and no path of this host is stated.
-    assert record["unresolvedInputs"][0]["sides"] == ["baseline", "target"]
+    # The declared digests are read without a description, and they are bound.
+    # No effective values exist, so nothing compared a description with them.
+    assert record["apiImageIdentity"]["bound"] is True
+    assert record["apiImageIdentity"]["statedByEffectiveValues"] == {}
+    assert [entry["input"] for entry in record["unresolvedInputs"]] == [
+        "caller-profile"
+    ]
+    # No path of this host is stated.
     assert str(root) not in json.dumps(record)
     assert "baseline-install-inputs-refused" in {
         finding.rule_id for finding in verify_profile(root)
@@ -1940,16 +2003,329 @@ def test_probes_switched_to_a_text_on_both_sides_are_refused(root: Path) -> None
     ]
 
 
-def test_a_text_that_is_not_a_digest_does_not_resolve_the_digest(root: Path) -> None:
-    digest = "digest: abc\n"
-    edit(root / APPLICATION, TARGET_API_IMAGE, TARGET_API_IMAGE + " " * 12 + digest)
-    edit(root / INSTALL, BASELINE_API_IMAGE, BASELINE_API_IMAGE + " " * 6 + digest)
+def test_one_text_that_is_not_a_digest_in_both_descriptions_is_refused(
+    root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Both descriptions state ``abc`` as the API image digest.
+
+    Until the digest was a required input, this edit gave ``COMPARABLE`` and
+    exit status 0, and this test expected that. Two equal texts are not one
+    usable digest.
+    """
+    restate(root, "abc")
+    record = refused_by(root)
+    assert found(record) == [
+        (CONTRADICTED, "effective: baseline /api/image/digest"),
+        (CONTRADICTED, "effective: target /api/image/digest"),
+    ]
+    assert record["apiImageIdentity"]["statedByEffectiveValues"] == {
+        "baseline": "abc",
+        "target": "abc",
+    }
+    assert main(["--record", "--root", str(root)]) == REFUSED_EXIT
+    capsys.readouterr()
+    assert main(["--check", "--root", str(root)]) == 1
+    assert f"REFUSED  {CONTRADICTED}" in capsys.readouterr().out
+    with pytest.raises(WriteRefused):
+        write_profile(root)
+
+
+# --------------------------------------------------------------------------
+# 4. The API image digest of each side is required, valid, and equal
+# --------------------------------------------------------------------------
+
+OTHER_DIGEST = "sha256:" + "c" * 64
+BASELINE_LINE = f"  baseline: {DECLARED_DIGEST}\n"
+TARGET_LINE = f"  target: {DECLARED_DIGEST}\n"
+AT_BASELINE = (UNBOUND, "comparison inputs: /apiImageDigest/baseline")
+AT_TARGET = (UNBOUND, "comparison inputs: /apiImageDigest/target")
+
+
+def declare(root: Path, baseline: str | None, target: str | None) -> None:
+    """State the API image digest of each side again. ``None`` states no member."""
+    for line, name, value in (
+        (BASELINE_LINE, "baseline", baseline),
+        (TARGET_LINE, "target", target),
+    ):
+        edit(root / INPUTS, line, "" if value is None else f"  {name}: {value}\n")
+
+
+def test_the_committed_inputs_declare_one_valid_digest_for_both_sides() -> None:
+    """The positive case: two equal valid digests bind the API image identity."""
+    declared = load(INPUTS)
+    assert declared == {
+        "apiVersion": COMPARISON_INPUTS_SCHEMA,
+        "kind": "BaselineComparisonInputs",
+        "apiImageDigest": {"baseline": DECLARED_DIGEST, "target": DECLARED_DIGEST},
+    }
+    assert INPUTS == COMPARISON_INPUTS_PATH
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", DECLARED_DIGEST)
+    record = build_record()
+    assert record["result"] == COMPARABLE
+    identity = record["apiImageIdentity"]
+    assert identity["bound"] is True
+    assert identity["digest"] == DECLARED_DIGEST
+    assert identity["sides"] == {
+        side: {"state": "valid", "digest": DECLARED_DIGEST}
+        for side in ("baseline", "target")
+    }
+    assert identity["source"] == INPUTS
+    assert identity["statedByEffectiveValues"] == {}
+    assert states(record)[UNBOUND] == states(record)[CONTRADICTED] == HELD
+    assert DIGEST_STATES == ("valid", "absent", "malformed", "not-read")
+
+
+def test_another_valid_digest_on_both_sides_is_comparable_and_is_still_reported(
+    root: Path,
+) -> None:
+    """Any one usable digest binds the identity. The committed record is then stale."""
+    declare(root, OTHER_DIGEST, OTHER_DIGEST)
     record = build_record(root)
     assert record["result"] == COMPARABLE
-    assert [entry["input"] for entry in record["unresolvedInputs"]] == [
-        "api-image-digest",
-        "caller-profile",
+    assert record["apiImageIdentity"]["digest"] == OTHER_DIGEST
+    assert [f.rule_id for f in verify_profile(root)] == ["baseline-record-stale"]
+
+
+def test_the_digest_is_stated_as_a_declared_comparison_input_and_as_no_other() -> None:
+    """The record names the category, and it names neither other category as its own."""
+    identity = build_record()["apiImageIdentity"]
+    assert identity["category"] == DIGEST_CATEGORY == "declared-comparison-input"
+    assert "not an install input" in identity["boundary"]
+    assert "not an observed runtime identity" in identity["boundary"]
+    limits = " ".join(DOES_NOT_ESTABLISH)
+    assert "That a run installs either release with the declared API image" in limits
+    assert "That a cluster ran a pod of the declared API image" in limits
+    # Neither install description states the digest, and the Application holds
+    # no parameter. The declared inputs are the one committed statement of it.
+    application = load(APPLICATION)["spec"]["source"]["helm"]
+    assert "parameters" not in application
+    assert "digest" not in application["valuesObject"]["api"]["image"]
+    assert "digest" not in load(INSTALL)["handWrittenValues"]["api"]["image"]
+
+
+def test_the_declared_digest_is_the_one_the_retained_read_reports() -> None:
+    """A tripwire on the stated origin of the committed value.
+
+    The comparison inputs say that a cluster reported the digest as the image
+    of the API pods in one retained read. This test holds that statement. A
+    change that declares another digest must state the origin of that digest in
+    the file and on the page, and it must move this test.
+    """
+    read = json.loads((REPO_ROOT / DIGEST_ORIGIN).read_text(encoding="utf-8"))
+    reported = {
+        status["imageID"]
+        for pod in read["items"]
+        for status in pod["status"]["containerStatuses"]
+        if status["name"] == "api"
+    }
+    assert reported == {f"localhost/inferops-api@{DECLARED_DIGEST}"}
+    assert DIGEST_ORIGIN in (REPO_ROOT / INPUTS).read_text(encoding="utf-8")
+    assert DIGEST_ORIGIN in DOCUMENT.read_text(encoding="utf-8")
+
+
+UNUSABLE_DIGESTS = [
+    pytest.param(
+        None, DECLARED_DIGEST, [AT_BASELINE], ["baseline"], id="baseline-absent"
+    ),
+    pytest.param(DECLARED_DIGEST, None, [AT_TARGET], ["target"], id="target-absent"),
+    pytest.param(
+        None, None, [AT_BASELINE, AT_TARGET], ["baseline", "target"], id="both-absent"
+    ),
+    pytest.param(
+        "abc", DECLARED_DIGEST, [AT_BASELINE], ["baseline"], id="baseline-malformed"
+    ),
+    pytest.param(
+        DECLARED_DIGEST, "abc", [AT_TARGET], ["target"], id="target-malformed"
+    ),
+    pytest.param(
+        "abc",
+        "abc",
+        [AT_BASELINE, AT_TARGET],
+        ["baseline", "target"],
+        id="one-malformed-text-on-both-sides",
+    ),
+    pytest.param(
+        DECLARED_DIGEST,
+        OTHER_DIGEST,
+        [(UNBOUND, "comparison inputs: /apiImageDigest")],
+        ["baseline", "target"],
+        id="two-valid-digests-that-differ",
+    ),
+]
+
+
+@pytest.mark.parametrize(("baseline", "target", "expected", "sides"), UNUSABLE_DIGESTS)
+def test_a_declared_digest_that_is_absent_malformed_or_unequal_is_refused(
+    root: Path,
+    capsys: pytest.CaptureFixture[str],
+    baseline: str | None,
+    target: str | None,
+    expected: list[tuple[str, str]],
+    sides: list[str],
+) -> None:
+    declare(root, baseline, target)
+    record = refused_by(root)
+    assert found(record) == expected
+    assert states(record) == {**dict.fromkeys(RULE_IDS, HELD), UNBOUND: NOT_HELD}
+    identity = record["apiImageIdentity"]
+    assert identity["bound"] is False
+    assert "digest" not in identity
+    for side, value in (("baseline", baseline), ("target", target)):
+        wanted = (
+            {"state": "absent"}
+            if value is None
+            else {"state": "malformed", "stated": json.dumps(value)}
+            if value == "abc"
+            else {"state": "valid", "digest": value}
+        )
+        assert identity["sides"][side] == wanted
+    # The digest is listed as unresolved again, and the caller profile stays.
+    assert [(e["input"], e["sides"]) for e in record["unresolvedInputs"]] == [
+        ("api-image-digest", sides),
+        ("caller-profile", ["baseline", "target"]),
     ]
+    assert record["experimentEligibility"] == "not-established"
+    # Every other layer is compared as before.
+    assert record["differences"] == build_record()["differences"]
+    # The refusal exit of the record, and the failed check, are two outcomes.
+    assert main(["--record", "--root", str(root)]) == REFUSED_EXIT
+    capsys.readouterr()
+    assert main(["--check", "--root", str(root)]) == 1
+    assert f"REFUSED  {UNBOUND}" in capsys.readouterr().out
+    with pytest.raises(WriteRefused):
+        write_profile(root)
+
+
+NOT_DIGESTS = [
+    pytest.param('""', '""', id="empty-text"),
+    pytest.param("sha256:" + "A" * 64, "sha256:" + "A" * 64, id="uppercase"),
+    pytest.param("sha256:" + "a" * 63, "sha256:" + "a" * 63, id="63-digits"),
+    pytest.param("sha256:" + "a" * 65, "sha256:" + "a" * 65, id="65-digits"),
+    pytest.param("a" * 64, "a" * 64, id="no-algorithm"),
+    pytest.param("sha512:" + "a" * 64, "sha512:" + "a" * 64, id="another-algorithm"),
+    pytest.param(
+        "localhost/inferops-api@" + DECLARED_DIGEST,
+        "localhost/inferops-api@" + DECLARED_DIGEST,
+        id="an-image-reference",
+    ),
+    pytest.param(f'"{DECLARED_DIGEST} "', f'"{DECLARED_DIGEST} "', id="trailing-space"),
+    pytest.param("12", "12", id="a-number"),
+    pytest.param("true", "true", id="a-boolean"),
+    pytest.param("[a]", "[a]", id="a-list"),
+    pytest.param("{a: b}", "{a: b}", id="a-mapping"),
+    # One document cannot state one anchor twice, so the two names differ.
+    pytest.param("&a [*a]", "&b [*b]", id="a-value-that-refers-to-itself"),
+]
+
+
+@pytest.mark.parametrize(("baseline", "target"), NOT_DIGESTS)
+def test_two_equal_values_that_are_not_digests_are_refused(
+    root: Path, baseline: str, target: str
+) -> None:
+    """Equality is not validity: each pair is equal, and neither value is usable."""
+    declare(root, baseline, target)
+    record = refused_by(root)
+    assert found(record) == [AT_BASELINE, AT_TARGET]
+    for side in ("baseline", "target"):
+        assert record["apiImageIdentity"]["sides"][side]["state"] == "malformed"
+    json.dumps(record)
+
+
+@pytest.mark.parametrize(
+    "block",
+    ["apiImageDigest:\n  baseline: null\n  target: ~\n", "apiImageDigest: {}\n", ""],
+    ids=["two-nulls", "an-empty-block", "no-block"],
+)
+def test_a_digest_that_no_member_states_is_absent_and_is_given_no_default(
+    root: Path, block: str
+) -> None:
+    edit(root / INPUTS, "apiImageDigest:\n" + BASELINE_LINE + TARGET_LINE, block)
+    record = refused_by(root)
+    assert found(record) == [AT_BASELINE, AT_TARGET]
+    for side in ("baseline", "target"):
+        assert record["apiImageIdentity"]["sides"][side] == {"state": "absent"}
+    assert "no default is assumed" in record["findings"][0]["detail"]
+
+
+UNREAD_INPUTS = [
+    pytest.param(lambda path: path.unlink(), "is not a regular file", id="absent"),
+    pytest.param(
+        lambda path: path.write_bytes(b"apiImageDigest: [\n"),
+        "is not YAML",
+        id="not-yaml",
+    ),
+    pytest.param(
+        lambda path: path.write_bytes(b"\xff\xfe"), "is not UTF-8 text", id="not-text"
+    ),
+    pytest.param(
+        replaced(BASELINE_LINE, BASELINE_LINE + BASELINE_LINE),
+        "states the key baseline twice",
+        id="a-key-stated-twice",
+    ),
+    pytest.param(
+        replaced("kind: BaselineComparisonInputs", "kind: BaselineInstallInputs"),
+        "is not a BaselineComparisonInputs document",
+        id="another-kind",
+    ),
+    pytest.param(
+        replaced("/v1alpha1\n", "/v1alpha2\n"),
+        "is not a BaselineComparisonInputs document",
+        id="another-schema",
+    ),
+    pytest.param(
+        replaced(TARGET_LINE, TARGET_LINE + "  canary: abc\n"),
+        "a member of apiImageDigest that this tool does not read: canary",
+        id="another-side",
+    ),
+    pytest.param(
+        replaced("kind: ", "origin: a build\nkind: "),
+        "a member of the document that this tool does not read: origin",
+        id="another-member",
+    ),
+    pytest.param(
+        replaced(
+            "apiImageDigest:\n" + BASELINE_LINE + TARGET_LINE,
+            f"apiImageDigest: {DECLARED_DIGEST}\n",
+        ),
+        "states no mapping at apiImageDigest",
+        id="one-digest-for-no-side",
+    ),
+    pytest.param(
+        lambda path: path.write_bytes(b""),
+        "states no mapping at the document",
+        id="empty",
+    ),
+]
+
+
+@pytest.mark.parametrize(("damage", "reason"), UNREAD_INPUTS)
+def test_comparison_inputs_that_are_not_read_whole_refuse_the_comparison(
+    root: Path, damage: Any, reason: str
+) -> None:
+    """A file that was not read states no digest, and no side is read as equal."""
+    damage(root / INPUTS)
+    record = refused_by(root)
+    assert found(record) == [(UNBOUND, "comparison inputs")]
+    assert reason in record["findings"][0]["detail"]
+    assert record["apiImageIdentity"]["sides"] == {
+        "baseline": {"state": "not-read"},
+        "target": {"state": "not-read"},
+    }
+    assert record["unresolvedInputs"][0]["sides"] == ["baseline", "target"]
+    assert str(root) not in json.dumps(record)
+    with pytest.raises(WriteRefused):
+        write_profile(root)
+
+
+def test_the_declared_digests_are_read_when_no_release_is_derived(root: Path) -> None:
+    """The rule on the declared digests needs no release and no description."""
+    (root / BASELINE_CONTRACT).unlink()
+    declare(root, "abc", DECLARED_DIGEST)
+    record = refused_by(root)
+    assert ("baseline-sources-refused", "baseline: declared inputs") in found(record)
+    assert AT_BASELINE in found(record)
+    assert states(record)[UNBOUND] == NOT_HELD
+    assert states(record)[CONTRADICTED] == NOT_EVALUATED
 
 
 def test_the_target_has_one_application_and_an_undeclared_one_is_refused(
@@ -1992,7 +2368,7 @@ def test_the_values_merge_is_the_one_the_capacity_preflight_uses() -> None:
 
 
 # --------------------------------------------------------------------------
-# 4. The profile is not desired state
+# 5. The profile is not desired state
 # --------------------------------------------------------------------------
 
 
@@ -2014,7 +2390,7 @@ def test_the_profile_and_the_record_are_pinned_to_lf() -> None:
     if git is None:
         pytest.skip("git is not on PATH")
     paths = [f"{PROFILE_DIRECTORY}/{name}" for name in GENERATED_FILES]
-    paths.extend([RECORD_PATH, INSTALL_PATH])
+    paths.extend([RECORD_PATH, INSTALL_PATH, COMPARISON_INPUTS_PATH])
     result = subprocess.run(
         [git, "check-attr", "eol", "--", *paths],
         cwd=REPO_ROOT,
@@ -2055,7 +2431,7 @@ def test_the_profile_adds_no_contract_document() -> None:
 
 
 # --------------------------------------------------------------------------
-# 5. The page says what the tool does
+# 6. The page says what the tool does
 # --------------------------------------------------------------------------
 
 
@@ -2089,6 +2465,9 @@ def test_the_page_states_the_identities_of_the_committed_release() -> None:
     assert f"`{PROFILE_DIRECTORY}`" in page
     assert f"`{RECORD_PATH}`" in page
     assert f"`{INSTALL_PATH}`" in page
+    assert f"`{COMPARISON_INPUTS_PATH}`" in page
+    assert f"`{DIGEST_CATEGORY}`" in page
+    assert f"`{DECLARED_DIGEST}`" in page
 
 
 def test_the_page_states_each_readiness_input_and_each_unresolved_input() -> None:

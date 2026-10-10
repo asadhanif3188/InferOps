@@ -5,7 +5,9 @@ a comparison record, and a check holds the three. This is evidence at C0. No
 Application reads the profile, and no run installed the baseline release. The
 profile is an experiment baseline. It is not a product tier, and it is not
 desired state. A `COMPARABLE` record is a statement about committed inputs. It
-is not eligibility for an experiment.**
+is not eligibility for an experiment. Each side declares one API image digest
+to the comparison. That digest is a declared comparison input. It is not an
+install input, and it is not an observed runtime identity.**
 
 The desired-state release declares two platform API replicas and two serving
 runtime replicas. The baseline exists so that the loss of one runtime pod under
@@ -23,9 +25,10 @@ comparison record does not establish.
 | Profile directory | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline` |
 | Comparison record | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison.v1alpha1.json` |
 | Install description | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.install.v1alpha1.yaml`. A person writes it |
+| Declared comparison inputs | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison-inputs.v1alpha1.yaml`. A person writes it. It states the API image digest of each side |
 | Tool | [`tools/baseline_profile`](../../tools/baseline_profile/core.py): `python -m tools.baseline_profile --check`, `--record`, and `--write` |
 | Tests | [`tests/domain/test_baseline_profile.py`](../../tests/domain/test_baseline_profile.py), and three render tests in [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py) |
-| Validation records | [`v2-s4-003-pr2-validation.md`](../proof/environment/v2-s4-003-pr2-validation.md), and [`v2-s4-005-pr1-validation.md`](../proof/environment/v2-s4-005-pr1-validation.md) for the install and readiness inputs |
+| Validation records | [`v2-s4-003-pr2-validation.md`](../proof/environment/v2-s4-003-pr2-validation.md), [`v2-s4-005-pr1-validation.md`](../proof/environment/v2-s4-005-pr1-validation.md) for the install and readiness inputs, and [`v2-s4-006-pr1-validation.md`](../proof/environment/v2-s4-006-pr1-validation.md) for the API image digest |
 | Read by | No Application and no procedure. The two suites read the files |
 
 ## How the baseline is declared
@@ -141,7 +144,9 @@ default when a description does not state it.
 
 **The Application that a cluster holds is not the committed one.** The procedure
 that applies the Application adds the API image digest as one Helm parameter.
-The tool reads the committed file, which states no parameter.
+The tool reads the committed file, which states no parameter. So neither
+description states the digest, and each side declares it in another file: see
+[the API image digest](#the-api-image-digest).
 
 **The chart is stated by its version and by one digest.** The digest is the
 SHA-256 of one line for each file of the chart directory, in the order of the
@@ -231,6 +236,82 @@ A startup probe gates the other two, and a liveness probe restarts a container,
 so the settings of all three probes are named. The record states what the chart
 receives. It does not state a rendered probe, and no probe was observed.
 
+### The API image digest
+
+> **Note, 2026-10-10 (`V2-S4-006-PR1`).** Until this change no committed file
+> stated an API image digest for either side. The record listed the digest as
+> unresolved, and the result was `COMPARABLE`. Two descriptions that both
+> stated the text `abc` as the digest gave `COMPARABLE` too. The digest is now
+> a required input of each side. An absent digest, a malformed digest, and two
+> digests that differ each give `REFUSED`.
+
+**Each side declares one API image digest, and the tool requires two usable,
+equal digests.** The declarations are in one file that a person writes:
+`tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison-inputs.v1alpha1.yaml`. It states `apiImageDigest.baseline` and `apiImageDigest.target`.
+
+**Why the digest is not in a description.** No InferOps API image is published,
+so a digest names one build on one host. The Application states no digest, and
+the procedure that applies it adds the digest as one Helm parameter. This change
+keeps that design. It edits no Application, no procedure, and no chart file.
+
+**A usable digest is `sha256:` and 64 lowercase hexadecimal digits.** That is
+the form that the procedure that applies the Application accepts for its digest
+argument. The tool classifies the declared digest of each side:
+
+| State | Meaning | Result |
+|---|---|---|
+| `valid` | The file states a text of the usable form for the side | The rule holds when the other side is `valid` with the same digest |
+| `absent` | The file states no member for the side, or a null. A file with no `apiImageDigest` block, or an empty one, states no member for both sides | `REFUSED` |
+| `malformed` | The file states another value: a text of another form, an empty text, a number, a list, or a mapping | `REFUSED` |
+| `not-read` | The file is absent, is not YAML, states a key twice, is of another schema or kind, or states a member that the tool does not read | `REFUSED`, for both sides |
+
+- **Equality is not validity.** Two sides that state one malformed text are
+  refused: each side is `malformed`.
+- **No default.** The tool takes no digest from a default, from the other side,
+  or from the chart. The chart's default for `api.image.digest` is the empty
+  text, which states no digest.
+- **Two valid digests that differ are refused.**
+- **A description may state the digest too, and then it must state the declared
+  one.** The tool reads `/api/image/digest` of the effective values of each
+  side. An empty text or an absent value states none. Another value that is
+  not the declared digest of that side gives
+  `baseline-api-image-digest-contradicted`. A digest that one description
+  states alone is also a one-sided hand-written value, and
+  `baseline-install-differs` refuses it as before.
+
+**The digest has one category: `declared-comparison-input`.** A digest can be
+one of three things, and a record states which one it holds.
+
+| Category | What it is | Does a record state it |
+|---|---|---|
+| Declared comparison input | A value that a committed comparison input states | Yes, under `apiImageIdentity` |
+| Install input | The value that an operator gives to the procedure that applies the Application | No. The tool reads no procedure and no applied object |
+| Observed runtime identity | A value that a cluster reported for a running pod | No. The tool reads no cluster |
+
+**The origin of the committed value.** Both sides declare
+`sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56`. A cluster reported that value as the `imageID` of the two API pods
+of the target in one retained read:
+[`pods-before.json`](../proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/pods-before.json),
+at `docs/proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/pods-before.json`. In that read the value is an observed runtime identity of the
+target, of one local build, on one host, on 2026-10-09. In the comparison
+inputs it is a declared value, copied by hand. No run installed the baseline,
+so the value was not observed for the baseline. One test holds that the
+declared value is the one that the read reports.
+
+**A `COMPARABLE` record does not establish that a run installs either side with
+the declared digest.** Another build of the API image has another digest. An
+operator who applies the Application gives the digest of the image on that
+host, and that procedure does not read the comparison inputs. A later
+experiment that uses the baseline must not read `COMPARABLE` as an installed
+identity. It needs a record of the digest that each side's pods reported, and
+a check of that digest against the declared one. Nothing in this repository
+makes that check.
+
+A record states the identity under `apiImageIdentity`: the category, the source
+file, the usable form, the state of each side, the digest of each `valid` side,
+each digest that the effective values state, whether the identity is bound, and
+the bound digest when it is.
+
 ### Unresolved inputs and eligibility
 
 **`COMPARABLE` says that the committed inputs of the two sides are comparable.**
@@ -240,14 +321,12 @@ committed file resolves under `unresolvedInputs`:
 
 | Input | Path | Statement |
 |---|---|---|
-| `api-image-digest` | `/api/image/digest` | The committed files do not give both sides one API image digest of the form sha256 and 64 hexadecimal digits. An operator supplies the digest at install. A run must give both sides one digest. |
 | `caller-profile` | None | No caller profile exists in this repository. A run must give both sides one revision of one caller profile. |
 
-The record lists the digest unless the effective values of both sides hold one
-digest of the form `sha256:` and 64 hexadecimal digits. A digest that one side
-states alone, and two different digests, are one-sided hand-written values, and
-they are refused. The caller profile is listed in every record, because this
-tool reads none.
+The caller profile is listed in every record, because this tool reads none.
+The record of the committed tree lists no other input: the API image digest is
+bound. A record whose API image digest is not bound lists `api-image-digest`
+too, with the sides that state no usable digest, and that record is `REFUSED`.
 
 ## The permitted differences
 
@@ -313,6 +392,7 @@ the last four is about the members that the generated values hold.
 | Telemetry and secret references | `telemetry`, `security` | Equal |
 | Probe settings, requests, and images of the other tiers | The chart's defaults, and the hand-written values of each side | Equal as values: the effective values of the two sides differ at two paths only, and each of the 24 readiness inputs is stated |
 | Hand-written values, release name, namespace, and the chart's repository, revision, path, and version | The install description of each side | Equal. See [the install inputs](#the-install-inputs) |
+| API image digest | The declared comparison inputs | Equal as declared values. Not an install input and not an observed identity. See [the API image digest](#the-api-image-digest) |
 | The chart's templates, and so each rendered object | The chart files | One digest for both sides. The tool compares no rendered object: see below |
 | The runtime tier's PodDisruptionBudget | The chart renders one for a tier of two or more replicas | Not equal, since chart `0.6.0`: the target renders it, and the baseline does not. It follows from the runtime replica count. See the note of 2026-10-09 above |
 
@@ -325,6 +405,8 @@ not compare a rendered probe.
 Three tests of the chart suite render. Each renders a side with the hand-written
 values of its own install description, the release name and the namespace that
 the description states, and one placeholder API image digest for both sides.
+The placeholder is not the declared digest, and the render tests do not read
+the comparison inputs.
 
 - **The two sides as described.** The two renders differ in three objects of
   the same name: one
@@ -352,7 +434,7 @@ documents. It was not observed on a cluster.
 
 ## The rules
 
-A comparison record states 11 rules, in this order:
+A comparison record states 13 rules, in this order:
 
 | Rule | Statement |
 |---|---|
@@ -367,12 +449,15 @@ A comparison record states 11 rules, in this order:
 | `baseline-install-differs` | The two install descriptions differ only in the generated values file, and each names the generated values file of its own release. |
 | `baseline-effective-values-differ` | The effective values of the two sides differ only in the runtime replica count and the workload version, and they state the replica counts of each side. They are the chart's defaults, then the derived generated values, then the hand-written values. |
 | `baseline-readiness-input-unusable` | The effective values of each side hold each of 24 readiness inputs with a usable value: the 23 values that the two probe templates read, and the startup budget of the runtime. |
+| `baseline-api-image-digest-unbound` | The declared comparison inputs are a file that parses and that states no member this tool does not read. They state one API image digest for the baseline and one for the target. Each digest is sha256: and 64 lowercase hexadecimal digits, and the two digests are equal. |
+| `baseline-api-image-digest-contradicted` | The effective values of each side state no API image digest, or they state the declared digest of that side. |
 
 The state of a rule is `held`, `not-held`, or `not-evaluated`. When the sources
-of one side derive no release, seven rules are `not-evaluated`: the third to the
-seventh, and the last two. When the install description of one side is not read
-whole, the last three rules are `not-evaluated`. The result is `REFUSED` in both
-cases.
+of one side derive no release, eight rules are `not-evaluated`: the third to the
+seventh, the tenth, the eleventh, and the last. When the install description of
+one side is not read whole, four rules are `not-evaluated`: the ninth to the
+eleventh, and the last. The result is `REFUSED` in both cases. The twelfth rule
+reads the declared comparison inputs alone, so it is evaluated in every record.
 
 `--check` adds three rules for the committed files:
 
@@ -442,6 +527,16 @@ own declaration cannot state them.
   twice, a description that refers to itself, an absent member, another member
   in a block that the tool reads, or a chart without a template, a values
   schema, or a version** is `baseline-install-inputs-refused`.
+- **A declared API image digest that is absent or malformed, on one side or on
+  both, one malformed text on both sides, two valid digests that differ, or
+  comparison inputs that are not read whole** is
+  `baseline-api-image-digest-unbound`.
+- **One digest in both descriptions that is not the declared one**, valid or
+  not, is `baseline-api-image-digest-contradicted` for both sides. A digest in
+  one description alone is that rule for the one side, with
+  `baseline-install-differs` and `baseline-effective-values-differ`.
+- **Another valid digest declared for both sides** is comparable, and
+  `baseline-record-stale` reports it.
 - **One change made to both descriptions, a changed chart file that moves no
   effective value, or a changed project or sync policy of the Application** is
   comparable, and `baseline-record-stale` reports it.
@@ -476,8 +571,14 @@ uv run --locked python -m tools.baseline_profile --write
 `--record` prints one JSON record. Exit status 0 says that the result is
 `COMPARABLE`. Exit status 5 says that the result is `REFUSED`.
 
+**A current record and a refused comparison are two outcomes.** Exit status 0
+of `--check` says that the committed record is the record of this tree and that
+the comparison holds. A refusal is exit status 5 of `--record`, and exit status
+1 of `--check` with the rule that refuses. A stale record alone is exit status
+1 of `--check` with `baseline-record-stale`, while `--record` still exits 0.
+
 `--write` writes the baseline release and the record again. It does not write
-the install description. It refuses to write
+the install description or the declared comparison inputs. It refuses to write
 when the comparison is `REFUSED`, and it refuses a profile directory that holds
 a file the platform did not write. A write replaces a hand edit without asking,
 so read the `--check` output first. It writes the release before the record. If
@@ -496,7 +597,7 @@ comparison, and it is a decision.
 |---|---|---|
 | An Application, or a desired-state path, for the baseline | No Application reads the profile. The one Application reads the target, and the Git desired state holds one release | A decision on how a run selects the baseline in the environment that the experiment names |
 | A procedure that installs the baseline from its install description | The description is compared, and nothing reads it to install a release | A decision on how a run selects the baseline, and a check that the run's inputs are the described ones |
-| One API image digest for both sides | No committed file states the digest. An operator supplies it at install | A run that gives both sides one digest, and that records it |
+| A check that a run installs both sides with the declared API image digest | The digest is a declared comparison input. The procedure that applies the Application takes its digest from the operator, and it does not read the comparison inputs | A run that gives both sides the declared digest, a record of the digest that each side's pods reported, and a check of the two |
 | A caller profile | No caller profile exists in this repository | A caller profile, and a check that both sides are given the one revision of it |
 | The footprint of the baseline in the capacity preflight | [The capacity preflight](capacity-preflight.md) derives the footprint from the Application of the target | An Application for the baseline, or a footprint that the gate derives another way |
 | A run of the baseline | The profile is a render | An environment that holds it, and a frozen experiment record |
@@ -516,9 +617,15 @@ comparison, and it is a decision.
 - That a run installs either release with the install inputs that this record
   states. The record compares two committed descriptions. No procedure reads the
   baseline's description, and nothing compares a cluster with either.
-- That the two releases install with one API image digest. No committed file
-  states the digest. An operator supplies it at install, and the record lists it
-  as unresolved.
+- That a run installs either release with the declared API image digest. The
+  digest is a declared comparison input: a committed file states it. The
+  procedure that applies the target takes its digest from the operator, and it
+  does not read that file. No procedure installs the baseline.
+- That a cluster ran a pod of the declared API image on either side. The record
+  states no observed runtime identity, and no cluster was read.
+- That the declared API image digest names an image that exists, an image that
+  was built from this tree, or the image that a later build gives. The tool
+  checks the form of the digest, and it reads no image.
 - That a cluster reads the chart files whose digest this record states. Each
   description names a branch as the chart revision, and the digest is of the
   files of the tree that the tool read.

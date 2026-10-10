@@ -1,0 +1,29 @@
+# The declared comparison inputs of the single-runtime baseline profile.
+#
+# This file states one API image digest for the baseline and one for the target.
+# `python -m tools.baseline_profile --check` reads both. It refuses a side that
+# states no digest, a digest that is not `sha256:` and 64 lowercase hexadecimal
+# digits, and two digests that differ.
+#
+# Each digest here is a declared comparison input: this committed file states
+# it. It is not an install input. The procedure that applies the target takes
+# the digest from the operator, and that procedure does not read this file. It
+# is not an observed runtime identity. This file reads no cluster.
+#
+# Origin of the value. A cluster reported it as the `imageID` of the two API
+# pods of the target in one retained read:
+# docs/proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/pods-before.json
+# That read is of one local build on one host. No InferOps API image is
+# published, so another build has another digest. No run installed the baseline,
+# so the value was observed for the target only, and it is declared here for
+# both sides. The comparison does not establish that a later install uses it.
+#
+# This file is written by hand, and no command writes it. A run that uses
+# another API image states that digest here for both sides, in the same change.
+#
+# No Application and no procedure reads this file. It installs nothing.
+apiVersion: inferops.io/baseline-comparison-inputs/v1alpha1
+kind: BaselineComparisonInputs
+apiImageDigest:
+  baseline: sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56
+  target: sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56
