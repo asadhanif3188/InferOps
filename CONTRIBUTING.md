@@ -538,7 +538,8 @@ uv run --locked python -m tools.baseline_profile --record
 uv run --locked python -m tools.baseline_profile --write
 ```
 
-`--check` fails in two ways, and the remedy differs.
+`--check` fails because the committed files are stale or because the comparison
+is refused, and the remedy differs.
 
 - **Stale.** A change to the binding, to the platform defaults, or to a revision of the
   desired-state release moves both sides alike. So does a change to a contract at a

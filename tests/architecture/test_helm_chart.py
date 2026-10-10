@@ -2769,8 +2769,9 @@ def _described_sides() -> dict[str, dict[str, Any]]:
 def _render_described(side: dict[str, Any], directory: Path, name: str) -> str:
     """One side, rendered with the install inputs that its description states.
 
-    No committed file states the API image digest, so both sides are given the
-    placeholder digest of the reference fixture as one Helm parameter.
+    Neither install description states the API image digest, and the render
+    tests do not read the declared comparison inputs. So both sides are given
+    the placeholder digest of the reference fixture as one Helm parameter.
     """
     hand_written = directory / f"{name}.hand-written.yaml"
     hand_written.write_text(yaml.safe_dump(side["handWritten"]), encoding="utf-8")
@@ -2850,8 +2851,8 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica(
     Each side is rendered with the hand-written values, the release name, and
     the namespace that its own install description states. The baseline states
     them in its install description, and the target in its Application. Both
-    sides are given one placeholder API image digest, because no committed file
-    states that digest. This does not establish that a run installs either side
+    sides are given one placeholder API image digest, because neither
+    description states that digest. This does not establish that a run installs either side
     with the described inputs.
 
     This renders files. No cluster was asked, and no run installed the

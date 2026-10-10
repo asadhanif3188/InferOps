@@ -8,13 +8,14 @@
 # Each digest here is a declared comparison input: this committed file states
 # it. It is not an install input. The procedure that applies the target takes
 # the digest from the operator, and that procedure does not read this file. It
-# is not an observed runtime identity. This file reads no cluster.
+# is not an observed runtime identity. No cluster is read to write or to
+# check this file.
 #
-# Origin of the value. A cluster reported it as the `imageID` of the two API
-# pods of the target in one retained read:
+# Origin of the value. A cluster reported `localhost/inferops-api@` followed
+# by it as the `imageID` of the two API pods of the target in one retained read:
 # docs/proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/pods-before.json
 # That read is of one local build on one host. No InferOps API image is
-# published, so another build has another digest. No run installed the baseline,
+# published, and another build can have another digest. No run installed the baseline,
 # so the value was observed for the target only, and it is declared here for
 # both sides. The comparison does not establish that a later install uses it.
 #

@@ -109,7 +109,7 @@ description, and it installs nothing. Since `V2-S4-006-PR1` the check also requi
 one usable API image digest for each side, and it reads them from
 [the declared comparison inputs](single-runtime-baseline-profile.md#the-api-image-digest),
 not from this manifest. That digest is a declared comparison input. `apply` does not
-read it, so it is not the digest that an operator gives to `apply`.
+read it, so nothing makes it the digest that an operator gives to `apply`.
 
 **The API image digest is not in Git.** No InferOps API image is published. The
 digest names an image that the operator built and loaded into the node, and

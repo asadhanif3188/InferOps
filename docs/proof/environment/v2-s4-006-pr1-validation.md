@@ -8,7 +8,10 @@ comparison input. It is not an install input, and it is not an observed runtime
 identity. No cluster was read, no image was built or read, and no run installed
 either side. No Application, procedure, chart file, contract, binding,
 desired-state file, freeze record, or retained evidence file was changed, and no
-claim was registered.
+claim was registered. An independent review found that the first commit stated
+a digest as bound in a record where no description was compared with it, and
+that several sentences said more than the repository shows: see
+[what the independent review found](#what-the-independent-review-found).
 
 > [!IMPORTANT]
 > **This change corrects an omission of an earlier change, and the record says
@@ -31,7 +34,7 @@ claim was registered.
 | Date | 2026-10-10 |
 | Base | `77a057185a69ec82b3655991ffd8d5be91807da6`, the merge of pull request #134 |
 | Branch | `fix/v2-s4-006-api-image-identity-comparison` |
-| Commits | The first commit: the declared comparison inputs, the two rules, the suite, and the pages. A second commit follows the independent review |
+| Commits | `0e47670d`: the declared comparison inputs, the two rules, the suite, and the pages. A second commit: the corrections of the independent review, and the default lane |
 | Host | One Windows workstation, Git Bash (GNU bash 5.2.26); Python 3.12.12 from `uv` 0.9.16; Helm `v3.19.0` |
 | Evidence level | C0. Every check reads committed files or renders them with the chart tool |
 | Claim effect | None. No claim, ledger, register row, dashboard row, or evidence-index entry was added or changed |
@@ -80,6 +83,10 @@ both sides (`COMPARABLE`, exit 0).
 exits 1 for `baseline-record-stale` alone: the committed record no longer
 states the hand-written values of the copy. The comparison itself held. In this
 change `--check` exits 1 in each refused case and names the rule that refuses.
+The driver output retains the exit status of `--check` and not its text. The
+rule names of `--check` in this record were read from the command's output on
+the same copies, and the suite asserts them for the cases that it runs through
+the command.
 
 ## The representation of the digest
 
@@ -119,7 +126,8 @@ the expression; it now refuses with it.
 
 **The origin of the committed value.** Both sides declare
 `sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56`. A
-cluster reported that value as the `imageID` of the two API pods of the target
+cluster reported `localhost/inferops-api@` followed by that value as the
+`imageID` of the two API pods of the target
 in one retained read,
 [`pods-before.json`](v2-s4-005-pr2-service-endpoint-state-run-1/pods-before.json)
 of [the endpoint reading of 2026-10-09](v2-s4-005-pr2-validation.md). That
@@ -129,7 +137,8 @@ that run.
 - In that read the value is an observed runtime identity of the target, on one
   provider, of one local build. Here it is copied by hand as a declared value.
 - No run installed the baseline. The value was not observed for the baseline.
-- No InferOps API image is published. Another build has another digest.
+- No InferOps API image is published. Another build can have another digest,
+  and nothing here compares two builds.
 - The comparison does not establish that a later install uses the value. An
   operator who applies the Application gives the digest of the image on that
   host, and nothing compares that digest with the declared one.
@@ -145,8 +154,9 @@ that run.
   `baseline-api-image-digest-contradicted`. The second holds that the effective
   values of a side state no digest, or the declared one of that side.
 - **A record states `apiImageIdentity`:** the category, the source file, the
-  usable form, the state of each side, each digest that the effective values
-  state, whether the identity is bound, and the bound digest. The schema name
+  usable form, the state of each side, whether the effective values were
+  compared with it, each digest that the effective values state, whether the
+  identity is bound, and the bound digest. The schema name
   of the record is unchanged. No reader of the record exists but the tool and
   its suite.
 - **`unresolvedInputs` lists the digest only when it is not bound,** and such a
@@ -175,14 +185,14 @@ that run.
 | Asked | Reached |
 |---|---|
 | Each side states an API image digest to the comparison, in a committed comparison input | Reached at C0. One committed file states one digest for each side |
-| A digest is usable only in the canonical form | Reached at C0. 13 pairs of equal values of another form are each refused |
+| A digest is usable only in the canonical form | Reached at C0. 14 pairs in which both sides state one kind of value that is not a digest are each refused |
 | An absent digest on either side is refused, with the refusal exit | Reached at C0: the baseline, the target, and both. `--record` exits 5 |
 | A malformed digest on either side is refused | Reached at C0 |
 | Two identical malformed texts are refused | Reached at C0, in the declared inputs and in the two descriptions |
 | Two valid digests that differ are refused | Reached at C0 |
 | Two valid equal digests satisfy the rule | Reached at C0, for the committed value and for one other value |
 | `COMPARABLE` needs this rule and every other rule | Reached at C0. The result is `COMPARABLE` only when no rule has a finding, as before |
-| The caller profile stays unresolved, and eligibility stays `not-established` | Reached. Neither statement is edited, and a test holds both in each refused case |
+| The caller profile stays unresolved, and eligibility stays `not-established` | Reached. Neither statement is edited. The eligibility is one constant of the tool. The suite holds both statements in each refused case of the declared inputs: 7, 14, 3, and 10 cases. The driver output shows both in its 11 refused cases. The refused cases that edit a description do not assert them |
 | The record does not state the digest as installed or observed | Reached, as statements. The record names the category and three limits. Nothing in this repository checks an installed or an observed digest against the declared one |
 | The Application and the delivery are unchanged | Reached. No file under `infra/`, `scripts/`, `charts/`, or `gitops/` is in the diff |
 | The retained endpoint evidence is unchanged and is not rerun | Reached. No file of that reading is in the diff, and no cluster command ran |
@@ -222,9 +232,12 @@ none is removed or renamed.
 
 ## The negative controls
 
-Each is a test of `tests/domain/test_baseline_profile.py`. Each edits a copy of
-the inputs in a temporary directory. The first seven also ran through the
-driver, as two commands on an isolated copy, with the exits of the table.
+Each is a test of `tests/domain/test_baseline_profile.py`, but for the one row
+that is marked driver only. Each edits a copy of the inputs in a temporary
+directory. The first seven rows, and the four rows on a description that state
+exits, also ran through the driver, as two commands on an isolated copy. The
+exits of the row for another valid digest in both descriptions are the
+driver's alone: the test of that row asserts the record and no exit.
 
 | Control | Result | `--record` exit | `--check` exit |
 |---|---|---|---|
@@ -235,7 +248,7 @@ driver, as two commands on an isolated copy, with the exits of the table.
 | The target's declared digest is `abc` | `REFUSED`: the rule for the target | 5 | 1 |
 | Both declared digests are `abc` | `REFUSED`: the rule for each side. Equality is not validity | 5 | 1 |
 | Two valid declared digests that differ | `REFUSED`: the rule at `/apiImageDigest` | 5 | 1 |
-| 13 more pairs of equal values that are not digests: an empty text, uppercase digits, 63 digits, 65 digits, no algorithm, another algorithm, an image reference, a trailing space, a number, a boolean, a list, a mapping, and a value that refers to itself | `REFUSED`: `malformed` for each side | Not run through the command | Not run through the command |
+| 14 more pairs in which both sides state one kind of value that is not a digest: an empty text, uppercase digits, 63 digits, 65 digits, no algorithm, another algorithm, an image reference, a trailing space, a trailing newline, a number, a boolean, a list, a mapping, and a value that refers to itself | `REFUSED`: `malformed` for each side | Not run through the command | Not run through the command |
 | Two nulls, an empty digest block, and no digest block | `REFUSED`: `absent` for each side | Not run through the command | Not run through the command |
 | Comparison inputs that are not read whole, in 10 forms: absent, not YAML, not text, empty, a key stated twice, another kind, another schema, another side, another member, and one digest for no side | `REFUSED`: one finding, and `not-read` for both sides | Not run through the command | Not run through the command |
 | Both descriptions state `abc` | `REFUSED`: `baseline-api-image-digest-contradicted` for each side | 5 | 1 |
@@ -244,6 +257,8 @@ driver, as two commands on an isolated copy, with the exits of the table.
 | The target's description alone states a digest | `REFUSED`: the same three rules, for the target. Driver only: the suite plants the baseline's side | 5 | 1 |
 | The target's description alone states a readiness timeout of `1` | `REFUSED`: `baseline-install-differs` and `baseline-effective-values-differ` | 5 | 1 |
 | A malformed declared digest, and no derived release for the baseline | `REFUSED`: the digest rule is `not-held`, and the rule on the effective values is `not-evaluated` | Not run through the command | Not run through the command |
+| Another digest in the target's description, and no description of the baseline | `REFUSED` for the description. The rule on the effective values is `not-evaluated`, and the record states the digest as not bound and as unresolved. Added after the review | Not run through the command | Not run through the command |
+| A space, or the declared digest with a newline, in both descriptions | `REFUSED`: `baseline-api-image-digest-contradicted` for each side. Added after the review | Not run through the command | Not run through the command |
 
 **Positive controls.**
 
@@ -252,6 +267,7 @@ driver, as two commands on an isolated copy, with the exits of the table.
 | The committed inputs | `COMPARABLE`. The digest is bound | 0 | 0 |
 | Both descriptions state the declared digest | `COMPARABLE` | 0 | 1, for `baseline-record-stale` alone |
 | Another valid digest declared for both sides | `COMPARABLE` | 0 | 1, for `baseline-record-stale` alone |
+| An empty text, or a null, as the digest in both descriptions | `COMPARABLE`: neither states a digest. The chart refuses to render an empty digest, and the tool renders nothing. Added after the review | Not run through the command | Not run through the command |
 
 **A refusal and a stale record are two outcomes.** Exit status 5 of `--record`
 is a refused comparison. Exit status 0 of `--check` is a current, comparable
@@ -288,9 +304,112 @@ first commit.
 | The driver, in a second working tree at the base and in this working tree | 5 cases at the base and 14 cases here, with the results of the tables above |
 | `git diff --check` against the base | No whitespace error |
 
-**Not run at the first commit.** The default lane: it runs once, on the tree of
-the second commit. `gitleaks` is not installed on this host, so no secret scan
+**Not run at the first commit.** The default lane. `gitleaks` is not installed on this host, so no secret scan
 ran. Hosted CI was not read: no pull request existed. No cluster command ran,
+because the change reads no cluster.
+
+## What the independent review found
+
+Two reviews read the first commit, `0e47670d`, without the author's account of
+it. One read the tool and the suite and tried to obtain `COMPARABLE` with a
+digest that is absent, malformed, unequal, or contradicted. One read each
+sentence and each number of the pages and of this record against the code, the
+suite, and the driver output. Neither obtained `COMPARABLE` or exit status 0
+with such a digest. Both found the first defect below.
+
+### What the tool got wrong
+
+- **A record stated the digest as bound when no description was compared with
+  it.** `bound` was true whenever the function had no finding. When a
+  description is not read whole, no effective values exist, and the rule on
+  them is `not-evaluated`. A copy whose Application stated another digest, and
+  whose baseline description was absent, gave `bound: true`, a bound digest,
+  and no `api-image-digest` under `unresolvedInputs`. The result was `REFUSED`
+  for the description, so no comparison passed. The record still said more
+  than the tool had checked, and one test of the first commit asserted it.
+  `bound` is now true only when the effective values of both sides were
+  compared. The record states `effectiveValuesCompared`, and it lists the
+  digest as unresolved when they were not. The test is corrected, and one test
+  plants the case.
+
+### What the first commit said, and what is true
+
+| The first commit said | What is true |
+|---|---|
+| "No committed file stated an API image digest", in the changelog and on the page | Six committed files of the endpoint reading stated this digest for the target. No committed input of the comparison stated one. Both sentences now say that |
+| "Another build has another digest", in four places | Nothing in this repository compares two builds. Each place now says that another build can have another digest |
+| "A cluster reported that value as the `imageID`", in three places | The cluster reported `localhost/inferops-api@` followed by the value. The suite classifies that whole text as malformed. Each place now says what was reported |
+| "A test holds both in each refused case", of the caller profile and the eligibility | One test held both, in 7 cases. The tests of the declared inputs now hold both in 34 cases, and the row states which cases do not |
+| "Each is a test … The first seven also ran through the driver" | One row is driver only, 11 rows ran through the driver, and the exits of one row are the driver's alone. The paragraph now says that |
+| The rule names of `--check` in the base cases, with no source | The driver output retains exit statuses only. The record now says where the rule names were read |
+| A record that is not bound lists "the sides that state no usable digest" | It lists both sides when both are valid and the identity is not bound. The page now says that |
+| "It is not the digest that an operator installs with", in `README.md` and on the Application page | In the reading of 2026-10-09 the same value was the install input of that run. The category is about what reads the file, so both now say that no install procedure reads it |
+| "13 more pairs of equal values" | The pair that refers to itself is two values of one shape under two anchor names, and one more pair was added. The record now says 14 pairs of one kind of value |
+| "`--check` fails in two ways", in `CONTRIBUTING.md`, above four entries | The sentence now names the two kinds of failure |
+| "This file reads no cluster", in the comparison inputs | A file reads nothing. The comment now says that no cluster is read to write or to check it |
+| "A second commit follows the independent review", in this record at the first commit | That was a prediction. The row now names both commits |
+
+### Stale text that the first commit left
+
+Two docstrings of `tests/architecture/test_helm_chart.py` said that no committed
+file states the API image digest. The comparison inputs now state one. Both
+docstrings are corrected. No statement and no assertion of that module is
+changed.
+
+### Noted, and not changed
+
+- **An empty text, or a null, as the digest in both descriptions is
+  `COMPARABLE`.** An empty text is the chart's default, and a null removes the
+  member, so neither states a digest. The chart refuses to render such a
+  release. The tool renders nothing, so it does not report that. Two tests now
+  hold the behaviour, and the page states the limit.
+- **A symbolic link in a parent directory of the comparison inputs** is not
+  refused. The tool checks the file itself. The two descriptions are read in
+  the same way, and this host cannot create a symbolic link to plant the case.
+- **The earlier review of the sprint is not a file of this repository.** The
+  note at the top says so. A reader cannot verify that sentence here.
+
+## Validation at the second commit
+
+Each command ran on the working tree of the second commit.
+
+| Command | Result |
+|---|---|
+| `uv run --locked ruff check .` | No finding |
+| `uv run --locked ruff format --check .` | 689 files already formatted |
+| `uv run --locked python -m mypy` | No issue in 375 source files |
+| `uv run --locked python -m tools.baseline_profile --record` | Exit status 0, `COMPARABLE` |
+| `uv run --locked python -m tools.baseline_profile --check` | Exit status 0: six `OK` lines |
+| `uv run --locked python -m pytest tests/domain/test_baseline_profile.py --collect-only -q` | 191 tests. The first commit held 185. They ran in the default lane below |
+| `uv run --locked python -m tools.generated_release --check`, `tools.gitops_desired_state --check`, `tools.capacity_preflight --check`, `tools.runtime_model_cache --check`, `tools.service_endpoint_state --check`, `tools.experiment_freeze --check`, `tools.experiment_e01 --check`, `tools.proof_dashboard --check`, `tools.evidence_index --check`, and `tools.evidence_index --gate` | Exit status 0 for each |
+| `uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json` | 30 material files differ, as at the base. The output is the same text as before this change |
+| `helm lint charts/inferops-llm --strict --namespace inferops-platform --values charts/inferops-llm/ci/real-values.yaml`, and the same with `mock-values.yaml` | `1 chart(s) linted, 0 chart(s) failed` for each |
+| The driver, in this working tree | 14 cases. The output is the same bytes as the committed output of the first commit, but for line endings |
+| `git diff --check` against the base | No whitespace error |
+
+## The default lane
+
+`uv run --locked python -m pytest -q` ran once, on the working tree of the
+second commit before this section and the table above were filled in: 20,101
+passed, 37 skipped, and 14 deselected, in 38 minutes. No test failed. The lane
+holds the Helm lane too: `helm` is installed, so the 270 tests of the chart
+suite ran, the three render tests of the baseline among them.
+
+The test of the first experiment's suite that failed once at the first commit,
+beside two other suites, passed in this run.
+
+The lane skipped 37 tests, for four kinds of reason: a fixture that a schema
+layer does not apply to, a symbolic link that this host cannot create, a POSIX
+signal that this host does not deliver, and the freeze test that skips after
+the desired-state release moved from revision 3. The earlier changes of this
+sprint record the same count on this host.
+
+This section and the table above are the one edit after that run. They change
+this page only. The link suite and the publication suite ran again for this
+page afterwards.
+
+**Not run.** `gitleaks` is not installed on this host, so no secret scan ran.
+Hosted CI was not read: no pull request existed. No cluster command ran,
 because the change reads no cluster.
 
 ## What stayed as it was
@@ -316,8 +435,9 @@ read for each path below.
 - **The earlier validation records of the baseline.** Neither is edited.
 - **The Application, the project, the procedure, and the chart.** None is
   edited.
-- **The Helm render tests.** `tests/architecture/test_helm_chart.py` is not
-  edited. Its three baseline tests render each side with one placeholder digest,
+- **The Helm render tests.** Two docstrings of
+  `tests/architecture/test_helm_chart.py` are corrected, and no code of that
+  module is edited. Its three baseline tests render each side with one placeholder digest,
   and they do not read the declared inputs.
 
 ## Privacy and publicability

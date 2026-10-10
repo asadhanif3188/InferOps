@@ -1523,6 +1523,57 @@ def test_two_descriptions_that_state_the_declared_digest_are_comparable(
     assert record["experimentEligibility"] == "not-established"
 
 
+def test_a_digest_in_a_description_that_is_not_read_does_not_leave_it_bound(
+    root: Path,
+) -> None:
+    """The target states another digest, and the baseline's description is absent.
+
+    No effective values are derived, so the rule on them is not evaluated. A
+    record of that state must not say that the digest is bound.
+    """
+    line = "digest: sha256:" + "b" * 64 + "\n"
+    edit(root / APPLICATION, TARGET_API_IMAGE, TARGET_API_IMAGE + " " * 12 + line)
+    (root / INSTALL).unlink()
+    record = refused_by(root)
+    assert states(record)[UNBOUND] == HELD
+    assert states(record)[CONTRADICTED] == NOT_EVALUATED
+    identity = record["apiImageIdentity"]
+    assert identity["bound"] is False and "digest" not in identity
+    assert identity["effectiveValuesCompared"] is False
+    assert record["unresolvedInputs"][0]["input"] == "api-image-digest"
+
+
+@pytest.mark.parametrize("stated", ['""', "null"], ids=["empty-text", "null"])
+def test_an_empty_or_removed_digest_in_both_descriptions_states_no_digest(
+    root: Path, stated: str
+) -> None:
+    """An empty text is the chart's default, and a null removes the member.
+
+    Neither states a digest, so neither contradicts the declared one. The
+    chart refuses to render a release whose digest is empty, and this tool
+    renders nothing: the page states that limit.
+    """
+    restate(root, stated)
+    record = build_record(root)
+    assert record["result"] == COMPARABLE
+    assert record["apiImageIdentity"]["statedByEffectiveValues"] == {}
+
+
+@pytest.mark.parametrize(
+    "stated",
+    ["' '", "|\n" + " " * 14 + DECLARED_DIGEST],
+    ids=["a-space", "the-declared-digest-and-a-newline"],
+)
+def test_a_text_near_the_declared_digest_in_both_descriptions_is_refused(
+    root: Path, stated: str
+) -> None:
+    restate(root, stated)
+    assert found(refused_by(root)) == [
+        (CONTRADICTED, "effective: baseline /api/image/digest"),
+        (CONTRADICTED, "effective: target /api/image/digest"),
+    ]
+
+
 def test_two_descriptions_that_state_another_valid_digest_are_refused(
     root: Path,
 ) -> None:
@@ -1776,12 +1827,15 @@ def test_a_description_that_is_not_read_whole_refuses_the_comparison(
         "release",
     }
     assert record["readinessInputs"] == {} and record["effectiveTopology"] == {}
-    # The declared digests are read without a description, and they are bound.
-    # No effective values exist, so nothing compared a description with them.
-    assert record["apiImageIdentity"]["bound"] is True
-    assert record["apiImageIdentity"]["statedByEffectiveValues"] == {}
-    assert [entry["input"] for entry in record["unresolvedInputs"]] == [
-        "caller-profile"
+    # The declared digests are valid. No effective values exist, so nothing
+    # compared a description with them, and the digest is not bound.
+    identity = record["apiImageIdentity"]
+    assert {stated["state"] for stated in identity["sides"].values()} == {"valid"}
+    assert identity["effectiveValuesCompared"] is False
+    assert identity["bound"] is False and "digest" not in identity
+    assert [(e["input"], e["sides"]) for e in record["unresolvedInputs"]] == [
+        ("api-image-digest", ["baseline", "target"]),
+        ("caller-profile", ["baseline", "target"]),
     ]
     # No path of this host is stated.
     assert str(root) not in json.dumps(record)
@@ -2070,6 +2124,7 @@ def test_the_committed_inputs_declare_one_valid_digest_for_both_sides() -> None:
         for side in ("baseline", "target")
     }
     assert identity["source"] == INPUTS
+    assert identity["effectiveValuesCompared"] is True
     assert identity["statedByEffectiveValues"] == {}
     assert states(record)[UNBOUND] == states(record)[CONTRADICTED] == HELD
     assert DIGEST_STATES == ("valid", "absent", "malformed", "not-read")
@@ -2209,6 +2264,9 @@ NOT_DIGESTS = [
         id="an-image-reference",
     ),
     pytest.param(f'"{DECLARED_DIGEST} "', f'"{DECLARED_DIGEST} "', id="trailing-space"),
+    pytest.param(
+        f"|\n    {DECLARED_DIGEST}", f"|\n    {DECLARED_DIGEST}", id="a-newline"
+    ),
     pytest.param("12", "12", id="a-number"),
     pytest.param("true", "true", id="a-boolean"),
     pytest.param("[a]", "[a]", id="a-list"),
@@ -2229,6 +2287,8 @@ def test_two_equal_values_that_are_not_digests_are_refused(
     for side in ("baseline", "target"):
         assert record["apiImageIdentity"]["sides"][side]["state"] == "malformed"
     json.dumps(record)
+    assert record["experimentEligibility"] == "not-established"
+    assert record["unresolvedInputs"][-1]["input"] == "caller-profile"
 
 
 @pytest.mark.parametrize(
@@ -2245,6 +2305,8 @@ def test_a_digest_that_no_member_states_is_absent_and_is_given_no_default(
     for side in ("baseline", "target"):
         assert record["apiImageIdentity"]["sides"][side] == {"state": "absent"}
     assert "no default is assumed" in record["findings"][0]["detail"]
+    assert record["experimentEligibility"] == "not-established"
+    assert record["unresolvedInputs"][-1]["input"] == "caller-profile"
 
 
 UNREAD_INPUTS = [
@@ -2312,6 +2374,8 @@ def test_comparison_inputs_that_are_not_read_whole_refuse_the_comparison(
         "target": {"state": "not-read"},
     }
     assert record["unresolvedInputs"][0]["sides"] == ["baseline", "target"]
+    assert record["experimentEligibility"] == "not-established"
+    assert record["unresolvedInputs"][-1]["input"] == "caller-profile"
     assert str(root) not in json.dumps(record)
     with pytest.raises(WriteRefused):
         write_profile(root)
@@ -2326,6 +2390,7 @@ def test_the_declared_digests_are_read_when_no_release_is_derived(root: Path) ->
     assert AT_BASELINE in found(record)
     assert states(record)[UNBOUND] == NOT_HELD
     assert states(record)[CONTRADICTED] == NOT_EVALUATED
+    assert record["apiImageIdentity"]["effectiveValuesCompared"] is False
 
 
 def test_the_target_has_one_application_and_an_undeclared_one_is_refused(

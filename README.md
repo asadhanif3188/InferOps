@@ -213,9 +213,8 @@ a cluster address, or a chart repository, revision, or path that one side states
 alone is refused. So is a readiness input that the effective values of a side do not
 hold with a usable value. Since `V2-S4-006-PR1` each side also declares one API image
 digest to the comparison, and a digest that is absent, malformed, or not the digest of
-the other side is refused. That digest is a declared comparison input. It is not the
-digest that an operator installs with, and it is not a digest that a cluster reported
-for the baseline. A comparable record is a statement about committed files.
+the other side is refused. That digest is a declared comparison input. No install
+procedure reads it, and no cluster reported it for the baseline. A comparable record is a statement about committed files.
 It is not eligibility for an experiment: no caller profile exists, and no record
 shows that a run installed either side with the declared digest.
 The profile is an experiment baseline and not a product tier. No Application reads

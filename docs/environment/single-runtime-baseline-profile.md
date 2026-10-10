@@ -238,8 +238,8 @@ receives. It does not state a rendered probe, and no probe was observed.
 
 ### The API image digest
 
-> **Note, 2026-10-10 (`V2-S4-006-PR1`).** Until this change no committed file
-> stated an API image digest for either side. The record listed the digest as
+> **Note, 2026-10-10 (`V2-S4-006-PR1`).** Until this change no committed input
+> of the comparison stated an API image digest for either side. The record listed the digest as
 > unresolved, and the result was `COMPARABLE`. Two descriptions that both
 > stated the text `abc` as the digest gave `COMPARABLE` too. The digest is now
 > a required input of each side. An absent digest, a malformed digest, and two
@@ -273,8 +273,10 @@ argument. The tool classifies the declared digest of each side:
 - **Two valid digests that differ are refused.**
 - **A description may state the digest too, and then it must state the declared
   one.** The tool reads `/api/image/digest` of the effective values of each
-  side. An empty text or an absent value states none. Another value that is
-  not the declared digest of that side gives
+  side. An empty text states none: it is the chart's default. A null states
+  none too: it removes the member. The chart refuses to render a release with
+  an empty digest, and this tool renders nothing, so it does not report that.
+  Another value that is not the declared digest of that side gives
   `baseline-api-image-digest-contradicted`. A digest that one description
   states alone is also a one-sided hand-written value, and
   `baseline-install-differs` refuses it as before.
@@ -289,7 +291,8 @@ one of three things, and a record states which one it holds.
 | Observed runtime identity | A value that a cluster reported for a running pod | No. The tool reads no cluster |
 
 **The origin of the committed value.** Both sides declare
-`sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56`. A cluster reported that value as the `imageID` of the two API pods
+`sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56`. A cluster reported `localhost/inferops-api@` followed by that value as the
+`imageID` of the two API pods
 of the target in one retained read:
 [`pods-before.json`](../proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/pods-before.json),
 at `docs/proof/environment/v2-s4-005-pr2-service-endpoint-state-run-1/pods-before.json`. In that read the value is an observed runtime identity of the
@@ -299,7 +302,8 @@ so the value was not observed for the baseline. One test holds that the
 declared value is the one that the read reports.
 
 **A `COMPARABLE` record does not establish that a run installs either side with
-the declared digest.** Another build of the API image has another digest. An
+the declared digest.** Another build of the API image can have another digest, and nothing here
+compares two builds. An
 operator who applies the Application gives the digest of the image on that
 host, and that procedure does not read the comparison inputs. A later
 experiment that uses the baseline must not read `COMPARABLE` as an installed
@@ -309,8 +313,15 @@ makes that check.
 
 A record states the identity under `apiImageIdentity`: the category, the source
 file, the usable form, the state of each side, the digest of each `valid` side,
-each digest that the effective values state, whether the identity is bound, and
-the bound digest when it is.
+whether the effective values of both sides were compared with it, each digest
+that the effective values state, whether the identity is bound, and the bound
+digest when it is.
+
+**A declared digest that no description was compared with is not bound.** When
+a description is not read whole, or a side derives no release, no effective
+values exist. The rule on them is `not-evaluated`, the record states
+`effectiveValuesCompared` as false and `bound` as false, and it lists the
+digest as unresolved. Such a record is `REFUSED` for the earlier rule.
 
 ### Unresolved inputs and eligibility
 
@@ -326,7 +337,8 @@ committed file resolves under `unresolvedInputs`:
 The caller profile is listed in every record, because this tool reads none.
 The record of the committed tree lists no other input: the API image digest is
 bound. A record whose API image digest is not bound lists `api-image-digest`
-too, with the sides that state no usable digest, and that record is `REFUSED`.
+too, with the sides that declare no usable digest, or with both sides when
+both are `valid` and the identity is still not bound. That record is `REFUSED`.
 
 ## The permitted differences
 

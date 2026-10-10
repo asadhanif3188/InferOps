@@ -4,6 +4,7 @@
     "boundary": "The digest is a declared comparison input: a committed file states it. It is not an install input, and it is not an observed runtime identity. This record does not establish that a run installs either release with it.",
     "category": "declared-comparison-input",
     "digest": "sha256:244251f76e5959c58e52689337298a24af46b34d8fd36b097cb638671eccda56",
+    "effectiveValuesCompared": true,
     "form": "sha256: and 64 lowercase hexadecimal digits",
     "sides": {
       "baseline": {

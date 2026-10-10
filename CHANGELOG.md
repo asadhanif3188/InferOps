@@ -1125,8 +1125,8 @@ from `1.0.0`.
   [the validation record](docs/proof/environment/v2-s4-005-pr2-validation.md).
 - **The baseline comparison gave `COMPARABLE` with no API image digest, and with
   one malformed text as the digest of both sides. It now requires one usable
-  digest from each side, and the two must be equal.** No committed file stated
-  an API image digest. The comparison record listed the digest as unresolved,
+  digest from each side, and the two must be equal.** No committed input of
+  the comparison stated an API image digest. The comparison record listed the digest as unresolved,
   and the result stayed `COMPARABLE` at exit status 0. Two descriptions that
   both stated `abc` gave the same result, and one test expected it.
   `V2-S4-006-PR1` adds one hand-written file,
@@ -1150,7 +1150,7 @@ from `1.0.0`.
   no committed file. The declared value is the one that a cluster reported for
   the two API pods of the target in the retained endpoint reading of
   2026-10-09. It names one local build on one host, it was not observed for the
-  baseline, and another build has another digest. So a `COMPARABLE` record does
+  baseline, and another build can have another digest. So a `COMPARABLE` record does
   not establish that a run installs either side with the declared digest. No
   Application, procedure, chart file, contract, binding, desired-state file,
   freeze record, or retained evidence file is edited, the committed baseline

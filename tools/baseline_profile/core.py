@@ -1268,8 +1268,9 @@ def _api_image_identity(
     """The declared API image digest of each side, and each way it is not bound.
 
     The identity is bound when each side declares a usable digest, the two are
-    equal, and no effective values state another. The effective values are
-    read when both sides have them; an empty mapping leaves that part unread.
+    equal, and the effective values of both sides were read and state no other.
+    An empty mapping of effective values leaves that part unread. The identity
+    is then not bound, and the statement says that no description was compared.
     """
     source = COMPARISON_INPUTS_PATH
     declared, reason = _declared_digests(root)
@@ -1335,19 +1336,23 @@ def _api_image_identity(
                     f"side is {sides[side].get('digest', 'not a usable digest')}",
                 )
             )
+    # A declared digest that no effective values were compared with is not
+    # bound: a description that was not read can state another.
+    bound = not findings and bool(effective)
     statement: dict[str, Any] = {
         "category": DIGEST_CATEGORY,
         "source": source,
         "form": _DIGEST_FORM,
-        "bound": not findings,
+        "bound": bound,
         "sides": sides,
+        "effectiveValuesCompared": bool(effective),
         "statedByEffectiveValues": restated,
         "boundary": "The digest is a declared comparison input: a committed file "
         "states it. It is not an install input, and it is not an observed "
         "runtime identity. This record does not establish that a run installs "
         "either release with it.",
     }
-    if not findings:
+    if bound:
         statement["digest"] = digests[0]
     return findings, statement
 
@@ -1371,8 +1376,8 @@ def _unresolved(identity: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "statement": "The committed files do not give both sides one "
                 f"API image digest of the form {_DIGEST_FORM}. The comparison "
                 "is refused until the declared comparison inputs state one "
-                "usable digest for both sides, and no description states "
-                "another.",
+                "usable digest for both sides, and the effective values of "
+                "both sides are read and state no other.",
             }
         )
     entries.append(
