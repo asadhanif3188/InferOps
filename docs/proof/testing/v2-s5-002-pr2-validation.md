@@ -301,6 +301,28 @@ session that wrote the first commit.
 | `uv run --locked python -m pytest tests/architecture/test_argocd_bootstrap.py -q`, after the correction | 101 passed |
 | `uv run --locked python -m pytest -q`, second run, on the final tree | 20,997 passed, 0 failed, 42 skipped, 14 deselected by the default marker expression, in 46 min 40 s. The tree is the tree of the second commit but for this row |
 
+### The hosted type check failed on the second commit
+
+The hosted workflow ran on the pull request after the push. Its job for format, lint,
+and types failed at `python -m mypy`, with two errors in the suite of this change: the
+test of a directory junction called a function that the type stubs define for Windows
+only. On the Windows host of this change the same command found no issue, and no command
+of this record checked the types for another platform. So the two rows above that state
+"No issues found" were true of one platform.
+
+A third commit corrects it. The call is in a helper that reads `sys.platform`, which the
+type checker reads too. No rule, no page of the layout, and no other test changed.
+
+| Command, at the third commit | Result |
+|---|---|
+| `uv run --locked python -m mypy` | No issues found in 392 source files |
+| `uv run --locked python -m mypy --platform linux` | No issues found in 392 source files |
+| `uv run --locked ruff format --check .` and `uv run --locked ruff check .` | 715 files already formatted. All checks passed |
+| `uv run --locked python -m pytest tests/testing/test_experiment_evidence_layout.py -q` | 215 passed, 2 skipped |
+
+The default lane was not run again for the third commit. It changes one test and this
+record. The hosted workflow runs the lane on the pull request.
+
 ### The skipped tests
 
 Three tests of the suite skip by host. On this host two skip: one creates a symbolic

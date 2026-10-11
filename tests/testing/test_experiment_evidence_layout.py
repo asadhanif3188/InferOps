@@ -38,6 +38,7 @@ import json
 import os
 import re
 import shutil
+import sys
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -1669,16 +1670,26 @@ def test_a_corrections_directory_of_a_run_that_is_a_file_is_refused(
     assert core.repository_report(tmp_path).refused
 
 
+def _junction(target: Path, link: Path) -> None:
+    """Create a directory junction, or skip on a host that has none.
+
+    The platform is read from ``sys.platform``, which the type checker reads too:
+    the function that creates a junction is defined for one platform only.
+    """
+    if sys.platform == "win32":
+        import _winapi
+
+        _winapi.CreateJunction(str(target), str(link))
+    else:
+        pytest.skip("a directory junction is of one host's file system")
+
+
 def test_a_directory_junction_is_a_link_to_the_check(tmp_path: Path) -> None:
     """A real link on a host that lets the suite create no symbolic link."""
-    if os.name != "nt":
-        pytest.skip("a directory junction is of one host's file system")
-    import _winapi
-
     run_dir = _build(tmp_path)
     outside = tmp_path / "outside"
     _write(outside / "a.json", "{}\n")
-    _winapi.CreateJunction(str(outside), str(run_dir / "linked"))
+    _junction(outside, run_dir / "linked")
     report = core.check_run(run_dir, tmp_path)
     assert [(f.rule, f.path) for f in report.findings] == [
         (core.RULE_FILE_NOT_REGULAR, f"{RUN_REF}/linked")
@@ -1686,9 +1697,7 @@ def test_a_directory_junction_is_a_link_to_the_check(tmp_path: Path) -> None:
     with pytest.raises(core.LayoutError):
         core.describe_file(run_dir, "linked/a.json", "pods")
     (run_dir / "linked").rmdir()
-    _winapi.CreateJunction(
-        str(run_dir), str(tmp_path / EXPERIMENT_REF / "runs" / "alias")
-    )
+    _junction(run_dir, tmp_path / EXPERIMENT_REF / "runs" / "alias")
     listing = core.repository_report(tmp_path)
     assert [(f.rule, f.path) for f in listing.findings] == [
         (core.RULE_FILE_NOT_REGULAR, f"{EXPERIMENT_REF}/runs/alias")
