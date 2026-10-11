@@ -1,7 +1,8 @@
 # The RP-1 reliability workload
 
-Status: **defined and checked by `V2-S5-001-PR1`. No run has executed under it, and no
-runner reads it yet.** The versioned profile
+Status: **defined and checked by `V2-S5-001-PR1`. No run has executed under it.**
+Since `V2-S5-001-PR2` [the in-cluster runner](reliability-runner.md) reads it. The
+versioned profile
 [`rp-1-profile.v1.json`](../../deploy/serving/reliability/rp-1-profile.v1.json) states
 what one caller request is, how many callers send it, and what counts as a success.
 The [`tools.reliability_profile`](../../tools/reliability_profile/) command loads the
@@ -58,7 +59,8 @@ The fixture sends this one message in each request:
 
 The text is public: it is committed in the V1 load profile. It holds no personal
 data and no secret. The profile states that a result under RP-1 holds no prompt
-text. The format of a result is not decided here.
+text. [The runner page](reliability-runner.md#the-caller-record) states the format of
+a result.
 
 ### Why the generation settings are not sent
 
@@ -155,7 +157,7 @@ V1 code.
   a success. It states no abort.
 - **The outcome names.** The V1 harness gives each request one of six outcomes.
   RP-1 fixes what a success is. It does not fix the names of the failures or the
-  format of a caller result.
+  format of a caller result. The runner of `V2-S5-001-PR2` uses the six V1 names.
 - **The identity probe.** Before any load, the V1 harness reads the readiness
   answer and the model list, and it requires the adapter status, the model
   revision, and the runtime name.
@@ -223,9 +225,11 @@ member.
 Rules 3, 4, 8, 11, and 14 compare the profile with constants in the tool. So do
 the caller of rule 7, the method, the content type, and the header names of rule 9,
 the sampling seed of rule 10, the late answer of rule 12, and the choice of rule 13. They hold the
-statement of the profile. They do not inspect a runner, because no runner exists
-yet. The suite holds the constants of rules 9, 11, 12, and 13 against the V1
+statement of the profile. They do not inspect a runner. The suite holds the
+constants of rules 9, 11, 12, and 13 against the V1
 harness: against its transport over loopback HTTP, and against its classification.
+Since `V2-S5-001-PR2` the suite of [the runner](reliability-runner.md) holds what
+the runner sends against the profile and against the V1 harness.
 
 ## Commands
 
@@ -248,9 +252,10 @@ The suite is
 ## What this does not establish
 
 - Nothing about a caller. No request was sent under RP-1.
-- Nothing about a runner. No tool sends RP-1 yet. The target, the caller location,
-  and the connection behaviour are statements that a runner must meet. No check
-  inspects a runner.
+- Nothing about a runner. This tool inspects none. The target, the caller
+  location, and the connection behaviour are statements of the profile.
+  [The runner page](reliability-runner.md) states what the runner of
+  `V2-S5-001-PR2` does, and what its suite holds.
 - Nothing about the values a delivered release receives. The V1 loader compares the
   generation settings and the API deadline with the chart defaults and the
   real-profile values. It does not read the values of an environment's desired

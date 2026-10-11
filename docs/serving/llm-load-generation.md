@@ -37,7 +37,10 @@ Since `V2-S5-001-PR1`,
 content digest. It reuses the fixture, the generation settings, the deadline, and
 four of the five members of the success rule. A change of the profile file, other
 than its line endings, refuses RP-1 until a new revision of RP-1 states the
-difference.
+difference. Since `V2-S5-001-PR2`,
+[the in-cluster reliability runner](reliability-runner.md) restates the transport
+and the classification of this harness in one file that a pod executes, and a
+suite compares the two. This harness is not changed.
 
 ## What the profile fixes
 

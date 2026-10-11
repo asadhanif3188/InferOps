@@ -786,6 +786,18 @@ register the new digest in `tools/reliability_profile/core.py` without changing 
 earlier one. Do this before a run uses the revision. Never present the profile as
 a representative workload, an overload test, or a benchmark.
 
+The [in-cluster reliability runner](docs/serving/reliability-runner.md) sends that
+profile from a pod to the API Service. Keep `tools/reliability_runner/incluster.py`
+to the standard library: a pod holds an interpreter and that file. Keep its
+classification and its transport equal to the load harness's, which the suite
+compares case by case. Do not give the runner a readiness probe, a Kubernetes API
+call, or a stop on an outcome: a caller record is decided by what a caller saw.
+Keep the prompt, the completion, and the message of an error out of a record.
+Rehearse without contacting anything with
+`uv run --locked python -m tools.reliability_runner rehearse`. The real path is
+`scripts/environment/reliability-runner.sh`, and it runs only when an operator
+starts it.
+
 The [performance scenarios](docs/serving/performance-scenarios.md) run that load
 profile against a release the workflow installs, beside the node's resource counters
 and the release collector's readings. Validate the matrix with
