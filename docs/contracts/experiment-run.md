@@ -8,7 +8,9 @@ analysis consumes one. The fixtures are hand-written documents with placeholder
 identities. Three run manifests that were committed before the schema state the same
 `apiVersion` and `kind` and do not conform:
 [the compatibility section](#compatibility-with-the-manifests-committed-before-the-schema)
-says how they are held.
+says how they are held. Since `V2-S5-002-PR2`,
+[the experiment evidence layout](../testing/experiment-evidence-layout.md) says where the directory of a run is, and
+a separate check opens the evidence files of one. This validator still opens none.
 
 | Property | Value |
 |---|---|
@@ -319,7 +321,8 @@ The suite asserts each, so closing one is a visible change.
 - **A verified cleanup that lists an item it left validates.** A cleanup can be
   verified and leave an image in a node.
 - **Two evidence paths that one directory cannot hold validate.** `pods` and
-  `pods/a.json` cannot both be files.
+  `pods/a.json` cannot both be files. The check of a run directory refuses such a
+  manifest, because one of the two files is absent.
 - **A `FAILED`, `INCONCLUSIVE`, or `ABORTED` run whose registered fault was not
   injected validates.** Only `PASSED` and `REFUSED` are bound to the injection.
 - **The schema accepts `2026-02-29T10:00:00Z`.** The form is checked by the schema and
@@ -327,10 +330,17 @@ The suite asserts each, so closing one is a visible change.
 
 ### Rules that nothing applies
 
-Each of these is a statement about a run that no code in this repository checks.
+Each of these is a statement about a run that this validator does not check.
+**Since `V2-S5-002-PR2`, another check holds some of them for a manifest in a run
+directory.** [The experiment evidence layout](../testing/experiment-evidence-layout.md#the-experimentrun-contract)
+lists the five: that an evidence file exists and has its digest, that a present file is
+listed, that the freeze record exists with its revision and digest, that the caller
+record names the same experiment and run, and that two evidence paths are paths one
+directory can hold. `python -m tools.experiment_run check` holds none of the five, and
+no code in this repository checks the others.
 
 - **That an evidence file exists and has its stated digest.** The validator opens no
-  evidence file. A later change owns the evidence layout and its integrity check.
+  evidence file. The check of a run directory opens each one.
 - **That an evidence file that is present is listed.**
 - **That the freeze record exists, has the stated revision, and has the stated
   digest.** The validator does not read the freeze registry.
@@ -480,9 +490,11 @@ run for this change.
   evidence files.
 - **It does not define the evidence layout.** It names evidence files by a path inside
   the run's directory. Which files a run holds, where run directories are, and how a
-  directory is checked are not decided here.
+  directory is checked are not decided here. [The experiment evidence layout](../testing/experiment-evidence-layout.md)
+  decides them, since `V2-S5-002-PR2`.
 - **It does not define a role vocabulary.** One role has a meaning to a rule: `caller`.
-  Every other role is a name that the writer chose.
+  Every other role is a name that the writer chose. The evidence layout registers 13
+  roles for a file of a run directory. The schema still accepts any role.
 - **It does not describe a run that deploys nothing.** The environment, the release, the
   runtime image, and the model are required. The two static E01 runs have no value for
   them.

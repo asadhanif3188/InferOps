@@ -1466,6 +1466,16 @@ def _plain(path: str) -> bool:
     )
 
 
+def _named_freeze_record(manifest: Any) -> Any:
+    """The freeze record a run manifest names, in either shape of a manifest.
+
+    A manifest of the published ExperimentRun schema names it in ``metadata.spec``.
+    The three manifests committed before the schema name it in ``metadata``.
+    """
+    metadata = manifest["metadata"]
+    return metadata.get("spec", metadata)["freezeRecord"]
+
+
 def _checked_review(
     ledger_name: str, row: Mapping[str, str], repo_root: Path
 ) -> dict[str, Any]:
@@ -1525,8 +1535,8 @@ def _checked_review(
     freeze_ref = freeze.get("path")
     try:
         manifest = json.loads((run_dir / _RUN_MANIFEST).read_text(encoding="utf-8"))
-        named = manifest["metadata"]["freezeRecord"]
-    except (OSError, ValueError, KeyError, TypeError):
+        named = _named_freeze_record(manifest)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
         named = None
     if (
         not isinstance(freeze_ref, str)

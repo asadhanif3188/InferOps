@@ -10,6 +10,40 @@ from `1.0.0`.
 
 ### Added
 
+- **The directory of an experiment run has a layout and an offline check. No run
+  directory of the layout exists.** `V2-S5-002-PR2` adds `tools/experiment_evidence`,
+  one suite, and one page. A run directory is `runs/<runId>` beside the freeze record
+  that its ExperimentRun manifest names. The check opens the evidence files, which
+  the ExperimentRun validator does not: each file that the manifest names is present
+  with its stated digest, each file that is present is named, and the freeze record
+  has its stated revision and digest. **A digest is the evidence index's digest of a
+  text file**, the SHA-256 of the content with each CRLF replaced by LF, so one file
+  has one digest in a manifest, in a review record, and in the index, on each host.
+  An evidence file is UTF-8 text under one of the seven suffixes that the index
+  hashes as text. Each evidence file has one of 13 registered roles, 11 raw and 2
+  derived. **A generated summary stays downstream of raw evidence:** a derived file
+  with no raw file is refused, and a run has one digest over its raw files alone,
+  which a rewritten summary does not move. A file with the role `caller` is read: it
+  is a caller record of the same experiment, run, profile revision, and release, and
+  not a rehearsal. **A correction is additive.** It is a new file beside the `runs`
+  directory that states the digest of the manifest, of each file it corrects, and of
+  the correction before it, and it moves no digest of the run. The layout requires no
+  file, so it requires none that holds a secret, a prompt, or a path of a host; two
+  text rules refuse a word with a published credential prefix and a path under a user
+  directory. **One function of the result review gate changed:** it now reads the
+  freeze record of a manifest of the published schema as well as of the three earlier
+  manifests, and its verdict on each committed ledger is unchanged. **What this does
+  not do:** nothing writes a run directory and nothing reads one for analysis. The
+  three committed run directories were written before the schema; the check lists
+  each as `pre-schema` and does not check it. Only the caller file has a defined
+  form, and no collector for another raw role exists. The check reads one tree and
+  not Git, so a file replaced together with its digest in the manifest conforms until
+  a correction or a review record states the manifest's digest. No rule shows that a
+  derived file was computed from the raw files. No claim, ledger, register row,
+  dashboard row, evidence-index entry, or freeze record was added or changed. The
+  evidence is static, C0. See
+  [the layout page](docs/testing/experiment-evidence-layout.md) and
+  [the validation record](docs/proof/testing/v2-s5-002-pr2-validation.md).
 - **A run of an experiment has a manifest schema: ExperimentRun `v1alpha1`. No run
   produced a manifest of it.** `V2-S5-002-PR1` adds
   `contracts/experiment/experiment-run.v1alpha1.schema.json`, `tools/experiment_run`,
