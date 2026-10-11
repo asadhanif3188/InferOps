@@ -6,7 +6,8 @@
     python -m tools.reliability_runner verify RECORD [--plan FILE]
     python -m tools.reliability_runner rehearse
 
-``plan`` prints the plan of one run of the committed RP-1 profile. ``manifest``
+``plan`` prints the plan of one run of the committed RP-1 profile. Its target is the
+API Service of the release, and no option changes it. ``manifest``
 prints one ConfigMap and one Job that run a plan. ``verify`` checks a caller record,
 which is the log of the pod of a run, and prints a summary of counts. ``rehearse``
 runs the loop of the runner against scripted answers and prints the caller record.
@@ -31,10 +32,7 @@ import sys
 from pathlib import Path
 
 from .core import (
-    API_SERVICE,
-    API_SERVICE_PORT,
     PULL_POLICIES,
-    RELEASE_NAMESPACE,
     RULE_PLAN,
     RunnerError,
     build_manifest,
@@ -70,9 +68,6 @@ def _parser() -> argparse.ArgumentParser:
         "--release-id",
         help="the release identifier that the operator declares for the run",
     )
-    plan.add_argument("--service", default=API_SERVICE)
-    plan.add_argument("--namespace", default=RELEASE_NAMESPACE)
-    plan.add_argument("--port", type=int, default=API_SERVICE_PORT)
 
     manifest = commands.add_parser("manifest", help="print the ConfigMap and the Job")
     manifest.add_argument("--plan", required=True, type=Path)
@@ -103,9 +98,6 @@ def _run(arguments: argparse.Namespace) -> None:
                     duration_seconds=arguments.duration_seconds,
                     request_ceiling=arguments.request_ceiling,
                     release_id=arguments.release_id,
-                    service=arguments.service,
-                    namespace=arguments.namespace,
-                    port=arguments.port,
                 )
             )
         )

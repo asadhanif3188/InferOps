@@ -12,22 +12,28 @@
 # This script does not wait for the release to be ready, and it does not look
 # at a pod of the release. It reads one thing from the release when no image is
 # given: the image that the API Deployment names. The runner uses that image as
-# its interpreter, because the node already holds it. That read is of the
-# Deployment's specification and not of its status.
+# its interpreter, because a node that runs an API pod holds it. Nothing
+# schedules the runner onto such a node. That read is of the Deployment's
+# specification and not of its status.
 #
 # The four actions:
 #
 #   start     writes the plan and the manifest of the run under .artifacts/,
-#             and applies the manifest. It returns when the Job is created. It
-#             does not wait for the run.
+#             and creates the two objects. It refuses when an object of that
+#             name exists. It returns when the Job is created. It does not
+#             wait for the run.
 #   status    prints the state of the Job. It changes nothing.
-#   collect   writes the log of the pod as the caller record, and checks it.
+#   collect   reads the log of the pod, and checks it. It keeps the log as
+#             the caller record only when each rule accepts it.
 #   cleanup   deletes the Job and the ConfigMap of the run, by name.
 #
-# A run is bounded three times: by its duration, by the active deadline of the
-# Job, and by the time to live of the finished Job, after which Kubernetes
-# deletes the Job and its pod. The log is deleted with the pod, so collect the
-# record within that time.
+# A run has four bounds: its duration, its request ceiling, the active
+# deadline of the Job, and the time to live of the finished Job. Kubernetes
+# documents that it deletes a finished Job and its pod after that time, and
+# that a log does not outlive its pod. So collect the record within that
+# time. The time to live does not delete the ConfigMap: cleanup does.
+#
+# This script was not executed against a cluster in the change that added it.
 #
 # Exit status: 0 when the action did what it states. For collect, 0 says that
 # each rule accepted the record. It does not say that a request succeeded. 5
@@ -54,7 +60,8 @@ readonly API_COMPONENT_SELECTOR="${INFEROPS_RELEASE_SELECTOR},app.kubernetes.io/
 readonly REFUSED_EXIT=5
 readonly TOOL_REFUSED_EXIT=3
 # Above the termination grace period of the pod, which is one client deadline
-# and 30 seconds: a foreground deletion waits for the pod.
+# and 30 seconds. Kubernetes documents that a foreground deletion of a Job
+# waits for its pod.
 readonly DELETE_TIMEOUT="240s"
 
 # --- Arguments --------------------------------------------------------------
@@ -109,6 +116,7 @@ run_rel="${RUNS_REL}/${run_id}"
 run_dir="${INFEROPS_ROOT}/${run_rel}"
 
 inferops::require_cmd kubectl
+inferops::require_cmd python
 
 # --- The target -------------------------------------------------------------
 
@@ -136,10 +144,21 @@ case "${action}" in
       esac
     fi
 
+    # An object of this name is an earlier run, or what the time to live of an
+    # earlier Job left. A Job that mounted an earlier ConfigMap would run an
+    # earlier plan under this run identifier.
+    if ! existing="$(inferops::target_kubectl get jobs,configmaps \
+      --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
+      --field-selector "metadata.name=${job_name}" -o name 2>/dev/null | tr -d '\r')"; then
+      inferops::fail "could not read whether '${job_name}' exists in '${INFEROPS_RELEASE_NAMESPACE}'. A read that did not answer is not a result of nothing there. Nothing was created."
+    fi
+    [ -z "${existing}" ] ||
+      inferops::fail "an object named '${job_name}' exists in '${INFEROPS_RELEASE_NAMESPACE}'. Remove it with 'cleanup', and start the run under another run identifier. Nothing was created."
+
     mkdir -p "${run_dir}"
 
     plan_arguments=(plan --experiment-id "${experiment_id}" --run-id "${run_id}"
-      --duration-seconds "${duration_seconds}" --namespace "${INFEROPS_RELEASE_NAMESPACE}")
+      --duration-seconds "${duration_seconds}")
     [ -z "${request_ceiling}" ] || plan_arguments+=(--request-ceiling "${request_ceiling}")
     [ -z "${release_id}" ] || plan_arguments+=(--release-id "${release_id}")
 
@@ -147,20 +166,21 @@ case "${action}" in
       >"${run_dir}/plan.json"; then
       rm -f "${run_dir}/plan.json"
       rmdir "${run_dir}" 2>/dev/null || true
-      inferops::fail "the tool refused the plan. Nothing was applied."
+      inferops::fail "the tool wrote no plan. Its message is above. Nothing was created."
     fi
     if ! (cd "${INFEROPS_ROOT}" && python -m "${RUNNER_MODULE}" manifest \
       --plan "${run_rel}/plan.json" --image "${image}") >"${run_dir}/manifest.json"; then
       rm -f "${run_dir}/plan.json" "${run_dir}/manifest.json"
       rmdir "${run_dir}" 2>/dev/null || true
-      inferops::fail "the tool refused the manifest. Nothing was applied."
+      inferops::fail "the tool wrote no manifest. Its message is above. Nothing was created."
     fi
 
     inferops::log "plan and manifest are in ${run_rel}"
     inferops::log "image ${image}"
 
-    inferops::target_kubectl apply -f "$(inferops::native_path "${run_dir}/manifest.json")" ||
-      inferops::fail "the manifest was not applied. Read the state with 'status', and remove what was created with 'cleanup'."
+    # create and not apply: an object that exists is a refusal, and not a change.
+    inferops::target_kubectl create -f "$(inferops::native_path "${run_dir}/manifest.json")" ||
+      inferops::fail "the two objects were not both created. Remove what was created with 'cleanup'. The run identifier '${run_id}' is spent: '${run_rel}' is kept, and a new start needs another identifier."
 
     inferops::log "job ${job_name} is created in ${INFEROPS_RELEASE_NAMESPACE}. This script does not wait for it."
     inferops::log "the run sends requests when its pod starts. It does not wait for the release to be ready."
@@ -180,43 +200,51 @@ case "${action}" in
     [ -f "${run_dir}/plan.json" ] ||
       inferops::fail "'${run_rel}/plan.json' does not exist. 'collect' checks the record against the plan that 'start' wrote on this host."
     [ ! -e "${run_dir}/caller.jsonl" ] ||
-      inferops::fail "'${run_rel}/caller.jsonl' already exists. A record is read once, and this script does not write over it."
+      inferops::fail "'${run_rel}/caller.jsonl' already exists. An accepted record is kept, and this script does not write over it."
 
     # The log of a pod that is still running is a record with no end line, and
-    # the tool refuses it. The script does not wait for the Job.
+    # the tool refuses it. The script does not wait for the Job. A log that the
+    # tool refuses is kept under another name, so a later collect can run.
     if ! inferops::target_kubectl logs "job/${job_name}" \
       --namespace "${INFEROPS_RELEASE_NAMESPACE}" --container runner |
-      tr -d '\r' >"${run_dir}/caller.jsonl"; then
-      rm -f "${run_dir}/caller.jsonl"
+      tr -d '\r' >"${run_dir}/caller.partial.jsonl"; then
+      rm -f "${run_dir}/caller.partial.jsonl"
       inferops::fail "could not read the log of job ${job_name}. A read that did not answer is not an empty record."
     fi
 
     status=0
     (cd "${INFEROPS_ROOT}" && inferops::python -m "${RUNNER_MODULE}" verify \
-      "${run_rel}/caller.jsonl" --plan "${run_rel}/plan.json") \
+      "${run_rel}/caller.partial.jsonl" --plan "${run_rel}/plan.json") \
       >"${run_dir}/summary.json" || status=$?
 
     case "${status}" in
       0)
+        mv "${run_dir}/caller.partial.jsonl" "${run_dir}/caller.jsonl"
+        rm -f "${run_dir}/caller.refused.jsonl"
         sed 's/^/[inferops] /' "${run_dir}/summary.json"
         inferops::log "the caller record is in ${run_rel}/caller.jsonl. Each rule accepted it. That does not say that a request succeeded: read the outcomes."
         ;;
       "${TOOL_REFUSED_EXIT}")
         rm -f "${run_dir}/summary.json"
-        inferops::warn "the tool refused the record in ${run_rel}/caller.jsonl. The file is kept. A record with no end line is the log of a run that has not ended, or of a pod that was stopped."
+        mv -f "${run_dir}/caller.partial.jsonl" "${run_dir}/caller.refused.jsonl"
+        inferops::warn "the tool refused the log. It is kept as ${run_rel}/caller.refused.jsonl, and a later collect writes over that file. A record with no end line is the log of a run that has not ended, or of a pod that was stopped. A line that is not JSON can be a line that the runner wrote to standard error."
         exit "${REFUSED_EXIT}"
         ;;
       *)
         rm -f "${run_dir}/summary.json"
-        inferops::fail "the tool did not check '${run_rel}/caller.jsonl' (exit ${status}). The file is kept."
+        mv -f "${run_dir}/caller.partial.jsonl" "${run_dir}/caller.refused.jsonl"
+        inferops::fail "the tool did not check the log (exit ${status}). It is kept as ${run_rel}/caller.refused.jsonl."
         ;;
     esac
     ;;
 
   cleanup)
     inferops::section "Reliability run ${run_id} on ${INFEROPS_TARGET_PROVIDER}: cleanup"
-    # By name, and in the namespace of the release. The deletion of the Job
-    # deletes its pod, and the log of the pod with it.
+    # By name, and in the namespace of the release. Kubernetes documents that
+    # the deletion of a Job deletes its pod, and that a log does not outlive
+    # its pod.
+    [ -f "${run_dir}/caller.jsonl" ] ||
+      inferops::warn "'${run_rel}/caller.jsonl' does not exist: no accepted record of this run is kept on this host. The log of the pod is not readable after this deletion."
     inferops::target_kubectl delete job "${job_name}" -n "${INFEROPS_RELEASE_NAMESPACE}" \
       --ignore-not-found --cascade=foreground --wait --timeout "${DELETE_TIMEOUT}" ||
       inferops::fail "job ${job_name} was not deleted."

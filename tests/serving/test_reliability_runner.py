@@ -35,6 +35,7 @@ import subprocess
 import sys
 import threading
 from collections.abc import Callable, Iterator, Mapping
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -409,22 +410,31 @@ BODIES: list[object | None] = [
     {**ERROR_BODY, "details": "text"},
     {"code": "internal-error"},
     {"details": {"adapterKind": "mock"}},
+    # An extension and details in one body: the extension is read.
+    completion("real", details={"adapterKind": "mock"}),
 ]
-CASES = [
-    (failure, status, body, latency)
-    for failure in (None, "timeout", "transport-error")
+#: Each answer case: a status, a body, and a latency. And the two cases with no
+#: answer, once each: the classification reads no status and no body of them.
+ANSWER_CASES = [
+    (None, status, body, latency)
     for status in (200, 503, 404)
     for body in BODIES
     for latency in (1, PROFILE.request_timeout_ms, PROFILE.request_timeout_ms + 1)
 ]
+CASES = [*ANSWER_CASES, ("timeout", 0, None, 1), ("transport-error", 0, None, 1)]
 
 
-def test_the_runner_classifies_each_case_as_the_v1_harness_does() -> None:
+@pytest.mark.parametrize("require_usage", [True, False])
+def test_the_runner_classifies_each_case_as_the_v1_harness_does(
+    require_usage: bool,
+) -> None:
     document = plan()
+    document["success"]["requireUsage"] = require_usage
+    source = replace(SOURCE, require_usage=require_usage)
     outcomes = set()
     for failure, status, body, latency in CASES:
         expected = source_core.classify(
-            SOURCE,
+            source,
             answer=None if failure else source_core.HttpAnswer(status, body),
             failure=failure,
             latency_ms=latency,
@@ -451,9 +461,22 @@ def test_the_runner_classifies_each_case_as_the_v1_harness_does() -> None:
             "modelRef": expected.model_ref,
         }, case
         outcomes.add(expected.outcome)
-    assert len(CASES) == 3 * 3 * len(BODIES) * 3
+    assert len(BODIES) == 28
+    assert len(ANSWER_CASES) == 3 * 28 * 3 == 252
+    assert len(CASES) == 254
     assert outcomes == set(source_core.OUTCOMES) == set(incluster.OUTCOMES)
     assert incluster.OUTCOMES == source_core.OUTCOMES
+
+
+def test_the_transport_differs_from_the_v1_transport_in_one_parse_case() -> None:
+    # A number of too many digits is not a decode error. The V1 parser raises on
+    # it. The parser of the runner file returns no parsed body.
+    data = b"1" * 5000
+    assert incluster._parse_body(data) is None
+    with pytest.raises(ValueError):
+        source_core._parse_body(data)
+    for same in (b"{}", b"not json", b"\xff", b'{"a": [1, 2]}'):
+        assert incluster._parse_body(same) == source_core._parse_body(same)
 
 
 def test_the_runner_restates_the_limits_of_the_v1_harness() -> None:
@@ -753,7 +776,9 @@ def test_a_run_ends_at_its_duration_and_a_request_in_flight_is_recorded() -> Non
     harness.record()
 
 
-def test_a_stop_signal_ends_a_run_and_the_request_in_flight_is_recorded() -> None:
+def test_a_stop_request_ends_a_run_and_the_request_in_flight_is_recorded() -> None:
+    # The test calls `stop`, which is what the signal handler calls. No signal is
+    # delivered to a process here.
     harness: Harness
 
     def answer(sequence: int) -> Any:
@@ -765,7 +790,9 @@ def test_a_stop_signal_ends_a_run_and_the_request_in_flight_is_recorded() -> Non
     assert harness.execute() == incluster.EXIT_INTERRUPTED
     end = harness.lines[-1]
     assert end["endState"] == "interrupted"
-    assert 3 <= end["dispatched"] <= 4
+    # The other worker can dispatch while the third request is in flight, so the
+    # count is not fixed. It is far below the ceiling.
+    assert 3 <= end["dispatched"] < 1000
     assert end["recorded"] == end["dispatched"]
     assert 3 in [request["sequence"] for request in harness.requests]
     harness.record()
@@ -795,10 +822,41 @@ def test_a_worker_waits_after_a_request_that_is_not_a_success(
     harness = Harness(always(answer), request_ceiling=4)
     assert harness.execute() == 0
     assert {request["outcome"] for request in harness.requests} == {outcome}
-    # One wait of one second for each request, in steps.
-    assert sum(harness.sleeps) == pytest.approx(4 * 1.0)
-    assert core.PAUSE_AFTER_NON_SUCCESS_MS == 1000
+    # A wait occurs. Its length is held by the next test: a worker that reaches
+    # the ceiling ends the wait of the other worker early.
+    assert harness.sleeps and max(harness.sleeps) <= incluster.POLL_SECONDS
     assert len(harness.calls) == 4
+
+
+def test_the_wait_is_one_second_in_steps_and_a_stop_request_ends_it() -> None:
+    harness = Harness(always((200, completion())))
+    assert harness.plan["bounds"]["pauseAfterNonSuccessMs"] == 1000
+    assert core.PAUSE_AFTER_NON_SUCCESS_MS == 1000
+    harness.run._pause(1.0)
+    assert sum(harness.sleeps) == pytest.approx(1.0)
+    assert len(harness.sleeps) == 10
+    harness.run.stop()
+    harness.run._pause(1.0)
+    assert len(harness.sleeps) == 10
+
+
+def test_a_worker_that_fails_gives_the_end_state_failed_and_exit_4() -> None:
+    # The fourth request raises an error that no outcome names. The other worker
+    # can reach the ceiling first: the failure still decides the end state.
+    def answer(sequence: int) -> Any:
+        if sequence == 4:
+            return ValueError("FAILURE-MESSAGE-MARKER")
+        return (200, completion())
+
+    harness = Harness(answer, request_ceiling=4)
+    assert harness.execute() == incluster.EXIT_FAILED == 4
+    end = harness.lines[-1]
+    assert end["endState"] == "failed"
+    assert (end["dispatched"], end["recorded"]) == (4, 3)
+    assert "FAILURE-MESSAGE-MARKER" not in harness.out.getvalue()
+    with pytest.raises(RunnerError) as refused:
+        harness.record()
+    assert refused.value.rule in (core.RULE_SEQUENCE, core.RULE_COUNTS)
 
 
 def test_a_worker_does_not_wait_after_a_success_and_no_outcome_ends_a_run() -> None:
@@ -1023,6 +1081,7 @@ def test_the_entry_point_states_the_digest_of_the_file_and_of_the_plan(
         lines[0]["runnerSha256"]
         == hashlib.sha256(Path(incluster.__file__).read_bytes()).hexdigest()
     )
+    # The two handlers are registered. No signal is delivered to a process here.
     assert set(handlers) == {signal.SIGTERM, signal.SIGINT}
 
 
@@ -1053,7 +1112,66 @@ def request_line(lines: list[dict[str, Any]], outcome: str) -> dict[str, Any]:
 
 Defect = Callable[[list[dict[str, Any]]], Any]
 
+
+def header_of_another_service(lines: list[dict[str, Any]]) -> None:
+    lines[0]["target"].update(
+        service="another", baseUrl="http://another.inferops-release.svc:8090"
+    )
+
+
 DEFECTS: list[tuple[str, str, Defect]] = [
+    ("a header of another Service", core.RULE_MEMBERS, header_of_another_service),
+    (
+        "a latency of very many digits",
+        core.RULE_MEMBERS,
+        lambda lines: lines[1].update(latencyMs=10**20),
+    ),
+    (
+        "a timeout with an answer inside the deadline",
+        core.RULE_OUTCOME,
+        lambda lines: request_line(lines, "transport-error").update(
+            outcome="timeout", httpStatus=200
+        ),
+    ),
+    (
+        "an error that names another adapter",
+        core.RULE_OUTCOME,
+        lambda lines: request_line(lines, "http-error").update(adapterKind="mock"),
+    ),
+    (
+        "an error after the deadline",
+        core.RULE_OUTCOME,
+        lambda lines: request_line(lines, "http-error").update(latencyMs=150_001),
+    ),
+    (
+        "a transport error that names an adapter",
+        core.RULE_OUTCOME,
+        lambda lines: request_line(lines, "transport-error").update(adapterKind="real"),
+    ),
+    (
+        "an end at a ceiling that the run did not reach",
+        core.RULE_COUNTS,
+        lambda lines: lines[0]["bounds"].update(requestCeiling=9000),
+    ),
+    (
+        "an end at a duration that the run did not reach",
+        core.RULE_COUNTS,
+        lambda lines: lines[-1].update(endState="duration", elapsedMs=0),
+    ),
+    (
+        "a run that ends before it starts",
+        core.RULE_TIME,
+        lambda lines: (
+            lines.__setitem__(slice(1, -1), []),
+            lines[-1].update(
+                dispatched=0,
+                recorded=0,
+                outcomes=dict.fromkeys(incluster.OUTCOMES, 0),
+                endState="interrupted",
+                finishedAt="2025-01-01T00:00:00.000Z",
+            ),
+        ),
+    ),
     ("no header", core.RULE_HEADER, lambda lines: lines.pop(0)),
     ("two headers", core.RULE_HEADER, lambda lines: lines.insert(1, lines[0])),
     ("no end", core.RULE_END, lambda lines: lines.pop()),
@@ -1278,7 +1396,10 @@ DEFECTS: list[tuple[str, str, Defect]] = [
 #: The defects that change a value of the header that a plan also states. With
 #: the plan, the rule that compares the two refuses first. They are given with no
 #: plan, which is how a record is checked when its plan is not kept.
-WITHOUT_PLAN = {"more requests than the ceiling"}
+WITHOUT_PLAN = {
+    "more requests than the ceiling",
+    "an end at a ceiling that the run did not reach",
+}
 
 
 @pytest.mark.parametrize(
@@ -1396,6 +1517,29 @@ def test_the_committed_sample_is_a_rehearsal_that_each_rule_accepts() -> None:
     assert core.REHEARSAL_COMPLETION_TEXT not in text and PROMPT not in text
 
 
+def test_a_job_and_a_record_have_the_registered_target_and_no_other() -> None:
+    # The function takes a Service name for the suite. The command has no option
+    # for it, and neither a Job nor an accepted record has another target.
+    other = plan(service="kubernetes", namespace="default", port=443)
+    with pytest.raises(RunnerError) as refused:
+        core.build_manifest(other, image=IMAGE)
+    assert refused.value.rule == core.RULE_PLAN
+    assert plan()["target"] == core.registered_target()
+    arguments = [
+        "plan",
+        "--experiment-id",
+        "e",
+        "--run-id",
+        "r",
+        "--duration-seconds",
+        "1",
+    ]
+    for option in ("--service", "--namespace", "--port"):
+        with pytest.raises(SystemExit) as usage:
+            cli.main([*arguments, option, "1"])
+        assert usage.value.code == 2
+
+
 def test_a_job_does_not_run_a_rehearsal_plan() -> None:
     with pytest.raises(RunnerError) as refused:
         core.build_manifest(plan(mode="rehearsal"), image=IMAGE)
@@ -1450,7 +1594,7 @@ def test_no_selector_of_the_release_selects_the_runner() -> None:
 def test_the_job_is_bounded_and_it_runs_one_pod_once() -> None:
     spec = manifest()["items"][1]["spec"]
     assert (spec["completions"], spec["parallelism"], spec["backoffLimit"]) == (1, 1, 0)
-    assert spec["activeDeadlineSeconds"] == 300 + 150 + 60
+    assert spec["activeDeadlineSeconds"] == 300 + 150 + 120
     assert spec["ttlSecondsAfterFinished"] == 3600
     pod = spec["template"]["spec"]
     assert pod["restartPolicy"] == "Never"
@@ -1468,9 +1612,12 @@ def test_the_pod_holds_no_token_no_probe_and_no_second_container() -> None:
     assert not {"readinessProbe", "livenessProbe", "startupProbe", "ports"} & set(
         container
     )
+    assert "env" not in container
     assert container["command"] == [
         "python",
         "-I",
+        "-u",
+        "-B",
         "/opt/inferops-reliability/incluster.py",
         "/opt/inferops-reliability/plan.json",
     ]
@@ -1602,11 +1749,24 @@ def test_the_script_restates_the_names_of_the_tool_and_each_agrees() -> None:
     assert timeout > PROFILE.request_timeout_ms // 1000 + core.GRACE_MARGIN_SECONDS
 
 
-def test_the_script_changes_the_cluster_with_one_apply_and_two_named_deletions() -> (
+def test_the_script_changes_the_cluster_with_one_create_and_two_named_deletions() -> (
     None
 ):
     calls = re.findall(r"inferops::target_kubectl\s+([a-z-]+)", SCRIPT_CODE)
-    assert sorted(calls) == ["apply", "delete", "delete", "get", "get", "get", "logs"]
+    assert sorted(calls) == [
+        "create",
+        "delete",
+        "delete",
+        "get",
+        "get",
+        "get",
+        "get",
+        "logs",
+    ]
+    # An existing object is a refusal: the read is before the create.
+    assert SCRIPT_CODE.index("metadata.name=${job_name}") < SCRIPT_CODE.index(
+        "target_kubectl create"
+    )
     assert 'delete job "${job_name}" -n "${INFEROPS_RELEASE_NAMESPACE}"' in SCRIPT_CODE
     assert (
         'delete configmap "${job_name}" -n "${INFEROPS_RELEASE_NAMESPACE}"'
@@ -1631,7 +1791,23 @@ def test_the_script_waits_for_no_readiness_and_opens_no_forward() -> None:
         assert word not in SCRIPT_CODE, word
     # The one read of the release is the image that the Deployment names.
     assert SCRIPT_CODE.count(".spec.template.spec.containers") == 1
-    assert ".status." not in SCRIPT_CODE.split("status)")[0]
+    assert '--namespace "${INFEROPS_RELEASE_NAMESPACE}")' not in SCRIPT_CODE
+    # The status of the Job is read by the action `status`, and by no other.
+    action = SCRIPT_CODE[
+        SCRIPT_CODE.index("\n  status)") : SCRIPT_CODE.index("\n  collect)")
+    ]
+    assert action.count(".status.") == 5
+    assert ".status." not in SCRIPT_CODE.replace(action, "")
+
+
+def test_a_log_that_the_tool_refuses_is_not_kept_as_the_record() -> None:
+    collect = SCRIPT_CODE[
+        SCRIPT_CODE.index("\n  collect)") : SCRIPT_CODE.index("\n  cleanup)")
+    ]
+    assert collect.count('>"${run_dir}/caller.partial.jsonl"') == 1
+    assert '>"${run_dir}/caller.jsonl"' not in SCRIPT_CODE
+    assert 'mv "${run_dir}/caller.partial.jsonl" "${run_dir}/caller.jsonl"' in collect
+    assert collect.count('caller.refused.jsonl"\n') == 3
 
 
 def test_the_script_resolves_the_target_before_its_first_call() -> None:

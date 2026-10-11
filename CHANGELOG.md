@@ -20,17 +20,20 @@ from `1.0.0`.
   Job, which mounts both. No image is built: the Job uses an image that holds
   Python 3.12, named by digest, and the script takes the image that the API
   Deployment names. The plan repeats the request, the two workers, the client
-  deadline, and the success rule of the committed profile, and no argument
-  changes one. The target is the API Service by its cluster DNS name, and the
-  runner file refuses a URL of another form. **The runner reads no readiness
-  answer, no Kubernetes API, and no state of Argo CD.** The pod holds no service
-  account token, the Job has no probe and no init container, and the first call
-  of a run is a request. **A caller record is JSON lines: one header, one line
+  deadline, and the success rule of the committed profile, and no option of
+  the command changes one. The target is the API Service by its cluster DNS
+  name. The command has no option for it, the runner file refuses a URL of
+  another form, and the manifest builder and the record checker refuse another
+  Service. **The runner file has no code that reads a readiness answer, a
+  Kubernetes API, or a state of Argo CD.** The pod of the manifest holds no
+  service account token, the Job has no probe and no init container, and the
+  first call of a run is a request. **A caller record is JSON lines: one header, one line
   for each request, and one end line.** A request line states the UTC start and
   end to one millisecond, the request, run, and experiment identifiers, the HTTP
   status, `success`, one of the six outcomes of the V1 load harness, the
   canonical error code and condition, the latency, and the release identifier.
-  It holds no prompt text, no completion text, and no error message. A request
+  It has no member for a prompt, a completion, or an error message, and a text
+  member holds at most 64 characters of `[a-z0-9._-]`. A request
   with no answer has the status `null` and not 0. **The release identifier is a
   declared value**: no answer of the API states one. A run is bounded by a
   duration of at most 3,600 seconds, a ceiling of at most 10,000 requests, the
@@ -39,21 +42,29 @@ from `1.0.0`.
   The profile states no such wait: it is a bound of the runner**, so a count of
   failed requests is a count of this runner's attempts. The runner does not
   carry the identity probe, the warm-up, or the two stop rules of the V1
-  harness. **The runner file restates the classification and the transport of
-  the V1 harness, and it imports neither.** The suite compares the
-  classification over 729 cases and the transport over a loopback server. The
-  V1 harness is not changed. 16 rules refuse an unusable plan, an image named
-  by a tag, and a caller record that is incomplete or inconsistent. A record
+  harness. A worker that fails in a way that no outcome names ends the run with
+  the state `failed` and exit status 4. **The runner file restates the
+  classification and the transport of the V1 harness, and it imports neither.**
+  The suite compares the classification over 254 cases, each with the usage
+  rule on and off, and the transport over five paths of a loopback server. The
+  two transports differ in one parse case, which the suite holds. The
+  V1 harness is not changed. 16 rules refuse an unusable plan, an image that is
+  not named by digest, and a caller record that is incomplete or inconsistent. A record
   that each rule accepts is well-formed, and acceptance does not say that a
-  request succeeded. **This is static evidence at C0, with one rehearsal
-  against scripted answers. It registers no claim.** The script was not
-  executed. The committed network policy of the chart admits traffic to the API
-  pods only from pods of the release, so on a cluster that enforces it the
-  runner is refused, and this change adds no allowance. The same change
-  corrects eight statements that it made false: one in the README, four on the
-  RP-1 page, one on the baseline page, one in the profile tool, and one in the
-  test inventory. Seven said that no runner reads or sends the profile, and one
-  said that the format of a result is not decided.
+  request succeeded. **The loop, the classification, and the transport were
+  executed against scripted answers and a loopback server: substituted
+  execution, C1. The manifest and the script were read: C0. The change
+  registers no claim.** The script was not executed against a cluster. The
+  committed network policy of the chart admits traffic to the API pods only
+  from pods of the release and from a named collector. So it does not admit
+  the runner, and this change adds no allowance. The same change
+  corrects ten statements that it made false: one in the README, four on the
+  RP-1 page, one on the baseline page, one in the profile tool, one in the
+  test inventory, and two on the resource ownership page. Seven said that no
+  runner reads or sends the profile, one said that the format of a result is
+  not decided, one said that one workflow only creates an object that neither
+  Terraform nor the chart owns, and one said that each object of the project
+  carries one label.
   [The runner page](docs/serving/reliability-runner.md) states the record and
   its limits.
 - **RP-1, the caller workload for reliability experiments, is defined as one

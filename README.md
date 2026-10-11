@@ -238,9 +238,10 @@ reliability workload, and not a representative production workload, an overload 
 or a benchmark. Since `V2-S5-001-PR2` an
 [in-cluster runner](docs/serving/reliability-runner.md) sends it: one Kubernetes Job
 whose pod sends the request to the API Service and writes one line of JSON for each
-request, with no prompt text and no completion text. The runner reads no readiness
-answer and no state of Argo CD. It was checked against scripted answers and a loopback
-server. No run was started in a cluster, and no run executed under RP-1.
+request, with no prompt text and no completion text. The runner has no code that reads
+a readiness answer or a state of Argo CD. Its loop was executed against scripted
+answers and a loopback server, which is substituted execution. No run was started in a
+cluster, and no run executed under RP-1.
 
 ## Prerequisites
 

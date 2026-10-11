@@ -1,11 +1,14 @@
 # The RP-1 in-cluster reliability runner
 
-Status: **implemented and checked by `V2-S5-001-PR2` against scripted answers and a
-loopback server. No run was started in a cluster, and no request was sent to a
-model.** The runner sends the [RP-1 reliability workload](reliability-workload-rp-1.md)
-from a pod inside the cluster to the API Service, and it writes one caller record for
-each run. This is static evidence at C0, with one rehearsal that is substituted
-execution. It registers no claim. The validation record is
+Status: **implemented by `V2-S5-001-PR2`. No run was started in a cluster, and no
+request was sent to a model.** The runner sends the
+[RP-1 reliability workload](reliability-workload-rp-1.md) from a pod inside the
+cluster to the API Service, and it writes one caller record for each run. The loop,
+the classification, and the transport of the runner were executed against scripted
+answers and against a loopback server. That is substituted execution, C1: the API
+and the model were replaced, and it says nothing about either. The manifest, the
+script, and the pages were read and not executed: C0. The change registers no claim.
+The validation record is
 [`v2-s5-001-pr2-validation.md`](../proof/serving/v2-s5-001-pr2-validation.md).
 
 > [!WARNING]
@@ -37,27 +40,29 @@ not hold it.
 |---|---|
 | [`tools/reliability_runner/incluster.py`](../../tools/reliability_runner/incluster.py) | The one file that a runner pod executes. It imports the standard library and nothing else |
 | [`tools.reliability_runner`](../../tools/reliability_runner/) | The host tool. It writes the plan and the manifest of a run, and it checks a caller record. It contacts no cluster |
-| [`scripts/environment/reliability-runner.sh`](../../scripts/environment/reliability-runner.sh) | The real path. It applies the manifest, reads the log of the pod, and deletes the two objects of the run |
+| [`scripts/environment/reliability-runner.sh`](../../scripts/environment/reliability-runner.sh) | The real path. It creates the two objects of a run, reads the log of the pod, and deletes the two objects |
 | [`tests/serving/test_reliability_runner.py`](../../tests/serving/test_reliability_runner.py) | The suite |
 
 ### Why no image is built
 
 A run is one ConfigMap and one Job. The ConfigMap holds the runner file and the
-plan. The Job mounts both, read-only, and runs `python -I` on the file. The image of
-the Job is an interpreter and no more: an image that holds Python 3.12, named by
-digest. The script uses the image that the API Deployment names, because the node
-already holds it.
+plan. The Job mounts both, read-only, and runs `python -I -u -B` on the file. The
+image of the Job is an interpreter and no more: an image that holds Python 3.12,
+named by digest. The script uses the image that the API Deployment names, because a
+node that runs an API pod holds it. Nothing schedules the runner onto such a node,
+and the script sets the pull policy `Never`. On a cluster with more than one node,
+the pod of a run can be placed on a node that does not hold the image.
 
 So no image holds the runner, and a change of the runner changes no image digest.
 The ConfigMap states the SHA-256 of the runner file and of the plan as annotations.
-The pod computes both digests from the files it mounts, and it writes them in the
-header of the record. `verify` compares the digest of the plan. It reports whether
-the digest of the runner file is the digest of the file in this tree, and it does
-not refuse a record of an earlier runner file.
+The runner file computes both digests from the files it is started with, and it
+writes them in the header of the record. With `--plan`, `verify` compares the digest
+of the plan. It reports whether the digest of the runner file is the digest of the
+file in this tree, and it does not refuse a record of an earlier runner file.
 
 ## What a run sends
 
-A plan repeats the committed profile, and no argument of the tool changes these
+A plan repeats the committed profile, and no option of the command changes these
 values:
 
 | Value | In the plan | Origin |
@@ -68,47 +73,65 @@ values:
 | Client deadline | 150,000 ms for each request | The RP-1 profile |
 | Success rule | HTTP 200, adapter `real`, the model of the fixture, usage counts, at least one choice, within the deadline | The RP-1 profile |
 | Connection | A new connection for each request, no redirect followed, no proxy variable read, no retry | The V1 transport, restated |
+| Target | `http://inferops-inferops-llm.inferops-release.svc:8090` | The API Service of the release, by its cluster DNS name |
 
 An operator states the rest:
 
-| Argument | Meaning | Bound |
+| Option | Meaning | Bound |
 |---|---|---|
-| `--experiment-id` | The experiment that the run belongs to | Letters, digits, `.`, `_`, `-`; at most 63 characters |
+| `--experiment-id` | The experiment that the run belongs to | Letters, digits, `.`, `_`, `-`; at most 63 characters; a letter or a digit first and last |
 | `--run-id` | The run. It is part of the name of the Job | A lower-case DNS label of at most 40 characters |
 | `--duration-seconds` | No request is dispatched after this time | From 1 to 3,600 seconds |
 | `--request-ceiling` | No more requests than this are dispatched. The default is the maximum | From 1 to 10,000 requests |
 | `--release-id` | The release identifier that the operator declares | 64 lower-case hexadecimal characters, or absent |
 
-The target is `http://inferops-inferops-llm.inferops-release.svc:8090`: the API
-Service of the release, by its cluster DNS name. The tool builds the URL from a
-Service name, a namespace, and a port, and the runner file refuses a plan whose URL
-is not built that way. A pod address, a loopback address, and a port-forward cannot
-be written in that form. The suite holds the Service name and the port against the
-committed render of the chart.
+**The command has no option for the target.** The tool writes the Service name, the
+namespace, and the port of the API Service into the plan. Three checks hold the
+target:
+
+- The runner file refuses a plan whose URL is not
+  `http://<service>.<namespace>.svc:<port>`, built from the three members of the
+  plan. A pod address, a loopback address, and a port-forward are not of that form.
+  The runner file does not know the name of the API Service.
+- The manifest builder refuses a plan whose target is not the registered one.
+- The record checker refuses a header whose target is not the registered one.
+
+The suite holds the registered Service name and port against the committed render
+of the chart, and the namespace against the script library.
 
 ### The bounds of a run
 
 - **The duration and the ceiling.** A worker dispatches no request after the
-  duration, and none after the ceiling. A request that was dispatched is given its
-  deadline, and it is recorded.
-- **The Job.** `activeDeadlineSeconds` is the duration, one client deadline, and 60
-  seconds. `backoffLimit` is 0, so a failed pod is not replaced: a second pod would
-  be a second run under one run identifier.
+  duration, and none after the ceiling. A request that was dispatched is waited
+  for, and it is recorded.
+- **The Job.** `activeDeadlineSeconds` is the duration, one client deadline, and 120
+  seconds. `backoffLimit` is 0. Kubernetes documents that a failed pod is then not
+  replaced: a second pod would be a second run under one run identifier.
 - **The finished Job.** `ttlSecondsAfterFinished` is 3,600 seconds. Kubernetes
-  documents that it then deletes the Job and its pod. The log is deleted with the
-  pod, so a record that was not collected in that time is lost.
-- **The stop signal.** On `SIGTERM` the runner dispatches no further request, waits
-  for a request in flight, and writes its end line with the state `interrupted`.
-  The pod is given one client deadline and 30 seconds to do so.
+  documents that it then deletes the Job and its pod, and that a log does not
+  outlive its pod. So a record that was not collected in that time is lost. The
+  time to live does not delete the ConfigMap. `cleanup` deletes it.
+- **The stop request.** The runner file registers a handler for `SIGTERM` and for
+  `SIGINT`. The handler makes the run dispatch no further request. The run waits
+  for a request in flight, and it writes its end line with the state `interrupted`.
+  `terminationGracePeriodSeconds` is one client deadline and 30 seconds. The suite
+  calls the stop function directly. No signal was delivered to a runner process.
+
+**The client deadline is the timeout of each socket operation**, as it is in the V1
+transport. An answer that arrives in many slow parts can take longer than the
+deadline, and the outcome is then `timeout`. The active deadline of the Job and the
+grace period assume that one request takes at most one client deadline. Kubernetes
+documents that a Job which reaches its active deadline ends its pod. The log of
+that pod, and the record in it, can then be lost. This was not observed.
 
 ### The wait after a request that is not a success
 
 A worker waits 1,000 ms after a request whose outcome is not `success`. **The RP-1
 profile states no such wait. It is a bound of this runner.** A refused connection
-and an error answer return in milliseconds. A closed loop with no wait would then
-send without a bound on its rate, exactly while a fault is in progress, and it would
-reach its request ceiling in seconds. With the wait, two workers send at most about
-two failed requests in one second.
+and an error answer can return at once. A closed loop with no wait would then send
+without a bound on its rate while a fault is in progress, and it could reach its
+request ceiling long before its duration. With the wait, a worker whose requests
+fail at once sends about one request in one second. No run measured the rate.
 
 The wait is not a retry. The next request is a new request with its own sequence
 number and its own line. The wait changes how many requests a run sends during a
@@ -124,32 +147,41 @@ have lost.
 - **No warm-up.** Each request is a caller result.
 - **No stop on an outcome.** The V1 harness ends a run on an answer of another
   adapter, and after five transport errors in a row. A reliability experiment can
-  delete a pod on purpose. The runner ends at its bounds and at a stop signal only.
+  delete a pod on purpose. The runner ends at its bounds, at a stop request, and
+  when a worker fails.
 - **No summary of latency.** The tool counts outcomes. It computes no rate and no
   percentile.
 
 ## What the runner does not read
 
-**The runner reads the plan file, its own file, and the answers of the target.** It
-reads nothing else:
+**The runner file reads the plan file, its own file, and the answers of the
+target.** The suite holds these four statements:
 
-- The pod holds no service account token (`automountServiceAccountToken: false`),
-  and the runner file calls no Kubernetes API.
-- The runner sends no request to `/health/ready`, to `/health/live`, or to
-  `/v1/models`. Each request that it sends is the `POST` of the plan.
-- The Job has no init container and no probe, and the script does not wait for a
-  rollout or for a Ready pod before it applies the Job.
-- The runner reads no state of Argo CD, and no metric.
+- The pod of the manifest holds no service account token
+  (`automountServiceAccountToken: false`), and the code of the runner file names no
+  Kubernetes API.
+- The code of the runner file names no readiness path and no model list, and each
+  call that the loop makes is the `POST` of the plan.
+- The Job of the manifest has no init container and no probe.
+- The script has no command that waits for a rollout or for a Ready pod.
+
+The runner file has no code that reads a state of Argo CD or a metric.
 
 The script reads one thing from the release when no `--image` is given: the image
-that the API Deployment names in its specification. It does not read the status of
-the Deployment.
+that the API Deployment names in its specification. It also reads whether an object
+of the run's name exists. It does not read the status of a Deployment or of a pod of
+the release.
 
 ## The caller record
 
 A run writes its record to standard output, one JSON object on each line: one
-header, one line for each request in the order in which the requests finished, and
-one end line. The script reads it as the log of the pod.
+header, one line for each request in the order in which the lines were written, and
+one end line. The script reads the log of the pod.
+
+Kubernetes documents that the log of a container holds standard output and standard
+error. The runner file writes a refusal of a plan to standard error, and the
+interpreter writes there when it fails. Such a line is not JSON, and the checker
+then refuses the log as unreadable.
 
 ### The header
 
@@ -162,9 +194,9 @@ one end line. The script reads it as the log of the pod.
 | `boundary` | The boundary sentence of the profile |
 | `profile` | The profile identifier, its revision, and its content digest |
 | `release` | The release identifier and its source: `declared` or `not-declared` |
-| `target` | The Service name, the namespace, the port, and the base URL |
+| `target` | The kind `api-service`, the Service name, the namespace, the port, and the base URL |
 | `concurrency`, `requestTimeoutMs`, `success`, `bounds` | The values of the plan |
-| `planSha256`, `runnerSha256` | The digests that the pod computed of the two files it mounted |
+| `planSha256`, `runnerSha256` | The digests that the runner file computed of the two files it was started with |
 | `promptText`, `completionText` | Both `false` |
 | `startedAt` | The UTC instant at which the run started |
 
@@ -190,11 +222,11 @@ The six outcomes are the outcomes of the V1 load harness, decided in the same or
 
 | Outcome | When |
 |---|---|
-| `timeout` | No answer arrived within the client deadline, or an answer of the required adapter arrived after it |
+| `timeout` | No answer arrived within the client deadline, or an answer that does not name another adapter arrived after it |
 | `transport-error` | The connection failed before an answer arrived |
 | `identity-refused` | The answer names an adapter other than the required one, at each status and at each latency |
 | `http-error` | The status is not 200 |
-| `invalid-response` | The status is 200, and the answer names another model, has no choice, or has no usage counts |
+| `invalid-response` | The status is 200, and the answer names no adapter, names another model, has no choice, or has no usage counts |
 | `success` | Each other answer |
 
 **A request with no answer has the status `null`.** The V1 record writes 0 there. A
@@ -210,50 +242,65 @@ record repeats it on each line, and the header states the source.
 |---|---|
 | `record` | `end` |
 | `experimentId`, `runId` | The identifiers of the header |
-| `endState` | `duration`, `request-ceiling`, or `interrupted` |
+| `endState` | `duration`, `request-ceiling`, `interrupted`, or `failed` |
 | `dispatched`, `recorded` | The number of requests sent, and the number of request lines written |
 | `outcomes` | The count of each of the six outcomes |
 | `elapsedMs`, `finishedAt` | The length of the run, and the UTC instant at which it ended |
+
+The end state `failed` says that a worker failed in a way that no outcome names.
+The run then wrote fewer request lines than it sent requests, and the checker
+refuses the record. The runner file exits with status 0 at `duration` and at
+`request-ceiling`, with 1 at `interrupted`, with 4 at `failed`, and with 3 when it
+refuses the plan. **The exit status does not grade the answers**: a run in which
+each request failed exits 0.
 
 **A record with no end line is refused.** It is the log of a run that has not ended,
 or of a pod that was stopped before it wrote the line.
 
 ### What a record never holds
 
-The prompt text, the completion text, a response header, an address of a pod, and
-the message of an error. A value that is read from an answer is kept only when it is
-a short plain token, and a value that is not one is written as `unrecognized`. The
-checker gives each line an exact set of members, and each text member a pattern or
-a registered value. So a line has no member that can hold a prompt or a completion.
+The prompt text, the completion text, a response header, the address of a pod, and
+the message of an error. A text that is read from an answer is kept only when it is
+a short plain token, and a text that is not one is written as `unrecognized`.
+
+The checker gives each line an exact set of members. A text member holds a
+registered value, a pattern, or at most 64 characters of `[a-z0-9._-]`. So a line
+cannot hold a text with a space, with an upper-case letter, or of more than 64
+characters. No rule searches a record for a prompt or a completion.
 
 ## The rules
 
 The tool has 16 rules. Four are of a plan and a manifest, and twelve are of a caller
-record. Each command stops at the first refusal, and the message starts with the
-rule.
+record. Each command stops at the first refusal. Its message is the word `REFUSED`,
+the rule, and the reason.
 
 | Rule | Refuses |
 |---|---|
 | `runner-profile-refused` | A plan when the loader of the RP-1 profile refuses the committed profile |
 | `runner-identifier-unsupported` | A run identifier or an experiment identifier that is not in the supported form |
-| `runner-plan-refused` | A duration, a ceiling, a release identifier, a Service name, a namespace, or a port that is not usable, a plan file that is unreadable, and a manifest of a rehearsal plan |
-| `runner-image-not-pinned` | An image that is named by a tag, and a pull policy other than `Never` and `IfNotPresent` |
-| `caller-record-unreadable` | A line that is empty, is not one JSON object, states one member twice, or has no record kind |
+| `runner-plan-refused` | A duration, a ceiling, or a release identifier that is not usable, a plan file that is unreadable or that the runner file refuses, and a manifest of a rehearsal plan or of a plan with another target |
+| `runner-image-not-pinned` | An image that is not named by a `sha256` digest. The function also refuses a pull policy other than `Never` and `IfNotPresent` under this rule. The command refuses one as an unusable argument |
+| `caller-record-unreadable` | A record file or a plan file that cannot be read, and a line that is empty, is not one JSON object, states one member twice, or has no record kind |
 | `caller-record-header-missing` | A record whose first line is not a header, and a record with two headers |
-| `caller-record-members-unsupported` | A line with a missing or unknown member, a member of another type, a text that is not a short plain token, and a header that does not target the API Service |
+| `caller-record-members-unsupported` | A line with a missing or unknown member, a member of another type, a text that is not a short plain token, a latency or a run length above 10,000,000 ms, and a header whose target is not the registered API Service |
 | `caller-record-profile-unregistered` | A header whose profile, revision, content digest, or boundary sentence is not one that the profile tool registers |
-| `caller-record-plan-differs` | With `--plan`: a header that does not name the digest of the plan, or does not repeat its values |
+| `caller-record-plan-differs` | With `--plan`: a plan that is not readable, and a header that does not name the digest of the plan or does not repeat its values |
 | `caller-record-identity-differs` | A line that names another experiment, run, or release than the header, a request identifier of another sequence number, and a worker that the run does not have |
-| `caller-record-time-invalid` | An instant that is not UTC to one millisecond, a request that finishes before it starts or starts before the run, and a request that finishes after the run ends |
-| `caller-record-outcome-inconsistent` | A line whose `success`, status, and kept members do not agree with its outcome |
+| `caller-record-time-invalid` | An instant that is not UTC to one millisecond, a request that finishes before it starts or starts before the run, a request that finishes after the run ends, and a run that ends before it starts |
+| `caller-record-outcome-inconsistent` | A line whose `success`, status, latency, adapter, and kept members do not agree with its outcome |
 | `caller-record-sequence-gap` | Sequence numbers that are not each number from 1 to the number of request lines, once |
 | `caller-record-end-missing` | A record with no end line, and a line after the end line |
-| `caller-record-counts-differ` | An end line whose counts are not the counts of the request lines, and a run with more requests than its ceiling |
+| `caller-record-counts-differ` | An end line whose counts are not the counts of the request lines, a run with more requests than its ceiling, and an end state that names a bound which the counts did not reach |
 | `caller-record-holds-content` | A header that does not state `promptText: false` and `completionText: false` |
 
+The table is in the order of the registered list. It is not the order in which a
+command reaches the rules.
+
 **A record that each rule accepts is a well-formed record.** Acceptance says nothing
-about how many requests succeeded. The summary that `verify` prints holds counts and
-identities. It holds no rate, no percentile, and no result.
+about how many requests succeeded. The checker does not hold each relation between
+the members of a line. For example, it does not compare `latencyMs` with the two
+instants of a line, which come from another clock. The summary that `verify` prints holds counts and identities. It
+holds no rate, no percentile, and no result.
 
 ## Commands
 
@@ -267,7 +314,7 @@ python -m tools.reliability_runner verify RECORD [--plan FILE]
 python -m tools.reliability_runner rehearse
 ```
 
-No command contacts a cluster, and no command sends a request. Exit status `0` says
+No command has code that contacts a cluster or sends a request. Exit status `0` says
 that the command printed its result. For `verify` it says that each rule accepted
 the record. Exit status `3` says that one rule refused. Exit status `2` says that
 the arguments are not usable. Exit status `4` says that the command failed in
@@ -277,8 +324,11 @@ another way.
 
 `rehearse` runs the loop of the runner file against six scripted answers, one for
 each outcome, and prints the caller record. It sends no request. The header states
-`mode: rehearsal`. The clocks are real and the two workers are real threads, so two
-rehearsals give the same outcomes and not the same bytes.
+`mode: rehearsal`. The transport, the wall clock, and the wait are replaced: the
+wall clock is one real reading and one millisecond more for each later reading, and
+the wait is not slept. The latency clock is real, and the two workers are real
+threads. The first two answers wait for each other, so each worker sends at least
+one request. Two rehearsals give the same outcomes and not the same bytes.
 
 [`v2-s5-001-pr2-rehearsal-caller.jsonl`](../proof/serving/v2-s5-001-pr2-rehearsal-caller.jsonl)
 is one committed rehearsal: 12 request lines, two of each outcome. It shows the
@@ -287,7 +337,8 @@ format. Its instants are not measurements, and its latencies describe nothing.
 ### The real path
 
 The real path runs only when an operator starts it. It needs a cluster that holds
-the release, and it sends real requests to the model.
+the release, and it sends real requests to the model. **The script was not executed
+against a cluster.** The text below states what its code does.
 
 ```text
 INFEROPS_PROVIDER=<provider> scripts/environment/reliability-runner.sh start \
@@ -297,35 +348,40 @@ INFEROPS_PROVIDER=<provider> scripts/environment/reliability-runner.sh collect -
 INFEROPS_PROVIDER=<provider> scripts/environment/reliability-runner.sh cleanup --run-id ID
 ```
 
-- `start` verifies the selected target, writes `plan.json` and `manifest.json` under
-  `.artifacts/reliability-runner/runs/<run-id>/`, and applies the manifest. It
-  returns when the Job is created.
-- `status` prints the counts of the Job. It changes nothing.
-- `collect` writes the log of the pod to `caller.jsonl` in the same directory, and
-  checks it against the plan. Exit status `5` says that a rule refused the record.
-- `cleanup` deletes the Job and the ConfigMap by name, waits for the pod, and fails
-  when an object of the run is still present.
+- `start` verifies the selected target, and refuses when a Job or a ConfigMap of
+  the run's name exists. It writes `plan.json` and `manifest.json` under
+  `.artifacts/reliability-runner/runs/<run-id>/`, and creates the two objects. It
+  does not wait for the run. A run identifier is used once: a second `start` under
+  it is refused.
+- `status` prints the counts and the two times of the Job. It changes nothing.
+- `collect` reads the log of the pod and checks it against the plan. When each rule
+  accepts it, the log is kept as `caller.jsonl`. When a rule refuses it, the log is
+  kept as `caller.refused.jsonl`, the exit status is `5`, and a later `collect` can
+  run. A `collect` before the run ends gives a log with no end line.
+- `cleanup` deletes the Job and the ConfigMap by name, and fails when an object of
+  the run is still present. It warns when no accepted record is kept.
 
-The script does not wait for the run, and `collect` before the run ends gives a
-record with no end line. The directory under `.artifacts/` is host state. Version
-control ignores it.
+The directory under `.artifacts/` is host state. Version control ignores it.
 
 ## What this does not establish
 
 - **Nothing about a caller of a release.** No run was started in a cluster. The
-  script was read as text by the suite. It was not executed, so its four actions are
-  not observed.
+  script was read as text by the suite. One reviewer ran it against stand-ins for
+  `kubectl` outside the repository. That run is not committed, and it is not
+  evidence of this change. The four actions are not observed against a cluster.
 - **Nothing about a cluster whose network plugin enforces NetworkPolicy.** The chart
   admits traffic to the API pods only from pods of the release, and from a named
   collector. The runner is not a pod of the release, and its labels match no
-  selector of the release. On a cluster that enforces the policy, the committed
-  policy refuses the runner, and each request is a `transport-error` or a `timeout`.
-  The chart has no allowance for a caller, and this change adds none. Whether the
+  selector of the committed render of the real profile. So the committed policy
+  does not admit the runner. On a cluster that enforces the policy, each request is
+  then expected to be a `transport-error` or a `timeout`. This was not run. The
+  chart has no allowance for a caller, and this change adds none. Whether the
   selected local cluster enforces the policy was not checked in this change.
 - **Nothing about the log of a long run.** The record is the log of one container.
   A container runtime can rotate a log by size, and a rotated log loses its first
-  lines. The checker then refuses the record, because its header is missing. The
-  bounds of a run keep a record small. No run measured the size.
+  lines. The checker then refuses the record, because its header is missing. No run
+  measured the size of a record.
+- **Nothing about a signal.** No signal was delivered to a runner process.
 - **Nothing about the release identifier.** It is declared, and nothing compares it
   with the release that the cluster holds.
 - **Nothing about the clock of the pod.** `startedAt` and `finishedAt` are the
@@ -333,7 +389,8 @@ control ignores it.
 - **Nothing about capacity.** The pod requests 100 m of CPU and 64 Mi of memory.
   The capacity preflight does not count it.
 - **Nothing about ownership records.** The Job and the ConfigMap of a run are not
-  rows of the resource ownership inventory.
+  rows of the resource ownership inventory, and they do not carry the label
+  `app.kubernetes.io/part-of`.
 - **Nothing about how the Service spreads requests.** A record names no pod.
 - **Nothing about a representative workload, an overload point, or a production
   SLO.** A run under RP-1 cannot support C3.

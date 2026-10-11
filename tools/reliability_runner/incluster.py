@@ -18,19 +18,28 @@ for the target to be ready. So a caller record states what a caller saw, and no
 platform signal decides it.
 
 **What a record never holds.** The prompt text, the completion text, a response
-header, an address, and the message of an error. A value that is read from an answer
-is kept only when it is a short plain token, and a value that is not one is written
-as ``unrecognized``.
+header, the address of a pod, and the message of an error. A text that is read from
+an answer is kept only when it is a short plain token, and a text that is not one is
+written as ``unrecognized``. The status and the two token counts are integers.
 
 **The exit status does not grade the answers.** Status 0 says that the run reached
 its duration or its ceiling and wrote its end line. A run in which each request
 failed exits 0. Status 3 says that the plan was refused and no request was sent.
-Status 1 says that a stop signal ended the run before its duration.
+Status 1 says that a stop request ended the run before its duration. Status 4 says
+that a worker failed in a way that no outcome names: the end line then states
+``failed``, and the record has fewer request lines than requests.
 
 The classification restates the rule of ``tools.llm_load.core.classify``, and the
 transport restates ``tools.llm_load.core.http_transport``. The V1 module is not
 imported, because it reads the chart and the runtime profile, and a pod holds neither.
 ``tests/serving/test_reliability_runner.py`` compares both with the V1 functions.
+The transport differs in one case: for a body that the JSON parser refuses with an
+error other than a decode error, this file returns no parsed body, and the V1
+function raises.
+
+**The client deadline is the timeout of each socket operation**, as it is in the V1
+transport. An answer that arrives in many slow parts can take longer than the
+deadline. The classification then gives it the outcome ``timeout``.
 """
 
 from __future__ import annotations
@@ -80,7 +89,8 @@ OUTCOMES: tuple[str, ...] = (
 END_DURATION = "duration"
 END_CEILING = "request-ceiling"
 END_INTERRUPTED = "interrupted"
-END_STATES = (END_DURATION, END_CEILING, END_INTERRUPTED)
+END_FAILED = "failed"
+END_STATES = (END_DURATION, END_CEILING, END_INTERRUPTED, END_FAILED)
 
 RELEASE_DECLARED = "declared"
 RELEASE_NOT_DECLARED = "not-declared"
@@ -88,6 +98,7 @@ RELEASE_NOT_DECLARED = "not-declared"
 EXIT_OK = 0
 EXIT_INTERRUPTED = 1
 EXIT_REFUSED = 3
+EXIT_FAILED = 4
 
 MAXIMUM_CONCURRENCY = 8
 MAXIMUM_DURATION_SECONDS = 3600
@@ -527,6 +538,7 @@ class Run:
         self._lock = threading.Lock()
         self._write_lock = threading.Lock()
         self._stop: str | None = None
+        self._failed = False
         self._dispatched = 0
         self._counts = dict.fromkeys(OUTCOMES, 0)
 
@@ -542,11 +554,12 @@ class Run:
 
     def _pause(self, seconds: float) -> None:
         """Wait, and return early when the run is told to stop."""
-        waited = 0.0
-        while waited < seconds and self._stop is None:
-            step = min(POLL_SECONDS, seconds - waited)
-            self._sleep(step)
-            waited += step
+        # Whole steps, so that a sum of fractions does not add a step.
+        steps = max(0, round(seconds / POLL_SECONDS))
+        for _ in range(steps):
+            if self._stop is not None:
+                return
+            self._sleep(POLL_SECONDS)
 
     def _send(self, sequence: int, worker: int) -> str:
         plan = self._plan
@@ -619,9 +632,12 @@ class Run:
                 outcome = self._send(sequence, index)
                 if outcome != OUTCOME_SUCCESS:
                     self._pause(bounds["pauseAfterNonSuccessMs"] / 1000)
-        except BaseException:
-            self.stop(END_INTERRUPTED)
-            raise
+        except Exception:
+            # No outcome names this failure, and its message is not written: a
+            # record holds no error message. The end line states the state, and
+            # it counts one request line fewer than requests.
+            self._failed = True
+            self.stop(END_FAILED)
 
     def execute(self) -> int:
         """Run the plan to its end, and return the exit status."""
@@ -666,6 +682,9 @@ class Run:
             while thread.is_alive():
                 thread.join(POLL_SECONDS)
         end_state = self._stop or END_INTERRUPTED
+        if self._failed:
+            # Another worker can reach a bound first. The failure still decides.
+            end_state = END_FAILED
         self._write(
             {
                 "record": RECORD_END,
@@ -679,6 +698,8 @@ class Run:
                 "finishedAt": utc_text(self._wall()),
             }
         )
+        if end_state == END_FAILED:
+            return EXIT_FAILED
         return EXIT_INTERRUPTED if end_state == END_INTERRUPTED else EXIT_OK
 
 

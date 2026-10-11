@@ -78,8 +78,11 @@ collide; all three apply the same rule about what a release may own, and both
 certification workflows additionally count the model cache claim on both sides of
 their own run.
 
-The multi-replica workflow is the only one that creates an object in the
-namespace which neither Terraform nor the chart owns: one `batch/v1 Job` that
+Two workflows create an object in the namespace which neither Terraform nor the
+chart owns. The reliability runner creates one ConfigMap and one `batch/v1 Job`
+for a run, since `V2-S5-001-PR2`. Those two objects have no row in this
+inventory, and [the runner page](../serving/reliability-runner.md) says so. The
+multi-replica workflow creates one `batch/v1 Job` that
 sends the request set from inside the cluster, because a `kubectl port-forward`
 is served against a single endpoint and cannot exercise a Service's distribution.
 It is not a row in any table below, and deliberately so — it is transient in the
@@ -400,7 +403,9 @@ one.
 
 The accepted cleanup rules describe partial teardown as deleting *"only objects
 matching the project label selector inside `inferops-` namespaces"*. Every object
-this project creates carries `app.kubernetes.io/part-of: inferops`. Read together,
+this project creates carries `app.kubernetes.io/part-of: inferops`. (Since
+`V2-S5-001-PR2` there is one exception: the ConfigMap and the Job of a reliability
+run do not carry that label.) Read together,
 a broadened scoped sweep would delete Terraform-owned prerequisites, and two owners
 would be destroying one resource — precisely what this document forbids.
 

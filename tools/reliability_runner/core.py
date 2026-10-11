@@ -26,6 +26,7 @@ says nothing about how many requests succeeded.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 import json
@@ -49,6 +50,8 @@ from tools.reliability_profile import ProfileError, ReliabilityProfile
 
 from . import incluster
 from .incluster import (
+    END_CEILING,
+    END_DURATION,
     END_STATES,
     MAXIMUM_REQUEST_CEILING,
     MODE_IN_CLUSTER,
@@ -111,8 +114,12 @@ RUN_AS = 65534
 #: them. The log of the pod is deleted with the pod.
 TTL_AFTER_FINISHED_SECONDS = 3600
 #: Time that the Job is given beyond the duration and one client deadline.
-DEADLINE_MARGIN_SECONDS = 60
+DEADLINE_MARGIN_SECONDS = 120
 GRACE_MARGIN_SECONDS = 30
+
+#: No latency and no run length of a record is above this. A run is at most
+#: 3,600 seconds, and a request is given one client deadline.
+MAXIMUM_RECORDED_MS = 10_000_000
 
 TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", re.ASCII)
 
@@ -199,8 +206,11 @@ def build_plan(
     """The plan of one run of the committed RP-1 profile.
 
     The request, the concurrency, the deadline, and the success rule are the values
-    of the profile, and no argument changes one. The arguments are the identity of
-    the run, its bounds, and its target.
+    of the profile, and no option of the command changes one. The arguments are the
+    identity of the run, its bounds, and its target. ``profile`` and the three
+    members of the target are arguments of this function for the suite. The command
+    has no option for them, and :func:`build_manifest` and :func:`read_record`
+    refuse a target that is not the registered API Service.
     """
     if profile is None:
         try:
@@ -281,6 +291,19 @@ def build_plan(
     return plan
 
 
+def registered_target() -> dict[str, Any]:
+    """The one target of a run: the API Service of the release."""
+    return {
+        "kind": "api-service",
+        "service": API_SERVICE,
+        "namespace": RELEASE_NAMESPACE,
+        "port": API_SERVICE_PORT,
+        "baseUrl": incluster.service_base_url(
+            API_SERVICE, RELEASE_NAMESPACE, API_SERVICE_PORT
+        ),
+    }
+
+
 def plan_text(plan: Mapping[str, Any]) -> str:
     """The one text of a plan: sorted members, two spaces, LF, one final newline."""
     return json.dumps(plan, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
@@ -334,6 +357,11 @@ def build_manifest(
         raise RunnerError(RULE_PLAN, str(error)) from error
     if plan["mode"] != MODE_IN_CLUSTER:
         raise RunnerError(RULE_PLAN, "a Job runs an in-cluster plan only")
+    if not _same(plan["target"], registered_target()):
+        raise RunnerError(
+            RULE_PLAN,
+            "the target of the plan is not the registered API Service of the release",
+        )
     if not RUN_ID.fullmatch(plan["runId"]) or not EXPERIMENT_ID.fullmatch(
         plan["experimentId"]
     ):
@@ -409,12 +437,10 @@ def build_manifest(
                             "command": [
                                 "python",
                                 "-I",
+                                "-u",
+                                "-B",
                                 f"{MOUNT_PATH}/{RUNNER_FILE}",
                                 f"{MOUNT_PATH}/{PLAN_FILE}",
-                            ],
-                            "env": [
-                                {"name": "PYTHONDONTWRITEBYTECODE", "value": "1"},
-                                {"name": "PYTHONUNBUFFERED", "value": "1"},
                             ],
                             "securityContext": {
                                 "allowPrivilegeEscalation": False,
@@ -639,6 +665,11 @@ def _check_header(header: Mapping[str, Any]) -> None:
     for name in ("planSha256", "runnerSha256"):
         if not isinstance(header[name], str) or not SHA256.fullmatch(header[name]):
             raise RunnerError(RULE_MEMBERS, f"header member '{name}' is not a digest")
+    if not _same(header["target"], registered_target()):
+        raise RunnerError(
+            RULE_MEMBERS,
+            "the header does not target the registered API Service of the release",
+        )
     # The header repeats a plan. The runner's own rule for a plan is the rule for
     # the repeated members, so a header is checked as the plan it came from.
     plan = {
@@ -709,6 +740,7 @@ def _check_request(
         not _is_int(request["sequence"], 1)
         or not _is_int(request["worker"])
         or not _is_int(request["latencyMs"])
+        or request["latencyMs"] > MAXIMUM_RECORDED_MS
         or not isinstance(request["success"], bool)
         or outcome not in OUTCOMES
         or not (status is None or (_is_int(status, 100) and status <= 599))
@@ -753,6 +785,8 @@ def _check_request(
             f"{where} finishes before it starts, or starts before the run starts",
         )
     required = header["success"]["requiredStatus"]
+    late = request["latencyMs"] > header["requestTimeoutMs"]
+    adapter = request["adapterKind"]
     consistent = {
         OUTCOME_SUCCESS: status == required,
         OUTCOME_INVALID: status == required,
@@ -761,7 +795,8 @@ def _check_request(
         and request["adapterKind"]
         not in (None, header["success"]["requiredAdapterKind"]),
         OUTCOME_TRANSPORT: status is None,
-        OUTCOME_TIMEOUT: True,
+        # No answer, or an answer after the deadline.
+        OUTCOME_TIMEOUT: status is None or late,
     }[outcome]
     kept_only_for = (
         (("errorCode", "errorCondition"), OUTCOME_HTTP_ERROR),
@@ -770,6 +805,13 @@ def _check_request(
     if (
         request["success"] is not (outcome == OUTCOME_SUCCESS)
         or not consistent
+        # The classification reads the adapter first, and then the deadline.
+        or (
+            outcome != OUTCOME_IDENTITY
+            and adapter not in (None, header["success"]["requiredAdapterKind"])
+        )
+        or (late and outcome not in (OUTCOME_TIMEOUT, OUTCOME_IDENTITY))
+        or (status is None and (adapter is not None or request["modelRef"] is not None))
         or any(
             request[name] is not None
             for names, kept in kept_only_for
@@ -805,8 +847,9 @@ def read_record(text: str, *, plan: str | None = None) -> CallerRecord:
     given, the header must name its digest and repeat its values.
 
     No rule searches the record for a prompt or a completion. The rules give each
-    line an exact set of members, and each text member a pattern or a registered
-    value, so a line has no member that can hold either.
+    line an exact set of members. A text member holds a registered value, a
+    pattern, or at most 64 characters of ``[a-z0-9._-]``. So a line cannot hold a
+    text with a space, with an upper-case letter, or of more than 64 characters.
     """
     documents = _lines(text)
     if not documents or documents[0]["record"] != RECORD_HEADER:
@@ -875,6 +918,7 @@ def read_record(text: str, *, plan: str | None = None) -> CallerRecord:
         set(end) != _END_MEMBERS
         or end["endState"] not in END_STATES
         or not _is_int(end["elapsedMs"])
+        or end["elapsedMs"] > MAXIMUM_RECORDED_MS
         or not _is_int(end["dispatched"])
         or not _is_int(end["recorded"])
         or not isinstance(end["outcomes"], dict)
@@ -887,6 +931,8 @@ def read_record(text: str, *, plan: str | None = None) -> CallerRecord:
         _instant(request["finishedAt"], "a request") > finished for request in requests
     ):
         raise RunnerError(RULE_TIME, "a request finishes after the run ends")
+    if finished < _instant(header["startedAt"], "header"):
+        raise RunnerError(RULE_TIME, "the run ends before it starts")
     if end["experimentId"] != header["experimentId"] or end["runId"] != header["runId"]:
         raise RunnerError(RULE_IDENTITY, "the end line names another experiment or run")
     if (
@@ -894,11 +940,21 @@ def read_record(text: str, *, plan: str | None = None) -> CallerRecord:
         or end["recorded"] != len(requests)
         or not _same(end["outcomes"], counted)
         or len(requests) > header["bounds"]["requestCeiling"]
+        # A run that ends at a bound reached the bound.
+        or (
+            end["endState"] == END_CEILING
+            and len(requests) != header["bounds"]["requestCeiling"]
+        )
+        or (
+            end["endState"] == END_DURATION
+            and end["elapsedMs"] < header["bounds"]["durationSeconds"] * 1000
+        )
     ):
         raise RunnerError(
             RULE_COUNTS,
-            "the end line's counts are not the counts of the request lines, or the "
-            "run dispatched more requests than its ceiling",
+            "the end line's counts are not the counts of the request lines, the run "
+            "dispatched more requests than its ceiling, or its end state names a "
+            "bound that its counts did not reach",
         )
 
     return CallerRecord(header=header, requests=tuple(requests), end=end)
@@ -968,9 +1024,12 @@ def rehearse(run_id: str = "rehearsal-1") -> str:
     """Run the runner's loop against scripted answers, and return the caller record.
 
     No request is sent. The answer of each request is one of six scripted answers,
-    chosen by the sequence number, so each outcome occurs twice. The clocks are the
-    real clocks, and the two workers are real threads. So two rehearsals give the
-    same outcomes and not the same bytes.
+    chosen by the sequence number, so each outcome occurs twice. The wall clock is
+    one real reading, and one millisecond more for each later reading. The wait
+    after a request that is not a success is not slept. The latency clock is real,
+    and the two workers are real threads: the first two answers wait for each
+    other, so each worker sends at least one request. Two rehearsals give the same
+    outcomes and not the same bytes.
     """
     plan = build_plan(
         experiment_id=REHEARSAL_EXPERIMENT_ID,
@@ -983,6 +1042,7 @@ def rehearse(run_id: str = "rehearsal-1") -> str:
     answers = scripted_answers(plan)
     header_name = plan["request"]["requestIdHeader"]
     lock = threading.Lock()
+    both = threading.Barrier(2, timeout=10)
     base = datetime.now(UTC)
     ticks = [0]
 
@@ -995,6 +1055,10 @@ def rehearse(run_id: str = "rehearsal-1") -> str:
     ) -> tuple[int, object | None]:
         sequence = int(headers[header_name].rsplit("-", 1)[1])
         failure, status, answer = answers[(sequence - 1) % len(answers)]
+        if sequence <= 2:
+            # Two requests in flight at one time, one from each worker.
+            with contextlib.suppress(threading.BrokenBarrierError):
+                both.wait()
         if failure == OUTCOME_TIMEOUT:
             raise TransportTimeout()
         if failure == OUTCOME_TRANSPORT:
