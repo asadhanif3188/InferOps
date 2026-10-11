@@ -23,7 +23,7 @@ Two EnvironmentBinding invalid fixtures, outside both exempted paths, also carry
 
 Two RenderedWorkloadRelease invalid fixtures, also outside both exempted paths, carry synthetic values, each covered by an existing pattern rule: `contracts/release/examples/invalid/secret-value-in-a-field.yaml` carries the JWT header, and `contracts/release/examples/invalid/secret-value-in-an-identifier.yaml` carries `AKIAIOSFODNN7EXAMPLE`, once alone and once behind a version's pre-release separator, and the zero-padded `ghp_` value. No rule and no path was added for them.
 
-One ExperimentRun invalid fixture, also outside both exempted paths, carries a synthetic value covered by an existing pattern rule: `contracts/experiment/examples/invalid/credential-shaped-value.json` carries `AKIAIOSFODNN7EXAMPLE` as one word of a limitation, and the ordinary word `sk-records` as an evidence role. No rule and no path was added for it.
+One ExperimentRun invalid fixture, also outside both exempted paths, carries a synthetic value covered by an existing pattern rule: `contracts/experiment/examples/invalid/credential-shaped-value.json` carries `AKIAIOSFODNN7EXAMPLE` as one word of a limitation, and the ordinary word `sk-records` as an evidence role. Two files beside it name the same placeholder to say what the fixture holds: `contracts/experiment/examples/invalid/expected-rejections.json` and `contracts/experiment/examples/README.md`. No rule and no path was added for the three.
 
 ### AWS Keys
 - `AKIAIOSFODNN7EXAMPLE` — Official example key published in [AWS documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html)

@@ -17,13 +17,13 @@ says how they are held.
 | Schema `$id` | `https://inferops.io/contracts/experiment/experiment-run.v1alpha1.schema.json` |
 | `apiVersion` | `inferops.io/v1alpha1` |
 | `kind` | `ExperimentRun` |
-| Authoring form | JSON |
+| Authoring form | JSON. This departs from ADR 0003: see [the authoring form](#the-authoring-form) |
 | File name | `run.v1alpha1.json`, in the directory of the run |
 | Unknown fields | Rejected |
-| Validator | [`tools/experiment_run`](../../tools/experiment_run/core.py): the schema, 13 semantic rules, and the repository listing |
+| Validator | [`tools/experiment_run`](../../tools/experiment_run/core.py): the schema, 14 semantic rules, and the repository listing |
 | Fixtures | [`contracts/experiment/examples/`](../../contracts/experiment/examples/README.md) |
 | Pre-schema register | [`contracts/experiment/compatibility/pre-schema-experiment-runs.v1alpha1.json`](../../contracts/experiment/compatibility/pre-schema-experiment-runs.v1alpha1.json) |
-| Tooling decision | [ADR 0003](../architecture/decisions/ADR-0003-workload-contract-schema-tooling.md), applied unchanged |
+| Tooling decision | [ADR 0003](../architecture/decisions/ADR-0003-workload-contract-schema-tooling.md) for the schema language and the validator library. The authoring form is not that decision's |
 
 ## What it is for
 
@@ -47,6 +47,19 @@ An ExperimentRun has `apiVersion` and `kind` because every contract in this repo
 does. It is not a Kubernetes resource. No custom resource definition, controller, or
 cluster reads one. It has no `spec` and no `status`. It is written once, beside the
 evidence files it names, and committed.
+
+## The authoring form
+
+[ADR 0003](../architecture/decisions/ADR-0003-workload-contract-schema-tooling.md)
+accepts YAML as the authoring form of a contract and JSON as its wire form, and it
+rejects JSON authoring because JSON holds no comment. **An ExperimentRun is authored as
+JSON, and that departs from the decision.** The reasons: a person does not write a run
+manifest as a person writes a workload contract. A run writes it, beside evidence files
+that are JSON, and the three run manifests already committed are JSON. A digest of a
+JSON file needs no rule for how YAML is read. The cost is the one the decision names: a
+fixture cannot explain itself in a comment. So each valid fixture says what it is in
+its first limitation, and one file states what each invalid fixture is refused for.
+ADR 0003 is not edited, and no decision record states this departure.
 
 ## Three separate things
 
@@ -72,8 +85,10 @@ do.
 - **The meanings of C0 to C4 are unchanged.** The schema names the five levels and
   defines none. No rule here admits a run to `C3` or `C4`:
   [the rules nothing applies](#rules-that-nothing-applies) says so.
-- **A claim status is refused wherever it is written.** Every object is closed, so
-  `claimStatus` is an unknown field at each position.
+- **No member holds a claim status.** Every object is closed, so a `claimStatus`
+  member is an unknown field in each object. A value is not read for the words: a
+  role named `certified`, or a statement that says that a claim is certified,
+  validates.
 
 The five result states:
 
@@ -157,6 +172,8 @@ file gets them.
 - If `result.state` is `INCONCLUSIVE`, `REFUSED`, or `ABORTED`, `result.reason` is
   required.
 - If `cleanup.state` is `incomplete` or `not-required`, `cleanup.reason` is required.
+  If it is `verified`, `reason` is not permitted. If it is `not-required`, `left` is
+  not permitted.
 
 **The forms.**
 
@@ -168,29 +185,41 @@ file gets them.
 - **UTC instant.** `YYYY-MM-DDTHH:MM:SSZ`, with an optional fraction of one to six
   digits. An offset other than `Z` is refused. The caller record writes this form with
   three digits.
-- **SHA-256.** 64 lowercase hexadecimal characters, with no prefix.
+- **SHA-256.** 64 lowercase hexadecimal characters, with no prefix. The
+  WorkloadContract writes the digest of the model artifact with a `sha256:` prefix.
+  `model.sha256` holds the same digest without the prefix, and the suite measures the
+  difference.
 - **Evidence path.** Lowercase segments separated by forward slashes. Each segment
   starts and ends with a letter or digit. So a leading slash, a drive letter, a
   backslash, and a parent segment are refused.
+- **The end of a pattern.** Each of the 12 patterns ends with `$(?!\n)`. Python's `$`
+  also matches before a final line feed, and an ECMA-262 engine's does not. Without
+  the lookahead, a digest or a path that ends with a line feed validates under one
+  engine and is refused under the other. The first commit of this change had that
+  defect. The schemas of the three earlier contracts end their patterns with `$`
+  alone, and this change does not edit them.
 - **Statement.** 1 to 2000 characters of prose. It is the only free text in the
   document. Seven members hold statements, and the suite holds that no other string
   member is free text.
 
 ## What a manifest must not hold
 
-- **No prompt, no completion, and no response body.** The schema defines no member for
-  one, and every object is closed. An evidence file is named by path and digest and its
-  content is never copied in.
+- **No member for a prompt, a completion, or a response body.** The schema defines
+  none, and every object is closed. An evidence file is named by path and digest, and
+  no member holds its content. **No rule reads a statement for a prompt or a
+  response.** A statement is prose of up to 2000 characters, and a writer can put
+  such text in one.
 - **No credential.** No member is defined for one. A string value, or a word of a
   statement, that has the shape of a credential is refused by a
   [semantic rule](#semantic-rules), within the limits that
   [the measured gaps](#measured-gaps) state.
-- **No host path.** A repository path and an evidence path cannot hold one, by their
-  patterns. A statement that holds a drive-letter path, or a path under `/home/`,
+- **No absolute host path.** A repository path and an evidence path cannot hold one,
+  by their patterns. A relative path that names a user directory is not refused. A statement that holds a drive-letter path, or a path under `/home/`,
   `/Users/`, or `/root/`, is refused by a semantic rule.
-- **No claim status and no achieved evidence level.**
+- **No member for a claim status or for an achieved evidence level.**
 
-A refusal never repeats a value read out of the document.
+A refusal of a manifest repeats no value read out of the manifest. The suite holds
+that for each value of 12 characters or more of each invalid fixture.
 
 ## Rejection and canonical errors
 
@@ -203,8 +232,11 @@ schema accepts.** A document with a structural finding reports no semantic findi
 
 ### Structural rules
 
-The published schema alone refuses the document. Any draft 2020-12 validator reaches the
-same verdict. The rule identifiers are those of the canonical error model.
+The published schema alone refuses the document. A draft 2020-12 validator in another
+language is expected to reach the same verdict: the suite runs one validator, the
+Python one, and [the end of a pattern](#structure) closes the one difference between
+engines that a review found. The rule identifiers are those of the canonical error
+model.
 
 | Rule | Code | A fixture that is refused by it |
 |---|---|---|
@@ -215,7 +247,7 @@ same verdict. The rule identifiers are those of the canonical error model.
 | `value-malformed` | `contract-invalid` | `mutable-revisions.json` |
 | `value-out-of-range` | `contract-invalid` | `values-out-of-range.json` |
 | `value-wrong-type` | `contract-invalid` | `wrong-json-types.json` |
-| `contract-structure-invalid` | `contract-invalid` | None. It is the fallback for a schema keyword with no rule, and this schema uses no such keyword |
+| `contract-structure-invalid` | `contract-invalid` | None. It is the fallback for a schema keyword with no rule, and no fixture reaches it |
 
 ### Semantic rules
 
@@ -233,6 +265,7 @@ only the schema file does not get them.** Each has one invalid fixture.
 | `run-caller-profile-digest-differs` | The content digest a run states for a caller profile revision is the registered digest of that revision. | `$.callerProfile.contentSha256` |
 | `run-caller-concurrency-differs` | The concurrency a run states is the concurrency its caller profile fixes. | `$.callerProfile.concurrency` |
 | `run-caller-evidence-missing` | A PASSED or FAILED run that names a caller profile names at least one evidence file with the role caller. | `$.evidence.files` |
+| `run-decided-without-evidence` | A PASSED or FAILED run names at least one evidence file. | `$.evidence.files` |
 | `run-evidence-path-duplicated` | A run names each evidence path once. | The later path |
 | `run-evidence-names-the-manifest` | A run does not list its own manifest as evidence. | The path |
 | `run-value-credential-shaped` | No string value, and no word of a statement, has the shape of a credential. | The value |
@@ -274,8 +307,19 @@ The suite asserts each, so closing one is a visible change.
 - **A credential behind a character that is not white space, a quotation mark, or an
   opening bracket can pass.** A published prefix behind an asterisk or an equals sign
   is not at the start of a word.
-- **A host path outside the four forms passes.** `/var/lib/...`, `/mnt/...`, `~/...`,
-  and a network share are not refused.
+- **A host path outside the four refused forms passes.** `/var/lib/...`, `/mnt/...`,
+  `~/...`, and a network share are not refused. Nor is an account root with no slash
+  after it, such as `/root.` at the end of a sentence, or a drive letter with no
+  separator.
+- **Some ordinary text is refused.** A long word in mixed case with a digit has the
+  opaque shape, and one letter before `:/` reads as a drive. A writer must reword
+  such a statement.
+- **A claim status as a word passes.** So does a statement that holds a prompt or a
+  response.
+- **A verified cleanup that lists an item it left validates.** A cleanup can be
+  verified and leave an image in a node.
+- **Two evidence paths that one directory cannot hold validate.** `pods` and
+  `pods/a.json` cannot both be files.
 - **A `FAILED`, `INCONCLUSIVE`, or `ABORTED` run whose registered fault was not
   injected validates.** Only `PASSED` and `REFUSED` are bound to the injection.
 - **The schema accepts `2026-02-29T10:00:00Z`.** The form is checked by the schema and
@@ -301,9 +345,12 @@ Each of these is a statement about a run that no code in this repository checks.
 - **That the cleanup state is true.** The frozen record decides whether an incomplete
   cleanup bears on a result. No rule binds `result.state` to `cleanup.state`.
 - **That a run identifier is used once.** The validator reads one document.
-- **That an intended level is permitted.** `C3` needs an accepted representative
-  preregistration and a qualifying execution. `C4` needs operation in production. The
-  schema accepts both values and checks neither condition.
+- **That an intended level is permitted.**
+  [InferOps Evidence Levels](../testing/evidence-levels.md) states the conditions of
+  `C3` and of `C4`. The schema accepts both values and checks no condition of
+  either.
+- **What a statement says.** No rule reads a statement for a prompt, a response, or a
+  claim.
 - **That `environment.provider` is a provider the repository supports.** The schema
   holds no provider vocabulary. Naming a provider does not raise an evidence level.
 
@@ -355,6 +402,8 @@ three `pre-schema` lines and exits 0. The default-lane suite runs the same listi
   record together passes the listing. The suite writes the three records out
   literally, so such a change shows in review as a changed test.
 - **It reads the files of the tree and not Git.** An untracked manifest is listed.
+- **It lists a file by the exact name `run.v1alpha1.json`.** A manifest under another
+  name, or under that name in another letter case, is not listed and not validated.
 - **It does not judge a pre-schema manifest.** `tools.experiment_e01 --check` judges
   the two static runs, as before. No command judges the E01-D run again.
 - **The E01 runner still writes the earlier shape.** `tools/experiment_e01` writes a
@@ -392,9 +441,9 @@ exists, so the support window has nothing to apply to yet.
 ## Fixtures
 
 [`contracts/experiment/examples/`](../../contracts/experiment/examples/README.md) holds
-6 valid fixtures and 33 invalid ones. The valid fixtures together hold each of the five
-result states. Of the invalid fixtures, the schema alone refuses 20, and a semantic rule
-refuses 13.
+6 valid fixtures and 36 invalid ones. The valid fixtures together hold each of the five
+result states. Of the invalid fixtures, the schema alone refuses 22, and a semantic rule
+refuses 14.
 [`expected-rejections.json`](../../contracts/experiment/examples/invalid/expected-rejections.json)
 states the code, the rule, and the field of each refusal, and the suite compares it
 field by field.

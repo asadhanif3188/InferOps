@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://inferops.io/contracts/experiment/experiment-run.v1alpha1.schema.json",
   "title": "ExperimentRun v1alpha1",
-  "description": "The manifest of one run of one experiment against one delivered release: which experiment and which frozen record the run answers, the commit it executed, the environment, the release, the runtime image, the model, the caller profile, the fault, the result state, the intended evidence level, the evidence files by digest, the cleanup state, and what the run does not establish. It is a repository document, not a Kubernetes resource: no custom resource definition, controller, or cluster reads one. It references every input and every evidence file by an immutable identity and carries none of their content. The result state, the evidence level, and a claim's status are three separate things: this document has one member for the first, one for the second, and none for the third. This schema is structural only: the rules that compare two members, or a member with a registered profile, are stated in docs/contracts/experiment-run.md and are not enforced here.",
+  "description": "The manifest of one run of one experiment against one delivered release: which experiment and which frozen record the run answers, the commit it executed, the environment, the release, the runtime image, the model, the caller profile, the fault, the result state, the intended evidence level, the evidence files by digest, the cleanup state, and what the run does not establish. It is a repository document, not a Kubernetes resource: no custom resource definition, controller, or cluster reads one. It references every input and every evidence file by an immutable identity and carries none of their content. The result state, the evidence level, and a claim's status are three separate things: this document has one member for the first, one for the second, and none for the third. This schema is structural only: the rules that compare two members, or a member with a registered profile, are stated in docs/contracts/experiment-run.md and are not enforced here. Each pattern ends with $(?!\\n): some regular-expression engines let $ match before a final line feed, and the lookahead refuses that line feed in each engine.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -60,50 +60,50 @@
     "identifier": {
       "description": "An experiment or run identifier: 1 to 63 characters, a letter or digit first, then letters, digits, dots, underscores, and hyphens. It is the pattern the reliability caller record accepts for the same two identifiers, so one run can carry one identifier in both documents.",
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$(?!\\n)"
     },
     "dnsLabel": {
       "description": "A DNS-safe stable identifier, lowercase, the same pattern and bound as the WorkloadContract's, the EnvironmentBinding's, and the RenderedWorkloadRelease's identifiers.",
       "type": "string",
       "minLength": 1,
       "maxLength": 63,
-      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$(?!\\n)"
     },
     "sha256": {
       "description": "A SHA-256 digest as 64 lowercase hexadecimal characters, with no algorithm prefix. Uppercase hexadecimal, a sha256: prefix, and any other length are refused, so one digest has exactly one spelling.",
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^[0-9a-f]{64}$(?!\\n)"
     },
     "gitRevision": {
       "description": "A full Git commit identifier, 40 lowercase hexadecimal characters. A branch name, a tag name, and an abbreviated identifier are refused: each can come to name another commit.",
       "type": "string",
-      "pattern": "^[0-9a-f]{40}$"
+      "pattern": "^[0-9a-f]{40}$(?!\\n)"
     },
     "utcInstant": {
-      "description": "A UTC instant, as YYYY-MM-DDTHH:MM:SSZ with an optional fraction of one to six digits. It is the form the reliability caller record writes. An offset other than Z is refused, so two instants compare as text of the same form. The schema checks the form only: 2026-13-40T25:61:61Z matches the pattern and is not an instant.",
+      "description": "A UTC instant, as YYYY-MM-DDTHH:MM:SSZ with an optional fraction of one to six digits. The reliability caller record writes this form with a fraction of three digits. An offset other than Z is refused. The schema checks the form only: 2026-13-40T25:61:61Z matches the pattern and is not an instant.",
       "type": "string",
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$(?!\\n)"
     },
     "repositoryPath": {
-      "description": "A path relative to the repository root, with forward slashes. A leading slash, a drive letter, a backslash, and a parent segment are refused, so the document cannot carry a personal filesystem path.",
+      "description": "A path relative to the repository root, with forward slashes. A leading slash, a drive letter, a backslash, and a parent segment are refused, so the document cannot carry an absolute path of a host.",
       "type": "string",
       "maxLength": 255,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$(?!\\n)"
     },
     "evidencePath": {
       "description": "The path of one evidence file, relative to the directory that holds this manifest, lowercase, with forward slashes. Each segment starts and ends with a letter or digit, so a leading slash, a drive letter, a backslash, and a parent segment are refused: the path cannot leave the run's own directory.",
       "type": "string",
       "maxLength": 255,
-      "pattern": "^[a-z0-9]([a-z0-9._-]*[a-z0-9])?(/[a-z0-9]([a-z0-9._-]*[a-z0-9])?)*$"
+      "pattern": "^[a-z0-9]([a-z0-9._-]*[a-z0-9])?(/[a-z0-9]([a-z0-9._-]*[a-z0-9])?)*$(?!\\n)"
     },
     "digestPinnedImageReference": {
       "description": "An OCI image reference pinned by digest, exactly as the WorkloadContract accepts one. A tag alone is a movable label and is not accepted.",
       "type": "string",
       "maxLength": 512,
-      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$"
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$(?!\\n)"
     },
     "text": {
-      "description": "One statement in prose. It is the only free text this document holds. It is bounded, and it is not a place for a prompt, a completion, a response body, a credential, or a host path.",
+      "description": "One statement in prose. It is the only free text this document holds. It is bounded. A statement is not a place for a prompt, a completion, a response body, a credential, or a host path: the schema cannot refuse one in prose, and docs/contracts/experiment-run.md states what the validator reads a statement for.",
       "type": "string",
       "minLength": 1,
       "maxLength": 2000
@@ -174,7 +174,7 @@
           "description": "The Kubernetes server version the run observed, as the server reports it.",
           "type": "string",
           "maxLength": 64,
-          "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)([-+][0-9a-z]+([.-][0-9a-z]+)*)?$"
+          "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)([-+][0-9a-z]+([.-][0-9a-z]+)*)?$(?!\\n)"
         },
         "nodeCount": {
           "description": "The number of nodes the run observed.",
@@ -238,7 +238,7 @@
       }
     },
     "model": {
-      "description": "The model of the release, by the identities the WorkloadContract pins.",
+      "description": "The model of the release: the identifier it is served under, and the revision and the artifact digest that the WorkloadContract pins.",
       "type": "object",
       "additionalProperties": false,
       "required": ["identifier", "revision", "sha256"],
@@ -250,10 +250,10 @@
         "revision": {
           "description": "The revision of the model's source repository: 40 to 64 lowercase hexadecimal characters, as the WorkloadContract pins it.",
           "type": "string",
-          "pattern": "^[0-9a-f]{40,64}$"
+          "pattern": "^[0-9a-f]{40,64}$(?!\\n)"
         },
         "sha256": {
-          "description": "The digest of the model artifact.",
+          "description": "The digest of the model artifact, as 64 hexadecimal characters with no prefix. The WorkloadContract writes the same digest with a sha256: prefix, so the value is the contract's without its first seven characters.",
           "$ref": "#/$defs/sha256"
         }
       }
@@ -276,7 +276,7 @@
           "description": "The profile's identifier, such as RP-1.",
           "type": "string",
           "maxLength": 32,
-          "pattern": "^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$"
+          "pattern": "^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$(?!\\n)"
         },
         "profileRevision": {
           "description": "The profile's revision number.",
@@ -337,7 +337,7 @@
           "description": "The recorded identity of what the fault acted on, such as pod/name: lowercase segments separated by slashes.",
           "type": "string",
           "maxLength": 253,
-          "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(/[a-z0-9]([a-z0-9.-]*[a-z0-9])?)*$"
+          "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(/[a-z0-9]([a-z0-9.-]*[a-z0-9])?)*$(?!\\n)"
         },
         "injectedAt": {
           "description": "When the run injected the fault.",
@@ -462,7 +462,7 @@
       }
     },
     "cleanup": {
-      "description": "The state of the cleanup after the run. A cleanup that is not verified states why.",
+      "description": "The state of the cleanup after the run. A cleanup that is not verified states why, and a verified cleanup states no reason. A verified or an incomplete cleanup can list what it left. A cleanup that was not required lists nothing.",
       "type": "object",
       "additionalProperties": false,
       "required": ["state"],
@@ -488,7 +488,21 @@
       },
       "then": {
         "required": ["reason"]
-      }
+      },
+      "else": {
+        "not": { "required": ["reason"] }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "not-required" } },
+            "required": ["state"]
+          },
+          "then": {
+            "not": { "required": ["left"] }
+          }
+        }
+      ]
     }
   }
 }

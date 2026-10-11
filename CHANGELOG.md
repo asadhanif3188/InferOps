@@ -13,7 +13,7 @@ from `1.0.0`.
 - **A run of an experiment has a manifest schema: ExperimentRun `v1alpha1`. No run
   produced a manifest of it.** `V2-S5-002-PR1` adds
   `contracts/experiment/experiment-run.v1alpha1.schema.json`, `tools/experiment_run`,
-  one suite, one page, 6 valid fixtures, and 33 invalid ones. A manifest names the
+  one suite, one page, 6 valid fixtures, and 36 invalid ones. A manifest names the
   frozen record of the run by path, revision, and content digest, the executing
   commit, the environment, the release, the runtime image, the model, the caller
   profile, the fault with its target and its time, the result state, the intended
@@ -24,13 +24,18 @@ from `1.0.0`.
   evidence level is `C0` to `C4`, and the meanings are unchanged. `FAILED` and
   `INCONCLUSIVE` are not evidence levels: the schema refuses a level as a state and
   a state as a level, each of the 25 pairs validates, and no member holds a claim's
-  status. The validator applies the schema and 13 semantic rules. One rule holds a
+  status. The validator applies the schema and 14 semantic rules. One rule holds a
   manifest that names RP-1 to the registered digest and to a concurrency of 2.
   **Three run manifests committed before the schema state the same `apiVersion`
   and `kind` and do not conform.** They are the manifests of the three E01 runs.
   They are not edited and not migrated. A register names each by path and content
-  digest, and `python -m tools.experiment_run repository` requires every other run
-  manifest under `docs/proof/experiments/` to validate. **What this does not do:**
+  digest, and `python -m tools.experiment_run repository` requires every other file
+  named `run.v1alpha1.json` under `docs/proof/experiments/` to validate. A manifest
+  is authored as JSON, which departs from ADR 0003. **Two independent reviews read
+  the first commit.** They found that each pattern accepted a value with a final
+  line feed under the Python validator, that a `PASSED` run could name no evidence
+  file, and that several sentences said more than the code does. The second commit
+  corrects each, and the validation record lists them. **What this does not do:**
   nothing writes a manifest, nothing reads one for analysis, the validator opens no
   evidence file, and it reads no freeze record, release, or cluster. The evidence
   directory layout and its integrity check are not in this change. The E01 runner

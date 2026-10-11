@@ -113,6 +113,7 @@ RULE_PROFILE_UNREGISTERED: Final = "run-caller-profile-unregistered"
 RULE_PROFILE_DIGEST: Final = "run-caller-profile-digest-differs"
 RULE_PROFILE_CONCURRENCY: Final = "run-caller-concurrency-differs"
 RULE_CALLER_EVIDENCE: Final = "run-caller-evidence-missing"
+RULE_NO_EVIDENCE: Final = "run-decided-without-evidence"
 RULE_EVIDENCE_DUPLICATED: Final = "run-evidence-path-duplicated"
 RULE_EVIDENCE_MANIFEST: Final = "run-evidence-names-the-manifest"
 RULE_TEXT_CREDENTIAL: Final = "run-value-credential-shaped"
@@ -149,6 +150,7 @@ SEMANTIC_RULES: Final[Mapping[str, str]] = {
         "A PASSED or FAILED run that names a caller profile names at least one "
         "evidence file with the role caller."
     ),
+    RULE_NO_EVIDENCE: ("A PASSED or FAILED run names at least one evidence file."),
     RULE_EVIDENCE_DUPLICATED: "A run names each evidence path once.",
     RULE_EVIDENCE_MANIFEST: "A run does not list its own manifest as evidence.",
     RULE_TEXT_CREDENTIAL: (
@@ -413,6 +415,17 @@ def _caller_findings(document: Mapping[str, Any]) -> list[Finding]:
 
 def _evidence_findings(document: Mapping[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
+    if (
+        document["result"]["state"] in DECIDED_STATES
+        and not (document["evidence"]["files"])
+    ):
+        findings.append(
+            _finding(
+                RULE_NO_EVIDENCE,
+                "$.evidence.files",
+                "the run is PASSED or FAILED and names no evidence file",
+            )
+        )
     seen: set[str] = set()
     for index, entry in enumerate(document["evidence"]["files"]):
         path = entry["path"]
@@ -596,10 +609,13 @@ def _manifest_refs(root: Path) -> list[str]:
     runs_root = root / RUNS_ROOT_REF
     if not runs_root.is_dir():
         return []
+    # The name is compared as text. A pattern given to `rglob` matches without
+    # regard to case on a file system that ignores case, so one tree would give
+    # two listings on two hosts.
     return sorted(
         path.relative_to(root).as_posix()
-        for path in runs_root.rglob(MANIFEST_NAME)
-        if path.is_file()
+        for path in runs_root.rglob("*")
+        if path.name == MANIFEST_NAME and path.is_file()
     )
 
 

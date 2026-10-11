@@ -19,16 +19,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   The result state is one of `PASSED`, `FAILED`, `INCONCLUSIVE`, `REFUSED`, and
   `ABORTED`; the evidence level is one of `C0` to `C4`, with unchanged meanings; the
   two are separate members, and no member holds a claim's status. Six valid fixtures
-  and 33 invalid ones, 20 refused by the schema alone and 13 by a semantic rule of
-  `tools/experiment_run`, each with its published code, rule, and field. Thirteen
+  and 36 invalid ones, 22 refused by the schema alone and 14 by a semantic rule of
+  `tools/experiment_run`, each with its published code, rule, and field. Fourteen
   semantic rule identifiers and four rules of reading and of the repository listing,
   all under the existing `contract-invalid` code, and none added to the canonical
   error model's own table. **Compatibility with earlier documents:** three run
   manifests committed before the schema state the same `apiVersion` and `kind` and do
   not conform. They are not edited or migrated. A new supporting-data file,
   `experiment/compatibility/pre-schema-experiment-runs.v1alpha1.json`, registers each
-  by path and content digest, and every other run manifest under
-  `docs/proof/experiments/` must validate. Compatibility classification: **compatible**
+  by path and content digest, and every other file named
+  `run.v1alpha1.json` under `docs/proof/experiments/` must validate. **Two things
+  differ from the earlier contracts.** The authoring form is JSON, which departs from
+  ADR 0003. Each pattern ends with `$(?!\n)`, because Python's `$` also matches before
+  a final line feed; the three earlier schemas end their patterns with `$` alone and
+  are not edited here. Compatibility classification: **compatible**
   for every consumer of the three earlier contracts, whose schemas, fixtures, rule
   identifiers, and verdicts did not change. No run produced a manifest of this schema,
   and nothing writes one.

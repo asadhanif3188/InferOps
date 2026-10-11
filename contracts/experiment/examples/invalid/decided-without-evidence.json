@@ -1,0 +1,68 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRun",
+  "metadata": {
+    "experimentId": "EXAMPLE-E2",
+    "runId": "20260101-example-e2-1",
+    "spec": {
+      "freezeRecord": "docs/proof/experiments/example-e1/freeze-r1.v1alpha1.json",
+      "freezeRevision": 1,
+      "freezeContentSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "executingRevision": "2222222222222222222222222222222222222222",
+    "startedAt": "2026-01-01T10:00:00Z",
+    "finishedAt": "2026-01-01T10:20:00Z"
+  },
+  "environment": {
+    "binding": {
+      "environment": "local",
+      "name": "local-docker-desktop",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "provider": "docker-desktop",
+    "kubernetesVersion": "v1.36.1",
+    "nodeCount": 1
+  },
+  "release": {
+    "releaseId": "4444444444444444444444444444444444444444444444444444444444444444",
+    "contractSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "helmValuesSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "desiredStateRevision": "2222222222222222222222222222222222222222"
+  },
+  "runtime": {
+    "image": "registry.example/runtime/server@sha256:7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "model": {
+    "identifier": "example-model-q8-0",
+    "revision": "8888888888888888888888888888888888888888",
+    "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "callerProfile": {
+    "applies": false,
+    "reason": "The frozen record registers one request and no caller profile."
+  },
+  "fault": {
+    "registered": false,
+    "reason": "The frozen record registers no fault for this experiment."
+  },
+  "result": {
+    "state": "PASSED"
+  },
+  "evidenceLevel": {
+    "intended": "C2"
+  },
+  "evidence": {
+    "files": []
+  },
+  "cleanup": {
+    "state": "verified"
+  },
+  "limitations": [
+    "Fixture. No run executed. Every identity in this document is a placeholder.",
+    "One run, on one provider, on one cluster with one node."
+  ],
+  "doesNotEstablish": [
+    "That a run executed. This document is a fixture.",
+    "Behaviour on another provider, another Kubernetes version, or another node count."
+  ]
+}

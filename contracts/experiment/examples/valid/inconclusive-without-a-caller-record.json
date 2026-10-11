@@ -53,7 +53,7 @@
   },
   "result": {
     "state": "INCONCLUSIVE",
-    "reason": "The caller record ends before the fault. The evidence does not decide the criteria."
+    "reason": "The caller record of the run was lost before it was copied. The evidence does not decide the criteria."
   },
   "evidenceLevel": {
     "intended": "C2"

@@ -13,14 +13,17 @@ catch:
    five levels share no value, each of the 25 pairs validates, a level is refused as
    a state, a state is refused as a level, and the schema has no member for a claim's
    status.
-2. **Every identity agrees with the document it is copied from.** The identifier and
-   time forms are the reliability caller record's, the binding and image forms are
-   the RenderedWorkloadRelease's, the model revision form is the WorkloadContract's,
-   and the caller profile is a revision that ``tools.reliability_profile`` registers.
-3. **There is nowhere to put what a manifest must not hold** - a prompt, a response,
-   the content of an evidence file, a claim status.
+2. **The forms agree with the documents the identities come from.** The identifier
+   form is the reliability caller record's, and the time form accepts what that
+   record writes. The binding and image forms are the RenderedWorkloadRelease's, the
+   model revision form is the WorkloadContract's, and the caller profile is a
+   revision that ``tools.reliability_profile`` registers. One form differs, and a
+   test measures it: the model digest has no ``sha256:`` prefix here.
+3. **No member is named for what a manifest must not hold** - a prompt, a response,
+   the content of an evidence file, a claim status. A statement is prose, and no rule
+   reads it for one of these: a test measures that too.
 4. **Refusals are exactly as published**, by the bare schema where the layer is
-   structural, and never quote a value from the document.
+   structural, and quote no value of 12 characters or more from the document.
 5. **The three manifests committed before the schema are registered, and are not
    made to look valid.** Each is refused by the schema, each has its registered
    content, and a fourth manifest of their shape is refused.
@@ -359,6 +362,60 @@ def test_every_array_is_bounded():
     assert unbounded == [], unbounded
 
 
+#: What ends each pattern. Python's `$` also matches before a final line feed,
+#: and the lookahead refuses that line feed.
+END = "$(?!\\n)"
+
+
+def patterned_values(node: Any, path: str = "") -> Iterator[tuple[str, list[Any]]]:
+    """Each string of a document whose leaf has a pattern, with the keys to it."""
+
+    def walk(value: Any, keys: list[Any]) -> Iterator[tuple[str, list[Any]]]:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                yield from walk(child, [*keys, key])
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                yield from walk(child, [*keys, index])
+        elif isinstance(value, str):
+            leaf = ""
+            for key in keys:
+                if isinstance(key, int):
+                    leaf += "[]"
+                else:
+                    leaf += f".{key}" if leaf else key
+            if "pattern" in schema_leaves()[leaf][0]:
+                yield leaf, keys
+
+    yield from walk(node, [])
+
+
+def test_every_pattern_refuses_a_final_line_feed():
+    patterns = [
+        node["pattern"]
+        for _, node in iter_schema_nodes(core.load_schema())
+        if isinstance(node.get("pattern"), str)
+    ]
+    assert len(patterns) == 12
+    for pattern in patterns:
+        assert pattern.startswith("^") and pattern.endswith(END), pattern
+
+
+def test_a_value_that_ends_with_a_line_feed_is_refused_in_every_patterned_member():
+    """33 values of one valid manifest, in 27 members, one at a time."""
+    places = list(patterned_values(base()))
+    assert len({leaf for leaf, _ in places}) == 27
+    assert len(places) == 33
+    for leaf, keys in places:
+        document = base()
+        target = document
+        for key in keys[:-1]:
+            target = target[key]
+        target[keys[-1]] += "\n"
+        assert rules_of(document) == ["value-malformed"], leaf
+        assert list(raw_validator().iter_errors(document)), leaf
+
+
 def test_no_pattern_uses_a_class_that_admits_non_ascii_digits():
     r"""`\d` matches every Unicode digit in Python. The schema writes `[0-9]`."""
     for pointer, node in iter_schema_nodes(core.load_schema()):
@@ -437,6 +494,23 @@ def test_every_result_state_validates_at_every_evidence_level(state: str, level:
     assert core.validate(document) == []
 
 
+def test_a_claim_status_word_in_a_name_or_a_statement_is_not_refused():
+    """Measured. The schema refuses a member for a claim status. It does not read a
+    value with an open vocabulary, or a statement, for the words."""
+    document = base()
+    document["evidence"]["files"][1]["role"] = "certified"
+    document["environment"]["provider"] = "planned"
+    document["limitations"].append("Claim status: certified. Achieved level: C2.")
+    assert core.validate(document) == []
+
+
+def test_a_statement_is_not_read_for_a_prompt_or_a_response():
+    """Measured. No member is defined for content, and no rule reads a statement."""
+    document = base()
+    document["limitations"].append("Prompt: Name three things. Response: Three.")
+    assert core.validate(document) == []
+
+
 def test_the_run_states_one_intended_level_and_assigns_none_to_itself():
     schema = core.load_schema()
     assert list(schema["$defs"]["evidenceLevel"]["properties"]) == ["intended"]
@@ -451,7 +525,8 @@ def test_the_identifier_form_is_the_caller_records():
     """One run can carry one experiment identifier and one run identifier in both."""
     schema = core.load_schema()
     assert (
-        schema["$defs"]["identifier"]["pattern"] == f"^{incluster.IDENTIFIER.pattern}$"
+        schema["$defs"]["identifier"]["pattern"]
+        == f"^{incluster.IDENTIFIER.pattern}{END}"
     )
     for member in ("experimentId", "runId"):
         assert schema["$defs"]["metadata"]["properties"][member] == {
@@ -465,12 +540,11 @@ def test_the_identifier_form_is_the_caller_records():
 def test_the_digest_form_is_the_caller_records_and_the_releases():
     schema = core.load_schema()
     release = load_release_schema()
-    assert schema["$defs"]["sha256"]["pattern"] == f"^{incluster.SHA256.pattern}$"
-    assert schema["$defs"]["sha256"]["pattern"] == release["$defs"]["sha256"]["pattern"]
-    assert (
-        schema["$defs"]["gitRevision"]["pattern"]
-        == release["$defs"]["gitRevision"]["pattern"]
-    )
+    assert schema["$defs"]["sha256"]["pattern"] == f"^{incluster.SHA256.pattern}{END}"
+    for name in ("sha256", "gitRevision"):
+        released = release["$defs"][name]["pattern"]
+        assert released.endswith("$")
+        assert schema["$defs"][name]["pattern"] == released[:-1] + END
 
 
 def test_the_time_form_accepts_what_the_caller_record_writes():
@@ -487,8 +561,10 @@ def test_the_binding_and_image_forms_are_the_releases():
     schema = core.load_schema()
     release = load_release_schema()
     for name in ("dnsLabel", "digestPinnedImageReference"):
-        for keyword in ("pattern", "maxLength"):
-            assert schema["$defs"][name][keyword] == release["$defs"][name][keyword]
+        form = release["$defs"][name]["pattern"]
+        assert form.endswith("$")
+        assert schema["$defs"][name]["pattern"] == form[:-1] + END
+        assert schema["$defs"][name]["maxLength"] == release["$defs"][name]["maxLength"]
     binding = schema["$defs"]["environmentBindingReference"]["properties"]
     released = release["$defs"]["environmentBindingReference"]["properties"]
     assert binding["environment"]["enum"] == released["environment"]["enum"]
@@ -498,10 +574,28 @@ def test_the_binding_and_image_forms_are_the_releases():
 def test_the_model_revision_form_is_the_workload_contracts():
     schema = core.load_schema()
     workload = load_workload_schema()
+    contracted = workload["$defs"]["sha256Hex"]["pattern"]
+    assert contracted.endswith("$")
     assert (
         schema["$defs"]["model"]["properties"]["revision"]["pattern"]
-        == workload["$defs"]["sha256Hex"]["pattern"]
+        == contracted[:-1] + END
     )
+
+
+def test_the_model_digest_form_is_not_the_workload_contracts():
+    """Measured. The contract writes the artifact digest with a `sha256:` prefix. A
+    manifest writes 64 characters with no prefix, as it writes each other digest."""
+    workload = load_workload_schema()
+    contracted = re.compile(workload["$defs"]["sha256Digest"]["pattern"])
+    digest = "9" * 64
+    assert contracted.search(f"sha256:{digest}") and not contracted.search(digest)
+    document = base()
+    document["model"]["sha256"] = digest
+    assert core.validate(document) == []
+    document["model"]["sha256"] = f"sha256:{digest}"
+    assert as_tuples(core.validate(document)) == [
+        ("contract-invalid", "value-malformed", "$.model.sha256")
+    ]
 
 
 def test_the_registered_caller_profiles_are_the_reliability_profiles():
@@ -582,10 +676,11 @@ def test_the_rejection_manifest_names_exactly_the_invalid_fixtures():
     assert set(manifest()["layers"]) == {"structural", "semantic"}
 
 
-def test_thirty_three_invalid_fixtures_exist_in_two_layers():
+def test_thirty_six_invalid_fixtures_exist_in_two_layers():
     layers = [entry["layer"] for entry in manifest()["fixtures"].values()]
-    assert layers.count("structural") == 20
-    assert layers.count("semantic") == 13
+    assert len(layers) == 36
+    assert layers.count("structural") == 22
+    assert layers.count("semantic") == 14
 
 
 @pytest.mark.parametrize("path", invalid_paths(), ids=lambda path: path.name)
@@ -629,7 +724,7 @@ def test_every_semantic_rule_has_a_fixture_that_fails_because_of_it():
         for item in entry["expected"]
     }
     assert covered == set(core.SEMANTIC_RULES)
-    assert len(core.SEMANTIC_RULES) == 13
+    assert len(core.SEMANTIC_RULES) == 14
 
 
 def test_every_structural_rule_but_the_fallback_has_a_fixture():
@@ -682,7 +777,9 @@ def test_the_semantic_layer_does_not_run_on_a_document_the_schema_refuses():
         "2026-01-32T10:00:00Z",
         "2026-01-01T24:00:00Z",
         "2026-01-01T10:60:00Z",
+        "2026-01-01T10:00:60Z",
         "2026-01-01T10:00:61Z",
+        "0000-01-01T10:00:00Z",
     ],
 )
 def test_a_time_of_the_right_form_that_names_no_instant_is_refused(text: str):
@@ -728,7 +825,9 @@ def test_a_run_that_starts_and_ends_at_one_instant_is_accepted():
 
 
 @pytest.mark.parametrize("state", ["FAILED", "INCONCLUSIVE", "ABORTED"])
-def test_only_a_passed_run_is_bound_to_the_injection(state: str):
+def test_a_run_that_is_not_passed_or_refused_is_not_bound_to_the_injection(
+    state: str,
+):
     """Measured: a FAILED run whose registered fault was not injected validates."""
     document = base()
     document["fault"] = {
@@ -746,6 +845,49 @@ def test_a_run_that_decides_nothing_needs_no_caller_evidence(state: str):
     document = load_json(VALID_DIR / "refused-before-the-procedure.json")
     document["result"] = {"state": state, "reason": "Stated."}
     assert document["evidence"]["files"] == []
+    assert core.validate(document) == []
+
+
+@pytest.mark.parametrize("state", ["PASSED", "FAILED"])
+def test_a_run_that_decides_its_criteria_names_an_evidence_file(state: str):
+    document = load_json(VALID_DIR / "no-fault-and-no-caller-profile.json")
+    document["result"] = {"state": state, "reason": "Stated."}
+    document["evidence"]["files"] = []
+    assert as_tuples(core.validate(document)) == [
+        ("contract-invalid", "run-decided-without-evidence", "$.evidence.files")
+    ]
+    document = base()
+    document["result"] = {"state": state, "reason": "Stated."}
+    document["evidence"]["files"] = []
+    assert rules_of(document) == [
+        "run-caller-evidence-missing",
+        "run-decided-without-evidence",
+    ]
+
+
+def test_a_cleanup_states_a_reason_only_when_it_is_not_verified():
+    document = base()
+    document["cleanup"] = {"state": "verified", "reason": "Stated."}
+    assert as_tuples(core.validate(document)) == [
+        ("contract-invalid", "value-not-permitted", "$.cleanup")
+    ]
+
+
+@pytest.mark.parametrize("state", ["verified", "incomplete"])
+def test_a_cleanup_that_ran_can_list_what_it_left(state: str):
+    """Measured: a verified cleanup that lists an item it left validates."""
+    document = base()
+    document["cleanup"] = {"state": state, "left": ["One image, in the node."]}
+    if state == "incomplete":
+        document["cleanup"]["reason"] = "Stated."
+    assert core.validate(document) == []
+
+
+def test_evidence_paths_that_no_directory_can_hold_together_still_validate():
+    """Measured: `pods` and `pods/a.json` cannot both be files. No rule reads that."""
+    document = base()
+    document["evidence"]["files"][1]["path"] = "pods"
+    document["evidence"]["files"][2]["path"] = "pods/a.json"
     assert core.validate(document) == []
 
 
@@ -887,6 +1029,8 @@ def test_a_statement_with_no_host_path_is_accepted(statement: str):
         "The files are under \\\\host\\share\\example on the network.",
         "The files are under ~/example on the host.",
         "The files are under /mnt/d/work/example on the host.",
+        "The driver ran as root, from /root.",
+        "The files are under D:work on the host.",
     ],
 )
 def test_host_paths_the_heuristic_still_accepts(statement: str):
@@ -895,6 +1039,12 @@ def test_host_paths_the_heuristic_still_accepts(statement: str):
     document = base()
     document["limitations"].append(statement)
     assert core.validate(document) == []
+
+
+def test_ordinary_text_that_the_heuristics_refuse():
+    """Measured false positives. A writer must reword such a statement."""
+    assert core.credential_shaped("See Kubernetes1ControllerManagerAdmission.")
+    assert core.holds_host_path("The option is -f:/dev in the notes.")
 
 
 def test_the_statements_of_the_pre_schema_manifests_trip_neither_heuristic():
@@ -1001,7 +1151,9 @@ def test_the_committed_tree_holds_three_pre_schema_manifests_and_no_other():
 
 
 def test_the_e01_runner_writes_the_registered_name_and_kind():
-    """Measured. A new run of the E01 runner writes a manifest this listing refuses."""
+    """The runner's constants are the name, the kind, and the version of this schema.
+    The test executes no run: that a fourth manifest of the earlier shape is refused
+    is held by the test of that name below."""
     assert e01_core.MANIFEST == core.MANIFEST_NAME
     assert e01_core.KIND == core.KIND
     assert e01_core.API_VERSION == core.SUPPORTED_API_VERSION
@@ -1065,6 +1217,20 @@ def test_a_fourth_manifest_of_the_pre_schema_shape_is_refused(tmp_path: Path):
     ref = write_run(root, "20260101-example-e1-1", earlier)
     assert statuses(root)[ref] == core.REFUSED
     assert core.repository_report(root).refused
+
+
+def test_a_file_with_the_manifest_name_in_another_case_is_not_listed(
+    tmp_path: Path,
+):
+    """The name is compared as text, so a host that ignores case lists what a host
+    that does not ignore it lists."""
+    root = tree(tmp_path)
+    ref = write_run(root, "20260101-example-e1-1", {"kind": "ExperimentRun"})
+    path = root / ref
+    path.rename(path.with_name(core.MANIFEST_NAME.upper()))
+    report = core.repository_report(root)
+    assert len(report.manifests) == 3
+    assert not report.refused
 
 
 def test_a_manifest_that_cannot_be_read_is_refused(tmp_path: Path):
@@ -1162,7 +1328,11 @@ def test_a_register_with_a_defect_is_refused(tmp_path: Path, defect: str):
 def test_an_absent_register_is_refused(tmp_path: Path):
     root = tree(tmp_path)
     (root / core.PRE_SCHEMA_REGISTER_REF).unlink()
-    assert core.repository_report(root).refused
+    report = core.repository_report(root)
+    assert report.refused
+    assert [finding.rule for finding in report.findings] == [
+        "run-pre-schema-register-unreadable"
+    ]
 
 
 def test_a_register_that_gains_a_record_admits_the_manifest_it_names(tmp_path: Path):
@@ -1275,11 +1445,37 @@ def test_the_command_exits_2_on_arguments_it_cannot_use(argv: list[str]):
     assert stopped.value.code == 2
 
 
-def test_the_command_writes_nothing(tmp_path: Path):
+def test_the_command_writes_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
     root = tree(tmp_path)
-    before = sorted(path.as_posix() for path in root.rglob("*"))
-    core.repository_report(root)
-    assert sorted(path.as_posix() for path in root.rglob("*")) == before
+    ref = write_run(root, "20260101-example-e1-1", base())
+
+    def snapshot() -> dict[str, bytes | None]:
+        return {
+            path.relative_to(root).as_posix(): (
+                path.read_bytes() if path.is_file() else None
+            )
+            for path in sorted(root.rglob("*"))
+        }
+
+    before = snapshot()
+    monkeypatch.setattr(command, "REPO_ROOT", root)
+    assert command.main(["repository"]) == 0
+    assert command.main(["check", str(root / ref)]) == 0
+    assert snapshot() == before
+    assert capsys.readouterr().out.count("ok ") == 2
+
+
+def test_the_check_command_prints_no_line_break_from_a_path():
+    assert command._printable("run\nok         forged.json") == (
+        "run?ok         forged.json"
+    )
+    assert command._printable("docs/proof/run.v1alpha1.json") == (
+        "docs/proof/run.v1alpha1.json"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -1313,9 +1509,15 @@ def test_the_published_structural_matrix_names_a_fixture_for_each_rule():
     assert {backticked(row[0]) for row in rows} == {
         name for name, rule in RULES.items() if not rule.semantic
     }
+    fixtures = manifest()["fixtures"]
     for row in rows:
         rule = RULES[backticked(row[0])]
         assert backticked(row[1]) == rule.code
+        if rule.identifier == "contract-structure-invalid":
+            assert row[2].startswith("None.")
+            continue
+        refused_by = {item["rule"] for item in fixtures[backticked(row[2])]["expected"]}
+        assert rule.identifier in refused_by, row[2]
 
 
 def test_the_documents_name_every_fixture():
@@ -1337,7 +1539,7 @@ def test_the_document_states_the_three_pre_schema_manifests_and_their_digests():
         assert digest in document
 
 
-def test_the_package_exports_what_the_document_names():
+def test_the_package_exports_the_names_of_its_core_module():
     for name in experiment_run.__all__:
         assert getattr(experiment_run, name) is getattr(core, name)
     assert copy.deepcopy(core.load_schema()) == core.load_schema()

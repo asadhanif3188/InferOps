@@ -24,7 +24,7 @@ means, how it is versioned, which rules are enforced, and which are not.
 | WorkloadContract | `v1alpha1` | Accepted; parsed by [the workload domain model](../domain/workload-domain-model.md), and no runtime consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
 | EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; the renderer input boundary reads the selected binding into a render context, and the Helm values renderer generates chart values from it, which a caller can write with their release to a directory it names | [EnvironmentBinding v1alpha1](environment-binding.md) |
 | RenderedWorkloadRelease | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; a repository document, not a cluster resource; parsed by the platform domain, which defines how a release and its sources are hashed, recomputes the release identifier, refuses credential-shaped values, and compares a release with the contract and binding it names; builds one from a render context only from fields its input-trust policy classifies public-safe identities or derived digests; since `V2-S2-001-PR2` the Helm values renderer's generation records one for the values it renders, and a caller can write both to a directory it names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S3-002-PR1` a second generated release is committed as Git desired state and checked the same way; nothing installs one | [RenderedWorkloadRelease v1alpha1](rendered-workload-release.md) |
-| ExperimentRun | `v1alpha1` | Published schema with valid and invalid fixtures and an offline validator that applies the schema and 13 semantic rules; a repository document, not a cluster resource; the result state, the intended evidence level, and a claim's status are separate, and the schema has no member for the third; three run manifests committed before the schema state the same `apiVersion` and `kind`, do not conform, and are registered by path and content digest; no run produced a manifest of this schema, nothing writes one, and nothing reads one for analysis | [ExperimentRun v1alpha1](experiment-run.md) |
+| ExperimentRun | `v1alpha1` | Published schema with valid and invalid fixtures and an offline validator that applies the schema and 14 semantic rules; a repository document, not a cluster resource; the result state, the intended evidence level, and a claim's status are separate, and the schema has no member for the third; three run manifests committed before the schema state the same `apiVersion` and `kind`, do not conform, and are registered by path and content digest; no run produced a manifest of this schema, nothing writes one, and nothing reads one for analysis | [ExperimentRun v1alpha1](experiment-run.md) |
 
 A published schema is a commitment about what will be accepted. It is not evidence
 that anything accepts it, and it certifies no runtime behaviour.
@@ -45,8 +45,8 @@ No capability descriptor, runtime descriptor, model-access API, evaluation resul
 cost record, or policy decision exists. Each will be added when the capability
 behind it exists rather than in advance.
 
-The EnvironmentBinding and the RenderedWorkloadRelease are the two schemas published
-before their consumer, and the exception is deliberate rather than a lapse in the rule
+The EnvironmentBinding and the RenderedWorkloadRelease were the first two schemas
+published before their consumer, and the exception is deliberate rather than a lapse in the rule
 above. The renderer is the second version's first capability: it reads a binding and
 writes a release, and it is built against both, so their shapes, the binding's boundary
 with the WorkloadContract, and the release's rule for its own identifier have to be fixed

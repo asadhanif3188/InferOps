@@ -98,6 +98,17 @@
         }
       ]
     },
+    "cleanup-not-required-with-items-left.json": {
+      "layer": "structural",
+      "refusedFor": "A cleanup that was not required, with an item that it left in place.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.cleanup"
+        }
+      ]
+    },
     "content-in-run.json": {
       "layer": "structural",
       "refusedFor": "The run carries content where it must carry a reference: a prompt, a response body, and the content of an evidence file.",
@@ -132,6 +143,17 @@
           "code": "contract-invalid",
           "rule": "run-value-credential-shaped",
           "field": "$.limitations[2]"
+        }
+      ]
+    },
+    "decided-without-evidence.json": {
+      "layer": "semantic",
+      "refusedFor": "The run is PASSED, under no caller profile, and names no evidence file.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-decided-without-evidence",
+          "field": "$.evidence.files"
         }
       ]
     },
@@ -485,6 +507,27 @@
           "code": "contract-invalid",
           "rule": "value-out-of-range",
           "field": "$.limitations"
+        }
+      ]
+    },
+    "values-with-a-final-line-feed.json": {
+      "layer": "structural",
+      "refusedFor": "Three values that end with a line feed: a release identifier, a run identifier, and an evidence path that would otherwise name the manifest.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.evidence.files[2].path"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.runId"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.release.releaseId"
         }
       ]
     },

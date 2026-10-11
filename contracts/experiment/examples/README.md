@@ -26,7 +26,7 @@ registered content digest, because a semantic rule refuses any other.
 | [`valid/fault-injected-failed.json`](valid/fault-injected-failed.json) | `FAILED` | The same run with a criterion that did not hold. The intended level is still `C2`: a failed run is not a lower level |
 | [`valid/refused-before-the-procedure.json`](valid/refused-before-the-procedure.json) | `REFUSED` | A precondition failed. The fault is registered and not injected, no evidence file exists, and no cleanup is required |
 | [`valid/aborted-after-the-fault.json`](valid/aborted-after-the-fault.json) | `ABORTED` | An abort condition after the fault, with an incomplete cleanup that states what it left |
-| [`valid/inconclusive-without-a-caller-record.json`](valid/inconclusive-without-a-caller-record.json) | `INCONCLUSIVE` | A run under RP-1 with no caller record. It decides no criterion, so the caller-evidence rule does not bind it |
+| [`valid/inconclusive-without-a-caller-record.json`](valid/inconclusive-without-a-caller-record.json) | `INCONCLUSIVE` | A run under RP-1 whose caller record was lost. It decides no criterion, so the caller-evidence rule does not bind it |
 | [`valid/no-fault-and-no-caller-profile.json`](valid/no-fault-and-no-caller-profile.json) | `PASSED` | A run whose frozen record registers no fault and no caller profile, each with its reason |
 
 ## Invalid fixtures
@@ -38,7 +38,7 @@ suite compares them field by field on every run.
 
 ### Refused by the schema alone
 
-Any draft 2020-12 validator reaches the same verdict.
+The suite runs one draft 2020-12 validator, the Python one.
 
 | Fixture | Refused for |
 |---|---|
@@ -62,6 +62,8 @@ Any draft 2020-12 validator reaches the same verdict.
 | [`invalid/wrong-json-types.json`](invalid/wrong-json-types.json) | Four values of the wrong JSON type |
 | [`invalid/values-out-of-range.json`](invalid/values-out-of-range.json) | Four values outside a bound |
 | [`invalid/unsupported-vocabulary.json`](invalid/unsupported-vocabulary.json) | An environment, a result state, and a cleanup state outside their vocabularies |
+| [`invalid/cleanup-not-required-with-items-left.json`](invalid/cleanup-not-required-with-items-left.json) | A cleanup that was not required, and an item that it left |
+| [`invalid/values-with-a-final-line-feed.json`](invalid/values-with-a-final-line-feed.json) | Three values that end with a line feed. The first commit of this change accepted each |
 
 ### Refused by a semantic rule
 
@@ -79,6 +81,7 @@ refuses it. A consumer that holds only the schema file does not get these refusa
 | [`invalid/caller-profile-digest-differs.json`](invalid/caller-profile-digest-differs.json) | `run-caller-profile-digest-differs` |
 | [`invalid/caller-concurrency-differs.json`](invalid/caller-concurrency-differs.json) | `run-caller-concurrency-differs` |
 | [`invalid/caller-evidence-missing.json`](invalid/caller-evidence-missing.json) | `run-caller-evidence-missing` |
+| [`invalid/decided-without-evidence.json`](invalid/decided-without-evidence.json) | `run-decided-without-evidence` |
 | [`invalid/evidence-path-twice.json`](invalid/evidence-path-twice.json) | `run-evidence-path-duplicated` |
 | [`invalid/manifest-as-its-own-evidence.json`](invalid/manifest-as-its-own-evidence.json) | `run-evidence-names-the-manifest` |
 | [`invalid/credential-shaped-value.json`](invalid/credential-shaped-value.json) | `run-value-credential-shaped` |

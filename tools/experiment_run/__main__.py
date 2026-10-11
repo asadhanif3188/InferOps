@@ -9,9 +9,13 @@ semantic rules. ``repository`` reads every run manifest under
 its registered content, and every other manifest must validate.
 
 Exit status 0 says that nothing was refused. Exit status 3 says that a rule refused
-a manifest or the register, and the output names the rule. Exit status 2 says that
-the arguments are not usable. Exit status 4 says that the command failed in a way
-that no rule names.
+a manifest or the register, and the output names the rule. A path that names no
+file, a directory, or a file that is not JSON is refused by a rule, so it gives 3.
+Exit status 2 says that the argument parser refused the arguments. Exit status 4
+says that the command failed in a way that no rule names.
+
+``check`` prints each path as it was given, with each character that is not
+printable replaced by a question mark.
 
 **The command reads files and writes nothing.** It opens no evidence file, contacts
 no cluster, and judges no result. See docs/contracts/experiment-run.md.
@@ -43,6 +47,11 @@ EXIT_FAILED = 4
 _LABELS = {CONFORMING: "ok        ", PRE_SCHEMA: "pre-schema"}
 
 
+def _printable(name: str) -> str:
+    """A path for one output line: a line break in a name cannot start a line."""
+    return "".join(c if c.isprintable() else "?" for c in name)
+
+
 def _refusal(name: str, findings: Iterable[Finding]) -> list[str]:
     listed = list(findings)
     lines = [f"REFUSED    {name}  ({len(listed)} finding(s))"]
@@ -55,7 +64,7 @@ def _refusal(name: str, findings: Iterable[Finding]) -> list[str]:
 def _check(paths: list[Path]) -> int:
     refused = False
     for path in sorted(paths):
-        name = path.as_posix()
+        name = _printable(path.as_posix())
         try:
             findings = validate(read_document(path))
         except RunDocumentError as error:

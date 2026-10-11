@@ -95,7 +95,9 @@ each has an invalid fixture here.
 The rules a schema cannot express — comparing two sibling values, consulting the
 compatibility matrix, judging whether a locator is a pasted credential — live in
 [`tools/contract_validation/`](../tools/contract_validation/) rather than here,
-because they are not part of the artifact a consumer validates against. What that
+because they are not part of the artifact a consumer validates against. An
+ExperimentRun's are in [`tools/experiment_run/`](../tools/experiment_run/), for the
+same reason. What that
 split costs a consumer is published in
 [the contract document](../docs/contracts/workload-contract.md).
 
@@ -142,3 +144,5 @@ python -m tools.experiment_run check path/to/run.v1alpha1.json
 Requires `jsonschema`, `pytest`, and `PyYAML`, which are not vendored. The choice
 of schema language, authoring form, and validator is
 [ADR 0003](../docs/architecture/decisions/ADR-0003-workload-contract-schema-tooling.md).
+An ExperimentRun is authored as JSON, which departs from that decision's authoring
+form; [its document](../docs/contracts/experiment-run.md#the-authoring-form) says why.
