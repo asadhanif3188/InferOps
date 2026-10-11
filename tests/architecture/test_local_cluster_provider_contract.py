@@ -115,6 +115,7 @@ PLATFORM_WORKFLOWS = (
     "argocd-application.sh",
     "capacity-preflight.sh",
     "service-endpoint-state.sh",
+    "reliability-runner.sh",
 )
 
 # The platform workflows that mutate a target, as distinct from target-detect.sh,
@@ -140,6 +141,7 @@ MUTATING_PLATFORM_WORKFLOWS = (
     "clean-clone.sh",
     "argocd-bootstrap.sh",
     "argocd-application.sh",
+    "reliability-runner.sh",
 )
 KIND_HELPER = (
     "preflight.sh",

@@ -30,7 +30,8 @@ and the registered digest together passes this module. The digest makes such a c
 visible in two files. It does not prevent it.
 
 **What a profile is not.** A profile is not evidence. It states what a run sends. No
-run executed under it in the change that added it, and no runner reads it yet.
+run executed under it in the change that added it. ``tools.reliability_runner``
+reads it to build the plan of a run.
 """
 
 from __future__ import annotations

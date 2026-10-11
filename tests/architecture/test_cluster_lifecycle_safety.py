@@ -82,6 +82,7 @@ ENTRY_POINTS = (
     "argocd-application.sh",
     "capacity-preflight.sh",
     "service-endpoint-state.sh",
+    "reliability-runner.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
