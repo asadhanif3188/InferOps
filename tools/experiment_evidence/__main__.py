@@ -1,4 +1,4 @@
-"""Check the evidence directories of experiment runs from the command line.
+"""Check the directories of experiment runs from the command line.
 
     python -m tools.experiment_evidence check path/to/runs/<runId>
     python -m tools.experiment_evidence repository
@@ -7,8 +7,10 @@
 ``check`` holds each run directory it is given to its manifest and to the layout.
 ``repository`` checks every run directory under ``docs/proof/experiments``: a
 directory whose manifest the pre-schema register names is listed and not checked.
-``digests`` prints one ``<sha256>  <path>`` line for each file of a directory but
-the manifest, with the layout's digest, for the writer of a manifest.
+``digests`` prints one ``<sha256>  <path>`` line for each file of a directory that
+can be an evidence file, with the layout's digest, for the writer of a manifest.
+``check`` checks a directory that the register names too, and refuses it at its
+manifest.
 
 Exit status 0 says that nothing was refused. Exit status 3 says that a rule refused
 a directory or a file, and the output names the rule. Exit status 2 says that the
@@ -102,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m tools.experiment_evidence",
         description=(
-            "Check the evidence directories of experiment runs. The command reads "
+            "Check the directories of experiment runs. The command reads "
             "files and writes nothing."
         ),
     )

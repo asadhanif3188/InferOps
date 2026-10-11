@@ -1,11 +1,13 @@
-"""The evidence directory of an experiment run: its layout and its integrity check.
+"""The directory of an experiment run: its layout and its integrity check.
 
 Every check here reads files from this repository, or files it writes under a
 temporary directory, and nothing else. No network, no cluster, no clock, no
 randomness. **No run executed.** Each run directory that a test checks is built by
-the test: a manifest from a committed ExperimentRun fixture, a freeze record of two
-members, a caller record that the runner's own loop writes against a scripted
-answer, and a few lines of text for each other file.
+the test: a manifest from a committed ExperimentRun fixture, a freeze record that
+states one revision, a caller record that the runner's own loop writes against a
+scripted answer, and a few lines of text for each other file. Two tests read a
+committed run directory, the E01-D one, and each holds that it is refused at its
+manifest.
 
 Six things are asserted that a plain "the files have their digests" suite would not
 catch:
@@ -786,7 +788,9 @@ def test_a_refused_run_with_no_evidence_file_conforms(tmp_path: Path) -> None:
     assert [path.name for path in run_dir.iterdir()] == [run_core.MANIFEST_NAME]
 
 
-def test_no_role_is_stated_to_hold_content_a_secret_or_a_host_path() -> None:
+def test_no_role_description_names_content_or_a_credential() -> None:
+    """The descriptions of the roles are read, and no file is. The test does
+    not show what a file with a role holds."""
     words = " ".join(role.holds.lower() for role in core.ROLES.values())
     for word in ("prompt", "completion", "response", "secret", "credential", "token"):
         assert word not in words
@@ -841,8 +845,8 @@ def test_a_path_under_a_user_directory_is_refused(tmp_path: Path, path: str) -> 
         # The opaque shape that the ExperimentRun rules refuse in a statement. Raw
         # evidence holds identifiers of this shape, so the layout does not read it.
         "uid " + "Zx4Kq9TbLm2Rd7" + "Wf1Hs3Nv8Yc6Ej0Pa\n",
-        # A published prefix that is not at the start of a word.
-        "value*" + PREFIXED_WORD + "\n",
+        # A published prefix directly after a letter, inside a longer word.
+        "value" + PREFIXED_WORD + "\n",
         # A host path that is not under a user directory.
         "wrote /var/lib/kubelet/pods/a.log and /root/a.log\n",
         # A drive path that is not under a user directory.
@@ -867,25 +871,6 @@ def test_a_container_path_under_a_home_directory_is_refused_too() -> None:
     assert [rule for rule, _ in core.text_problems(text)] == [
         core.RULE_FILE_PERSONAL_PATH
     ]
-
-
-def test_no_committed_proof_file_starts_a_word_with_a_credential_prefix_but_a_page() -> (
-    None
-):
-    """The corpus the credential rule was measured on: every committed text file of
-    the proof tree that is not a Markdown page or a ledger of the register."""
-    hits = [
-        path.relative_to(REPO_ROOT).as_posix()
-        for path in sorted((REPO_ROOT / "docs" / "proof").rglob("*"))
-        if path.is_file()
-        and path.suffix in evidence_index.TEXT_SUFFIXES - {".md"}
-        and path.parent.name != "testing"
-        and any(
-            rule == core.RULE_FILE_CREDENTIAL
-            for rule, _ in core.text_problems(path.read_bytes().decode("utf-8"))
-        )
-    ]
-    assert hits == []
 
 
 # --------------------------------------------------------------------------
@@ -1050,6 +1035,9 @@ def _without(member: str) -> Callable[[dict[str, Any]], None]:
         _as("number", "1"),
         _as("number", True),
         _as("number", 0),
+        _as("number", 10000),
+        _as("statements", ["   "]),
+        _as("corrects", [{"path": "result.md", "sha256": "0" * 64}] * 2),
         _as("runId", 7),
         _as("recordedAt", "2026-01-02T09:00:00+01:00"),
         _as("recordedAt", "2026-02-30T09:00:00Z"),
@@ -1441,6 +1429,501 @@ def test_a_name_with_a_line_break_cannot_start_an_output_line(tmp_path: Path) ->
 
 
 # --------------------------------------------------------------------------
+# What the independent reviews of the first commit found
+# --------------------------------------------------------------------------
+
+BACKSLASH = chr(92)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # A line break inside a JSON string is a backslash and a letter.
+        json.dumps({"stdout": "Token:\n" + PREFIXED_WORD}),
+        json.dumps({"stdout": "a\tb\r\n" + AWS_EXAMPLE_WORD}),
+        # A character of the prefix written as a JSON escape.
+        '{"key":"' + BACKSLASH + "u0073k-example-not-a-credential" + '"}',
+        # The forms of a URL and of a command line.
+        "origin https://" + PREFIXED_WORD + "@example.invalid/o/r.git (fetch)",
+        "GET https://example.invalid/" + PREFIXED_WORD,
+        "?a=1&" + PREFIXED_WORD,
+        "echo $" + PREFIXED_WORD,
+        "s3://bucket/" + AWS_EXAMPLE_WORD + "/x",
+        # A byte order mark before the first word.
+        chr(0xFEFF) + PREFIXED_WORD,
+        "value*" + PREFIXED_WORD,
+    ],
+)
+def test_a_credential_prefix_after_any_character_but_a_letter_or_digit_is_refused(
+    text: str,
+) -> None:
+    """The first commit read the start of a word, and a word ended only at white
+    space and at some punctuation. Each of these passed it."""
+    assert [rule for rule, _ in core.text_problems(text + "\n")] == [
+        core.RULE_FILE_CREDENTIAL
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # An ordinary name that starts with the letters of a published prefix.
+        "mounted /" + "hf_" + "cache as the model cache\n",
+        "the task " + "sk-" + "ipped one step\n",
+    ],
+)
+def test_an_ordinary_name_that_starts_with_a_published_prefix_is_refused_too(
+    text: str,
+) -> None:
+    """Measured. The rule reads a prefix and no more of the word. A writer of such
+    a file must rename the thing, or the file is not evidence of this layout."""
+    assert [rule for rule, _ in core.text_problems(text)] == [core.RULE_FILE_CREDENTIAL]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "HOME=" + "/" + "home" + "/" + "operator\n",
+        '{"cwd":"' + "/" + "home" + "/" + "operator" + '"}\n',
+        "/" + "Users" + "/" + "An Operator/work/x.log\n",
+        "c:" + BACKSLASH + "users" + BACKSLASH + "operator" + BACKSLASH + "x\n",
+        "/" + "users" + "/" + "operator/a\n",
+        "/" + "home" + "/" + chr(0xE1) + "sad/x\n",
+        # Measured: a URL whose host is one of the two names is refused as well.
+        "GET http://" + "home" + "/status\n",
+    ],
+)
+def test_a_user_directory_in_more_forms_is_refused(text: str) -> None:
+    """The first commit asked for a separator after the account name and for the
+    two names in one letter case. Each of these but the last passed it."""
+    assert [rule for rule, _ in core.text_problems(text)] == [
+        core.RULE_FILE_PERSONAL_PATH
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "wrote ~/run.log\n",
+        "wrote ~operator/run.log\n",
+        "wrote %USERPROFILE%" + BACKSLASH + "a.log\n",
+        "wrote " + "home" + "/operator/run.log\n",
+        "wrote C%3A%5C" + "Users" + "%5Coperator\n",
+        "C:" + BACKSLASH * 4 + "Users" + BACKSLASH * 4 + "operator\n",
+        # A prefix after a percent escape stands after a digit.
+        "Bearer%20" + PREFIXED_WORD + "\n",
+        # A prefix directly after a letter is inside a longer word.
+        "value" + PREFIXED_WORD + "\n",
+    ],
+)
+def test_forms_of_a_user_directory_and_of_a_prefix_that_still_pass(text: str) -> None:
+    """Measured. No rule refuses these."""
+    assert core.text_problems(text) == []
+
+
+def test_the_text_rules_measured_on_every_committed_proof_file() -> None:
+    """The corpus of both rules: each committed text file of ``docs/proof`` that is
+    not a Markdown page. One file holds a published prefix: a ledger that names the
+    prefix in a sentence. None holds a path under a user directory."""
+    hits: dict[str, list[str]] = {}
+    files = 0
+    for path in sorted((REPO_ROOT / "docs" / "proof").rglob("*")):
+        if not path.is_file() or path.suffix not in core.EVIDENCE_SUFFIXES - {".md"}:
+            continue
+        files += 1
+        rules = [
+            rule for rule, _ in core.text_problems(path.read_bytes().decode("utf-8"))
+        ]
+        if rules:
+            hits[path.relative_to(REPO_ROOT).as_posix()] = rules
+    assert files > 100
+    assert hits == {
+        "docs/proof/testing/v1-s5-012-pr2-migration.v1alpha1.json": [
+            core.RULE_FILE_CREDENTIAL
+        ]
+    }
+
+
+def _freeze_with(root: Path, data: bytes) -> Callable[[dict[str, Any]], None]:
+    def change(manifest: dict[str, Any]) -> None:
+        (root / FREEZE_REF).write_bytes(data)
+        manifest["metadata"]["spec"]["freezeContentSha256"] = run_core.content_digest(
+            data
+        )
+
+    return change
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        b'{"metadata": {"revision": 1.0}}',
+        b'{"metadata": {"revision": 1e0}}',
+        b'{"metadata": {"revision": 7, "revision": 1}}',
+        b'{"metadata": {"revision": 7}, "metadata": {"revision": 1}}',
+        b'{"metadata": {"revision": 1}, "other": NaN}',
+        b"[" * 100000 + b"]" * 100000,
+    ],
+    ids=["float", "exponent", "member-twice", "object-twice", "not-json", "nested"],
+)
+def test_a_freeze_record_read_more_loosely_than_a_manifest_is_refused(
+    tmp_path: Path, data: bytes
+) -> None:
+    """The first commit read the record with the plain JSON reader. It accepted a
+    revision of 1.0 and a member stated twice, and a deeply nested file raised an
+    error that no rule names."""
+    run_dir = _build(tmp_path, mutate=_freeze_with(tmp_path, data))
+    assert _rules(core.check_run(run_dir, tmp_path)) == [core.RULE_FREEZE]
+    assert core.repository_report(tmp_path).refused
+
+
+def test_an_evidence_file_cannot_have_the_name_of_a_run_manifest(
+    tmp_path: Path,
+) -> None:
+    """The manifest listing reads each file of that name as the manifest of a run.
+    The first commit accepted one as an evidence file, and the listing then showed
+    a second run."""
+
+    def nested(manifest: dict[str, Any]) -> None:
+        manifest["evidence"]["files"].append(
+            {
+                "role": "release",
+                "path": f"sub/{run_core.MANIFEST_NAME}",
+                "sha256": "0" * 64,
+            }
+        )
+
+    run_dir = _build(tmp_path, mutate=nested)
+    assert _rules(core.check_run(run_dir, tmp_path)) == [core.RULE_FILE_FORM]
+    _write(run_dir / "sub" / run_core.MANIFEST_NAME, "{}\n")
+    assert _rules(core.check_run(run_dir, tmp_path)) == [core.RULE_FILE_FORM]
+
+
+def test_a_correction_cannot_add_a_file_with_the_name_of_a_run_manifest(
+    tmp_path: Path,
+) -> None:
+    run_dir = _build(tmp_path)
+    _correct(tmp_path, 1, files={run_core.MANIFEST_NAME: ("release", "{}\n")})
+    assert _rules(core.check_run(run_dir, tmp_path)) == [core.RULE_FILE_FORM]
+    assert core.repository_report(tmp_path).refused
+
+
+def test_a_caller_file_that_a_correction_adds_is_read_as_a_caller_record(
+    tmp_path: Path,
+) -> None:
+    """The first commit read a caller file only when the manifest named it."""
+    run_dir = _build(tmp_path)
+    _correct(tmp_path, 1, files={"caller.jsonl": ("caller", '{"record":"header"}\n')})
+    assert _rules(core.check_run(run_dir, tmp_path)) == [core.RULE_CALLER_RECORD]
+    shutil.rmtree(tmp_path / CORRECTIONS_REF)
+    _correct(
+        tmp_path,
+        1,
+        files={"caller.jsonl": ("caller", _caller_record(run_id="another-run"))},
+    )
+    assert _rules(core.check_run(run_dir, tmp_path)) == [core.RULE_CALLER_IDENTITY]
+    shutil.rmtree(tmp_path / CORRECTIONS_REF)
+    _correct(tmp_path, 1, files={"caller.jsonl": ("caller", CALLER_TEXT)})
+    assert core.check_run(run_dir, tmp_path).findings == ()
+
+
+def test_an_entry_of_a_runs_or_corrections_directory_that_is_no_directory_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The first commit read the directories of each and did not see a file."""
+    _build(tmp_path)
+    _write(tmp_path / EXPERIMENT_REF / "runs" / "stray.txt", "One line.\n")
+    _write(tmp_path / EXPERIMENT_REF / "corrections" / "note.md", "One line.\n")
+    report = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for f in report.findings] == [
+        (core.RULE_FILE_UNLISTED, f"{EXPERIMENT_REF}/corrections/note.md"),
+        (core.RULE_FILE_UNLISTED, f"{EXPERIMENT_REF}/runs/stray.txt"),
+    ]
+    assert report.refused
+
+
+def test_the_corrections_of_a_refused_run_get_no_finding_of_their_own(
+    tmp_path: Path,
+) -> None:
+    """Measured. The corrections of a run are read when the run directory is in
+    its place and its manifest validates."""
+    run_dir = _build(tmp_path)
+    _correct(tmp_path, 1, mutate=_as("runId", "another-run"))
+    (run_dir / run_core.MANIFEST_NAME).unlink()
+    report = core.repository_report(tmp_path)
+    assert [(run.path, _rules(run)) for run in report.runs] == [
+        (RUN_REF, [core.RULE_MANIFEST_MISSING])
+    ]
+    assert report.findings == ()
+
+
+def test_a_corrections_directory_of_a_run_that_is_a_file_is_refused(
+    tmp_path: Path,
+) -> None:
+    run_dir = _build(tmp_path)
+    _write(tmp_path / CORRECTIONS_REF, "A file where a directory is expected.\n")
+    report = core.check_run(run_dir, tmp_path)
+    assert [(f.rule, f.path) for f in report.findings] == [
+        (core.RULE_CORRECTION_RUN, CORRECTIONS_REF)
+    ]
+    assert core.repository_report(tmp_path).refused
+
+
+def test_a_directory_junction_is_a_link_to_the_check(tmp_path: Path) -> None:
+    """A real link on a host that lets the suite create no symbolic link."""
+    if os.name != "nt":
+        pytest.skip("a directory junction is of one host's file system")
+    import _winapi
+
+    run_dir = _build(tmp_path)
+    outside = tmp_path / "outside"
+    _write(outside / "a.json", "{}\n")
+    _winapi.CreateJunction(str(outside), str(run_dir / "linked"))
+    report = core.check_run(run_dir, tmp_path)
+    assert [(f.rule, f.path) for f in report.findings] == [
+        (core.RULE_FILE_NOT_REGULAR, f"{RUN_REF}/linked")
+    ]
+    with pytest.raises(core.LayoutError):
+        core.describe_file(run_dir, "linked/a.json", "pods")
+    (run_dir / "linked").rmdir()
+    _winapi.CreateJunction(
+        str(run_dir), str(tmp_path / EXPERIMENT_REF / "runs" / "alias")
+    )
+    listing = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for f in listing.findings] == [
+        (core.RULE_FILE_NOT_REGULAR, f"{EXPERIMENT_REF}/runs/alias")
+    ]
+    assert [run.path for run in listing.runs] == [RUN_REF]
+
+
+def test_a_correction_can_correct_a_file_that_an_earlier_correction_adds(
+    tmp_path: Path,
+) -> None:
+    run_dir = _build(tmp_path)
+    _correct(tmp_path, 1, files={"result.md": ("result", RESULT_TEXT + "Corrected.\n")})
+    added = tmp_path / CORRECTIONS_REF / "correction-1" / "result.md"
+    target = {"path": "correction-1/result.md", "sha256": core.file_digest(added)}
+    _correct(tmp_path, 2, corrects=[target])
+    assert core.check_run(run_dir, tmp_path).corrections == 2
+    _write(added, "Another text.\n")
+    assert _rules(core.check_run(run_dir, tmp_path)) == [
+        core.RULE_CORRECTION_TARGET,
+        core.RULE_FILE_DIGEST,
+    ]
+
+
+def test_a_correction_cannot_correct_a_file_that_it_adds_itself(tmp_path: Path) -> None:
+    run_dir = _build(tmp_path)
+    _correct(
+        tmp_path,
+        1,
+        files={"result.md": ("result", RESULT_TEXT + "Corrected.\n")},
+        mutate=lambda document: document["corrects"].append(
+            {"path": "correction-1/result.md", "sha256": document["files"][0]["sha256"]}
+        ),
+    )
+    assert _rules(core.check_run(run_dir, tmp_path)) == [core.RULE_CORRECTION_TARGET]
+
+
+def _rewrite_correction(root: Path, number: int) -> None:
+    """State in a correction the digests that the tree has now."""
+    directory = root / CORRECTIONS_REF
+    path = directory / f"correction-{number}.v1alpha1.json"
+    document = json.loads(path.read_text(encoding="utf-8"))
+    run_dir = root / RUN_REF
+    document["manifestSha256"] = core.file_digest(run_dir / run_core.MANIFEST_NAME)
+    previous = directory / f"correction-{number - 1}.v1alpha1.json"
+    if previous.is_file():
+        document["previousCorrectionSha256"] = core.file_digest(previous)
+    for target in document["corrects"]:
+        if (run_dir / target["path"]).is_file():
+            target["sha256"] = core.file_digest(run_dir / target["path"])
+    _write_json(path, document)
+
+
+def test_a_run_and_its_corrections_rewritten_together_conform(tmp_path: Path) -> None:
+    """Measured. A correction pins the manifest only while the correction is
+    unchanged. A file, the manifest, and each correction, replaced together, are a
+    run directory that conforms, and the raw digest has moved."""
+    run_dir = _build(tmp_path)
+    _correct(tmp_path, 1, corrects=[_target(run_dir, "pods.jsonl")])
+    _correct(tmp_path, 2)
+    before = core.check_run(run_dir, tmp_path)
+    _write(run_dir / "pods.jsonl", PODS_TEXT + PODS_TEXT)
+    manifest = _manifest(run_dir)
+    for entry in manifest["evidence"]["files"]:
+        entry["sha256"] = core.file_digest(run_dir / entry["path"])
+    _write_json(run_dir / run_core.MANIFEST_NAME, manifest)
+    assert core.RULE_CORRECTION_IDENTITY in _rules(core.check_run(run_dir, tmp_path))
+    _rewrite_correction(tmp_path, 1)
+    _rewrite_correction(tmp_path, 2)
+    after = core.check_run(run_dir, tmp_path)
+    assert after.findings == () and after.corrections == 2
+    assert before.digests is not None and after.digests is not None
+    assert before.digests.raw != after.digests.raw
+
+
+def _target(run_dir: Path, name: str) -> dict[str, str]:
+    return {"path": name, "sha256": core.file_digest(run_dir / name)}
+
+
+def test_an_edited_correction_with_the_next_one_rewritten_conforms(
+    tmp_path: Path,
+) -> None:
+    """Measured. The chain refuses an edit of an earlier correction only while the
+    later one is unchanged."""
+    run_dir = _build(tmp_path)
+    first = _correct(tmp_path, 1)
+    _correct(tmp_path, 2)
+    document = json.loads(first.read_text(encoding="utf-8"))
+    document["statements"] = ["Another statement. This is a fixture."]
+    _write_json(first, document)
+    assert _rules(core.check_run(run_dir, tmp_path)) == [core.RULE_CORRECTION_CHAIN]
+    _rewrite_correction(tmp_path, 2)
+    assert core.check_run(run_dir, tmp_path).findings == ()
+
+
+def test_removed_corrections_leave_a_run_directory_that_conforms(
+    tmp_path: Path,
+) -> None:
+    """Measured. Nothing in the tree states how many corrections a run has."""
+    run_dir = _build(tmp_path)
+    _correct(tmp_path, 1)
+    _correct(tmp_path, 2)
+    (tmp_path / CORRECTIONS_REF / "correction-2.v1alpha1.json").unlink()
+    assert core.check_run(run_dir, tmp_path).corrections == 1
+    shutil.rmtree(tmp_path / CORRECTIONS_REF)
+    report = core.check_run(run_dir, tmp_path)
+    assert report.findings == () and report.corrections == 0
+
+
+def test_a_corrections_directory_under_another_letter_case_is_not_read(
+    tmp_path: Path,
+) -> None:
+    """Measured. The names ``corrections`` and the run identifier are compared as
+    text. A directory under another letter case is not the corrections directory of
+    the run on any host, and no rule refuses it."""
+    run_dir = _build(tmp_path)
+    _correct(tmp_path, 2)
+    (tmp_path / EXPERIMENT_REF / "corrections").rename(
+        tmp_path / EXPERIMENT_REF / "Corrections"
+    )
+    report = core.check_run(run_dir, tmp_path)
+    assert report.findings == () and report.corrections == 0
+    assert not core.repository_report(tmp_path).refused
+
+
+def test_what_the_form_of_a_correction_still_accepts(tmp_path: Path) -> None:
+    """Measured. The recorded time is compared with no other time. The shape
+    heuristic of the ExperimentRun rules is not applied to a statement."""
+    shaped = (
+        "The identifier was " + "Zx4Kq9TbLm2Rd7" + "Wf1Hs3Nv8Yc6Ej0Pa in the reading."
+    )
+    assert run_core.credential_shaped(shaped)
+    run_dir = _build(tmp_path)
+    _correct(
+        tmp_path,
+        1,
+        mutate=lambda document: document.update(
+            recordedAt="1999-01-01T00:00:00Z", statements=[shaped]
+        ),
+    )
+    assert core.check_run(run_dir, tmp_path).findings == ()
+
+
+def test_what_a_run_directory_still_accepts(tmp_path: Path) -> None:
+    """Measured. An empty directory, an empty file, a byte order mark, and a lone
+    carriage return are each in a run directory that conforms."""
+    files = {
+        **FILES,
+        "empty.txt": ("transcript", ""),
+        "marked.txt": ("transcript", chr(0xFEFF) + "One line.\n"),
+        "returns.txt": ("transcript", "one\rtwo\r"),
+    }
+    run_dir = _build(tmp_path, files=files)
+    (run_dir / "an-empty-directory").mkdir()
+    assert core.check_run(run_dir, tmp_path).findings == ()
+
+
+def test_the_review_gate_refuses_a_manifest_that_names_the_freeze_record_twice() -> (
+    None
+):
+    """A manifest with the member of each shape could let a review name one record
+    and a reader see the other."""
+    both = {"metadata": {"spec": {"freezeRecord": "b"}, "freezeRecord": "a"}}
+    with pytest.raises(ValueError):
+        index_core._named_freeze_record(both)
+    shapes: tuple[Any, ...] = (
+        {"spec": None},
+        {"spec": {}},
+        {"spec": "text"},
+        [],
+        "text",
+    )
+    for metadata in shapes:
+        with pytest.raises((KeyError, TypeError, AttributeError)):
+            index_core._named_freeze_record({"metadata": metadata})
+
+
+def test_a_writer_is_refused_a_role_that_is_no_text_and_a_name_in_another_case(
+    tmp_path: Path,
+) -> None:
+    _write(tmp_path / "Extra.json", "{}\n")
+    with pytest.raises(core.LayoutError) as refusal:
+        core.describe_file(tmp_path, "extra.json", "pods")
+    assert refusal.value.rule == core.RULE_FILE_MISSING
+    with pytest.raises(core.LayoutError) as refusal:
+        core.describe_file(tmp_path, "extra.json", ["pods"])  # type: ignore[arg-type]
+    assert refusal.value.rule == core.RULE_ROLE
+
+
+def test_a_writer_gets_an_entry_that_the_check_of_the_directory_refuses(
+    tmp_path: Path,
+) -> None:
+    """Measured. The helper reads one file and knows no manifest, so it returns an
+    entry for a caller file that is no caller record."""
+    _write(tmp_path / "caller.jsonl", '{"record":"header"}\n')
+    assert core.describe_file(tmp_path, "caller.jsonl", "caller")["role"] == "caller"
+
+
+def test_the_digest_lines_are_in_the_order_of_the_paths_as_text(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    for name in ("a/b.txt", "a-b.txt", "a.txt", "b.txt"):
+        _write(tmp_path / "d" / name, "One line.\n")
+    _write(tmp_path / "d" / "t.txt", f"key {PREFIXED_WORD}\n")
+    lines, findings = core.digest_lines(tmp_path / "d")
+    assert [line.split("  ")[1] for line in lines] == [
+        "a-b.txt",
+        "a.txt",
+        "a/b.txt",
+        "b.txt",
+    ]
+    assert [(f.rule, f.path) for f in findings] == [
+        (core.RULE_FILE_CREDENTIAL, "t.txt")
+    ]
+    lines, findings = core.digest_lines(tmp_path / "absent")
+    assert lines == [] and [f.rule for f in findings] == [core.RULE_FILE_MISSING]
+    assert command.main(["digests", str(tmp_path / "absent")]) == command.EXIT_REFUSED
+    assert command.main(["digests", str(tmp_path / "d" / "a.txt")]) == (
+        command.EXIT_REFUSED
+    )
+    capsys.readouterr()
+
+
+def test_the_check_command_refuses_an_earlier_run_directory_at_its_manifest(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The ``repository`` command lists an earlier run directory and does not check
+    it. The ``check`` command, given one, checks it."""
+    earlier = "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1"
+    assert command.main(["check", str(REPO_ROOT / earlier)]) == command.EXIT_REFUSED
+    out = capsys.readouterr().out
+    assert out.startswith(f"REFUSED    {earlier}  (1 finding(s))\n")
+    assert core.RULE_MANIFEST_REFUSED in out
+
+
+# --------------------------------------------------------------------------
 # What no rule holds
 # --------------------------------------------------------------------------
 
@@ -1462,9 +1945,10 @@ def test_a_raw_file_other_than_a_caller_record_is_not_read_for_its_meaning(
     assert core.check_run(_build(tmp_path, files=files), tmp_path).findings == ()
 
 
-def test_every_rule_is_provoked_by_this_suite() -> None:
-    """Each rule identifier is named by a test above, so no rule is only a
-    statement."""
+def test_every_rule_identifier_is_named_in_this_suite() -> None:
+    """Each rule identifier is named in this module. The test reads the
+    source for the name. It does not show that an assertion provokes the
+    rule."""
     source = Path(__file__).read_text(encoding="utf-8")
     names = {
         name: value

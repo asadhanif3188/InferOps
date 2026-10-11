@@ -1471,8 +1471,12 @@ def _named_freeze_record(manifest: Any) -> Any:
 
     A manifest of the published ExperimentRun schema names it in ``metadata.spec``.
     The three manifests committed before the schema name it in ``metadata``.
+    A manifest that names it in both is refused: a review could name one
+    record, and a reader of the manifest could see the other.
     """
     metadata = manifest["metadata"]
+    if "spec" in metadata and "freezeRecord" in metadata:
+        raise ValueError("the manifest names its freeze record twice")
     return metadata.get("spec", metadata)["freezeRecord"]
 
 

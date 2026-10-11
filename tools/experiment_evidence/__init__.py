@@ -1,4 +1,4 @@
-"""The evidence directory of an experiment run: its layout and its integrity check.
+"""The directory of an experiment run: its layout and its integrity check.
 
 A run directory holds one ExperimentRun manifest and the evidence files that the
 manifest names. This package holds a directory to its manifest: each named file is

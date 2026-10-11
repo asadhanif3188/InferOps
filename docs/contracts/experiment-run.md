@@ -333,11 +333,12 @@ The suite asserts each, so closing one is a visible change.
 Each of these is a statement about a run that this validator does not check.
 **Since `V2-S5-002-PR2`, another check holds some of them for a manifest in a run
 directory.** [The experiment evidence layout](../testing/experiment-evidence-layout.md#the-experimentrun-contract)
-lists the five: that an evidence file exists and has its digest, that a present file is
-listed, that the freeze record exists with its revision and digest, that the caller
-record names the same experiment and run, and that two evidence paths are paths one
-directory can hold. `python -m tools.experiment_run check` holds none of the five, and
-no code in this repository checks the others.
+lists four: that an evidence file exists and has its digest, that a present file is
+listed, that the freeze record exists with its revision and digest, and that a caller
+record which the manifest names states the same experiment and run. That check also
+refuses one manifest of the measured gaps above: one with two evidence paths that one
+directory cannot hold. `python -m tools.experiment_run check` holds none of these, and
+no code in this repository checks the other statements of this list.
 
 - **That an evidence file exists and has its stated digest.** The validator opens no
   evidence file. The check of a run directory opens each one.

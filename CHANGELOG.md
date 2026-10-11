@@ -24,24 +24,34 @@ from `1.0.0`.
   derived. **A generated summary stays downstream of raw evidence:** a derived file
   with no raw file is refused, and a run has one digest over its raw files alone,
   which a rewritten summary does not move. A file with the role `caller` is read: it
-  is a caller record of the same experiment, run, profile revision, and release, and
-  not a rehearsal. **A correction is additive.** It is a new file beside the `runs`
-  directory that states the digest of the manifest, of each file it corrects, and of
-  the correction before it, and it moves no digest of the run. The layout requires no
-  file, so it requires none that holds a secret, a prompt, or a path of a host; two
-  text rules refuse a word with a published credential prefix and a path under a user
-  directory. **One function of the result review gate changed:** it now reads the
-  freeze record of a manifest of the published schema as well as of the three earlier
-  manifests, and its verdict on each committed ledger is unchanged. **What this does
-  not do:** nothing writes a run directory and nothing reads one for analysis. The
-  three committed run directories were written before the schema; the check lists
-  each as `pre-schema` and does not check it. Only the caller file has a defined
-  form, and no collector for another raw role exists. The check reads one tree and
-  not Git, so a file replaced together with its digest in the manifest conforms until
-  a correction or a review record states the manifest's digest. No rule shows that a
-  derived file was computed from the raw files. No claim, ledger, register row,
-  dashboard row, evidence-index entry, or freeze record was added or changed. The
-  evidence is static, C0. See
+  is a caller record of the same experiment, run, caller profile, and concurrency,
+  of the same release or of none, and not a rehearsal. **A correction is additive.**
+  It is a new file beside the `runs` directory that states the digest of the
+  manifest, of each file it corrects, and of the correction before it, and it moves
+  no digest of the run. The layout requires no file, so it requires none that holds
+  a secret, a prompt, or a path of a host; two text rules refuse the published
+  prefix of a credential format and a path under a user directory. **One function
+  was added to the result review gate and one was changed:** the gate now reads the
+  freeze record of a manifest of the published schema as well as of the three
+  earlier manifests. None of the three has the new member, so the gate reads for
+  each what it read before. **Two independent reviews read the first commit.** They
+  found that a credential after a JSON line break, in a URL, or after a slash passed
+  the prefix rule; that a user directory with no separator after the account name
+  passed the path rule; that a deeply nested freeze record raised an error no rule
+  names; that a caller file added by a correction was not read; that a file in a
+  `runs` or `corrections` directory and a directory junction were not seen; and
+  that several sentences said more than the code does. The second commit corrects
+  each, and the validation record lists them. **What this does not do:** nothing
+  writes a run directory and nothing reads one for analysis. The three committed run
+  directories were written before the schema: the `repository` command lists each as
+  `pre-schema` and does not check it, and the `check` command refuses one at its
+  manifest. Only the caller file has a defined form. The check reads one tree and
+  not Git. So a file replaced together with its digest in the manifest conforms
+  until a correction states the manifest's digest, and a run and its corrections
+  replaced together conform. No rule shows that a derived file was computed from the
+  raw files. The two text rules are heuristics, and the page states what each still
+  accepts. No claim, ledger, register row, dashboard row, evidence-index entry, or
+  freeze record was added or changed. The evidence is static, C0. See
   [the layout page](docs/testing/experiment-evidence-layout.md) and
   [the validation record](docs/proof/testing/v2-s5-002-pr2-validation.md).
 - **A run of an experiment has a manifest schema: ExperimentRun `v1alpha1`. No run

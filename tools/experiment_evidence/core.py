@@ -1,6 +1,6 @@
-"""Check the evidence directory of an experiment run against its manifest.
+"""Check the directory of an experiment run against its manifest.
 
-A run of an experiment has one directory. The directory holds the run's
+A run of an experiment has one directory. The run directory holds the run's
 ExperimentRun manifest and the evidence files that the manifest names.
 ``tools.experiment_run`` validates the manifest and opens no evidence file. This
 module opens the files: it holds a run directory to its manifest, to its place in
@@ -29,13 +29,15 @@ summary does not move it.
 
 **Corrections.** A committed run directory is not edited. A correction is a new
 file beside the ``runs`` directory. It states the digest of the manifest and of each
-file it corrects, so a correction of a file that was edited is refused.
+file it corrects, so a correction of a file that was edited is refused while the
+correction itself is unchanged.
 
 **What this module does not do.** It reads one tree. It does not read Git, so it
-does not show that a file was committed, or that a run directory was not replaced
-as a whole with its manifest. It does not judge a result. It does not read a raw
-file for its meaning, except a caller record. It does not show that a derived file
-was computed from the raw files. It assigns no evidence level and reads no claim.
+does not show that a file was committed, or that a run directory and its
+corrections were not replaced together. It does not judge a result. It does not
+read a raw file for its meaning, except a caller record. It does not show that a
+derived file was computed from the raw files. It assigns no evidence level and
+reads no claim.
 
 Everything here is offline and deterministic: no network, no cluster, no clock, no
 randomness.
@@ -43,7 +45,7 @@ randomness.
 
 from __future__ import annotations
 
-import json
+import os
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -102,8 +104,7 @@ class Role:
 
 #: Every role an evidence file of a run directory can have. A raw role names what a
 #: run read or wrote as it executed. A derived role names what is computed or
-#: written from raw files. No role requires a prompt, a response body, a
-#: credential, or a path of a host.
+#: written from raw files.
 ROLES: Final[Mapping[str, Role]] = {
     "caller": Role(
         RAW,
@@ -112,7 +113,9 @@ ROLES: Final[Mapping[str, Role]] = {
     "endpoints": Role(RAW, "Readings of the Service endpoints, each with its time."),
     "pods": Role(RAW, "Readings of the pods, each with its time."),
     "deployments": Role(RAW, "Readings of the Deployments, each with its time."),
-    "argo": Role(RAW, "Readings of the Argo CD Application, each with its time."),
+    "argo": Role(
+        RAW, "Readings of the delivery controller's Application, each with its time."
+    ),
     "telemetry": Role(RAW, "Readings of the metrics that the frozen record registers."),
     "resources": Role(RAW, "Readings of resource use, each with its time."),
     "transcript": Role(RAW, "What the commands printed, with each exit status."),
@@ -132,7 +135,7 @@ RULE_MISPLACED: Final = "evidence-run-directory-misplaced"
 RULE_FREEZE: Final = "evidence-freeze-record-differs"
 RULE_FILE_MISSING: Final = "evidence-file-missing"
 RULE_FILE_UNLISTED: Final = "evidence-file-unlisted"
-RULE_FILE_NOT_REGULAR: Final = "evidence-file-not-regular"
+RULE_FILE_NOT_REGULAR: Final = "evidence-entry-is-a-link"
 RULE_FILE_FORM: Final = "evidence-file-form-unsupported"
 RULE_FILE_DIGEST: Final = "evidence-file-digest-differs"
 RULE_FILE_CREDENTIAL: Final = "evidence-file-credential-prefix"
@@ -163,29 +166,35 @@ RULES: Final[Mapping[str, str]] = {
         f"file of one directory of {RUNS_ROOT_REF}."
     ),
     RULE_FREEZE: (
-        "The freeze record that a manifest names is present, and it has the "
-        "revision and the content digest that the manifest states."
+        "The freeze record that a manifest names is present, it is one JSON object "
+        "with no member stated twice, and it has the integer revision and the "
+        "content digest that the manifest states."
     ),
     RULE_FILE_MISSING: (
         "Each evidence file that a manifest or a correction names is present."
     ),
     RULE_FILE_UNLISTED: (
         "Each file of a run directory is the manifest or an evidence file that the "
-        "manifest names, and each file of a corrections directory is a correction "
-        "or a file that a correction names."
+        "manifest names, each file of the corrections directory of a run is a "
+        "correction or a file that a correction names, and each entry of a runs "
+        "directory and of a corrections directory is a directory."
     ),
-    RULE_FILE_NOT_REGULAR: "An evidence file is a regular file and not a link.",
+    RULE_FILE_NOT_REGULAR: (
+        "No entry of the proof tree that the check reads is a symbolic link or a "
+        "directory junction."
+    ),
     RULE_FILE_FORM: (
         "An evidence file is UTF-8 text with no NUL character, under a file suffix "
-        "that the evidence index hashes as text."
+        "that the evidence index hashes as text, and it does not have the name of "
+        "a run manifest."
     ),
     RULE_FILE_DIGEST: (
         "The digest stated for an evidence file is the SHA-256 of the file's "
         "content with each CRLF replaced by LF."
     ),
     RULE_FILE_CREDENTIAL: (
-        "No word of an evidence file or of a correction starts with the published "
-        "prefix of a credential format."
+        "No evidence file and no correction holds the published prefix of a "
+        "credential format after a character that is not a letter or a digit."
     ),
     RULE_FILE_PERSONAL_PATH: (
         "No evidence file and no correction holds a path under a user directory "
@@ -198,21 +207,22 @@ RULES: Final[Mapping[str, str]] = {
         "runner's reader accepts."
     ),
     RULE_CALLER_IDENTITY: (
-        "A caller record names the experiment, the run, the caller profile "
-        "revision, the concurrency, and the release of its manifest, and it is not "
-        "a rehearsal."
+        "A caller record names the experiment, the run, the caller profile with "
+        "its revision and digest, and the concurrency of its manifest, it names "
+        "the release of its manifest or none, it is not a rehearsal, and its "
+        "manifest states a caller profile."
     ),
     RULE_CORRECTION_RUN: (
-        "A corrections directory names a run directory of this layout in the same "
-        "experiment directory."
+        "A corrections directory of a run has the name of a run directory of this "
+        "layout in the same experiment directory, and it is a directory."
     ),
     RULE_CORRECTION_UNREADABLE: (
         "A correction is one JSON object with exactly the registered members, each "
         "in its form."
     ),
     RULE_CORRECTION_NUMBER: (
-        "The corrections of a run are numbered from 1 with no gap, and each file "
-        "name states its number."
+        "The corrections of a run are numbered from 1 with no gap, and the number "
+        "in each correction is the number in its file name."
     ),
     RULE_CORRECTION_IDENTITY: (
         "A correction names the experiment, the run, and the present manifest "
@@ -224,8 +234,8 @@ RULES: Final[Mapping[str, str]] = {
     ),
     RULE_CORRECTION_TARGET: (
         "A correction names each file it corrects by its path and its present "
-        "digest: the manifest, an evidence file of the manifest, or an earlier "
-        "correction."
+        "digest: the manifest, an evidence file of the manifest, an earlier "
+        "correction, or a file that an earlier correction adds."
     ),
 }
 
@@ -248,23 +258,34 @@ CORRECTION_MEMBERS: Final = frozenset(
 _TARGET_MEMBERS: Final = frozenset({"path", "sha256"})
 _FILE_MEMBERS: Final = frozenset({"role", "path", "sha256"})
 MAXIMUM_STATEMENT_LENGTH: Final = 2000
+MAXIMUM_CORRECTION_NUMBER: Final = 9999
 
 _SHA256: Final = re.compile(r"[0-9a-f]{64}")
 _INSTANT: Final = re.compile(
     r"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?:\.[0-9]{1,6})?Z"
 )
 _CORRECTION_FILE: Final = re.compile(r"correction-([1-9][0-9]{0,3})\.v1alpha1\.json")
-_CORRECTION_DIRECTORY: Final = re.compile(r"correction-([1-9][0-9]{0,3})")
-# The characters that end a word of an evidence file. A JSON document with no white
-# space is one word to `str.split`, so the punctuation of JSON, of YAML, and of a
-# shell assignment ends a word too.
-_WORD_BREAK: Final = re.compile(r"[\s\"'`,;:=(){}\[\]<>\\|]+")
-# A path under a user directory: a drive letter before `Users` or `home`, or
-# `Users` or `home` before a name and a separator. It is the pattern of the
-# security baseline suite, and it also reads a separator that JSON wrote twice.
+# A published prefix after a character that is not a letter or a digit, or at the
+# start of the text. A prefix inside a longer word, such as the last letters of an
+# ordinary word, is not read.
+_CREDENTIAL: Final = re.compile(
+    r"(?<![A-Za-z0-9])(?:"
+    + "|".join(re.escape(prefix) for prefix in _CREDENTIAL_PREFIXES)
+    + ")"
+)
+# The escapes of a JSON string. A file can hold a line break as a backslash and a
+# letter. The letter would then stand before the next word, and a prefix after it
+# would not be read.
+_JSON_UNICODE_ESCAPE: Final = re.compile(r"\\u([0-9A-Fa-f]{4})")
+_JSON_ESCAPE: Final = re.compile(r"\\[nrtbf/\"\\]")
+# A path under a user directory, in any letter case: a drive letter before `Users`
+# or `home`, or `Users` or `home` after a separator and before a name. A separator
+# can be written twice, as JSON writes a backslash. It follows the pattern of the
+# security baseline suite and is wider: it needs no separator after the name.
 _PERSONAL_PATH: Final = re.compile(
-    r"[A-Za-z]:[\\/]{1,2}(?:Users|home)[\\/]"
-    r"|[\\/](?:Users|home)[\\/]{1,2}[A-Za-z0-9._-]+[\\/]"
+    r"(?<![A-Za-z0-9])[A-Za-z]:[\\/]{1,2}(?:Users|home)[\\/]"
+    r"|[\\/](?:Users|home)[\\/]{1,2}[^\\/\s\"'`<>|]+",
+    re.IGNORECASE,
 )
 
 
@@ -314,6 +335,8 @@ def file_digest(path: Path) -> str:
 
 def form_problem(path: Path) -> str | None:
     """Why a file cannot be an evidence file, or None when it can."""
+    if path.name == MANIFEST_NAME:
+        return "the file has the name of a run manifest"
     if path.suffix not in EVIDENCE_SUFFIXES:
         return "the file suffix is not one the evidence index hashes as text"
     try:
@@ -329,19 +352,26 @@ def form_problem(path: Path) -> str | None:
     return None
 
 
+def _without_json_escapes(text: str) -> str:
+    """A text with each escape of a JSON string replaced by what it stands for."""
+    decoded = _JSON_UNICODE_ESCAPE.sub(lambda match: chr(int(match.group(1), 16)), text)
+    return _JSON_ESCAPE.sub(" ", decoded)
+
+
 def text_problems(text: str) -> list[tuple[str, str]]:
     """The public-safety rules a text breaks, each with its message.
 
-    The credential rule reads the start of each word for a published prefix. It
-    does not apply the WorkloadContract's shape heuristic: raw evidence holds
-    digests, identifiers, and encoded values that have that shape.
+    The credential rule reads a published prefix after a character that is not a
+    letter or a digit. It reads the text as it is and with the escapes of a JSON
+    string replaced. It does not apply the WorkloadContract's shape heuristic: raw
+    evidence holds digests, identifiers, and encoded values that have that shape.
     """
     problems: list[tuple[str, str]] = []
-    if any(word.startswith(_CREDENTIAL_PREFIXES) for word in _WORD_BREAK.split(text)):
+    if _CREDENTIAL.search(text) or _CREDENTIAL.search(_without_json_escapes(text)):
         problems.append(
             (
                 RULE_FILE_CREDENTIAL,
-                "a word starts with the published prefix of a credential format",
+                "the file holds the published prefix of a credential format",
             )
         )
     if _PERSONAL_PATH.search(text) is not None:
@@ -352,6 +382,42 @@ def text_problems(text: str) -> list[tuple[str, str]]:
             )
         )
     return problems
+
+
+def _is_link(path: Path) -> bool:
+    """Whether an entry is a symbolic link or a directory junction."""
+    return path.is_symlink() or path.is_junction()
+
+
+def _walk(directory: Path) -> tuple[dict[str, Path], list[str]]:
+    """The regular files of a directory by relative path, and the links it holds.
+
+    A link is listed and not followed. The files are in the order of their paths as
+    text, so one tree gives one order on each host.
+    """
+    files: dict[str, Path] = {}
+    links: list[str] = []
+    pending = [directory]
+    while pending:
+        current = pending.pop()
+        try:
+            names = sorted(os.listdir(current))
+        except OSError:
+            continue
+        for name in names:
+            path = current / name
+            relative = path.relative_to(directory).as_posix()
+            if _is_link(path):
+                links.append(relative)
+            elif path.is_dir():
+                pending.append(path)
+            elif path.is_file():
+                files[relative] = path
+    return {name: files[name] for name in sorted(files)}, sorted(links)
+
+
+def _text_of(path: Path) -> str:
+    return path.read_bytes().decode("utf-8")
 
 
 def _file_findings(path: Path, ref: str, stated: str) -> list[Finding]:
@@ -368,8 +434,9 @@ def _file_findings(path: Path, ref: str, stated: str) -> list[Finding]:
                 "the file does not have the digest that is stated for it",
             )
         )
-    text = path.read_bytes().decode("utf-8")
-    findings.extend(Finding(ref, rule, why) for rule, why in text_problems(text))
+    findings.extend(
+        Finding(ref, rule, why) for rule, why in text_problems(_text_of(path))
+    )
     return findings
 
 
@@ -377,39 +444,29 @@ def describe_file(run_dir: Path, relative: str, role: str) -> dict[str, str]:
     """One ``evidence.files`` entry for a file of a run directory.
 
     A writer of a manifest calls this for each file. A role that is not registered,
-    a path that is not an evidence path, a file that is absent, and a file that the
-    layout refuses each raise ``LayoutError``, so a manifest is not written for a
-    directory that the check would refuse.
+    a path that is not an evidence path, a file that is absent or reached through a
+    link, a file that does not have the form of an evidence file, and a file that
+    a text rule refuses each raise ``LayoutError``.
+
+    The helper reads one file. It does not read a caller record, and it knows no
+    manifest. So the check of the run directory can refuse an entry that this
+    helper returned.
     """
-    if role not in ROLES:
+    if not isinstance(role, str) or role not in ROLES:
         raise LayoutError(RULE_ROLE, "the role is not a registered role")
-    if (
+    if not isinstance(relative, str) or (
         _evidence_path_pattern().fullmatch(relative) is None
-        or relative == MANIFEST_NAME
     ):
         raise LayoutError(RULE_FILE_FORM, "the path is not an evidence path")
-    path = run_dir / relative
-    if path.is_symlink() or not path.is_file():
+    path = _walk(run_dir)[0].get(relative) if run_dir.is_dir() else None
+    if path is None:
         raise LayoutError(RULE_FILE_MISSING, "the path names no regular file")
     problem = form_problem(path)
     if problem is not None:
         raise LayoutError(RULE_FILE_FORM, problem)
-    for rule, why in text_problems(path.read_bytes().decode("utf-8")):
+    for rule, why in text_problems(_text_of(path)):
         raise LayoutError(rule, why)
     return {"role": role, "path": relative, "sha256": file_digest(path)}
-
-
-def _walk(directory: Path) -> tuple[dict[str, Path], list[str]]:
-    """The regular files of a directory by relative path, and the links it holds."""
-    files: dict[str, Path] = {}
-    links: list[str] = []
-    for path in sorted(directory.rglob("*")):
-        relative = path.relative_to(directory).as_posix()
-        if path.is_symlink():
-            links.append(relative)
-        elif path.is_file():
-            files[relative] = path
-    return files, links
 
 
 # --------------------------------------------------------------------------
@@ -450,22 +507,36 @@ def _relative(root: Path, path: Path) -> str | None:
         return None
 
 
-def _exact_file(root: Path, ref: str) -> Path | None:
-    """The file a repository path names, with each segment compared as text.
+def _names(directory: Path) -> set[str]:
+    try:
+        return set(os.listdir(directory))
+    except OSError:
+        return set()
 
-    A file system that ignores letter case opens a file under a name in another
+
+def _exact(root: Path, ref: str) -> Path | None:
+    """The entry a path names under a root, with each segment compared as text.
+
+    A file system that ignores letter case opens an entry under a name in another
     case. One tree would then pass on one host and fail on another.
     """
     current = root
     for segment in ref.split("/"):
-        try:
-            names = {entry.name for entry in current.iterdir()}
-        except OSError:
-            return None
-        if segment not in names:
+        if segment not in _names(current):
             return None
         current = current / segment
-    return current if current.is_file() and not current.is_symlink() else None
+    return current
+
+
+def _linked_part(root: Path, ref: str) -> str | None:
+    """The first part of a path under a root that is a link, or None."""
+    current = root
+    parts = ref.split("/")
+    for index, segment in enumerate(parts):
+        current = current / segment
+        if _is_link(current):
+            return "/".join(parts[: index + 1])
+    return None
 
 
 def expected_run_ref(manifest: Mapping[str, Any]) -> str | None:
@@ -484,25 +555,32 @@ def expected_run_ref(manifest: Mapping[str, Any]) -> str | None:
 def _freeze_findings(root: Path, manifest: Mapping[str, Any]) -> list[Finding]:
     spec = manifest["metadata"]["spec"]
     ref = spec["freezeRecord"]
-    path = _exact_file(root, ref)
-    differs = Finding(
-        ref,
-        RULE_FREEZE,
-        "the freeze record is absent, or it does not have the revision and the "
-        "content digest that the manifest states",
-    )
-    if path is None:
-        return [differs]
-    data = path.read_bytes()
-    if content_digest(data) != spec["freezeContentSha256"]:
-        return [differs]
+    differs = [
+        Finding(
+            ref,
+            RULE_FREEZE,
+            "the freeze record is absent, it is not one JSON object with each "
+            "member once, or it does not have the integer revision and the "
+            "content digest that the manifest states",
+        )
+    ]
+    path = _exact(root, ref)
+    if path is None or _is_link(path) or not path.is_file():
+        return differs
     try:
-        document = json.loads(data.decode("utf-8"))
+        data = path.read_bytes()
+        # The reader of a run manifest: one JSON object, no member stated twice,
+        # and no value that is not JSON.
+        document = read_document(path)
         revision = document["metadata"]["revision"]
-    except (ValueError, KeyError, TypeError):
-        return [differs]
-    if isinstance(revision, bool) or revision != spec["freezeRevision"]:
-        return [differs]
+    except (OSError, RunDocumentError, KeyError, TypeError):
+        return differs
+    if (
+        content_digest(data) != spec["freezeContentSha256"]
+        or type(revision) is not int
+        or revision != spec["freezeRevision"]
+    ):
+        return differs
     return []
 
 
@@ -510,13 +588,21 @@ def _caller_findings(
     path: Path, ref: str, manifest: Mapping[str, Any]
 ) -> list[Finding]:
     try:
-        record = read_record(path.read_bytes().decode("utf-8"))
+        record = read_record(_text_of(path))
     except RunnerError as error:
         return [
             Finding(
                 ref,
                 RULE_CALLER_RECORD,
                 f"the reliability runner's reader refuses the file: {error.rule}",
+            )
+        ]
+    except RecursionError:
+        return [
+            Finding(
+                ref,
+                RULE_CALLER_RECORD,
+                "the reliability runner's reader cannot read the file",
             )
         ]
     header = record.header
@@ -541,9 +627,9 @@ def _caller_findings(
         Finding(
             ref,
             RULE_CALLER_IDENTITY,
-            "the caller record is a rehearsal, or it names another experiment, "
-            "run, caller profile revision, concurrency, or release than the "
-            "manifest",
+            "the caller record is a rehearsal, its manifest states no caller "
+            "profile, or it names another experiment, run, caller profile, "
+            "concurrency, or release than the manifest",
         )
     ]
 
@@ -552,8 +638,13 @@ def _listed_findings(
     prefix: str,
     entries: Sequence[Mapping[str, str]],
     present: Mapping[str, Path],
+    manifest: Mapping[str, Any],
 ) -> list[Finding]:
-    """The findings of the files a manifest or a correction names."""
+    """The findings of the files a manifest or a correction names.
+
+    ``manifest`` is the manifest of the run. A file with the role caller is held to
+    it, whether the manifest or a correction names the file.
+    """
     findings: list[Finding] = []
     for entry in entries:
         ref = f"{prefix}/{entry['path']}"
@@ -563,11 +654,23 @@ def _listed_findings(
             )
         path = present.get(entry["path"])
         if path is None:
-            findings.append(
-                Finding(ref, RULE_FILE_MISSING, "the file that is named is absent")
-            )
+            if entry["path"].rsplit("/", 1)[-1] == MANIFEST_NAME:
+                findings.append(
+                    Finding(
+                        ref, RULE_FILE_FORM, "the file has the name of a run manifest"
+                    )
+                )
+            else:
+                findings.append(
+                    Finding(ref, RULE_FILE_MISSING, "the file that is named is absent")
+                )
             continue
-        findings.extend(_file_findings(path, ref, entry["sha256"]))
+        found = _file_findings(path, ref, entry["sha256"])
+        findings.extend(found)
+        if entry["role"] == CALLER_ROLE and not any(
+            finding.rule == RULE_FILE_FORM for finding in found
+        ):
+            findings.extend(_caller_findings(path, ref, manifest))
     return findings
 
 
@@ -601,7 +704,8 @@ def check_run(run_dir: Path, root: Path = REPO_ROOT) -> RunReport:
     run_ref = _relative(root, run_dir)
     shown = printable(run_ref if run_ref is not None else run_dir.as_posix())
     manifest_path = run_dir / MANIFEST_NAME
-    present, links = _walk(run_dir) if run_dir.is_dir() else ({}, [])
+    is_directory = run_dir.is_dir() and not _is_link(run_dir)
+    present, links = _walk(run_dir) if is_directory else ({}, [])
     if MANIFEST_NAME not in present:
         return RunReport(
             shown,
@@ -633,7 +737,8 @@ def check_run(run_dir: Path, root: Path = REPO_ROOT) -> RunReport:
 
     findings: list[Finding] = []
     expected = expected_run_ref(manifest)
-    if expected is None or run_ref != expected:
+    placed = expected is not None and run_ref == expected
+    if not placed:
         findings.append(
             Finding(
                 shown,
@@ -660,7 +765,7 @@ def check_run(run_dir: Path, root: Path = REPO_ROOT) -> RunReport:
         )
         for name in sorted(set(present) - listed - {MANIFEST_NAME})
     )
-    findings.extend(_listed_findings(shown, entries, present))
+    findings.extend(_listed_findings(shown, entries, present, manifest))
     roles = {entry["role"] for entry in entries}
     if any(role in ROLES and not is_raw(role) for role in roles) and not any(
         is_raw(role) for role in roles
@@ -672,36 +777,30 @@ def check_run(run_dir: Path, root: Path = REPO_ROOT) -> RunReport:
                 "the run names a derived file and no raw file",
             )
         )
-    for entry in entries:
-        path = present.get(entry["path"])
-        if (
-            entry["role"] == CALLER_ROLE
-            and path is not None
-            and form_problem(path) is None
-        ):
-            findings.extend(
-                _caller_findings(path, f"{shown}/{entry['path']}", manifest)
-            )
 
     manifest_sha256 = file_digest(manifest_path)
     corrections = 0
-    if expected is not None and run_ref == expected:
-        correction_dir = (
-            run_dir.parent.parent
-            / CORRECTIONS_DIRECTORY
-            / manifest["metadata"]["runId"]
-        )
-        if correction_dir.is_dir():
-            corrections, found = _correction_findings(
-                correction_dir,
-                _relative(root, correction_dir) or correction_dir.as_posix(),
-                manifest,
-                manifest_sha256,
-                present,
-            )
-            findings.extend(found)
+    if placed:
+        experiment_dir = run_dir.parent.parent
+        correction_ref = f"{CORRECTIONS_DIRECTORY}/{manifest['metadata']['runId']}"
+        correction_dir = _exact(experiment_dir, correction_ref)
+        if correction_dir is not None:
+            shown_dir = printable(f"{shown.rsplit('/', 2)[0]}/{correction_ref}")
+            if _is_link(correction_dir) or not correction_dir.is_dir():
+                findings.append(
+                    Finding(
+                        shown_dir,
+                        RULE_CORRECTION_RUN,
+                        "the corrections directory of the run is not a directory",
+                    )
+                )
+            else:
+                corrections, found = _correction_findings(
+                    correction_dir, shown_dir, manifest, manifest_sha256, present
+                )
+                findings.extend(found)
 
-    if findings:
+    if findings or run_ref is None:
         return RunReport(shown, REFUSED, tuple(sorted(findings)))
     return RunReport(
         shown,
@@ -710,7 +809,7 @@ def check_run(run_dir: Path, root: Path = REPO_ROOT) -> RunReport:
         files=len(entries),
         raw_files=sum(1 for entry in entries if is_raw(entry["role"])),
         corrections=corrections,
-        digests=run_digests(shown, manifest_sha256, manifest),
+        digests=run_digests(run_ref, manifest_sha256, manifest),
     )
 
 
@@ -760,8 +859,8 @@ def correction_problem(document: Any) -> str | None:
     ):
         return "the document does not state the supported version and kind"
     number = document["number"]
-    if isinstance(number, bool) or not isinstance(number, int) or number < 1:
-        return "the number is not a positive integer"
+    if type(number) is not int or not 1 <= number <= MAXIMUM_CORRECTION_NUMBER:
+        return "the number is not an integer from 1 to 9999"
     if not isinstance(document["experimentId"], str) or not isinstance(
         document["runId"], str
     ):
@@ -773,15 +872,19 @@ def correction_problem(document: Any) -> str | None:
     previous = document["previousCorrectionSha256"]
     if previous is not None and not _is_digest(previous):
         return "the digest of the earlier correction is not a SHA-256 or null"
-    if not _rows(document["corrects"], _TARGET_MEMBERS) or not document["corrects"]:
+    corrects = document["corrects"]
+    if not _rows(corrects, _TARGET_MEMBERS) or not corrects:
         return "the corrected files are not one or more rows of a path and a digest"
+    if len({row["path"] for row in corrects}) != len(corrects):
+        return "one corrected file is named twice"
     statements = document["statements"]
     if (
         not isinstance(statements, list)
         or not statements
         or not all(
             isinstance(statement, str)
-            and 0 < len(statement) <= MAXIMUM_STATEMENT_LENGTH
+            and statement.strip()
+            and len(statement) <= MAXIMUM_STATEMENT_LENGTH
             for statement in statements
         )
     ):
@@ -808,7 +911,6 @@ def _correction_findings(
 
     Returns the number of correction files and the findings.
     """
-    shown = printable(shown)
     present, links = _walk(directory)
     findings = [
         Finding(
@@ -831,34 +933,30 @@ def _correction_findings(
                 "the correction files are not numbered from 1 with no gap",
             )
         )
-    listed = {entry["path"]: entry["sha256"] for entry in manifest["evidence"]["files"]}
+    listed = {entry["path"] for entry in manifest["evidence"]["files"]}
     digests: dict[int, str] = {}
+    added_by: dict[str, int] = {}
     for number in sorted(records):
         name = records[number]
         ref = f"{shown}/{name}"
         path = present[name]
-        problem = form_problem(path)
-        if problem is not None:
-            findings.append(Finding(ref, RULE_FILE_FORM, problem))
-            continue
-        digests[number] = file_digest(path)
-        findings.extend(
-            Finding(ref, rule, why)
-            for rule, why in text_problems(path.read_bytes().decode("utf-8"))
-        )
         try:
+            digests[number] = file_digest(path)
+            text = _text_of(path)
             document = read_document(path)
-        except RunDocumentError:
-            document = None
-        problem = correction_problem(document)
-        if document is None or problem is not None:
+        except (OSError, UnicodeDecodeError, RunDocumentError):
             findings.append(
                 Finding(
                     ref,
                     RULE_CORRECTION_UNREADABLE,
-                    problem or "the file is not one JSON object",
+                    "the file is not one JSON object with each member once",
                 )
             )
+            continue
+        findings.extend(Finding(ref, rule, why) for rule, why in text_problems(text))
+        problem = correction_problem(document)
+        if problem is not None:
+            findings.append(Finding(ref, RULE_CORRECTION_UNREADABLE, problem))
             continue
         if document["number"] != number:
             findings.append(
@@ -891,23 +989,30 @@ def _correction_findings(
                 )
             )
         for target in document["corrects"]:
-            earlier = _CORRECTION_FILE.fullmatch(target["path"])
-            if target["path"] == MANIFEST_NAME:
-                held: str | None = manifest_sha256
+            target_path = target["path"]
+            earlier = _CORRECTION_FILE.fullmatch(target_path)
+            held: str | None = None
+            if target_path == MANIFEST_NAME:
+                held = manifest_sha256
             elif earlier is not None and int(earlier.group(1)) < number:
                 held = digests.get(int(earlier.group(1)))
-            elif target["path"] in listed and target["path"] in run_files:
-                held = file_digest(run_files[target["path"]])
-            else:
-                held = None
+            elif added_by.get(target_path, number) < number:
+                held = file_digest(present[target_path])
+            elif (
+                target_path in listed
+                and target_path in run_files
+                and form_problem(run_files[target_path]) is None
+            ):
+                held = file_digest(run_files[target_path])
             if held != target["sha256"]:
                 findings.append(
                     Finding(
                         ref,
                         RULE_CORRECTION_TARGET,
                         "a corrected file is not the manifest, an evidence file of "
-                        "the manifest, or an earlier correction, or it does not "
-                        "have the digest that the correction states",
+                        "the manifest, an earlier correction, or a file that an "
+                        "earlier correction adds, or it does not have the digest "
+                        "that the correction states",
                     )
                 )
         folder = f"correction-{number}"
@@ -916,8 +1021,13 @@ def _correction_findings(
             for row in document["files"]
             if f"{folder}/{row['path']}" in present
         }
-        claimed.update(f"{folder}/{row['path']}" for row in document["files"])
-        findings.extend(_listed_findings(f"{shown}/{folder}", document["files"], added))
+        for row in document["files"]:
+            claimed.add(f"{folder}/{row['path']}")
+            if row["path"] in added:
+                added_by[f"{folder}/{row['path']}"] = number
+        findings.extend(
+            _listed_findings(f"{shown}/{folder}", document["files"], added, manifest)
+        )
     findings.extend(
         Finding(
             f"{shown}/{printable(name)}",
@@ -946,10 +1056,23 @@ class RepositoryReport:
         return bool(self.findings) or any(run.status == REFUSED for run in self.runs)
 
 
-def _directories(parent: Path) -> list[Path]:
-    if not parent.is_dir():
-        return []
-    return sorted(path for path in parent.iterdir() if path.is_dir())
+def _entries(parent: Path, shown: str) -> tuple[list[Path], list[Finding]]:
+    """The directories of a ``runs`` or ``corrections`` directory, and the findings
+    of each entry that is not a directory."""
+    directories: list[Path] = []
+    findings: list[Finding] = []
+    for name in sorted(_names(parent)):
+        path = parent / name
+        ref = printable(f"{shown}/{name}")
+        if _is_link(path):
+            findings.append(Finding(ref, RULE_FILE_NOT_REGULAR, "the entry is a link"))
+        elif path.is_dir():
+            directories.append(path)
+        else:
+            findings.append(
+                Finding(ref, RULE_FILE_UNLISTED, "the entry is not a directory")
+            )
+    return directories, findings
 
 
 def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
@@ -957,61 +1080,95 @@ def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
 
     The listing of ``tools.experiment_run`` gives each manifest and its status. A
     manifest that the pre-schema register names is listed and its directory is not
-    checked: it was committed before this layout. A manifest that validates has its
-    directory checked. A manifest that is refused gives a refused run. A directory
-    of a ``runs`` directory with no manifest is refused, and so is a corrections
-    directory with no run of this layout.
+    checked: it was committed before this layout. Each other manifest has its
+    directory checked. A directory of a ``runs`` directory with no manifest is
+    refused. A corrections directory of a run is refused when no run directory of
+    this layout has its name: none, or one that the pre-schema register names.
 
     The listing reads the files of the tree, tracked or not. It does not read Git.
     """
     listing = manifest_listing(root)
     findings = [
-        Finding(
-            RUNS_ROOT_REF, RULE_MANIFEST_REFUSED, f"{finding.rule}: {finding.message}"
-        )
-        for finding in listing.findings
+        Finding(RUNS_ROOT_REF, RULE_MANIFEST_REFUSED, f"{item.rule}: {item.message}")
+        for item in listing.findings
     ]
     reports: dict[str, RunReport] = {}
+    linked: set[str] = set()
     for entry in listing.manifests:
         run_ref = entry.path.rsplit("/", 1)[0]
-        if entry.status == PRE_SCHEMA:
+        link = _linked_part(root, run_ref)
+        if link is not None:
+            # The manifest listing follows a link, so it lists the manifest of
+            # one run under two paths. The link is the finding, and the path
+            # through it is no run directory.
+            linked.add(link)
+        elif entry.status == PRE_SCHEMA:
             reports[run_ref] = RunReport(printable(run_ref), PRE_SCHEMA)
         else:
             reports[run_ref] = check_run(root / run_ref, root)
     runs_root = root / RUNS_ROOT_REF
-    for experiment in _directories(runs_root):
-        for run_dir in _directories(experiment / RUNS_DIRECTORY):
-            run_ref = run_dir.relative_to(root).as_posix()
-            if run_ref not in reports:
-                reports[run_ref] = check_run(run_dir, root)
-        for correction_dir in _directories(experiment / CORRECTIONS_DIRECTORY):
-            run_ref = (
-                (experiment / RUNS_DIRECTORY / correction_dir.name)
-                .relative_to(root)
-                .as_posix()
+    for name in sorted(_names(runs_root)):
+        experiment = runs_root / name
+        shown = f"{RUNS_ROOT_REF}/{name}"
+        if _is_link(experiment):
+            linked.add(shown)
+        if _is_link(experiment) or not experiment.is_dir():
+            continue
+        children = _names(experiment)
+        if RUNS_DIRECTORY in children:
+            directories, found = _entries(
+                experiment / RUNS_DIRECTORY, f"{shown}/{RUNS_DIRECTORY}"
             )
-            report = reports.get(run_ref)
-            if report is None or report.status == PRE_SCHEMA:
-                findings.append(
-                    Finding(
-                        printable(correction_dir.relative_to(root).as_posix()),
-                        RULE_CORRECTION_RUN,
-                        "no run directory of this layout has the name of the "
-                        "corrections directory",
+            findings.extend(found)
+            for run_dir in directories:
+                run_ref = f"{shown}/{RUNS_DIRECTORY}/{run_dir.name}"
+                if run_ref not in reports:
+                    reports[run_ref] = check_run(run_dir, root)
+        if CORRECTIONS_DIRECTORY in children:
+            directories, found = _entries(
+                experiment / CORRECTIONS_DIRECTORY, f"{shown}/{CORRECTIONS_DIRECTORY}"
+            )
+            findings.extend(found)
+            for correction_dir in directories:
+                report = reports.get(f"{shown}/{RUNS_DIRECTORY}/{correction_dir.name}")
+                if report is None or report.status == PRE_SCHEMA:
+                    findings.append(
+                        Finding(
+                            printable(
+                                f"{shown}/{CORRECTIONS_DIRECTORY}/{correction_dir.name}"
+                            ),
+                            RULE_CORRECTION_RUN,
+                            "no run directory of this layout has the name of the "
+                            "corrections directory",
+                        )
                     )
-                )
+    findings.extend(
+        Finding(printable(ref), RULE_FILE_NOT_REGULAR, "the entry is a link")
+        for ref in linked
+    )
     return RepositoryReport(
-        tuple(reports[ref] for ref in sorted(reports)), tuple(sorted(findings))
+        tuple(reports[ref] for ref in sorted(reports)),
+        tuple(sorted(set(findings))),
     )
 
 
 def digest_lines(directory: Path) -> tuple[list[str], list[Finding]]:
-    """One ``<sha256>  <path>`` line for each file of a directory but the manifest.
+    """One ``<sha256>  <path>`` line for each evidence file of a directory.
 
-    It is the form that ``sha256sum`` prints, with the layout's digest. A writer of
-    a manifest reads the digests from it. A file that cannot be an evidence file is
-    a finding and has no line.
+    It is the form that ``sha256sum`` prints, with the layout's digest, in the
+    order of the paths as text. A writer of a manifest reads the digests from it.
+    The manifest has no line. A link, a file that does not have the form of an
+    evidence file, and a file that a text rule refuses are findings and have no
+    line. A path that names no directory is a finding.
     """
+    if not directory.is_dir() or _is_link(directory):
+        return [], [
+            Finding(
+                printable(directory.as_posix()),
+                RULE_FILE_MISSING,
+                "the path names no directory",
+            )
+        ]
     present, links = _walk(directory)
     lines: list[str] = []
     findings = [
@@ -1024,6 +1181,12 @@ def digest_lines(directory: Path) -> tuple[list[str], list[Finding]]:
         problem = form_problem(path)
         if problem is not None:
             findings.append(Finding(printable(name), RULE_FILE_FORM, problem))
+            continue
+        problems = text_problems(_text_of(path))
+        if problems:
+            findings.extend(
+                Finding(printable(name), rule, why) for rule, why in problems
+            )
             continue
         lines.append(f"{file_digest(path)}  {name}")
     return lines, sorted(findings)
