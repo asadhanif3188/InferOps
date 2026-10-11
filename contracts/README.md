@@ -10,10 +10,12 @@ which of its rules are not yet enforced lives under
 | WorkloadContract | `v1alpha1` | [`workload/workload-contract.v1alpha1.schema.json`](workload/workload-contract.v1alpha1.schema.json) | [WorkloadContract v1alpha1](../docs/contracts/workload-contract.md) |
 | EnvironmentBinding | `v1alpha1` | [`environment/environment-binding.v1alpha1.schema.json`](environment/environment-binding.v1alpha1.schema.json) | [EnvironmentBinding v1alpha1](../docs/contracts/environment-binding.md) |
 | RenderedWorkloadRelease | `v1alpha1` | [`release/rendered-workload-release.v1alpha1.schema.json`](release/rendered-workload-release.v1alpha1.schema.json) | [RenderedWorkloadRelease v1alpha1](../docs/contracts/rendered-workload-release.md) |
+| ExperimentRun | `v1alpha1` | [`experiment/experiment-run.v1alpha1.schema.json`](experiment/experiment-run.v1alpha1.schema.json) | [ExperimentRun v1alpha1](../docs/contracts/experiment-run.md) |
 
 | Supporting data | Version | File |
 |---|---|---|
 | Runtime and model compatibility matrix | `v1alpha1` | [`workload/compatibility/runtime-model-compatibility.v1alpha1.json`](workload/compatibility/runtime-model-compatibility.v1alpha1.json) |
+| Register of the run manifests committed before the ExperimentRun schema | `v1alpha1` | [`experiment/compatibility/pre-schema-experiment-runs.v1alpha1.json`](experiment/compatibility/pre-schema-experiment-runs.v1alpha1.json) |
 
 The platform domain reads a WorkloadContract into typed objects; nothing in this
 repository deploys, serves, or admits a workload from one. The platform domain
@@ -28,6 +30,11 @@ input-trust policy classifies public-safe identities or derived digests. Nothing
 writes a release: its schema and fixtures are published ahead of the renderer that
 will write one. A published schema is a commitment about what will be
 accepted, not evidence that anything accepts it.
+
+An ExperimentRun is the manifest of one run of one experiment against one delivered
+release. An offline validator reads one. No tool writes one, no run produced one, and
+no analysis reads one: its schema and fixtures are published ahead of the runs that
+will write one.
 
 ## Layout
 
@@ -54,6 +61,14 @@ contracts/
         |-- valid/               releases that must validate
         +-- invalid/             releases that must be refused, plus the refusal
                                  each one must produce
++-- experiment/
+    |-- experiment-run.v1alpha1.schema.json
+    |-- compatibility/           the run manifests committed before the schema,
+    |                            by path and content digest
+    +-- examples/
+        |-- valid/               run manifests that must validate
+        +-- invalid/             run manifests that must be refused, plus the
+                                 refusal each one must produce
 ```
 
 An EnvironmentBinding carries the facts one environment supplies to a release
@@ -69,10 +84,20 @@ Every rule its schema and validator apply is structural too; the rules that need
 recomputation or a second document are the platform domain's, have no fixture file
 here, and are each provoked by a test instead.
 
+An ExperimentRun records one run: the frozen record it answers, the commit it
+executed, the environment, the release, the runtime image, the model, the caller
+profile, the fault, the result state, the intended evidence level, the evidence files
+by digest, and the cleanup state. It is JSON, and a repository document. Its result
+state and its evidence level are separate members, and it has no member for a claim's
+status. Its semantic rules are in [`tools/experiment_run/`](../tools/experiment_run/), and
+each has an invalid fixture here.
+
 The rules a schema cannot express — comparing two sibling values, consulting the
 compatibility matrix, judging whether a locator is a pasted credential — live in
 [`tools/contract_validation/`](../tools/contract_validation/) rather than here,
-because they are not part of the artifact a consumer validates against. What that
+because they are not part of the artifact a consumer validates against. An
+ExperimentRun's are in [`tools/experiment_run/`](../tools/experiment_run/), for the
+same reason. What that
 split costs a consumer is published in
 [the contract document](../docs/contracts/workload-contract.md).
 
@@ -110,6 +135,14 @@ To validate a WorkloadContract document that is not a committed fixture:
 python -m tools.contract_validation path/to/workload.yaml
 ```
 
+To validate an ExperimentRun manifest that is not a committed fixture:
+
+```sh
+python -m tools.experiment_run check path/to/run.v1alpha1.json
+```
+
 Requires `jsonschema`, `pytest`, and `PyYAML`, which are not vendored. The choice
 of schema language, authoring form, and validator is
 [ADR 0003](../docs/architecture/decisions/ADR-0003-workload-contract-schema-tooling.md).
+An ExperimentRun is authored as JSON, which departs from that decision's authoring
+form; [its document](../docs/contracts/experiment-run.md#the-authoring-form) says why.

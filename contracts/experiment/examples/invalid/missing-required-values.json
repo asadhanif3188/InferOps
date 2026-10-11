@@ -1,0 +1,72 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRun",
+  "metadata": {
+    "experimentId": "EXAMPLE-E1",
+    "runId": "20260101-example-e1-1",
+    "startedAt": "2026-01-01T10:00:00Z",
+    "finishedAt": "2026-01-01T10:20:00Z"
+  },
+  "environment": {
+    "binding": {
+      "environment": "local",
+      "name": "local-docker-desktop",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "provider": "docker-desktop",
+    "kubernetesVersion": "v1.36.1",
+    "nodeCount": 1
+  },
+  "runtime": {
+    "image": "registry.example/runtime/server@sha256:7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "model": {
+    "identifier": "example-model-q8-0",
+    "revision": "8888888888888888888888888888888888888888",
+    "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "callerProfile": {
+    "applies": true,
+    "profileId": "RP-1",
+    "profileRevision": 1,
+    "contentSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+    "concurrency": 2
+  },
+  "fault": {
+    "registered": true,
+    "type": "delete-runtime-pod",
+    "injected": true,
+    "target": "pod/example-runtime-0",
+    "injectedAt": "2026-01-01T10:05:00.250Z"
+  },
+  "result": {
+    "state": "PASSED"
+  },
+  "evidenceLevel": {
+    "intended": "C2"
+  },
+  "evidence": {
+    "files": [
+      {
+        "role": "caller",
+        "path": "caller.jsonl",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "role": "pods",
+        "path": "pods.jsonl",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "role": "result",
+        "path": "result.md",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    ]
+  },
+  "cleanup": {},
+  "doesNotEstablish": [
+    "That a run executed. This document is a fixture.",
+    "Behaviour on another provider, another Kubernetes version, or another node count."
+  ]
+}

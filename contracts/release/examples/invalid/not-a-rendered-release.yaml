@@ -2,7 +2,7 @@
 #
 # Refused for: a release body labelled with another contract's kind.
 #
-# apiVersion alone does not name a schema - three contracts share
+# apiVersion alone does not name a schema - four contracts share
 # inferops.io/v1alpha1 - so a document calling itself an EnvironmentBinding is not
 # read as a release however release-shaped its body is.
 apiVersion: inferops.io/v1alpha1

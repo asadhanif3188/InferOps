@@ -21,6 +21,11 @@ pinned input of revisions 2 and 3. It also publishes
 That change registered no claim for the result.
 **One claim added by `V2-S3-005-PR1`**: [the register claim of the E01-D run](#registration-of-the-e01-d-result-2026-10-07),
 at `C2`, bounded to the one run and dated 2026-10-07. No part of E01 ran in that change.
+**One schema added by `V2-S5-002-PR1`**: [ExperimentRun v1alpha1](../../contracts/experiment-run.md).
+The three run manifests on this page were written before it. Each states its `apiVersion`
+and `kind`, and the schema refuses each. They are unchanged, and
+[a register](../../contracts/experiment-run.md#compatibility-with-the-manifests-committed-before-the-schema)
+names each by path and content digest. No part of E01 ran in that change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
