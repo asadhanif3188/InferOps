@@ -26,6 +26,11 @@ The three run manifests on this page were written before it. Each states its `ap
 and `kind`, and the schema refuses each. They are unchanged, and
 [a register](../../contracts/experiment-run.md#compatibility-with-the-manifests-committed-before-the-schema)
 names each by path and content digest. No part of E01 ran in that change.
+**One layout added by `V2-S5-002-PR2`**: [the experiment evidence layout](../../testing/experiment-evidence-layout.md).
+It gives a run directory the place that the three on this page have. Its `repository`
+command lists each of the three as `pre-schema` and does not check it. Its `check`
+command, given one of them, refuses it at its manifest. They are unchanged. No part
+of E01 ran in that change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
