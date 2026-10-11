@@ -569,7 +569,7 @@ That is the canonical error model's rule and the release inherits it unchanged.
 
 ## Versioning and compatibility
 
-`apiVersion` and `kind` together are the compatibility axis — three contracts now share
+`apiVersion` and `kind` together are the compatibility axis — four contracts now share
 `inferops.io/v1alpha1`, and each is versioned independently — and the classes are the
 WorkloadContract's, applied to this schema:
 

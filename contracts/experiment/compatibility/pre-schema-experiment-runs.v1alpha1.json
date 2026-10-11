@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "kind": "PreSchemaExperimentRunRegister",
+  "description": "The run manifests that were committed before the ExperimentRun v1alpha1 schema existed. Each states apiVersion inferops.io/v1alpha1 and kind ExperimentRun, and the schema refuses each: the three were written to a shape that no schema defined. They are evidence of the runs they describe. They are not edited, not migrated, and not validated against the schema. Each is named here by repository path and content digest: the SHA-256 of the file's bytes with every CRLF replaced by LF. The list is closed. A run manifest that this list does not name must validate.",
+  "records": [
+    {
+      "path": "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/run.v1alpha1.json",
+      "contentSha256": "96b75bf78db35805fd16c8b71218bc7eeac3626aeac7129277e2067b0db0f393"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e01/runs/20261003-e01-abc-1/run.v1alpha1.json",
+      "contentSha256": "ae2e005b5f68bc3ed017c9c3e4c2c0508390306a784c2860b6c59ed5dafb5461"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/run.v1alpha1.json",
+      "contentSha256": "62255edaa5c078f6a1f67af140b923d2ef63e8b40d24c8919691aa37653c5733"
+    }
+  ]
+}

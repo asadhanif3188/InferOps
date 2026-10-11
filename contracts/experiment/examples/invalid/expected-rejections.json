@@ -1,0 +1,518 @@
+{
+  "title": "Expected rejections for the ExperimentRun v1alpha1 invalid fixtures",
+  "description": "Every file under this directory must be refused, and must be refused for exactly the reasons recorded here. The test suite compares this manifest with the validator's output field by field, so a change that alters a canonical error code, a rule identifier, or a field location fails the build instead of quietly changing what consumers are told. A fixture is JSON and cannot hold a comment, so refusedFor says here what each fixture is refused for. No fixture describes a run that executed.",
+  "layers": {
+    "structural": "The published JSON Schema alone refuses the document. Any draft 2020-12 validator in any language reaches the same conclusion.",
+    "semantic": "The schema accepts the document. tools/experiment_run refuses it by a rule JSON Schema cannot express. A consumer that holds only the schema file does not get these refusals."
+  },
+  "fixtures": {
+    "caller-concurrency-differs.json": {
+      "layer": "semantic",
+      "refusedFor": "The run states 8 callers under RP-1 revision 1, which fixes 2.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-caller-concurrency-differs",
+          "field": "$.callerProfile.concurrency"
+        }
+      ]
+    },
+    "caller-evidence-missing.json": {
+      "layer": "semantic",
+      "refusedFor": "The run is PASSED under a caller profile and names no evidence file with the role caller.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-caller-evidence-missing",
+          "field": "$.evidence.files"
+        }
+      ]
+    },
+    "caller-profile-absent-and-named.json": {
+      "layer": "structural",
+      "refusedFor": "A run that states that no caller profile applies and names one.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.callerProfile"
+        }
+      ]
+    },
+    "caller-profile-digest-differs.json": {
+      "layer": "semantic",
+      "refusedFor": "The run states another content digest for RP-1 revision 1 than the registered one.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-caller-profile-digest-differs",
+          "field": "$.callerProfile.contentSha256"
+        }
+      ]
+    },
+    "caller-profile-in-part.json": {
+      "layer": "structural",
+      "refusedFor": "A caller profile with no revision and no content digest.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.callerProfile.contentSha256"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.callerProfile.profileRevision"
+        }
+      ]
+    },
+    "caller-profile-unregistered.json": {
+      "layer": "semantic",
+      "refusedFor": "The run names revision 7 of RP-1. No such revision is registered.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-caller-profile-unregistered",
+          "field": "$.callerProfile.profileRevision"
+        }
+      ]
+    },
+    "claim-status-in-run.json": {
+      "layer": "structural",
+      "refusedFor": "A claim status and an achieved evidence level are written into the run. A claim's status and the level of an evidence record belong to the claim and evidence register.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.claimStatus"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.evidenceLevel.achieved"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.result.claimStatus"
+        }
+      ]
+    },
+    "content-in-run.json": {
+      "layer": "structural",
+      "refusedFor": "The run carries content where it must carry a reference: a prompt, a response body, and the content of an evidence file.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.callerProfile.prompt"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.evidence.files[0].content"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.result.responseBody"
+        }
+      ]
+    },
+    "credential-shaped-value.json": {
+      "layer": "semantic",
+      "refusedFor": "One limitation holds a word with the shape of a credential, and one evidence role begins with a published credential prefix. NEITHER IS A CREDENTIAL: AKIAIOSFODNN7EXAMPLE is the placeholder key identifier of the AWS documentation, and sk-records is an ordinary word behind the prefix.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-value-credential-shaped",
+          "field": "$.evidence.files[1].role"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "run-value-credential-shaped",
+          "field": "$.limitations[2]"
+        }
+      ]
+    },
+    "evidence-level-as-result-state.json": {
+      "layer": "structural",
+      "refusedFor": "result.state holds an evidence level. C2 is a level of evidence and not a state of a run.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.result.state"
+        }
+      ]
+    },
+    "evidence-outside-the-run.json": {
+      "layer": "structural",
+      "refusedFor": "Three evidence paths that leave the run's own directory or are not in the repository's form: a parent segment, a leading slash, and a backslash.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.evidence.files[0].path"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.evidence.files[1].path"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.evidence.files[2].path"
+        }
+      ]
+    },
+    "evidence-path-twice.json": {
+      "layer": "semantic",
+      "refusedFor": "Two evidence entries name one path.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-evidence-path-duplicated",
+          "field": "$.evidence.files[2].path"
+        }
+      ]
+    },
+    "fault-not-injected-without-reason.json": {
+      "layer": "structural",
+      "refusedFor": "A registered fault that was not injected, with no reason, in a run that is ABORTED.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.fault.reason"
+        }
+      ]
+    },
+    "fault-outside-the-run.json": {
+      "layer": "semantic",
+      "refusedFor": "The fault is injected one second after the run ends.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-fault-time-outside-run",
+          "field": "$.fault.injectedAt"
+        }
+      ]
+    },
+    "host-path-in-text.json": {
+      "layer": "semantic",
+      "refusedFor": "Two statements hold an absolute path of a host: one with a drive letter and one under the directory of the root account. Both paths are invented.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-text-host-path",
+          "field": "$.cleanup.reason"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "run-text-host-path",
+          "field": "$.limitations[2]"
+        }
+      ]
+    },
+    "injected-fault-without-target.json": {
+      "layer": "structural",
+      "refusedFor": "An injected fault with no target and no time.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.fault.injectedAt"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.fault.target"
+        }
+      ]
+    },
+    "malformed-digests.json": {
+      "layer": "structural",
+      "refusedFor": "Three digests in a spelling the schema refuses: a sha256: prefix, uppercase hexadecimal, and 40 characters.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.evidence.files[0].sha256"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.release.contractSha256"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.release.releaseId"
+        }
+      ]
+    },
+    "manifest-as-its-own-evidence.json": {
+      "layer": "semantic",
+      "refusedFor": "The run lists its own manifest as an evidence file.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-evidence-names-the-manifest",
+          "field": "$.evidence.files[2].path"
+        }
+      ]
+    },
+    "missing-required-values.json": {
+      "layer": "structural",
+      "refusedFor": "Five required members are absent: the release, the frozen record, the executing revision, the limitations, and the cleanup state.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.cleanup.state"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.limitations"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.metadata.executingRevision"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.metadata.spec"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.release"
+        }
+      ]
+    },
+    "mutable-revisions.json": {
+      "layer": "structural",
+      "refusedFor": "A branch name, an abbreviated commit, and an image tag stand where an immutable identity is required.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.executingRevision"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.release.desiredStateRevision"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.runtime.image"
+        }
+      ]
+    },
+    "no-fault-with-a-target.json": {
+      "layer": "structural",
+      "refusedFor": "A run that registers no fault and names a fault type and a target.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.fault"
+        }
+      ]
+    },
+    "not-an-experiment-run.json": {
+      "layer": "structural",
+      "refusedFor": "kind names another document.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.kind"
+        }
+      ]
+    },
+    "passed-without-the-fault.json": {
+      "layer": "semantic",
+      "refusedFor": "The run is PASSED and it did not inject the registered fault.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-passed-without-registered-fault",
+          "field": "$.result.state"
+        }
+      ]
+    },
+    "refused-after-the-fault.json": {
+      "layer": "semantic",
+      "refusedFor": "The run is REFUSED and it injected the registered fault.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-refused-after-fault",
+          "field": "$.result.state"
+        }
+      ]
+    },
+    "result-state-as-evidence-level.json": {
+      "layer": "structural",
+      "refusedFor": "evidenceLevel.intended holds a result state. FAILED is a state of a run and not a level of evidence.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.evidenceLevel.intended"
+        }
+      ]
+    },
+    "run-ends-before-it-starts.json": {
+      "layer": "semantic",
+      "refusedFor": "finishedAt is earlier than startedAt.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-time-order-inverted",
+          "field": "$.metadata.finishedAt"
+        }
+      ]
+    },
+    "states-without-reason.json": {
+      "layer": "structural",
+      "refusedFor": "An INCONCLUSIVE result and an incomplete cleanup, each with no reason.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.cleanup.reason"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.result.reason"
+        }
+      ]
+    },
+    "time-that-is-no-instant.json": {
+      "layer": "semantic",
+      "refusedFor": "startedAt has the UTC form and names month 13.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "run-time-not-an-instant",
+          "field": "$.metadata.startedAt"
+        }
+      ]
+    },
+    "times-not-in-utc-form.json": {
+      "layer": "structural",
+      "refusedFor": "Three times that are not in the UTC form: an offset, no zone, and a date alone.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.fault.injectedAt"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.finishedAt"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.startedAt"
+        }
+      ]
+    },
+    "unsupported-api-version.json": {
+      "layer": "structural",
+      "refusedFor": "apiVersion names a version this schema does not define.",
+      "expected": [
+        {
+          "code": "version-unsupported",
+          "rule": "contract-version-unsupported",
+          "field": "$.apiVersion"
+        }
+      ]
+    },
+    "unsupported-vocabulary.json": {
+      "layer": "structural",
+      "refusedFor": "Three values outside a controlled vocabulary: an environment, a result state, and a cleanup state.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.cleanup.state"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.environment.binding.environment"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.result.state"
+        }
+      ]
+    },
+    "values-out-of-range.json": {
+      "layer": "structural",
+      "refusedFor": "Four values outside a bound: no node, no caller, no limitation, and an empty statement.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-out-of-range",
+          "field": "$.callerProfile.concurrency"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-out-of-range",
+          "field": "$.doesNotEstablish[0]"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-out-of-range",
+          "field": "$.environment.nodeCount"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-out-of-range",
+          "field": "$.limitations"
+        }
+      ]
+    },
+    "wrong-json-types.json": {
+      "layer": "structural",
+      "refusedFor": "Four values of the wrong JSON type: a node count as a string, a flag as a string, a revision number as a fraction, and limitations as one string.",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-wrong-type",
+          "field": "$.environment.nodeCount"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-wrong-type",
+          "field": "$.fault.registered"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-wrong-type",
+          "field": "$.limitations"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-wrong-type",
+          "field": "$.metadata.spec.freezeRevision"
+        }
+      ]
+    }
+  }
+}

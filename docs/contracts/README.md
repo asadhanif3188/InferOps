@@ -1,6 +1,6 @@
 # Contracts
 
-Status: one contract accepted and two schemas published, all at alpha maturity. The
+Status: one contract accepted and three schemas published, all at alpha maturity. The
 platform domain reads a WorkloadContract and an EnvironmentBinding into typed objects and
 selects the binding that serves a contract; nothing deploys, serves, or admits a workload
 from either, and no workflow or Helm procedure installs what is rendered from one; since `V2-S3-002-PR2` one [Argo CD Application](../environment/argocd-application.md) applies the chart with one committed set of generated values, on a cluster where an operator applied it. The [renderer input
@@ -12,7 +12,7 @@ platform domain reads a RenderedWorkloadRelease and checks its provenance, and b
 from a render context only through the allowlisted path its [provenance input-trust
 policy](rendered-workload-release.md#provenance-input-trust) defines; since
 `V2-S2-001-PR2` a caller can write a release and the values it names to a directory it
-names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](../environment/git-desired-state.md) and checked the same way; since `V2-S3-002-PR2` one [Argo CD Application](../environment/argocd-application.md) reads its generated values, on a cluster where an operator applied it, and nothing reads the release document itself.
+names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](../environment/git-desired-state.md) and checked the same way; since `V2-S3-002-PR2` one [Argo CD Application](../environment/argocd-application.md) reads its generated values, on a cluster where an operator applied it, and nothing reads the release document itself. Since `V2-S5-002-PR1` an [ExperimentRun](experiment-run.md) schema is published with an offline validator; no run produced a manifest of it, and nothing writes one or reads one for analysis.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under
@@ -24,6 +24,7 @@ means, how it is versioned, which rules are enforced, and which are not.
 | WorkloadContract | `v1alpha1` | Accepted; parsed by [the workload domain model](../domain/workload-domain-model.md), and no runtime consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
 | EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; the renderer input boundary reads the selected binding into a render context, and the Helm values renderer generates chart values from it, which a caller can write with their release to a directory it names | [EnvironmentBinding v1alpha1](environment-binding.md) |
 | RenderedWorkloadRelease | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; a repository document, not a cluster resource; parsed by the platform domain, which defines how a release and its sources are hashed, recomputes the release identifier, refuses credential-shaped values, and compares a release with the contract and binding it names; builds one from a render context only from fields its input-trust policy classifies public-safe identities or derived digests; since `V2-S2-001-PR2` the Helm values renderer's generation records one for the values it renders, and a caller can write both to a directory it names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S3-002-PR1` a second generated release is committed as Git desired state and checked the same way; nothing installs one | [RenderedWorkloadRelease v1alpha1](rendered-workload-release.md) |
+| ExperimentRun | `v1alpha1` | Published schema with valid and invalid fixtures and an offline validator that applies the schema and 13 semantic rules; a repository document, not a cluster resource; the result state, the intended evidence level, and a claim's status are separate, and the schema has no member for the third; three run manifests committed before the schema state the same `apiVersion` and `kind`, do not conform, and are registered by path and content digest; no run produced a manifest of this schema, nothing writes one, and nothing reads one for analysis | [ExperimentRun v1alpha1](experiment-run.md) |
 
 A published schema is a commitment about what will be accepted. It is not evidence
 that anything accepts it, and it certifies no runtime behaviour.
@@ -52,6 +53,13 @@ with the WorkloadContract, and the release's rule for its own identifier have to
 and tested first. Each document says, in its status line, what reads it. The renderer's input
 side exists as [its own boundary](../domain/renderer-input-boundary.md), and the [Helm values
 renderer](../domain/helm-values-renderer.md) is built on it; no workflow or Helm procedure installs what it renders, and one Argo CD Application applies one committed render.
+
+The ExperimentRun is the third schema published before its consumer, and the exception
+is deliberate too. A result-bearing run must name its frozen record, its release, its
+environment, its caller profile, and its fault in a form that is fixed before the run.
+A shape that is chosen after a result is seen can be chosen to suit the result. So the
+shape, its fixtures, and its rules are published and tested first. [Its document](experiment-run.md)
+says that nothing writes one yet.
 
 A **cost record** is the one of those whose shape is now written down. [The cost
 method](../cost/cost-method.md) publishes the fields a record would carry, as part
