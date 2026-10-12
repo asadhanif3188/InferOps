@@ -118,6 +118,11 @@ ROLES: Final[Mapping[str, Role]] = {
     ),
     "telemetry": Role(RAW, "Readings of the metrics that the frozen record registers."),
     "resources": Role(RAW, "Readings of resource use, each with its time."),
+    "operator-events": Role(
+        RAW,
+        "The events that the control of the run and an operator recorded, each "
+        "with its time.",
+    ),
     "transcript": Role(RAW, "What the commands printed, with each exit status."),
     "commands": Role(RAW, "The commands of the run, in order, or the driver."),
     "environment": Role(RAW, "The environment identity as the run read it."),

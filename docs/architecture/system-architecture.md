@@ -969,6 +969,8 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | What the single-runtime baseline is, and which differences from the two-replica release it is permitted | [The single-runtime baseline profile](../environment/single-runtime-baseline-profile.md) |
 | How many Ready endpoints each of the two Services has, and which pods they are, as one reading | [The Ready endpoint state of the two Services](../environment/service-endpoint-state.md) |
 | How the endpoints, the pods, the Deployments, and the Argo CD Application are sampled over the time of one experiment run | [The infrastructure timelines of an experiment run](../environment/experiment-timelines.md) |
+| Which registered queries the telemetry collector is asked over the time of one experiment run, and why an answer with no series is not zero | [The telemetry of an experiment run](../environment/experiment-telemetry.md) |
+| How a fault injection, a reviewed detection, a reversal, an abort, and a manual action of one experiment run are recorded with a UTC instant | [The operator events of an experiment run](../environment/experiment-operator-events.md) |
 | What a PodDisruptionBudget of the release bounds, and that it does not bound a pod deletion | [The disruption budgets](../environment/disruption-budgets.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |

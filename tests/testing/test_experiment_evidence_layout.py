@@ -237,7 +237,7 @@ def test_the_document_states_each_role_as_the_module_does() -> None:
     assert [(name, kind, holds) for name, kind, holds in rows] == [
         (name, role.kind, role.holds) for name, role in core.ROLES.items()
     ]
-    assert sum(1 for role in core.ROLES.values() if role.kind == core.RAW) == 11
+    assert sum(1 for role in core.ROLES.values() if role.kind == core.RAW) == 12
     assert sorted(n for n, r in core.ROLES.items() if r.kind == core.DERIVED) == [
         "analysis",
         "result",
