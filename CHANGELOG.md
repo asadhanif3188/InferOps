@@ -10,6 +10,41 @@ from `1.0.0`.
 
 ### Added
 
+- **The telemetry and the operator events of an experiment run can be captured. No
+  cluster and no telemetry collector was read, no run recorded an event, and no stream
+  of a real run is committed.** `V2-S5-003-PR2` adds
+  `scripts/environment/experiment-telemetry.sh`, `tools/experiment_telemetry`,
+  `tools/experiment_events`, three suites, and two pages. **Telemetry.** The script asks
+  the telemetry collector of the release a closed set of eleven registered instant
+  queries, at most 720 times, with a pause of 5 to 120 seconds. Each read is a
+  `kubectl get`: one of the collector's Service, and one for each query through the
+  Service proxy of the API server, each call with a request timeout of 10 seconds. The
+  script changes
+  nothing in the cluster, sends no request to the API of the release, and holds no query:
+  it asks the tool for each request and holds it to a fixed form. The tool prints the
+  streams `telemetry` and `resources`, which are two raw roles of the evidence layout.
+  **No series is not zero.** An answer with no series is the result `no-series` and
+  states no value. A read that did not answer has no result, and a release with no
+  collector states each read as `absent`. The resident memory of the API process is such
+  a case today: the telemetry catalog records the metric as not emitted. **No request
+  identifier is a label.** Each query aggregates and registers each label that a series
+  can state, a test compares the registered labels with the telemetry catalog, and a
+  series with any other label leaves its reading with no series. The value of a
+  registered label is held to a form and to no set of values. **Operator events.**
+  The second tool appends one line for each event to one log: a fault injection as two
+  events, a reviewed detection, a reversal that was decided, created, and accepted, an
+  abort, and a manual action. The command takes the instant of each record on the host
+  clock, in UTC, to one millisecond, and it has no option that states it. An instant of another
+  clock, such as a Git host, is a second field with its resolution and its clock. An
+  event holds no free text and no name of a person. The evidence layout gains the raw
+  role `operator-events`, so its vocabulary has 14 roles. **Boundaries.** A stream and a
+  log are not a caller's result: neither tool imports a caller tool. The tools compute no
+  rate, no detection lag, and no verdict. No run observed that the Service proxy path
+  reaches a collector. No query reads the resource use of the serving runtime, of a
+  container, or of a node. No frozen record of an experiment names the query set or
+  registers a code. See [the telemetry page](docs/environment/experiment-telemetry.md),
+  [the operator events page](docs/environment/experiment-operator-events.md), and
+  [the validation record](docs/proof/environment/v2-s5-003-pr2-validation.md).
 - **The infrastructure timelines of an experiment run can be captured as four streams.
   No cluster was read, and no stream of a real run is committed.** `V2-S5-003-PR1` adds
   `scripts/environment/experiment-timeline.sh`, `tools/experiment_timeline`, two suites,

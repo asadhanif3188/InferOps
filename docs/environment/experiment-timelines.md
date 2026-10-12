@@ -46,7 +46,10 @@ A test holds both.
 
 **A stream is not a Prometheus series, and it is not an operator event.** This
 tool reads no metric, and it records no fault injection, no detection, and no
-reversal. A later change owns those two sources.
+reversal. Since `V2-S5-003-PR2` those two sources have their own tools:
+[the telemetry streams](experiment-telemetry.md) and
+[the operator event log](experiment-operator-events.md). Neither changes a
+stream of this page.
 
 ## What is read: the collection
 
@@ -464,7 +467,8 @@ prints a warning for each sample with a read that did not answer.
 - No cluster was read. The collector ran against stand-ins for `kubectl`, and the
   tool read collections that the suites built.
 - No run directory holds a stream.
-- No stream holds a metric or an operator event.
+- No stream of this tool holds a metric or an operator event. Each has its own
+  tool since `V2-S5-003-PR2`, and nothing starts the three together.
 - The tool does not merge a stream with a caller record. An analysis does that.
 - The layout check does not hold a stream file to its form.
 - The collector does not stop on a signal with a complete collection. A

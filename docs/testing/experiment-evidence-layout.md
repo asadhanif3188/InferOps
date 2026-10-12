@@ -18,7 +18,7 @@ manifest. The three run directories that are committed were written before the
 | Corrections directory of a run | `docs/proof/experiments/<experiment>/corrections/<runId>/` |
 | Digest | SHA-256 of a file's content with each CRLF replaced by LF |
 | Evidence file suffixes | `.csv`, `.json`, `.jsonl`, `.md`, `.txt`, `.yaml`, `.yml` |
-| Roles | 13: 11 raw and 2 derived |
+| Roles | 14: 12 raw and 2 derived |
 | Rules | 21 |
 | Tool | [`tools/experiment_evidence`](../../tools/experiment_evidence/core.py) |
 | Suite | [`tests/testing/test_experiment_evidence_layout.py`](../../tests/testing/test_experiment_evidence_layout.py) |
@@ -142,6 +142,7 @@ vocabulary, and this layout adds one for a file of a run directory.
 | `argo` | raw | Readings of the delivery controller's Application, each with its time. |
 | `telemetry` | raw | Readings of the metrics that the frozen record registers. |
 | `resources` | raw | Readings of resource use, each with its time. |
+| `operator-events` | raw | The events that the control of the run and an operator recorded, each with its time. |
 | `transcript` | raw | What the commands printed, with each exit status. |
 | `commands` | raw | The commands of the run, in order, or the driver. |
 | `environment` | raw | The environment identity as the run read it. |
@@ -167,7 +168,12 @@ vocabulary, and this layout adds one for a file of a run directory.
   [the timeline collector](../environment/experiment-timelines.md) writes a file for
   each of the roles `endpoints`, `pods`, `deployments`, and `argo`, from what its tool
   prints, and that tool defines and checks their form. This check does not call that
-  tool. No run directory holds such a file.)
+  tool. No run directory holds such a file. Since `V2-S5-003-PR2`
+  [the telemetry collector script](../environment/experiment-telemetry.md) writes a file
+  for each of the roles `telemetry` and `resources`, and
+  [the operator event log](../environment/experiment-operator-events.md) is a file with
+  the role `operator-events`. Each of the two tools defines and checks the form of its
+  files, and this check calls neither. No run directory holds such a file.)
 - **The tool's code does not name the delivery controller's product.** The role is
   `argo`, and its description says "the delivery controller". A suite of the
   architecture refuses a sixth build file that names the product, and the first
@@ -175,7 +181,9 @@ vocabulary, and this layout adds one for a file of a run directory.
   sixth file and refuses a seventh: the collector of the timelines names the product on
   the two lines that read the one Application.)
 - **A role that is not in the table is refused.** A run that needs another role needs a
-  change to the vocabulary.
+  change to the vocabulary. `V2-S5-003-PR2` made one such change: it added the raw role
+  `operator-events`, and the vocabulary went from 13 roles to 14. Until then no role
+  could name a log of operator events.
 
 ### The caller record
 

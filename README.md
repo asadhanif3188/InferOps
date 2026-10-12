@@ -247,7 +247,15 @@ run: a bounded number of samples of the Service endpoints, the pods, the Deploym
 and the Argo CD Application, each with the two instants of its read in UTC. A value
 that was not read has a state and no value. A stream is what the cluster and the
 controller published. It is not a caller's result. The collector was executed against
-stand-ins for `kubectl` only, and no stream of a real run is committed.
+stand-ins for `kubectl` only, and no stream of a real run is committed. Since
+`V2-S5-003-PR2` a second script and tool read the
+[telemetry](docs/environment/experiment-telemetry.md) of a run from the release's
+telemetry collector, as a closed set of registered queries, and a third tool records
+the [operator events](docs/environment/experiment-operator-events.md) of a run: a
+fault injection, a reviewed detection, a reversal, an abort, and a manual action, each
+with a UTC instant. An answer with no series is stated as no series and not as zero,
+and an event holds no free text. Neither is a caller's result. No collector was read,
+and no run recorded an event.
 
 ## Prerequisites
 

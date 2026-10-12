@@ -84,6 +84,7 @@ ENTRY_POINTS = (
     "service-endpoint-state.sh",
     "reliability-runner.sh",
     "experiment-timeline.sh",
+    "experiment-telemetry.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
@@ -97,6 +98,7 @@ READ_ONLY_SCRIPTS = (
     "capacity-preflight.sh",
     "service-endpoint-state.sh",
     "experiment-timeline.sh",
+    "experiment-telemetry.sh",
 )
 
 # kubectl subcommands that change cluster state. `exec` and `cp` are here because
