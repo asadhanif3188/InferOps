@@ -5,7 +5,7 @@ of times and writes one directory. ``tools.experiment_timeline`` builds four
 streams from that directory. This suite holds the script to five properties.
 
 *It changes nothing in the cluster.* Each kubectl call the script holds is a
-``get``. An executed run makes no kubectl call that is not a known read: the
+``get`` with a request timeout. An executed run makes no kubectl call that is not a known read: the
 target verification adds ``config`` reads and its own ``get`` and ``version``
 calls. The verification also writes the target's kubeconfig under ``.kube/``.
 
@@ -25,7 +25,10 @@ read fails writes no file for that read, and the streams state no value for it.
 The other read of the same sample is not changed.
 
 The executed tests need ``bash`` and skip without it. The stubs stand in for
-kubectl, kind, docker, and git. No test contacts a cluster, so no test here is
+kubectl, kind, docker, and git. A fifth stub records each call of ``python`` and
+passes it to the interpreter of this suite. The kubectl stub answers a call it
+does not know with nothing and exit status 0, so a test reads the recorded calls
+and does not rely on a failure. No test contacts a cluster, so no test here is
 evidence of a timeline of a real run.
 """
 
@@ -132,7 +135,7 @@ def test_each_kubectl_call_of_the_script_is_a_read() -> None:
     direct = [line for line in code_lines() if "target_kubectl" in line]
     assert direct == [
         '  if inferops::target_kubectl "$@" --request-timeout '
-        '"${READ_TIMEOUT_SECONDS}s" -o json >"${file}" 2>/dev/null; then'
+        '"${REQUEST_TIMEOUT_SECONDS}s" -o json >"${file}" 2>/dev/null; then'
     ]
     assert not [
         line for line in code_lines() if re.search(r"(^|[\s(|;&])kubectl\s", line)
@@ -197,7 +200,9 @@ def test_the_script_restates_the_tools_names_and_bounds_and_each_agrees() -> Non
     assert int(constant("MAX_SAMPLES")) == timeline.MAX_SAMPLES
     assert int(constant("MAX_INTERVAL_SECONDS")) == timeline.MAX_INTERVAL_SECONDS
     assert (
-        1 <= int(constant("READ_TIMEOUT_SECONDS")) <= timeline.MAX_READ_TIMEOUT_SECONDS
+        1
+        <= int(constant("REQUEST_TIMEOUT_SECONDS"))
+        <= timeline.MAX_REQUEST_TIMEOUT_SECONDS
     )
     assert f'"${{collection_dir}}/{timeline.HEADER_FILE}"' in SCRIPT_TEXT
     assert f'"${{collection_dir}}/{timeline.END_FILE}"' in SCRIPT_TEXT
@@ -670,7 +675,7 @@ def test_a_capture_writes_each_read_and_four_streams_and_changes_nothing(
         "librarySha256": header["librarySha256"],
         "requestedSamples": 2,
         "intervalSeconds": 1,
-        "readTimeoutSeconds": 10,
+        "requestTimeoutSeconds": 10,
     }
     assert re.fullmatch(r"[0-9a-f]{64}", header["procedureSha256"])
     assert header["procedureSha256"] != header["librarySha256"]
@@ -770,6 +775,9 @@ def test_an_application_read_that_does_not_answer_leaves_the_workload_streams(
     assert argo["read"]["state"] == "unanswered"
     assert argo["application"] is None
     assert run.stream("endpoints").readings[0]["tiers"] is not None
+    assert "partial answer that must not be kept" not in "".join(
+        path.read_text("utf-8") for path in run.directory.rglob("*") if path.is_file()
+    )
     assert "workload read answered, Application read unanswered" in run.output
 
 
@@ -784,6 +792,7 @@ def test_an_absent_application_is_an_answer_and_not_a_failed_read(
     [argo] = run.stream("argo").readings
     assert argo["read"]["state"] == "absent"
     assert argo["application"] is None
+    assert "Application read answered with no object" in run.output
 
 
 @needs_bash

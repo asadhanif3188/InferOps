@@ -15,7 +15,7 @@ from `1.0.0`.
   `scripts/environment/experiment-timeline.sh`, `tools/experiment_timeline`, two suites,
   and one page. The script samples the release a bounded number of times: at most 1800
   samples, with a pause of 1 to 30 seconds. A sample is two reads, each a `kubectl get`
-  with a timeout of 10 seconds: one call for the Services, the EndpointSlices, the pods,
+  whose requests each have a timeout of 10 seconds: one call for the Services, the EndpointSlices, the pods,
   the ReplicaSets, and the Deployments of the release namespace, and one for the Argo CD
   Application that delivers the release. The script changes nothing in the cluster and
   sends no request to the release. The tool reads the directory and prints the streams
@@ -44,7 +44,16 @@ from `1.0.0`.
   stream file to its digest and does not read its form. A stream is what the cluster and
   the controller published: it is not a caller's result. No claim, ledger, register row,
   dashboard row, evidence-index entry, or freeze record was added or changed. The
-  evidence is static, C0. See
+  evidence is static, C0. **Two independent reviews read the first commit.** They found
+  that a label key or an object name of an answer reached a stream through the fault
+  text of the endpoint-state tool; that the restarts of an init container were not
+  read, so a pod whose init container restarts stated a restart count of 0; that the
+  `changes` command ended in an error on a stream that the `check` command accepted;
+  that an answer which is not a list of the kinds was counted as answered; that the
+  timeout is of each request and does not bound a read; that on a cluster without the
+  resource type of the Application the read does not answer, where the page said
+  `absent`; and that several sentences and counts said more than the code does. The
+  second commit corrects each, and the validation record lists them. See
   [the timelines page](docs/environment/experiment-timelines.md) and
   [the validation record](docs/proof/environment/v2-s5-003-pr1-validation.md).
 - **The directory of an experiment run has a layout and an offline check. No run

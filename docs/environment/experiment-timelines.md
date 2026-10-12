@@ -20,7 +20,7 @@ The capture has two parts.
 | Stream | What each reading states |
 |---|---|
 | `endpoints` | For the API Service and for the serving runtime Service: the number of endpoints, the number that are Ready, and the pod name and pod UID of each |
-| `pods` | Each pod of the two tiers: its name, its UID, its revision, its phase, its Ready condition, its restart counts, and its deletion timestamp |
+| `pods` | Each pod of the two tiers: its name, its UID, its revision, its phase, its Ready condition, the restart counts of its containers and of its init containers, and its deletion timestamp |
 | `deployments` | The Deployment of each tier: its revision, its generation, its replica counts, and two conditions |
 | `argo` | What the delivery controller reported about one Application: the revision it follows, the commit it resolved, the sync state, the health state, and the last operation |
 
@@ -53,8 +53,17 @@ reversal. A later change owns those two sources.
 The collector reads the release that the environment scripts name: the release
 `inferops` in the namespace `inferops-release`. It reads the one Application that
 the [Application procedure](argocd-application.md) delivers the release with, in
-the namespace of the delivery controller. On a provider with no such Application
-the read answers with no object, and the reading states `absent`.
+the namespace of the delivery controller. Where the cluster has the resource type
+of the Application and no object has the name, the read answers with no object,
+and the reading states `absent`. Where the cluster does not have the resource
+type, the read does not answer, and each reading of the `argo` stream states
+`unanswered`. [The reconciliation record](reconciliation-evidence.md) observed
+both on one provider. No run of this collector observed either.
+
+Before the first sample, the target verification of the script library makes
+reads of its own: `kubectl config` and `kubectl version`, and `kubectl get` of
+the nodes, of the pods of the system namespace, and of the storage classes. They
+change nothing, and no stream holds what they return.
 
 | File | What it holds |
 |---|---|
@@ -66,20 +75,26 @@ the read answers with no object, and the reading states `absent`.
 | `streams/<stream>.jsonl` | The four streams that the tool gives for the files above |
 
 **A read that does not answer is not an empty result.** The collector writes no
-file for it, and the sample states the read as `unanswered`. Each read has a
-timeout of 10 seconds. A read that does not answer within it is `unanswered`.
+file for it, and the sample states the read as `unanswered`. Each request that
+`kubectl` makes for a read has a timeout of 10 seconds, and a request that passes
+it makes the read `unanswered`. The timeout does not bound a read: the workload
+read makes one request for each kind, so it can take longer than 10 seconds and
+still answer. No run observed that the timeout ends a request that hangs.
 
 **The collection holds the whole answer of each read.** An answer holds addresses,
 node names, and the environment of each pod. Do not commit a collection. The four
 stream files hold an allowlist, and they are the evidence files of a run.
 
-The header states the experiment identifier and the run identifier that the
-operator gave, the provider, the server version, the namespace, the release, the
-Application, the commit of the working tree, the SHA-256 of the collector script
-and of its library, the number of samples, the pause, and the read timeout. It
-names the provider and not the kubeconfig context, because a context name can
-hold an account identifier. The tool refuses a header with any member that it
-does not expect, and a header with a member of another form.
+The header states the collection schema, the experiment identifier and the run
+identifier that the operator gave, the provider, the server version, the
+namespace, the release, the Application and its namespace, the commit of the
+working tree, the SHA-256 of the collector script and of its library, the number
+of samples, the pause, and the request timeout. It names the provider and not the
+kubeconfig context, because a context name can hold an account identifier. The
+tool refuses a header with any member that it does not expect, and a header with
+a member of another form. One member is an exception: a server version of
+another form is kept as `malformed`, and one that the collector could not read
+is `missing`.
 
 ### Bounds
 
@@ -87,7 +102,7 @@ does not expect, and a header with a member of another form.
 |---|---|
 | Samples of one collection | 1 to 1800 |
 | Pause between two samples | 1 to 30 seconds |
-| Timeout of one read | 10 seconds |
+| Timeout of one request of a read | 10 seconds in the collector. The tool accepts a header that states 1 to 60 |
 | Pods of the two tiers that one reading states | 64 |
 | Containers that one reading states for one pod | 8 |
 
@@ -105,19 +120,21 @@ A timeline needs one time basis. A stream has one, and it says where a second
 clock enters.
 
 **The time basis is the clock of the collecting host.** The collector takes one
-instant before each read and one after it. Each reading states them as
+instant before each read and one after it. A reading states them as
 `read.startedAt` and `read.finishedAt`, in UTC, to one millisecond, in the form
-`2026-10-12T08:00:00.000Z`. The caller record of the reliability runner uses the
+`2026-10-12T08:00:00.000Z`. A reading of a sample that was not taken, and a
+reading whose sample states no usable instants, states neither. The caller record of the reliability runner uses the
 same form. The two are still two clocks: the runner's instants are the clock of
 its pod.
 
 **An instant that a cluster component wrote is on the clock of that component.**
 The creation time and the deletion timestamp of a pod, the last transition time
-of a condition, and the three instants of the delivery controller are such
-values. The tool normalises each to UTC. A value with an offset is converted. A
-value with a fraction of a second is cut to one millisecond and is not rounded.
-Each such field states its `resolution`, which is `second` for a value with no
-fraction and `millisecond` for a value with one.
+of the Ready condition of a pod, the two times of a condition of a Deployment,
+and the five instants of the Application are such values. The tool normalises
+each to UTC. A value with an offset is converted. A value with no fraction of a
+second keeps a resolution of one second. A value with a fraction is cut to one
+millisecond and is not rounded, so a finer fraction is lost. Each such field
+states its `resolution`: `second` or `millisecond`.
 
 **The difference between the two clocks is not measured.** The header of each
 stream states `skew` as `not-measured`. The end line of each stream states two
@@ -144,10 +161,10 @@ Each read has one of five states.
 
 | Read state | Meaning | Values |
 |---|---|---|
-| `answered` | The read returned an answer that the tool can use | Yes |
+| `answered` | The read returned an answer that the tool can read | Yes, unless a fault of the reading says why not |
 | `absent` | The read answered, and no object has the name. Only the Application read has this state | None |
-| `unanswered` | The read failed or timed out | None |
-| `unreadable` | The answer is not usable: it is not JSON, it is not a list of the kinds, or the sample states no usable instants for it | None |
+| `unanswered` | The read failed, or a request of it timed out | None |
+| `unreadable` | The answer is not usable: it is not one JSON object, it is not a list of the five kinds, it is another object than the named Application, its file is not in the collection, or the sample does not state whether the read answered or states no usable instants for it | None |
 | `not-taken` | The collection was asked for the sample and did not write it | None |
 
 An empty answer of the workload read is `unreadable`. It is not an empty
@@ -166,14 +183,15 @@ No function replaces a state with zero, with false, or with a healthy value.
 These cases are each a test:
 
 - A status count of a Deployment that the API omitted is `missing`. Kubernetes
-  omits a count that is zero, and it omits a count that the controller did not
-  write yet. The field cannot tell the two apart, so the reading states neither.
+  omits a count that is zero, and it omits a count that the Deployment controller
+  did not write yet. The field cannot tell the two apart, so the reading states neither.
   The `generation` and the `observedGeneration` of the same reading state whether
   the controller wrote the status for the present generation.
 - A pod with no Ready condition has a `ready` that is `missing`. It is not read as
   not Ready. A Ready condition of `Unknown` keeps that value.
 - A pod with no container status has a `restartCount` that is `missing`. A pod
-  with one container that states no count has a sum that is `malformed`.
+  with one container that states no count has a sum that is `malformed`. A pod
+  with no init container status has an `initRestartCount` that is `missing`.
 - A field of the Application that the controller did not write is `missing`. An
   Application with no health state is not healthy and not unhealthy.
 - A pod whose ReplicaSet is not in the read has a `revision` that is `missing`.
@@ -192,22 +210,31 @@ sorted members, so one collection gives one text. The schema name is
 
 **`endpoints`.** The tiers are those of the
 [endpoint-state record](service-endpoint-state.md), and the same rules decide
-them: this tool calls that tool for each sample. A tier that a rule refuses
-states no count, and the reading lists the rule in `faults`.
+them: this tool calls that tool for each sample. A tier states what a tier of
+that record states: `tier`, `state`, `service`, `slices`, `addressTypes`, the
+five counts of `endpoints`, the pods in `ready`, and the pods in `notReady` with
+`serving` and `terminating` for each. A tier that a rule refuses states no count.
+The reading lists the rule and the tier in `faults`. It does not copy the detail
+of that tool, because a detail can quote a name of the answer.
 
 **`pods`.** A pod is listed when it carries the instance label of the release and
 the component label of one of the two tiers. Every other pod of the namespace is
 counted in `otherPods` and is not listed. For each listed pod the reading states
 `name`, `uid`, `tier`, `templateHash`, `owner`, `revision`, `phase`, `ready`,
-`readyTransitionAt`, `containers`, `restartCount`, `createdAt`,
-`deletionTimestamp`, and `deletionGracePeriodSeconds`. The `revision` is the
-revision annotation of the ReplicaSet that owns the pod. The `restartCount` is
-the sum over the containers of the pod, and it does not count an init container.
-The `deletionTimestamp` of a pod is the instant at which its grace period ends,
-so the request to delete the pod is earlier by `deletionGracePeriodSeconds`.
+`readyTransitionAt`, `containers`, `restartCount`, `initContainers`,
+`initRestartCount`, `createdAt`, `deletionTimestamp`, and
+`deletionGracePeriodSeconds`. The `revision` is the revision annotation of the
+ReplicaSet that owns the pod. The `restartCount` is the sum over the containers
+of the pod. The `initRestartCount` is the sum over its init containers, and it is
+a field of its own: a pod whose init container restarts reports no restart of a
+container. A restart of an ephemeral container is not read. The
+`deletionTimestamp` of a pod is the instant at which its grace period ends.
+Kubernetes documents that the request to delete the pod is earlier by
+`deletionGracePeriodSeconds`. Both values are to one second, and a second request
+with a shorter grace period replaces both.
 
-**`deployments`.** For each tier the reading states the `name` and the `uid` of
-the one Deployment, its `revision`, and eight counts: `generation`,
+**`deployments`.** For each tier the reading states `tier`, `state`, the `name`
+and the `uid` of the one Deployment, its `revision`, and eight counts: `generation`,
 `observedGeneration`, `specReplicas`, `replicas`, `updatedReplicas`,
 `readyReplicas`, `availableReplicas`, and `unavailableReplicas`. It states the
 `Available` and the `Progressing` condition: the status, the reason, and the two
@@ -237,23 +264,27 @@ compares no commit with a provenance. The reconciliation record does both.
 ### What a stored stream is held to
 
 `python -m tools.experiment_timeline check` reads stored streams. It holds each
-one to eight rules.
+one to nine rules.
 
 | Rule | Statement |
 |---|---|
 | `timeline-stream-unreadable` | A stream is UTF-8 text. Each line is one JSON object with no member stated twice. |
 | `timeline-header-unsupported` | The first line is the header. It states the stream schema, one of the four stream names, an experiment identifier, and a run identifier, each in its form. |
 | `timeline-members-unsupported` | Each line has exactly the members of its record and of its stream. |
-| `timeline-reading-out-of-sequence` | The readings are numbered from 1 with no gap, and no line follows the end line. |
+| `timeline-reading-out-of-sequence` | Each line between the header and the end line is a reading, and the readings are numbered from 1 with no gap. |
 | `timeline-read-state-unsupported` | Each reading states one of the registered read states. |
 | `timeline-instant-invalid` | Each instant of a read is absent or is UTC to one millisecond in the one registered form, and a read does not finish before it starts. |
-| `timeline-end-missing` | The last line is the end line. |
+| `timeline-reading-unsupported` | Each reading states its faults as a list of text, and states a value only when its read answered. Each value that the changes command reads has its type. Only a reading of the argo stream has the read state absent. |
+| `timeline-end-missing` | The last line is the end line, and no line follows it. |
 | `timeline-counts-differ` | The end line states the number of readings and the number of readings in each read state, as the stream holds them. |
 
-**The check reads the form of a stream.** It does not read the fields of a reading
-for their form, so it does not refuse a stream whose field has an unregistered
-state. It does not show that a stream is what a collection gives: the collection
-is not committed, so no check can build the stream again.
+**The check reads the form of a stream.** It holds each value that the `changes`
+command reads to its type, so that command does not fail on a stream that the
+check accepts. It does not hold a reported value to the form that the builder
+holds it to: a stored stream with a pod name of another form is accepted. It
+does not read a field that `changes` does not track. It does not show that a
+stream is what a collection gives: the collection is not committed, so no check
+can build the stream again.
 
 ## Changes
 
@@ -265,7 +296,7 @@ earlier read, and `notAfter` is the finish of the later read.
 | Stream | Tracked values |
 |---|---|
 | `endpoints` | For each tier: the state, the five counts, and the UIDs of the Ready pods |
-| `pods` | For each pod UID: whether it is `present`, and `ready`, `phase`, `restartCount`, `revision`, and `deletionTimestamp` |
+| `pods` | For each pod UID: whether it is `present`, and `ready`, `phase`, `restartCount`, `initRestartCount`, `revision`, and `deletionTimestamp` |
 | `deployments` | For each tier: the state, the `revision`, and the eight counts |
 | `argo` | Whether the Application is `present`, and each of its thirteen fields |
 
@@ -275,10 +306,18 @@ earlier read, and `notAfter` is the finish of the later read.
 - No value is carried across a reading that gave none. A reading that is not
   answered gives a change to `not-collected` and, at the next answered reading, a
   change from it.
+- A reading that answered and states no value for the stream gives a change to
+  `refused`: a `pods` reading with a pod that has no usable identity, and a tier
+  that a rule refuses. Two consecutive readings that give no value have no
+  tracked value to compare. When one is `not-collected` and the other is
+  `refused`, one change names the subject `reading`.
 - A pod that is in one reading and not in the next gives one change of `present`
   to `absent`. A pod that enters gives one change from `absent`. **No change says
   that one pod replaced another.** An analysis that pairs the two states that
   itself.
+- The word `absent` has two uses. As the state of a change it says that an
+  answered reading held no such pod. As a read state it says that the Application
+  read answered with no object, and the change then states `present` as false.
 
 The changes document is computed from a stream. It is a derived file, and it
 holds no value that the stream does not hold.
@@ -286,10 +325,15 @@ holds no value that the stream does not hold.
 ## Identities, and what a stream leaves out
 
 Each text value of a reading is held to a fixed form before it is stored: a
-Kubernetes name, a UID, a commit identifier, a word, or an instant. A value of
-another form is `malformed` and is not copied. A fault is one line of at most 240
-characters from a fixed set of characters, and a reading lists at most 10. So a
-stream holds no free text of a cluster.
+Kubernetes name, a label value for a container name, a UID, a commit identifier,
+a word, a template hash of at most 16 characters, an instant, and, for the
+revision that the Application follows, a reference name of at most 128 letters,
+digits, dots, underscores, slashes, and hyphens. A value of another form is
+`malformed` and is not copied. A fault is one line of at most 240 characters from
+a fixed set of characters. It is written by this tool and quotes no text of an
+answer. A reading lists at most 10 faults and one more line that counts the
+others. A name, a reference name, and a label value are free within their form:
+the form is not a check for a secret.
 
 A stream leaves these out, on purpose:
 
@@ -318,6 +362,9 @@ every secret.
   before read.startedAt and not after read.finishedAt, when the API server
   answered from its present state. The workload read is one command that makes
   one request for each kind, so its kinds are not one atomic reading.
+- The timeout of a read is the timeout of each request that kubectl makes. A read
+  makes more than one request, so it can take longer than the timeout and still
+  answer.
 - An instant that a cluster component wrote is on the clock of that component.
   It is normalised to UTC and keeps its resolution, which is one second for each
   instant that Kubernetes writes into the fields read here. It is not on the
@@ -344,6 +391,8 @@ every secret.
 - The revision of a pod is the revision annotation of the ReplicaSet that owns
   it, in the same read. It is missing when that ReplicaSet is not in the read.
 - A reading with more than 64 pods of the two tiers states no pod.
+- The restart counts of a pod are two sums: one over its containers and one over
+  its init containers. A restart of an ephemeral container is not read.
 - The collection names the commit of the working tree that ran the collector,
   and the SHA-256 of the collector script and of its library. It does not state
   whether the tree had a change that was not committed.
@@ -402,7 +451,7 @@ and it refuses arguments that are not usable before it makes any call.
 | Exit status | The script | The tool |
 |---|---|---|
 | 0 | Every sample was taken, and the four streams were written | The command printed what it was asked for |
-| 1 | No complete collection was written | |
+| 1 | The script stopped before it wrote the four streams: it refused its arguments or its target, or the tool gave no stream for a collection that is kept | |
 | 2 | | The arguments are not usable |
 | 3 | | A directory is not a collection, or a file is not a stream |
 
@@ -420,6 +469,9 @@ prints a warning for each sample with a read that did not answer.
 - The layout check does not hold a stream file to its form.
 - The collector does not stop on a signal with a complete collection. A
   collection that was interrupted has no end file.
+- Nothing bounds the time of one read. The timeout is of each request.
+- A pod of the two tiers that failed or was evicted stays in the read until it is
+  removed, and it counts toward the bound of 64.
 
 ## Tests
 

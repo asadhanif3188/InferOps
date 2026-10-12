@@ -164,9 +164,10 @@ vocabulary, and this layout adds one for a file of a run directory.
   and it is not read for its meaning. The role table says what such a file holds, and no
   rule checks it. (Until `V2-S5-003-PR1` this paragraph also said that no tool writes a
   file with a raw role of this layout. Since that change
-  [the timeline tool](../environment/experiment-timelines.md) writes a file for each of
-  the roles `endpoints`, `pods`, `deployments`, and `argo`, and it defines and checks
-  their form. This check does not call that tool. No run directory holds such a file.)
+  [the timeline collector](../environment/experiment-timelines.md) writes a file for
+  each of the roles `endpoints`, `pods`, `deployments`, and `argo`, from what its tool
+  prints, and that tool defines and checks their form. This check does not call that
+  tool. No run directory holds such a file.)
 - **The tool's code does not name the delivery controller's product.** The role is
   `argo`, and its description says "the delivery controller". A suite of the
   architecture refuses a sixth build file that names the product, and the first

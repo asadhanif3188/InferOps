@@ -342,7 +342,7 @@ def header(**changed: Any) -> dict[str, Any]:
         "librarySha256": "2" * 64,
         "requestedSamples": 1,
         "intervalSeconds": 5,
-        "readTimeoutSeconds": 10,
+        "requestTimeoutSeconds": 10,
     }
     document.update(changed)
     return document
@@ -540,7 +540,7 @@ def test_a_directory_with_no_header_is_not_a_collection(tmp_path: Path) -> None:
         ({"requestedSamples": "1"}, "requestedSamples"),
         ({"requestedSamples": True}, "requestedSamples"),
         ({"intervalSeconds": timeline.MAX_INTERVAL_SECONDS + 1}, "intervalSeconds"),
-        ({"readTimeoutSeconds": 0}, "readTimeoutSeconds"),
+        ({"requestTimeoutSeconds": 0}, "requestTimeoutSeconds"),
         ({"serverVersion": None}, "no usable serverVersion"),
     ],
 )
@@ -697,7 +697,9 @@ def test_the_pods_stream_states_identity_revision_readiness_and_restarts(
         "runtime-a",
         "runtime-b",
     ]
-    assert pod_of(reading, "runtime-a") == {
+    listed = dict(pod_of(reading, "runtime-a"))
+    del listed["initContainers"], listed["initRestartCount"]
+    assert listed == {
         "name": "runtime-a",
         "uid": uid(11),
         "tier": RUNTIME,
@@ -730,6 +732,9 @@ def test_the_pods_stream_states_identity_revision_readiness_and_restarts(
         "deletionTimestamp": MISSING,
         "deletionGracePeriodSeconds": MISSING,
     }
+    reading_pod = pod_of(reading, "runtime-a")
+    assert reading_pod["initContainers"] == MISSING
+    assert reading_pod["initRestartCount"] == MISSING
 
 
 def test_the_deployments_stream_states_the_counts_and_the_revision(
@@ -826,9 +831,17 @@ def test_a_deployment_with_no_status_states_no_count(tmp_path: Path) -> None:
         readings(streams_of(tmp_path, [{"workload": items}])["deployments"])[0], RUNTIME
     )
     assert runtime["state"] == "observed"
-    for name in ("observedGeneration", "replicas", "readyReplicas"):
+    for name in (
+        "observedGeneration",
+        "replicas",
+        "updatedReplicas",
+        "readyReplicas",
+        "availableReplicas",
+        "unavailableReplicas",
+    ):
         assert runtime[name] == MISSING, name
     assert runtime["specReplicas"] == reported(2)
+    assert runtime["generation"] == reported(3)
     assert runtime["conditions"] == {"Available": MISSING, "Progressing": MISSING}
 
 
@@ -956,6 +969,7 @@ def test_a_pod_that_is_being_deleted_states_its_deletion_timestamp(
         "value": "2026-10-12T08:00:03Z",
         "resolution": "second",
     }
+    assert pod["deletionGracePeriodSeconds"] == reported(30)
 
 
 def test_a_field_that_the_controller_did_not_write_is_missing(tmp_path: Path) -> None:
@@ -1125,6 +1139,7 @@ def test_a_workload_answer_that_is_not_a_list_of_the_kinds_gives_no_value(
         ("deployments", "tiers"),
     ):
         reading = readings(streams[name])[0]
+        assert reading["read"]["state"] == "unreadable"
         assert reading[member] is None
         assert reading["faults"] == [fault]
 
@@ -1144,7 +1159,7 @@ def test_an_answer_that_is_not_the_named_application_gives_no_field(
     reading = readings(
         streams_of(tmp_path, [{"application": {**an_application(), **change}}])["argo"]
     )[0]
-    assert reading["read"]["state"] == "answered"
+    assert reading["read"]["state"] == "unreadable"
     assert reading["application"] is None
     assert reading["faults"] == [
         "the answer is not the Application that the collection names"
@@ -1335,9 +1350,12 @@ def test_the_faults_of_a_reading_are_bounded_and_hold_fixed_characters(
     items[0]["metadata"]["labels"]["x" * 400 + chr(0x2028) + "<script>"] = 7
     streams = streams_of(tmp_path, [{"workload": items}])
     pod_faults = readings(streams["pods"])[0]["faults"]
+    # Ten faults, and one line that counts the others.
     assert len(pod_faults) == 11
     assert pod_faults[-1] == "20 more fault(s) are not listed"
-    for fault in readings(streams["endpoints"])[0]["faults"]:
+    endpoint_faults = readings(streams["endpoints"])[0]["faults"]
+    assert endpoint_faults
+    for fault in (*pod_faults, *endpoint_faults):
         assert len(fault) <= 240
         assert re.fullmatch(r"[A-Za-z0-9 .,:;_/'()?-]+", fault), fault
 
@@ -1361,7 +1379,6 @@ def test_no_stream_holds_a_value_that_the_allowlist_does_not_read(
     for value in HOSTILE:
         assert value in answers, value
         assert value not in text, value
-    assert "kind-inferops-dev" not in text
     assert "context" not in {
         key for line in text.splitlines() for key in json.loads(line)
     }
@@ -1560,6 +1577,10 @@ def _text(lines: list[dict[str, Any]]) -> str:
                     *lines[2:],
                 ]
             ),
+        ),
+        (
+            "timeline-reading-unsupported",
+            lambda lines: _text([lines[0], {**lines[1], "pods": "abc"}, *lines[2:]]),
         ),
         ("timeline-end-missing", lambda lines: _text(lines[:-1])),
         ("timeline-end-missing", lambda lines: _text(lines[:1])),
@@ -1790,10 +1811,12 @@ def test_a_sync_change_and_an_absent_application_are_changes(tmp_path: Path) -> 
     ]
 
 
-def test_an_application_read_that_is_refused_carries_no_value(tmp_path: Path) -> None:
+def test_an_answer_that_is_another_object_carries_no_value(tmp_path: Path) -> None:
     other = {**an_application(), "kind": "AppProject"}
     found = changes_of(tmp_path, [{}, {"application": other}], "argo")
-    assert {json.dumps(change["to"]) for change in found} == {'{"state": "refused"}'}
+    assert {json.dumps(change["to"]) for change in found} == {
+        '{"state": "not-collected"}'
+    }
     assert ("application", "syncStatus") in {
         (change["subject"], change["field"]) for change in found
     }
@@ -1922,3 +1945,315 @@ def test_the_page_publishes_each_rule_limit_and_boundary_of_the_tool() -> None:
         timeline.MAX_CONTAINERS,
     ):
         assert str(bound) in page, bound
+
+
+# --------------------------------------------------------------------------
+# What the independent review found
+# --------------------------------------------------------------------------
+
+
+def test_no_text_of_an_answer_reaches_a_fault_of_the_endpoints_stream(
+    tmp_path: Path,
+) -> None:
+    """The endpoint tool quotes a label key and a name in its details.
+
+    It does so before any form is checked. A stream states the rule and a
+    number for a shape fault, and the rule and the tier for a tier fault.
+    """
+    key = "AKIAIOSFODNN7EXAMPLE/token-hunter2"
+    keyed = workload()
+    keyed[0]["metadata"]["labels"][key] = 7
+    named = workload()
+    named[0]["metadata"]["name"] = named[1]["metadata"]["name"] = "password-hunter2"
+    streams = streams_of(tmp_path, [{"workload": keyed}, {"workload": named}])
+    text = timeline.stream_text(streams["endpoints"])
+    assert "AKIAIOSFODNN7EXAMPLE" not in text
+    assert "hunter2" not in text
+    assert "services.json" not in text
+    for reading in readings(streams["endpoints"]):
+        assert reading["tiers"] is None
+    assert readings(streams["endpoints"])[0]["faults"] == [
+        "each-read-has-the-shape-of-its-kind: 1 fault(s) in the Services and the "
+        "EndpointSlices of the read"
+    ]
+    # The names are not in the two other streams either.
+    for name in ("pods", "deployments"):
+        assert "hunter2" not in timeline.stream_text(streams[name])
+
+
+def test_a_tier_fault_of_the_endpoints_stream_states_the_rule_and_the_tier(
+    tmp_path: Path,
+) -> None:
+    items = [item for item in workload() if item["kind"] != "EndpointSlice"]
+    reading = readings(streams_of(tmp_path, [{"workload": items}])["endpoints"])[0]
+    assert reading["faults"] == [
+        "the-service-has-a-slice: platform-api, serving-runtime"
+    ]
+
+
+def test_the_restarts_of_an_init_container_are_a_sum_of_their_own(
+    tmp_path: Path,
+) -> None:
+    """A pod whose init container restarts reports no restart of a container."""
+    items = workload()
+    items[8]["status"]["phase"] = "Pending"
+    items[8]["status"]["initContainerStatuses"] = [
+        {"name": "verify-model", "ready": False, "restartCount": 7}
+    ]
+    reading = readings(streams_of(tmp_path, [{"workload": items}])["pods"])[0]
+    pod = pod_of(reading, "runtime-a")
+    assert pod["restartCount"] == reported(0)
+    assert pod["initRestartCount"] == reported(7)
+    assert pod["initContainers"]["value"][0]["name"] == reported("verify-model")
+    # A pod with no init container status states no sum for them. It is not zero.
+    assert pod_of(reading, "runtime-b")["initRestartCount"] == MISSING
+    assert pod_of(reading, "runtime-b")["initContainers"] == MISSING
+
+
+def test_a_restart_of_an_init_container_is_a_change(tmp_path: Path) -> None:
+    before, after = workload(), workload()
+    for items, count in ((before, 1), (after, 2)):
+        items[8]["status"]["initContainerStatuses"] = [
+            {"name": "verify-model", "ready": False, "restartCount": count}
+        ]
+    found = changes_of(tmp_path, [{"workload": before}, {"workload": after}], "pods")
+    assert [(c["field"], c["from"], c["to"]) for c in found] == [
+        ("initRestartCount", reported(1), reported(2))
+    ]
+
+
+@pytest.mark.parametrize("kind", [["Pod"], {"a": 1}, 7, None, True])
+def test_an_item_whose_kind_is_not_text_makes_the_answer_unreadable(
+    tmp_path: Path, kind: object
+) -> None:
+    items = workload()
+    items[3]["kind"] = kind
+    streams = streams_of(tmp_path, [{"workload": items}])
+    for name in ("endpoints", "pods", "deployments"):
+        reading = readings(streams[name])[0]
+        assert reading["read"]["state"] == "unreadable"
+        assert reading["faults"] == [
+            "item 3 is not an object of a kind that was asked for"
+        ]
+
+
+def test_an_answer_that_cannot_be_used_is_not_counted_as_answered(
+    tmp_path: Path,
+) -> None:
+    streams = streams_of(
+        tmp_path,
+        [
+            {
+                "workload": '{"kind": "PodList", "items": []}',
+                "application": {**an_application(), "kind": "AppProject"},
+            }
+        ],
+    )
+    for name in timeline.STREAMS:
+        [reading] = readings(streams[name])
+        assert reading["read"]["state"] == "unreadable", name
+        # The read was made, so its two instants are kept.
+        assert reading["read"]["startedAt"] is not None
+        counts = streams[name][-1]["byReadState"]
+        assert (counts["answered"], counts["unreadable"]) == (0, 1), name
+
+
+def test_a_year_below_1000_keeps_four_digits() -> None:
+    """The year is not formatted by the C library, which differs between hosts."""
+    assert timeline.cluster_instant("0999-12-31T23:59:59Z")["value"] == (
+        "0999-12-31T23:59:59Z"
+    )
+    assert timeline.cluster_instant("0099-01-01T00:00:00.5Z")["value"] == (
+        "0099-01-01T00:00:00.500Z"
+    )
+    assert timeline.format_instant(datetime(7, 1, 2, 3, 4, 5, tzinfo=UTC)) == (
+        "0007-01-02T03:04:05.000Z"
+    )
+
+
+def test_a_reading_that_gives_no_value_after_one_that_was_not_collected_is_a_change(
+    tmp_path: Path,
+) -> None:
+    """Neither reading has a tracked value, and the two states still differ."""
+    refused = workload()
+    refused[8]["metadata"]["uid"] = "not-a-uid"
+    found = changes_of(
+        tmp_path,
+        [{"workload": None}, {"workload": refused}, {"workload": None}],
+        "pods",
+    )
+    assert [(c["subject"], c["field"], c["from"], c["to"]) for c in found] == [
+        ("reading", "state", {"state": "not-collected"}, {"state": "refused"}),
+        ("reading", "state", {"state": "refused"}, {"state": "not-collected"}),
+    ]
+    assert found[0]["notBefore"] == instant(0)
+    assert found[0]["notAfter"] == instant(5200)
+
+
+def _mutated(tmp_path: Path, stream: str, change: Any) -> str:
+    lines = copy.deepcopy(streams_of(tmp_path, [{}, {}])[stream])
+    change(lines[1])
+    return timeline.stream_text(lines)
+
+
+def _set(member: str, value: object) -> Any:
+    return lambda reading: reading.__setitem__(member, value)
+
+
+def _in_first(member: str, change: Any) -> Any:
+    return lambda reading: change(reading[member][0])
+
+
+@pytest.mark.parametrize(
+    "stream,change",
+    [
+        ("pods", _set("pods", "abc")),
+        ("pods", _set("pods", ["abc"])),
+        ("pods", _set("pods", {"uid": "x"})),
+        ("pods", _in_first("pods", lambda pod: pod.__setitem__("uid", [1]))),
+        ("pods", _in_first("pods", lambda pod: pod.pop("ready"))),
+        ("pods", _in_first("pods", lambda pod: pod.__setitem__("ready", None))),
+        ("pods", _in_first("pods", lambda pod: pod.__setitem__("ready", [1]))),
+        (
+            "pods",
+            _in_first("pods", lambda pod: pod.__setitem__("phase", {"state": []})),
+        ),
+        (
+            "pods",
+            _in_first("pods", lambda pod: pod.__setitem__("phase", {"state": "ok"})),
+        ),
+        (
+            "pods",
+            _in_first(
+                "pods", lambda pod: pod.__setitem__("phase", {"state": "reported"})
+            ),
+        ),
+        (
+            "pods",
+            _in_first(
+                "pods",
+                lambda pod: pod.__setitem__("phase", {"state": "missing", "value": 0}),
+            ),
+        ),
+        ("pods", _set("faults", 5)),
+        ("pods", _set("faults", [5])),
+        ("endpoints", _set("tiers", "x")),
+        ("endpoints", _set("tiers", [1])),
+        ("endpoints", _in_first("tiers", lambda tier: tier.pop("endpoints"))),
+        ("endpoints", _in_first("tiers", lambda tier: tier.__setitem__("tier", "x"))),
+        ("endpoints", _in_first("tiers", lambda tier: tier.__setitem__("tier", [1]))),
+        ("endpoints", _in_first("tiers", lambda tier: tier.__setitem__("ready", [1]))),
+        ("endpoints", _in_first("tiers", lambda tier: tier.__setitem__("ready", None))),
+        (
+            "endpoints",
+            _in_first(
+                "tiers", lambda tier: tier["endpoints"].__setitem__("ready", True)
+            ),
+        ),
+        ("deployments", _in_first("tiers", lambda tier: tier.pop("readyReplicas"))),
+        ("deployments", _in_first("tiers", lambda tier: tier.pop("state"))),
+        ("argo", _set("application", [1])),
+        ("argo", _set("application", "x")),
+        ("argo", _set("application", {})),
+        (
+            "argo",
+            lambda reading: reading["application"].__setitem__("syncStatus", "Synced"),
+        ),
+        ("argo", lambda reading: reading["application"].__setitem__("note", MISSING)),
+    ],
+)
+def test_a_stored_reading_that_the_changes_command_cannot_read_is_refused(
+    tmp_path: Path, stream: str, change: Any
+) -> None:
+    """Each of these was accepted by the first check, and the command then raised."""
+    with pytest.raises(timeline.StreamRefused) as refused:
+        timeline.read_stream(_mutated(tmp_path, stream, change))
+    assert refused.value.rule == "timeline-reading-unsupported"
+
+
+def test_a_stored_reading_states_a_value_only_when_its_read_answered(
+    tmp_path: Path,
+) -> None:
+    def unanswered(reading: dict[str, Any]) -> None:
+        reading["read"] = {**reading["read"], "state": "unanswered"}
+
+    def absent(reading: dict[str, Any]) -> None:
+        reading["read"] = {**reading["read"], "state": "absent"}
+        reading["pods"] = None
+
+    for position, (stream, change) in enumerate(
+        (("pods", unanswered), ("argo", unanswered), ("pods", absent))
+    ):
+        (tmp_path / str(position)).mkdir()
+        lines = copy.deepcopy(streams_of(tmp_path / str(position), [{}, {}])[stream])
+        change(lines[1])
+        states = [reading["read"]["state"] for reading in lines[1:-1]]
+        lines[-1]["byReadState"] = {
+            state: states.count(state) for state in timeline.READ_STATES
+        }
+        with pytest.raises(timeline.StreamRefused) as refused:
+            timeline.read_stream(timeline.stream_text(lines))
+        assert refused.value.rule == "timeline-reading-unsupported"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda lines: lines[1].__setitem__("index", 1.0),
+        lambda lines: lines[1].__setitem__("index", True),
+    ],
+)
+def test_an_index_that_is_not_a_whole_number_is_out_of_sequence(
+    tmp_path: Path, change: Any
+) -> None:
+    lines = _stored_lines(tmp_path)
+    change(lines)
+    with pytest.raises(timeline.StreamRefused) as refused:
+        timeline.read_stream(_text(lines))
+    assert refused.value.rule == "timeline-reading-out-of-sequence"
+
+
+def test_a_count_of_the_end_line_that_is_not_a_whole_number_is_refused(
+    tmp_path: Path,
+) -> None:
+    lines = streams_of(tmp_path, [{}])["pods"]
+    changes: tuple[Any, ...] = (
+        lambda end: end.__setitem__("readings", True),
+        lambda end: end["byReadState"].__setitem__("answered", True),
+        lambda end: end.__setitem__("byReadState", [1]),
+    )
+    for change in changes:
+        mutated = copy.deepcopy(lines)
+        change(mutated[-1])
+        with pytest.raises(timeline.StreamRefused) as refused:
+            timeline.read_stream(timeline.stream_text(mutated))
+        assert refused.value.rule == "timeline-counts-differ"
+
+
+def test_a_line_after_the_end_line_is_refused_by_the_end_rule(tmp_path: Path) -> None:
+    lines = _stored_lines(tmp_path)
+    with pytest.raises(timeline.StreamRefused) as refused:
+        timeline.read_stream(_text([*lines, lines[1]]))
+    assert refused.value.rule == "timeline-end-missing"
+
+
+def test_the_command_refuses_a_stream_that_changes_cannot_read(
+    tmp_path: Path, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """The command exits 3. It does not end in an error that no rule names."""
+    path = tmp_path / "pods.jsonl"
+    path.write_bytes(_mutated(tmp_path, "pods", _set("pods", "abc")).encode("utf-8"))
+    assert main(["check", str(path)]) == 3
+    assert main(["changes", str(path)]) == 3
+    assert "timeline-reading-unsupported" in capfd.readouterr().err
+
+
+def test_a_file_of_a_sample_that_is_a_directory_is_unreadable(tmp_path: Path) -> None:
+    """A file that cannot be opened is no answer, and the tool does not raise."""
+    directory = write_collection(tmp_path, [{}])
+    answer = directory / "sample-0001.application.json"
+    answer.unlink()
+    answer.mkdir()
+    reading = readings(timeline.build_streams(directory)["argo"])[0]
+    assert reading["read"]["state"] == "unreadable"
+    assert reading["application"] is None

@@ -92,10 +92,12 @@ META_SUFFIX: Final = ".meta"
 WORKLOAD_SUFFIX: Final = ".workload.json"
 APPLICATION_SUFFIX: Final = ".application.json"
 
-#: The bounds of one collection. The collector restates each one.
+#: The bounds of one collection. The collector restates the first two. The third
+#: is the largest request timeout that a header may state, and the collector
+#: states one value inside it.
 MAX_SAMPLES: Final = 1800
 MAX_INTERVAL_SECONDS: Final = 30
-MAX_READ_TIMEOUT_SECONDS: Final = 60
+MAX_REQUEST_TIMEOUT_SECONDS: Final = 60
 
 #: The largest number of pods of the two tiers that a reading states. It is
 #: twice the bound of the endpoint-state record for one Service.
@@ -129,6 +131,9 @@ READ_STATES: Final = (ANSWERED, ABSENT, UNANSWERED, UNREADABLE, NOT_TAKEN)
 
 #: The kinds of the workload read. The collector asks for these five in one call.
 WORKLOAD_KINDS: Final = ("Service", "EndpointSlice", "Pod", "ReplicaSet", "Deployment")
+
+#: The rule of the endpoint-state record that a read of another shape breaks.
+ENDPOINT_SHAPE_RULE: Final = "each-read-has-the-shape-of-its-kind"
 
 REVISION_ANNOTATION: Final = "deployment.kubernetes.io/revision"
 TEMPLATE_HASH_LABEL: Final = "pod-template-hash"
@@ -207,6 +212,9 @@ LIMITATIONS: Final[tuple[str, ...]] = (
     "before read.startedAt and not after read.finishedAt, when the API server "
     "answered from its present state. The workload read is one command that "
     "makes one request for each kind, so its kinds are not one atomic reading.",
+    "The timeout of a read is the timeout of each request that kubectl makes. A "
+    "read makes more than one request, so it can take longer than the timeout "
+    "and still answer.",
     "An instant that a cluster component wrote is on the clock of that "
     "component. It is normalised to UTC and keeps its resolution, which is one "
     "second for each instant that Kubernetes writes into the fields read here. "
@@ -234,6 +242,8 @@ LIMITATIONS: Final[tuple[str, ...]] = (
     "owns it, in the same read. It is missing when that ReplicaSet is not in "
     "the read.",
     f"A reading with more than {MAX_PODS} pods of the two tiers states no pod.",
+    "The restart counts of a pod are two sums: one over its containers and one "
+    "over its init containers. A restart of an ephemeral container is not read.",
     "The collection names the commit of the working tree that ran the "
     "collector, and the SHA-256 of the collector script and of its library. It "
     "does not state whether the tree had a change that was not committed.",
@@ -266,6 +276,7 @@ RULE_MEMBERS: Final = "timeline-members-unsupported"
 RULE_SEQUENCE: Final = "timeline-reading-out-of-sequence"
 RULE_READ: Final = "timeline-read-state-unsupported"
 RULE_INSTANT: Final = "timeline-instant-invalid"
+RULE_READING: Final = "timeline-reading-unsupported"
 RULE_END: Final = "timeline-end-missing"
 RULE_COUNTS: Final = "timeline-counts-differ"
 
@@ -284,15 +295,21 @@ RULES: Final[Mapping[str, str]] = {
         "Each line has exactly the members of its record and of its stream."
     ),
     RULE_SEQUENCE: (
-        "The readings are numbered from 1 with no gap, and no line follows the "
-        "end line."
+        "Each line between the header and the end line is a reading, and the "
+        "readings are numbered from 1 with no gap."
     ),
     RULE_READ: "Each reading states one of the registered read states.",
     RULE_INSTANT: (
         "Each instant of a read is absent or is UTC to one millisecond in the "
         "one registered form, and a read does not finish before it starts."
     ),
-    RULE_END: "The last line is the end line.",
+    RULE_READING: (
+        "Each reading states its faults as a list of text, and states a value "
+        "only when its read answered. Each value that the changes command reads "
+        "has its type. Only a reading of the argo stream has the read state "
+        "absent."
+    ),
+    RULE_END: "The last line is the end line, and no line follows it.",
     RULE_COUNTS: (
         "The end line states the number of readings and the number of readings "
         "in each read state, as the stream holds them."
@@ -315,7 +332,7 @@ _HEADER_MEMBERS: Final = frozenset(
         "librarySha256",
         "requestedSamples",
         "intervalSeconds",
-        "readTimeoutSeconds",
+        "requestTimeoutSeconds",
     }
 )
 _STREAM_HEADER_MEMBERS: Final = frozenset(
@@ -397,7 +414,19 @@ class StreamRefused(Exception):
 def format_instant(instant: datetime) -> str:
     """An instant in UTC to one millisecond, in the one form a stream uses."""
     instant = instant.astimezone(UTC)
-    return f"{instant:%Y-%m-%dT%H:%M:%S}.{instant.microsecond // 1000:03d}Z"
+    return f"{_to_the_second(instant)}.{instant.microsecond // 1000:03d}Z"
+
+
+def _to_the_second(instant: datetime) -> str:
+    """The date and the time of an instant, with a year of four digits.
+
+    The year is not formatted by the C library, which does not pad a year below
+    1000 on every host.
+    """
+    return (
+        f"{instant.year:04d}-{instant.month:02d}-{instant.day:02d}"
+        f"T{instant.hour:02d}:{instant.minute:02d}:{instant.second:02d}"
+    )
 
 
 def collector_instant(value: object) -> datetime | None:
@@ -459,7 +488,7 @@ def cluster_instant(value: object) -> dict[str, Any]:
         }
     return {
         "state": REPORTED,
-        "value": f"{instant:%Y-%m-%dT%H:%M:%SZ}",
+        "value": f"{_to_the_second(instant)}Z",
         "resolution": "second",
     }
 
@@ -619,7 +648,11 @@ class Collection:
 def _pairs(path: Path) -> dict[str, str]:
     """The ``key=value`` lines of one file that the collector wrote."""
     found: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return found
+    for line in lines:
         key, separator, value = line.strip().partition("=")
         if separator and key:
             found[key] = value
@@ -670,7 +703,7 @@ def _header(directory: Path) -> dict[str, Any]:
     bounds = {
         "requestedSamples": MAX_SAMPLES,
         "intervalSeconds": MAX_INTERVAL_SECONDS,
-        "readTimeoutSeconds": MAX_READ_TIMEOUT_SECONDS,
+        "requestTimeoutSeconds": MAX_REQUEST_TIMEOUT_SECONDS,
     }
     for name, maximum in bounds.items():
         value = header[name]
@@ -722,7 +755,13 @@ def _read(
             finished,
             detail="the sample states an answer, and the directory holds no file of it",
         )
-    if may_be_absent and not path.read_bytes().strip():
+    try:
+        empty = not path.read_bytes().strip()
+    except OSError:
+        return Read(
+            UNREADABLE, started, finished, detail="the answer is not one JSON object"
+        )
+    if may_be_absent and empty:
         return Read(ABSENT, started, finished)
     readable, document = _load(path)
     if not readable or not isinstance(document, dict):
@@ -802,7 +841,7 @@ def _by_kind(document: Mapping[str, Any]) -> tuple[dict[str, list[Any]], list[st
         return found, ["the answer is not a list of objects"]
     for index, item in enumerate(items):
         kind = item.get("kind") if isinstance(item, dict) else None
-        if kind not in found:
+        if not isinstance(kind, str) or kind not in found:
             faults.append(f"item {index} is not an object of a kind that was asked for")
             continue
         found[kind].append(item)
@@ -875,15 +914,23 @@ def _endpoints(
     services, slices = kinds["Service"], kinds["EndpointSlice"]
     _shape_faults(services, slices, namespace, faults)
     if faults:
-        return None, faults
+        # The detail of a shape fault can quote a label key or a name of the
+        # answer before any form was checked. A stream states the rule and the
+        # number, and no detail.
+        return None, [
+            f"{ENDPOINT_SHAPE_RULE}: {len(faults)} fault(s) in the Services and "
+            "the EndpointSlices of the read"
+        ]
     tiers, broken = observe_endpoints(
         services, slices, release=release, namespace=namespace
     )
-    return tiers, [
-        f"{rule_id}: {detail}"
-        for rule_id, details in broken.items()
-        for detail in details
-    ]
+    stated = []
+    for rule_id, details in broken.items():
+        # Each detail of a tier rule starts with the tier. Nothing after it is
+        # copied.
+        named = sorted({detail.split(":", 1)[0] for detail in details} & set(TIERS))
+        stated.append(f"{rule_id}: {', '.join(named)}" if named else rule_id)
+    return tiers, stated
 
 
 def _owner(pod: Mapping[str, Any]) -> tuple[dict[str, Any], str | None]:
@@ -914,14 +961,19 @@ def _owner(pod: Mapping[str, Any]) -> tuple[dict[str, Any], str | None]:
     return _field(REPORTED, {"kind": kind, "name": name}), uid if usable else None
 
 
-def _containers(pod: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Each container of a pod as it reported, and the sum of the restart counts.
+def _containers(
+    pod: Mapping[str, Any], member: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Each container of one status list of a pod, and the sum of the restart counts.
+
+    ``member`` is ``containerStatuses`` or ``initContainerStatuses``. The two
+    are read apart, because a pod whose init container restarts reports no
+    restart of a container.
 
     The sum is reported only when each container reports its count. A pod with
-    no container status has a sum that is missing. It does not have a sum of
-    zero.
+    no status list has a sum that is missing. It does not have a sum of zero.
     """
-    state, statuses = _at(pod, ("status", "containerStatuses"))
+    state, statuses = _at(pod, ("status", member))
     if state != REPORTED:
         return _field(state), _field(state)
     if (
@@ -1003,7 +1055,8 @@ def _pods(
             else None
         )
         ready, ready_since = _ready_condition(pod)
-        containers, restarts = _containers(pod)
+        containers, restarts = _containers(pod, "containerStatuses")
+        init_containers, init_restarts = _containers(pod, "initContainerStatuses")
         listed.append(
             {
                 "name": pod["metadata"]["name"],
@@ -1021,6 +1074,8 @@ def _pods(
                 "readyTransitionAt": ready_since,
                 "containers": containers,
                 "restartCount": restarts,
+                "initContainers": init_containers,
+                "initRestartCount": init_restarts,
                 "createdAt": _instant_at(pod, ("metadata", "creationTimestamp")),
                 "deletionTimestamp": _instant_at(
                     pod, ("metadata", "deletionTimestamp")
@@ -1271,7 +1326,10 @@ def _workload_readings(
         return empty
     kinds, list_faults = _by_kind(read.document)
     if list_faults:
+        # The read answered, and the answer is not a list of the kinds. No
+        # stream can use it, so the read is not counted as answered.
         for reading in empty.values():
+            reading["read"] = {**read.as_document(), "state": UNREADABLE}
             reading["faults"] = _bounded(list_faults)
         return empty
     endpoint_tiers, endpoint_faults = _endpoints(kinds, release, namespace)
@@ -1314,6 +1372,9 @@ def _application_reading(collection: Collection, sample: Sample) -> dict[str, An
         )
         reading["application"] = fields
         reading["faults"] = _bounded(faults)
+        if fields is None:
+            # The answer is another object. It is not counted as answered.
+            reading["read"] = {**read.as_document(), "state": UNREADABLE}
     return reading
 
 
@@ -1388,13 +1449,81 @@ def _stored_instant(value: object, where: str) -> datetime | None:
     return instant
 
 
+def _is_field(value: object) -> bool:
+    """Whether a value is a field: a state, and a value only when reported."""
+    if not isinstance(value, dict):
+        return False
+    state = value.get("state")
+    if not isinstance(state, str) or state not in FIELD_STATES:
+        return False
+    return ("value" in value) == (state == REPORTED)
+
+
+def _is_text(value: object) -> bool:
+    return isinstance(value, str)
+
+
+def _reading_fault(stream: str, reading: Mapping[str, Any]) -> str | None:
+    """Why :func:`changes` could not read one reading, or None."""
+    faults = reading["faults"]
+    if not isinstance(faults, list) or not all(_is_text(fault) for fault in faults):
+        return "faults is not a list of text"
+    state = reading["read"]["state"]
+    if state == ABSENT and stream != ARGO:
+        return "only a reading of the argo stream is absent"
+    member = {ENDPOINTS: "tiers", PODS: "pods", DEPLOYMENTS: "tiers"}.get(
+        stream, "application"
+    )
+    value = reading[member]
+    if value is None:
+        return None
+    if state != ANSWERED:
+        return f"{member} states a value, and the read is {state}"
+    if stream == ARGO:
+        names = {*APPLICATION_FIELDS, *APPLICATION_HISTORY_FIELDS}
+        if not isinstance(value, dict) or set(value) != names:
+            return "application does not have its fields"
+        if not all(_is_field(field) for field in value.values()):
+            return "a field of application is not a field"
+        return None
+    if not isinstance(value, list) or not all(isinstance(e, dict) for e in value):
+        return f"{member} is not a list of objects"
+    if stream == PODS:
+        for pod in value:
+            if not all(_is_text(pod.get(name)) for name in ("uid", "name", "tier")):
+                return "a pod does not state its uid, its name, and its tier as text"
+            if not all(_is_field(pod.get(name)) for name in POD_CHANGE_FIELDS):
+                return "a tracked field of a pod is not a field"
+        return None
+    for tier in value:
+        if tier.get("tier") not in TIERS or not _is_text(tier.get("state")):
+            return "a tier does not state a registered tier and a state"
+        if tier["state"] != TIER_OBSERVED:
+            continue
+        if stream == DEPLOYMENTS:
+            if not all(_is_field(tier.get(n)) for n in DEPLOYMENT_CHANGE_FIELDS):
+                return "a tracked field of a tier is not a field"
+            continue
+        figures, ready = tier.get("endpoints"), tier.get("ready")
+        if not isinstance(figures, dict) or not all(
+            type(figures.get(name)) is int for name in ENDPOINT_FIGURES
+        ):
+            return "an observed tier does not state its five counts"
+        if not isinstance(ready, list) or not all(
+            isinstance(pod, dict) and _is_text(pod.get("podUid")) for pod in ready
+        ):
+            return "an observed tier does not state the UID of each Ready pod"
+    return None
+
+
 def read_stream(text: str) -> Stream:
     """A stored stream, held to its form.
 
     This reads the form of a stream: the header, the sequence, the members of
-    each line, the read states, the instants of each read, and the counts of
-    the end line. It does not read the fields of a reading for their form, and
-    it does not show that a stream is what a collection gives.
+    each line, the read states, the instants of each read, the type of each
+    value that :func:`changes` reads, and the counts of the end line. It does
+    not hold a reported value to the form that the builder holds it to, and it
+    does not show that a stream is what a collection gives.
 
     Raises:
         StreamRefused: a rule of :data:`RULES` is not held.
@@ -1438,7 +1567,7 @@ def read_stream(text: str) -> Stream:
             raise StreamRefused(RULE_SEQUENCE, f"{where} is not a reading")
         if set(reading) != members:
             raise StreamRefused(RULE_MEMBERS, f"{where} does not have its members")
-        if reading["index"] != position or isinstance(reading["index"], bool):
+        if type(reading["index"]) is not int or reading["index"] != position:
             raise StreamRefused(RULE_SEQUENCE, f"{where} is not reading {position}")
         read = reading["read"]
         if not isinstance(read, dict) or set(read) != _READ_MEMBERS:
@@ -1453,10 +1582,18 @@ def read_stream(text: str) -> Stream:
             raise StreamRefused(RULE_INSTANT, f"{where} states one instant of two")
         if started is not None and finished is not None and finished < started:
             raise StreamRefused(RULE_INSTANT, f"{where} finishes before it starts")
+        reason = _reading_fault(header["stream"], reading)
+        if reason is not None:
+            raise StreamRefused(RULE_READING, f"{where}: {reason}")
     states = [reading["read"]["state"] for reading in readings]
-    if end["readings"] != len(readings) or end["byReadState"] != {
-        state: states.count(state) for state in READ_STATES
-    }:
+    counts = end["byReadState"]
+    if (
+        type(end["readings"]) is not int
+        or end["readings"] != len(readings)
+        or not isinstance(counts, dict)
+        or any(type(count) is not int for count in counts.values())
+        or counts != {state: states.count(state) for state in READ_STATES}
+    ):
         raise StreamRefused(
             RULE_COUNTS,
             "the end line does not state the readings that the stream holds",
@@ -1477,9 +1614,13 @@ POD_CHANGE_FIELDS: Final = (
     "ready",
     "phase",
     "restartCount",
+    "initRestartCount",
     "revision",
     "deletionTimestamp",
 )
+
+#: The counts of a tier of the endpoints stream whose changes are reported.
+ENDPOINT_FIGURES: Final = ("total", "ready", "notReady", "serving", "terminating")
 
 #: The fields of a Deployment whose changes :func:`changes` reports.
 DEPLOYMENT_CHANGE_FIELDS: Final = ("revision", *DEPLOYMENT_COUNTS)
@@ -1520,7 +1661,7 @@ def _values(stream: str, reading: Mapping[str, Any]) -> _Values | str:
         found[name, "state"] = _field(REPORTED, tier["state"])
         if stream == ENDPOINTS:
             figures = tier["endpoints"] if observed else None
-            for member in ("total", "ready", "notReady", "serving", "terminating"):
+            for member in ENDPOINT_FIGURES:
                 found[name, member] = (
                     _field(REPORTED, figures[member])
                     if figures is not None
@@ -1547,11 +1688,28 @@ def changes(stream: Stream) -> dict[str, Any]:
 
     An object that is in one reading and not in the next gives one change of
     ``present``. It gives no change for each of its fields.
+
+    Two consecutive readings that give no value have no tracked value to
+    compare. When one is ``not-collected`` and the other is ``refused``, the
+    change names the subject ``reading``.
     """
     found = []
     for before, after in pairwise(stream.readings):
         old, new = _values(stream.name, before), _values(stream.name, after)
         if isinstance(old, str) and isinstance(new, str):
+            if old != new:
+                found.append(
+                    {
+                        "subject": "reading",
+                        "field": "state",
+                        "fromReading": before["index"],
+                        "toReading": after["index"],
+                        "notBefore": before["read"]["startedAt"],
+                        "notAfter": after["read"]["finishedAt"],
+                        "from": {"state": old},
+                        "to": {"state": new},
+                    }
+                )
             continue
         keys = sorted(
             set(old if isinstance(old, dict) else ())

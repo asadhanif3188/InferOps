@@ -5,8 +5,11 @@
 # It changes nothing in the cluster. Each sample makes two reads. The workload
 # read asks for the Services, the EndpointSlices, the pods, the ReplicaSets, and
 # the Deployments of the release namespace in one call. The Application read
-# asks for the one Application that delivers the release. Each kubectl call is a
-# `get`. The script sends no request to the release.
+# asks for the one Application that delivers the release. Each kubectl call
+# that this script holds is a `get`. The target verification of the library
+# runs first and makes reads of its own: `config`, `version`, and `get` of the
+# nodes, of the system pods, and of the storage classes. The script sends no
+# request to the release.
 #
 # It writes what each read returned into a new directory under .artifacts/. The
 # target verification writes the target's kubeconfig under .kube/, as it does
@@ -18,7 +21,8 @@
 #
 # A read that does not answer is not an empty result. Its file is not written,
 # the sample states the read as unanswered, and the streams state no value for
-# it. A read that does not answer within the read timeout is unanswered.
+# it. Each request that kubectl makes for a read has a timeout. A read makes
+# more than one request, so the timeout does not bound the time of a read.
 #
 # Each read has two instants: when it started and when it finished. Both are
 # this host's wall clock, in UTC, to one millisecond. They are not a clock of
@@ -30,8 +34,10 @@
 # streams hold an allowlist, and they are the evidence files.
 #
 # Exit status: 0 when every sample was taken and the four streams were written.
-# 1 otherwise. Status 0 does not say that a read answered, that an endpoint was
-# Ready, or that a state was healthy.
+# 1 when the script stopped before that: it refused its arguments or its
+# target, or the tool gave no stream for a collection that is kept. Status 0
+# does not say that a read answered, that an endpoint was Ready, or that a
+# state was healthy.
 #
 # Usage: INFEROPS_PROVIDER=<provider> scripts/environment/experiment-timeline.sh \
 #          --experiment ID --run ID --samples COUNT --interval SECONDS [--into NAME]
@@ -48,7 +54,7 @@ readonly COLLECTION_SCHEMA="inferops.io/experiment-timeline-collection/v1alpha1"
 readonly STREAM_NAMES="endpoints pods deployments argo"
 readonly MAX_SAMPLES=1800
 readonly MAX_INTERVAL_SECONDS=30
-readonly READ_TIMEOUT_SECONDS=10
+readonly REQUEST_TIMEOUT_SECONDS=10
 readonly WORKLOAD_KINDS="services,endpointslices.discovery.k8s.io,pods,replicasets.apps,deployments.apps"
 # The Application that delivers the release, as the Application procedure names
 # it. A test compares the three values with that procedure.
@@ -56,7 +62,7 @@ readonly APPLICATION_KIND="applications.argoproj.io"
 readonly APPLICATION_NAME="local-docker-desktop-support-assistant"
 readonly APPLICATION_NAMESPACE="argocd"
 readonly INSTANT_FORMAT="+%Y-%m-%dT%H:%M:%S.%3NZ"
-readonly UNANSWERED="A query that did not answer is not an empty result. The streams state no value for this read."
+readonly UNANSWERED="A read that did not answer is not an empty result. The streams state no value for this read."
 
 # --- Arguments --------------------------------------------------------------
 
@@ -168,7 +174,7 @@ INFEROPS_TIMELINE_SCHEMA="${COLLECTION_SCHEMA}" \
   INFEROPS_TIMELINE_LIBRARY_SHA256="${library_sha256}" \
   INFEROPS_TIMELINE_SAMPLES="${samples}" \
   INFEROPS_TIMELINE_INTERVAL="${interval}" \
-  INFEROPS_TIMELINE_READ_TIMEOUT="${READ_TIMEOUT_SECONDS}" \
+  INFEROPS_TIMELINE_REQUEST_TIMEOUT="${REQUEST_TIMEOUT_SECONDS}" \
   inferops::python -c '
 import json
 import os
@@ -190,7 +196,7 @@ print(
             "librarySha256": os.environ["INFEROPS_TIMELINE_LIBRARY_SHA256"],
             "requestedSamples": int(os.environ["INFEROPS_TIMELINE_SAMPLES"]),
             "intervalSeconds": int(os.environ["INFEROPS_TIMELINE_INTERVAL"]),
-            "readTimeoutSeconds": int(os.environ["INFEROPS_TIMELINE_READ_TIMEOUT"]),
+            "requestTimeoutSeconds": int(os.environ["INFEROPS_TIMELINE_REQUEST_TIMEOUT"]),
         },
         indent=2,
         sort_keys=True,
@@ -208,7 +214,7 @@ inferops::log "samples: ${samples}, with a pause of ${interval}s between two, in
 collect() {
   local file="$1"
   shift
-  if inferops::target_kubectl "$@" --request-timeout "${READ_TIMEOUT_SECONDS}s" -o json >"${file}" 2>/dev/null; then
+  if inferops::target_kubectl "$@" --request-timeout "${REQUEST_TIMEOUT_SECONDS}s" -o json >"${file}" 2>/dev/null; then
     return 0
   fi
   rm -f "${file}"
@@ -231,6 +237,12 @@ for ((index = 1; index <= samples; index++)); do
   collect "${stem}.application.json" get "${APPLICATION_KIND}" "${APPLICATION_NAME}" --namespace "${APPLICATION_NAMESPACE}" --ignore-not-found ||
     application_read="unanswered"
   application_finished_at="$(instant)"
+  # The log says so when the answer holds no object. The sample does not: the
+  # tool reads the answer, and this script reads only whether it is empty.
+  application_shown="${application_read}"
+  if [ "${application_read}" = "answered" ] && [ ! -s "${stem}.application.json" ]; then
+    application_shown="answered with no object"
+  fi
 
   printf 'workloadRead=%s\nworkloadStartedAt=%s\nworkloadFinishedAt=%s\napplicationRead=%s\napplicationStartedAt=%s\napplicationFinishedAt=%s\n' \
     "${workload_read}" "${workload_started_at}" "${workload_finished_at}" \
@@ -238,9 +250,9 @@ for ((index = 1; index <= samples; index++)); do
 
   if [ "${workload_read}" != "answered" ] || [ "${application_read}" != "answered" ]; then
     unanswered=$((unanswered + 1))
-    inferops::warn "sample ${index} of ${samples} at ${workload_started_at}: workload read ${workload_read}, Application read ${application_read}. ${UNANSWERED}"
+    inferops::warn "sample ${index} of ${samples} at ${workload_started_at}: workload read ${workload_read}, Application read ${application_shown}. ${UNANSWERED}"
   else
-    inferops::log "sample ${index} of ${samples} at ${workload_started_at}: workload read ${workload_read}, Application read ${application_read}"
+    inferops::log "sample ${index} of ${samples} at ${workload_started_at}: workload read ${workload_read}, Application read ${application_shown}"
   fi
   [ "${index}" -ge "${samples}" ] || sleep "${interval}"
 done
