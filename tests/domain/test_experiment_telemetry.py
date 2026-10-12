@@ -20,10 +20,12 @@ with no series.
 
 *One time basis.* Each reading states the two instants of its read in UTC to
 one millisecond. An evaluation instant is on the clock of the collector, and it
-keeps each digit that the collector stated.
+is cut to one millisecond and is not rounded.
 
 *A stream holds an allowlist.* No address, no label that is not registered, no
-error text, and no value of another form reaches a stream.
+error text, and no value of another form reaches a stream. One limit is
+measured: the value of a registered label is held to a form and to no set of
+values.
 
 *A stream is deterministic and can be read back.* One collection gives one text,
 and ``read_stream`` refuses a text that does not have the form.
@@ -1519,3 +1521,373 @@ def test_the_page_publishes_each_query_rule_limit_and_boundary_of_the_tool() -> 
         telemetry.MAX_SERIES,
     ):
         assert str(bound) in page, bound
+
+
+# --------------------------------------------------------------------------
+# What the independent reviews found
+# --------------------------------------------------------------------------
+
+
+def test_the_digest_of_the_registered_set_is_pinned_to_its_name() -> None:
+    """A change to a query fails here, and the correction is another set name."""
+    assert telemetry.QUERY_SET == "experiment-run-queries-r1"
+    assert telemetry.query_set_sha256() == (
+        "e296e4292bb4abd7a7fee6c6211dcef1769646968617c335599afda075eff9ae"
+    )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"x":1E+99999999999999999999999}',
+        '{"x":1e-99999999999999999999999}',
+        '{"status":"success","data":{"resultType":"vector","result":[]},"n":1e9999999999999999999}',
+    ],
+)
+def test_a_number_that_the_decimal_reader_refuses_makes_one_read_unreadable(
+    tmp_path: Path, text: str
+) -> None:
+    """The first commit raised from the reader, and the command exited 1."""
+    reading = one(tmp_path, "api-cpu-seconds", text)
+    assert reading["read"]["state"] == "unreadable"
+    assert reading["faults"] == ["the answer is not one JSON object"]
+    # The other reads of the collection are as they were.
+    directory = tmp_path / "collection"
+    assert readings(directory)["api-scrape-targets"]["result"] == "series"
+    assert main(["stream", str(directory), "resources"]) == 0
+
+
+def test_a_header_with_a_number_that_the_decimal_reader_refuses_is_refused(
+    tmp_path: Path,
+) -> None:
+    directory = collection(tmp_path)
+    (directory / "collection.json").write_text(
+        '{"x":1E+99999999999999999999999}', "utf-8"
+    )
+    with pytest.raises(telemetry.CollectionRefused, match="not one JSON object"):
+        telemetry.build_streams(directory)
+    assert main(["stream", str(directory), "telemetry"]) == 3
+
+
+def test_an_answer_that_states_a_member_twice_is_unreadable(tmp_path: Path) -> None:
+    """The first commit kept the last of two members, so an error read as success."""
+    text = (
+        '{"status":"error","status":"success",'
+        '"data":{"resultType":"vector","result":[]}}'
+    )
+    reading = one(tmp_path, "api-cpu-seconds", text)
+    assert reading["read"]["state"] == "unreadable"
+    assert reading["result"] is None
+    header = usual_header()
+    stated = json.dumps(header)[:-1] + ', "runId": "run-2"}'
+    directory = collection(tmp_path / "b")
+    (directory / "collection.json").write_text(stated, "utf-8")
+    with pytest.raises(telemetry.CollectionRefused, match="not one JSON object"):
+        telemetry.build_streams(directory)
+
+
+@pytest.mark.parametrize(
+    "stated,expected",
+    [
+        ("1791792000.99999999999999999999999", "2026-10-12T08:00:00.999Z"),
+        ("253402300799.999", "9999-12-31T23:59:59.999Z"),
+        ("0", "1970-01-01T00:00:00.000Z"),
+    ],
+)
+def test_an_instant_with_many_digits_is_cut_and_is_not_rounded_up(
+    tmp_path: Path, stated: str, expected: str
+) -> None:
+    """The first commit rounded a long fraction up to the next second."""
+    reading = one(tmp_path, "api-oldest-scrape", vector(({}, stated)))
+    assert reading["series"][0]["value"] == {
+        "state": "reported",
+        "value": expected,
+        "resolution": "millisecond",
+    }
+
+
+@pytest.mark.parametrize(
+    "stated",
+    ["1e30", "1E+999999999999", "253402300800", "-0.001", "1." + "0" * 60, "1" * 41],
+)
+def test_an_instant_out_of_range_or_with_too_many_digits_is_malformed(
+    tmp_path: Path, stated: str
+) -> None:
+    reading = one(tmp_path, "api-oldest-scrape", vector(({}, stated)))
+    assert reading["series"][0]["value"] == {"state": "malformed"}
+
+
+@pytest.mark.parametrize("stated", ["1e-400", "-1e-400", "4.9e-325"])
+def test_a_number_too_small_for_its_storage_is_not_read_as_zero(
+    tmp_path: Path, stated: str
+) -> None:
+    """The first commit reported a value of zero for a number that is not zero."""
+    reading = one(tmp_path, "api-cpu-seconds", vector(({}, stated)))
+    assert reading["series"][0]["value"] == {"state": "malformed"}
+    assert reading["faults"] == ["1 value(s) do not have the form of the kind number"]
+
+
+def test_a_value_of_a_registered_label_is_free_within_its_form(tmp_path: Path) -> None:
+    """A stated limit, measured. The form of a label value is not an allowlist.
+
+    An address, a host name, and a pod name each have the form of a label
+    value. Under a registered label each reaches a stream. Under any other
+    label none does: that is the test of the allowlist above.
+    """
+    for number, value in enumerate(HOSTILE[:4]):
+        answer = vector(({"inferops_error_code": value}, "1"))
+        reading = one(tmp_path / str(number), "api-errors-by-code", answer)
+        assert reading["series"][0]["labels"] == {"inferops_error_code": value}
+    assert any(
+        "free within the form of a label value" in limit
+        for limit in telemetry.LIMITATIONS
+    )
+
+
+STRICT_CASES: list[tuple[str, Change, str]] = [
+    (
+        "collection-extra",
+        _set(0, "collection", "kubeContext", value="x"),
+        core.RULE_HEADER,
+    ),
+    ("collection-short", _drop(0, "collection", "release"), core.RULE_HEADER),
+    (
+        "collection-provider",
+        _set(0, "collection", "provider", value="free text of a provider"),
+        core.RULE_HEADER,
+    ),
+    (
+        "collection-commit",
+        _set(0, "collection", "executingCommit", value="abc"),
+        core.RULE_HEADER,
+    ),
+    (
+        "collection-samples",
+        _set(0, "collection", "requestedSamples", value=721),
+        core.RULE_HEADER,
+    ),
+    (
+        "collection-version",
+        _set(
+            0,
+            "collection",
+            "serverVersion",
+            value={"state": "reported", "value": "a b"},
+        ),
+        core.RULE_HEADER,
+    ),
+    (
+        "collection-version-note",
+        _set(0, "collection", "serverVersion", value={"state": "missing", "note": "x"}),
+        core.RULE_HEADER,
+    ),
+    (
+        "collection-completed",
+        _set(
+            0,
+            "collection",
+            "completedSamples",
+            value={"state": "reported", "value": "2"},
+        ),
+        core.RULE_HEADER,
+    ),
+    (
+        "collection-complete",
+        _set(0, "collection", "complete", value="yes"),
+        core.RULE_HEADER,
+    ),
+    ("clock-text", _set(0, "clock", value="free text"), core.RULE_HEADER),
+    ("clock-skew", _set(0, "clock", "skew", value="measured"), core.RULE_HEADER),
+    ("bounds", _set(0, "bounds", "maxSeries", value=64), core.RULE_HEADER),
+    ("bounds-float", _set(0, "bounds", "maxSeries", value=32.0), core.RULE_HEADER),
+    ("omitted", _set(0, "omitted", value=["a note of a person"]), core.RULE_HEADER),
+    ("limitations", lambda lines: lines[0]["limitations"].pop(), core.RULE_HEADER),
+    ("boundaries-empty", _set(0, "doesNotEstablish", value=[]), core.RULE_HEADER),
+    (
+        "fault-free-text",
+        _set(1, "faults", value=["upstream connect error 10.1.0.9"]),
+        core.RULE_READING,
+    ),
+    (
+        "fault-count-form",
+        _set(1, "faults", value=["0 value(s) do not have the form of the kind count"]),
+        core.RULE_READING,
+    ),
+    (
+        "evaluated-free-text",
+        _set(1, "evaluatedAt", value={"state": "reported", "value": "free text"}),
+        core.RULE_READING,
+    ),
+    (
+        "evaluated-no-resolution",
+        _set(
+            1,
+            "evaluatedAt",
+            value={"state": "reported", "value": "2026-10-12T08:00:00.040Z"},
+        ),
+        core.RULE_READING,
+    ),
+    (
+        "evaluated-missing-note",
+        _set(1, "evaluatedAt", value={"state": "missing", "note": "free text"}),
+        core.RULE_READING,
+    ),
+    (
+        "count-as-text",
+        _set(1, "series", 0, "value", value={"state": "reported", "value": "two"}),
+        core.RULE_READING,
+    ),
+    (
+        "count-negative",
+        _set(1, "series", 0, "value", value={"state": "reported", "value": -5}),
+        core.RULE_READING,
+    ),
+    (
+        "count-fraction",
+        _set(1, "series", 0, "value", value={"state": "reported", "value": 2.5}),
+        core.RULE_READING,
+    ),
+    (
+        "count-true",
+        _set(1, "series", 0, "value", value={"state": "reported", "value": True}),
+        core.RULE_READING,
+    ),
+    (
+        "number-as-object",
+        _set(7, "series", 0, "value", value={"state": "reported", "value": {"x": 1}}),
+        core.RULE_READING,
+    ),
+    (
+        "number-not-finite",
+        _set(
+            7, "series", 0, "value", value={"state": "reported", "value": float("nan")}
+        ),
+        core.RULE_READING,
+    ),
+    (
+        "instant-as-number",
+        _set(
+            3, "series", 0, "value", value={"state": "reported", "value": 1791791985.25}
+        ),
+        core.RULE_READING,
+    ),
+    (
+        "malformed-with-note",
+        _set(1, "series", 0, "value", value={"state": "malformed", "note": "x"}),
+        core.RULE_READING,
+    ),
+    (
+        "answered-no-instant",
+        lambda lines: lines[1]["read"].update({"startedAt": None, "finishedAt": None}),
+        core.RULE_READING,
+    ),
+    (
+        "offset-free-text",
+        _set(-1, "evaluationOffset", value="free text"),
+        core.RULE_COUNTS,
+    ),
+    (
+        "offset-changed",
+        _set(-1, "evaluationOffset", "notBelowMilliseconds", value=0),
+        core.RULE_COUNTS,
+    ),
+    (
+        "out-of-order-text",
+        _set(-1, "instantsOutOfOrder", value=["x"]),
+        core.RULE_COUNTS,
+    ),
+    ("out-of-order-added", _set(-1, "instantsOutOfOrder", value=[2]), core.RULE_COUNTS),
+]
+
+
+@pytest.mark.parametrize(
+    "change,rule",
+    [case[1:] for case in STRICT_CASES],
+    ids=[case[0] for case in STRICT_CASES],
+)
+def test_a_stored_member_that_the_first_commit_did_not_read_is_refused(
+    tmp_path: Path, change: Change, rule: str
+) -> None:
+    """The first commit accepted each of these in a stored stream."""
+    lines = _lines(tmp_path)
+    assert lines[3]["query"] == "api-oldest-scrape"
+    change(lines)
+    with pytest.raises(telemetry.StreamRefused) as refused:
+        telemetry.read_stream(telemetry.stream_text(lines))
+    assert refused.value.rule == rule
+    assert "free text" not in str(refused.value)
+
+
+def test_a_reading_that_was_not_taken_states_no_instant_and_no_collector(
+    tmp_path: Path,
+) -> None:
+    built = telemetry.build_streams(
+        collection(tmp_path, {}, {"taken": False}, end=None)
+    )
+    lines = copy.deepcopy(built["telemetry"])
+    telemetry.read_stream(telemetry.stream_text(lines))
+    lines[9]["collector"] = "present"
+    with pytest.raises(telemetry.StreamRefused) as refused:
+        telemetry.read_stream(telemetry.stream_text(lines))
+    assert refused.value.rule == core.RULE_READING
+    absent = telemetry.build_streams(
+        collection(
+            tmp_path / "b",
+            {"collector": "absent", "answers": dict.fromkeys(NAMES, UNANSWERED)},
+        )
+    )
+    lines = copy.deepcopy(absent["telemetry"])
+    lines[1]["collector"] = "present"
+    with pytest.raises(telemetry.StreamRefused) as refused:
+        telemetry.read_stream(telemetry.stream_text(lines))
+    assert refused.value.rule == core.RULE_READING
+
+
+@pytest.mark.parametrize(
+    "ending", ["", "\x0c", "\n\n"], ids=["no-line-feed", "form-feed", "empty-last-line"]
+)
+def test_a_stored_stream_whose_lines_do_not_end_with_one_line_feed_is_refused(
+    tmp_path: Path, ending: str
+) -> None:
+    """The first commit read a stream with no last line feed, and one of form feeds."""
+    text = telemetry.stream_text(_lines(tmp_path))
+    changed = text[:-1] + ending if ending != "\x0c" else text.replace("\n", "\x0c")
+    with pytest.raises(telemetry.StreamRefused) as refused:
+        telemetry.read_stream(changed)
+    assert refused.value.rule == core.RULE_UNREADABLE
+    # A checkout that converts line ends does not make a stream another stream.
+    telemetry.read_stream(text.replace("\n", "\r\n"))
+
+
+def test_each_fault_that_the_builder_writes_is_one_that_the_check_reads(
+    tmp_path: Path,
+) -> None:
+    """Each hostile answer of this suite gives a stream that is read back."""
+    hostile: list[Any] = [
+        "",
+        "[1]",
+        {"status": "error"},
+        {"status": "success", "data": {"resultType": "matrix", "result": []}},
+        vector(*(({"inferops_outcome": f"o-{n}"}, "1") for n in range(33))),
+        vector(({"instance": "x"}, "1")),
+        vector(({"inferops_outcome": "a b"}, "1")),
+        vector(({"inferops_outcome": "a"}, "1"), ({"inferops_outcome": "a"}, "1")),
+        vector(({"inferops_outcome": "a"}, "NaN")),
+        vector(({"inferops_outcome": "a"}, "1"), at=None),
+    ]
+    broken = vector(({}, "1"))
+    broken["data"]["result"].append("text")
+    hostile.append(broken)
+    seen: set[str] = set()
+    for number, answer in enumerate(hostile):
+        directory = collection(
+            tmp_path / str(number),
+            {
+                "answers": {"api-requests-by-outcome": answer},
+                "meta_changes": {"query.api-errors-by-code.read": "maybe"},
+            },
+        )
+        built = telemetry.build_streams(directory)["telemetry"]
+        stream = telemetry.read_stream(telemetry.stream_text(built))
+        seen |= {fault for reading in stream.readings for fault in reading["faults"]}
+    assert len(seen) >= 9, seen

@@ -62,8 +62,9 @@ The set has the name `experiment-run-queries-r1`. The tool states its SHA-256 ov
 the stream, the expression, the labels, and the kind of each query. The
 collector script writes the name and the digest into the header of a
 collection, and the tool builds a stream only from a collection that states the
-digest that the tool gives. So a stream names the queries that were asked, and a
-change to a query needs another set name.
+digest that the tool gives. So a stream names the queries that were asked. A
+change to a query changes the digest, and it takes another set name: a test
+pins the digest of this name.
 
 **No frozen record of an experiment names this set.** The evidence layout
 describes the role `telemetry` as readings of the metrics that the frozen record
@@ -109,9 +110,14 @@ The `resources` stream:
   the query `api-resident-memory-bytes` with no series, and the reading states
   `no-series`. It does not state zero bytes. A test compares this sentence with
   the catalog.
-- **No query reads the serving runtime, a container, or a node.** The release
-  has no source for their resource use. The `resources` stream therefore states
-  the processor time of the API processes and nothing about the serving runtime.
+- **No query reads the resource use of the serving runtime, of a container, or
+  of a node.** The release has no source for it. The `resources` stream
+  therefore states the processor time of the API processes and nothing about
+  the serving runtime. Three queries of the `telemetry` stream read the scrape
+  state of the serving runtime tier.
+- **The serving runtime has a scrape job only under one profile.** The chart
+  renders that job only under the profile `real`. Under another profile the
+  three queries of the serving runtime tier have no series.
 
 ## A release with no collector
 
@@ -164,10 +170,12 @@ change nothing, and no stream holds what they return.
 | `streams/<stream>.jsonl` | The two streams that the tool gives for the files above |
 
 **A read that does not answer is not an empty result.** The script writes no
-file for it, and the sample states the read as `unanswered`. A read is one
-request with a timeout of 10 seconds. A query that the collector refused and a
-query that the API server could not pass to the collector both fail the read,
-and the script does not tell them apart.
+file for it, and the sample states the read as `unanswered`. Each kubectl call
+of a read states `--request-timeout 10s`, and kubectl applies it to each
+request that the call makes. The call of the Service read can make more than
+one request. No run observed how long a read takes. A query that the collector
+refused and a query that the API server could not pass to the collector both
+fail the read, and the script does not tell them apart.
 
 **The collection holds the whole answer of each read.** The answer of the
 Service read holds an address. Do not commit a collection. The two stream files
@@ -190,7 +198,7 @@ form. One member is an exception: a server version of another form is kept as
 |---|---|
 | Samples of one collection | 1 to 720 |
 | Pause between two samples | 5 to 120 seconds |
-| Timeout of one read | 10 seconds in the script. The tool accepts a header that states 1 to 60 |
+| Request timeout of one kubectl call | 10 seconds in the script. The tool accepts a header that states 1 to 60 |
 | Queries of one sample | 11, as the tool registers them. The script refuses more than 32 |
 | Series that one reading states | 32 |
 
@@ -226,9 +234,13 @@ old that sample is for the scrape state. The stream states no age for a counter.
 
 **The difference between the two clocks is not measured.** The header of each
 stream states `skew` as `not-measured`. The end line states two bounds in
-`evaluationOffset`. The collector took each evaluation instant while its read
-was open. So its clock minus the host clock is not below `evaluatedAt` minus
-`read.finishedAt`, and it is not above `evaluatedAt` minus `read.startedAt`. The
+`evaluationOffset`. The query API documents that a query with no `time`
+parameter is evaluated at the present time of the collector. When that holds,
+the collector took each evaluation instant while its read was open. Then its
+clock minus the host clock is not below `evaluatedAt` minus
+`read.finishedAt`, and it is not above `evaluatedAt` minus `read.startedAt`. No
+run observed it, and each instant is cut to one millisecond, so each bound is
+to about one millisecond. The
 end line states the largest lower bound as `notBelowMilliseconds` and the
 smallest upper bound as `notAboveMilliseconds`, over the readings that state an
 evaluation instant. When the first is above the second, the difference changed
@@ -248,7 +260,7 @@ Each read has one of five states. They are the states of the timeline streams.
 | `answered` | The collector returned an instant vector that the tool can read | `series` or `no-series`, unless a fault of the reading says why not |
 | `absent` | The query did not answer, and the Service read of the same sample answered with no object: the release has no collector | None |
 | `unanswered` | The query failed or timed out, and the Service read did not show that the collector is absent | None |
-| `unreadable` | The answer is not usable: it is not one JSON object, it does not state success, it is not an instant vector, its file is not in the collection, or the sample does not state whether the read answered or states no usable instants for it | None |
+| `unreadable` | The answer is not usable: it is not one JSON object, it states a member twice or a number that cannot be read, it does not state success, it is not an instant vector, its file is not in the collection, or the sample does not state whether the read answered or states no usable instants for it | None |
 | `not-taken` | The collection was asked for the sample and did not write it | None |
 
 An answered read has one of two results.
@@ -278,7 +290,8 @@ No function replaces a state with zero. These cases are each a test:
 - A release with no collector states each read as `absent`.
 - A value that is `NaN`, an infinity, a JSON number in place of text, or text of
   another form is `malformed`, and it is not copied. A count with a fraction and
-  a negative count are `malformed`.
+  a negative count are `malformed`. A number that is not zero and is too small
+  for its storage is `malformed`, and it is not read as zero.
 - Series that state two evaluation instants, or one that is not a number, leave
   `evaluatedAt` as `malformed`.
 
@@ -324,24 +337,30 @@ one to 11 rules.
 
 | Rule | Statement |
 |---|---|
-| `telemetry-stream-unreadable` | A stream is UTF-8 text. Each line is one JSON object with no member stated twice. |
-| `telemetry-header-unsupported` | The first line is the header. It states the stream schema, one of the two stream names, an experiment identifier, and a run identifier, each in its form. |
-| `telemetry-members-unsupported` | Each line has exactly the members of its record. |
+| `telemetry-stream-unreadable` | A stream is UTF-8 text, and each line ends with a line feed. Each line is one JSON object with no member stated twice. |
+| `telemetry-header-unsupported` | The first line is the header. It states the stream schema, one of the two stream names, an experiment identifier, and a run identifier, each in its form. Its collection has exactly the members of a collection, each in its form. Its clocks, its bounds, what it leaves out, its limitations, and what it does not establish are the texts of this tool. |
+| `telemetry-members-unsupported` | Each line has exactly the members of its record, and each read has exactly its three members. |
 | `telemetry-query-unregistered` | The header states the registered queries of its stream, as this tool registers them, and it names the registered set. |
 | `telemetry-reading-out-of-sequence` | Each line between the header and the end line is a reading. The readings are numbered from 1 with no gap, and each sample holds the queries of the stream in the registered order. |
 | `telemetry-read-state-unsupported` | Each reading states one of the registered read states and one of the registered states of the collector. |
-| `telemetry-instant-invalid` | Each instant of a read is absent or is UTC to one millisecond in the one registered form, and a read does not finish before it starts. |
-| `telemetry-reading-unsupported` | Each reading states its faults as a list of text. It states a result only when its read answered. A reading with the result series states at least one series, a reading with the result no-series states none, and each value is a field. |
+| `telemetry-instant-invalid` | Each instant of a read is absent or is UTC to one millisecond in the one registered form. A read states both instants or neither, and it does not finish before it starts. |
+| `telemetry-reading-unsupported` | Each fault of a reading is a text of this tool. A reading states a result, a series, and an evaluation instant only when its read answered. A reading with the result series states at least one series and at most 32, and a reading with the result no-series states none. Each series has its labels and one value. Each value and each evaluation instant is a field with the form of its kind. A read that was not taken states no instant, each other read except an unreadable one states its instants, and an absent read states an absent collector. |
 | `telemetry-label-unregistered` | Each series states only labels that its query registers, each value of a label has the form of a label value, and no two series of one reading state the same labels. |
 | `telemetry-end-missing` | The last line is the end line, and no line follows it. |
-| `telemetry-counts-differ` | The end line states the number of readings, the number in each read state, and the number with each result, as the stream holds them. |
+| `telemetry-counts-differ` | The end line states the number of readings, the number in each read state, the number with each result, the two bounds of the clock difference, and each reading that starts before the one before it finished, as this tool computes them from the readings. |
 
-**The check reads the form of a stream.** It does not show that a stream is what
-a collection gives: the collection is not committed, so no check can build the
-stream again. It does not show that a value is what a collector answered. It
-does not hold a value to the kind of its query: a stored count with a fraction
-is accepted. It reads the queries of the header against the registered set, so a
-stream of an earlier set is refused when a later change registers another one.
+**The check reads the form of a stream.** It holds the collection of the header
+to its members and their forms, and the clocks, the bounds, and the three lists
+of statements to the texts of this tool. It holds each fault to a text that the
+tool writes, each value and each evaluation instant to the form of its kind,
+and the end line to what the tool computes from the readings. It reads the
+queries of the header against the registered set, so a stream of an earlier set
+is refused when a later change registers another one.
+
+It does not show that a stream is what a collection gives: the collection is not
+committed, so no check can build the stream again. It does not show that a
+value is what a collector answered. It holds a name, an identifier, and the
+value of a registered label to a form, and a form is not a check for a secret.
 
 ## What a stream leaves out
 
@@ -365,6 +384,12 @@ name, a request identifier in a label, and an error text, and it holds that none
 reaches a stream. That test covers the members it names. It is not a scan for
 every secret.
 
+**The value of a registered label is held to a form and not to a vocabulary.**
+The two registered labels state an outcome and a canonical error code. A text
+of the form of a label value under one of those two labels reaches a stream,
+whatever it is: a test shows it for an address and for a pod name. This tool
+holds the value to no set of values.
+
 ## Limitations
 
 - The instants read.startedAt and read.finishedAt are the wall clock of the host
@@ -373,16 +398,20 @@ every secret.
   before the finish of the reading before it.
 - A value is the answer of the telemetry collector to one instant query. It is
   not a reading of the process that published the metric. The collector answers
-  from the last sample that it scraped. That sample can be older than the read
-  by the scrape interval, and by the lookback of the collector when a scrape did
-  not store a sample.
+  from the last sample that it stored. That sample can be older than the read by
+  the scrape interval. When the collector stored no newer sample and no mark
+  that the series ended, the sample can be older by up to the lookback of the
+  collector, which the chart leaves at the default of the collector. No run
+  observed either.
 - The instant evaluatedAt and the value of a query of the kind instant are on
   the clock of the telemetry collector, to one millisecond. They are not on the
   clock of the collecting host.
 - The difference between the two clocks is not measured. The end line states two
   bounds that the evaluation instants give. The bounds hold when the collector
   took each evaluation instant while its read was open, and when the difference
-  did not change during the collection.
+  did not change during the collection. Each instant is cut to one millisecond,
+  so each bound is to about one millisecond. No run observed when a collector
+  takes the instant.
 - A reading with the result no-series states that the collector held no sample
   for the query at the evaluation instant. It does not state why. A metric that
   no process publishes, a target that the collector did not discover, and a
@@ -394,9 +423,11 @@ every secret.
   not one atomic reading.
 - A state that began and ended between two scrapes is in no sample of the
   collector. A state that began and ended between two readings is in no reading.
-- The timeout of a read is the timeout of the one request that kubectl makes for
-  it. A query that the collector refused and a query that the API server could
-  not pass to the collector are both unanswered.
+- Each kubectl call of a read states a request timeout, and kubectl applies it
+  to each request that the call makes. The call of the Service read can make
+  more than one request. No run observed how long a read takes. A query that the
+  collector refused and a query that the API server could not pass to the
+  collector are both unanswered.
 - A read reaches the collector through the Service proxy of the API server. The
   network policy of the chart selects the pod of the collector and admits no
   connection to its port. Whether a cluster applies that policy to a connection
@@ -404,8 +435,16 @@ every secret.
 - The series of the collector are in a volume that goes when its pod goes. A
   stream holds only what was read while the collection ran.
 - The resources stream reads what the API process publishes about itself. No
-  query reads the serving runtime, a container, or a node, because the release
-  has no source for them.
+  query reads the resource use of the serving runtime, of a container, or of a
+  node, because the release has no source for them.
+- The chart renders the scrape job of the serving runtime only under the profile
+  real. Under another profile the three queries of the serving runtime tier have
+  no series.
+- A value of a registered label is free within the form of a label value. The
+  form is not a check for a secret, and it does not show that the value is a
+  registered outcome or a canonical error code.
+- A value of the kind number is stored as a binary number of 64 bits. A counter
+  above 9007199254740992 loses its last digits.
 - A reading whose answer holds more than 32 series states no series.
 - The collection names the commit of the working tree that ran the collector
   script, and the SHA-256 of the script and of its library. It does not state

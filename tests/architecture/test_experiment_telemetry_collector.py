@@ -143,13 +143,13 @@ def test_each_kubectl_call_of_the_script_is_a_get() -> None:
     the verb and appends the read timeout. So the calls are the arguments of
     ``collect``.
     """
-    direct = [line for line in code_lines() if "target_kubectl" in line]
-    assert direct == [
+    # Every line that names kubectl in any spelling: a wrapper of the library,
+    # the bare command, and a variable that holds it would each be one more.
+    named = [line for line in code_lines() if "kubectl" in line.lower()]
+    assert named == [
+        "inferops::require_cmd kubectl",
         '  if inferops::target_kubectl get "$@" --request-timeout '
-        '"${REQUEST_TIMEOUT_SECONDS}s" >"${file}" 2>/dev/null; then'
-    ]
-    assert not [
-        line for line in code_lines() if re.search(r"(^|[\s(|;&])kubectl\s", line)
+        '"${REQUEST_TIMEOUT_SECONDS}s" >"${file}" 2>/dev/null; then',
     ]
     assert not [line for line in code_lines() if re.search(r"\bhelm\b", line)]
 
@@ -884,6 +884,11 @@ def test_arguments_that_are_not_usable_are_refused_before_any_call(
         (
             f"query-set set-1 {'0' * 64}\ndelete a api/v1/query?query=up\n",
             "unknown kind",
+        ),
+        (
+            f"query-set set-1 {'0' * 64}\nquery a api/v1/query?query=up\n"
+            "query a api/v1/query?query=up\n",
+            "one query name twice",
         ),
     ],
 )

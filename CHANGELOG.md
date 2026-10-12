@@ -18,7 +18,8 @@ from `1.0.0`.
   the telemetry collector of the release a closed set of eleven registered instant
   queries, at most 720 times, with a pause of 5 to 120 seconds. Each read is a
   `kubectl get`: one of the collector's Service, and one for each query through the
-  Service proxy of the API server, each with a timeout of 10 seconds. The script changes
+  Service proxy of the API server, each call with a request timeout of 10 seconds. The
+  script changes
   nothing in the cluster, sends no request to the API of the release, and holds no query:
   it asks the tool for each request and holds it to a fixed form. The tool prints the
   streams `telemetry` and `resources`, which are two raw roles of the evidence layout.
@@ -28,11 +29,12 @@ from `1.0.0`.
   a case today: the telemetry catalog records the metric as not emitted. **No request
   identifier is a label.** Each query aggregates and registers each label that a series
   can state, a test compares the registered labels with the telemetry catalog, and a
-  series with any other label leaves its reading with no series. **Operator events.**
+  series with any other label leaves its reading with no series. The value of a
+  registered label is held to a form and to no set of values. **Operator events.**
   The second tool appends one line for each event to one log: a fault injection as two
   events, a reviewed detection, a reversal that was decided, created, and accepted, an
-  abort, and a manual action. The tool takes the instant of each record on the host
-  clock, in UTC, to one millisecond, and no argument states it. An instant of another
+  abort, and a manual action. The command takes the instant of each record on the host
+  clock, in UTC, to one millisecond, and it has no option that states it. An instant of another
   clock, such as a Git host, is a second field with its resolution and its clock. An
   event holds no free text and no name of a person. The evidence layout gains the raw
   role `operator-events`, so its vocabulary has 14 roles. **Boundaries.** A stream and a

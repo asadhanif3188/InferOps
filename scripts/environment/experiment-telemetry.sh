@@ -158,6 +158,7 @@ query_set=""
 query_set_sha256=""
 query_names=()
 query_paths=()
+seen_names=" "
 while IFS=' ' read -r kind first second extra; do
   [ -n "${kind}" ] || continue
   [ -z "${extra}" ] ||
@@ -172,6 +173,12 @@ while IFS=' ' read -r kind first second extra; do
     query)
       [[ "${first}" =~ ^[a-z][a-z0-9-]{0,62}$ ]] && [[ "${second}" =~ ^api/v1/query\?query=[A-Za-z0-9%._~-]+$ ]] && [ "${#second}" -le 512 ] ||
         inferops::fail "the tool printed a request that is not a query name and an encoded instant query. Nothing was read."
+      case "${seen_names}" in
+        *" ${first} "*)
+          inferops::fail "the tool printed one query name twice. Nothing was read."
+          ;;
+      esac
+      seen_names="${seen_names}${first} "
       query_names+=("${first}")
       query_paths+=("${second}")
       ;;

@@ -639,16 +639,17 @@ uv run --locked python -m tools.experiment_telemetry check FILE [FILE ...]
 An answer with no series is `no-series`: do not add code that reads it as zero. A read
 that did not answer has no result, and a release with no collector states each read as
 `absent`. The queries are a closed set in `tools/experiment_telemetry`, and the script
-holds none. A new query needs a new set name, an aggregation that drops each label it
+holds none. A changed or new query needs a new set name, and a test pins the digest of
+the present name. It also needs an aggregation that drops each label it
 does not register, and no label that the telemetry catalog bars from a metric: do not
 group by a request identifier, a correlation identifier, a pod, or a target. Do not
 commit a collection directory. Do not use a stream as a caller's result.
 [The telemetry page](docs/environment/experiment-telemetry.md) states the queries, the
 clocks, the limits, and what a stream does not establish.
 
-**The operator events of an experiment run are recorded in one log.** The control of a
-run records a fault injection, and an operator records a reviewed detection, a
-reversal, an abort, and a manual action.
+**The operator events of an experiment run have one log.** The log is for the control
+of a run to record a fault injection, and for an operator to record a reviewed
+detection, a reversal, an abort, and a manual action. No procedure calls the tool yet.
 
 ```sh
 uv run --locked python -m tools.experiment_events open FILE --experiment ID --run ID
@@ -657,8 +658,8 @@ uv run --locked python -m tools.experiment_events close FILE
 uv run --locked python -m tools.experiment_events check FILE [FILE ...]
 ```
 
-The tool takes the instant of each record, in UTC. Do not add an option that states
-it, and do not add a member that takes free text: an event states a registered kind, a
+The command takes the instant of each record from the host clock, in UTC. Do not add an
+option that states it, and do not add a member that takes free text: an event states a registered kind, a
 role, a code, a resource name, and a commit identifier. Do not record the name of a
 person or a request identifier. Do not use a log as a caller's result or as a
 detection. [The operator events page](docs/environment/experiment-operator-events.md)

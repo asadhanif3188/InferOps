@@ -33,9 +33,10 @@ operator recorded a judgement. The signals that the operator read are in
 [the telemetry streams](experiment-telemetry.md). Whether a signal showed the
 problem before the operator saw it is a figure that an analysis computes.
 
-**A log is not a transcript and not an audit trail.** It holds no command line,
-no output of a command, no note, and no name of a person. It is not a record of
-who did what on a system that needs one.
+**A log is not a transcript and not an audit trail.** An event holds no command
+line, no output of a command, no note, and no name of a person. The header of a
+log repeats texts of the tool, and the check refuses a stored header with any
+other text. A log is not a record of who did what on a system that needs one.
 
 **This is not a logging platform.** The tool appends one line to one file. It
 ships no line anywhere, it reads no log of a pod, and it holds at most
@@ -56,11 +57,13 @@ ships no line anywhere, it reads no log of a pod, and it holds at most
 
 - **A fault injection is two events.** The control of the run records
   `fault-injection-started`, issues the command that injects the fault, and
-  records `fault-injection-finished` when the command returned. The process that
-  issues the command takes both instants, so the fault is not before the first
-  and the command did not return after the second. No instant inside that
-  interval is established, and nothing checks that the two events were recorded
-  in that order.
+  records `fault-injection-finished` when the command returned. The `record`
+  command takes each instant on the host that runs it. When the control of the
+  run runs both commands on one host, and waits for the first before it issues
+  the fault command, the fault is not before the first instant and the command
+  did not return after the second. No instant inside that interval is
+  established, and nothing checks that the two events were recorded in that
+  order.
 - **A reversal is three events.** `reversal-decided` is the decision of an
   operator. `reversal-created` and `reversal-accepted` each state the commit of
   the reversal. The time that an operator took to decide is then separate from
@@ -95,8 +98,9 @@ note or a request identifier is refused.
 
 **The tool takes the instant of the record.** `recordedAt` is the wall clock of
 the host that ran the `record` command, in UTC, to one millisecond, in the form
-`2026-10-12T08:00:00.000Z`. No argument states it, and a test holds that the
-command has no such option. It is the form of `read.startedAt` in the timeline
+`2026-10-12T08:00:00.000Z`. The command has no option that states it, and a test
+holds that. The function `record` takes a clock, `now`, which the suite
+replaces, and the command passes none. It is the form of `read.startedAt` in the timeline
 streams and in the telemetry streams. So the events and the readings have one
 time basis when one host writes them.
 
@@ -163,18 +167,27 @@ correct, or that a reversal reached a cluster.**
 | Rule | Statement |
 |---|---|
 | `events-log-unreadable` | A log is UTF-8 text, and each line ends with a line feed. Each line is one JSON object with no member stated twice. |
-| `events-header-unsupported` | The first line is the header. It states the schema, the stream name, an experiment identifier, a run identifier, and the instant at which the log was opened, each in its form. |
+| `events-header-unsupported` | The first line is the header. It states the schema, the stream name, an experiment identifier, and a run identifier, each in its form. Its clocks, its kinds, what it leaves out, its limitations, and what it does not establish are the texts of this tool. |
 | `events-members-unsupported` | Each line has exactly the members of its record. |
 | `events-event-out-of-sequence` | Each line between the header and the end line is an event, the events are numbered from 1 with no gap, and a log holds at most 500. |
 | `events-vocabulary-unregistered` | Each event states a registered kind and a registered actor. A kind that is a judgement or an act of a person states the actor operator. A subject states a registered resource kind, and an occurredAt states a registered clock. |
 | `events-instant-invalid` | Each recordedAt, the openedAt, and the closedAt is UTC to one millisecond in the one registered form. Each occurredAt is UTC with a resolution of one second or of one millisecond. |
-| `events-value-malformed` | A code, a name of a subject, and a commit identifier each have their form. No member holds any other text. |
+| `events-value-malformed` | A code, a name of a subject, and a commit identifier each have their form. No member of an event holds any other text. |
 | `events-member-required` | An event of a kind that needs a code states one, and an event of a kind that needs the commit of the reversal states one. An event of another kind states no commit. |
 | `events-end-missing` | The last line of a closed log is the end line, and no line follows it. A log with no end line is open, and the check refuses it. |
-| `events-counts-differ` | The end line states the number of events and the number of each kind, as the log holds them. |
+| `events-counts-differ` | The end line states the number of events, the number of each kind, and each event that was recorded at an earlier instant than the event before it, as this tool computes them from the events. |
 
 **The check reads the form of a log.** It does not show that an event happened,
-that a commit exists, or that a code is one that an experiment registers.
+that a commit exists, or that a code is one that an experiment registers. It
+does not compare the instant at which a log was opened or closed with the
+instants of its events.
+
+**A command that refuses to write names the nearest rule.** `open` refuses a
+file that exists with `events-header-unsupported`. `record` and `close` refuse
+a closed log with `events-end-missing`, and a file that cannot be written to
+with `events-log-unreadable`. `record` refuses an `--occurred-at` with no
+`--clock` with `events-instant-invalid`. The statement of each rule above is
+about a stored log.
 
 ## What a log leaves out
 
@@ -241,9 +254,10 @@ for a secret.
 
 The [evidence layout](../testing/experiment-evidence-layout.md) registers the
 raw role `operator-events` for a log. This change added the role: until it, the
-vocabulary had no role for a log of operator events. A log has the suffix
-`.jsonl`, which the evidence index hashes as text. So a run manifest can name
-the file under the role, and the layout check then holds the file to its digest.
+vocabulary had no role for a log of operator events. Give a log the suffix
+`.jsonl`, which the evidence index hashes as text. The tool does not hold the
+file name to it. A run manifest can then name the file under the role, and the
+layout check holds the file to its digest.
 
 The layout check does not call this tool. Until a later change joins the two,
 run `python -m tools.experiment_events check` on the log of a run. Close a log

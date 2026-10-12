@@ -51,11 +51,13 @@ a real run is committed, and no claim was registered.**
   the list of read-only scripts.
 - The timelines page said that a later change owns the metrics and the operator
   events. It now names the two tools. The contributor guide, the README, the two
-  architecture tables, the changelog, and the test inventory each gain an entry.
+  architecture tables, the changelog, the index of the proof records, and the test
+  inventory each gain an entry.
 
 No chart, manifest, schema, contract, script library, or freeze record was
-changed. `tools/experiment_timeline` was not changed: the two new tools import
-its instant forms and its read states.
+changed. `tools/experiment_timeline` was not changed. Both new tools import its
+instant forms and its refusal exit status. The telemetry tool also imports its
+read states and its field states.
 
 ## What the change was asked to reach, and what it reached
 
@@ -74,10 +76,10 @@ its instant forms and its read states.
 | Criterion | State after this change |
 |---|---|
 | Endpoint changes are timestamped | Reached by `V2-S5-003-PR1` at C0. Not changed here |
-| Pod and Deployment readiness, revision, deletion, and replacement are captured | Reached by `V2-S5-003-PR1` at C0, with the limit that no reading pairs a pod that left with a pod that entered. Not changed here |
-| The Application state is captured independently | Reached by `V2-S5-003-PR1` at C0. Not changed here |
-| Prometheus preserves missing and zero as two things | Reached here at C0, for the tool. What a running collector answers was not read |
-| Operator fault, detection, and reversal events are aligned to UTC | Reached here at C0. The instant of each record is the host clock in UTC to one millisecond, in the form that the timeline streams and the telemetry streams use. An instant of another clock is normalised to UTC and names its clock. The difference between two clocks is not measured |
+| The readiness, the revision, the deletion, and the replacement of a pod and of a Deployment are captured | Reached by `V2-S5-003-PR1` at C0, with the limit that no reading pairs a pod that left with a pod that entered. Not changed here |
+| The state of the delivery controller is captured independently | Reached by `V2-S5-003-PR1` at C0. Not changed here |
+| Prometheus preserves missing and zero as two states | Reached here at C0, for the tool. What a running collector answers was not read |
+| Operator fault, detection, and reversal events are aligned in UTC | Reached here at C0. The instant of each record is the host clock in UTC to one millisecond, in the form that the timeline streams and the telemetry streams use. An instant of another clock is normalised to UTC and names its clock. The difference between two clocks is not measured |
 
 The parent change also names a bounded integration capture as evidence. **It is
 still owed.** No capture of a real cluster was made by either change of the
@@ -85,8 +87,11 @@ parent: see below.
 
 ## What was not done
 
-- **No cluster and no telemetry collector was read.** The local cluster refused
-  connections on 2026-10-12, as it did for `V2-S5-003-PR1`. So no collection of
+- **No cluster and no telemetry collector was read.** On 2026-10-12 the
+  `docker-desktop` context of this host refused the connection, as it did for
+  `V2-S5-003-PR1`: one `kubectl get` of the namespaces, which changes nothing,
+  returned `No connection could be made`. No cluster was started for this
+  change. So no collection of
   a real release exists, and the form of a collector's answer is the one that
   the query API documents. No answer of a running collector was read by the
   tool.
@@ -112,9 +117,8 @@ parent: see below.
 Each was a choice of this change, and each can be changed by a later one.
 
 1. **Two new tools, and the timeline tool untouched.** The proof record of
-   `V2-S5-003-PR1` describes that tool as it was merged. The two new tools
-   import its instant forms and its read states, so the three have one form of
-   instant.
+   `V2-S5-003-PR1` describes that tool as it was merged. Both new tools import
+   its instant forms, so the three have one form of instant.
 2. **The collector is reached through the Service proxy of the API server, and
    not through a forwarded port.** A read is then one `kubectl get --raw`: the
    script starts no process that outlives a read and opens no local port, and
@@ -137,11 +141,13 @@ Each was a choice of this change, and each can be changed by a later one.
 7. **Sampling, and not one range query at the end of a run.** The series of the
    collector go when its pod goes. A read during the run keeps what was read,
    and it gives each reading two instants on the host clock.
-8. **The end line states two bounds of the clock difference.** The collector
-   takes its evaluation instant while the read is open, so the two instants of
-   the read bound the difference. The header still states the skew as not
-   measured.
-9. **The events tool takes the instant, and no argument states it.** An instant
+8. **The end line states two bounds of the clock difference.** The query API
+   documents that a query with no `time` parameter is evaluated at the present
+   time of the collector. When that holds, the two instants of the read bound
+   the difference, to about one millisecond. No run observed it, and the header
+   still states the skew as not measured.
+9. **The events command takes the instant, and it has no option that states it.**
+   The function takes a clock, which the suite replaces. An instant
    of another clock is a second field.
 10. **An event holds no free text.** A code is a word of a fixed form. The tool
     does not register the codes: the frozen record of an experiment does.
@@ -164,10 +170,10 @@ Each is a test that fails when the property is removed.
 | A read of one query does not change another | A query that fails leaves each other reading of the sample as it was, in the tool and in an executed run of the script |
 | A label that is not registered does not reach a stream | A series with a request identifier label, a target label, a name label, and a label of another query each leave the reading with no series, and neither the name nor the value is in the stream |
 | A stored stream is held to its labels | A stored series with a request identifier label is refused by the check, and the refusal does not repeat the value |
-| A value has the form of its kind | 28 stated values over the three kinds: a value that is not a number, an infinity, a count with a fraction, a negative count, a JSON number in place of text, and digits that are not ASCII are each `malformed` |
+| A value has the form of its kind | 28 stated values over the three kinds, 17 of them `malformed`: a value that is not a number, an infinity, a count with a fraction, a negative count, a JSON number in place of text, and digits that are not ASCII are each `malformed` |
 | The script gives kubectl no text that it did not hold to a form | Twelve outputs of the tool that are not usable each stop the script before any kubectl call. Among them are a path to an admin API, a path to another proxy, a second parameter, and a shell separator |
 | The script changes nothing | An executed capture makes no kubectl call that is not a known read. Each raw path is under the proxy path of the one Service |
-| The instant of an event is the tool's | The function and the command have no argument for it, and `--recorded-at` exits 2 |
+| The instant of an event is the command's | The command has no option for it, and `--recorded-at` exits 2. The function takes a clock, and the command passes none |
 | An event holds no free text | 33 events are refused with nothing written: a sentence, an address of a person, a path, and a line break as a code; a node, a secret, and an address with a credential as a subject |
 | A log is appended to | Each event leaves each earlier byte as it was. A closed log, an existing file, a full log, and a file whose last line is not whole take no event |
 | Each rule of form refuses | 53 changed streams and 50 changed logs. Each of the 11 and of the 10 rules has a case |
@@ -179,7 +185,7 @@ Each command ran on the tree of the first commit, before it was committed.
 | Command | Result |
 |---|---|
 | `uv run --locked ruff check .` | No finding |
-| `uv run --locked ruff format --check .` | 733 files already formatted |
+| `uv run --locked ruff format --check .` | 733 files already formatted. It ran before this record was written, and the record is one more file |
 | `uv run --locked python -m mypy` | No issue in 406 source files |
 | `uv run --locked python -m mypy --platform linux` | No issue in 406 source files |
 | `uv run --locked python -m pytest tests/domain/test_experiment_telemetry.py -q` | 204 passed |
@@ -216,6 +222,151 @@ before the push, so no hosted result is stated here.
   the catalog bars and also a function of the query language. The test now
   reads a name that an opening bracket follows as the function.
 
+## What the independent reviews found
+
+Two reviews read the first commit, `cbd6de4`, and neither edited a file. One
+tried to break the code with hostile inputs. The other read each sentence of the
+pages, of this record, and of the tools against the files. Each finding below
+was confirmed before it was corrected.
+
+### What the code got wrong
+
+- **A number in an answer could stop the whole collection.** The reader of an
+  answer caught four kinds of failure and not the one that the decimal reader
+  raises for an exponent that is too large. One such number in one answer file,
+  or in the header, raised from `build_streams`, and the command exited 1 with a
+  trace. The read is now `unreadable`, the header is refused, and each is a
+  test.
+- **A file that could not be written to raised from the events tool.** `record`
+  and `close` on a file that is read-only exited 1 with a trace. The contract of
+  the command is exit status 0, 2, or 3. Both now refuse with exit status 3.
+- **An answer that stated a member twice was read with the last one.** An answer
+  with `status` stated as `error` and then as `success` was read as an answered
+  read with no series. An answer, a header, and a Service answer that state a
+  member twice are now not one JSON value.
+- **A number that is not zero could be reported as zero.** A value such as
+  `1e-400` is below what the storage of a number holds, and the first commit
+  reported `0.0` for it with no fault. It is now `malformed`. This was the one
+  path that the first commit had from an answer to a value of zero that the
+  collector did not state.
+- **An instant with a long fraction was rounded up.** The first commit said that
+  a finer fraction is cut and not rounded. A fraction of more than 28 digits was
+  rounded to the next second. The product is now exact, a number of more than 40
+  digits is `malformed`, and the last millisecond of the year 9999 is read.
+- **The check of a stored stream left most members unread.** It read the names
+  of the members of a header and not their values, so a stored header with any
+  text passed. It read a fault as any text, a value as any JSON value, and it
+  did not read the two clock members of the end line. A reading that was not
+  taken could state instants. The check now holds the collection of the header
+  to its members and forms, the texts of the header to the tool's, each fault to
+  a text that the tool writes, each value to the form of its kind, and the end
+  line to what the tool computes. 34 cases that the first commit accepted are
+  now refused, and each is a test.
+- **The check of a stored log left five header members unread.** The rule said
+  that no member holds any other text, and a stored header with a note that
+  names a person passed. The header is now compared with the texts of the tool,
+  and the rule says "no member of an event".
+- **A list of event numbers was compared by value.** `[2.0]` was read as `[2]`.
+  The end line of a log, and of a stream, is now compared as text.
+- **A stored stream with no last line feed, and one with form feeds for line
+  feeds, was read.** The log tool refused the first. The stream tool now holds
+  the same rule.
+- **The script accepted one query name twice** from the tool. The second read
+  would have replaced the file of the first. It now refuses before any call.
+- **An argument of another type raised from `record`.** A subject that is not
+  text and a clock that is a list now refuse.
+
+### What the tests got wrong
+
+- **The test that each kubectl call is a `get` was not closed.** It looked for
+  two spellings of the call. A line that used the other wrapper of the script
+  library, or a variable that holds the command, would have passed. It now reads
+  each line that names kubectl in any case, and the script holds two: the check
+  that the command exists, and the one `get`.
+- **A test name said more than the test held.** The test that no stream holds a
+  value that the allowlist does not read gave the tool each hostile value under
+  a label that is not registered. Under a registered label the same values reach
+  a stream, because the value of a label is held to a form. That limit is now a
+  limitation of the tool, a paragraph of the page, and a test that measures it.
+- **No test pinned the digest of the query set to its name.** The page said that
+  a change to a query needs another set name, and nothing held it. One test now
+  holds the digest of the present name.
+
+### What the pages got wrong
+
+- **"The caller cannot state it."** The function `record` takes a clock, and a
+  caller of the function can state any instant with it. The test held only that
+  no parameter has the name of the member. The tool, the page, the changelog,
+  the contributor guide, the inventory, and this record now say that the command
+  has no option for it and that the function takes a clock. A test shows both.
+- **The Prometheus lookback was stated more strongly than is safe.** The first
+  commit said that a value can be older by the lookback when a scrape did not
+  store a sample. A failed scrape stores a mark that ends the series. The
+  sentence now states the condition, and that no run observed it.
+- **Three statements were written as observed, and nothing observed them.** That
+  a collector takes its evaluation instant while the read is open, that a read
+  is one request, and that the timeout of a read is the timeout of that one
+  request. Each now states what is documented, the condition, and that no run
+  observed it.
+- **"No query reads the serving runtime."** Three queries read the scrape state
+  of that tier. The sentence now says the resource use. The page also did not
+  say that the chart renders the scrape job of that tier under one profile only.
+- **Several statements of rules were narrower than the code.** Each now states what
+  is refused under its identifier, and the page says which rule a command names
+  when it refuses to write.
+- **A statement about a fault injection named the wrong process.** The `record`
+  command takes each instant, and the inference holds only when one host runs
+  both commands in order. The page now states the condition.
+- **This record had three wrong statements.** It said that both tools import the
+  read states of the timeline tool, and one does. It gave a count of formatted
+  files that was taken before the record was written. It said that 28 stated
+  values are each `malformed`, and 17 are.
+- **Smaller corrections.** The suffix of a log is a convention and not a check.
+  The contributor guide described the recording as a present practice. The
+  module text of the telemetry tool used one word for the script and for the
+  telemetry collector. The criteria of the parent change are now in the words of
+  the first record.
+
+### Noted, and not changed
+
+- The header of a collection is checked by the tool after the last sample, so a
+  header that the tool refuses costs the whole collection. The script writes the
+  header from values that it held to a form, and the query set is the tool's own
+  print, so only a broken tool gives one.
+- A value of the kind number is stored as a binary number of 64 bits. A counter
+  above 9007199254740992 loses its last digits. This is now a limitation.
+- The value of a registered label is held to a form and to no set of values.
+  This is now a limitation.
+- The executed tests of the script take about 100 seconds, because a capture of
+  two samples waits the smallest pause of 5 seconds.
+- Two tests compare instants of the host clock in order, and a clock that is set
+  back during the test would fail them.
+- A wrong type given to `read_log`, `read_stream`, or `build_streams` in place of
+  text or of a path raises. The commands give them text and paths.
+- `shutil.which("bash")` can find another shell on a host with no Git Bash first
+  on its path. The earlier suites use the same call.
+
+## Validation at the second commit
+
+Each command ran on the tree of the second commit, before it was committed.
+
+| Command | Result |
+|---|---|
+| `uv run --locked ruff check .` | No finding |
+| `uv run --locked ruff format --check .` | 734 files already formatted |
+| `uv run --locked python -m mypy` | No issue in 406 source files |
+| `uv run --locked python -m mypy --platform linux` | No issue in 406 source files |
+| `uv run --locked python -m pytest tests/domain/test_experiment_telemetry.py -q` | 262 passed. The first commit held 204 |
+| `uv run --locked python -m pytest tests/domain/test_experiment_events.py -q` | 154 passed. The first commit held 134 |
+| `uv run --locked python -m pytest tests/architecture/test_experiment_telemetry_collector.py -q` | 50 passed. The first commit held 49 |
+| `uv run --locked python -m pytest tests/testing tests/security tests/architecture/test_cluster_lifecycle_safety.py tests/architecture/test_local_cluster_provider_contract.py tests/architecture/test_argocd_bootstrap.py tests/domain/test_renderer_input_boundary.py -q` | 10,149 passed, 3 skipped. It ran before this row was filled in |
+| `uv run --locked python -m tools.experiment_freeze --check` | `PASSED: 3 freeze record(s), every rule held` |
+| `bash -n scripts/environment/experiment-telemetry.sh` | No syntax error |
+| `git diff --check` against the base | No whitespace error |
+
+The default lane was not run on the tree of the second commit. It ran once, on
+the tree of the first commit: see the next section.
+
 ## The default lane
 
 | Command | Result |
@@ -240,8 +391,10 @@ is stated here. The hosted workflow did not run before the push.
 
 The suites build every collection and every log with invented names and
 addresses, in a temporary directory. No collection, no stream, and no log is
-committed. The changed files hold no personal path, no credential, no account
-identifier, and no host name. The diff against the base was read for each.
+committed. The changed files hold no personal path, and no credential, account
+identifier, or host name of a real system. The suites hold invented ones, under
+`example.invalid` and in private address ranges. The diff against the base was
+read for each.
 
 ## What the evidence establishes
 

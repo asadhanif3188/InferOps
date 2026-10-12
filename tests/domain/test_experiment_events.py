@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import inspect
 import json
 import re
 from collections.abc import Callable, Iterator
@@ -224,9 +225,8 @@ def test_the_default_clock_is_the_host_clock_in_utc_to_one_millisecond(
 
 
 def test_no_argument_states_the_instant_of_the_record() -> None:
-    """``recordedAt`` has no option, in the function and in the command."""
-    import inspect
-
+    """The command has no option for ``recordedAt``, and the function has no
+    parameter of that name. The function does take a clock, ``now``."""
     parameters = inspect.signature(events.record).parameters
     assert "recorded_at" not in parameters
     assert set(parameters) == {
@@ -1056,3 +1056,139 @@ def test_the_page_publishes_each_kind_rule_limit_and_boundary_of_the_tool() -> N
             rf"(?<![A-Za-z0-9-]){re.escape(name)}(?![A-Za-z0-9-])", page
         ), name
     assert str(events.MAX_EVENTS) in page
+
+
+# --------------------------------------------------------------------------
+# What the independent reviews found
+# --------------------------------------------------------------------------
+
+HEADER_CASES: list[tuple[str, Change]] = [
+    ("clock-text", _set(0, "clock", value="whatever text")),
+    ("clock-skew", _set(0, "clock", "skew", value="measured")),
+    ("kinds-sentence", _set(0, "kinds", value={"x": "a free sentence"})),
+    ("kinds-changed", _set(0, "kinds", "run-aborted", value="Another meaning.")),
+    ("omitted-note", _set(0, "omitted", value=["A note that names a person."])),
+    ("limitations-short", lambda lines: lines[0]["limitations"].pop()),
+    ("boundaries-empty", _set(0, "doesNotEstablish", value=[])),
+    ("boundaries-number", _set(0, "doesNotEstablish", value=5)),
+]
+
+
+@pytest.mark.parametrize(
+    "change", [case[1] for case in HEADER_CASES], ids=[case[0] for case in HEADER_CASES]
+)
+def test_a_stored_header_with_a_text_that_is_not_the_tools_is_refused(
+    tmp_path: Path, change: Change
+) -> None:
+    """The first commit read the names of these five members and not their text."""
+    lines = copy.deepcopy(lines_of(a_run(tmp_path)))
+    change(lines)
+    with pytest.raises(events.LogRefused) as refused:
+        events.read_log(events.log_text(lines))
+    assert refused.value.rule == core.RULE_HEADER
+    assert "person" not in str(refused.value)
+
+
+def test_a_log_with_such_a_header_takes_no_event(tmp_path: Path) -> None:
+    path = opened(tmp_path)
+    [header] = lines_of(path)
+    header["omitted"] = ["A note that names a person."]
+    path.write_bytes(events.log_text([header]).encode("utf-8"))
+    before = path.read_bytes()
+    with pytest.raises(events.EventRefused) as refused:
+        events.record(path, "reversal-decided", "operator")
+    assert refused.value.rule == core.RULE_HEADER
+    assert path.read_bytes() == before
+
+
+def test_an_out_of_order_list_with_a_number_of_another_type_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The first commit read 2.0 as 2."""
+    path = opened(tmp_path)
+    for offset in (10, 5):
+        events.record(
+            path,
+            "reversal-decided",
+            "operator",
+            now=ticking(T0 + timedelta(seconds=offset)),
+        )
+    events.close_log(path, now=ticking())
+    lines = lines_of(path)
+    assert lines[-1]["instantsOutOfOrder"] == [2]
+    lines[-1]["instantsOutOfOrder"] = [2.0]
+    with pytest.raises(events.LogRefused) as refused:
+        events.read_log(events.log_text(lines))
+    assert refused.value.rule == core.RULE_COUNTS
+
+
+def test_a_file_that_cannot_be_written_to_refuses_and_does_not_raise(
+    tmp_path: Path, capfd: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The first commit raised from the write, and the command exited 1."""
+    path = opened(tmp_path)
+    before = path.read_bytes()
+    original = Path.open
+
+    def refuse_append(self: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+        if "a" in mode:
+            raise PermissionError(13, "Permission denied")
+        return original(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", refuse_append)
+    with pytest.raises(events.EventRefused) as refused:
+        events.record(path, "reversal-decided", "operator")
+    assert refused.value.rule == core.RULE_UNREADABLE
+    with pytest.raises(events.EventRefused):
+        events.close_log(path)
+    for arguments in (
+        ["record", str(path), "--kind", "reversal-decided", "--actor", "operator"],
+        ["close", str(path)],
+    ):
+        assert main(arguments) == 3
+        assert "cannot be written to" in capfd.readouterr().err
+    assert path.read_bytes() == before
+
+
+def test_the_function_takes_a_clock_and_the_command_passes_none(tmp_path: Path) -> None:
+    """What "the tool takes the instant" holds for, exactly.
+
+    The function has a parameter for a clock, and a caller of the function can
+    state any instant with it. The command has no option for it, and it calls
+    the function with no clock.
+    """
+    path = opened(tmp_path)
+    stated = events.record(
+        path,
+        "reversal-decided",
+        "operator",
+        now=lambda: datetime(1999, 1, 1, tzinfo=UTC),
+    )
+    assert stated["recordedAt"] == "1999-01-01T00:00:00.000Z"
+    source = (REPO_ROOT / "tools/experiment_events/__main__.py").read_text("utf-8")
+    assert "now=" not in source
+    assert "now" in inspect.signature(events.record).parameters
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"subject": 5},
+        {"subject": ["pod", "x"]},
+        {"subject": b"pod/x"},
+        {"clock": [], "occurred_at": "2026-10-12T08:00:07Z"},
+        {"clock": {}, "occurred_at": "2026-10-12T08:00:07Z"},
+        {"clock": "git-host", "occurred_at": 7},
+        {"code": 7, "kind": "run-aborted"},
+        {"commit": ["c"], "kind": "reversal-created"},
+    ],
+)
+def test_an_argument_of_another_type_is_refused_and_does_not_raise(
+    tmp_path: Path, extra: dict[str, Any]
+) -> None:
+    path = opened(tmp_path)
+    before = path.read_bytes()
+    kind = extra.pop("kind", "reversal-decided")
+    with pytest.raises(events.EventRefused):
+        events.record(path, kind, "operator", **extra)
+    assert path.read_bytes() == before

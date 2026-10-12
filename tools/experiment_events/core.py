@@ -8,19 +8,22 @@ events for one run, and it reads a stored log back.
 
 **One line for each event, and the tool takes the instant.** :func:`record`
 appends one event and states ``recordedAt``: the wall clock of the host that
-ran the command, in UTC, to one millisecond. The caller cannot state it. So the
-process that issues a fault command and records the event beside it states both
-on one clock.
+ran the command, in UTC, to one millisecond. The command has no option that
+states it. The function takes a clock, ``now``, which a test replaces, and the
+command passes none. So a control process that runs the command on one host,
+before and after a fault command, states both instants on one clock.
 
 **An instant from another clock is a second field.** An event that happened on
 another system, such as the acceptance of a commit on a Git host, can state
 ``occurredAt`` with the clock that it is on. It is normalised to UTC and keeps
 the resolution that it was stated with. It does not replace ``recordedAt``.
 
-**A log holds no free text.** Each value of an event is one of a registered
+**An event holds no free text.** Each value of an event is one of a registered
 vocabulary or has a fixed form: a kind, an actor, a code, a subject that is a
 resource kind and a name, a commit identifier, and an instant. No option takes
-a note, a name of a person, a command line, or a request identifier.
+a note, a name of a person, a command line, or a request identifier. The header
+of a log repeats texts of this module, and a stored header with another text is
+refused.
 
 **A log is not caller truth, and it is not a detection.** It states what was
 recorded and when. :data:`DOES_NOT_ESTABLISH` is part of every log.
@@ -217,8 +220,9 @@ RULES: Final[Mapping[str, str]] = {
     ),
     RULE_HEADER: (
         "The first line is the header. It states the schema, the stream name, an "
-        "experiment identifier, a run identifier, and the instant at which the "
-        "log was opened, each in its form."
+        "experiment identifier, and a run identifier, each in its form. Its "
+        "clocks, its kinds, what it leaves out, its limitations, and what it "
+        "does not establish are the texts of this tool."
     ),
     RULE_MEMBERS: "Each line has exactly the members of its record.",
     RULE_SEQUENCE: (
@@ -238,7 +242,7 @@ RULES: Final[Mapping[str, str]] = {
     ),
     RULE_FORM: (
         "A code, a name of a subject, and a commit identifier each have their "
-        "form. No member holds any other text."
+        "form. No member of an event holds any other text."
     ),
     RULE_REQUIRED: (
         "An event of a kind that needs a code states one, and an event of a kind "
@@ -250,8 +254,9 @@ RULES: Final[Mapping[str, str]] = {
         "A log with no end line is open, and the check refuses it."
     ),
     RULE_COUNTS: (
-        "The end line states the number of events and the number of each kind, "
-        "as the log holds them."
+        "The end line states the number of events, the number of each kind, and "
+        "each event that was recorded at an earlier instant than the event "
+        "before it, as this tool computes them from the events."
     ),
 }
 
@@ -427,6 +432,16 @@ def _event_fault(event: Mapping[str, Any]) -> tuple[str, str] | None:
     return None
 
 
+def _counts(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """What an end line states about the events of a log."""
+    kinds = [event["kind"] for event in events]
+    return {
+        "events": len(events),
+        "byKind": {kind: kinds.count(kind) for kind in KINDS},
+        "instantsOutOfOrder": _out_of_order(events),
+    }
+
+
 def _out_of_order(events: Sequence[Mapping[str, Any]]) -> list[int]:
     """Each event that was recorded at an earlier instant than the one before it."""
     found = []
@@ -480,6 +495,13 @@ def read_log(text: str, *, allow_open: bool = False) -> Log:
         if not isinstance(value, str) or _IDENTIFIER.fullmatch(value) is None:
             raise LogRefused(RULE_HEADER, f"the header states no usable {name}")
     _recorded(header["openedAt"], "openedAt")
+    fixed = _fixed_header()
+    if log_text([{name: header[name] for name in fixed}]) != log_text([fixed]):
+        raise LogRefused(
+            RULE_HEADER,
+            "the clocks, the kinds, or the statements of the header are not the "
+            "texts of this tool",
+        )
     end: dict[str, Any] | None = None
     events = lines[1:]
     if events and events[-1].get("record") == "end":
@@ -504,15 +526,10 @@ def read_log(text: str, *, allow_open: bool = False) -> Log:
         if set(end) != _END_MEMBERS:
             raise LogRefused(RULE_MEMBERS, "the end line does not have its members")
         _recorded(end["closedAt"], "closedAt")
-        kinds = [event["kind"] for event in events]
-        counts = end["byKind"]
-        if (
-            type(end["events"]) is not int
-            or end["events"] != len(events)
-            or counts != {kind: kinds.count(kind) for kind in KINDS}
-            or any(type(count) is not int for count in counts.values())
-            or end["instantsOutOfOrder"] != _out_of_order(events)
-        ):
+        # The counts are compared as text, so a count that is true or 8.0 is
+        # not read as 1 or 8.
+        counted = _counts(events)
+        if log_text([{name: end[name] for name in counted}]) != log_text([counted]):
             raise LogRefused(
                 RULE_COUNTS,
                 "the end line does not state the events that the log holds",
@@ -550,10 +567,13 @@ def _stored(path: Path) -> Log:
 
 
 def _append(path: Path, line: Mapping[str, Any]) -> None:
-    with path.open("ab") as handle:
-        handle.write(log_text([line]).encode("utf-8"))
-        handle.flush()
-        os.fsync(handle.fileno())
+    try:
+        with path.open("ab") as handle:
+            handle.write(log_text([line]).encode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as fault:
+        raise EventRefused(RULE_UNREADABLE, "the file cannot be written to") from fault
 
 
 def open_log(
@@ -583,6 +603,25 @@ def open_log(
         "experimentId": experiment_id,
         "runId": run_id,
         "openedAt": format_instant(now()),
+        **_fixed_header(),
+    }
+    try:
+        with path.open("xb") as handle:
+            handle.write(log_text([header]).encode("utf-8"))
+    except FileExistsError as fault:
+        raise EventRefused(
+            RULE_HEADER,
+            "the file exists. A log is one run, and the tool does not write into "
+            "an earlier one",
+        ) from fault
+    except OSError as fault:
+        raise EventRefused(RULE_UNREADABLE, "the file cannot be written") from fault
+    return header
+
+
+def _fixed_header() -> dict[str, Any]:
+    """The members of a header that are texts of this tool."""
+    return {
         "clock": {
             "recordedAt": {
                 "source": "the wall clock of the host that ran the record command",
@@ -601,18 +640,6 @@ def open_log(
         "limitations": list(LIMITATIONS),
         "doesNotEstablish": list(DOES_NOT_ESTABLISH),
     }
-    try:
-        with path.open("xb") as handle:
-            handle.write(log_text([header]).encode("utf-8"))
-    except FileExistsError as fault:
-        raise EventRefused(
-            RULE_HEADER,
-            "the file exists. A log is one run, and the tool does not write into "
-            "an earlier one",
-        ) from fault
-    except OSError as fault:
-        raise EventRefused(RULE_UNREADABLE, "the file cannot be written") from fault
-    return header
 
 
 def _occurred(stated: str | None, clock: str | None) -> dict[str, Any] | None:
@@ -622,7 +649,7 @@ def _occurred(stated: str | None, clock: str | None) -> dict[str, Any] | None:
         raise EventRefused(
             RULE_INSTANT, "an occurredAt states an instant and the clock that it is on"
         )
-    if clock not in CLOCKS:
+    if not isinstance(clock, str) or clock not in CLOCKS:
         raise EventRefused(RULE_VOCABULARY, "the clock is not a registered clock")
     field = cluster_instant(stated)
     if field.get("state") != "reported":
@@ -637,7 +664,9 @@ def _occurred(stated: str | None, clock: str | None) -> dict[str, Any] | None:
 def _subject(stated: str | None) -> dict[str, str] | None:
     if stated is None:
         return None
-    kind, separator, name = stated.partition("/")
+    kind, separator, name = (
+        stated.partition("/") if isinstance(stated, str) else ("", "", "")
+    )
     if not separator or kind not in SUBJECT_KINDS:
         raise EventRefused(
             RULE_VOCABULARY,
@@ -660,8 +689,9 @@ def record(
 ) -> dict[str, Any]:
     """Append one event to an open log, and return it.
 
-    The instant ``recordedAt`` is taken here, after the log was read and before
-    the line is written. The caller does not state it.
+    The instant ``recordedAt`` is taken here from ``now``, after the log was
+    read and before the line is written. The command passes no ``now``, so its
+    instant is the clock of the host.
 
     Raises:
         EventRefused: the file is not an open log, the log is full, or the
@@ -698,13 +728,10 @@ def close_log(path: Path, *, now: Callable[[], datetime] = _now) -> dict[str, An
         EventRefused: the file is not an open log.
     """
     log = _stored(path)
-    kinds = [event["kind"] for event in log.events]
     end = {
         "record": "end",
-        "events": len(log.events),
-        "byKind": {kind: kinds.count(kind) for kind in KINDS},
+        **_counts(log.events),
         "closedAt": format_instant(now()),
-        "instantsOutOfOrder": _out_of_order(log.events),
     }
     _append(path, end)
     return end

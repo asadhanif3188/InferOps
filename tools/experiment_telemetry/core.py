@@ -1,8 +1,8 @@
 """The telemetry readings of one experiment run, as two streams.
 
-A collector asks the telemetry collector of the release a registered set of
-instant queries, a bounded number of times, and writes what each read returned
-into one directory. This module reads that directory. It contacts no cluster and
+A collector script asks the telemetry collector of the release a registered
+set of instant queries, a bounded number of times, and writes what each read
+returned into one directory. This module reads that directory. It contacts no cluster and
 no collector. It returns two streams, and each stream holds one reading for each
 query of each sample:
 
@@ -41,11 +41,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from decimal import ROUND_FLOOR, Decimal, InvalidOperation
+from decimal import ROUND_FLOOR, Decimal, InvalidOperation, localcontext
 from pathlib import Path
 from typing import Any, Final
 from urllib.parse import quote
@@ -126,7 +127,7 @@ __all__ = [
 #: The schema name of each line of a stream.
 STREAM_SCHEMA: Final = "inferops.io/experiment-telemetry/v1alpha1"
 
-#: The schema name that the collector writes into the header of a collection.
+#: The schema name that the collector script writes into the header of a collection.
 COLLECTION_SCHEMA: Final = "inferops.io/experiment-telemetry-collection/v1alpha1"
 
 TELEMETRY: Final = "telemetry"
@@ -138,7 +139,7 @@ STREAMS: Final = (TELEMETRY, RESOURCES)
 #: The file of each stream.
 STREAM_FILES: Final[Mapping[str, str]] = {name: f"{name}.jsonl" for name in STREAMS}
 
-#: The files of a collection. The collector restates each name.
+#: The files of a collection. The collector script restates each name.
 HEADER_FILE: Final = "collection.json"
 END_FILE: Final = "collection.end"
 SAMPLE_STEM: Final = "sample-{index:04d}"
@@ -146,9 +147,9 @@ META_SUFFIX: Final = ".meta"
 COLLECTOR_SUFFIX: Final = ".collector.json"
 QUERY_SUFFIX: Final = ".query.{name}.json"
 
-#: The bounds of one collection. The collector restates the first three. The
-#: fourth is the largest request timeout that a header may state, and the
-#: collector states one value inside it.
+#: The bounds of one collection. The collector script restates the first three.
+#: The fourth is the largest request timeout that a header may state, and the
+#: script states one value inside it.
 MAX_SAMPLES: Final = 720
 MIN_INTERVAL_SECONDS: Final = 5
 MAX_INTERVAL_SECONDS: Final = 120
@@ -206,7 +207,8 @@ class Query:
         }
 
 
-#: The name of the registered set. A change to a query needs another name.
+#: The name of the registered set. A change to a query changes the digest of the
+#: set, and it takes another name: a test pins the digest of this name.
 QUERY_SET: Final = "experiment-run-queries-r1"
 
 #: Every query that a collection can hold, in the order of the reads.
@@ -327,16 +329,20 @@ LIMITATIONS: Final[tuple[str, ...]] = (
     "whose start is before the finish of the reading before it.",
     "A value is the answer of the telemetry collector to one instant query. It "
     "is not a reading of the process that published the metric. The collector "
-    "answers from the last sample that it scraped. That sample can be older "
-    "than the read by the scrape interval, and by the lookback of the collector "
-    "when a scrape did not store a sample.",
+    "answers from the last sample that it stored. That sample can be older "
+    "than the read by the scrape interval. When the collector stored no newer "
+    "sample and no mark that the series ended, the sample can be older by up "
+    "to the lookback of the collector, which the chart leaves at the default "
+    "of the collector. No run observed either.",
     "The instant evaluatedAt and the value of a query of the kind instant are "
     "on the clock of the telemetry collector, to one millisecond. They are not "
     "on the clock of the collecting host.",
     "The difference between the two clocks is not measured. The end line states "
     "two bounds that the evaluation instants give. The bounds hold when the "
     "collector took each evaluation instant while its read was open, and when "
-    "the difference did not change during the collection.",
+    "the difference did not change during the collection. Each instant is cut "
+    "to one millisecond, so each bound is to about one millisecond. No run "
+    "observed when a collector takes the instant.",
     "A reading with the result no-series states that the collector held no "
     "sample for the query at the evaluation instant. It does not state why. A "
     "metric that no process publishes, a target that the collector did not "
@@ -349,9 +355,11 @@ LIMITATIONS: Final[tuple[str, ...]] = (
     "A state that began and ended between two scrapes is in no sample of the "
     "collector. A state that began and ended between two readings is in no "
     "reading.",
-    "The timeout of a read is the timeout of the one request that kubectl makes "
-    "for it. A query that the collector refused and a query that the API "
-    "server could not pass to the collector are both unanswered.",
+    "Each kubectl call of a read states a request timeout, and kubectl applies "
+    "it to each request that the call makes. The call of the Service read can "
+    "make more than one request. No run observed how long a read takes. A "
+    "query that the collector refused and a query that the API server could "
+    "not pass to the collector are both unanswered.",
     "A read reaches the collector through the Service proxy of the API server. "
     "The network policy of the chart selects the pod of the collector and "
     "admits no connection to its port. Whether a cluster applies that policy to "
@@ -360,8 +368,16 @@ LIMITATIONS: Final[tuple[str, ...]] = (
     "The series of the collector are in a volume that goes when its pod goes. A "
     "stream holds only what was read while the collection ran.",
     "The resources stream reads what the API process publishes about itself. No "
-    "query reads the serving runtime, a container, or a node, because the "
-    "release has no source for them.",
+    "query reads the resource use of the serving runtime, of a container, or "
+    "of a node, because the release has no source for them.",
+    "The chart renders the scrape job of the serving runtime only under the "
+    "profile real. Under another profile the three queries of the serving "
+    "runtime tier have no series.",
+    "A value of a registered label is free within the form of a label value. "
+    "The form is not a check for a secret, and it does not show that the value "
+    "is a registered outcome or a canonical error code.",
+    "A value of the kind number is stored as a binary number of 64 bits. A "
+    "counter above 9007199254740992 loses its last digits.",
     f"A reading whose answer holds more than {MAX_SERIES} series states no series.",
     "The collection names the commit of the working tree that ran the collector "
     "script, and the SHA-256 of the script and of its library. It does not "
@@ -404,15 +420,20 @@ RULE_COUNTS: Final = "telemetry-counts-differ"
 #: Each rule that :func:`read_stream` holds a stream to, with its statement.
 RULES: Final[Mapping[str, str]] = {
     RULE_UNREADABLE: (
-        "A stream is UTF-8 text. Each line is one JSON object with no member "
-        "stated twice."
+        "A stream is UTF-8 text, and each line ends with a line feed. Each line "
+        "is one JSON object with no member stated twice."
     ),
     RULE_HEADER: (
         "The first line is the header. It states the stream schema, one of the "
         "two stream names, an experiment identifier, and a run identifier, each "
-        "in its form."
+        "in its form. Its collection has exactly the members of a collection, "
+        "each in its form. Its clocks, its bounds, what it leaves out, its "
+        "limitations, and what it does not establish are the texts of this tool."
     ),
-    RULE_MEMBERS: "Each line has exactly the members of its record.",
+    RULE_MEMBERS: (
+        "Each line has exactly the members of its record, and each read has "
+        "exactly its three members."
+    ),
     RULE_QUERIES: (
         "The header states the registered queries of its stream, as this tool "
         "registers them, and it names the registered set."
@@ -428,13 +449,19 @@ RULES: Final[Mapping[str, str]] = {
     ),
     RULE_INSTANT: (
         "Each instant of a read is absent or is UTC to one millisecond in the "
-        "one registered form, and a read does not finish before it starts."
+        "one registered form. A read states both instants or neither, and it "
+        "does not finish before it starts."
     ),
     RULE_READING: (
-        "Each reading states its faults as a list of text. It states a result "
-        "only when its read answered. A reading with the result series states at "
-        "least one series, a reading with the result no-series states none, and "
-        "each value is a field."
+        "Each fault of a reading is a text of this tool. A reading states a "
+        "result, a series, and an evaluation instant only when its read "
+        "answered. A reading with the result series states at least one series "
+        f"and at most {MAX_SERIES}, and a reading with the result no-series states "
+        "none. Each series has its labels and one value. Each value and each "
+        "evaluation instant is a field with the form of its kind. A read that "
+        "was not taken states no instant, each other read except an unreadable "
+        "one states its instants, and an absent read states an absent "
+        "collector."
     ),
     RULE_LABEL: (
         "Each series states only labels that its query registers, each value of "
@@ -444,7 +471,9 @@ RULES: Final[Mapping[str, str]] = {
     RULE_END: "The last line is the end line, and no line follows it.",
     RULE_COUNTS: (
         "The end line states the number of readings, the number in each read "
-        "state, and the number with each result, as the stream holds them."
+        "state, the number with each result, the two bounds of the clock "
+        "difference, and each reading that starts before the one before it "
+        "finished, as this tool computes them from the readings."
     ),
 }
 
@@ -529,7 +558,9 @@ _LABEL_VALUE: Final = _IDENTIFIER
 
 _MAX_COUNT: Final = 999_999_999
 _EPOCH: Final = datetime(1970, 1, 1, tzinfo=UTC)
-_LAST_SECOND: Final = Decimal(253_402_300_799)
+_LAST_MILLISECOND: Final = 253_402_300_799_999
+#: The most digits of a number that is read as an instant.
+_MAX_DIGITS: Final = 40
 _FAULT_LIMIT: Final = 10
 
 
@@ -675,12 +706,20 @@ def _load(path: Path) -> tuple[bool, Any]:
     """Whether a file holds one JSON value, and that value.
 
     A number with a fraction is read as a decimal, so an instant that the
-    collector states to one millisecond keeps each digit.
+    collector states to one millisecond keeps each digit. A file that states a
+    member twice, and a file with a number that the decimal reader refuses, do
+    not hold one JSON value.
     """
     try:
         text = path.read_bytes().decode("utf-8")
-        return True, json.loads(text, parse_float=Decimal)
-    except (OSError, UnicodeDecodeError, ValueError, RecursionError):
+        return True, json.loads(text, parse_float=Decimal, object_pairs_hook=_no_repeat)
+    except (
+        OSError,
+        UnicodeDecodeError,
+        ValueError,
+        RecursionError,
+        ArithmeticError,
+    ):
         return False, None
 
 
@@ -921,9 +960,19 @@ def _instant(seconds: Decimal | None) -> dict[str, Any]:
 
     A finer fraction is cut. It is not rounded.
     """
-    if seconds is None or not 0 <= seconds <= _LAST_SECOND:
+    if (
+        seconds is None
+        or seconds < 0
+        or seconds.adjusted() > 12
+        or len(seconds.as_tuple().digits) > _MAX_DIGITS
+    ):
         return {"state": MALFORMED}
-    milliseconds = int((seconds * 1000).to_integral_value(rounding=ROUND_FLOOR))
+    # The product is exact: the context holds more digits than the number has.
+    with localcontext() as context:
+        context.prec = _MAX_DIGITS + 8
+        milliseconds = int((seconds * 1000).to_integral_value(rounding=ROUND_FLOOR))
+    if not 0 <= milliseconds <= _LAST_MILLISECOND:
+        return {"state": MALFORMED}
     return {
         "state": REPORTED,
         "value": format_instant(_EPOCH + timedelta(milliseconds=milliseconds)),
@@ -945,7 +994,9 @@ def _value(kind: str, stated: object) -> dict[str, Any]:
             return {"state": MALFORMED}
         return {"state": REPORTED, "value": int(number)}
     as_float = float(number)
-    if as_float in (float("inf"), float("-inf")):
+    # A number that a binary number of 64 bits cannot hold is not a value: an
+    # overflow is not an infinity, and an underflow is not zero.
+    if not math.isfinite(as_float) or (as_float == 0.0 and number != 0):
         return {"state": MALFORMED}
     return {"state": REPORTED, "value": as_float}
 
@@ -1142,6 +1193,13 @@ def _stream_header(stream: str, collection: Collection) -> dict[str, Any]:
             "complete": collection.complete,
         },
         "queries": [query.as_document() for query in queries_of(stream)],
+        **_fixed_header(),
+    }
+
+
+def _fixed_header() -> dict[str, Any]:
+    """The members of a header that are texts and bounds of this tool."""
+    return {
         "clock": {
             "read": {
                 "members": ["read.startedAt", "read.finishedAt"],
@@ -1246,23 +1304,133 @@ def _stored_instant(value: object, where: str) -> datetime | None:
     return instant
 
 
-def _is_field(value: object) -> bool:
-    """Whether a value is a field: a state, and a value only when reported."""
+def _is_field(value: object, kind: str) -> bool:
+    """Whether a value is a field of one kind: a state, and a value in its form.
+
+    Only a reported field carries a value. A count is a whole number, a number
+    is a finite number with a fraction part in its text, and an instant is UTC
+    to one millisecond with that resolution.
+    """
     if not isinstance(value, dict):
         return False
     state = value.get("state")
     if not isinstance(state, str) or state not in FIELD_STATES:
         return False
-    return ("value" in value) == (state == REPORTED)
+    if state != REPORTED:
+        return set(value) == {"state"}
+    stated = value.get("value")
+    if kind == KIND_INSTANT:
+        return (
+            set(value) == {"state", "value", "resolution"}
+            and value["resolution"] == "millisecond"
+            and collector_instant(stated) is not None
+        )
+    if set(value) != {"state", "value"}:
+        return False
+    if kind == KIND_COUNT:
+        return _is_count(stated)
+    return type(stated) is float and math.isfinite(stated)
 
 
-def _reading_fault(reading: Mapping[str, Any]) -> str | None:
+#: Each fault that a reading can state, as this module writes it.
+_FAULTS: Final = frozenset(
+    {
+        "the sample states no usable instants for this read",
+        "the sample does not state whether this read answered",
+        "the sample states an answer, and the directory holds no file of it",
+        "the answer is not one JSON object",
+        "the answer does not state success and a result",
+        "the answer is not an instant vector",
+        f"the answer holds more than {MAX_SERIES} series, and the reading states none",
+        "a series does not hold its labels and one sample",
+        "a series states a label that the query does not register",
+        "a value of a label does not have the form of a label value",
+        "two series state the same labels",
+        "the series do not state one usable evaluation instant",
+    }
+)
+_COUNTED_FAULT: Final = re.compile(
+    r"[1-9][0-9]{0,8} (?:value\(s\) do not have the form of the kind "
+    r"(?:count|number|instant)|more fault\(s\) are not listed)"
+)
+
+
+def _is_fault(text: object) -> bool:
+    return isinstance(text, str) and (
+        text in _FAULTS
+        or (text.isascii() and _COUNTED_FAULT.fullmatch(text) is not None)
+    )
+
+
+def _collection_fault(collection: object) -> str | None:
+    """Why the collection of a header does not have its form, or None."""
+    members = (_HEADER_MEMBERS - {"schema", "experimentId", "runId"}) | {
+        "completedSamples",
+        "complete",
+    }
+    if not isinstance(collection, dict) or set(collection) != members:
+        return "the collection does not have its members"
+    forms = {
+        "provider": _LABEL,
+        "namespace": _LABEL,
+        "release": _LABEL,
+        "collectorService": _LABEL,
+        "collectorPort": _LABEL,
+        "executingCommit": _COMMIT_FORM,
+        "procedureSha256": _SHA256,
+        "librarySha256": _SHA256,
+    }
+    for name, form in forms.items():
+        value = collection[name]
+        if not isinstance(value, str) or form.fullmatch(value) is None:
+            return f"the collection states no usable {name}"
+    bounds = {
+        "requestedSamples": (1, MAX_SAMPLES),
+        "intervalSeconds": (MIN_INTERVAL_SECONDS, MAX_INTERVAL_SECONDS),
+        "requestTimeoutSeconds": (1, MAX_REQUEST_TIMEOUT_SECONDS),
+    }
+    for name, (minimum, maximum) in bounds.items():
+        value = collection[name]
+        if not _is_count(value) or not minimum <= value <= maximum:
+            return f"the collection states no usable {name}"
+    version = collection["serverVersion"]
+    if (
+        not isinstance(version, dict)
+        or version.get("state") not in FIELD_STATES
+        or set(version) != ({"state", "value"} if "value" in version else {"state"})
+        or ("value" in version) != (version["state"] == REPORTED)
+        or (
+            "value" in version
+            and (
+                not isinstance(version["value"], str)
+                or _VERSION.fullmatch(version["value"]) is None
+            )
+        )
+    ):
+        return "the collection states no usable serverVersion"
+    if not _is_field(collection["completedSamples"], KIND_COUNT):
+        return "the collection states no usable completedSamples"
+    if type(collection["complete"]) is not bool:
+        return "the collection does not state complete as true or false"
+    return None
+
+
+def _reading_fault(query: Query, reading: Mapping[str, Any]) -> str | None:
     """Why a reading does not have the form of its read state, or None."""
     faults = reading["faults"]
-    if not isinstance(faults, list) or not all(isinstance(f, str) for f in faults):
-        return "faults is not a list of text"
-    state, result = reading["read"]["state"], reading["result"]
-    series, evaluated = reading["series"], reading["evaluatedAt"]
+    if not isinstance(faults, list) or not all(_is_fault(fault) for fault in faults):
+        return "a fault is not a text of this tool"
+    read = reading["read"]
+    state, collector = read["state"], reading["collector"]
+    stated = read["startedAt"] is not None
+    if state == NOT_TAKEN and (stated or collector != COLLECTOR_NOT_READ):
+        return "a read that was not taken states an instant or a read collector"
+    if state in (ANSWERED, ABSENT, UNANSWERED) and not stated:
+        return f"the read is {state}, and it states no instant"
+    if state == ABSENT and collector != COLLECTOR_ABSENT:
+        return "the read is absent, and the collector is not"
+    result, series = reading["result"], reading["series"]
+    evaluated = reading["evaluatedAt"]
     if result is None:
         if series is not None or evaluated is not None:
             return "a reading with no result states a series or an evaluation instant"
@@ -1275,13 +1443,16 @@ def _reading_fault(reading: Mapping[str, Any]) -> str | None:
         return "series is not a list of objects"
     if (result == SERIES) != bool(series):
         return "the result does not agree with the number of series"
-    if not _is_field(evaluated):
-        return "evaluatedAt is not a field"
+    if not _is_field(evaluated, KIND_INSTANT):
+        return "evaluatedAt is not a field of the kind instant"
     if len(series) > MAX_SERIES:
         return f"the reading states more than {MAX_SERIES} series"
     for entry in series:
-        if set(entry) != _SERIES_MEMBERS or not _is_field(entry["value"]):
-            return "a series does not state its labels and a value that is a field"
+        if set(entry) != _SERIES_MEMBERS or not _is_field(entry["value"], query.kind):
+            return (
+                "a series does not state its labels and a value that is a field "
+                f"of the kind {query.kind}"
+            )
     return None
 
 
@@ -1307,17 +1478,22 @@ def _label_fault(query: Query, reading: Mapping[str, Any]) -> str | None:
 def read_stream(text: str) -> Stream:
     """A stored stream, held to its form.
 
-    This reads the form of a stream: the header, the registered queries, the
-    sequence, the members of each line, the states, the instants of each read,
-    the labels of each series, and the counts of the end line. It does not show
+    This reads the form of a stream: the header and its collection, the texts
+    of this tool that a header repeats, the registered queries, the sequence,
+    the members of each line, the states, the instants of each read, the faults,
+    the labels and the value of each series, and the end line. It does not show
     that a stream is what a collection gives, and it does not show that a value
     is what a collector answered.
 
     Raises:
         StreamRefused: a rule of :data:`RULES` is not held.
     """
+    if text and not text.endswith("\n"):
+        raise StreamRefused(
+            RULE_UNREADABLE, "the last line does not end with a line feed"
+        )
     lines: list[dict[str, Any]] = []
-    for number, line in enumerate(text.splitlines(), start=1):
+    for number, line in enumerate(text.split("\n")[:-1], start=1):
         try:
             document = json.loads(line, object_pairs_hook=_no_repeat)
         except (ValueError, RecursionError) as fault:
@@ -1335,7 +1511,11 @@ def read_stream(text: str) -> Stream:
     if set(header) != _STREAM_HEADER_MEMBERS:
         raise StreamRefused(RULE_MEMBERS, "the header does not have its members")
     stream = header["stream"]
-    if header["schema"] != STREAM_SCHEMA or stream not in STREAMS:
+    if (
+        header["schema"] != STREAM_SCHEMA
+        or not isinstance(stream, str)
+        or stream not in STREAMS
+    ):
         raise StreamRefused(
             RULE_HEADER, "the header states another schema or an unregistered stream"
         )
@@ -1355,6 +1535,16 @@ def read_stream(text: str) -> Stream:
             RULE_QUERIES,
             "the header does not state the registered queries of its stream and "
             f"the set {QUERY_SET}",
+        )
+    reason = _collection_fault(collection)
+    if reason is not None:
+        raise StreamRefused(RULE_HEADER, reason)
+    fixed = _fixed_header()
+    if stream_text([{name: header[name] for name in fixed}]) != stream_text([fixed]):
+        raise StreamRefused(
+            RULE_HEADER,
+            "the clocks, the bounds, or the statements of the header are not the "
+            "texts of this tool",
         )
     if len(lines) < 2 or lines[-1].get("record") != "end":
         raise StreamRefused(RULE_END, "the last line is not an end line")
@@ -1386,9 +1576,12 @@ def read_stream(text: str) -> Stream:
             raise StreamRefused(
                 RULE_MEMBERS, f"{where}: read does not have its members"
             )
-        if read["state"] not in READ_STATES:
+        if not isinstance(read["state"], str) or read["state"] not in READ_STATES:
             raise StreamRefused(RULE_READ, f"{where} states an unregistered read state")
-        if reading["collector"] not in COLLECTOR_STATES:
+        if (
+            not isinstance(reading["collector"], str)
+            or reading["collector"] not in COLLECTOR_STATES
+        ):
             raise StreamRefused(
                 RULE_READ, f"{where} states an unregistered state of the collector"
             )
@@ -1398,7 +1591,7 @@ def read_stream(text: str) -> Stream:
             raise StreamRefused(RULE_INSTANT, f"{where} states one instant of two")
         if started is not None and finished is not None and finished < started:
             raise StreamRefused(RULE_INSTANT, f"{where} finishes before it starts")
-        reason = _reading_fault(reading)
+        reason = _reading_fault(query, reading)
         if reason is not None:
             raise StreamRefused(RULE_READING, f"{where}: {reason}")
         reason = _label_fault(query, reading)
@@ -1408,18 +1601,11 @@ def read_stream(text: str) -> Stream:
         raise StreamRefused(
             RULE_SEQUENCE, "the last sample does not hold each query of the stream"
         )
-    states = [reading["read"]["state"] for reading in readings]
-    results = [reading["result"] for reading in readings]
-    if (
-        type(end["readings"]) is not int
-        or end["readings"] != len(readings)
-        or end["byReadState"] != {state: states.count(state) for state in READ_STATES}
-        or end["byResult"] != {result: results.count(result) for result in RESULTS}
-        or any(type(count) is not int for count in end["byReadState"].values())
-        or any(type(count) is not int for count in end["byResult"].values())
-    ):
+    # The end line is compared as text, so a count that is true or 16.0 is not
+    # read as 1 or 16.
+    if stream_text([end]) != stream_text([_end(readings)]):
         raise StreamRefused(
             RULE_COUNTS,
-            "the end line does not state the readings that the stream holds",
+            "the end line does not state what this tool computes from the readings",
         )
     return Stream(header, tuple(readings), end)
