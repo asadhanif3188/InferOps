@@ -91,3 +91,9 @@ tests/domain/fixtures/experiment-profiles/** text eol=lf
 # the driver has the bytes that the transcript names.
 docs/proof/environment/v2-s4-005-pr2-* text eol=lf
 docs/proof/environment/v2-s4-005-pr2-*/** text eol=lf
+
+# The six cases of the reliability analysis are compared byte for byte with what
+# the suite builds, and each tool that writes an input writes LF on every
+# platform. Pinned so a Windows checkout cannot turn a case into a CRLF copy that
+# no build matches.
+tests/domain/fixtures/reliability-analysis/** text eol=lf

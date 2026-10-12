@@ -457,6 +457,10 @@ the others.
 - **That a run executed.** A directory that conforms holds files with their stated
   digests. It does not show where a file came from.
 - **That a derived file follows from the raw files.** No analysis reads a run directory.
+  (Since `V2-S5-004-PR1` [the reliability analysis](reliability-analysis.md) prints a document
+  from files that it is given. A person can store it under the role `analysis`,
+  and no such file exists. The tool does not read a run directory or a manifest,
+  and this check does not compute its document again.)
 - **That a raw file is complete.** No rule requires a role, and no rule compares the
   times of two files.
 - **That the release, the binding, the runtime image, and the model of the manifest are
@@ -506,6 +510,8 @@ for this change, and what two independent reviews of its first commit found.
   runner in this repository produces this layout. The E01 runner writes the earlier
   shape, as [the ExperimentRun contract](../contracts/experiment-run.md) states.
 - **Nothing reads a run directory for analysis.** No tool computes a result from one.
+  (Since `V2-S5-004-PR1` [the reliability analysis](reliability-analysis.md) computes figures
+  from evidence files that a command names. It decides no result.)
 - **It defines no file form but the caller record's.** The roles name what a file holds.
   The tools of this repository that read a cluster write their own records, and none
   writes a file of this layout.

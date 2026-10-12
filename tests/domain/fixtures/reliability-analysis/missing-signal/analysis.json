@@ -1,0 +1,397 @@
+{
+  "aborts": [],
+  "caller": {
+    "failureEpisodes": {
+      "callerFailureEpisodeMs": 20900,
+      "count": 2,
+      "episodes": [
+        {
+          "end": {
+            "finishedAt": "2026-10-12T08:00:42.000Z",
+            "sequence": 27,
+            "tied": false
+          },
+          "failedRequests": 2,
+          "index": 1,
+          "ms": 2300,
+          "open": false,
+          "start": {
+            "finishedAt": "2026-10-12T08:00:39.700Z",
+            "sequence": 28,
+            "tied": false
+          },
+          "successAfterWindow": null
+        },
+        {
+          "end": {
+            "finishedAt": "2026-10-12T08:01:03.000Z",
+            "sequence": 61,
+            "tied": false
+          },
+          "failedRequests": 31,
+          "index": 2,
+          "ms": 20900,
+          "open": false,
+          "start": {
+            "finishedAt": "2026-10-12T08:00:42.100Z",
+            "sequence": 30,
+            "tied": false
+          },
+          "successAfterWindow": null
+        }
+      ],
+      "open": 0,
+      "reason": null,
+      "startsBeforeWindow": false
+    },
+    "firstImpact": {
+      "finishedAt": "2026-10-12T08:00:39.700Z",
+      "outcome": "http-error",
+      "searchedFrom": "2026-10-12T08:00:39.000Z",
+      "sequence": 28,
+      "startedAt": "2026-10-12T08:00:39.500Z",
+      "state": "observed"
+    },
+    "maxSuccessGap": {
+      "from": {
+        "finishedAt": "2026-10-12T08:00:42.000Z",
+        "sequence": 27
+      },
+      "ms": 21000,
+      "reason": null,
+      "state": "computed",
+      "successes": 86,
+      "to": {
+        "finishedAt": "2026-10-12T08:01:03.000Z",
+        "sequence": 61
+      }
+    },
+    "order": {
+      "completionsSharingAnInstant": 0,
+      "rule": "Completed requests are ordered by finishedAt. Two requests with one finishedAt are ordered by the position of their lines in the record."
+    },
+    "reason": null,
+    "record": {
+      "coversWindow": true,
+      "endState": "duration",
+      "finishedAt": "2026-10-12T08:02:30.000Z",
+      "mode": "in-cluster",
+      "requests": 119,
+      "startedAt": "2026-10-12T08:00:00.000Z"
+    },
+    "requests": {
+      "completed": 119,
+      "failed": 33,
+      "largestTimeWithNoCompletionMs": 3000,
+      "outsideWindow": 0,
+      "successful": 86
+    },
+    "state": "computed"
+  },
+  "clocks": {
+    "caller": "the clock of the pod of the reliability runner",
+    "events": "the clock of the host that recorded each event",
+    "readings": "the clock of the host that ran the timeline collector",
+    "skew": "not-measured"
+  },
+  "doesNotEstablish": [
+    "The result state of a run. No figure here is compared with a bound.",
+    "An availability percentage, an error rate, a percentile, a confidence interval, or a statistical significance.",
+    "A production SLO. The stabilization rule is a definition for an experiment.",
+    "The cause of a failure, of a gap, or of a recovery.",
+    "An order of two instants from two clocks that are less than one second apart.",
+    "That a signal detects a problem in another run, on another topology, or in another environment.",
+    "That the inputs are the evidence of a real run. The analysis reads the files that it is given."
+  ],
+  "expected": {
+    "desiredRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "readyReplicas": {
+      "platform-api": 2,
+      "serving-runtime": 2
+    },
+    "runtimeReadyEndpoints": 2
+  },
+  "experimentId": "example-experiment",
+  "fault": {
+    "code": "delete-runtime-pod",
+    "notAfter": "2026-10-12T08:00:39.400Z",
+    "notBefore": "2026-10-12T08:00:39.000Z",
+    "state": "stated"
+  },
+  "inputs": {
+    "argo": "not-given",
+    "caller": "read",
+    "deployments": "read",
+    "endpoints": "read",
+    "operator-events": "read",
+    "pods": "not-given"
+  },
+  "limitations": [
+    "A caller instant is on the clock of the runner's pod. A reading is on the clock of the collecting host. An event is on the clock of the recording host. The difference between the clocks is not measured. Each figure that compares a caller instant with a reading or an event holds that difference.",
+    "A request is counted at its completion. A request that fails after a long time is counted at the end of that time. The first caller impact is the completion of the first failed request, and the request started earlier.",
+    "A failure episode ends at the first successful completion after it, from any worker. With two workers, a request that was sent before the failure can end the episode.",
+    "A stream states a value at a read and states nothing between two reads. The inner figure of an interval holds no change that no read gave. The outer figure holds each read on both sides. Neither is the exact time.",
+    "The stabilization rule needs one reading of each condition inside the span, and it sets no limit for the time between two readings. A span can hold a long time with no reading. The document states the longest such time for each condition.",
+    "With no stated fault the search for the first caller impact and for the stabilized recovery starts at the start of the window. A recovery that is found then can be a state that no fault disturbed.",
+    "A reading whose value was not read is not healthy and is not a problem. A Deployment count that the API omitted is such a value, and the API omits a count of zero. So a signal of a Deployment count has no value in a reading in which the count is zero.",
+    "The analysis reads the instant at which the tool recorded an event. It does not read the second instant that an event can state for another clock.",
+    "The declaration is an input. The analysis does not hold a threshold, an expected count, or a window to a frozen record of an experiment.",
+    "The document does not state the digest of an input, and it does not state the revision of the code that computed it.",
+    "No signal is read from a telemetry stream."
+  ],
+  "manualActions": [],
+  "runId": "missing-signal-1",
+  "schema": "inferops.io/reliability-analysis/v1alpha1",
+  "signals": [
+    {
+      "byState": {
+        "healthy": 12,
+        "not-observed": 1,
+        "problem": 2
+      },
+      "changed": true,
+      "declared": {
+        "problemBelow": 2,
+        "tier": "serving-runtime"
+      },
+      "detectionLag": {
+        "firstIndication": {
+          "finishedAt": "2026-10-12T08:00:40.200Z",
+          "index": 5,
+          "startedAt": "2026-10-12T08:00:40.000Z"
+        },
+        "lagNotAboveMs": 500,
+        "lagNotBelowMs": -9700,
+        "notAfter": "2026-10-12T08:00:40.200Z",
+        "notBefore": "2026-10-12T08:00:30.000Z",
+        "order": "not-established",
+        "reason": null,
+        "state": "computed"
+      },
+      "falseHealthy": {
+        "callerMs": 23200,
+        "innerMs": 0,
+        "outerMs": 3500,
+        "reason": null,
+        "signalNotObservedMs": 19700,
+        "state": "computed"
+      },
+      "falseUnavailable": {
+        "callerMs": 123500,
+        "innerMs": 0,
+        "outerMs": 16700,
+        "reason": null,
+        "signalNotObservedMs": 9800,
+        "state": "computed"
+      },
+      "id": "runtime-ready-endpoints",
+      "readings": {
+        "inWindow": 15,
+        "largestTimeBetweenReadsMs": 19800,
+        "outsideWindow": 0,
+        "withValue": 14,
+        "withoutValue": 1
+      },
+      "reason": null,
+      "source": "endpoints-ready",
+      "state": "computed",
+      "stream": "endpoints"
+    },
+    {
+      "byState": {
+        "healthy": 13,
+        "not-observed": 2,
+        "problem": 0
+      },
+      "changed": false,
+      "declared": {
+        "problemBelow": 1,
+        "tier": "serving-runtime"
+      },
+      "detectionLag": {
+        "firstIndication": null,
+        "lagNotAboveMs": null,
+        "lagNotBelowMs": null,
+        "notAfter": null,
+        "notBefore": null,
+        "order": null,
+        "reason": "never-indicated",
+        "state": "not-computable"
+      },
+      "falseHealthy": {
+        "callerMs": 23200,
+        "innerMs": 2800,
+        "outerMs": 23200,
+        "reason": null,
+        "signalNotObservedMs": 20200,
+        "state": "computed"
+      },
+      "falseUnavailable": {
+        "callerMs": 123500,
+        "innerMs": 0,
+        "outerMs": 0,
+        "reason": null,
+        "signalNotObservedMs": 19100,
+        "state": "computed"
+      },
+      "id": "runtime-ready-replicas",
+      "readings": {
+        "inWindow": 15,
+        "largestTimeBetweenReadsMs": 29800,
+        "outsideWindow": 0,
+        "withValue": 13,
+        "withoutValue": 2
+      },
+      "reason": null,
+      "source": "deployment-ready-replicas",
+      "state": "computed",
+      "stream": "deployments"
+    },
+    {
+      "byState": null,
+      "changed": null,
+      "declared": {
+        "healthyValues": [
+          "Synced"
+        ]
+      },
+      "detectionLag": null,
+      "falseHealthy": null,
+      "falseUnavailable": null,
+      "id": "application-sync",
+      "readings": null,
+      "reason": "stream-not-given",
+      "source": "application-sync-status",
+      "state": "not-computable",
+      "stream": "argo"
+    }
+  ],
+  "stabilizedRecovery": {
+    "conditions": {
+      "desiredRevision": {
+        "held": null,
+        "notHeld": null,
+        "readings": null,
+        "state": "stream-not-given"
+      },
+      "readyReplicas": {
+        "held": 12,
+        "notHeld": 1,
+        "readings": {
+          "inWindow": 15,
+          "largestTimeBetweenReadsMs": 29800,
+          "outsideWindow": 0,
+          "withValue": 13,
+          "withoutValue": 2
+        },
+        "state": "read"
+      },
+      "runtimeReadyEndpoints": {
+        "held": 12,
+        "notHeld": 2,
+        "readings": {
+          "inWindow": 15,
+          "largestTimeBetweenReadsMs": 19800,
+          "outsideWindow": 0,
+          "withValue": 14,
+          "withoutValue": 1
+        },
+        "state": "read"
+      }
+    },
+    "longestSuccessRun": null,
+    "reason": "stream-not-given",
+    "requestsFailedSinceFault": null,
+    "rule": {
+      "consecutiveSuccesses": 10,
+      "revisionPresent": "A reading of the argo stream holds the expected revision when it reports a resolvedRevision that is the declared commit and a syncStatus of Synced.",
+      "spanMs": 60000
+    },
+    "searchedFrom": null,
+    "sinceFault": null,
+    "span": null,
+    "stabilized": null,
+    "stabilizedAt": null,
+    "state": "not-computable"
+  },
+  "window": {
+    "effectiveTo": "2026-10-12T08:02:30.000Z",
+    "endedBy": "declared",
+    "from": "2026-10-12T08:00:00.000Z",
+    "to": "2026-10-12T08:02:30.000Z"
+  },
+  "withoutValue": [
+    "signals.runtime-ready-replicas.detectionLag",
+    "signals.application-sync",
+    "stabilizedRecovery"
+  ],
+  "zeroReadyEndpoints": {
+    "reason": null,
+    "state": "computed",
+    "tiers": {
+      "platform-api": {
+        "count": 0,
+        "intervals": [],
+        "maxInnerMs": 0,
+        "maxOuterMs": 0,
+        "notObservedMs": 29600,
+        "readings": {
+          "inWindow": 15,
+          "largestTimeBetweenReadsMs": 19800,
+          "outsideWindow": 0,
+          "withValue": 14,
+          "withoutValue": 1
+        },
+        "reason": null,
+        "state": "observed",
+        "totalInnerMs": 0,
+        "totalOuterMs": 0
+      },
+      "serving-runtime": {
+        "count": 1,
+        "intervals": [
+          {
+            "boundedAfter": {
+              "finishedAt": "2026-10-12T08:01:00.200Z",
+              "index": 7,
+              "startedAt": "2026-10-12T08:01:00.000Z"
+            },
+            "boundedBefore": {
+              "finishedAt": "2026-10-12T08:00:30.200Z",
+              "index": 4,
+              "startedAt": "2026-10-12T08:00:30.000Z"
+            },
+            "firstReading": {
+              "finishedAt": "2026-10-12T08:00:40.200Z",
+              "index": 5,
+              "startedAt": "2026-10-12T08:00:40.000Z"
+            },
+            "innerMs": 0,
+            "lastReading": {
+              "finishedAt": "2026-10-12T08:00:40.200Z",
+              "index": 5,
+              "startedAt": "2026-10-12T08:00:40.000Z"
+            },
+            "notObservedReadingsInside": 0,
+            "outerMs": 30200,
+            "readings": 1
+          }
+        ],
+        "maxInnerMs": 0,
+        "maxOuterMs": 30200,
+        "notObservedMs": 29600,
+        "readings": {
+          "inWindow": 15,
+          "largestTimeBetweenReadsMs": 19800,
+          "outsideWindow": 0,
+          "withValue": 14,
+          "withoutValue": 1
+        },
+        "reason": null,
+        "state": "observed",
+        "totalInnerMs": 0,
+        "totalOuterMs": 30200
+      }
+    }
+  }
+}

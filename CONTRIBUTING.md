@@ -665,6 +665,34 @@ person or a request identifier. Do not use a log as a caller's result or as a
 detection. [The operator events page](docs/environment/experiment-operator-events.md)
 states the kinds, the clocks, the limits, and what a log does not establish.
 
+**The reliability metrics of an experiment run are computed from its files by one
+tool that reads no cluster.** The inputs are a declaration, the caller record, the
+timeline streams, and the log of operator events.
+
+```sh
+uv run --locked python -m tools.reliability_analysis analyze \
+  --declaration FILE --caller FILE [--endpoints FILE] [--pods FILE] \
+  [--deployments FILE] [--argo FILE] [--operator-events FILE]
+uv run --locked python -m tools.reliability_analysis aggregate \
+  --metric NAME FILE=STATE [FILE=STATE ...]
+```
+
+A metric whose evidence was not read has no value and a reason: do not add code that
+reads a missing count as zero or a reading with no value as healthy, or that gives an
+open episode a duration. The false-healthy time is the one figure that counts an open
+episode to the end of the window, and the page states that. A sampled state has an
+inner and an outer figure: do not add one figure that carries a value between two
+reads, and do not let the inner figure cross a reading with no value. Do not add a
+threshold of a signal, an expected count, a bound, a result state, a percentage, a
+percentile, or a confidence interval to the tool: a threshold of a signal is a value
+of the declaration, the tool registers only the two figures of the stabilization rule
+and the sync status `Synced`, and the one aggregate is the median of three counted
+runs. A change to a definition changes the
+six committed cases, so write them again with
+`python tests/domain/test_reliability_analysis.py` and read the difference.
+[The analysis page](docs/testing/reliability-analysis.md) states each definition,
+the clocks, the limits, and what a document does not establish.
+
 **A tier of two or more replicas renders a PodDisruptionBudget.** No value configures
 it. A change that adds a kind to the chart's render must also add it to the Argo CD
 project, to the residue kinds of the Application procedure, and to the ownership

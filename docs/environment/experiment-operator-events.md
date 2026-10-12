@@ -277,7 +277,10 @@ log that takes one more event has another digest.
   with the clock that it names.
 - The tool does not merge a log with a caller record or with a stream, and it
   computes no detection lag, no decision time, and no recovery time. An
-  analysis does that.
+  analysis does that. Since `V2-S5-004-PR1`
+  [the reliability analysis](../testing/reliability-analysis.md) reads the
+  fault, the abort, and the manual-action events of a log. It reads no
+  detection and no reversal event, and it computes no decision time.
 - The layout check does not hold a log to its form.
 - The tool does not lock the file. One process appends to a log.
 
