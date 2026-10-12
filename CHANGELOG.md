@@ -10,6 +10,31 @@ from `1.0.0`.
 
 ### Added
 
+- **The reliability metrics of an experiment run can be computed from its stored
+  evidence. No run was analysed, no analysis of a real run is committed, and no figure
+  was compared with a bound.** `V2-S5-004-PR1` adds `tools/reliability_analysis`, one
+  suite, six synthetic cases, and one page. The tool reads a caller record, the four
+  timeline streams, and the log of operator events, each with the reader of the tool
+  that defines it, and a declaration that states the observation window, the expected
+  state, and the signals. It prints one document: the caller failure episodes, the
+  maximum success gap, the intervals with no Ready endpoint of each Service, the
+  detection lag and the false-healthy and false-unavailable time of each declared
+  signal, and the stabilized recovery. **Each figure states its ends.** An episode
+  names the request at its start and at its end, and an interval names the readings.
+  **A sampled state has two figures.** A stream states nothing between two reads, so an
+  interval states the time between the reads that gave the state and the time between
+  the nearest reads that gave another. **A value that was not read is not a value.** An
+  open episode has no duration, a read that did not answer and a count that the API
+  omitted are not zero and not healthy, and a stream that was not given leaves its
+  metric with no value and a reason. **The tool decides no result.** A document holds
+  no result state, no bound, no percentage, no percentile, and no confidence interval.
+  The one aggregate is the median of three counted runs, and a counted run with no
+  value is not dropped. The tool registers no threshold: each is a value of the
+  declaration, and no frozen record states one yet. The document states no digest of
+  an input and no code revision. No signal is read from a telemetry stream. See
+  [the analysis page](docs/testing/reliability-analysis.md) and
+  [the validation record](docs/proof/testing/v2-s5-004-pr1-validation.md). Evidence
+  level C0. No claim was registered.
 - **The telemetry and the operator events of an experiment run can be captured. No
   cluster and no telemetry collector was read, no run recorded an event, and no stream
   of a real run is committed.** `V2-S5-003-PR2` adds

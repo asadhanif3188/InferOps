@@ -520,6 +520,8 @@ answer.
   a node.
 - The tool does not merge a stream with a caller record, and it computes no
   rate, no ratio, and no detection lag. An analysis does that.
+  [The reliability analysis](../testing/reliability-analysis.md) of
+  `V2-S5-004-PR1` is not that analysis: it reads no telemetry stream.
 - The layout check does not hold a stream file to its form.
 - The script does not stop on a signal with a complete collection. A collection
   that was interrupted has no end file.

@@ -1,0 +1,32 @@
+{
+  "expected": {
+    "desiredRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "readyReplicas": {
+      "platform-api": 2,
+      "serving-runtime": 2
+    },
+    "runtimeReadyEndpoints": 2
+  },
+  "experimentId": "example-experiment",
+  "runId": "open-episode-1",
+  "schema": "inferops.io/reliability-analysis-declaration/v1alpha1",
+  "signals": [
+    {
+      "id": "runtime-ready-endpoints",
+      "problemBelow": 2,
+      "source": "endpoints-ready",
+      "tier": "serving-runtime"
+    },
+    {
+      "healthyValues": [
+        "Healthy"
+      ],
+      "id": "application-health",
+      "source": "application-health-status"
+    }
+  ],
+  "window": {
+    "from": "2026-10-12T08:00:00.000Z",
+    "to": "2026-10-12T08:02:30.000Z"
+  }
+}
