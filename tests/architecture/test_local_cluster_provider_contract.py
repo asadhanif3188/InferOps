@@ -116,11 +116,12 @@ PLATFORM_WORKFLOWS = (
     "capacity-preflight.sh",
     "service-endpoint-state.sh",
     "reliability-runner.sh",
+    "experiment-timeline.sh",
 )
 
 # The platform workflows that mutate a target, as distinct from target-detect.sh,
-# which only ever reports, and capacity-preflight.sh and service-endpoint-state.sh,
-# which read a verified target and change nothing in it. Every one of these must call the provider-aware guard
+# which only ever reports, and capacity-preflight.sh, service-endpoint-state.sh, and
+# experiment-timeline.sh, which read a verified target and change nothing in it. Every one of these must call the provider-aware guard
 # before its first mutation, and every one of them now acts on whichever provider
 # that guard verified. V1-S3-011-PR2 removed the last exception:
 # helm-upgrade-rollback.sh used to pass the front-door check and then refuse

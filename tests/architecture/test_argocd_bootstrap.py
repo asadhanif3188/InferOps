@@ -175,15 +175,23 @@ SERVING_ROOTS = ("src", "charts", "deploy")
 #: holds that the path is its only reference.
 CAPACITY_TOOL_REL = "tools/capacity_preflight/core.py"
 
+#: The collector of the experiment timelines. It names the controller on two
+#: lines: the kind and the namespace of the one Application that it reads with a
+#: `get`. tests/architecture/test_experiment_timeline_collector.py holds the
+#: script to those two lines and to that one verb.
+TIMELINE_COLLECTOR_REL = "scripts/environment/experiment-timeline.sh"
+
 #: The build files that may name the controller: the two manifests that ADR 0019
 #: decided, the procedure that applies them, the procedure that installs the
-#: controller, and the one tool that reads a manifest as a file. A sixth file is
-#: a sixth thing that names Argo CD, and no suite reads it. None of the five is
-#: under a directory a request is served from.
+#: controller, the collector that reads the Application, and the one tool that
+#: reads a manifest as a file. A seventh file is a seventh thing that names
+#: Argo CD, and no suite reads it. None of the six is under a directory a
+#: request is served from.
 ALLOWED_REFERENCES = [
     *ARGOCD_MANIFESTS,
     APPLICATION_PROCEDURE_REL,
     PROCEDURE_REL,
+    TIMELINE_COLLECTOR_REL,
     CAPACITY_TOOL_REL,
 ]
 

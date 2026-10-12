@@ -10,6 +10,43 @@ from `1.0.0`.
 
 ### Added
 
+- **The infrastructure timelines of an experiment run can be captured as four streams.
+  No cluster was read, and no stream of a real run is committed.** `V2-S5-003-PR1` adds
+  `scripts/environment/experiment-timeline.sh`, `tools/experiment_timeline`, two suites,
+  and one page. The script samples the release a bounded number of times: at most 1800
+  samples, with a pause of 1 to 30 seconds. A sample is two reads, each a `kubectl get`
+  with a timeout of 10 seconds: one call for the Services, the EndpointSlices, the pods,
+  the ReplicaSets, and the Deployments of the release namespace, and one for the Argo CD
+  Application that delivers the release. The script changes nothing in the cluster and
+  sends no request to the release. The tool reads the directory and prints the streams
+  `endpoints`, `pods`, `deployments`, and `argo`, which are four raw roles of the
+  evidence layout. **One time basis.** Each reading states when its read started and
+  finished, on the collecting host's clock, in UTC, to one millisecond. An instant that
+  a cluster component wrote is normalised to UTC and keeps its resolution. The two are
+  not one clock: the skew is stated as not measured, and no order under one second is
+  established for a cluster instant. **Absence of a signal is not a value.** A field is
+  `reported`, `missing`, or `malformed`, and only `reported` carries a value. A status
+  count that the Kubernetes API omitted is `missing` and not zero, a pod with no Ready
+  condition is not read as not Ready, and an Application with no health state is not
+  healthy. A read that did not answer gives a reading with no value, and it is not an
+  empty namespace. **The Application is read on its own:** a workload read that did not
+  answer leaves the `argo` stream as it was, and the reverse. **A stream holds an
+  allowlist.** It holds no address, node name, image, environment variable, message, or
+  repository address, and each text value is held to a form. The collection holds the
+  whole answer of each read and is not for commit. A `changes` command prints each value
+  that differs between two readings, bounded by the start of the earlier read and the
+  finish of the later one. It carries no value across a reading that gave none, and it
+  does not say that one pod replaced another. **What this does not do:** the local
+  cluster was not reachable, so the collector was executed against stand-ins for
+  `kubectl` only, and the bounded capture that the parent change names was not made. No
+  stream holds a metric or an operator event. The tool merges no stream with a caller
+  record and computes no metric of an experiment. The evidence layout check holds a
+  stream file to its digest and does not read its form. A stream is what the cluster and
+  the controller published: it is not a caller's result. No claim, ledger, register row,
+  dashboard row, evidence-index entry, or freeze record was added or changed. The
+  evidence is static, C0. See
+  [the timelines page](docs/environment/experiment-timelines.md) and
+  [the validation record](docs/proof/environment/v2-s5-003-pr1-validation.md).
 - **The directory of an experiment run has a layout and an offline check. No run
   directory of the layout exists.** `V2-S5-002-PR2` adds `tools/experiment_evidence`,
   one suite, and one page. A run directory is `runs/<runId>` beside the freeze record

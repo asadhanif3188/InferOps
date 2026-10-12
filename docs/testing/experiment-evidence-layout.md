@@ -159,14 +159,20 @@ vocabulary, and this layout adds one for a file of a run directory.
   layout requires no role and no file: a `REFUSED` run with no evidence file conforms.
   The ExperimentRun rules require a `caller` file for a `PASSED` or `FAILED` run under a
   caller profile.
-- **The form of a raw file is not defined here, except for `caller`.** No tool writes a
-  file with a raw role of this layout. A file with a raw role other than `caller` is held
-  to its form, its digest, and the two text rules, and it is not read for its meaning.
-  The role table says what such a file holds, and no rule checks it.
+- **The form of a raw file is not defined here, except for `caller`.** A file with a
+  raw role other than `caller` is held to its form, its digest, and the two text rules,
+  and it is not read for its meaning. The role table says what such a file holds, and no
+  rule checks it. (Until `V2-S5-003-PR1` this paragraph also said that no tool writes a
+  file with a raw role of this layout. Since that change
+  [the timeline tool](../environment/experiment-timelines.md) writes a file for each of
+  the roles `endpoints`, `pods`, `deployments`, and `argo`, and it defines and checks
+  their form. This check does not call that tool. No run directory holds such a file.)
 - **The tool's code does not name the delivery controller's product.** The role is
   `argo`, and its description says "the delivery controller". A suite of the
   architecture refuses a sixth build file that names the product, and the first
-  commit of this change was such a file.
+  commit of this change was such a file. (Since `V2-S5-003-PR1` the suite admits a
+  sixth file and refuses a seventh: the collector of the timelines names the product on
+  the two lines that read the one Application.)
 - **A role that is not in the table is refused.** A run that needs another role needs a
   change to the vocabulary.
 

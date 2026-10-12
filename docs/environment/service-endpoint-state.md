@@ -45,7 +45,10 @@ This tool reads no metric.
 returned between two instants. It holds no transition, and it does not state the
 moment at which an endpoint stopped being Ready. A caller that needs a timeline
 must take one reading for each sample, and must treat a read that did not answer
-as no reading for that sample.
+as no reading for that sample. Since `V2-S5-003-PR1`
+[the timeline collector](experiment-timelines.md) does that for a bounded number
+of samples, and its `endpoints` stream applies the rules of this page to each
+one. No stream of a real run is committed.
 
 ## What is read: the collection
 
