@@ -678,12 +678,16 @@ uv run --locked python -m tools.reliability_analysis aggregate \
 ```
 
 A metric whose evidence was not read has no value and a reason: do not add code that
-reads a missing count as zero, a reading with no value as healthy, or an open episode
-as one that lasts to the end of the window. A sampled state has an inner and an outer
-figure: do not add one figure that carries a value between two reads. Do not add a
-threshold, a bound, a result state, a percentage, a percentile, or a confidence
-interval to the tool: a threshold is a value of the declaration, and the one
-aggregate is the median of three counted runs. A change to a definition changes the
+reads a missing count as zero or a reading with no value as healthy, or that gives an
+open episode a duration. The false-healthy time is the one figure that counts an open
+episode to the end of the window, and the page states that. A sampled state has an
+inner and an outer figure: do not add one figure that carries a value between two
+reads, and do not let the inner figure cross a reading with no value. Do not add a
+threshold of a signal, an expected count, a bound, a result state, a percentage, a
+percentile, or a confidence interval to the tool: a threshold of a signal is a value
+of the declaration, the tool registers only the two figures of the stabilization rule
+and the sync status `Synced`, and the one aggregate is the median of three counted
+runs. A change to a definition changes the
 six committed cases, so write them again with
 `python tests/domain/test_reliability_analysis.py` and read the difference.
 [The analysis page](docs/testing/reliability-analysis.md) states each definition,

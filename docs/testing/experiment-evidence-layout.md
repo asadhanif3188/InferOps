@@ -457,9 +457,10 @@ the others.
 - **That a run executed.** A directory that conforms holds files with their stated
   digests. It does not show where a file came from.
 - **That a derived file follows from the raw files.** No analysis reads a run directory.
-  (Since `V2-S5-004-PR1` [the reliability analysis](reliability-analysis.md) computes a file
-  with the role `analysis` from files that it is given. It does not read a run
-  directory or a manifest, and this check does not compute its document again.)
+  (Since `V2-S5-004-PR1` [the reliability analysis](reliability-analysis.md) prints a document
+  from files that it is given. A person can store it under the role `analysis`,
+  and no such file exists. The tool does not read a run directory or a manifest,
+  and this check does not compute its document again.)
 - **That a raw file is complete.** No rule requires a role, and no rule compares the
   times of two files.
 - **That the release, the binding, the runtime image, and the model of the manifest are

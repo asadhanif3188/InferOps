@@ -470,7 +470,7 @@ prints a warning for each sample with a read that did not answer.
 - No stream of this tool holds a metric or an operator event. Each has its own
   tool since `V2-S5-003-PR2`, and nothing starts the three together.
 - The tool does not merge a stream with a caller record. An analysis does that:
-  since `v2-s5-004-pr1` [the reliability analysis](../testing/reliability-analysis.md)
+  since `V2-S5-004-PR1` [the reliability analysis](../testing/reliability-analysis.md)
   reads the four streams beside a caller record.
 - The layout check does not hold a stream file to its form.
 - The collector does not stop on a signal with a complete collection. A

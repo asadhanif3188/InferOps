@@ -2,18 +2,19 @@
 
 ``tools.reliability_analysis`` reads a caller record, timeline streams, a log
 of operator events, and a declaration, and it returns one analysis document.
-This suite builds each input with the tool that defines it: a caller record
-that the runner's reader accepts, streams that the timeline tool builds from a
-collection, and a log that the events tool writes. It reads no cluster and
-sends no request.
+This suite builds the inputs. The timeline tool builds each stream from a
+collection that the suite invents, and the events tool writes each log. The
+suite writes each caller record itself, and the runner's reader accepts it. No
+runner wrote one. The suite reads no cluster and sends no request.
 
 The suite holds the tool to these properties.
 
-*Each definition is exact, and each endpoint is stated.* A failure episode
-starts at the completion of its first failed request and ends at the completion
-of the next successful request. A success gap is between two consecutive
-successful completions. Each figure names the request or the reading at each
-end.
+*Each definition is held to its instants, and an interval states its ends.* A
+failure episode starts at the completion of its first failed request and ends
+at the completion of the next successful request. A success gap is between two
+consecutive successful completions. An episode, a gap, an interval, a lag, and
+a stabilization span name the request or the reading at each end. A
+disagreement time and a total are sums and name no end.
 
 *A sampled state has two figures.* The inner figure is between the first and
 the last consecutive read that gave the state. The outer figure is between the
@@ -23,8 +24,9 @@ nearest reads on each side that gave another state.
 reading that did not answer, a count that the API omitted, and a stream that
 was not given are not zero and are not healthy.
 
-*The analysis decides no result.* A document holds no result state, no
-percentage, and no confidence interval. The aggregate is the median of three
+*The analysis decides no result.* An analysis document holds no result state,
+no percentage, and no confidence interval. An aggregate document repeats the
+result state that it was given for each run. The aggregate is the median of three
 counted runs, and a counted run with no value is not dropped.
 
 Six cases are committed under ``tests/domain/fixtures/reliability-analysis``:
@@ -39,9 +41,12 @@ test here is evidence of a run, of a failure, or of a recovery.
 
 from __future__ import annotations
 
+import ast
 import copy
 import json
+import os
 import re
+import subprocess
 import sys
 import tempfile
 from collections.abc import Callable, Iterator
@@ -820,7 +825,7 @@ def test_the_committed_cases_are_the_six_cases() -> None:
 def test_a_committed_case_is_what_the_suite_builds(
     case: str, built: dict[str, dict[str, str]]
 ) -> None:
-    """The committed inputs are what the three tools write, byte for byte."""
+    """The committed inputs are what the builders of this suite give, byte for byte."""
     files = committed(case)
     stored = files.pop("analysis.json")
     assert files == built[case]
@@ -845,6 +850,7 @@ def test_zero_failure_states_no_episode_and_a_stabilized_recovery() -> None:
         "successful": 99,
         "failed": 0,
         "outsideWindow": 0,
+        "largestTimeWithNoCompletionMs": 3000,
     }
     assert caller["failureEpisodes"]["count"] == 0
     assert caller["failureEpisodes"]["callerFailureEpisodeMs"] == 0
@@ -940,6 +946,10 @@ def test_missing_signal_gives_no_value_and_no_healthy_state() -> None:
     assert replicas["byState"]["not-observed"] == 2
     assert replicas["detectionLag"]["state"] == "not-computable"
     assert replicas["falseHealthy"]["signalNotObservedMs"] > 0
+    # The signal is healthy to the read of 30 seconds and from the read of 60
+    # seconds. The second episode ends at 63,000 ms, so 2,800 ms of it are
+    # between two consecutive healthy reads. The first commit stated 23,200 ms.
+    assert replicas["falseHealthy"]["innerMs"] == 63_000 - 60_200
     runtime = document["zeroReadyEndpoints"]["tiers"][RUNTIME]
     # One reading states zero. The reading after it states nothing, so the
     # interval is bounded by the reading at 60 seconds.
@@ -1005,6 +1015,8 @@ def test_abort_ends_the_window_and_leaves_the_episode_open() -> None:
     assert caller["requests"]["outsideWindow"] > 0
     assert caller["failureEpisodes"]["open"] == 1
     assert caller["failureEpisodes"]["callerFailureEpisodeMs"] is None
+    last = caller["failureEpisodes"]["episodes"][-1]
+    assert (last["open"], last["end"], last["ms"]) == (True, None, None)
     # The reading at 80 seconds finishes after the abort and is not read.
     endpoints = signal_of(document, "runtime-ready-endpoints")
     assert endpoints["readings"]["inWindow"] == 8
@@ -1040,6 +1052,7 @@ def test_an_episode_starts_at_the_first_failure_and_ends_at_the_next_success(
         "end": {"sequence": 4, "finishedAt": at(4000), "tied": False},
         "ms": 2000,
         "failedRequests": 2,
+        "successAfterWindow": None,
     }
     assert document["caller"]["failureEpisodes"]["callerFailureEpisodeMs"] == 2000
     assert document["caller"]["firstImpact"] == {
@@ -1115,6 +1128,7 @@ def test_a_completion_outside_the_window_is_not_read(tmp_path: Path) -> None:
         "successful": 1,
         "failed": 1,
         "outsideWindow": 3,
+        "largestTimeWithNoCompletionMs": 4000,
     }
     assert [e["ms"] for e in caller["failureEpisodes"]["episodes"]] == [1000]
 
@@ -1399,7 +1413,10 @@ def test_a_reading_with_no_value_inside_an_interval_is_counted(tmp_path: Path) -
     [interval] = zero_ready(tmp_path, samples)["tiers"][RUNTIME]["intervals"]
     assert interval["readings"] == 2
     assert interval["notObservedReadingsInside"] == 1
-    assert interval["innerMs"] == 30_000 - 10_200
+    # The reading with no value divides the run into two parts of one read
+    # each, so no time is between two consecutive reads of zero.
+    assert interval["innerMs"] == 0
+    assert interval["outerMs"] == 40_200
 
 
 def test_a_reading_with_no_value_does_not_bound_an_interval(tmp_path: Path) -> None:
@@ -1530,7 +1547,7 @@ def test_the_detection_lag_states_both_bounds(tmp_path: Path) -> None:
     ("first_problem", "order", "below", "above"),
     [(1, "signal-first", -22_000, -11_800), (4, "caller-first", 8000, 18_200)],
 )
-def test_the_order_is_stated_only_when_both_bounds_agree(
+def test_the_order_follows_the_two_bounds(
     tmp_path: Path, first_problem: int, order: str, below: int, above: int
 ) -> None:
     samples = [
@@ -1690,8 +1707,11 @@ def test_a_reading_with_no_value_is_not_counted_as_healthy(tmp_path: Path) -> No
     )
     signal = signal_of(document, "runtime-ready-endpoints")
     assert signal["byState"] == {"healthy": 4, "problem": 0, "not-observed": 2}
-    # The stream states no value from 20,200 to 50,000 ms.
+    # The stream states no value from 20,200 to 50,000 ms, and that time is
+    # not in the inner figure.
     assert signal["falseHealthy"]["signalNotObservedMs"] == 45_000 - 22_000
+    assert signal["falseHealthy"]["innerMs"] == 0
+    assert signal["falseHealthy"]["outerMs"] == 45_000 - 22_000
     assert signal["detectionLag"]["reason"] == "never-indicated"
 
 
@@ -1838,6 +1858,11 @@ def test_ten_successes_over_sixty_seconds_with_held_readings_stabilize(
             "desiredRevision": 7,
             "readyReplicas": 7,
             "runtimeReadyEndpoints": 7,
+        },
+        "largestTimeWithNoReadingMs": {
+            "desiredRevision": 9850,
+            "readyReplicas": 9800,
+            "runtimeReadyEndpoints": 9800,
         },
     }
     assert recovery["rule"]["consecutiveSuccesses"] == 10
@@ -2171,6 +2196,7 @@ def test_a_refusal_does_not_repeat_a_value_of_the_refused_file(tmp_path: Path) -
             text_of(declaration("run-1")), {**_inputs(tmp_path), "caller": hostile}
         )
     assert "private" not in str(refused.value)
+    assert refused.value.message == "caller: caller-record-members-unsupported"
 
 
 def test_an_open_log_of_events_is_refused(tmp_path: Path) -> None:
@@ -2269,8 +2295,11 @@ def test_a_document_holds_no_request_identifier_and_no_pod_identity(case: str) -
     assert f"{run_id}-00001" in files["caller.jsonl"]
     assert "requestId" not in text
     assert re.search(rf"{run_id}-\d{{5}}", text) is None
-    assert uid(11) not in text
-    assert f"{RUNTIME}-a" not in text
+    for number in (1, 2, 11, 12, 100, 110, 200, 210):
+        assert uid(number) not in text
+    for tier in (API, RUNTIME):
+        for suffix in ("a", "b", "rs"):
+            assert f"{tier}-{suffix}" not in text
 
 
 @pytest.mark.parametrize("case", sorted(CASES))
@@ -2285,8 +2314,14 @@ def test_each_metric_with_no_value_states_a_registered_reason(case: str) -> None
             for inner in value:
                 yield from reasons(inner)
 
-    found = set(reasons(stored_analysis(case)))
+    document = stored_analysis(case)
+    found = set(reasons(document))
     assert found <= set(analysis.REASONS)
+    if case == "missing-signal":
+        assert {"stream-not-given", "never-indicated"} <= found
+    figure = document["caller"]["failureEpisodes"]
+    assert (figure["callerFailureEpisodeMs"] is None) is (figure["reason"] is not None)
+    assert figure["reason"] is None or figure["reason"] in analysis.REASONS
 
 
 def test_the_text_of_a_document_is_the_same_each_time(tmp_path: Path) -> None:
@@ -2645,6 +2680,257 @@ def write_cases() -> None:
                 stale.unlink()
             for file_name, text in files.items():
                 (directory / file_name).write_bytes(text.encode("utf-8"))
+
+
+# --------------------------------------------------------------------------
+# Corrections of the independent review
+# --------------------------------------------------------------------------
+
+
+def test_the_inner_figure_does_not_cross_a_reading_with_no_value(
+    tmp_path: Path,
+) -> None:
+    """The caller fails from 15,000 to 58,000 ms.
+
+    The signal is healthy at the reads of 0, 10, 20, and 50 seconds, and the
+    reads of 30 and 40 seconds did not answer. The first commit stated an
+    inner figure of 35,000 ms: it counted the time across the two reads as
+    healthy.
+    """
+    requests = small((10_000, True), (15_000, False), (58_000, True), (59_000, True))
+    samples = [
+        sample(),
+        sample(),
+        sample(),
+        sample(workload=False),
+        sample(workload=False),
+        sample(),
+    ]
+    document = analyze(
+        tmp_path, requests, samples, signals=[RUNTIME_ENDPOINTS], window=(0, 60_000)
+    )
+    false_healthy = signal_of(document, "runtime-ready-endpoints")["falseHealthy"]
+    assert false_healthy == {
+        "state": "computed",
+        "reason": None,
+        "callerMs": 43_000,
+        # Healthy between consecutive reads: from 15,000 to the start of the
+        # read of 20 seconds. The read of 50 seconds is one read.
+        "innerMs": 20_000 - 15_000,
+        "outerMs": 43_000,
+        "signalNotObservedMs": (50_000 - 20_200) + (58_000 - 50_200),
+    }
+
+
+def test_the_inner_figure_of_an_interval_is_the_sum_of_its_parts(
+    tmp_path: Path,
+) -> None:
+    samples = [
+        sample(),
+        sample(runtime=0),
+        sample(runtime=0),
+        sample(workload=False),
+        sample(runtime=0),
+        sample(runtime=0),
+        sample(runtime=0),
+        sample(),
+    ]
+    [interval] = zero_ready(tmp_path, samples)["tiers"][RUNTIME]["intervals"]
+    assert interval["readings"] == 5
+    assert interval["notObservedReadingsInside"] == 1
+    # Two parts: the reads of 10 and 20 seconds, and the reads of 40 to 60.
+    assert interval["innerMs"] == (20_000 - 10_200) + (60_000 - 40_200)
+    assert interval["outerMs"] == 70_200
+
+
+def test_a_window_with_no_completion_gives_no_caller_metric(tmp_path: Path) -> None:
+    """The record covers the window, and no request completes inside it."""
+    requests = small((3000, True), (6000, True), (103_000, True))
+    document = analyze(
+        tmp_path, requests, window=(10_000, 90_000), record=(0, WINDOW_MS)
+    )
+    caller = document["caller"]
+    assert caller["record"]["coversWindow"] is True
+    assert (caller["state"], caller["reason"]) == (
+        "not-computable",
+        "no-completion-in-window",
+    )
+    assert caller["failureEpisodes"] is None
+    assert caller["requests"] is None
+    assert document["withoutValue"][0] == "caller"
+
+
+def test_the_longest_time_with_no_completion_is_stated(tmp_path: Path) -> None:
+    requests = small((3000, True), (6000, True), (103_000, True))
+    document = analyze(tmp_path, requests, window=(0, WINDOW_MS))
+    caller = document["caller"]
+    assert caller["failureEpisodes"]["callerFailureEpisodeMs"] == 0
+    assert caller["requests"]["largestTimeWithNoCompletionMs"] == 97_000
+    # The edges of the window are ends of that time.
+    late = analyze(tmp_path, small((140_000, True)), window=(0, WINDOW_MS))
+    assert late["caller"]["requests"]["largestTimeWithNoCompletionMs"] == 140_000
+
+
+def test_a_window_that_starts_inside_an_episode_has_no_episode_figure(
+    tmp_path: Path,
+) -> None:
+    """A request fails at 8 seconds and the next succeeds at 12. The window
+    starts at 10 seconds, so it holds the end of an episode and not its start."""
+    requests = small((5000, True), (8000, False), (12_000, True), (20_000, True))
+    document = analyze(tmp_path, requests, window=(10_000, 30_000), record=(0, 30_000))
+    episodes = document["caller"]["failureEpisodes"]
+    assert episodes["startsBeforeWindow"] is True
+    assert (episodes["count"], episodes["callerFailureEpisodeMs"]) == (0, None)
+    assert episodes["reason"] == "episode-starts-before-window"
+    assert "caller.failureEpisodes.callerFailureEpisodeMs" in document["withoutValue"]
+    whole = analyze(tmp_path, requests, window=(0, 30_000))
+    assert whole["caller"]["failureEpisodes"]["startsBeforeWindow"] is False
+    assert whole["caller"]["failureEpisodes"]["callerFailureEpisodeMs"] == 4000
+
+
+def test_a_success_after_the_window_is_stated_and_does_not_close_the_episode(
+    tmp_path: Path,
+) -> None:
+    requests = small((5000, True), (95_000, False), (120_000, True))
+    document = analyze(tmp_path, requests, window=(0, 100_000), record=(0, WINDOW_MS))
+    episodes = document["caller"]["failureEpisodes"]
+    [episode] = episodes["episodes"]
+    assert (episode["open"], episode["end"], episode["ms"]) == (True, None, None)
+    assert episode["successAfterWindow"] == {
+        "sequence": 3,
+        "finishedAt": at(120_000),
+    }
+    assert episodes["callerFailureEpisodeMs"] is None
+    assert episodes["reason"] == "episode-open"
+
+
+def test_the_earliest_abort_ends_the_window(tmp_path: Path) -> None:
+    """The events tool accepts a log whose instants are not in line order."""
+    recorded: list[tuple[int, str, str | None]] = [
+        (100_000, "run-aborted", "safety-limit"),
+        (60_000, "run-aborted", "safety-limit"),
+    ]
+    document = analyze(tmp_path, steady(), recorded=recorded)
+    assert document["window"]["effectiveTo"] == at(60_000)
+    assert len(document["aborts"]) == 2
+    with pytest.raises(analysis.AnalysisRefused) as refused:
+        analyze(
+            tmp_path,
+            steady(),
+            recorded=[(100_000, "run-aborted", "a"), (5000, "run-aborted", "a")],
+            window=(5000, WINDOW_MS),
+            record=(0, WINDOW_MS),
+        )
+    assert refused.value.rule == "analysis-window-invalid"
+
+
+def test_an_abort_at_the_start_of_the_window_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(analysis.AnalysisRefused) as refused:
+        analyze(
+            tmp_path,
+            steady(),
+            recorded=[(5000, "run-aborted", "safety-limit")],
+            window=(5000, WINDOW_MS),
+            record=(0, WINDOW_MS),
+        )
+    assert refused.value.rule == "analysis-window-invalid"
+
+
+def test_a_span_states_the_longest_time_with_no_reading(tmp_path: Path) -> None:
+    """Two reads at 5 and at 6 seconds hold. The rule needs one reading inside
+    the span and sets no limit for the rest, so the run is stabilized. The
+    document states that 57 seconds of the span have no reading."""
+    recovery = recovery_of(
+        tmp_path, steady(), healthy(2), times=[5000, 6000], window=(0, WINDOW_MS)
+    )
+    assert recovery["stabilized"] is True
+    assert recovery["span"]["first"]["finishedAt"] == at(3000)
+    assert recovery["span"]["last"]["finishedAt"] == at(63_000)
+    assert recovery["span"]["largestTimeWithNoReadingMs"] == {
+        "desiredRevision": 63_000 - 6400,
+        "readyReplicas": 63_000 - 6200,
+        "runtimeReadyEndpoints": 63_000 - 6200,
+    }
+
+
+def test_an_ambiguous_fault_leaves_the_impact_search_at_the_window_start(
+    tmp_path: Path,
+) -> None:
+    requests = small((1000, False), (2000, True), (6000, False), (7000, True))
+    document = analyze(
+        tmp_path,
+        requests,
+        recorded=[(5000, "fault-injection-started", "delete-runtime-pod")],
+        window=(0, 8000),
+    )
+    assert document["fault"]["state"] == "ambiguous"
+    assert document["caller"]["firstImpact"]["searchedFrom"] == at(0)
+    assert document["caller"]["firstImpact"]["sequence"] == 1
+
+
+def test_a_fault_before_the_window_leaves_the_search_at_the_window_start(
+    tmp_path: Path,
+) -> None:
+    requests = small((6000, False), (7000, True))
+    document = analyze(
+        tmp_path,
+        requests,
+        recorded=fault_events(1000, 1200),
+        window=(5000, 8000),
+        record=(0, 8000),
+    )
+    assert document["fault"]["state"] == "stated"
+    assert document["caller"]["firstImpact"]["searchedFrom"] == at(5000)
+
+
+def test_a_tier_with_no_count_states_its_reason(tmp_path: Path) -> None:
+    document = analyze(tmp_path, steady(), [sample(workload=False)])
+    tier = document["zeroReadyEndpoints"]["tiers"][RUNTIME]
+    assert (tier["state"], tier["reason"]) == ("not-observed", "no-count-in-window")
+    observed = analyze(tmp_path, steady(), healthy(1))
+    assert observed["zeroReadyEndpoints"]["tiers"][RUNTIME]["reason"] is None
+
+
+def test_the_command_prints_the_same_text_under_two_hash_seeds() -> None:
+    """A second process, so that the order of a set cannot hide in one run."""
+    printed = []
+    for seed in ("1", "2"):
+        done = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "tools.reliability_analysis",
+                *_case_arguments("concurrency"),
+            ],
+            cwd=REPO_ROOT,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            capture_output=True,
+            check=True,
+        )
+        printed.append(done.stdout)
+    assert printed[0] == printed[1]
+    assert printed[0] == (FIXTURES / "concurrency" / "analysis.json").read_bytes()
+
+
+def test_the_tool_imports_no_module_that_reaches_a_network_or_a_process() -> None:
+    """The command reads files. No module of the tool can contact a cluster."""
+    barred = {"socket", "urllib", "http", "subprocess", "ssl", "asyncio", "requests"}
+    for path in sorted((REPO_ROOT / "tools" / "reliability_analysis").glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        names: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names.add(node.module.split(".")[0])
+        assert names & barred == set(), path.name
+
+
+def test_the_tool_opens_no_file_for_writing() -> None:
+    for path in sorted((REPO_ROOT / "tools" / "reliability_analysis").glob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        for word in ("write_text", "write_bytes", ".open(", "open(", "mkdir", "unlink"):
+            assert word not in text, (path.name, word)
 
 
 if __name__ == "__main__":

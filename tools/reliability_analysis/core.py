@@ -6,7 +6,9 @@ events. A seventh input is the declaration: the observation window, the
 expected state, and the signals. This module registers no threshold of a
 signal and no expected count. An experiment declares them.
 
-The module computes six things.
+The module computes six metrics. It also states the first caller impact and
+the fault that the log records, and a second function gives one figure of
+several documents.
 
 *Caller failure episodes.* An episode is a run of failed completed requests
 with no successful completed request between them. It starts at the completion
@@ -31,17 +33,19 @@ the caller succeeds and the signal states the problem.
 completions span sixty seconds and each reading of the expected state in that
 span holds.
 
-**A caller instant is exact, and a reading is a sample.** A stream states a
+**A caller instant is stated to one millisecond, and a reading is a
+sample.** A stream states a
 value at a read and states nothing between two reads. So each duration of a
-sampled state is two figures. The inner figure is the time between the first
-and the last consecutive read that gave the state. The outer figure is the
-time between the nearest reads on each side that gave another state. No figure
-says what the value was between two reads.
+sampled state is two figures. The inner figure is the time between
+consecutive reads that both gave the state, and it does not cross a reading
+with no value. The outer figure is the time between the nearest reads on each
+side that gave another state. No figure says what the value was between two
+reads.
 
 **A value that was not read is not a value.** A reading that did not answer, a
 count that the reading does not report, and a stream that was not given each
-leave a metric with no value and a reason. No function replaces one with zero
-or with a healthy state.
+are not read as zero or as a healthy state. A metric that cannot be computed
+states a reason, and the document lists each metric with no value.
 
 **The module computes figures. It decides no result.** It states no result
 state, no verdict against a bound, no availability percentage, and no
@@ -227,9 +231,24 @@ REASONS: Final[Mapping[str, str]] = {
         "The caller record starts after the window starts, or it ends before "
         "the window ends. The record says nothing about the rest of the window."
     ),
+    "no-completion-in-window": (
+        "No request completes inside the window. A window with no completion is "
+        "not a window with no failure."
+    ),
+    "episode-open": (
+        "A failure episode has no successful completion after it inside the "
+        "window, so it has no duration."
+    ),
+    "episode-starts-before-window": (
+        "The last completion before the window is a failed one, so the window "
+        "starts inside a failure episode whose start it does not hold."
+    ),
     "fewer-than-two-successes": (
         "The window holds fewer than two successful completions, so it holds no "
         "gap between two."
+    ),
+    "no-count-in-window": (
+        "No reading in the window states a Ready endpoint count for the tier."
     ),
     "stream-not-given": "A stream that the metric reads was not given.",
     "no-reading-in-window": "No reading of the stream is inside the window.",
@@ -289,7 +308,7 @@ RULES: Final[Mapping[str, str]] = {
     ),
     RULE_WINDOW: (
         "The window states two instants in UTC to one millisecond, and it ends "
-        "after it starts. A recorded abort is not before the window starts."
+        "after it starts. Each recorded abort is after the window starts."
     ),
     RULE_SIGNAL: (
         "Each signal has its own identifier, a registered source, and the "
@@ -324,6 +343,13 @@ LIMITATIONS: Final[tuple[str, ...]] = (
     "A stream states a value at a read and states nothing between two reads. "
     "The inner figure of an interval holds no change that no read gave. The "
     "outer figure holds each read on both sides. Neither is the exact time.",
+    "The stabilization rule needs one reading of each condition inside the "
+    "span, and it sets no limit for the time between two readings. A span can "
+    "hold a long time with no reading. The document states the longest such "
+    "time for each condition.",
+    "With no stated fault the search for the first caller impact and for the "
+    "stabilized recovery starts at the start of the window. A recovery that is "
+    "found then can be a state that no fault disturbed.",
     "A reading whose value was not read is not healthy and is not a problem. "
     "A Deployment count that the API omitted is such a value, and the API "
     "omits a count of zero. So a signal of a Deployment count has no value in "
@@ -830,9 +856,14 @@ def _caller(
     assert record_start is not None and record_end is not None
     covers = record_start <= start and record_end >= end
     instants = Counter(completion.finished for completion in ordered)
+    reason = None
+    if not covers:
+        reason = "caller-record-does-not-cover-window"
+    elif not ordered:
+        reason = "no-completion-in-window"
     document: dict[str, Any] = {
-        "state": COMPUTED if covers else NOT_COMPUTABLE,
-        "reason": None if covers else "caller-record-does-not-cover-window",
+        "state": COMPUTED if reason is None else NOT_COMPUTABLE,
+        "reason": reason,
         "record": {
             "mode": caller.header["mode"],
             "startedAt": caller.header["startedAt"],
@@ -852,26 +883,51 @@ def _caller(
         "maxSuccessGap": None,
         "firstImpact": None,
     }
-    if not covers:
+    if reason is not None:
         return document, []
     episodes = _episodes(ordered)
     open_count = sum(1 for episode in episodes if episode["open"])
+    before = [c for c in everything if c.finished < start]
+    after = [c for c in everything if c.finished > end]
+    # The window starts inside an episode when the completion before it failed.
+    cut = bool(before) and not before[-1].success
+    later = next((c for c in after if c.success), None)
+    for episode in episodes:
+        # The record can hold the success that ends an open episode. It is
+        # after the window, so it is stated and it does not close the episode.
+        episode["successAfterWindow"] = (
+            later.point() if episode["open"] and later is not None else None
+        )
+    edges = [start, *(c.finished for c in ordered), end]
     document["requests"] = {
         "completed": len(ordered),
         "successful": sum(1 for c in ordered if c.success),
         "failed": sum(1 for c in ordered if not c.success),
         "outsideWindow": len(everything) - len(ordered),
+        # The edges of the window count as ends, so a caller that completes
+        # nothing for a time is visible here.
+        "largestTimeWithNoCompletionMs": max(
+            later_edge - earlier_edge for earlier_edge, later_edge in pairwise(edges)
+        ),
     }
+    figure_reason = None
+    if cut:
+        figure_reason = "episode-starts-before-window"
+    elif open_count:
+        figure_reason = "episode-open"
     document["failureEpisodes"] = {
         "count": len(episodes),
         "open": open_count,
+        "startsBeforeWindow": cut,
         "episodes": episodes,
-        # No failed request gives 0. An open episode gives no figure.
+        # No failed request gives 0. An open episode, and a window that starts
+        # inside an episode, give no figure.
         "callerFailureEpisodeMs": (
-            None
-            if open_count
-            else max((episode["ms"] for episode in episodes), default=0)
+            max((episode["ms"] for episode in episodes), default=0)
+            if figure_reason is None
+            else None
         ),
+        "reason": figure_reason,
     }
     document["maxSuccessGap"] = _max_success_gap(ordered)
     search = start if fault_from is None else max(start, fault_from)
@@ -998,10 +1054,21 @@ class _Span:
     not_observed_inside: int
     before: _Observation | None
     after: _Observation | None
+    #: The first and the last reading of each part of the run that holds no
+    #: reading without a value.
+    parts: tuple[tuple[_Observation, _Observation], ...]
 
-    def inner(self) -> _Interval:
-        assert self.first.finished is not None and self.last.started is not None
-        return (self.first.finished, max(self.first.finished, self.last.started))
+    def inner(self) -> list[_Interval]:
+        """The time between consecutive reads that both gave the state.
+
+        A reading with no value inside the run divides it. The time across such
+        a reading is in no part, because no read gave the state there.
+        """
+        intervals: list[_Interval] = []
+        for first, last in self.parts:
+            assert first.finished is not None and last.started is not None
+            intervals.append((first.finished, max(first.finished, last.started)))
+        return intervals
 
     def outer(self, window: tuple[int, int]) -> _Interval:
         low = window[0] if self.before is None else self.before.started
@@ -1017,7 +1084,7 @@ class _Span:
             "notObservedReadingsInside": self.not_observed_inside,
             "boundedBefore": None if self.before is None else self.before.point(),
             "boundedAfter": None if self.after is None else self.after.point(),
-            "innerMs": _length(self.inner()),
+            "innerMs": _measure(self.inner()),
             "outerMs": _length(self.outer(window)),
         }
 
@@ -1026,7 +1093,8 @@ def _spans(observations: Sequence[_Observation], state: str) -> list[_Span]:
     """Each run of readings that gave ``state`` with no reading of another state.
 
     A reading that is not observed does not end a run and is not a reading of
-    the state. The reading that bounds a run on a side is the nearest reading
+    the state. It divides the run into parts, and the inner figure is the sum of
+    the parts. The reading that bounds a run on a side is the nearest reading
     on that side that gave another state.
     """
     spans: list[_Span] = []
@@ -1035,16 +1103,21 @@ def _spans(observations: Sequence[_Observation], state: str) -> list[_Span]:
         if observations[position].state != state:
             position += 1
             continue
-        first = last = position
+        first = last = part = position
         readings, inside, pending = 1, 0, 0
+        parts: list[tuple[_Observation, _Observation]] = []
         cursor = position + 1
         while cursor < total and observations[cursor].state in (state, NOT_OBSERVED):
             if observations[cursor].state == state:
+                if pending:
+                    parts.append((observations[part], observations[last]))
+                    part = cursor
                 last, readings = cursor, readings + 1
                 inside, pending = inside + pending, 0
             else:
                 pending += 1
             cursor += 1
+        parts.append((observations[part], observations[last]))
         back = first - 1
         while back >= 0 and observations[back].state == NOT_OBSERVED:
             back -= 1
@@ -1056,6 +1129,7 @@ def _spans(observations: Sequence[_Observation], state: str) -> list[_Span]:
                 not_observed_inside=inside,
                 before=observations[back] if back >= 0 else None,
                 after=observations[cursor] if cursor < total else None,
+                parts=tuple(parts),
             )
         )
         position = cursor
@@ -1203,6 +1277,7 @@ def _zero_ready_tier(
     counts = _reading_counts(series)
     document: dict[str, Any] = {
         "state": NOT_OBSERVED,
+        "reason": "no-count-in-window",
         "readings": counts,
         "notObservedMs": _measure(_unread(series.observations, window)),
         "count": None,
@@ -1216,14 +1291,15 @@ def _zero_ready_tier(
         # No reading states a count, so the tier has no interval and no zero.
         return None, document
     spans = _spans(series.observations, _ZERO)
-    inner = [span.inner() for span in spans]
+    inner = [_measure(span.inner()) for span in spans]
     outer = [span.outer(window) for span in spans]
     document.update(
         state="observed",
+        reason=None,
         count=len(spans),
         intervals=[span.document(window) for span in spans],
-        totalInnerMs=sum(_length(interval) for interval in inner),
-        maxInnerMs=max((_length(interval) for interval in inner), default=0),
+        totalInnerMs=sum(inner),
+        maxInnerMs=max(inner, default=0),
         totalOuterMs=_measure(outer),
         maxOuterMs=max((_length(interval) for interval in outer), default=0),
     )
@@ -1255,7 +1331,9 @@ def _disagreement(
     spans = _spans(observations, state)
     return {
         "callerMs": _measure(caller_intervals),
-        "innerMs": _overlap(caller_intervals, [span.inner() for span in spans]),
+        "innerMs": _overlap(
+            caller_intervals, [part for span in spans for part in span.inner()]
+        ),
         "outerMs": _overlap(caller_intervals, [span.outer(window) for span in spans]),
         "signalNotObservedMs": _overlap(
             caller_intervals, _unread(observations, window)
@@ -1521,6 +1599,16 @@ def _inside(series: _Series, low: int, high: int) -> list[_Observation]:
     ]
 
 
+def _largest_silence(inside: Sequence[_Observation], low: int, high: int) -> int:
+    """The longest time from ``low`` to ``high`` in which no read was in progress."""
+    longest, reached = 0, low
+    for observation in inside:
+        assert observation.started is not None and observation.finished is not None
+        longest = max(longest, observation.started - reached)
+        reached = max(reached, observation.finished)
+    return max(longest, high - reached)
+
+
 def _find_span(
     candidates: Sequence[_Completion], conditions: Mapping[str, _Series]
 ) -> tuple[tuple[_Completion, _Completion, int] | None, tuple[int, int]]:
@@ -1630,6 +1718,16 @@ def _stabilized(
             name: len(_inside(series, first.finished, last.finished))
             for name, series in conditions.items()
         },
+        # The longest time of the span with no read of a condition, with the
+        # two ends of the span as ends. The rule sets no limit for it.
+        "largestTimeWithNoReadingMs": {
+            name: _largest_silence(
+                _inside(series, first.finished, last.finished),
+                first.finished,
+                last.finished,
+            )
+            for name, series in conditions.items()
+        },
     }
     if fault_from is not None and fault_to is not None:
         document["sinceFault"] = {
@@ -1662,7 +1760,7 @@ def _without_value(
     if caller["state"] != COMPUTED:
         names.append("caller")
     else:
-        if caller["failureEpisodes"]["open"]:
+        if caller["failureEpisodes"]["reason"] is not None:
             names.append("caller.failureEpisodes.callerFailureEpisodeMs")
         if caller["maxSuccessGap"]["state"] != COMPUTED:
             names.append("caller.maxSuccessGap")
@@ -1705,11 +1803,12 @@ def analyze(declaration_text: str, texts: Mapping[str, str | None]) -> dict[str,
     aborts = _of_kind(log, "run-aborted")
     ended_by = "declared"
     if aborts:
-        aborted = _ms(aborts[0]["recordedAt"])
-        assert aborted is not None
+        # A log can hold events whose instants are not in the order of its
+        # lines, so the earliest instant is taken and not the first line.
+        aborted = min(_ms(abort["recordedAt"]) or 0 for abort in aborts)
         if aborted <= start:
             raise AnalysisRefused(
-                RULE_WINDOW, "the run was aborted before the window starts"
+                RULE_WINDOW, "the run was aborted at or before the window start"
             )
         if aborted < end:
             end, ended_by = aborted, "run-aborted"

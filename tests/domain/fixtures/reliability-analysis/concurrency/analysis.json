@@ -19,7 +19,8 @@
             "finishedAt": "2026-10-12T08:00:39.700Z",
             "sequence": 28,
             "tied": false
-          }
+          },
+          "successAfterWindow": null
         },
         {
           "end": {
@@ -35,10 +36,13 @@
             "finishedAt": "2026-10-12T08:00:42.100Z",
             "sequence": 30,
             "tied": false
-          }
+          },
+          "successAfterWindow": null
         }
       ],
-      "open": 0
+      "open": 0,
+      "reason": null,
+      "startsBeforeWindow": false
     },
     "firstImpact": {
       "finishedAt": "2026-10-12T08:00:39.700Z",
@@ -78,6 +82,7 @@
     "requests": {
       "completed": 119,
       "failed": 33,
+      "largestTimeWithNoCompletionMs": 3000,
       "outsideWindow": 0,
       "successful": 86
     },
@@ -126,6 +131,8 @@
     "A request is counted at its completion. A request that fails after a long time is counted at the end of that time. The first caller impact is the completion of the first failed request, and the request started earlier.",
     "A failure episode ends at the first successful completion after it, from any worker. With two workers, a request that was sent before the failure can end the episode.",
     "A stream states a value at a read and states nothing between two reads. The inner figure of an interval holds no change that no read gave. The outer figure holds each read on both sides. Neither is the exact time.",
+    "The stabilization rule needs one reading of each condition inside the span, and it sets no limit for the time between two readings. A span can hold a long time with no reading. The document states the longest such time for each condition.",
+    "With no stated fault the search for the first caller impact and for the stabilized recovery starts at the start of the window. A recovery that is found then can be a state that no fault disturbed.",
     "A reading whose value was not read is not healthy and is not a problem. A Deployment count that the API omitted is such a value, and the API omits a count of zero. So a signal of a Deployment count has no value in a reading in which the count is zero.",
     "The analysis reads the instant at which the tool recorded an event. It does not read the second instant that an event can state for another clock.",
     "The declaration is an input. The analysis does not hold a threshold, an expected count, or a window to a frozen record of an experiment.",
@@ -412,6 +419,11 @@
         "finishedAt": "2026-10-12T08:01:03.000Z",
         "sequence": 61
       },
+      "largestTimeWithNoReadingMs": {
+        "desiredRevision": 9850,
+        "readyReplicas": 9800,
+        "runtimeReadyEndpoints": 9800
+      },
       "last": {
         "finishedAt": "2026-10-12T08:02:03.000Z",
         "sequence": 101
@@ -454,6 +466,7 @@
           "withValue": 15,
           "withoutValue": 0
         },
+        "reason": null,
         "state": "observed",
         "totalInnerMs": 0,
         "totalOuterMs": 0
@@ -498,6 +511,7 @@
           "withValue": 15,
           "withoutValue": 0
         },
+        "reason": null,
         "state": "observed",
         "totalInnerMs": 9800,
         "totalOuterMs": 30200

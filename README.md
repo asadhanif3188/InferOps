@@ -257,10 +257,11 @@ with a UTC instant. An answer with no series is stated as no series and not as z
 and an event holds no free text. Neither is a caller's result. No collector was read,
 and no run recorded an event. Since `V2-S5-004-PR1`
 [the reliability analysis](docs/testing/reliability-analysis.md) computes the figures
-of one run from those files: the caller failure episodes, the maximum success gap,
+of one run from its caller record, its timeline streams, and its log of operator
+events. It reads no telemetry stream. The figures are the caller failure episodes, the maximum success gap,
 the intervals with no Ready endpoint, the detection lag of a declared signal, the
 time in which a signal and the caller disagree, and the stabilized recovery. A value
-that was not read gives a metric with no value. The analysis decides no result and
+that was not read is not read as zero or as healthy. The analysis decides no result and
 states no percentage. It was executed on synthetic files only, and no run was
 analysed.
 

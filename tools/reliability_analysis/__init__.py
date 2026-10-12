@@ -6,8 +6,9 @@ observation window, the expected state, and the signals. The output is one
 analysis document: the caller failure episodes, the maximum success gap, the
 intervals with no Ready endpoint, the detection lag and the two disagreement
 times of each declared signal, and the stabilized recovery. A value that was not
-read gives a metric with no value and a reason. The document states no result
-state, no percentage, and no confidence interval.
+read is not read as zero or as healthy, and the document lists each metric that
+has no value. An analysis document states no result state, no percentage, and
+no confidence interval.
 
 See docs/testing/reliability-analysis.md, which states each definition, each
 endpoint of each figure, the clocks, and the limits, and

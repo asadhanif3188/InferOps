@@ -1,6 +1,6 @@
 # The reliability analysis of an experiment run
 
-Status: **the tool is implemented, and files that the test suite builds show each definition, each endpoint, each refusal, and the stored form at evidence level C0. No run was analysed. No analysis of a real run is committed, no bound was compared with a figure, and no claim is registered.**
+Status: **the tool is implemented, and files that the test suite builds show each definition, the ends of each interval, each refusal, and the stored form at evidence level C0. No run was analysed. No analysis of a real run is committed, no bound was compared with a figure, and no claim is registered.**
 
 An experiment run leaves files: the caller record of the
 [reliability runner](../serving/reliability-runner.md), the four
@@ -20,9 +20,9 @@ a document has such a name, and the command has no option that takes a bound.
 
 **A value that was not read is not a value.** An open failure episode has no
 duration. A reading that did not answer, a count that the API omitted, and a
-stream that was not given are not zero and are not healthy. Each metric with no
-value states one of 13 reasons, and the document lists each such metric in
-`withoutValue`.
+stream that was not given are not zero and are not healthy. A metric with no
+value states one of 17 reasons, and the document lists each such metric in
+`withoutValue`. Two of the reasons are reasons of the aggregate.
 
 ## What an analysis is not
 
@@ -53,8 +53,8 @@ signal, and the caller record is the reference.
 | The `argo` stream | `--argo` | `tools.experiment_timeline.read_stream` | No |
 | The log of operator events | `--operator-events` | `tools.experiment_events.read_log` | No |
 
-- An input that its reader refuses is refused here, and nothing is printed. The
-  refusal names the input and the rule of that reader. It does not repeat the
+- An input that its reader refuses is refused here, and no document is printed.
+  The refusal names the input and the rule of that reader. It does not repeat the
   detail of that reader, which can quote a value of the file.
 - The declaration and each input name one experiment and one run. A file of
   another run is refused.
@@ -123,11 +123,20 @@ are inside it.
 - **A recorded abort ends the window.** When the log holds a `run-aborted`
   event that was recorded before the declared end, the window ends at that
   instant. The document states the declared end, `effectiveTo`, and `endedBy`.
-  An abort that was recorded at or before the start of the window is refused.
+  With several such events the earliest instant is taken, and not the first
+  line: the events tool accepts a log whose instants are not in the order of
+  its lines. An abort that was recorded at or before the start of the window
+  is refused.
 - **The caller record must cover the window.** A record that starts after the
   window starts, or ends before it ends, says nothing about the rest of the
   window. Each caller metric then has no value. A window with no failed request
   in the record is not a window in which no request failed.
+- **A window with no completion gives no caller metric.** A record can cover a
+  window in which no request completes. The figure of such a window is not 0.
+- `requests.largestTimeWithNoCompletionMs` is the longest time of the window
+  with no completion, with the two edges of the window as ends. A caller that
+  completes nothing for a time is visible there. The analysis sets no limit for
+  it.
 
 ## The order of completions
 
@@ -155,6 +164,7 @@ request between them.
 | `ms` | The end instant minus the start instant. Null for an open episode |
 | `failedRequests` | The number of failed requests in the run |
 | `open` | True when no successful request completes after the run inside the window |
+| `successAfterWindow` | For an open episode: the first successful request of the record that completes after the window, or null. It is stated, and it does not close the episode |
 
 `callerFailureEpisodeMs` is one figure for the window:
 
@@ -162,6 +172,10 @@ request between them.
 - It is the `ms` of the longest episode when each episode is closed.
 - It has no value when an episode is open. An open episode is not counted as
   lasting to the end of the window.
+- It has no value when the window starts inside an episode: the last completion
+  of the record before the window is a failed one. The window then holds the
+  end of an episode and not its start. `startsBeforeWindow` states that.
+- `reason` states why the figure has no value.
 
 A request is failed when the caller record states `success` as false. The six
 outcomes of the record are not weighted, and no status is left out.
@@ -181,8 +195,11 @@ equal gaps is the one that is named.
 
 `firstImpact` is the first failed request that completes at or after the
 search start. The search starts at the instant of the `fault-injection-started`
-event, or at the start of the window when the log states no fault. The document
-states the sequence number, both instants of the request, and its outcome.
+event when the fault is stated and that instant is inside the window. It starts
+at the start of the window when no log is given, when the log states no fault,
+when the fault is `ambiguous`, and when the event is before the window. The
+document states `searchedFrom`, the sequence number, both instants of the
+request, and its outcome.
 
 The impact instant that the other metrics use is the completion instant. The
 request was sent earlier, and the document states that instant too.
@@ -210,22 +227,26 @@ figures.
 reads:    A         B         B         B         A
           |---|     |---|     |---|     |---|     |---|
                         ^               ^
-                        inner: finish of the first B read to start of the last
+                        inner: finish of the first B read to start of the last,
+                        when no read between them has no value
           ^                                           ^
           outer: start of the read before to finish of the read after
 ```
 
-- **The inner figure** is the time from the finish of the first read that gave
-  the state to the start of the last consecutive read that gave it. One read
+- **The inner figure** is the time between consecutive reads that both gave
+  the state: from the finish of the first to the start of the last. One read
   has an inner figure of 0. It assumes that the state did not change between
-  two reads that both gave it.
+  two consecutive reads that both gave it.
 - **The outer figure** is the time from the start of the nearest read before
   the run that gave another state to the finish of the nearest read after it
   that gave another state. With no such read on a side, the edge of the window
   bounds the figure, and the interval states `boundedBefore` or `boundedAfter`
   as null.
-- **A reading with no value does not end a run and does not bound one.** An
-  interval counts such readings in `notObservedReadingsInside`.
+- **A reading with no value does not end a run and does not bound one. It
+  divides the run.** The inner figure is the sum of the parts on each side of
+  such a reading, so it holds no time across a reading with no value. The outer
+  figure holds that time. An interval counts such readings in
+  `notObservedReadingsInside`.
 
 Neither figure is the exact time. The state held for at least the reads that
 gave it, and it did not hold at the reads on each side.
@@ -241,9 +262,11 @@ intervals share once.
 - A tier with a reading of a count and no reading of zero has a `count` of 0.
 - A tier with no reading of a count is `not-observed` and has no count. It is
   not a tier that had an endpoint.
-- `notObservedMs` is the time of the window in which no read gave a count: the
-  time before the first such read, the time after the last one, and each time
-  between two such reads that holds a reading with no value.
+- `notObservedMs` is the sum of three times: the time before the first read of
+  a count, the time after the last one, and each time between two reads of a
+  count that holds a reading with no value. With no read of a count it is the
+  whole window. The time between two consecutive reads of a count is not in
+  it.
 
 ## Signals
 
@@ -276,8 +299,8 @@ whether the signal changed, and three metrics.
 
 The detection lag is the time from the first caller impact to the first
 reading in which the signal states the problem. The first indication is the
-first `problem` reading that finishes at or after the search start, which is
-the instant of the `fault-injection-started` event or the start of the window.
+first `problem` reading that finishes at or after the search start. The search
+start is the one of the first caller impact.
 
 The signal changed between two reads, so the lag has two bounds:
 
@@ -308,7 +331,14 @@ The caller record gives three kinds of time:
 `healthy`. `falseUnavailable` is the time in which the caller succeeds and the
 signal states `problem`. Each states `callerMs`, the inner figure, the outer
 figure, and `signalNotObservedMs`: the caller time in which no read gave the
-signal a value. That time is in neither figure.
+signal a value. The inner figure holds none of that time. The outer figure can
+hold it, because a reading with no value does not bound a run and the edge of
+the window bounds a run with no read beyond it. Each of the four is a sum, and
+names no reading.
+
+An open episode has no duration, and `callerFailureEpisodeMs` has no value. For
+these two figures alone the caller is counted as failing from the start of an
+open episode to the end of the window. `callerMs` states that time.
 
 ## Stabilized recovery
 
@@ -331,8 +361,14 @@ properties:
 A reading of the argo stream holds the expected revision when it reports a
 resolvedRevision that is the declared commit and a syncStatus of Synced.
 
-- The search starts at the instant of the `fault-injection-finished` event, or
-  at the start of the window when the log states no fault.
+- The search starts at the instant of the `fault-injection-finished` event
+  when the fault is stated and that instant is inside the window. Otherwise it
+  starts at the start of the window. With no stated fault a recovery that is
+  found can be a state that no fault disturbed.
+- **The rule sets no limit for the time between two readings.** One reading of
+  each condition inside the span is enough. `largestTimeWithNoReadingMs` states,
+  for each condition, the longest time of the span in which no read was in
+  progress, with the two ends of the span as ends.
 - A reading that does not hold moves the start of the span to after the finish
   of its read.
 - **A reading with no value is not a reading that holds.** It moves the start
@@ -357,7 +393,11 @@ production SLO.
 | Reason | Statement |
 |---|---|
 | `caller-record-does-not-cover-window` | The caller record starts after the window starts, or it ends before the window ends. The record says nothing about the rest of the window. |
+| `no-completion-in-window` | No request completes inside the window. A window with no completion is not a window with no failure. |
+| `episode-open` | A failure episode has no successful completion after it inside the window, so it has no duration. |
+| `episode-starts-before-window` | The last completion before the window is a failed one, so the window starts inside a failure episode whose start it does not hold. |
 | `fewer-than-two-successes` | The window holds fewer than two successful completions, so it holds no gap between two. |
+| `no-count-in-window` | No reading in the window states a Ready endpoint count for the tier. |
 | `stream-not-given` | A stream that the metric reads was not given. |
 | `no-reading-in-window` | No reading of the stream is inside the window. |
 | `readings-out-of-order` | A reading starts before the reading before it finishes. The stream has no usable order. |
@@ -396,6 +436,10 @@ neither. Each run is listed with its own value.
   episode in one run does not become a run that is left out.
 - The median is stated for exactly three counted runs. For any other number the
   document lists each run and states no aggregate.
+- An aggregate document repeats the result state that the command was given
+  for each run. It decides none.
+- The command does not compare the windows or the declarations of the
+  documents.
 - The result state of each run is an argument of the command. The command does
   not read a manifest, so it does not check that the state is the one that the
   manifest of the run states, and it does not check that an exclusion has a
@@ -407,7 +451,7 @@ neither. Each run is listed with its own value.
 |---|---|
 | `analysis-declaration-unreadable` | A declaration is one JSON object with no member stated twice. |
 | `analysis-declaration-unsupported` | A declaration has exactly its members, its schema name, two identifiers, and an expected state in its form. |
-| `analysis-window-invalid` | The window states two instants in UTC to one millisecond, and it ends after it starts. A recorded abort is not before the window starts. |
+| `analysis-window-invalid` | The window states two instants in UTC to one millisecond, and it ends after it starts. Each recorded abort is after the window starts. |
 | `analysis-signal-unsupported` | Each signal has its own identifier, a registered source, and the members of that source in their form. A declaration states at most 16 signals. |
 | `analysis-input-refused` | Each input is accepted by the reader of the tool that defines it. The analysis names the input and the rule of that tool. |
 | `analysis-input-misnamed` | A stream is given under the name that its header states. |
@@ -418,7 +462,7 @@ neither. Each run is listed with its own value.
 |---|---|
 | 0 | The command printed a document |
 | 2 | The arguments are not usable |
-| 3 | An input was refused. Nothing is printed |
+| 3 | An input was refused. No document is printed, and one `REFUSED` line goes to standard error |
 
 **Exit status 0 does not say that each metric has a value, and it does not say
 that a run passed.**
@@ -438,6 +482,13 @@ that a run passed.**
 - A stream states a value at a read and states nothing between two reads. The
   inner figure of an interval holds no change that no read gave. The outer
   figure holds each read on both sides. Neither is the exact time.
+- The stabilization rule needs one reading of each condition inside the span,
+  and it sets no limit for the time between two readings. A span can hold a long
+  time with no reading. The document states the longest such time for each
+  condition.
+- With no stated fault the search for the first caller impact and for the
+  stabilized recovery starts at the start of the window. A recovery that is
+  found then can be a state that no fault disturbed.
 - A reading whose value was not read is not healthy and is not a problem. A
   Deployment count that the API omitted is such a value, and the API omits a
   count of zero. So a signal of a Deployment count has no value in a reading in
@@ -479,10 +530,11 @@ evidence of a run.
 | `clock-ties` | A failed and a successful request complete at one instant, twice, with the lines in both orders |
 | `abort` | The run is aborted. The window ends at the abort, and the episode is open |
 
-The inputs of a case are what the three tools write: a caller record that the
-runner's reader accepts, streams that the timeline tool builds from a
-collection, and a log that the events tool writes. The suite builds each case
-again and compares it with the committed files, byte for byte. To write the
+The timeline tool builds the streams of a case from a collection that the suite
+invents, and the events tool writes the log. The suite writes the caller record
+itself, and the runner's reader accepts it. No runner wrote one. The suite
+builds each case again and compares it with the committed files, byte for
+byte. To write the
 files again, run `python tests/domain/test_reliability_analysis.py`.
 
 ## An analysis in a run directory
@@ -521,13 +573,16 @@ Both commands print one JSON document with sorted members and LF line endings.
 - The analysis does not read the second instant of an event, and it does not
   compute a decision time or a reversal time from the reversal events.
 - The analysis does not pair a deleted pod with its replacement.
+- No limit holds the time between two readings of a stabilization span, or the
+  time with no completion of a caller. The document states both times.
 - The layout check does not call the tool.
 
 ## Tests
 
 [`tests/domain/test_reliability_analysis.py`](../../tests/domain/test_reliability_analysis.py)
-builds each input with the tool that defines it and holds the analysis to each
-definition, each endpoint, each state with no value, each refusal, and the
-stored form that this page states. It compares the rules, the reasons, the
+builds the inputs and holds the analysis to each definition, the ends of each
+interval, each state with no value, each refusal, and the stored form that this
+page states. It reads the imports of the tool for a module that reaches a
+network or a process, and its text for a call that writes a file. It compares the rules, the reasons, the
 sources, the metrics, the limitations, and the boundaries on this page with
 the tool's.

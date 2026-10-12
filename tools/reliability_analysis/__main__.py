@@ -13,8 +13,8 @@ counted runs.
 **Exit status 0 says that the command printed a document.** It does not say
 that each metric has a value: a document names each metric that has none in
 ``withoutValue``. It does not say that a run passed. Exit status 3 says that an
-input was refused, and nothing is printed for it. Exit status 2 says that the
-arguments are not usable.
+input was refused: no document is printed, and one ``REFUSED`` line goes to
+standard error. Exit status 2 says that the arguments are not usable.
 
 **The command reads files.** It contacts no cluster and no caller, and it
 writes no file. See docs/testing/reliability-analysis.md.
