@@ -241,7 +241,13 @@ whose pod sends the request to the API Service and writes one line of JSON for e
 request, with no prompt text and no completion text. The runner has no code that reads
 a readiness answer or a state of Argo CD. Its loop was executed against scripted
 answers and a loopback server, which is substituted execution. No run was started in a
-cluster, and no run executed under RP-1.
+cluster, and no run executed under RP-1. Since `V2-S5-003-PR1` a script and a tool
+capture the [infrastructure timelines](docs/environment/experiment-timelines.md) of a
+run: a bounded number of samples of the Service endpoints, the pods, the Deployments,
+and the Argo CD Application, each with the two instants of its read in UTC. A value
+that was not read has a state and no value. A stream is what the cluster and the
+controller published. It is not a caller's result. The collector was executed against
+stand-ins for `kubectl` only, and no stream of a real run is committed.
 
 ## Prerequisites
 

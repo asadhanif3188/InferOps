@@ -12,8 +12,9 @@ decision. This suite holds five things:
 * every object the pinned manifest declares maps to a row of the ownership
   inventory that the bootstrap owner holds, and no such object is also Terraform's
   or Helm's;
-* the procedure restates the record's pins, names, and refusals exactly, applies
-  the manifest unmodified, and is the only build file that names the controller;
+* the procedure restates the record's pins, names, and refusals exactly, and
+  applies the manifest unmodified, and the build files that name the controller
+  are the ones `ALLOWED_REFERENCES` lists and no other;
 * nothing committed gives Argo CD an object to reconcile, and no serving
   component refers to Argo CD;
 * every rule the record states names a test that exists, or says that nothing
@@ -175,15 +176,23 @@ SERVING_ROOTS = ("src", "charts", "deploy")
 #: holds that the path is its only reference.
 CAPACITY_TOOL_REL = "tools/capacity_preflight/core.py"
 
+#: The collector of the experiment timelines. It names the controller on two
+#: lines: the kind and the namespace of the one Application that it reads with a
+#: `get`. tests/architecture/test_experiment_timeline_collector.py holds the
+#: script to those two lines and to that one verb.
+TIMELINE_COLLECTOR_REL = "scripts/environment/experiment-timeline.sh"
+
 #: The build files that may name the controller: the two manifests that ADR 0019
 #: decided, the procedure that applies them, the procedure that installs the
-#: controller, and the one tool that reads a manifest as a file. A sixth file is
-#: a sixth thing that names Argo CD, and no suite reads it. None of the five is
-#: under a directory a request is served from.
+#: controller, the collector that reads the Application, and the one tool that
+#: reads a manifest as a file. A seventh file is a seventh thing that names
+#: Argo CD, and no suite reads it. None of the six is under a directory a
+#: request is served from.
 ALLOWED_REFERENCES = [
     *ARGOCD_MANIFESTS,
     APPLICATION_PROCEDURE_REL,
     PROCEDURE_REL,
+    TIMELINE_COLLECTOR_REL,
     CAPACITY_TOOL_REL,
 ]
 
@@ -396,15 +405,15 @@ def test_the_record_says_what_it_does_not_establish() -> None:
 
 
 def test_the_record_says_the_bootstrap_is_implemented_by_one_procedure() -> None:
-    """The record names the procedure, and no other build file names Argo CD.
+    """The record names the procedure, and the build files that name Argo CD are listed.
 
     Until the procedure existed this test pinned `decided-not-implemented` and
     failed when any build file named the controller. It now pins the other
     side: the state is `implemented`, the procedure the record names is
-    committed, and that file is the only one under the build directories that
-    refers to Argo CD by path or by content. A second such file is a second
-    procedure, a client, or a dependency, and this suite would not be reading
-    it.
+    committed, and the files under the build directories that refer to Argo CD
+    by path or by content are the ones `ALLOWED_REFERENCES` lists. A file that
+    is not on the list is one more procedure, client, or dependency, and no
+    suite would be reading it.
     """
     assert RECORD["implementationState"] == "implemented"
     procedure = RECORD["procedure"]
@@ -794,9 +803,10 @@ def test_no_serving_component_refers_to_argocd() -> None:
     """
     assert tracked_files(SERVING_ROOTS), "no serving file was read"
     assert not references_to_argocd(SERVING_ROOTS)
-    # The same reading over every build directory. One file may name the
-    # controller: the procedure that installs it. A client, a second script, or
-    # a workflow that addressed the controller would be the first dependency.
+    # The same reading over every build directory. The files that may name the
+    # controller are the ones `ALLOWED_REFERENCES` lists. A client, a script that
+    # is not on the list, or a workflow that addressed the controller would be
+    # one more dependency.
     assert references_to_argocd(BUILD_ROOTS) == ALLOWED_REFERENCES
     for allowed in ALLOWED_REFERENCES:
         assert allowed.split("/", 1)[0] not in SERVING_ROOTS, allowed

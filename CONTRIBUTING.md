@@ -600,6 +600,28 @@ caller's result, and do not use a Prometheus `up` series in place of a record.
 [The endpoint-state page](docs/environment/service-endpoint-state.md) states the rules,
 the identities, and what a record does not establish.
 
+**The infrastructure timelines of an experiment run are captured by a script that changes
+nothing in the cluster and a tool that reads files.** The script samples the release a
+bounded number of times and writes a collection directory under `.artifacts/`. The tool
+prints four streams from it: `endpoints`, `pods`, `deployments`, and `argo`.
+
+```sh
+INFEROPS_PROVIDER=<provider> scripts/environment/experiment-timeline.sh \
+  --experiment ID --run ID --samples COUNT --interval SECONDS
+uv run --locked python -m tools.experiment_timeline stream DIRECTORY NAME
+uv run --locked python -m tools.experiment_timeline check FILE [FILE ...]
+uv run --locked python -m tools.experiment_timeline changes FILE
+```
+
+Exit status 0 says that the samples were taken. It does not say that a read answered,
+that an endpoint was Ready, or that a state was healthy. A field that an object did not
+hold is `missing`: do not add code that reads it as zero, as false, or as a healthy
+state, and do not carry a value across a reading that gave none. Do not commit a
+collection directory: it holds the whole answer of each read. The four stream files hold
+an allowlist, and a new field needs a form that its value is held to. Do not use a stream
+as a caller's result. [The timelines page](docs/environment/experiment-timelines.md)
+states the clocks, the states, the limits, and what a stream does not establish.
+
 **A tier of two or more replicas renders a PodDisruptionBudget.** No value configures
 it. A change that adds a kind to the chart's render must also add it to the Argo CD
 project, to the residue kinds of the Application procedure, and to the ownership

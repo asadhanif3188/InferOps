@@ -968,6 +968,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | Whether the stated requests and limits of the two-replica release fit in what one node allocates, decided before an install | [The capacity preflight](../environment/capacity-preflight.md) |
 | What the single-runtime baseline is, and which differences from the two-replica release it is permitted | [The single-runtime baseline profile](../environment/single-runtime-baseline-profile.md) |
 | How many Ready endpoints each of the two Services has, and which pods they are, as one reading | [The Ready endpoint state of the two Services](../environment/service-endpoint-state.md) |
+| How the endpoints, the pods, the Deployments, and the Argo CD Application are sampled over the time of one experiment run | [The infrastructure timelines of an experiment run](../environment/experiment-timelines.md) |
 | What a PodDisruptionBudget of the release bounds, and that it does not bound a pod deletion | [The disruption budgets](../environment/disruption-budgets.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
