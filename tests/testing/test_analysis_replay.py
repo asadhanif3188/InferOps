@@ -15,10 +15,10 @@ replay. To write it again, run this module as a script.
 
 The suite holds the tool to these properties.
 
-*A stored document is not authoritative.* A figure, a statement, a digest, a
-member, or the form of a stored run analysis that was changed by hand is
-refused, with the manifest left as it was and with the manifest changed to
-match.
+*A stored document is not authoritative.* A figure, a statement, a declared
+value, a member, or the form of a stored run analysis that was changed by hand
+is refused, with the digest in the manifest changed to match. One edited figure
+is also refused with the manifest left as it was.
 
 *Evidence that changed or is absent refuses the replay.* The layout check
 refuses a run directory first. A file and its digest in the manifest, replaced
@@ -29,8 +29,10 @@ document that another code wrote replays with that stated, and a commit is held
 to Git only when the clone holds it.
 
 *An aggregate leaves no run out.* The result state of each run is the one of
-its manifest, a run of the experiment that was not given is a refusal, and a
-counted run with no value leaves the aggregate with no median.
+its manifest, a run of the experiment that was not given is a refusal under
+each spelling of an argument, a directory beside the runs that does not conform
+is a refusal, and a counted run with no value leaves the aggregate with no
+median.
 
 *Nothing is promoted.* A document that replays holds no claim status, no
 evidence level, and no result state, the evidence index refuses a run whose
@@ -426,6 +428,79 @@ def test_a_refusal_repeats_no_figure_of_the_document(tmp_path: Path) -> None:
     assert "987654" not in _messages(core.replay_run(run_dir, tmp_path))
 
 
+def test_a_refusal_repeats_no_text_of_the_stored_declaration(tmp_path: Path) -> None:
+    """The first commit repeated the message of the analysis, which quotes a value."""
+    run_dir = _bound_run(tmp_path, EXAMPLE_CASE)
+
+    def rename(document: dict[str, Any]) -> None:
+        signal = document["declaration"]["signals"][0]
+        signal["id"], signal["source"] = "p99-latency-987654-ms", "no-such-source"
+
+    _rewrite(run_dir, rename)
+    report = core.replay_run(run_dir, tmp_path)
+    assert _rules(report) == [core.RULE_ANALYSIS]
+    assert "987654" not in _messages(report)
+    assert "analysis-signal-unsupported" in _messages(report)
+    (problem,) = core.gate_problems(run_dir, tmp_path)
+    assert "987654" not in problem
+
+
+def test_a_run_directory_outside_the_root_is_shown_by_its_name(tmp_path: Path) -> None:
+    """A refusal holds no path of a host."""
+    run_dir = _bound_run(tmp_path / "tree", EXAMPLE_CASE)
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    report = core.replay_run(run_dir, other)
+    assert report.status == core.REFUSED
+    assert report.path == run_dir.name
+    assert [finding.path for finding in report.findings] == [run_dir.name]
+    assert str(tmp_path) not in _messages(report)
+    assert tmp_path.as_posix() not in _messages(report)
+
+
+def test_an_evidence_file_that_the_analysis_no_longer_reads_refuses_the_replay(
+    tmp_path: Path,
+) -> None:
+    """A changed file with a matching manifest can be refused by the analysis first."""
+    run_dir = _bound_run(tmp_path, EXAMPLE_CASE)
+    _write(run_dir / "pods.jsonl", "not a stream\n")
+    _restate(run_dir, "pods.jsonl")
+    assert check_run(run_dir, tmp_path).status == run_core.CONFORMING
+    assert _rules(core.replay_run(run_dir, tmp_path)) == [core.RULE_ANALYSIS]
+
+
+def test_a_raw_file_that_the_analysis_does_not_read_moves_the_raw_digest(
+    tmp_path: Path,
+) -> None:
+    run_dir = _bound_run(tmp_path, EXAMPLE_CASE)
+    _write(run_dir / "transcript.txt", "exit status 0\n")
+    manifest = _read_json(run_dir / run_core.MANIFEST_NAME)
+    manifest["evidence"]["files"].append(
+        {
+            "role": "transcript",
+            "path": "transcript.txt",
+            "sha256": file_digest(run_dir / "transcript.txt"),
+        }
+    )
+    _write_json(run_dir / run_core.MANIFEST_NAME, manifest)
+    assert check_run(run_dir, tmp_path).status == run_core.CONFORMING
+    report = core.replay_run(run_dir, tmp_path)
+    assert _rules(report) == [core.RULE_EVIDENCE]
+    assert "rawEvidence" in _messages(report)
+
+
+def test_a_changed_reason_of_a_metric_with_no_value_is_refused(tmp_path: Path) -> None:
+    run_dir = _bound_run(tmp_path, "open-episode")
+
+    def change(document: dict[str, Any]) -> None:
+        episodes = document["analysis"]["caller"]["failureEpisodes"]
+        assert episodes["reason"] == "episode-open"
+        episodes["reason"] = "no-completion-in-window"
+
+    _rewrite(run_dir, change)
+    assert _rules(core.replay_run(run_dir, tmp_path)) == [core.RULE_DOCUMENT]
+
+
 def test_a_changed_declaration_that_is_computed_again_replays(tmp_path: Path) -> None:
     """A measured limit: the declaration is held to no frozen record."""
     run_dir = _raw_run(tmp_path, EXAMPLE_CASE)
@@ -716,7 +791,13 @@ def _tools_imports(path: Path) -> set[str]:
         if isinstance(node, ast.Import):
             modules = [alias.name for alias in node.names]
         elif isinstance(node, ast.ImportFrom) and node.level == 0:
-            modules = [node.module or ""]
+            module = node.module or ""
+            # ``from tools import x`` names the package in the imported name.
+            modules = (
+                [f"tools.{alias.name}" for alias in node.names]
+                if module == "tools"
+                else [module]
+            )
         else:
             continue
         names.update(m.split(".")[1] for m in modules if m.startswith("tools."))
@@ -724,24 +805,65 @@ def _tools_imports(path: Path) -> set[str]:
 
 
 def test_the_source_packages_hold_the_analysis_and_each_reader_of_an_input() -> None:
-    """What the analysis imports that the digest does not cover is stated here."""
+    """Each package that a source file imports and the digest does not cover.
+
+    The imports of each Python file of each source package are read. A package
+    that those name and that is not a source package is outside the digest.
+    The imports of those packages in turn are not read here.
+    """
     imported = _tools_imports(REPO_ROOT / "tools" / "reliability_analysis" / "core.py")
-    assert imported - set(core.SOURCE_PACKAGES) == {"experiment_run"}
     assert imported & set(core.SOURCE_PACKAGES) == {
         "experiment_events",
         "experiment_timeline",
         "reliability_runner",
         "service_endpoint_state",
     }
-    # This tool also reads the layout check, the manifest validator, and the
-    # digest of the evidence index. A change to one of them does not move the
-    # source digest. The page states that limit.
-    own = _tools_imports(REPO_ROOT / "tools" / "analysis_replay" / "core.py")
-    assert own - set(core.SOURCE_PACKAGES) == {
+    # The reader of a caller record holds a header to the caller profile.
+    runner = _tools_imports(REPO_ROOT / "tools" / "reliability_runner" / "core.py")
+    assert "reliability_profile" in runner
+    assert "reliability_profile" in core.SOURCE_PACKAGES
+    outside: set[str] = set()
+    for row in core.analysis_sources():
+        outside |= _tools_imports(REPO_ROOT / row["path"])
+    assert outside - set(core.SOURCE_PACKAGES) == {
         "evidence_index",
         "experiment_evidence",
         "experiment_run",
+        "llm_load",
+        "model_acquisition",
+        "runtime_configuration",
+        "runtime_packaging",
     }
+    text = PAGE.read_text(encoding="utf-8")
+    for package in outside - set(core.SOURCE_PACKAGES):
+        assert f"`tools/{package}`" in text, package
+
+
+def test_a_source_file_is_a_file_whose_name_ends_with_py_in_lower_case(
+    tmp_path: Path,
+) -> None:
+    package = tmp_path / "tools" / core.SOURCE_PACKAGES[0]
+    package.mkdir(parents=True)
+    (package / "core.py").write_bytes(b"VALUE = 1\n")
+    (package / "Shadow.PY").write_bytes(b"VALUE = 2\n")
+    (package / "notes.txt").write_bytes(b"not code\n")
+    assert [row["path"] for row in core.analysis_sources(tmp_path)] == [
+        f"tools/{core.SOURCE_PACKAGES[0]}/core.py"
+    ]
+
+
+def test_a_source_file_with_a_path_that_no_document_can_state_gives_no_code(
+    tmp_path: Path,
+) -> None:
+    """The form of a source row has no hyphen. A replay would refuse the document."""
+    package = tmp_path / "tools" / core.SOURCE_PACKAGES[0]
+    package.mkdir(parents=True)
+    (package / "core.py").write_bytes(b"VALUE = 1\n")
+    assert core._code_problem(core.analysis_code(REVISION, tmp_path)) is None
+    (package / "my-notes.py").write_bytes(b"VALUE = 2\n")
+    with pytest.raises(core.ReplayRefused) as refused:
+        core.analysis_code(REVISION, tmp_path)
+    assert refused.value.rule == core.RULE_UNCOMMITTED
 
 
 def _restate_code(document: dict[str, Any], rows: list[dict[str, str]]) -> None:
@@ -871,19 +993,32 @@ def test_the_stated_commit_is_held_to_what_git_gives() -> None:
         asked.append(revision)
         return blobs[path]
 
-    assert core.revision_state(code, lambda _: True, blob) == (core.REVISION_HELD, ())
+    held: dict[str, list[str] | None] = {
+        "tools/a": ["tools/a/core.py", "tools/a/notes.txt"],
+        "tools/b": ["tools/b/core.py"],
+    }
+
+    def tracked(revision: str, package: str) -> list[str] | None:
+        asked.append(revision)
+        return held[package]
+
+    def state(present: bool = True) -> tuple[str, tuple[str, ...]]:
+        return core.revision_state(code, lambda _: present, blob, tracked)
+
+    assert state() == (core.REVISION_HELD, ())
     assert set(asked) == {REVISION}
     # A clone that does not hold the commit compares nothing.
-    assert core.revision_state(code, lambda _: False, blob) == (
-        core.REVISION_NOT_CHECKED,
-        (),
-    )
+    assert state(present=False) == (core.REVISION_NOT_CHECKED, ())
+    # The commit holds a Python file of a stated package that no row states.
+    held["tools/a"] = ["tools/a/core.py", "tools/a/extra.py"]
+    assert state() == (core.CODE_DIFFERS, ("tools/a/extra.py",))
+    # A directory that cannot be listed is not read as held.
+    held["tools/a"] = None
+    assert state() == (core.CODE_DIFFERS, ("tools/a",))
+    held["tools/a"] = ["tools/a/core.py"]
     blobs["tools/a/core.py"] = b"A = 2\n"
     blobs["tools/b/core.py"] = None
-    assert core.revision_state(code, lambda _: True, blob) == (
-        core.CODE_DIFFERS,
-        ("tools/a/core.py", "tools/b/core.py"),
-    )
+    assert state() == (core.CODE_DIFFERS, ("tools/a/core.py", "tools/b/core.py"))
 
 
 # --------------------------------------------------------------------------
@@ -944,9 +1079,13 @@ def test_an_aggregate_states_the_digests_of_each_run(tmp_path: Path) -> None:
     for row in document["runs"]:
         run_dir = tmp_path / row["runDirectory"]
         assert row["manifestSha256"] == file_digest(run_dir / run_core.MANIFEST_NAME)
+        code = _stored(run_dir)["analysisCode"]
         assert row["runAnalysis"] == {
             "path": ANALYSIS_FILE,
             "sha256": file_digest(run_dir / ANALYSIS_FILE),
+            "revision": code["revision"],
+            "sourceSha256": code["sourceSha256"],
+            "code": core.CODE_SAME,
         }
         assert row["rawEvidenceSha256"] == _stored(run_dir)["rawEvidence"]["sha256"]
 
@@ -1030,6 +1169,74 @@ def test_a_directory_beside_the_runs_with_no_valid_manifest_is_a_refusal(
     with pytest.raises(core.ReplayRefused) as refused:
         core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE_OMITTED
+
+
+def test_a_run_is_not_left_out_by_another_spelling_of_an_argument(
+    tmp_path: Path,
+) -> None:
+    """The runs directory is read at its place, and not beside the last argument.
+
+    The first commit listed the parent of the last path as it was written. A
+    path through a directory of the run then listed that run, and a fourth run
+    of the experiment was left out with no refusal.
+    """
+    runs = _runs(tmp_path, THREE | {"open-episode": "FAILED"})
+    (runs[2] / "logs").mkdir()
+    assert check_run(runs[2], tmp_path).status == run_core.CONFORMING
+    spelled = runs[2] / "logs" / ".."
+    with pytest.raises(core.ReplayRefused) as refused:
+        core.aggregate_runs(METRIC, [runs[0], runs[1], spelled], REVISION, tmp_path)
+    assert refused.value.rule == core.RULE_AGGREGATE_OMITTED
+    assert "open-episode-1" in refused.value.message
+    # With each run given, the other spelling gives the document of the plain one.
+    plain = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    assert (
+        core.aggregate_runs(METRIC, [*runs[:2], spelled, runs[3]], REVISION, tmp_path)
+        == plain
+    )
+    for missing in (runs[2] / "caller.jsonl" / "..", runs[2] / "absent" / ".."):
+        with pytest.raises(core.ReplayRefused):
+            core.aggregate_runs(METRIC, [runs[0], runs[1], missing], REVISION, tmp_path)
+
+
+def test_a_run_is_not_left_out_by_another_experiment_in_its_manifest_alone(
+    tmp_path: Path,
+) -> None:
+    """The first commit read the experiment of a run that was not given from a
+    manifest that validates. The manifest of the worst run, with another
+    experiment and no other change, was then passed as a run of that experiment.
+    The layout check refuses it: its caller record names the first experiment.
+    """
+    runs = _runs(tmp_path, THREE | {"open-episode": "FAILED"})
+    manifest = _read_json(runs[3] / run_core.MANIFEST_NAME)
+    manifest["metadata"]["experimentId"] = "another-experiment"
+    _write_json(runs[3] / run_core.MANIFEST_NAME, manifest)
+    assert not run_core.validate(manifest)
+    assert check_run(runs[3], tmp_path).status == core.REFUSED
+    with pytest.raises(core.ReplayRefused) as refused:
+        core.aggregate_runs(METRIC, runs[:3], REVISION, tmp_path)
+    assert refused.value.rule == core.RULE_AGGREGATE_OMITTED
+    assert "does not conform" in refused.value.message
+
+
+def test_an_aggregate_states_the_code_of_each_run_analysis(tmp_path: Path) -> None:
+    """The aggregate compares no commit with Git. It states what each run states."""
+    runs = _runs(tmp_path, THREE)
+
+    def other_code(document: dict[str, Any]) -> None:
+        rows = copy.deepcopy(document["analysisCode"]["sources"])
+        rows[0]["sha256"] = "0" * 64
+        _restate_code(document, rows)
+        document["analysisCode"]["revision"] = "d" * 40
+
+    _rewrite(runs[0], other_code)
+    document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    listed = {row["runId"]: row["runAnalysis"] for row in document["runs"]}
+    changed = listed[runs[0].name]
+    assert (changed["code"], changed["revision"]) == (core.CODE_DIFFERS, "d" * 40)
+    assert changed["sourceSha256"] != document["analysisCode"]["sourceSha256"]
+    assert {listed[run.name]["code"] for run in runs[1:]} == {core.CODE_SAME}
+    assert document["analysisCode"]["revision"] == REVISION
 
 
 def test_a_run_of_another_experiment_beside_the_runs_is_not_required(
@@ -1146,6 +1353,65 @@ def test_the_gate_reads_a_manifest_of_another_shape_for_the_role(
     (problem,) = core.gate_problems(run_dir, tmp_path)
     assert problem.startswith(core.RULE_RUN)
     assert "evidence-manifest-refused" in problem
+
+
+@pytest.mark.parametrize("role", ["Analysis", "analysis ", " ANALYSIS"])
+def test_the_gate_reads_a_role_in_another_spelling(tmp_path: Path, role: str) -> None:
+    """The first commit compared the role as text, and passed each of these."""
+    run_dir = _bound_run(tmp_path, EXAMPLE_CASE)
+    manifest = _read_json(run_dir / run_core.MANIFEST_NAME)
+    manifest["evidence"]["files"][-1]["role"] = role
+    _write_json(run_dir / run_core.MANIFEST_NAME, manifest)
+    assert core.gate_problems(run_dir, tmp_path)
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    [[], "files", {"files": {}}, {"files": ["analysis"]}, {"files": [{"role": 7}]}, {}],
+)
+def test_the_gate_refuses_evidence_that_states_no_role_for_each_file(
+    tmp_path: Path, evidence: object
+) -> None:
+    run_dir = tmp_path / _run_ref(EXAMPLE_CASE)
+    _write_json(run_dir / run_core.MANIFEST_NAME, {"evidence": evidence})
+    assert core.gate_problems(run_dir, tmp_path) == [
+        "the run manifest does not state its evidence files with a role each"
+    ]
+
+
+def test_the_gate_refuses_a_manifest_that_is_a_directory(tmp_path: Path) -> None:
+    run_dir = tmp_path / _run_ref(EXAMPLE_CASE)
+    (run_dir / run_core.MANIFEST_NAME).mkdir(parents=True)
+    assert core.gate_problems(run_dir, tmp_path) == [
+        "the run manifest is not readable as one JSON object"
+    ]
+
+
+def test_the_gate_does_not_read_a_run_analysis_under_another_role(
+    tmp_path: Path,
+) -> None:
+    """A measured limit. The gate reads the role of a file and not its content."""
+    run_dir = _bound_run(tmp_path, EXAMPLE_CASE)
+    _rewrite(run_dir, _set_figure)
+    manifest = _read_json(run_dir / run_core.MANIFEST_NAME)
+    manifest["evidence"]["files"][-1]["role"] = "result"
+    _write_json(run_dir / run_core.MANIFEST_NAME, manifest)
+    assert check_run(run_dir, tmp_path).status == run_core.CONFORMING
+    assert core.gate_problems(run_dir, tmp_path) == []
+
+
+def test_the_command_of_the_index_reports_a_run_that_does_not_replay(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from tools.evidence_index import __main__ as index_command
+
+    def refuse(*_: object, **__: object) -> list[str]:
+        raise ValueError("the analysis of a run does not replay")
+
+    monkeypatch.setattr(index_core, "analysis_gate", refuse)
+    for mode in ([], ["--print"], ["--check"]):
+        assert index_command.main(mode) == 1
+        assert capsys.readouterr().out.startswith("MISMATCH the analysis of a run")
 
 
 def _ledger(run_ref: str) -> dict[str, Any]:
@@ -1291,6 +1557,13 @@ def test_verify_refuses_a_commit_whose_files_are_not_the_stated_ones(
     monkeypatch.setattr(
         command, "_blob", lambda root, revision, path: (root / path).read_bytes()
     )
+    monkeypatch.setattr(
+        command,
+        "_tracked",
+        lambda root, revision, package: [
+            path.relative_to(root).as_posix() for path in (root / package).rglob("*.py")
+        ],
+    )
     assert command.main(["verify", str(run_dir), "--root", str(tmp_path)]) == 0
     assert "revision  held" in capsys.readouterr().out
     monkeypatch.setattr(command, "_blob", lambda *_: b"other\n")
@@ -1347,6 +1620,48 @@ def test_the_repository_command_replays_no_committed_run(
     )
 
 
+def test_the_repository_command_lists_each_state_of_a_tree(
+    tmp_path: Path, no_git: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A tree that the suite builds: one run of each state that is not pre-schema."""
+    _write_json(
+        tmp_path / run_core.PRE_SCHEMA_REGISTER_REF,
+        {
+            "schemaVersion": run_core.SUPPORTED_API_VERSION,
+            "kind": run_core.PRE_SCHEMA_REGISTER_KIND,
+            "records": [],
+        },
+    )
+    _bound_run(tmp_path, "zero-failure")
+    _raw_run(tmp_path, "abort")
+    assert command.main(["repository", "--root", str(tmp_path)]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert [line.split()[0] for line in lines] == [
+        "no-analysis",
+        "replayed",
+        "revision",
+        "runs",
+    ]
+    assert lines[-1].endswith(
+        "2: 0 pre-schema and not replayed, 1 with no analysis, 1 replayed, 0 refused"
+    )
+    _rewrite(tmp_path / _run_ref("zero-failure"), _set_figure)
+    assert command.main(["repository", "--root", str(tmp_path)]) == 3
+    out = capsys.readouterr().out
+    assert core.RULE_DOCUMENT in out
+    assert out.splitlines()[-1].endswith("0 replayed, 1 refused")
+
+
+def test_a_name_in_another_script_does_not_stop_the_output(
+    tmp_path: Path, no_git: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The first commit printed the name as it was, and a console could refuse it."""
+    name = "nope-\u2192-\u03bb"
+    assert command.main(["verify", str(tmp_path / name), "--root", str(tmp_path)]) == 3
+    out = capsys.readouterr().out
+    assert out.isascii() and "\\u2192" in out
+
+
 def _git(root: Path, *arguments: str) -> str:
     done = subprocess.run(
         [
@@ -1376,6 +1691,7 @@ def test_the_commit_is_read_from_git_and_refused_while_a_source_differs(
     source = tmp_path / "tools" / core.SOURCE_PACKAGES[0] / "core.py"
     source.parent.mkdir(parents=True)
     source.write_bytes(b"VALUE = 1\n")
+    (tmp_path / ".gitignore").write_bytes(b"local_*.py\n")
     _git(tmp_path, "init", "--quiet")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "--quiet", "-m", "one source file")
@@ -1390,6 +1706,7 @@ def test_the_commit_is_read_from_git_and_refused_while_a_source_differs(
             stated,
             lambda revision: command._commit_present(tmp_path, revision),
             lambda revision, path: command._blob(tmp_path, revision, path),
+            lambda revision, package: command._tracked(tmp_path, revision, package),
         )
 
     assert state(code) == (core.REVISION_HELD, ())
@@ -1405,9 +1722,46 @@ def test_the_commit_is_read_from_git_and_refused_while_a_source_differs(
         (rows[0]["path"],),
     )
     source.write_bytes(b"VALUE = 1\n")
-    (source.parent / "added.py").write_bytes(b"VALUE = 3\n")
+    assert command.checkout_revision(tmp_path) == head
+    added = source.parent / "added.py"
+    added.write_bytes(b"VALUE = 3\n")
     with pytest.raises(core.ReplayRefused):
         command.checkout_revision(tmp_path)
+    added.unlink()
+
+    # A file that Git ignores is a source file, and the status of Git is empty.
+    ignored = source.parent / "local_settings.py"
+    ignored.write_bytes(b"VALUE = 4\n")
+    assert _git(tmp_path, "status", "--porcelain") == ""
+    with pytest.raises(core.ReplayRefused) as refused:
+        command.checkout_revision(tmp_path)
+    assert refused.value.rule == core.RULE_UNCOMMITTED
+    ignored.unlink()
+
+    # A changed file that Git is told to leave out of its status is compared.
+    _git(tmp_path, "update-index", "--assume-unchanged", rows[0]["path"])
+    source.write_bytes(b"VALUE = 5\n")
+    assert _git(tmp_path, "status", "--porcelain") == ""
+    with pytest.raises(core.ReplayRefused):
+        command.checkout_revision(tmp_path)
+    _git(tmp_path, "update-index", "--no-assume-unchanged", rows[0]["path"])
+    source.write_bytes(b"VALUE = 1\n")
+
+    # A tag object is not a commit, and a document that states it is not checked.
+    _git(tmp_path, "tag", "-a", "v0", "-m", "an annotated tag")
+    tag = _git(tmp_path, "rev-parse", "v0")
+    assert tag != head and len(tag) == 40
+    assert state(code | {"revision": tag}) == (core.REVISION_NOT_CHECKED, ())
+
+    # A second file in the commit that the rows do not state is a difference.
+    added.write_bytes(b"VALUE = 3\n")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "--quiet", "-m", "a second source file")
+    second = _git(tmp_path, "rev-parse", "HEAD")
+    assert state(code | {"revision": second}) == (
+        core.CODE_DIFFERS,
+        (f"tools/{core.SOURCE_PACKAGES[0]}/added.py",),
+    )
 
 
 def test_a_directory_that_is_no_git_checkout_gives_no_commit(tmp_path: Path) -> None:
@@ -1511,7 +1865,7 @@ def test_the_page_names_each_source_package_and_both_schema_names() -> None:
     text = _page()
     for package in core.SOURCE_PACKAGES:
         assert f"`tools/{package}`" in text
-    assert len(core.SOURCE_PACKAGES) == 6
+    assert len(core.SOURCE_PACKAGES) == 7
     assert f"`{core.SCHEMA}`" in text
     assert f"`{core.AGGREGATE_SCHEMA}`" in text
     for metric in analysis.AGGREGATE_METRICS:

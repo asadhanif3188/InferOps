@@ -22,7 +22,7 @@ absent: the layout check refuses the run directory first.
 
 **The analysis code has two identities.** The commit identifier is what the
 command read from the checkout. The source digest is taken over the Python
-files of the registered source packages. The replay compares the source digest
+files of the registered source packages. The replay compares the source rows
 with the files that are present, and it states when they differ. The command
 compares the commit with Git when the commit is in the clone.
 
@@ -64,7 +64,6 @@ from tools.experiment_run.core import (
     RunDocumentError,
     content_digest,
     read_document,
-    validate,
 )
 from tools.reliability_analysis import (
     AGGREGATE_METRICS,
@@ -120,12 +119,14 @@ ANALYSIS_ROLE: Final = "analysis"
 REFUSED_EXIT: Final = 3
 
 #: The packages under ``tools`` whose Python files the source digest covers: this
-#: tool, the analysis, the reader of each input, and the tier names they share.
+#: tool, the analysis, the reader of each input, the caller profile that the
+#: reader of a caller record holds a header to, and the tier names they share.
 SOURCE_PACKAGES: Final = (
     "analysis_replay",
     "experiment_events",
     "experiment_timeline",
     "reliability_analysis",
+    "reliability_profile",
     "reliability_runner",
     "service_endpoint_state",
 )
@@ -213,8 +214,8 @@ RULES: Final[Mapping[str, str]] = {
     ),
     RULE_AGGREGATE_OMITTED: (
         "An aggregate is given each run directory of the runs directory whose "
-        "manifest names the experiment, and each directory there has a manifest "
-        "that validates."
+        "manifest names the experiment, and each directory there that is not given "
+        "conforms to the layout."
     ),
     RULE_AGGREGATE_RUN: (
         "Each run of an aggregate conforms to the layout, and its run analysis replays."
@@ -306,7 +307,9 @@ def analysis_sources(root: Path = REPO_ROOT) -> list[dict[str, str]]:
 
     The digest is the SHA-256 of the file's content with each CRLF replaced by
     LF, so a Windows checkout and the content that Git stores give one digest.
-    The rows are in the order of their paths as text.
+    The rows are in the order of their paths as text. A file is a source file
+    when its name ends with ``.py`` in lower case: the suffix is compared as
+    text, so a file system that ignores letter case gives the same rows.
     """
     rows = [
         {
@@ -314,8 +317,8 @@ def analysis_sources(root: Path = REPO_ROOT) -> list[dict[str, str]]:
             "sha256": content_digest(path.read_bytes()),
         }
         for package in SOURCE_PACKAGES
-        for path in (root / "tools" / package).rglob("*.py")
-        if path.is_file()
+        for path in (root / "tools" / package).rglob("*")
+        if path.name.endswith(".py") and path.is_file()
     ]
     return sorted(rows, key=lambda row: row["path"])
 
@@ -327,18 +330,24 @@ def analysis_code(revision: str, root: Path = REPO_ROOT) -> dict[str, Any]:
     and this function reads no Git object.
 
     Raises:
-        ReplayRefused: the revision is not a full commit identifier.
+        ReplayRefused: the revision is not a full commit identifier, or a source
+            file has a path that a run analysis cannot state.
     """
     if not isinstance(revision, str) or _COMMIT.fullmatch(revision) is None:
         raise ReplayRefused(
             RULE_UNCOMMITTED, "the revision is not a full commit identifier"
         )
     sources = analysis_sources(root)
-    return {
+    code = {
         "revision": revision,
         "sourceSha256": evidence_set_sha256(sources),
         "sources": sources,
     }
+    # A document that this function gives must be one that a replay accepts.
+    problem = _code_problem(code)
+    if problem is not None:
+        raise ReplayRefused(RULE_UNCOMMITTED, problem)
+    return code
 
 
 def _code_problem(code: object) -> str | None:
@@ -387,25 +396,41 @@ def revision_state(
     code: Mapping[str, Any],
     commit_present: Callable[[str], bool],
     blob: Callable[[str, str], bytes | None],
+    tracked: Callable[[str, str], Sequence[str] | None],
 ) -> tuple[str, tuple[str, ...]]:
-    """Whether each source file has its stated digest at the stated commit.
+    """Whether the stated source rows are the source files of the stated commit.
 
-    ``commit_present`` says whether the clone holds a commit, and ``blob`` gives
-    the content of one path at a commit, or None when the commit has no such
-    file. The command gives both from Git. The result is ``held`` with no path,
-    ``not-checked`` with no path when the commit is not in the clone, or
-    ``differs`` with each path that does not have its stated digest.
+    ``commit_present`` says whether the clone holds a commit. ``blob`` gives the
+    content of one path at a commit, or None when the commit has no such file.
+    ``tracked`` gives each path that a commit holds under one directory, or
+    None when it cannot say. The command gives the three from Git.
+
+    The result is ``held`` with no path, ``not-checked`` with no path when the
+    commit is not in the clone, or ``differs`` with each path that differs. A
+    path differs when its file does not have the stated digest at the commit,
+    and when the commit holds a Python file in the directory of a stated row
+    that no row states. So a document that states some of the files of a
+    package is not held. A package that no row names is not read.
     """
     revision = code["revision"]
     if not commit_present(revision):
         return REVISION_NOT_CHECKED, ()
-    differing: list[str] = []
+    stated = {row["path"] for row in code["sources"]}
+    differing: set[str] = set()
     for row in code["sources"]:
         data = blob(revision, row["path"])
         if data is None or content_digest(data) != row["sha256"]:
-            differing.append(row["path"])
+            differing.add(row["path"])
+    for package in sorted({"/".join(path.split("/")[:2]) for path in stated}):
+        held = tracked(revision, package)
+        if held is None:
+            differing.add(package)
+            continue
+        differing.update(
+            path for path in held if path.endswith(".py") and path not in stated
+        )
     if differing:
-        return CODE_DIFFERS, tuple(differing)
+        return CODE_DIFFERS, tuple(sorted(differing))
     return REVISION_HELD, ()
 
 
@@ -429,6 +454,18 @@ class _Run:
         return entries
 
 
+def _shown(run_dir: Path, root: Path) -> str:
+    """A run directory for an output line: its path under the root, or its name.
+
+    A directory outside the root is shown by its name alone, so no line holds a
+    path of a host.
+    """
+    try:
+        return printable(run_dir.resolve().relative_to(root.resolve()).as_posix())
+    except (OSError, ValueError):
+        return printable(run_dir.name)
+
+
 def _load_run(run_dir: Path, root: Path) -> _Run:
     """One run directory, held to the layout check.
 
@@ -443,7 +480,7 @@ def _load_run(run_dir: Path, root: Path) -> _Run:
             RULE_RUN,
             "the layout check refuses the run directory: " + ", ".join(rules),
         )
-        refused.path = report.path
+        refused.path = _shown(run_dir, root)
         raise refused
     manifest_path = run_dir / MANIFEST_NAME
     return _Run(
@@ -481,6 +518,18 @@ def _inputs(run: _Run) -> list[dict[str, str]]:
     return found
 
 
+def _analysis_refusal(refused: AnalysisRefused) -> ReplayRefused:
+    """A refusal of the reliability analysis, with its rule and not its message.
+
+    A message of that tool can quote a value of the declaration, such as the
+    identifier of a signal. A stored document holds a declaration, so a refusal
+    here names the rule alone.
+    """
+    return ReplayRefused(
+        RULE_ANALYSIS, f"the reliability analysis refuses the inputs: {refused.rule}"
+    )
+
+
 def _record(
     run: _Run, declaration_text: str, code: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -488,7 +537,7 @@ def _record(
     try:
         declaration = read_declaration(declaration_text)
     except AnalysisRefused as refused:
-        raise ReplayRefused(RULE_ANALYSIS, str(refused)) from refused
+        raise _analysis_refusal(refused) from refused
     metadata = run.manifest["metadata"]
     experiment, run_id = metadata["experimentId"], metadata["runId"]
     if (declaration["experimentId"], declaration["runId"]) != (experiment, run_id):
@@ -503,7 +552,7 @@ def _record(
     try:
         analysis = analyze(declaration_text, texts)
     except AnalysisRefused as refused:
-        raise ReplayRefused(RULE_ANALYSIS, str(refused)) from refused
+        raise _analysis_refusal(refused) from refused
     given = {entry["name"] for entry in inputs}
     return {
         "schema": SCHEMA,
@@ -613,7 +662,13 @@ def _replay_one(
     if problem is not None:
         raise ReplayRefused(RULE_RECORD_FORM, problem)
     assert isinstance(code, dict)
-    expected = _record(run, json.dumps(declaration), code)
+    try:
+        declaration_text = json.dumps(declaration)
+    except (ValueError, RecursionError) as fault:
+        raise ReplayRefused(
+            RULE_RECORD_FORM, "the declaration cannot be written as JSON"
+        ) from fault
+    expected = _record(run, declaration_text, code)
     for name in (
         "experimentId",
         "runId",
@@ -659,7 +714,7 @@ def replay_run(run_dir: Path, root: Path = REPO_ROOT) -> RunReplay:
     try:
         run = _load_run(run_dir, root)
     except ReplayRefused as refused:
-        shown = refused.path or printable(run_dir.as_posix())
+        shown = refused.path or _shown(run_dir, root)
         return RunReplay(
             shown, REFUSED, findings=(Finding(shown, refused.rule, refused.message),)
         )
@@ -687,29 +742,44 @@ def gate_problems(run_dir: Path, root: Path = REPO_ROOT) -> list[str]:
     A run whose manifest names no file with the role analysis has no problem:
     the gate holds an analysis and requires none. The manifest is read as JSON
     for that question and is not validated, so a manifest of an earlier shape
-    is read too. A run that names such a file must replay in full. A manifest
-    that is present and cannot be read as one JSON object is a problem. A run
-    directory with no manifest names no analysis, and the gate does not hold it.
+    is read too. A run that names such a file must replay in full. A role is
+    read with its white space removed and in lower case, so a role in another
+    spelling does not pass the gate, and the layout check then refuses it.
+
+    A manifest that is present and cannot be read as one JSON object is a
+    problem. So is an entry at the place of the manifest that is not a file,
+    and a manifest whose ``evidence`` member is not an object with a list of
+    objects that each state a role as text. A manifest with no ``evidence``
+    member names no file. A run directory with no manifest names no analysis,
+    and the gate does not hold it.
+
+    The gate reads the role of a file and not its content. A document with the
+    schema name of a run analysis under another role is not held.
 
     The gate promotes nothing. A run with no problem gets no claim, no claim
     status, and no evidence level from it.
     """
-    if not (run_dir / MANIFEST_NAME).is_file():
+    manifest_path = run_dir / MANIFEST_NAME
+    if not manifest_path.exists():
         return []
     try:
-        manifest = read_document(run_dir / MANIFEST_NAME)
+        manifest = read_document(manifest_path)
     except (OSError, RunDocumentError):
         return ["the run manifest is not readable as one JSON object"]
-    evidence = manifest.get("evidence")
+    if "evidence" not in manifest:
+        return []
+    evidence = manifest["evidence"]
     files = evidence.get("files") if isinstance(evidence, dict) else None
-    named = [
-        entry
-        for entry in (files if isinstance(files, list) else [])
-        if isinstance(entry, dict) and entry.get("role") == ANALYSIS_ROLE
-    ]
-    if not named:
+    if not isinstance(files, list) or not all(
+        isinstance(entry, dict) and isinstance(entry.get("role"), str)
+        for entry in files
+    ):
+        return ["the run manifest does not state its evidence files with a role each"]
+    if not any(entry["role"].strip().lower() == ANALYSIS_ROLE for entry in files):
         return []
     report = replay_run(run_dir, root)
+    if report.status == NO_ANALYSIS:
+        return ["the run manifest states the role analysis in another spelling"]
     return [f"{finding.rule}: {finding.message}" for finding in report.findings]
 
 
@@ -718,15 +788,18 @@ def gate_problems(run_dir: Path, root: Path = REPO_ROOT) -> list[str]:
 # --------------------------------------------------------------------------
 
 
-def _sibling_experiment(directory: Path) -> str | None:
-    """The experiment that the manifest of a run directory names, or None."""
+def _sibling_experiment(directory: Path, root: Path) -> str | None:
+    """The experiment of a run directory that was not given, or None.
+
+    The directory must conform to the layout. The layout check holds a caller
+    record to the experiment of its manifest, so the experiment of a run with a
+    caller record cannot be changed in the manifest alone to leave the run out.
+    """
     try:
-        manifest = read_document(directory / MANIFEST_NAME)
-    except (OSError, RunDocumentError):
+        run = _load_run(directory, root)
+    except (OSError, ReplayRefused, RunDocumentError):
         return None
-    if validate(manifest):
-        return None
-    experiment: str = manifest["metadata"]["experimentId"]
+    experiment: str = run.manifest["metadata"]["experimentId"]
     return experiment
 
 
@@ -738,8 +811,13 @@ def aggregate_runs(
     Each run directory is held to the layout check, and its run analysis is
     computed again. The result state of a run is the one that its manifest
     states. Each run directory of the same runs directory whose manifest names
-    the experiment must be given, so no run is left out. The aggregate itself
-    is the one of ``tools.reliability_analysis``.
+    the experiment must be given, so no run is left out. The runs directory is
+    read at its place under ``root``, and not at the spelling of an argument.
+    The aggregate itself is the one of ``tools.reliability_analysis``.
+
+    The function compares no commit with Git. Each row states the commit and
+    the source digest that the run analysis of its run states, and whether the
+    source files that are present are those.
 
     Raises:
         ReplayRefused: a rule of :data:`RULES` is not held.
@@ -754,7 +832,6 @@ def aggregate_runs(
     experiments: set[str] = set()
     parents: set[str] = set()
     given: set[str] = set()
-    runs_directory: Path | None = None
     for run_dir in run_dirs:
         replay = replay_run(run_dir, root)
         if replay.status == REFUSED:
@@ -776,7 +853,6 @@ def aggregate_runs(
         given.add(run_id)
         experiments.add(experiment)
         parents.add(run.ref.rsplit("/", 1)[0])
-        runs_directory = run_dir.parent
         analysis = replay.analyses[0] if replay.analyses else None
         # A run with no run analysis has no figure. It is listed, and it is
         # counted when its state is counted, so it is not a run that is left out.
@@ -801,7 +877,13 @@ def aggregate_runs(
                 ).raw,
                 "runAnalysis": None
                 if analysis is None
-                else {"path": analysis.path, "sha256": analysis.sha256},
+                else {
+                    "path": analysis.path,
+                    "sha256": analysis.sha256,
+                    "revision": analysis.document["analysisCode"]["revision"],
+                    "sourceSha256": analysis.document["analysisCode"]["sourceSha256"],
+                    "code": analysis.code,
+                },
             }
         )
     if len(experiments) != 1 or len(parents) != 1:
@@ -810,17 +892,24 @@ def aggregate_runs(
             "the run directories are not of one runs directory and one experiment",
         )
     experiment = experiments.pop()
-    assert runs_directory is not None
-    for name in sorted(os.listdir(runs_directory)):
+    runs_ref = next(iter(parents))
+    runs_directory = root / runs_ref
+    try:
+        names = sorted(os.listdir(runs_directory))
+    except OSError as fault:
+        raise ReplayRefused(
+            RULE_AGGREGATE_OMITTED, "the runs directory cannot be listed"
+        ) from fault
+    for name in names:
         sibling = runs_directory / name
         if name in given or not sibling.is_dir():
             continue
-        named = _sibling_experiment(sibling)
+        named = _sibling_experiment(sibling, root)
         if named is None:
             raise ReplayRefused(
                 RULE_AGGREGATE_OMITTED,
-                f"the directory {printable(name)} beside the given runs has no "
-                "manifest that validates, so its experiment is not known",
+                f"the directory {printable(name)} beside the given runs does not "
+                "conform to the layout, so its experiment is not known",
             )
         if named == experiment:
             raise ReplayRefused(
@@ -835,7 +924,7 @@ def aggregate_runs(
     return {
         "schema": AGGREGATE_SCHEMA,
         "experimentId": experiment,
-        "runsDirectory": parents.pop(),
+        "runsDirectory": runs_ref,
         "metric": metric,
         "runs": sorted(rows, key=lambda row: str(row["runId"])),
         "aggregate": figures,
@@ -844,6 +933,7 @@ def aggregate_runs(
         "authority": (
             "This document is the output of the command for the run directories "
             "that it lists. No check holds a stored copy. Run the command again and "
-            "compare the two."
+            "compare the two. The analysis code below is that of the command. Each "
+            "run states the code of its own run analysis."
         ),
     }

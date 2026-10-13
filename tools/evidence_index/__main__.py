@@ -22,8 +22,9 @@ pack this checkout holds now, which no release quotes.
 
 Every mode builds the index, except ``--gate`` where a blocker stands or the
 publication ledger declares no freeze. The index is not built when a ledger whose
-changes bear on an experiment run references no matching review artifact: a mode that
-builds the index then prints ``MISMATCH`` and exits 1.
+changes bear on an experiment run references no matching review artifact, or when such
+a run names a run analysis that does not replay: a mode that builds the index then
+prints ``MISMATCH`` and exits 1.
 
 **Every mode reads files.** None contacts a cluster, a runtime, a model, or the
 network. See docs/proof/v1-evidence-index.md.

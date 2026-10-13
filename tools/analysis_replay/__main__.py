@@ -24,9 +24,10 @@ not usable.
 
 **The command reads files and Git, and it writes no file.** ``bind`` and
 ``aggregate`` read the commit of the checkout and refuse while a source file
-of the analysis code is not the file of that commit. ``verify`` compares the
-commit that a document states with Git when the clone holds it. No command
-contacts a cluster or a caller. See docs/testing/analysis-replay.md.
+of the analysis code does not have the content that the commit holds for it.
+``verify`` and ``repository`` compare the commit that a document states with
+Git when the clone holds it. ``aggregate`` does not. No command contacts a
+cluster or a caller. See docs/testing/analysis-replay.md.
 """
 
 from __future__ import annotations
@@ -48,6 +49,7 @@ from .core import (
     NO_ANALYSIS,
     REFUSED_EXIT,
     REPLAYED,
+    REVISION_HELD,
     REVISION_NOT_CHECKED,
     RULE_ANALYSIS,
     RULE_MISSING,
@@ -57,6 +59,7 @@ from .core import (
     ReplayRefused,
     RunReplay,
     aggregate_runs,
+    analysis_code,
     analysis_sources,
     bind_run,
     record_text,
@@ -92,13 +95,26 @@ def _git(root: Path, *arguments: str) -> bytes | None:
 def checkout_revision(root: Path = REPO_ROOT) -> str:
     """The commit of the checkout, when each source file is the file of that commit.
 
+    The source files that are present are compared with the content that the
+    commit holds, file by file, and the commit must hold no other Python file
+    in a source package. The comparison does not read the index of Git, so a
+    file that Git is told to leave out of its status is compared too, and so
+    is a file that Git ignores. The status of Git is read as well, for a
+    change that is staged.
+
     Raises:
         ReplayRefused: Git gives no commit, or a source file of the analysis
-            code is changed, added, or not tracked.
+            code is changed, added, ignored, or not tracked.
     """
     head = _git(root, "rev-parse", "--verify", "HEAD^{commit}")
     if head is None:
         raise ReplayRefused(RULE_UNCOMMITTED, "Git gives no commit for the checkout")
+    revision = head.decode("ascii").strip()
+    differs = ReplayRefused(
+        RULE_UNCOMMITTED,
+        "a source file of the analysis code is not the file of the commit of the "
+        "checkout",
+    )
     changed = _git(
         root,
         "status",
@@ -108,20 +124,39 @@ def checkout_revision(root: Path = REPO_ROOT) -> str:
         *(f"tools/{package}" for package in SOURCE_PACKAGES),
     )
     if changed is None or changed.strip():
-        raise ReplayRefused(
-            RULE_UNCOMMITTED,
-            "a source file of the analysis code is not the file of the commit of "
-            "the checkout",
-        )
-    return head.decode("ascii").strip()
+        raise differs
+    state, _ = revision_state(
+        analysis_code(revision, root),
+        lambda stated: _commit_present(root, stated),
+        lambda stated, path: _blob(root, stated, path),
+        lambda stated, package: _tracked(root, stated, package),
+    )
+    if state != REVISION_HELD:
+        raise differs
+    return revision
 
 
 def _commit_present(root: Path, revision: str) -> bool:
-    return _git(root, "cat-file", "-e", f"{revision}^{{commit}}") is not None
+    """Whether the clone holds a commit with this identifier. A tag is not one."""
+    kind = _git(root, "cat-file", "-t", revision)
+    return kind is not None and kind.strip() == b"commit"
 
 
 def _blob(root: Path, revision: str, path: str) -> bytes | None:
     return _git(root, "cat-file", "blob", f"{revision}:{path}")
+
+
+def _tracked(root: Path, revision: str, package: str) -> list[str] | None:
+    """Each path that a commit holds under one directory, or None."""
+    listed = _git(root, "ls-tree", "-r", "--name-only", "-z", revision, "--", package)
+    if listed is None:
+        return None
+    return [name for name in listed.decode("utf-8", "replace").split("\0") if name]
+
+
+def _say(lines: Sequence[str]) -> None:
+    """Print lines in ASCII. A name in another script cannot stop the output."""
+    print("\n".join(lines).encode("ascii", "backslashreplace").decode("ascii"))
 
 
 def _refusal(name: str, findings: Sequence[Finding]) -> list[str]:
@@ -157,14 +192,15 @@ def _replay_lines(replay: RunReplay, code_root: Path) -> tuple[list[str], bool]:
             code,
             lambda revision: _commit_present(code_root, revision),
             lambda revision, path: _blob(code_root, revision, path),
+            lambda revision, package: _tracked(code_root, revision, package),
         )
         if state == CODE_DIFFERS:
             findings.append(
                 Finding(
                     shown,
                     RULE_REVISION,
-                    f"{len(differing)} source file(s) do not have their stated "
-                    "digest at the stated commit",
+                    f"{len(differing)} source file(s) of the stated commit are not "
+                    "the stated ones",
                 )
             )
         elif state == REVISION_NOT_CHECKED:
@@ -198,7 +234,7 @@ def _verify(paths: Sequence[Path], root: Path) -> int:
             )
             failed = True
         refused = refused or failed
-        print("\n".join(lines))
+        _say(lines)
     return REFUSED_EXIT if refused else 0
 
 
@@ -212,13 +248,13 @@ def _repository(root: Path) -> int:
         run_ref = manifest.path.rsplit("/", 1)[0]
         if manifest.status == PRE_SCHEMA:
             counts[PRE_SCHEMA] += 1
-            print(f"pre-schema  {printable(run_ref)}  (not replayed)")
+            _say([f"pre-schema  {printable(run_ref)}  (not replayed)"])
             continue
         replay = replay_run(root / run_ref, root)
         lines, failed = _replay_lines(replay, REPO_ROOT)
         counts[REFUSED if failed else replay.status] += 1
         refused = refused or failed
-        print("\n".join(lines))
+        _say(lines)
     print(
         f"runs        {sum(counts.values())}: {counts[PRE_SCHEMA]} pre-schema and "
         f"not replayed, {counts[NO_ANALYSIS]} with no analysis, "
@@ -243,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
         "verify", help="compute each run analysis of the run directories again"
     )
     verifier.add_argument("runs", nargs="+", type=Path, help="run directories")
-    commands.add_parser(
+    lister = commands.add_parser(
         "repository", help="replay every run directory under docs/proof/experiments"
     )
     aggregator = commands.add_parser(
@@ -252,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     aggregator.add_argument("--metric", required=True, choices=tuple(AGGREGATE_METRICS))
     aggregator.add_argument("runs", nargs="+", type=Path, help="run directories")
     commands.add_parser("sources", help="print the digest of each source file")
-    for command in (binder, verifier, aggregator):
+    for command in (binder, verifier, lister, aggregator):
         command.add_argument(
             "--root",
             type=Path,
@@ -265,7 +301,7 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.command == "verify":
             return _verify(arguments.runs, arguments.root)
         if arguments.command == "repository":
-            return _repository(REPO_ROOT)
+            return _repository(arguments.root)
         if arguments.command == "sources":
             print(
                 "\n".join(
@@ -287,7 +323,8 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.metric, arguments.runs, revision, arguments.root
             )
     except ReplayRefused as refused:
-        print(f"REFUSED  {refused}", file=sys.stderr)
+        shown = str(refused).encode("ascii", "backslashreplace").decode("ascii")
+        print(f"REFUSED  {shown}", file=sys.stderr)
         return REFUSED_EXIT
     _emit(record_text(document))
     return 0

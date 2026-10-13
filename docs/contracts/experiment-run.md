@@ -13,7 +13,8 @@ says how they are held. Since `V2-S5-002-PR2`,
 a separate check opens the evidence files of one. This validator still opens none.
 Since `V2-S5-004-PR2`, [the replay of an analysis](../testing/analysis-replay.md) reads the
 manifest of a run directory for the evidence files and the result state of its run.
-No manifest of a run exists for it to read.
+No run produced a manifest of this schema for it to read. Its gate in the evidence
+index reads the three earlier manifests for the role of each file, and they name none.
 
 | Property | Value |
 |---|---|

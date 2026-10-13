@@ -522,7 +522,7 @@
   },
   "analysisCode": {
     "revision": "cccccccccccccccccccccccccccccccccccccccc",
-    "sourceSha256": "88851fb0c59324f2e734ac7455775040ae5ac596915b1d4dce1a1a1646f6ecd6",
+    "sourceSha256": "4b79d9293d0b0a8e75b8b9f97ae85211d13b3d264c3cfaaad41385b573c0eb1c",
     "sources": [
       {
         "path": "tools/analysis_replay/__init__.py",
@@ -530,11 +530,11 @@
       },
       {
         "path": "tools/analysis_replay/__main__.py",
-        "sha256": "fd6bf31a11b89a396f8c3d73e9a27b9a05cd7579417227a25cc83317f2b9f23a"
+        "sha256": "b4d07951563ee46351156d392a3c8481e61bcf13d4cac58ae7686ec56d725bb6"
       },
       {
         "path": "tools/analysis_replay/core.py",
-        "sha256": "ae681ebc78deb579a1b294e22f833b2f2b2af6cbc0fc4c645d34d3076714636e"
+        "sha256": "e50db739a8dcb6cb4ee42d5407834da15793161729f3754fd19684514439db21"
       },
       {
         "path": "tools/experiment_events/__init__.py",
@@ -571,6 +571,18 @@
       {
         "path": "tools/reliability_analysis/core.py",
         "sha256": "bf3a07c8dac4e4ac6eb27068a1f4929d45f23a3ba4cf2dd2952a05b28ace5149"
+      },
+      {
+        "path": "tools/reliability_profile/__init__.py",
+        "sha256": "f7ec32f9067c2dd9fb20b56f6ff320646d0ed77357bc70770acc48a912a82e76"
+      },
+      {
+        "path": "tools/reliability_profile/__main__.py",
+        "sha256": "004b427fd2c0ad45bd1596082422b27271fd6c9bef9bd0edb0a279daeb69ca56"
+      },
+      {
+        "path": "tools/reliability_profile/core.py",
+        "sha256": "42043378966c0a39c54fed6d253f828a81848aaaf8248332d553d4c8aa04d2a9"
       },
       {
         "path": "tools/reliability_runner/__init__.py",

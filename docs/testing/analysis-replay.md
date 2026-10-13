@@ -1,6 +1,6 @@
 # The replay of an experiment analysis
 
-Status: **the tool is implemented, and run directories that the test suite builds show the binding, each refusal, and the replay at evidence level C0. No run was analysed. One synthetic run directory with its run analysis is committed as an example, outside the proof tree. No run directory of a real run exists, no claim is registered, and no claim status changed.**
+Status: **the tool is implemented, and run directories that the test suite builds show the binding, each refusal, and the replay at evidence level C0. No run was analysed. One synthetic run directory with its run analysis is committed as an example, outside the proof tree. The proof tree holds no run directory of the published layout: its three run directories were written before the schema, and none names an analysis. No claim is registered, and no claim status changed.**
 
 [The reliability analysis](reliability-analysis.md) computes the figures of one
 run from files that a command names. Its document states no digest of an input
@@ -55,6 +55,10 @@ manifest names it as it names each evidence file.
 - **The raw evidence digest covers each raw file of the run.** It covers a raw
   file that the analysis does not read. A run analysis is a derived file, so
   adding it to a run does not move that digest.
+- **The analysis inside is the document of the reliability analysis, as that
+  tool prints it.** One of its limitations says that the document states no
+  digest of an input and no revision of the code. That sentence is about the
+  `analysis` member alone. The run analysis around it states both.
 - **The declaration is a part of the document.** A replay reads it from the
   document and takes no declaration as an argument. The declaration must name
   the experiment and the run of the manifest.
@@ -66,20 +70,35 @@ manifest names it as it names each evidence file.
 
 A run analysis states the code in two forms.
 
-- **The source digest** is taken over the Python files of six packages:
+- **The source digest** is taken over the Python files of seven packages:
   `tools/analysis_replay`, `tools/experiment_events`,
   `tools/experiment_timeline`, `tools/reliability_analysis`,
-  `tools/reliability_runner`, and `tools/service_endpoint_state`. They are this
-  tool, the analysis, the reader of each input, and the tier names that those
-  share. `sources` states the path and the digest of each file, and
-  `sourceSha256` is the SHA-256 over the sorted lines `<sha256>  <path>`.
+  `tools/reliability_profile`, `tools/reliability_runner`, and
+  `tools/service_endpoint_state`. They are this tool, the analysis, the reader
+  of each input, the caller profile that the reader of a caller record holds
+  a header to, and the tier names that those share. A source file is a file
+  whose name ends with `.py` in lower case. `sources` states the path and the
+  digest of each file, and `sourceSha256` is the SHA-256 over the sorted lines
+  `<sha256>  <path>`.
 - **The commit identifier** is the commit of the checkout that ran the command.
   The command reads it from Git and takes no option that states it. It refuses
-  to print a document while a source file is changed, added, or not tracked.
+  to print a document while a source file does not have the content that the
+  commit holds for it, or while the commit holds another Python file in a
+  source package. It compares the files with the commit, file by file. It does
+  not rely on the status of Git alone, which leaves out a file that Git
+  ignores and a file that Git is told not to compare.
 
-The source digest does not cover the layout check, the validator of the
-manifest, or the digest function of the evidence index. This tool reads all
-three, and the analysis reads the result states of the validator.
+**The source digest does not cover each package that a source file imports.**
+Seven are outside it, and a change to one of them does not move the digest:
+
+- `tools/experiment_evidence`, the layout check, `tools/experiment_run`, the
+  validator of the manifest and the result states, and `tools/evidence_index`,
+  the digest function. This tool reads the three.
+- `tools/llm_load`, `tools/model_acquisition`, `tools/runtime_configuration`,
+  and `tools/runtime_packaging`, which the caller profile imports.
+
+The suite reads the imports of each source file and holds this list to them.
+It does not read the imports of the seven packages in turn.
 
 ## A replay
 
@@ -104,23 +123,32 @@ three, and the analysis reads the result states of the validator.
    the files that are present. The output states `code same` or
    `code differs`, and it names each file that differs.
 7. **The commit.** When the clone holds the stated commit, each source file must
-   have its stated digest at that commit. When the clone does not hold it, the
-   output states `revision  not-checked`.
+   have its stated digest at that commit, and the commit must hold no other
+   Python file in the directory of a stated row. When the clone does not hold
+   the commit, the output states `revision  not-checked`. The identifier of a
+   tag is not a commit, and it is not checked.
 
-**What a replay refuses.**
+The function `replay_run` does steps 1 to 6. The commands `verify` and
+`repository` add step 7. The gate of the evidence index and the `aggregate`
+command do not: neither compares a commit with Git.
+
+**What a replay refuses.** Step 3 runs before step 4. So a change that the
+reliability analysis itself refuses is stated as `replay-analysis-refused`,
+whatever else it changed.
 
 | Change | Refused by |
 |---|---|
 | A figure, a reason, or a list of the analysis is changed in the stored file | `replay-run-directory-refused`, because the file no longer has the digest of the manifest |
 | The same change, with the digest in the manifest changed to match | `replay-document-differs` |
-| A limitation is removed, a member is added, or the file is written in another form | `replay-document-differs` |
-| The declared window or a declared threshold is changed in the stored file | `replay-document-differs`, because the figures are those of the earlier declaration |
+| A limitation is removed, a member is added, or the file is written in another form, with the digest in the manifest changed to match | `replay-document-differs` |
+| The declared window or a declared threshold is changed in the stored file, with the digest in the manifest changed to match | `replay-document-differs`, because the figures are those of the earlier declaration |
 | An evidence file is changed or is absent | `replay-run-directory-refused` |
-| An evidence file and its digest in the manifest are changed together | `replay-evidence-differs` |
-| An evidence file is removed from the run and from the manifest | `replay-evidence-differs` |
+| An evidence file and its digest in the manifest are changed together | `replay-evidence-differs`, or `replay-analysis-refused` when the reader of the file no longer accepts it |
+| An evidence file is removed from the run and from the manifest | `replay-evidence-differs`, or `replay-analysis-refused` when the file is the caller record |
+| A raw file that the analysis does not read is added to the run and to the manifest | `replay-evidence-differs`, because the raw evidence digest moved |
 | The digests of the document are changed to match such a run, and the figures are not | `replay-document-differs` |
 | The source digest is not the digest of the source rows | `replay-record-form-unsupported` |
-| A source file does not have its stated digest at the stated commit | `replay-revision-differs` |
+| A source file does not have its stated digest at the stated commit, or the document leaves out a Python file that the commit holds beside a stated one | `replay-revision-differs`, from `verify` and `repository`, in a clone that holds the commit |
 
 **A document of another code.** A source file can change after a document was
 written. The replay then computes with the code that is present. When that code
@@ -150,19 +178,29 @@ and this command adds what that one does not check.
 - The median is stated for exactly three counted runs. No confidence interval
   and no statistical significance is stated.
 
-**The all-run rule.** The command reads each directory beside the given run
-directories. A directory whose manifest names the experiment and that was not
-given is a refusal. A directory with no manifest that validates is a refusal
-too, because its experiment is not known. A run directory of another experiment
-in the same runs directory is not required.
+**The all-run rule.** The command reads each directory of the runs directory,
+at its place under the root and not at the spelling of an argument. A
+directory whose manifest names the experiment and that was not given is a
+refusal. A directory that does not conform to the layout is a refusal too,
+because its experiment is not known. The layout check holds a caller record
+to the experiment of its manifest, so a run with a caller record is not left
+out by another experiment in its manifest alone. A run directory of another
+experiment that conforms is not required.
 
 **Each run must replay.** A run directory that the layout check refuses, and a
 run whose run analysis does not replay, refuse the aggregate. A run with two
 run analyses is refused, because the aggregate reads one.
 
 An aggregate document lists, for each run, the digest of the manifest, the raw
-evidence digest, and the path and the digest of the run analysis. It states the
-analysis code as a run analysis does.
+evidence digest, and the path and the digest of the run analysis. For each run
+analysis it repeats the commit and the source digest that the run analysis
+states, and it states `same` or `differs` for the source files that are
+present. The `analysisCode` member of the aggregate is the code of the command
+that printed the aggregate. It is not the code of a listed figure.
+
+**The aggregate compares no commit with Git.** A run analysis that `verify`
+refuses with `replay-revision-differs` is accepted here. Run `verify` on each
+run directory for that check.
 
 | Metric | Path in the analysis of a run analysis |
 |---|---|
@@ -190,7 +228,13 @@ directory that a register change of a ledger bears on.
   analysis. None of the three committed run directories names one.
 - The gate reads the manifest as JSON for the role and does not validate it for
   that question. A manifest of another shape that names such a file must replay
-  in full, and the layout check then refuses it.
+  in full, and the layout check then refuses it. A role is read with its white
+  space removed and in lower case, so `Analysis` does not pass the gate.
+- A manifest whose `evidence` member is not a list of files with a role each
+  is a refusal. A manifest with no `evidence` member names no file, and the
+  three committed manifests are such manifests.
+- The gate reads the role of a file and not its content. A document with the
+  schema name of a run analysis under the role `result` is not held.
 - The gate reads no Git object. It compares no commit.
 
 **The gate refuses and promotes nothing.** A run analysis that replays adds no
@@ -215,12 +259,16 @@ run, as before.
 | `replay-revision-differs` | Each source file has, at the commit that a run analysis states, the digest that the run analysis states for it. |
 | `replay-code-not-committed` | A document is computed by source files that are the files of the commit that it states. |
 | `replay-aggregate-unsupported` | An aggregate is asked for a registered metric of run directories of one runs directory and one experiment, each given once, and each with at most one run analysis. |
-| `replay-aggregate-run-omitted` | An aggregate is given each run directory of the runs directory whose manifest names the experiment, and each directory there has a manifest that validates. |
+| `replay-aggregate-run-omitted` | An aggregate is given each run directory of the runs directory whose manifest names the experiment, and each directory there that is not given conforms to the layout. |
 | `replay-aggregate-run-refused` | Each run of an aggregate conforms to the layout, and its run analysis replays. |
 
-A refusal names a rule, a path, and a fixed message. It repeats no figure and no
-text of an evidence file. A refusal of the layout check names each rule of the
-layout that refused the directory.
+A refusal of `verify` and of `repository` names a rule, a path, and a message.
+A refusal of `bind` and of `aggregate` names a rule and a message. A message
+can hold a count, the name of a role, a run identifier, the name of a
+directory, and the rule of another tool. It repeats no figure, no text of an
+evidence file, and no value of a declaration. A run directory outside the
+root is shown by its name alone. A refusal of the layout check names each
+rule of the layout that refused the directory.
 
 | Exit status | Meaning |
 |---|---|
@@ -289,6 +337,8 @@ replayed    docs/proof/experiments/example-replay/runs/concurrency-1/analysis.js
             revision  not-checked: the clone does not hold the stated commit, or Git is not available
 ```
 
+- **The printed block is the output at the commit that wrote the example.** No
+  test holds the words `code same`.
 - **The stated commit is a placeholder.** A commit cannot name itself, so the
   example states forty times the letter `c`. No clone holds that commit, and
   the commit of the example is not compared.
@@ -313,8 +363,8 @@ uv run --locked python -m tools.analysis_replay aggregate --metric NAME RUN_DIRE
 uv run --locked python -m tools.analysis_replay sources
 ```
 
-`bind`, `verify`, and `aggregate` take `--root`, the root of the tree that holds
-`docs/proof/experiments`. `bind` and `aggregate` print one JSON document with
+`bind`, `verify`, `repository`, and `aggregate` take `--root`, the root of the
+tree that holds `docs/proof/experiments`. `bind` and `aggregate` print one JSON document with
 sorted members and LF line endings. No command writes a file: a person stores
 the output of `bind` in the run directory and names it in the manifest.
 
@@ -336,6 +386,11 @@ In this change it prints three `pre-schema` lines and exits 0.
   it, and the build of the evidence index reads the runs that a ledger bears
   on.
 - A stored aggregate document is held by no check.
+- The aggregate and the gate of the evidence index compare no commit with Git.
+- The gate of the evidence index does not read a run analysis that is stored
+  under another role than `analysis`.
+- The comparison with Git reads the directories of the stated source rows. A
+  document that leaves out a whole package is not refused by it.
 - The aggregate does not compare the declarations or the windows of its runs.
 - The manifest requires a reason for a run that is not counted. No rule holds
   that reason to one that an experiment registered before the run.

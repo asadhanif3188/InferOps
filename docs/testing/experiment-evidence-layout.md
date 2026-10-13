@@ -9,6 +9,10 @@ identities, except one copy of a committed run directory, which is refused at it
 manifest. The three run directories that are committed were written before the
 [ExperimentRun schema](../contracts/experiment-run.md).
 [The compatibility section](#the-three-earlier-run-directories) says how they are held.
+(Since `V2-S5-004-PR2` one synthetic run directory of this layout is committed as a test fixture,
+under `tests/testing/fixtures/analysis-replay`.
+It is outside the proof tree, and no run produced it.) Each sentence of this page that says that no run
+directory of this layout exists is about the proof tree.
 
 | Property | Value |
 |---|---|
@@ -520,7 +524,8 @@ for this change, and what two independent reviews of its first commit found.
   (Since `V2-S5-004-PR1` [the reliability analysis](reliability-analysis.md) computes figures
   from evidence files that a command names. It decides no result. Since
   `V2-S5-004-PR2` [the replay tool](analysis-replay.md) reads a run directory for
-  those figures. It decides no result, and no run directory of a run exists.)
+  those figures. It decides no result. The proof tree holds no run directory of
+  this layout for it to read.)
 - **It defines no file form but the caller record's.** The roles name what a file holds.
   The tools of this repository that read a cluster write their own records, and none
   writes a file of this layout.
