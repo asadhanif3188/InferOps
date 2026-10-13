@@ -34,8 +34,10 @@ median of three counted runs with each run listed.
 INCONCLUSIVE, REFUSED, or ABORTED is not counted only when the reason that
 its manifest states is one that the freeze record of the manifest registers
 for the experiment, the state, and the run, and the freeze registry of the
-tree pins that record. The aggregate then states the reason and the record.
-Otherwise the aggregate is refused.
+tree pins that record. Each run of such an aggregate must name that one
+record. The aggregate then states the reason and the record. Otherwise the
+aggregate is refused. The tool does not decide that a reason is true of a
+run: the manifest states it.
 
 **The module registers no claim.** A document that replays changes no claim
 status and no evidence level. ``gate_problems`` lets the evidence index refuse
@@ -64,7 +66,7 @@ from tools.experiment_evidence import (
     run_digests,
 )
 from tools.experiment_evidence.core import printable
-from tools.experiment_freeze import load_registry
+from tools.experiment_freeze import REGISTRY_PATH, load_registry
 from tools.experiment_run.core import (
     CONFORMING,
     MANIFEST_NAME,
@@ -174,6 +176,7 @@ RULE_AGGREGATE: Final = "replay-aggregate-unsupported"
 RULE_AGGREGATE_OMITTED: Final = "replay-aggregate-run-omitted"
 RULE_AGGREGATE_RUN: Final = "replay-aggregate-run-refused"
 RULE_EXCLUSION_RECORD: Final = "replay-exclusion-record-unpinned"
+RULE_EXCLUSION_RECORDS: Final = "replay-exclusion-record-differs"
 RULE_EXCLUSION: Final = "replay-exclusion-refused"
 
 #: The member of a freeze record that states its exclusion reasons.
@@ -243,7 +246,13 @@ RULES: Final[Mapping[str, str]] = {
     RULE_EXCLUSION_RECORD: (
         "The freeze registry of the tree pins the freeze record that the manifest "
         "of each run that is not counted names, with the content digest that the "
-        "manifest states, and that record is one JSON object."
+        "manifest states, and that record is one JSON object. The registry is one "
+        "JSON object with no member stated twice."
+    ),
+    RULE_EXCLUSION_RECORDS: (
+        "When a run of an aggregate is not counted, each run of the aggregate "
+        "names one freeze record: one path, one revision, and one content digest. "
+        "The name of the record is freeze-r<revision>.v1alpha1.json."
     ),
     RULE_EXCLUSION: (
         "The reliability analysis accepts the reason of each run that is not "
@@ -306,8 +315,13 @@ AGGREGATE_RULES: Final[tuple[str, ...]] = (
     "freeze record of the manifest registers for the experiment, the result state, "
     "and the run, and the freeze registry of the tree pins that record. Otherwise "
     "the aggregate is refused. A result state alone leaves no run out.",
+    "When a run is not counted, each run of the aggregate names one freeze "
+    "record. A run does not take its reasons from another record than the one "
+    "that the counted runs answer.",
     "A run that is not counted is listed with its value, the reason of its "
     "manifest, the identifier of the registered reason, and the freeze record.",
+    "The result state and the reason of a run are statements of its manifest. "
+    "The aggregate does not decide that they are true of the run.",
     "A counted run with no run analysis, or with no value for the figure, leaves "
     "the aggregate with no median.",
     "The median is stated for exactly three counted runs. No confidence interval "
@@ -845,11 +859,14 @@ def _result(run: _Run, root: Path) -> RunResult:
     it. For another run the function reads the freeze record that the manifest
     names. The layout check held that record to the digest and the revision of
     the manifest. This function holds it to the freeze registry of the tree
-    too, so a record that the registry does not pin registers no reason.
+    too, so a record that the registry does not pin registers no reason. The
+    registry is read first as JSON with no member stated twice, because its
+    own reader keeps the last of two members.
 
     Raises:
-        ReplayRefused: the registry does not pin the record with the digest of
-            the manifest, or the record cannot be read.
+        ReplayRefused: the record does not have the name of its revision, the
+            registry does not pin the record with the digest of the manifest,
+            or the registry or the record cannot be read.
     """
     result = run.manifest["result"]
     state: str = result["state"]
@@ -857,9 +874,20 @@ def _result(run: _Run, root: Path) -> RunResult:
         return RunResult(state)
     run_id = run.manifest["metadata"]["runId"]
     spec = run.manifest["metadata"]["spec"]
+    name = spec["freezeRecord"].rsplit("/", 1)[-1]
+    if name != f"freeze-r{spec['freezeRevision']}.v1alpha1.json":
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORDS,
+            f"the run {run_id} is not counted, and its freeze record does not have "
+            "the name of its revision",
+        )
     try:
+        json.loads(
+            (root / REGISTRY_PATH).read_bytes().decode("utf-8"),
+            object_pairs_hook=_no_repeat,
+        )
         pins = load_registry(root)
-    except ValueError as fault:
+    except (OSError, ValueError, RecursionError) as fault:
         raise ReplayRefused(
             RULE_EXCLUSION_RECORD,
             f"the run {run_id} is not counted, and the tree has no freeze registry "
@@ -1021,7 +1049,23 @@ def aggregate_runs(
                 "not given",
             )
     # The result of each run is read after the all-run rule, so a run that
-    # was left out is stated before a reason is.
+    # was left out is stated before a reason is. A run that is not counted
+    # does not choose its record: each run must name the same one.
+    if any(
+        run.manifest["result"]["state"] in EXCLUDED_STATES for _, run in documents
+    ) and (
+        len(
+            {
+                json.dumps(run.manifest["metadata"]["spec"], sort_keys=True)
+                for _, run in documents
+            }
+        )
+        != 1
+    ):
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORDS,
+            "a run is not counted, and the runs do not name one freeze record",
+        )
     pairs: list[tuple[Mapping[str, Any], str | RunResult]] = [
         (document, _result(run, root)) for document, run in documents
     ]

@@ -2724,6 +2724,9 @@ def test_the_preregistration_of_an_exclusion_is_repeated_and_is_not_read() -> No
     )
     stated = document["runs"][3]["exclusion"]["preregistration"]
     assert stated == given and stated is not given
+    for other in (5, ["freeze"], "freeze-r1"):
+        refused = refused_exclusion(excluded("ABORTED", preregistration=other))
+        assert refused.rule == "analysis-aggregate-unsupported"
 
 
 def test_a_counted_run_with_no_value_leaves_no_median() -> None:

@@ -402,8 +402,8 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
 AGGREGATE_RULE: Final = "median-of-three"
 
 #: The result states whose runs an aggregate does not count. A run in one of
-#: them is left out of the median only for a reason that was registered
-#: before the run, and the aggregate states that reason.
+#: them is left out of the median only for a reason that its exclusion
+#: reasons register, and the aggregate states that reason.
 EXCLUDED_STATES: Final = ("INCONCLUSIVE", "REFUSED", "ABORTED")
 
 #: What each aggregate document states about itself.
@@ -1914,8 +1914,8 @@ class RunResult:
     ``exclusion_reasons`` is the ``exclusionReasons`` member of the freeze
     record that the manifest names, or None when that record has none.
     ``preregistration`` is how the manifest names that record: its path, its
-    revision, and its content digest. The aggregate repeats it and does not
-    read it.
+    revision, and its content digest. It is a mapping or None. The aggregate
+    repeats it and does not read it.
 
     The caller reads the manifest and the freeze record. This module reads no
     file, so it does not check that the three are those of one run directory.
@@ -2086,6 +2086,13 @@ def aggregate(
         if type(state) is not str or state not in RESULT_STATES:
             raise AnalysisRefused(
                 RULE_AGGREGATE, f"the run {run} has an unregistered result state"
+            )
+        if result.preregistration is not None and not isinstance(
+            result.preregistration, Mapping
+        ):
+            raise AnalysisRefused(
+                RULE_AGGREGATE,
+                f"the run {run} names its freeze record in another form",
             )
         if any(entry["runId"] == run for entry in listed):
             raise AnalysisRefused(RULE_AGGREGATE, f"the run {run} is given twice")

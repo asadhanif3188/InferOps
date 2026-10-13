@@ -710,7 +710,12 @@ let a result state alone leave a run out of an aggregate, and do not add an opti
 that states a reason: a run in the state `INCONCLUSIVE`, `REFUSED`, or `ABORTED` is
 not counted only for a reason that the freeze record of its manifest registers in
 its `exclusionReasons` member, and a run in the state `PASSED` or `FAILED` is always
-counted. Do not compare a reason in another way than character for character. Do not
+counted. Do not compare a reason in another way than character for character, and do
+not let a run that is not counted take its reasons from another record than the one
+that each run of the aggregate names. A freeze record that registers exclusion
+reasons states them in the form that
+[the replay page](docs/testing/analysis-replay.md#a-run-that-is-not-counted) gives:
+the freeze check does not read that member. Do not
 add a member for a result state, a claim status, or an evidence level to a run
 analysis, and do not let the gate of the evidence index add a claim or raise a level:
 it refuses a run whose analysis does not replay, and it does nothing else. A change

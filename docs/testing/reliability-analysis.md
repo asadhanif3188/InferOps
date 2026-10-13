@@ -434,8 +434,10 @@ neither. Each run is listed with its own value.
   `INCONCLUSIVE`, `REFUSED`, or `ABORTED` is not counted only when its reason
   is one that its exclusion reasons register for the experiment, the state,
   and the run. The document then lists the run with its value, that reason,
-  the identifier of the registered reason, and the freeze record. With no
-  registered reason the aggregate is refused.
+  the identifier of the registered reason, and how the manifest names the
+  freeze record, when the caller gives it. With no registered reason the
+  aggregate is refused. The function reads no file: its caller reads the
+  manifest, the freeze record, and the registry.
 - **A counted run with no value leaves the aggregate with no median.** An open
   episode in one run does not become a run that is left out.
 - The median is stated for exactly three counted runs. For any other number the

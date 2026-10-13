@@ -22,7 +22,7 @@ claim was registered or changed.**
 | Date | 2026-10-13 |
 | Base | `900a4548fcb0c0319d26ca1126411739cde4f496`, the merge of pull request #143 |
 | Branch | `fix/v2-s5-005-preregistered-exclusion-reasons` |
-| Commits | The first commit: the two tools, the two suites, the pages, the driver, and its two outputs. The second commit: the corrections of an independent review, and the record of them in this file |
+| Commits | The first commit, `2f48ce9`: the two tools, the two suites, the pages, the driver, and its two outputs. The second commit: the corrections of two independent reviews, and the record of them in this file |
 | Host | One Windows workstation, Git Bash; Python 3.12.12 from `uv`. `gitleaks` is not installed |
 | Evidence level | C0. Every check reads committed files or reads a file that a suite or the driver built. No check contacts a cluster, a caller, or a telemetry collector |
 | Claim effect | None. No claim, ledger, register row, dashboard row, evidence-index entry, freeze record, run directory, or raw evidence file was added or changed. The committed evidence index is unchanged |
@@ -67,16 +67,19 @@ changed the number, and that the document did not show the reason.
 - [`tools/analysis_replay`](../../../tools/analysis_replay/core.py): the
   aggregate of run directories reads the reason from the manifest, and it reads
   the `exclusionReasons` member of the freeze record that the manifest names.
-  It holds that record to the freeze registry of the tree. Two rules are added,
-  `replay-exclusion-record-unpinned` and `replay-exclusion-refused`, so the tool
-  has 16. Each run of the document states how its manifest names its freeze
-  record. The schema name is `inferops.io/run-aggregate/v1alpha2`. The tool
+  It holds that record to the freeze registry of the tree, and it requires that
+  each run of an aggregate that leaves a run out names that one record. Three
+  rules are added, `replay-exclusion-record-unpinned`,
+  `replay-exclusion-record-differs`, and `replay-exclusion-refused`, so the tool
+  has 17. The first commit added two and had 16. Each run of the document states
+  how its manifest names its freeze record. The schema name is `inferops.io/run-aggregate/v1alpha2`. The tool
   imports the reader of the registry from `tools/experiment_freeze`, which is
   not edited.
 - [`tests/domain/test_reliability_analysis.py`](../../../tests/domain/test_reliability_analysis.py),
   286 tests from 129 test functions. The base held 229 from 115.
 - [`tests/testing/test_analysis_replay.py`](../../../tests/testing/test_analysis_replay.py),
-  165 tests from 115 test functions. The base held 134 from 95.
+  175 tests from 119 test functions. The first commit held 165 from 115, and
+  the base held 134 from 95.
 - [The replay page](../../testing/analysis-replay.md#a-run-that-is-not-counted)
   states the member, the comparison, each refusal, and what the check does not
   do. [The analysis page](../../testing/reliability-analysis.md#the-aggregate-of-three-runs)
@@ -90,12 +93,14 @@ changed the number, and that the document did not show the reason.
 
 **What did not change.** No freeze record, no freeze registry, no run
 directory, no raw evidence file, no manifest, no contract schema, no chart, and
-no script. The ExperimentRun schema is not changed: the `result` of a manifest
+no file under `scripts/`. The ExperimentRun schema is not changed: the `result` of a manifest
 has the two members that it had. `tools/experiment_freeze` is not edited, and
-the three committed freeze records pass its check as before. The run analysis
-of a run is not changed: `analyze`, `bind`, and `verify` give the bytes that
-they gave, and the six committed cases and the committed replay example are
-not written again.
+the three committed freeze records pass its check as before. `analyze` gives
+the bytes that it gave. `bind` gives the same figures and statements with
+another `analysisCode`: four source files changed, so the source digest and
+four source rows differ. `verify` still replays the committed example, and it
+now prints `code differs` with those four files. The six committed cases and
+the committed replay example are not written again.
 
 ## Where the reason is registered
 
@@ -116,8 +121,17 @@ freeze registry pins it. The aggregate therefore requires, for a run that is
 not counted, that `docs/proof/experiments/registry.v1alpha1.json` under the
 root pins the record with the digest that the manifest states.
 
+**One record for one aggregate.** When a run is not counted, each run of the
+aggregate must name the same record, and the record must have the name of its
+revision. So a run that is not counted does not choose the record that
+registers its reason.
+
+**The check reads files and no time.** It does not establish when a reason
+was registered. It establishes that the record which each manifest names, and
+which the registry pins, registers the reason.
+
 **No experiment registers a reason here.** Each exclusion reason of the suites
-and of the driver is synthetic text that says so. No reason, bound, or abort
+and of the driver is synthetic text. The reasons of the builders say so. No reason, bound, or abort
 condition of an experiment that has not been frozen is stated.
 
 ## What the change was asked to reach, and what it reached
@@ -126,7 +140,7 @@ condition of an experiment that has not been frozen is stated.
 |---|---|
 | The aggregate reads and states the actual reason, and makes none from the result state | Reached at C0. The reason is read from the manifest, and the document states it with the identifier of the registered reason. The text `result-state-<state>` is no longer written |
 | Each run that is not counted is held to the registered authority | Reached at C0. The authority is the freeze record that the manifest of the run names, pinned by the registry of the tree |
-| A reason that is absent, changed, stale, unrelated, unregistered, or substituted after the run is refused | Reached at C0, with one exception that the next section states. An absent reason, a reason that differs by one character, a reason that no record registers, a reason of another state, another run, another experiment, or a superseded revision, and a reason added to the record after the run each refuse the aggregate |
+| A reason that is absent, changed, stale, unrelated, unregistered, or substituted after the run is refused | Reached at C0, with the exceptions that the next section states. An absent reason, a reason that differs by one character, a reason that no record registers, a reason of another state, another run, or another experiment, a reason that only an earlier revision registers, a reason added to the record while the registry pins the earlier content, and one manifest alone that names another record each refuse the aggregate |
 | `PASSED` and `FAILED` stay counted, and an unfavourable counted run is not made an exclusion | Reached at C0 for what the tool can hold. A counted state is counted whatever reason the manifest states. A manifest that is changed to a state that is not counted needs a registered reason. **Not reached:** the tool does not decide that a registered reason is true of the run |
 | A counted run with no value stays conservative | Reached at C0. Three counted runs, one with no value, and one excluded run give no median with the reason `counted-run-without-value` |
 | A mutation of a reason, an input, or an output is detected | Reached at C0 for an input. A changed freeze record is refused by the layout check, and with each manifest restated it is refused by the registry. A substituted registered reason gives another document. **Not reached:** no check holds a stored aggregate document, as before. A stored copy is held by running the command again |
@@ -147,8 +161,19 @@ condition of an experiment that has not been frozen is stated.
   pin, and the history of the registry is in Git.
 - **The freeze check does not read the member.** A committed record with an
   `exclusionReasons` member that is not in its form passes the freeze check.
-- **It does not compare the freeze records of the runs of one aggregate.** Each
-  run that is not counted is held to the record of its own manifest.
+- **A new record, added to the registry, with each manifest restated to name
+  it, is accepted.** That is the same limit: one tree and not Git.
+- **It does not hold the manifests to the latest revision.** When each manifest
+  names an earlier revision that the registry pins, each run is held to that
+  revision.
+- **It does not establish when a reason was registered.** It reads no time.
+- **It does not hold the record to the freeze check**, and it does not compare
+  the experiment identifier of the exclusion reasons with another member of
+  the record.
+- **It has no rule for runs of two revisions with a run left out.** Such an
+  aggregate is refused, also when a run was aborted under an earlier revision
+  for a reason that the earlier revision registers. Runs that are all counted
+  are aggregated whatever records they name.
 - **It compares text as it is.** It applies no normalisation.
 - **No check holds a stored aggregate document.** That limit is the one of
   `V2-S5-004-PR2`.
@@ -168,8 +193,14 @@ condition of an experiment that has not been frozen is stated.
   freeze record of another experiment, put beside the runs and pinned,
   registers no reason for them.
 - **A registry is required for an exclusion alone.** An aggregate of counted
-  runs reads no registry, so each aggregate of counted runs that the tool gave
-  before is given now.
+  runs reads no registry, so it is not refused for a missing registry. Its
+  document has the new schema name, the `preregistration` member of each run,
+  and nine rules where the base stated six.
+- **Each run of an aggregate that leaves a run out names one record.** The
+  first commit held each run to the record of its own manifest, and a review
+  showed that one manifest alone could then name a record that registers its
+  reason. The cost is stated above: no aggregate of runs of two revisions
+  leaves a run out.
 - **The command of the reliability analysis refuses a state that is not
   counted.** It reads no manifest and no freeze record, and a reason of the
   command line would be a reason that nothing registered.
@@ -194,8 +225,12 @@ Each row is a property and the case that would show it is false.
 | A reason of another result state is not a reason | The reason that is registered for `ABORTED`, stated by an `INCONCLUSIVE` run. Refused. One text that is registered for two states is accepted for a run in the second state |
 | A reason of another run is not a reason | A reason with `runIds` that do not hold the run. Refused. With the run among them it is accepted |
 | A reason of another experiment is not a reason | Exclusion reasons that state another experiment identifier. Refused |
-| A reason of a superseded revision is stale | Revision 1 registers the reason and revision 2 does not. A run that answers revision 2 is refused |
-| A reason cannot be added after the run | The reason is written into the record. The layout check refuses each run. With each manifest restated, the registry does not pin the record. Refused |
+| A reason that only an earlier revision registers is stale | Revision 1 registers the reason and revision 2 does not. With each run restated to revision 2, the aggregate is refused |
+| A run does not go back to an earlier revision for its reason | From that state, the manifest of the run that is not counted is restated to revision 1 alone. Refused with `replay-exclusion-record-differs` |
+| A record that is written after the runs gives one run no reason | A second record with the reason of the probe is added to the registry, no pin is changed, and one manifest alone names it. Refused with `replay-exclusion-record-differs` |
+| A file without the name of its revision registers no reason | `notes.json`, a second file of revision 1, and `freeze-r2` with revision 1, each pinned and named by each manifest. Each refuses |
+| A reason that is added to the record is refused while the registry pins the earlier content | The reason is written into the record. The layout check refuses each run. With each manifest restated, the registry does not pin the record. Refused |
+| A registry is read in one way | A registry with `records`, `kind`, or `path` stated twice, which its own reader accepts, and two registries of 100,000 nested values. Each refuses with `replay-exclusion-record-unpinned` |
 | A file that is not pinned registers no reason | No registry, a registry that cannot be read, and a registry that pins no record. Each refuses |
 | Exclusion reasons in another form register nothing | 24 forms of the member, and 4 values that are no object. Each refuses with `analysis-exclusion-reasons-unsupported` |
 | A counted run is counted whatever reason it states | A `FAILED` run with the worst figure and a registered reason is counted with its value, and no registry is read |
@@ -242,7 +277,7 @@ the commit was made.
 | Command | Result |
 |---|---|
 | `uv run --locked ruff check .` | No finding |
-| `uv run --locked ruff format --check .` | 746 files already formatted |
+| `uv run --locked ruff format --check .` | 746 files already formatted. **This run was before this record existed.** With the record the command counts 747 |
 | `uv run --locked python -m mypy` | No issue in 414 source files |
 | `uv run --locked python -m mypy --platform linux` | No issue in 414 source files |
 | `uv run --locked python -m pytest tests/domain/test_reliability_analysis.py tests/testing/test_analysis_replay.py -q` | 451 passed: 286 and 165. The base holds 363: 229 and 134 |
@@ -257,6 +292,117 @@ the commit was made.
 | The driver, in a second working tree at the base and in this working tree | The results of the table above |
 
 The default lane was not run at the first commit.
+
+## What the independent reviews found
+
+Two reviews read the first commit, `2f48ce9`. One executed inputs against the
+code. The other compared each sentence of the pages, of this record, and of the
+suites with the code. Each was an automated session, and neither edited a file.
+
+### What the code got wrong
+
+- **A run that is not counted could choose its record.** The first commit held
+  each run to the record of its own manifest. A second record with the reason
+  of the probe, added to the registry with no pin changed, and named by one
+  manifest alone, gave a median of 20,900 ms. So did a file named `notes.json`,
+  and a second file with revision 1. Each run of an aggregate that leaves a run
+  out must now name one record, and the record must have the name of its
+  revision.
+- **A stale reason was accepted through one manifest.** With each run on
+  revision 2, which does not register the reason, the manifest of one run alone
+  was restated to revision 1, and the aggregate gave a median. The same rule
+  refuses it now.
+- **A registry of deep nesting was no refusal.** The reader of the registry left
+  a `RecursionError`. The command exited 1 and printed a traceback with paths
+  of the host. It is now a refusal with exit status 3.
+- **A registry with a member stated twice was accepted.** Its reader keeps the
+  last of two members. The aggregate now reads the registry first with no
+  member stated twice.
+- **A `preregistration` that is no mapping left an error that is no refusal** in
+  the aggregate of the reliability analysis. It is refused.
+
+### What the tests got wrong
+
+- The test of a refusal that repeats no text reached an exclusion refusal in
+  one of its three steps. The other two set the state `REFUSED` on a manifest
+  with an injected fault, which the layout check refuses first. The steps now
+  use `INCONCLUSIVE`, and each asserts its rule.
+- The test of a superseded revision changed one manifest and never tried the
+  earlier revision. It is two tests now.
+- One test name said that a reason added after the run is refused, and the test
+  ends with the accepted case. The name now states the condition.
+
+### What the pages got wrong
+
+- **"Registered before the run" was not what the check establishes.** The
+  changelog, the replay page, and one comment of the code said it. The check
+  reads no time.
+- This record and the changelog listed "a superseded revision" and "added after
+  the run" among the refusals without their conditions.
+- This record said that `analyze`, `bind`, and `verify` give the bytes that they
+  gave. That is true of `analyze` alone.
+- The ExperimentRun page said that the validator does not read the text of a
+  reason. It reads it for the shape of a credential and for a host path.
+- This record said that each synthetic reason says that it is synthetic. The
+  reasons of the builders do, and some reasons of single tests do not.
+- This record stated 746 formatted files for a run that was before the record
+  existed.
+- The analysis page said that the document lists the freeze record. The
+  function repeats what its caller gives.
+- This record said "no script", and the change adds a driver.
+
+### Noted, and not changed
+
+- **A manifest that is changed to a state that is not counted, with a registered
+  reason, is accepted.** This is the limit that "It does not decide that a
+  reason is true" states. Each aggregate document now states it as one of its
+  rules.
+- A registered reason can end with a character of zero width. The comparison is
+  of text as it is.
+- The page of the freeze records is not edited, because a freeze record of E01
+  names that page. The member is stated on the replay page and in the
+  contributor guide.
+- Two checks in the read of a freeze record are behind the layout check, and no
+  test reaches them alone.
+- The reader of the registry in `tools/experiment_freeze` is not edited. The
+  aggregate reads the registry a first time itself.
+
+## Validation at the second commit
+
+Each command ran on the files of the second commit, on the host above, before
+the commit was made.
+
+| Command | Result |
+|---|---|
+| `uv run --locked ruff check .` | No finding |
+| `uv run --locked ruff format --check .` | 747 files already formatted |
+| `uv run --locked python -m mypy` | No issue in 414 source files |
+| `uv run --locked python -m mypy --platform linux` | No issue in 414 source files |
+| `uv run --locked python -m pytest tests/domain/test_reliability_analysis.py tests/testing/test_analysis_replay.py -q` | 461 passed: 286 and 175. The first commit holds 451 |
+| `uv run --locked python -m tools.evidence_index --check` | `OK       v1-evidence-index.v1alpha1.json is what the register and ledger produce` |
+| `uv run --locked python -m tools.evidence_index --gate` | Exit status 0 |
+| `uv run --locked python -m tools.experiment_freeze --check` | `PASSED: 3 freeze record(s), every rule held` |
+| `uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json` | 30 material files differ, as at the base |
+| `uv run --locked python -m tools.analysis_replay repository` | 3 run directories, each pre-schema and not replayed |
+| `uv run --locked python -m tools.analysis_replay verify` of the example, with its `--root` | `replayed`, 6 input files, `code differs` with four files, and `revision  not-checked` |
+| The driver, in this working tree | The committed output, byte for byte |
+| The inputs of the first review, as tests of the suite | The record that is written after the runs, the earlier revision named by one manifest, the three registries with a member twice, and the two nested registries each refuse |
+| `git diff --check` against the base | No whitespace error |
+
+## The default lane
+
+| Command | Result |
+|---|---|
+| `uv run --locked python -m pytest -q` | 22,272 passed, 42 skipped, 14 deselected, no failure, in 40 minutes |
+
+The lane ran on the staged files of the second commit, from Git Bash, before this
+table held its result. The command also had `-rs -p no:cacheprovider`. The base
+recorded 22,172 passed and 42 skipped.
+
+**A first run of the lane is not a result.** It was started from PowerShell,
+where `bash` is the one of WSL and not Git Bash. 362 tests failed and 18 had an
+error, each in a suite that runs a shell script, with a WSL error in the output.
+No file was changed between the two runs.
 
 ## Privacy and publicability
 

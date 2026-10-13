@@ -38,10 +38,12 @@ median.
 REFUSED, or ABORTED is not counted only for a reason that the freeze record of
 its manifest registers for the experiment, the state, and the run, in a record
 that the freeze registry of the tree pins. The aggregate states that reason
-and that record. A reason that is changed, that no record registers, that a
-superseded record registered, or that was added to a record after the run
-refuses the aggregate. Each freeze record and each registry here is built by
-the suite, and it freezes no experiment.
+and that record. A reason that is changed, or that no record registers,
+refuses the aggregate. So does a reason that only an earlier revision
+registers, and a reason that was added to a record while the registry pins the
+earlier content. A run that is not counted does not choose its record: each
+run of the aggregate must name the same one. Each freeze record and each
+registry here is built by the suite, and it freezes no experiment.
 
 *Nothing is promoted.* A document that replays holds no claim status, no
 evidence level, and no result state, the evidence index refuses a run whose
@@ -1587,26 +1589,42 @@ def test_a_reason_of_a_named_run_leaves_that_run_out(tmp_path: Path) -> None:
     assert figures["countedRuns"] == 3
 
 
-def test_a_reason_of_a_superseded_record_refuses_the_aggregate(tmp_path: Path) -> None:
-    """Revision 1 registers the reason, and revision 2 does not.
+def _answer(root: Path, runs: list[Path], ref: str, revision: int) -> None:
+    """Restate the freeze record that each given manifest names."""
+    for run in runs:
+        _restate_manifest(
+            run,
+            lambda manifest: manifest["metadata"].update(
+                spec=_spec(root, ref, revision)
+            ),
+        )
+        assert check_run(run, root).status == run_core.CONFORMING
 
-    A run that answers revision 2 is held to revision 2. The reason of the
-    earlier revision is stale for it.
-    """
-    second = f"{EXPERIMENT_REF}/freeze-r2.v1alpha1.json"
-    _write(tmp_path / FREEZE_REF, _freeze(_reasons()))
+
+SECOND_REF = f"{EXPERIMENT_REF}/freeze-r2.v1alpha1.json"
+
+
+def _two_revisions(root: Path) -> list[Path]:
+    """Revision 1 registers both reasons, and revision 2 does not register REASON."""
+    _write(root / FREEZE_REF, _freeze(_reasons()))
     narrowed = _reasons()
     narrowed["reasons"] = [r for r in narrowed["reasons"] if r["reason"] != REASON]
-    _write(tmp_path / second, _freeze(narrowed, revision=2))
-    _pin(tmp_path, FREEZE_REF, second)
-    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    _write(root / SECOND_REF, _freeze(narrowed, revision=2))
+    _pin(root, FREEZE_REF, SECOND_REF)
+    return _runs(root, THREE | {"abort": "ABORTED"})
+
+
+def test_a_reason_that_only_an_earlier_revision_registers_is_refused(
+    tmp_path: Path,
+) -> None:
+    """Each run answers revision 2, which does not register the reason.
+
+    The reason of revision 1 is stale for a run that answers revision 2.
+    """
+    runs = _two_revisions(tmp_path)
     # Under revision 1 the reason is registered.
     assert core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]["median"]
-    _restate_manifest(
-        runs[-1],
-        lambda manifest: manifest["metadata"].update(spec=_spec(tmp_path, second, 2)),
-    )
-    assert check_run(runs[-1], tmp_path).status == run_core.CONFORMING
+    _answer(tmp_path, runs, SECOND_REF, 2)
     refused = _refusal(runs, tmp_path)
     assert refused.rule == core.RULE_EXCLUSION
     assert "analysis-exclusion-unregistered" in refused.message
@@ -1614,8 +1632,124 @@ def test_a_reason_of_a_superseded_record_refuses_the_aggregate(tmp_path: Path) -
     _set_result(runs[-1], "ABORTED", OTHER_REASON)
     figures = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
     row = next(r for r in figures["runs"] if r["runId"] == "abort-1")
-    assert row["exclusion"]["preregistration"] == _spec(tmp_path, second, 2)
+    assert row["exclusion"]["preregistration"] == _spec(tmp_path, SECOND_REF, 2)
     assert row["exclusion"]["reasonId"] == "fixture-abort-2"
+
+
+def test_a_run_does_not_go_back_to_an_earlier_revision_for_its_reason(
+    tmp_path: Path,
+) -> None:
+    """One manifest alone is restated to revision 1, which registers the reason.
+
+    The first commit held each run to the record of its own manifest. So this
+    one edit gave a median again. Each run of an aggregate that leaves a run
+    out must now name one record.
+    """
+    runs = _two_revisions(tmp_path)
+    _answer(tmp_path, runs, SECOND_REF, 2)
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION
+    _answer(tmp_path, runs[-1:], FREEZE_REF, 1)
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_RECORDS
+    # Runs of two revisions that are all counted are aggregated as before.
+    _set_result(runs[-1], "FAILED")
+    assert (
+        core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"][
+            "countedRuns"
+        ]
+        == 4
+    )
+
+
+def test_a_record_that_is_written_after_the_runs_gives_one_run_no_reason(
+    tmp_path: Path,
+) -> None:
+    """A new record with the reason of the probe, added to the registry.
+
+    No pin of the registry is changed, and one manifest alone names the new
+    record. The first commit gave a median of 20,900 ms for this.
+    """
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, FOUR)
+    reasons = _reasons()
+    reasons["reasons"] = [
+        {"id": "added-later", "resultState": "INCONCLUSIVE", "reason": POST_HOC_REASON}
+    ]
+    _write(tmp_path / SECOND_REF, _freeze(reasons, revision=2))
+    _pin(tmp_path, FREEZE_REF, SECOND_REF)
+    _set_result(runs[-1], "INCONCLUSIVE", POST_HOC_REASON)
+    _answer(tmp_path, runs[-1:], SECOND_REF, 2)
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_RECORDS
+    assert POST_HOC_REASON not in str(refused)
+
+
+@pytest.mark.parametrize(
+    ("name", "revision"),
+    [
+        ("notes.json", 7),
+        ("freeze-r1-exclusions.json", 1),
+        ("freeze-r2.v1alpha1.json", 1),
+    ],
+)
+def test_a_file_without_the_name_of_its_revision_registers_no_reason(
+    tmp_path: Path, name: str, revision: int
+) -> None:
+    """Each manifest names the file, and the registry pins it."""
+    ref = f"{EXPERIMENT_REF}/{name}"
+    _write(tmp_path / FREEZE_REF, FREEZE_TEXT)
+    _write(tmp_path / ref, _freeze(_reasons(), revision=revision))
+    _pin(tmp_path, FREEZE_REF, ref)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    _answer(tmp_path, runs, ref, revision)
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_RECORDS
+    assert "name of its revision" in refused.message
+
+
+_PIN = '"records": [{{"path": "{path}", "contentSha256": "{digest}"}}]'
+_HEAD = '"apiVersion": "inferops.io/v1alpha1"'
+REGISTRIES = {
+    "records twice": (
+        f'{{{{{_HEAD}, "kind": "ExperimentFreezeRegistry", "records": [], {_PIN}}}}}'
+    ),
+    "kind twice": (
+        f'{{{{{_HEAD}, "kind": "Another", "kind": "ExperimentFreezeRegistry", {_PIN}}}}}'
+    ),
+    "path twice": (
+        f'{{{{{_HEAD}, "kind": "ExperimentFreezeRegistry", "records": '
+        '[{{"path": "another", "path": "{path}", "contentSha256": "{digest}"}}]}}'
+    ),
+    "nested arrays": "[" * 100_000,
+    "nested objects": '{{"a":' * 100_000,
+}
+
+
+@pytest.mark.parametrize("name", sorted(REGISTRIES))
+def test_a_registry_that_two_readers_could_read_in_two_ways_is_refused(
+    tmp_path: Path, name: str
+) -> None:
+    """A member stated twice, and a nesting that no reader finishes.
+
+    The reader of the registry keeps the last of two members. The first commit
+    accepted each registry with a member twice, and the two nestings left the
+    tool with an error that is no refusal.
+    """
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    assert core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]["median"]
+    spec = _spec(tmp_path)
+    registry = REGISTRIES[name].format(
+        path=spec["freezeRecord"], digest=spec["freezeContentSha256"]
+    )
+    if "twice" in name:
+        # The reader of the registry accepts it, and gives the pin.
+        _write(tmp_path / REGISTRY_PATH, registry)
+        assert load_registry(tmp_path) == {
+            spec["freezeRecord"]: spec["freezeContentSha256"]
+        }
+    _write(tmp_path / REGISTRY_PATH, registry)
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_RECORD
 
 
 def _add_post_hoc_reason(root: Path) -> None:
@@ -1633,16 +1767,16 @@ def _restate_freeze_digest(root: Path, runs: list[Path]) -> None:
         )
 
 
-def test_a_reason_that_is_added_to_the_record_after_the_run_is_refused(
+def test_a_reason_that_is_added_to_the_record_is_refused_while_its_pin_is_kept(
     tmp_path: Path,
 ) -> None:
     """The probe, with the reason written into the freeze record afterwards.
 
     The record alone: the layout check refuses each run, because the record no
     longer has the digest that the manifests state. The record with each
-    manifest restated: the registry does not pin the new content. Each of the
-    three files of a tree, replaced together, is accepted, and the document
-    then states another record digest than an earlier aggregate did.
+    manifest restated: the registry does not pin the new content. The record,
+    each manifest, and the registry, replaced together, are accepted, and the
+    document then states another record digest than an earlier aggregate did.
     """
     _preregister(tmp_path)
     runs = _runs(tmp_path, FOUR)
@@ -1776,12 +1910,17 @@ def test_a_refusal_of_an_exclusion_repeats_no_text_of_a_file(tmp_path: Path) -> 
     reasons["reasons"][3]["reason"] = f"A registered reason with {marker}."
     _preregister(tmp_path, reasons)
     runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    # A stated reason that is not registered.
     _set_result(runs[-1], "ABORTED", f"A stated reason with {marker}.")
-    assert marker not in str(_refusal(runs, tmp_path))
-    _set_result(runs[-1], "REFUSED", f"A registered reason with {marker}.")
-    assert marker not in str(_refusal(runs, tmp_path))
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION and marker not in str(refused)
+    # A registered reason, stated under another result state.
+    _set_result(runs[-1], "INCONCLUSIVE", f"A registered reason with {marker}.")
+    refused = _refusal(runs, tmp_path)
+    assert "another result state" in refused.message and marker not in str(refused)
     (tmp_path / REGISTRY_PATH).unlink()
-    assert marker not in str(_refusal(runs, tmp_path))
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_RECORD and marker not in str(refused)
 
 
 def test_a_run_that_was_left_out_is_stated_before_a_reason_is(tmp_path: Path) -> None:
@@ -2393,7 +2532,7 @@ def _flat(text: str) -> str:
 def test_the_page_states_each_rule_as_the_module_does() -> None:
     rows = dict(re.findall(r"(?m)^\| `(replay-[a-z-]+)` \| (.+?) \|$", _page()))
     assert rows == dict(core.RULES)
-    assert len(core.RULES) == 16
+    assert len(core.RULES) == 17
 
 
 def test_the_page_states_each_limit_boundary_and_aggregate_rule() -> None:
@@ -2407,7 +2546,7 @@ def test_the_page_states_each_limit_boundary_and_aggregate_rule() -> None:
         assert statement in flat, statement
     assert len(core.LIMITATIONS) == 7
     assert len(core.DOES_NOT_ESTABLISH) == 5
-    assert len(core.AGGREGATE_RULES) == 7
+    assert len(core.AGGREGATE_RULES) == 9
 
 
 def test_the_page_names_each_source_package_and_both_schema_names() -> None:

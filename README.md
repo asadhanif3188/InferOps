@@ -271,7 +271,8 @@ and refuses a stored copy that differs, so a figure that a person edited is not
 accepted. It was executed on synthetic run directories only, and it registers no
 claim. Since `V2-S5-005-PR1` its aggregate leaves a run out of the median only for
 a reason that the freeze record of the run registers, and it states that reason. A
-result state alone leaves no run out. No committed freeze record registers such a
+result state alone leaves no run out. The check does not decide that a reason is
+true of a run. No committed freeze record registers such a
 reason, and no real run was left out.
 
 ## Prerequisites

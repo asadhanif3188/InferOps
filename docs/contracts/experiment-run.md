@@ -109,11 +109,14 @@ The five result states:
 A run keeps its manifest whatever its state. A run is not repeated to obtain another
 state: a second attempt is a second run, with another `runId`, and both stay.
 
-The validator requires the reason and does not read its text. Since `V2-S5-005-PR1`
+The validator requires the reason. It reads the text for the shape of a credential
+and for an absolute path of a host, and it does not compare the reason with a
+registered reason. Since `V2-S5-005-PR1`
 [the aggregate of the replay tool](../testing/analysis-replay.md#a-run-that-is-not-counted)
 does: it leaves a run in one of the last three states out of a median only when the
 reason is, character for character, one that the freeze record of the manifest
-registers. The schema is unchanged.
+registers, and each run of the aggregate names that one record. The schema is
+unchanged.
 
 ## Structure
 
