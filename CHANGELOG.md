@@ -1412,6 +1412,40 @@ from `1.0.0`.
 
 ### Fixed
 
+- **An aggregate left a run out of the median for its result state alone, and it
+  now holds the run to a reason that was registered before the run. No real run was
+  aggregated, and no committed freeze record registers a reason.** The aggregate of
+  `tools/reliability_analysis` did not count a run in the state `INCONCLUSIVE`,
+  `REFUSED`, or `ABORTED`, whatever reason its manifest stated, and the document
+  stated `result-state-inconclusive` and not that reason. So one edit of the manifest
+  of a `FAILED` run, with a reason written after the run, took the run out of the
+  median: four counted runs with no median became three counted runs with a median
+  of 20,900 ms, with each other byte unchanged. A review of the sprint on 2026-10-13
+  reported this with a probe; it was reported to the author, and no file in this
+  repository records that review. `V2-S5-005-PR1` closes it. **A result state alone
+  leaves no run out.** The aggregate of `tools/analysis_replay` reads the reason from
+  the manifest and the exclusion reasons from the `exclusionReasons` member of the
+  freeze record that the manifest names. A run is not counted only when its reason
+  is, character for character, a reason that the record registers for the experiment,
+  the result state, and the run, and the freeze registry of the tree pins that
+  record. The document then states the reason, the identifier of the registered
+  reason, and the path, the revision, and the content digest of the record. A reason
+  that no record registers, a reason that differs by one character, a reason of
+  another state, another run, another experiment, or a superseded revision, a reason
+  that was added to the record after the run, and a record that the registry does
+  not pin each refuse the aggregate. A run in the state `PASSED` or `FAILED` is
+  counted whatever reason it states, and a counted run with no value still leaves no
+  median. The command of `tools/reliability_analysis` reads no freeze record, so it
+  now refuses a run that is given in one of the three states. The two schema names
+  of an aggregate are now `v1alpha2`, because the `exclusion` member changed from
+  text to an object. Two rules are added to each tool: 10 for the analysis and 16
+  for the replay. **The check does not decide that a reason is true.** The manifest
+  is still the authority for the state and the reason, the aggregate reads one tree
+  and not Git, and the freeze check does not read the new member. No freeze record,
+  run, raw evidence file, claim, or evidence level was changed. See
+  [the replay page](docs/testing/analysis-replay.md#a-run-that-is-not-counted) and
+  [the validation record](docs/proof/testing/v2-s5-005-pr1-validation.md). Evidence
+  level C0.
 - **No Service endpoint of a cluster had been read, and one reading is now
   committed.** The seven endpoint-state cases are synthetic, and the change that
   added the collector read no cluster. `V2-S4-005-PR2` installs the two-replica

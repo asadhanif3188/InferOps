@@ -34,6 +34,15 @@ each spelling of an argument, a directory beside the runs that does not conform
 is a refusal, and a counted run with no value leaves the aggregate with no
 median.
 
+*A result state alone leaves no run out.* A run in the state INCONCLUSIVE,
+REFUSED, or ABORTED is not counted only for a reason that the freeze record of
+its manifest registers for the experiment, the state, and the run, in a record
+that the freeze registry of the tree pins. The aggregate states that reason
+and that record. A reason that is changed, that no record registers, that a
+superseded record registered, or that was added to a record after the run
+refuses the aggregate. Each freeze record and each registry here is built by
+the suite, and it freezes no experiment.
+
 *Nothing is promoted.* A document that replays holds no claim status, no
 evidence level, and no result state, the evidence index refuses a run whose
 analysis does not replay, and it states nothing about one that does.
@@ -46,6 +55,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import hashlib
 import json
 import re
 import shutil
@@ -68,6 +78,7 @@ from tools.analysis_replay import core  # noqa: E402
 from tools.evidence_index import core as index_core  # noqa: E402
 from tools.evidence_model import load_register  # noqa: E402
 from tools.experiment_evidence import ROLES, check_run, file_digest  # noqa: E402
+from tools.experiment_freeze import REGISTRY_PATH, load_registry  # noqa: E402
 from tools.experiment_run import core as run_core  # noqa: E402
 
 pytestmark = pytest.mark.docs
@@ -107,6 +118,9 @@ CASE_NAMES = (
 EXAMPLE_CASE = "concurrency"
 ANALYSIS_FILE = "analysis.json"
 REASON = "The run decides no criterion. This document is a fixture."
+OTHER_REASON = "An abort condition stopped the run. This document is a fixture."
+#: The reason of the probe that showed the defect. No record registers it.
+POST_HOC_REASON = "Excluded after inspection. No preregistered reason exists."
 
 
 def _run_id(case: str) -> str:
@@ -158,6 +172,15 @@ def _manifest(
         },
     )
     manifest["fault"]["injectedAt"] = "2026-10-12T08:00:30.000Z"
+    if state == "REFUSED":
+        # A REFUSED run did not start its procedure, so its manifest states no
+        # injected fault. The evidence files of the case are left as they are.
+        manifest["fault"] = {
+            "registered": True,
+            "type": manifest["fault"]["type"],
+            "injected": False,
+            "reason": "The run was refused before its procedure started.",
+        }
     manifest["result"] = (
         {"state": state}
         if state in run_core.DECIDED_STATES
@@ -168,8 +191,13 @@ def _manifest(
 
 
 def _raw_run(root: Path, case: str, state: str = "FAILED") -> Path:
-    """A run directory that holds the evidence files of one case and no analysis."""
-    _write(root / FREEZE_REF, FREEZE_TEXT)
+    """A run directory that holds the evidence files of one case and no analysis.
+
+    The freeze record is the one line that registers nothing, unless the tree
+    holds a record already.
+    """
+    if not (root / FREEZE_REF).exists():
+        _write(root / FREEZE_REF, FREEZE_TEXT)
     run_dir = root / _run_ref(case)
     entries = []
     for source in sorted((CASES / case).glob("*.jsonl")):
@@ -828,6 +856,7 @@ def test_the_source_packages_hold_the_analysis_and_each_reader_of_an_input() -> 
     assert outside - set(core.SOURCE_PACKAGES) == {
         "evidence_index",
         "experiment_evidence",
+        "experiment_freeze",
         "experiment_run",
         "llm_load",
         "model_acquisition",
@@ -1043,6 +1072,7 @@ THREE = {"zero-failure": "PASSED", "concurrency": "FAILED", "missing-signal": "F
 
 
 def test_the_aggregate_is_the_median_of_three_counted_runs(tmp_path: Path) -> None:
+    _preregister(tmp_path)
     runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
     document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
     values = sorted(_figure(case) or 0 for case in THREE)
@@ -1063,7 +1093,11 @@ def test_the_aggregate_is_the_median_of_three_counted_runs(tmp_path: Path) -> No
         "abort-1": "ABORTED",
     }
     assert listed["abort-1"]["counted"] is False
-    assert listed["abort-1"]["exclusion"] == "result-state-aborted"
+    assert listed["abort-1"]["exclusion"] == {
+        "reasonId": "fixture-aborted",
+        "reason": REASON,
+        "preregistration": _spec(tmp_path),
+    }
     assert document["schema"] == core.AGGREGATE_SCHEMA
     assert document["runsDirectory"] == f"{EXPERIMENT_REF}/runs"
     assert document["rules"] == list(core.AGGREGATE_RULES)
@@ -1139,6 +1173,7 @@ def test_a_counted_run_with_no_run_analysis_leaves_no_median(tmp_path: Path) -> 
 
 
 def test_two_counted_runs_have_no_median(tmp_path: Path) -> None:
+    _preregister(tmp_path)
     states = {"zero-failure": "PASSED", "concurrency": "FAILED", "abort": "ABORTED"}
     figures = core.aggregate_runs(METRIC, _runs(tmp_path, states), REVISION, tmp_path)[
         "aggregate"
@@ -1271,6 +1306,520 @@ def test_an_aggregate_refuses_what_it_cannot_read(tmp_path: Path) -> None:
     with pytest.raises(core.ReplayRefused) as refused:
         core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE
+
+
+# --------------------------------------------------------------------------
+# A run that is not counted, and the reason that a freeze record registers
+# --------------------------------------------------------------------------
+
+
+def _reasons(experiment: str = EXPERIMENT) -> dict[str, Any]:
+    """Synthetic exclusion reasons. They are the reasons of no experiment."""
+    return {
+        "experimentId": experiment,
+        "reasons": [
+            {
+                "id": "fixture-inconclusive",
+                "resultState": "INCONCLUSIVE",
+                "reason": REASON,
+            },
+            {"id": "fixture-refused", "resultState": "REFUSED", "reason": REASON},
+            {"id": "fixture-aborted", "resultState": "ABORTED", "reason": REASON},
+            {"id": "fixture-abort-2", "resultState": "ABORTED", "reason": OTHER_REASON},
+        ],
+    }
+
+
+def _freeze(reasons: dict[str, Any] | None, revision: int = 1) -> str:
+    record: dict[str, Any] = {
+        "metadata": {"revision": revision},
+        "synthetic": "A fixture. It freezes no experiment.",
+    }
+    if reasons is not None:
+        record[core.EXCLUSION_REASONS_MEMBER] = reasons
+    return json.dumps(record, indent=2) + "\n"
+
+
+def _pin(root: Path, *refs: str) -> None:
+    """Write a freeze registry that pins each given record as it is now."""
+    _write_json(
+        root / REGISTRY_PATH,
+        {
+            "apiVersion": "inferops.io/v1alpha1",
+            "kind": "ExperimentFreezeRegistry",
+            "records": [
+                {
+                    "path": ref,
+                    "contentSha256": run_core.content_digest((root / ref).read_bytes()),
+                }
+                for ref in refs
+            ],
+        },
+    )
+    assert set(load_registry(root)) == set(refs)
+
+
+def _preregister(root: Path, reasons: dict[str, Any] | None = None) -> None:
+    """Before a run is built: a freeze record with exclusion reasons, and its pin."""
+    assert not (root / EXPERIMENT_REF / "runs").exists()
+    _write(root / FREEZE_REF, _freeze(_reasons() if reasons is None else reasons))
+    _pin(root, FREEZE_REF)
+
+
+def _spec(root: Path, ref: str = FREEZE_REF, revision: int = 1) -> dict[str, Any]:
+    return {
+        "freezeRecord": ref,
+        "freezeRevision": revision,
+        "freezeContentSha256": run_core.content_digest((root / ref).read_bytes()),
+    }
+
+
+def _restate_manifest(run_dir: Path, change: Callable[[dict[str, Any]], None]) -> None:
+    """Change the manifest of a run by hand, and no other file."""
+    manifest = _read_json(run_dir / run_core.MANIFEST_NAME)
+    change(manifest)
+    _write_json(run_dir / run_core.MANIFEST_NAME, manifest)
+
+
+def _set_result(run_dir: Path, state: str, reason: str | None = None) -> None:
+    result = {"state": state} if reason is None else {"state": state, "reason": reason}
+    _restate_manifest(run_dir, lambda manifest: manifest.update(result=result))
+
+
+def _other_files(run_dir: Path) -> dict[str, str]:
+    return {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(run_dir.iterdir())
+        if path.name != run_core.MANIFEST_NAME
+    }
+
+
+def _refusal(runs: list[Path], root: Path) -> core.ReplayRefused:
+    with pytest.raises(core.ReplayRefused) as refused:
+        core.aggregate_runs(METRIC, runs, REVISION, root)
+    return refused.value
+
+
+FOUR = THREE | {"open-episode": "FAILED"}
+
+
+@pytest.mark.parametrize("preregistered", [False, True])
+def test_a_run_is_not_left_out_for_a_reason_that_no_record_registers(
+    tmp_path: Path, preregistered: bool
+) -> None:
+    """The probe that showed the defect, step for step.
+
+    Three runs have a figure, and a fourth, FAILED, has an open episode. The
+    aggregate counts four runs and states no median. Then the manifest of the
+    fourth run alone is changed to INCONCLUSIVE, with a reason that was written
+    after the run. No other byte changes, and the run still replays.
+
+    Before this change the aggregate then counted three runs and stated a
+    median of 20,900 ms, and the reason was nowhere in the document. Now the
+    aggregate is refused: with no registry, and with a registered record that
+    does not hold the reason.
+    """
+    if preregistered:
+        _preregister(tmp_path)
+    runs = _runs(tmp_path, FOUR)
+    before = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
+    assert (before["countedRuns"], before["state"], before["median"]) == (
+        4,
+        analysis.NOT_COMPUTABLE,
+        None,
+    )
+    changed = runs[-1]
+    others = _other_files(changed)
+    _set_result(changed, "INCONCLUSIVE", POST_HOC_REASON)
+    assert _other_files(changed) == others
+    assert core.replay_run(changed, tmp_path).status == core.REPLAYED
+    refused = _refusal(runs, tmp_path)
+    if preregistered:
+        assert refused.rule == core.RULE_EXCLUSION
+        assert "analysis-exclusion-unregistered" in refused.message
+    else:
+        assert refused.rule == core.RULE_EXCLUSION_RECORD
+    assert "open-episode-1" in refused.message
+    assert POST_HOC_REASON not in str(refused)
+    # The three finite runs alone have the median that the probe obtained. No
+    # document states it while the fourth run is in the runs directory.
+    assert sorted(_figure(case) or 0 for case in THREE)[1] == 20_900
+
+
+@pytest.mark.parametrize("state", list(analysis.EXCLUDED_STATES))
+def test_a_registered_reason_leaves_a_run_out_and_is_stated(
+    tmp_path: Path, state: str
+) -> None:
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": state})
+    document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    figures = document["aggregate"]
+    assert (figures["countedRuns"], figures["state"], figures["median"]) == (
+        3,
+        analysis.COMPUTED,
+        sorted(_figure(case) or 0 for case in THREE)[1],
+    )
+    row = next(r for r in figures["runs"] if r["runId"] == "abort-1")
+    assert row == {
+        "runId": "abort-1",
+        "resultState": state,
+        "counted": False,
+        "exclusion": {
+            "reasonId": f"fixture-{state.lower()}",
+            "reason": REASON,
+            "preregistration": _spec(tmp_path),
+        },
+        "value": _figure("abort"),
+    }
+    # Each run states the freeze record that its manifest names.
+    assert [r["preregistration"] for r in document["runs"]] == [_spec(tmp_path)] * 4
+    assert document["schema"] == "inferops.io/run-aggregate/v1alpha2"
+
+
+def test_an_excluded_run_needs_a_registry_that_pins_its_freeze_record(
+    tmp_path: Path,
+) -> None:
+    """A file that a manifest names is a frozen record only when it is pinned."""
+    _write(tmp_path / FREEZE_REF, _freeze(_reasons()))
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_RECORD
+    _write(tmp_path / REGISTRY_PATH, "not a registry\n")
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_RECORD
+    _pin(tmp_path)
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_RECORD
+    _pin(tmp_path, FREEZE_REF)
+    assert core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]["median"]
+    # A registry is not read for runs that are all counted.
+    (tmp_path / REGISTRY_PATH).unlink()
+    _set_result(runs[-1], "FAILED")
+    assert (
+        core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"][
+            "countedRuns"
+        ]
+        == 4
+    )
+
+
+@pytest.mark.parametrize(
+    "reasons",
+    [
+        None,
+        {"experimentId": EXPERIMENT, "reasons": []},
+        {
+            "experimentId": EXPERIMENT,
+            "reasons": [
+                {"id": "another", "resultState": "ABORTED", "reason": OTHER_REASON}
+            ],
+        },
+    ],
+)
+def test_a_record_that_does_not_register_the_reason_refuses_the_aggregate(
+    tmp_path: Path, reasons: dict[str, Any] | None
+) -> None:
+    _write(tmp_path / FREEZE_REF, _freeze(reasons))
+    _pin(tmp_path, FREEZE_REF)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION
+    assert "analysis-exclusion-unregistered" in refused.message
+
+
+@pytest.mark.parametrize(
+    "reason", [REASON + " ", REASON.lower(), REASON[:-1], REASON + " And more."]
+)
+def test_a_reason_that_differs_by_a_character_refuses_the_aggregate(
+    tmp_path: Path, reason: str
+) -> None:
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    _set_result(runs[-1], "ABORTED", reason)
+    assert check_run(runs[-1], tmp_path).status == run_core.CONFORMING
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION
+    assert "analysis-exclusion-unregistered" in refused.message
+
+
+def test_a_run_that_is_not_counted_and_states_no_reason_does_not_conform(
+    tmp_path: Path,
+) -> None:
+    """The manifest schema requires the reason, so the layout check refuses first."""
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    _set_result(runs[-1], "ABORTED")
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_AGGREGATE_RUN
+
+
+def test_a_reason_of_another_result_state_refuses_the_aggregate(tmp_path: Path) -> None:
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    _set_result(runs[-1], "INCONCLUSIVE", OTHER_REASON)
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION
+    assert "another result state" in refused.message
+
+
+def test_a_reason_of_another_experiment_refuses_the_aggregate(tmp_path: Path) -> None:
+    """A freeze record of another experiment, put beside the runs and pinned."""
+    _preregister(tmp_path, _reasons("another-experiment"))
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION
+    assert "another experiment" in refused.message
+
+
+def test_a_reason_of_another_run_refuses_the_aggregate(tmp_path: Path) -> None:
+    reasons = _reasons()
+    reasons["reasons"][2]["runIds"] = ["clock-ties-1"]
+    _preregister(tmp_path, reasons)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION
+    assert "other runs" in refused.message
+
+
+def test_a_reason_of_a_named_run_leaves_that_run_out(tmp_path: Path) -> None:
+    reasons = _reasons()
+    reasons["reasons"][2]["runIds"] = ["abort-1"]
+    _preregister(tmp_path, reasons)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    figures = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
+    assert figures["countedRuns"] == 3
+
+
+def test_a_reason_of_a_superseded_record_refuses_the_aggregate(tmp_path: Path) -> None:
+    """Revision 1 registers the reason, and revision 2 does not.
+
+    A run that answers revision 2 is held to revision 2. The reason of the
+    earlier revision is stale for it.
+    """
+    second = f"{EXPERIMENT_REF}/freeze-r2.v1alpha1.json"
+    _write(tmp_path / FREEZE_REF, _freeze(_reasons()))
+    narrowed = _reasons()
+    narrowed["reasons"] = [r for r in narrowed["reasons"] if r["reason"] != REASON]
+    _write(tmp_path / second, _freeze(narrowed, revision=2))
+    _pin(tmp_path, FREEZE_REF, second)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    # Under revision 1 the reason is registered.
+    assert core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]["median"]
+    _restate_manifest(
+        runs[-1],
+        lambda manifest: manifest["metadata"].update(spec=_spec(tmp_path, second, 2)),
+    )
+    assert check_run(runs[-1], tmp_path).status == run_core.CONFORMING
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION
+    assert "analysis-exclusion-unregistered" in refused.message
+    # The other reason is registered by revision 2, and the row names revision 2.
+    _set_result(runs[-1], "ABORTED", OTHER_REASON)
+    figures = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
+    row = next(r for r in figures["runs"] if r["runId"] == "abort-1")
+    assert row["exclusion"]["preregistration"] == _spec(tmp_path, second, 2)
+    assert row["exclusion"]["reasonId"] == "fixture-abort-2"
+
+
+def _add_post_hoc_reason(root: Path) -> None:
+    reasons = _reasons()
+    reasons["reasons"].append(
+        {"id": "added-later", "resultState": "INCONCLUSIVE", "reason": POST_HOC_REASON}
+    )
+    _write(root / FREEZE_REF, _freeze(reasons))
+
+
+def _restate_freeze_digest(root: Path, runs: list[Path]) -> None:
+    for run in runs:
+        _restate_manifest(
+            run, lambda manifest: manifest["metadata"].update(spec=_spec(root))
+        )
+
+
+def test_a_reason_that_is_added_to_the_record_after_the_run_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The probe, with the reason written into the freeze record afterwards.
+
+    The record alone: the layout check refuses each run, because the record no
+    longer has the digest that the manifests state. The record with each
+    manifest restated: the registry does not pin the new content. Each of the
+    three files of a tree, replaced together, is accepted, and the document
+    then states another record digest than an earlier aggregate did.
+    """
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, FOUR)
+    earlier = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    _set_result(runs[-1], "INCONCLUSIVE", POST_HOC_REASON)
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION
+
+    _add_post_hoc_reason(tmp_path)
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_AGGREGATE_RUN
+    assert {
+        finding.rule for run in runs for finding in check_run(run, tmp_path).findings
+    } == {"evidence-freeze-record-differs"}
+
+    _restate_freeze_digest(tmp_path, runs)
+    assert all(check_run(run, tmp_path).status == run_core.CONFORMING for run in runs)
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_RECORD
+    assert "does not pin" in refused.message
+
+    _pin(tmp_path, FREEZE_REF)
+    later = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    assert later["aggregate"]["median"] == 20_900
+    assert {row["preregistration"]["freezeContentSha256"] for row in later["runs"]} != {
+        row["preregistration"]["freezeContentSha256"] for row in earlier["runs"]
+    }
+    row = next(r for r in later["aggregate"]["runs"] if not r["counted"])
+    assert row["exclusion"]["reason"] == POST_HOC_REASON
+
+
+def test_a_failed_run_with_a_registered_reason_is_counted(tmp_path: Path) -> None:
+    """A reason beside a counted state leaves no run out.
+
+    The worst run states FAILED and a reason that the record registers. It is
+    counted with its value, and no record is read for it.
+    """
+    _preregister(tmp_path)
+    states = {"zero-failure": "PASSED", "clock-ties": "FAILED", "concurrency": "FAILED"}
+    runs = _runs(tmp_path, states)
+    _set_result(runs[-1], "FAILED", REASON)
+    (tmp_path / REGISTRY_PATH).unlink()
+    figures = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
+    row = next(r for r in figures["runs"] if r["runId"] == "concurrency-1")
+    assert (row["counted"], row["exclusion"], row["value"]) == (True, None, 20_900)
+    assert (figures["countedRuns"], figures["median"]) == (3, 3000)
+
+
+def test_a_counted_run_with_no_value_is_not_hidden_by_an_exclusion(
+    tmp_path: Path,
+) -> None:
+    _preregister(tmp_path)
+    states = {
+        "zero-failure": "PASSED",
+        "concurrency": "FAILED",
+        "open-episode": "FAILED",
+        "abort": "ABORTED",
+    }
+    figures = core.aggregate_runs(METRIC, _runs(tmp_path, states), REVISION, tmp_path)[
+        "aggregate"
+    ]
+    assert (figures["countedRuns"], figures["median"], figures["reason"]) == (
+        3,
+        None,
+        "counted-run-without-value",
+    )
+
+
+def test_a_substituted_reason_does_not_give_the_earlier_aggregate(
+    tmp_path: Path,
+) -> None:
+    """One registered reason, replaced by another registered reason.
+
+    The aggregate is accepted, because the record registers both. The document
+    is not the earlier one: it states the other reason, its identifier, and
+    another manifest digest. So a stored copy that is compared with the
+    command's output shows the substitution.
+    """
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    earlier = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    stored = core.record_text(earlier)
+    _set_result(runs[-1], "ABORTED", OTHER_REASON)
+    later = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    assert core.record_text(later) != stored
+    was = next(r for r in earlier["aggregate"]["runs"] if not r["counted"])
+    now = next(r for r in later["aggregate"]["runs"] if not r["counted"])
+    assert (was["exclusion"]["reasonId"], now["exclusion"]["reasonId"]) == (
+        "fixture-aborted",
+        "fixture-abort-2",
+    )
+    assert now["exclusion"]["reason"] == OTHER_REASON
+    digests = [
+        {row["runId"]: row["manifestSha256"] for row in document["runs"]}
+        for document in (earlier, later)
+    ]
+    assert digests[0]["abort-1"] != digests[1]["abort-1"]
+    assert {k: v for k, v in digests[0].items() if k != "abort-1"} == {
+        k: v for k, v in digests[1].items() if k != "abort-1"
+    }
+    # A stored copy whose reason was edited by hand is not the output either.
+    edited = json.loads(stored)
+    row = next(r for r in edited["aggregate"]["runs"] if not r["counted"])
+    row["exclusion"]["reason"] = OTHER_REASON
+    assert core.record_text(edited) not in (stored, core.record_text(later))
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda reasons: reasons.update(note="another member"),
+        lambda reasons: reasons["reasons"][0].update(resultState="FAILED"),
+        lambda reasons: reasons["reasons"].append(dict(reasons["reasons"][0])),
+        lambda reasons: reasons.update(reasons="text"),
+    ],
+)
+def test_exclusion_reasons_in_another_form_refuse_the_aggregate(
+    tmp_path: Path, change: Callable[[dict[str, Any]], None]
+) -> None:
+    reasons = _reasons()
+    change(reasons)
+    _preregister(tmp_path, reasons)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION
+    assert "analysis-exclusion-reasons-unsupported" in refused.message
+
+
+def test_a_refusal_of_an_exclusion_repeats_no_text_of_a_file(tmp_path: Path) -> None:
+    marker = "MARKER-51c9"
+    reasons = _reasons()
+    reasons["reasons"][3]["reason"] = f"A registered reason with {marker}."
+    _preregister(tmp_path, reasons)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    _set_result(runs[-1], "ABORTED", f"A stated reason with {marker}.")
+    assert marker not in str(_refusal(runs, tmp_path))
+    _set_result(runs[-1], "REFUSED", f"A registered reason with {marker}.")
+    assert marker not in str(_refusal(runs, tmp_path))
+    (tmp_path / REGISTRY_PATH).unlink()
+    assert marker not in str(_refusal(runs, tmp_path))
+
+
+def test_a_run_that_was_left_out_is_stated_before_a_reason_is(tmp_path: Path) -> None:
+    """The all-run rule is held first, so no reason hides a run that is not given."""
+    runs = _runs(tmp_path, FOUR)
+    _set_result(runs[0], "INCONCLUSIVE", POST_HOC_REASON)
+    assert _refusal(runs[:3], tmp_path).rule == core.RULE_AGGREGATE_OMITTED
+
+
+def test_the_aggregate_command_refuses_an_unregistered_exclusion(
+    tmp_path: Path, no_git: None, capfdbinary: pytest.CaptureFixture[bytes]
+) -> None:
+    _preregister(tmp_path)
+    runs = _runs(tmp_path, FOUR)
+    arguments = ["aggregate", "--metric", METRIC, "--root", str(tmp_path)]
+    arguments += [str(run) for run in runs]
+    assert command.main(arguments) == 0
+    capfdbinary.readouterr()
+    _set_result(runs[-1], "INCONCLUSIVE", POST_HOC_REASON)
+    assert command.main(arguments) == 3
+    captured = capfdbinary.readouterr()
+    assert captured.out == b""
+    assert captured.err.startswith(f"REFUSED  {core.RULE_EXCLUSION}: ".encode())
+    assert POST_HOC_REASON.encode() not in captured.err
+
+
+def test_no_committed_freeze_record_registers_an_exclusion_reason() -> None:
+    """The three committed records are of E01, and E01 has no numerical aggregate.
+
+    This change edits none of them, and the freeze check does not read the
+    member. The member is read when an aggregate reads it.
+    """
+    records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
+    assert len(records) == 3
+    for record in records:
+        assert core.EXCLUSION_REASONS_MEMBER not in _read_json(record)
+    example = _read_json(EXAMPLE_ROOT / FREEZE_REF)
+    assert core.EXCLUSION_REASONS_MEMBER not in example
 
 
 # --------------------------------------------------------------------------
@@ -1844,7 +2393,7 @@ def _flat(text: str) -> str:
 def test_the_page_states_each_rule_as_the_module_does() -> None:
     rows = dict(re.findall(r"(?m)^\| `(replay-[a-z-]+)` \| (.+?) \|$", _page()))
     assert rows == dict(core.RULES)
-    assert len(core.RULES) == 14
+    assert len(core.RULES) == 16
 
 
 def test_the_page_states_each_limit_boundary_and_aggregate_rule() -> None:
@@ -1858,7 +2407,7 @@ def test_the_page_states_each_limit_boundary_and_aggregate_rule() -> None:
         assert statement in flat, statement
     assert len(core.LIMITATIONS) == 7
     assert len(core.DOES_NOT_ESTABLISH) == 5
-    assert len(core.AGGREGATE_RULES) == 6
+    assert len(core.AGGREGATE_RULES) == 7
 
 
 def test_the_page_names_each_source_package_and_both_schema_names() -> None:

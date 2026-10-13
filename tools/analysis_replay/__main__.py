@@ -12,7 +12,9 @@ again and compares it with the stored file. ``repository`` does that for each
 run directory under ``docs/proof/experiments`` that the pre-schema register
 does not name. ``aggregate`` prints one figure of each run of one experiment
 and the median of three counted runs, with each result state read from its
-manifest. ``sources`` prints the digest of each source file of the analysis
+manifest. A run that is not counted is held to a reason that the freeze
+record of its manifest registers. ``sources`` prints the digest of each source
+file of the analysis
 code.
 
 **Exit status 0 says that nothing was refused.** For ``verify`` it says that

@@ -109,6 +109,12 @@ The five result states:
 A run keeps its manifest whatever its state. A run is not repeated to obtain another
 state: a second attempt is a second run, with another `runId`, and both stay.
 
+The validator requires the reason and does not read its text. Since `V2-S5-005-PR1`
+[the aggregate of the replay tool](../testing/analysis-replay.md#a-run-that-is-not-counted)
+does: it leaves a run in one of the last three states out of a median only when the
+reason is, character for character, one that the freeze record of the manifest
+registers. The schema is unchanged.
+
 ## Structure
 
 Fifteen top-level members, all required. `Required` says `yes` when the member's object

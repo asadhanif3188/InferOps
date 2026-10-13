@@ -1,0 +1,218 @@
+"""Aggregate synthetic run directories, and try to leave one run out of the median.
+
+Usage, from the root of a working tree of this repository:
+
+    python -B exclusion_probe.py WORK_DIRECTORY OUTPUT.json
+
+Each case builds four run directories under a new directory of WORK_DIRECTORY,
+with the builders of the replay suite of that tree. The evidence files are the
+committed synthetic cases of the reliability analysis. No run executed, and no
+figure here is a figure of a run. The committed files of the tree are not
+edited, and nothing contacts a cluster or a network. The output states no path
+of the host.
+
+The first case is the probe that showed the defect. Three runs have a figure.
+A fourth, FAILED, has an open episode. The manifest of the fourth run alone is
+then changed to INCONCLUSIVE, with a reason that was written after the run.
+
+The other cases write a freeze record with exclusion reasons after the run
+directories are built, restate its digest in each manifest, and pin it in a
+freeze registry. The builders of the tree at the base write the freeze record
+themselves, so the driver cannot write it first there. Each record and each
+registry is synthetic and freezes no experiment.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import runpy
+import sys
+from pathlib import Path
+from typing import Any
+
+REPO = Path.cwd().resolve()
+sys.path.insert(0, str(REPO))
+
+from tools.analysis_replay import core  # noqa: E402
+from tools.experiment_run.core import content_digest  # noqa: E402
+
+assert Path(core.__file__).resolve().is_relative_to(REPO)
+
+SUITE = runpy.run_path(str(REPO / "tests" / "testing" / "test_analysis_replay.py"))
+METRIC = "caller-failure-episode-ms"
+REVISION = "c" * 40
+MANIFEST = "run.v1alpha1.json"
+FREEZE_REF: str = SUITE["FREEZE_REF"]
+REGISTRY_REF = "docs/proof/experiments/registry.v1alpha1.json"
+REGISTERED = "The run decides no criterion. This document is a fixture."
+POST_HOC = "Excluded after inspection. No preregistered reason exists."
+THREE: dict[str, str] = SUITE["THREE"]
+
+
+def write_json(path: Path, document: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes((json.dumps(document, indent=2) + "\n").encode("utf-8"))
+
+
+def read_json(path: Path) -> dict[str, Any]:
+    document: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return document
+
+
+def preregister(root: Path, runs: list[Path], reasons: list[dict[str, Any]]) -> None:
+    """Write a freeze record with exclusion reasons, restate it, and pin it."""
+    freeze = root / FREEZE_REF
+    write_json(
+        freeze,
+        {
+            "metadata": {"revision": 1},
+            "synthetic": "A fixture. It freezes no experiment.",
+            "exclusionReasons": {
+                "experimentId": SUITE["EXPERIMENT"],
+                "reasons": reasons,
+            },
+        },
+    )
+    digest = content_digest(freeze.read_bytes())
+    for run in runs:
+        manifest = read_json(run / MANIFEST)
+        manifest["metadata"]["spec"]["freezeContentSha256"] = digest
+        write_json(run / MANIFEST, manifest)
+    write_json(
+        root / REGISTRY_REF,
+        {
+            "apiVersion": "inferops.io/v1alpha1",
+            "kind": "ExperimentFreezeRegistry",
+            "records": [{"path": FREEZE_REF, "contentSha256": digest}],
+        },
+    )
+
+
+def set_result(run: Path, state: str, reason: str | None) -> None:
+    manifest = read_json(run / MANIFEST)
+    manifest["result"] = {"state": state} | ({} if reason is None else {"reason": reason})
+    write_json(run / MANIFEST, manifest)
+
+
+def other_files(run: Path) -> dict[str, str]:
+    return {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(run.iterdir())
+        if path.name != MANIFEST
+    }
+
+
+def aggregate(root: Path, runs: list[Path]) -> dict[str, Any]:
+    """The figures of an aggregate, or the rule that refused it."""
+    try:
+        document = core.aggregate_runs(METRIC, runs, REVISION, root)
+    except core.ReplayRefused as refused:
+        return {"refused": refused.rule, "message": refused.message}
+    figures = document["aggregate"]
+    return {
+        "schema": document["schema"],
+        "countedRuns": figures["countedRuns"],
+        "state": figures["state"],
+        "reason": figures["reason"],
+        "median": figures["median"],
+        "runs": figures["runs"],
+        "text": json.dumps(document),
+    }
+
+
+def shown(result: dict[str, Any], reason: str) -> dict[str, Any]:
+    """A result without the whole document, and whether it states the reason."""
+    text = result.pop("text", None)
+    if text is not None:
+        result["statesTheReasonOfTheManifest"] = reason in text
+    return result
+
+
+def case(
+    root: Path,
+    fourth: tuple[str, str],
+    reasons: list[dict[str, Any]] | None,
+    change: tuple[str, str | None] | None,
+) -> dict[str, Any]:
+    runs: list[Path] = SUITE["_runs"](root, THREE | {fourth[0]: fourth[1]})
+    if reasons is not None:
+        preregister(root, runs, reasons)
+    result: dict[str, Any] = {}
+    reason = REGISTERED
+    if change is not None:
+        result["before"] = shown(aggregate(root, runs), POST_HOC)
+        files = other_files(runs[-1])
+        set_result(runs[-1], *change)
+        reason = change[1] or ""
+        result["manifestChangedTo"] = read_json(runs[-1] / MANIFEST)["result"]
+        result["eachOtherByteUnchanged"] = other_files(runs[-1]) == files
+        result["replayOfTheChangedRun"] = core.replay_run(runs[-1], root).status
+    result["after" if change is not None else "aggregate"] = shown(
+        aggregate(root, runs), reason
+    )
+    return result
+
+
+def registered(*states: str) -> list[dict[str, Any]]:
+    return [
+        {"id": f"fixture-{state.lower()}", "resultState": state, "reason": REGISTERED}
+        for state in states
+    ]
+
+
+CASES: dict[str, tuple[Any, ...]] = {
+    "probe-no-registry": (
+        ("open-episode", "FAILED"),
+        None,
+        ("INCONCLUSIVE", POST_HOC),
+    ),
+    "probe-reason-not-registered": (
+        ("open-episode", "FAILED"),
+        registered("INCONCLUSIVE", "REFUSED", "ABORTED"),
+        ("INCONCLUSIVE", POST_HOC),
+    ),
+    "probe-reason-of-another-state": (
+        ("open-episode", "FAILED"),
+        registered("ABORTED"),
+        ("INCONCLUSIVE", REGISTERED),
+    ),
+    "registered-reason-aborted": (
+        ("abort", "ABORTED"),
+        registered("INCONCLUSIVE", "REFUSED", "ABORTED"),
+        None,
+    ),
+    "registered-reason-inconclusive": (
+        ("abort", "INCONCLUSIVE"),
+        registered("INCONCLUSIVE", "REFUSED", "ABORTED"),
+        None,
+    ),
+    "failed-run-with-a-registered-reason-is-counted": (
+        ("clock-ties", "FAILED"),
+        registered("INCONCLUSIVE", "REFUSED", "ABORTED"),
+        ("FAILED", REGISTERED),
+    ),
+}
+
+
+def main(arguments: list[str]) -> int:
+    work, output = Path(arguments[0]).resolve(), Path(arguments[1])
+    results = {}
+    for name, (fourth, reasons, change) in CASES.items():
+        root = work / name
+        root.mkdir(parents=True)
+        results[name] = case(root, fourth, reasons, change)
+    document = {
+        "synthetic": (
+            "Each run directory, freeze record, and registry was built by this "
+            "driver from committed synthetic files. No run executed."
+        ),
+        "metric": METRIC,
+        "cases": results,
+    }
+    output.write_bytes((json.dumps(document, indent=2) + "\n").encode("utf-8"))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

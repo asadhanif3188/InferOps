@@ -27,8 +27,15 @@ with the files that are present, and it states when they differ. The command
 compares the commit with Git when the commit is in the clone.
 
 *An aggregate of runs.* ``aggregate_runs`` reads the run directories of one
-experiment, takes the result state of each run from its manifest, and gives
-the median of three counted runs with each run listed.
+experiment, takes the result of each run from its manifest, and gives the
+median of three counted runs with each run listed.
+
+**A result state alone leaves no run out of the median.** A run in the state
+INCONCLUSIVE, REFUSED, or ABORTED is not counted only when the reason that
+its manifest states is one that the freeze record of the manifest registers
+for the experiment, the state, and the run, and the freeze registry of the
+tree pins that record. The aggregate then states the reason and the record.
+Otherwise the aggregate is refused.
 
 **The module registers no claim.** A document that replays changes no claim
 status and no evidence level. ``gate_problems`` lets the evidence index refuse
@@ -57,6 +64,7 @@ from tools.experiment_evidence import (
     run_digests,
 )
 from tools.experiment_evidence.core import printable
+from tools.experiment_freeze import load_registry
 from tools.experiment_run.core import (
     CONFORMING,
     MANIFEST_NAME,
@@ -67,13 +75,19 @@ from tools.experiment_run.core import (
 )
 from tools.reliability_analysis import (
     AGGREGATE_METRICS,
+    EXCLUDED_STATES,
     INPUTS,
     AnalysisRefused,
+    RunResult,
     aggregate,
     analyze,
     read_declaration,
 )
 from tools.reliability_analysis import SCHEMA as ANALYSIS_SCHEMA
+from tools.reliability_analysis.core import RULE_EXCLUSION as ANALYSIS_EXCLUSION
+from tools.reliability_analysis.core import (
+    RULE_EXCLUSION_REASONS as ANALYSIS_EXCLUSION_REASONS,
+)
 
 __all__ = [
     "AGGREGATE_RULES",
@@ -83,6 +97,7 @@ __all__ = [
     "CODE_DIFFERS",
     "CODE_SAME",
     "DOES_NOT_ESTABLISH",
+    "EXCLUSION_REASONS_MEMBER",
     "LIMITATIONS",
     "NO_ANALYSIS",
     "REFUSED",
@@ -110,7 +125,7 @@ __all__ = [
 SCHEMA: Final = "inferops.io/run-analysis/v1alpha1"
 
 #: The schema name of an aggregate of runs.
-AGGREGATE_SCHEMA: Final = "inferops.io/run-aggregate/v1alpha1"
+AGGREGATE_SCHEMA: Final = "inferops.io/run-aggregate/v1alpha2"
 
 #: The role of the evidence layout that a run analysis has.
 ANALYSIS_ROLE: Final = "analysis"
@@ -158,6 +173,11 @@ RULE_UNCOMMITTED: Final = "replay-code-not-committed"
 RULE_AGGREGATE: Final = "replay-aggregate-unsupported"
 RULE_AGGREGATE_OMITTED: Final = "replay-aggregate-run-omitted"
 RULE_AGGREGATE_RUN: Final = "replay-aggregate-run-refused"
+RULE_EXCLUSION_RECORD: Final = "replay-exclusion-record-unpinned"
+RULE_EXCLUSION: Final = "replay-exclusion-refused"
+
+#: The member of a freeze record that states its exclusion reasons.
+EXCLUSION_REASONS_MEMBER: Final = "exclusionReasons"
 
 #: Each rule of refusal, with its statement.
 RULES: Final[Mapping[str, str]] = {
@@ -220,6 +240,16 @@ RULES: Final[Mapping[str, str]] = {
     RULE_AGGREGATE_RUN: (
         "Each run of an aggregate conforms to the layout, and its run analysis replays."
     ),
+    RULE_EXCLUSION_RECORD: (
+        "The freeze registry of the tree pins the freeze record that the manifest "
+        "of each run that is not counted names, with the content digest that the "
+        "manifest states, and that record is one JSON object."
+    ),
+    RULE_EXCLUSION: (
+        "The reliability analysis accepts the reason of each run that is not "
+        "counted against the exclusion reasons of the freeze record that the "
+        "manifest of the run names. The refusal names the rule of that tool."
+    ),
 }
 
 #: What a stored run analysis is, stated in each document.
@@ -268,11 +298,16 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
 AGGREGATE_RULES: Final[tuple[str, ...]] = (
     "Each run directory of the runs directory whose manifest names the experiment "
     "is given and is listed. No run is left out.",
-    "The result state of each run is read from its manifest.",
+    "The result state and the reason of each run are read from its manifest.",
     "A run in the state PASSED or FAILED is counted. A run that worsens the figure "
     "is not dropped.",
-    "A run in the state INCONCLUSIVE, REFUSED, or ABORTED is listed with its value "
-    "and its exclusion, and it is not counted.",
+    "A run in the state INCONCLUSIVE, REFUSED, or ABORTED is not counted only when "
+    "the reason of its manifest is, character for character, a reason that the "
+    "freeze record of the manifest registers for the experiment, the result state, "
+    "and the run, and the freeze registry of the tree pins that record. Otherwise "
+    "the aggregate is refused. A result state alone leaves no run out.",
+    "A run that is not counted is listed with its value, the reason of its "
+    "manifest, the identifier of the registered reason, and the freeze record.",
     "A counted run with no run analysis, or with no value for the figure, leaves "
     "the aggregate with no median.",
     "The median is stated for exactly three counted runs. No confidence interval "
@@ -803,6 +838,70 @@ def _sibling_experiment(directory: Path, root: Path) -> str | None:
     return experiment
 
 
+def _result(run: _Run, root: Path) -> RunResult:
+    """The result of a run for an aggregate, with what its freeze record registers.
+
+    A run in a counted state is given by its state, and no record is read for
+    it. For another run the function reads the freeze record that the manifest
+    names. The layout check held that record to the digest and the revision of
+    the manifest. This function holds it to the freeze registry of the tree
+    too, so a record that the registry does not pin registers no reason.
+
+    Raises:
+        ReplayRefused: the registry does not pin the record with the digest of
+            the manifest, or the record cannot be read.
+    """
+    result = run.manifest["result"]
+    state: str = result["state"]
+    if state not in EXCLUDED_STATES:
+        return RunResult(state)
+    run_id = run.manifest["metadata"]["runId"]
+    spec = run.manifest["metadata"]["spec"]
+    try:
+        pins = load_registry(root)
+    except ValueError as fault:
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORD,
+            f"the run {run_id} is not counted, and the tree has no freeze registry "
+            "that can be read",
+        ) from fault
+    if pins.get(spec["freezeRecord"]) != spec["freezeContentSha256"]:
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORD,
+            f"the run {run_id} is not counted, and the freeze registry does not pin "
+            "its freeze record with the digest that its manifest states",
+        )
+    try:
+        data = (root / spec["freezeRecord"]).read_bytes()
+        record = json.loads(
+            data.replace(b"\r\n", b"\n").decode("utf-8"), object_pairs_hook=_no_repeat
+        )
+    except (OSError, ValueError, RecursionError) as fault:
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORD,
+            f"the freeze record of the run {run_id} cannot be read as one JSON object",
+        ) from fault
+    if (
+        not isinstance(record, dict)
+        or content_digest(data) != spec["freezeContentSha256"]
+    ):
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORD,
+            f"the freeze record of the run {run_id} is not the one JSON object that "
+            "its manifest states",
+        )
+    return RunResult(
+        state,
+        result.get("reason"),
+        record.get(EXCLUSION_REASONS_MEMBER),
+        {
+            "freezeRecord": spec["freezeRecord"],
+            "freezeRevision": spec["freezeRevision"],
+            "freezeContentSha256": spec["freezeContentSha256"],
+        },
+    )
+
+
 def aggregate_runs(
     metric: str, run_dirs: Sequence[Path], revision: str, root: Path = REPO_ROOT
 ) -> dict[str, Any]:
@@ -810,7 +909,11 @@ def aggregate_runs(
 
     Each run directory is held to the layout check, and its run analysis is
     computed again. The result state of a run is the one that its manifest
-    states. Each run directory of the same runs directory whose manifest names
+    states. A run in a state that is not counted is held to a reason that the
+    freeze record of its manifest registers, and each row states how the
+    manifest names that record.
+
+    Each run directory of the same runs directory whose manifest names
     the experiment must be given, so no run is left out. The runs directory is
     read at its place under ``root``, and not at the spelling of an argument.
     The aggregate itself is the one of ``tools.reliability_analysis``.
@@ -828,7 +931,7 @@ def aggregate_runs(
         raise ReplayRefused(RULE_AGGREGATE, "no run directory was given")
     code = analysis_code(revision)
     rows: list[dict[str, Any]] = []
-    pairs: list[tuple[Mapping[str, Any], str]] = []
+    documents: list[tuple[Mapping[str, Any], _Run]] = []
     experiments: set[str] = set()
     parents: set[str] = set()
     given: set[str] = set()
@@ -865,13 +968,13 @@ def aggregate_runs(
                 "runId": run_id,
             }
         )
-        state: str = run.manifest["result"]["state"]
-        pairs.append((document, state))
+        documents.append((document, run))
         rows.append(
             {
                 "runId": run_id,
                 "runDirectory": run.ref,
                 "manifestSha256": run.manifest_sha256,
+                "preregistration": dict(metadata["spec"]),
                 "rawEvidenceSha256": run_digests(
                     run.ref, run.manifest_sha256, run.manifest
                 ).raw,
@@ -917,9 +1020,16 @@ def aggregate_runs(
                 f"the run directory {printable(name)} names the experiment and was "
                 "not given",
             )
+    # The result of each run is read after the all-run rule, so a run that
+    # was left out is stated before a reason is.
+    pairs: list[tuple[Mapping[str, Any], str | RunResult]] = [
+        (document, _result(run, root)) for document, run in documents
+    ]
     try:
         figures = aggregate(metric, pairs)
     except AnalysisRefused as refused:
+        if refused.rule in (ANALYSIS_EXCLUSION, ANALYSIS_EXCLUSION_REASONS):
+            raise ReplayRefused(RULE_EXCLUSION, str(refused)) from refused
         raise ReplayRefused(RULE_AGGREGATE, str(refused)) from refused
     return {
         "schema": AGGREGATE_SCHEMA,

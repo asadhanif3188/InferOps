@@ -98,6 +98,7 @@ __all__ = [
     "HEALTHY",
     "INPUTS",
     "LIMITATIONS",
+    "MAX_EXCLUSION_REASONS",
     "MAX_SIGNALS",
     "NOT_COMPUTABLE",
     "NOT_OBSERVED",
@@ -113,6 +114,7 @@ __all__ = [
     "STREAM_INPUTS",
     "SYNCED",
     "AnalysisRefused",
+    "RunResult",
     "aggregate",
     "analysis_text",
     "analyze",
@@ -126,7 +128,7 @@ SCHEMA: Final = "inferops.io/reliability-analysis/v1alpha1"
 DECLARATION_SCHEMA: Final = "inferops.io/reliability-analysis-declaration/v1alpha1"
 
 #: The schema name of an aggregate document.
-AGGREGATE_SCHEMA: Final = "inferops.io/reliability-aggregate/v1alpha1"
+AGGREGATE_SCHEMA: Final = "inferops.io/reliability-aggregate/v1alpha2"
 
 #: The exit status of a command that refused an input.
 REFUSED_EXIT: Final = 3
@@ -296,6 +298,11 @@ RULE_INPUT: Final = "analysis-input-refused"
 RULE_INPUT_NAME: Final = "analysis-input-misnamed"
 RULE_IDENTITY: Final = "analysis-identity-differs"
 RULE_AGGREGATE: Final = "analysis-aggregate-unsupported"
+RULE_EXCLUSION_REASONS: Final = "analysis-exclusion-reasons-unsupported"
+RULE_EXCLUSION: Final = "analysis-exclusion-unregistered"
+
+#: The most exclusion reasons that one freeze record states.
+MAX_EXCLUSION_REASONS: Final = 32
 
 #: Each rule that refuses an input, with its statement.
 RULES: Final[Mapping[str, str]] = {
@@ -325,6 +332,19 @@ RULES: Final[Mapping[str, str]] = {
         "An aggregate is asked for a registered metric of analysis documents of "
         "one experiment, each of another run, each with a registered result "
         "state."
+    ),
+    RULE_EXCLUSION_REASONS: (
+        "The exclusion reasons of a freeze record are one object with exactly an "
+        "experiment identifier and a list of reasons. Each reason has its own "
+        "identifier, one of the result states INCONCLUSIVE, REFUSED, and ABORTED, "
+        "a reason as text, and, when it is for named runs alone, their run "
+        "identifiers. No result state has one reason text twice. A record states "
+        f"at most {MAX_EXCLUSION_REASONS} reasons."
+    ),
+    RULE_EXCLUSION: (
+        "A run in the state INCONCLUSIVE, REFUSED, or ABORTED states a reason that "
+        "the freeze record of its manifest registers, character for character, "
+        "for the experiment, the result state, and the run."
     ),
 }
 
@@ -381,7 +401,9 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
 #: The one registered rule of an aggregate.
 AGGREGATE_RULE: Final = "median-of-three"
 
-#: The result states whose runs an aggregate leaves out, and says so.
+#: The result states whose runs an aggregate does not count. A run in one of
+#: them is left out of the median only for a reason that was registered
+#: before the run, and the aggregate states that reason.
 EXCLUDED_STATES: Final = ("INCONCLUSIVE", "REFUSED", "ABORTED")
 
 #: What each aggregate document states about itself.
@@ -416,6 +438,11 @@ _DECLARATION_MEMBERS: Final = frozenset(
     {"schema", "experimentId", "runId", "window", "expected", "signals"}
 )
 _WINDOW_MEMBERS: Final = frozenset({"from", "to"})
+_EXCLUSION_MEMBERS: Final = frozenset({"experimentId", "reasons"})
+_REASON_MEMBERS: Final = frozenset({"id", "resultState", "reason"})
+_REASON_RUNS: Final = "runIds"
+#: The longest statement that a run manifest holds.
+_MAX_REASON_LENGTH: Final = 2000
 _EXPECTED_MEMBERS: Final = frozenset(
     {"desiredRevision", "readyReplicas", "runtimeReadyEndpoints"}
 )
@@ -1879,27 +1906,169 @@ def _figure(document: Mapping[str, Any], path: Sequence[str]) -> int | None:
     return value if type(value) is int else None
 
 
+@dataclass(frozen=True)
+class RunResult:
+    """The result of one run, as its manifest states it, for an aggregate.
+
+    ``state`` and ``reason`` are the two members of the result of the manifest.
+    ``exclusion_reasons`` is the ``exclusionReasons`` member of the freeze
+    record that the manifest names, or None when that record has none.
+    ``preregistration`` is how the manifest names that record: its path, its
+    revision, and its content digest. The aggregate repeats it and does not
+    read it.
+
+    The caller reads the manifest and the freeze record. This module reads no
+    file, so it does not check that the three are those of one run directory.
+    """
+
+    state: str
+    reason: object = None
+    exclusion_reasons: object = None
+    preregistration: Mapping[str, Any] | None = None
+
+
+def _identifier(value: object) -> bool:
+    return type(value) is str and _IDENTIFIER.fullmatch(value) is not None
+
+
+def _reasons_problem(policy: object) -> str | None:
+    """Why the exclusion reasons of a freeze record do not have their form."""
+    if not isinstance(policy, dict) or set(policy) != _EXCLUSION_MEMBERS:
+        return "the exclusion reasons do not have exactly their two members"
+    if not _identifier(policy["experimentId"]):
+        return "the exclusion reasons state no usable experiment identifier"
+    reasons = policy["reasons"]
+    if not isinstance(reasons, list) or len(reasons) > MAX_EXCLUSION_REASONS:
+        return f"the reasons are not a list of at most {MAX_EXCLUSION_REASONS}"
+    identifiers: set[str] = set()
+    stated: set[tuple[str, str]] = set()
+    for entry in reasons:
+        if (
+            not isinstance(entry, dict)
+            or not set(entry) >= _REASON_MEMBERS
+            or set(entry) - _REASON_MEMBERS - {_REASON_RUNS}
+        ):
+            return "a reason does not have exactly its members"
+        identifier, state, reason = entry["id"], entry["resultState"], entry["reason"]
+        if not _identifier(identifier) or identifier in identifiers:
+            return "a reason has no identifier of its own"
+        identifiers.add(identifier)
+        if type(state) is not str or state not in EXCLUDED_STATES:
+            return "a reason is registered for a result state that is counted"
+        if (
+            type(reason) is not str
+            or not reason
+            or reason != reason.strip()
+            or len(reason) > _MAX_REASON_LENGTH
+        ):
+            return (
+                "a reason is not text of 1 to 2000 characters with no white space "
+                "at its ends"
+            )
+        if (state, reason) in stated:
+            return "one result state has one reason text twice"
+        stated.add((state, reason))
+        if _REASON_RUNS in entry:
+            runs = entry[_REASON_RUNS]
+            if (
+                not isinstance(runs, list)
+                or not runs
+                or not all(_identifier(run) for run in runs)
+                or len(set(runs)) != len(runs)
+            ):
+                return "the runs of a reason are not run identifiers, each once"
+    return None
+
+
+def _exclusion(experiment: str, run: str, result: RunResult) -> dict[str, Any]:
+    """The registered reason for which one run is not counted.
+
+    The reason of the manifest is compared as text, character for character,
+    with each reason that the freeze record registers for the result state. A
+    message names the run and repeats no text of a manifest or of a record.
+
+    Raises:
+        AnalysisRefused: the exclusion reasons do not have their form, or they
+            do not register the reason for the experiment, the state, and the
+            run.
+    """
+    policy = result.exclusion_reasons
+    if policy is None:
+        raise AnalysisRefused(
+            RULE_EXCLUSION,
+            f"the run {run} is in the state {result.state}, and no exclusion reason "
+            "is registered for it",
+        )
+    problem = _reasons_problem(policy)
+    if problem is not None:
+        raise AnalysisRefused(RULE_EXCLUSION_REASONS, f"the run {run}: {problem}")
+    assert isinstance(policy, dict)
+    if policy["experimentId"] != experiment:
+        raise AnalysisRefused(
+            RULE_EXCLUSION,
+            f"the run {run}: the exclusion reasons are registered for another "
+            "experiment",
+        )
+    reason = result.reason
+    if type(reason) is not str or not reason:
+        raise AnalysisRefused(
+            RULE_EXCLUSION, f"the run {run} is not counted and states no reason"
+        )
+    entries = [entry for entry in policy["reasons"] if entry["reason"] == reason]
+    for entry in entries:
+        if entry["resultState"] != result.state:
+            continue
+        if _REASON_RUNS in entry and run not in entry[_REASON_RUNS]:
+            raise AnalysisRefused(
+                RULE_EXCLUSION,
+                f"the run {run}: its reason is registered for other runs",
+            )
+        return {
+            "reasonId": entry["id"],
+            "reason": reason,
+            "preregistration": None
+            if result.preregistration is None
+            else dict(result.preregistration),
+        }
+    raise AnalysisRefused(
+        RULE_EXCLUSION,
+        f"the run {run}: its reason is registered for another result state"
+        if entries
+        else f"the run {run}: its reason is not a registered exclusion reason",
+    )
+
+
 def aggregate(
-    metric: str, runs: Sequence[tuple[Mapping[str, Any], str]]
+    metric: str, runs: Sequence[tuple[Mapping[str, Any], str | RunResult]]
 ) -> dict[str, Any]:
     """One figure of several analysis documents, with the median of three runs.
 
-    ``runs`` gives each analysis document with the result state of its run. A
-    run in one of :data:`EXCLUDED_STATES` is listed and is not counted. Each
-    other run is counted, and a counted run with no figure leaves the aggregate
-    with no median: the run is not dropped. The median is stated only for
-    three counted runs.
+    ``runs`` gives each analysis document with the result of its run: a
+    :class:`RunResult`, or the result state alone. A run in the state PASSED or
+    FAILED is counted, whatever else its result states. A run in one of
+    :data:`EXCLUDED_STATES` is not counted only when its reason is one that its
+    exclusion reasons register for the experiment, the state, and the run. The
+    aggregate then lists the run with that reason. A run in one of those states
+    with the state alone has no registered reason, and it refuses the
+    aggregate.
+
+    A counted run with no figure leaves the aggregate with no median: the run
+    is not dropped. The median is stated only for three counted runs.
 
     Raises:
-        AnalysisRefused: the rule of an aggregate is not held.
+        AnalysisRefused: the rule of an aggregate is not held, or a run that is
+            not counted has no registered reason.
     """
     if metric not in AGGREGATE_METRICS:
         raise AnalysisRefused(RULE_AGGREGATE, "the metric is not registered")
     if not runs:
         raise AnalysisRefused(RULE_AGGREGATE, "no analysis document was given")
     listed: list[dict[str, Any]] = []
+    results: list[RunResult] = []
     experiments: set[str] = set()
-    for document, state in runs:
+    for document, given in runs:
+        result = given if isinstance(given, RunResult) else RunResult(given)
+        state = result.state
         if not isinstance(document, dict) or document.get("schema") != SCHEMA:
             raise AnalysisRefused(
                 RULE_AGGREGATE, "a document is not an analysis document"
@@ -1914,20 +2083,20 @@ def aggregate(
             raise AnalysisRefused(
                 RULE_AGGREGATE, "a document states no usable identifiers"
             )
-        if state not in RESULT_STATES:
+        if type(state) is not str or state not in RESULT_STATES:
             raise AnalysisRefused(
                 RULE_AGGREGATE, f"the run {run} has an unregistered result state"
             )
         if any(entry["runId"] == run for entry in listed):
             raise AnalysisRefused(RULE_AGGREGATE, f"the run {run} is given twice")
         experiments.add(experiment)
-        counted = state not in EXCLUDED_STATES
+        results.append(result)
         listed.append(
             {
                 "runId": run,
                 "resultState": state,
-                "counted": counted,
-                "exclusion": None if counted else f"result-state-{state.lower()}",
+                "counted": state not in EXCLUDED_STATES,
+                "exclusion": None,
                 "value": _figure(document, AGGREGATE_METRICS[metric]),
             }
         )
@@ -1935,6 +2104,12 @@ def aggregate(
         raise AnalysisRefused(
             RULE_AGGREGATE, "the documents name more than one experiment"
         )
+    (experiment,) = experiments
+    # A state alone does not leave a run out. Each run that is not counted is
+    # held to a reason that its freeze record registers.
+    for entry, result in zip(listed, results, strict=True):
+        if not entry["counted"]:
+            entry["exclusion"] = _exclusion(experiment, entry["runId"], result)
     values: list[int | None] = [e["value"] for e in listed if e["counted"]]
     present = sorted(value for value in values if value is not None)
     median: int | None = None
@@ -1947,7 +2122,7 @@ def aggregate(
         median = present[1]
     return {
         "schema": AGGREGATE_SCHEMA,
-        "experimentId": experiments.pop(),
+        "experimentId": experiment,
         "metric": metric,
         "path": list(AGGREGATE_METRICS[metric]),
         "rule": AGGREGATE_RULE,

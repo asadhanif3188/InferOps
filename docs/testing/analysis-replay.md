@@ -89,16 +89,18 @@ A run analysis states the code in two forms.
   ignores and a file that Git is told not to compare.
 
 **The source digest does not cover each package that a source file imports.**
-Seven are outside it, and a change to one of them does not move the digest:
+Eight are outside it, and a change to one of them does not move the digest:
 
 - `tools/experiment_evidence`, the layout check, `tools/experiment_run`, the
   validator of the manifest and the result states, and `tools/evidence_index`,
   the digest function. This tool reads the three.
+- `tools/experiment_freeze`, the reader of the freeze registry. The aggregate
+  reads the registry for a run that is not counted.
 - `tools/llm_load`, `tools/model_acquisition`, `tools/runtime_configuration`,
   and `tools/runtime_packaging`, which the caller profile imports.
 
 The suite reads the imports of each source file and holds this list to them.
-It does not read the imports of the seven packages in turn.
+It does not read the imports of the eight packages in turn.
 
 ## A replay
 
@@ -162,17 +164,25 @@ command there.
 
 `python -m tools.analysis_replay aggregate --metric NAME <run directory> ...`
 prints one figure of each run and the median of three counted runs. The schema
-name is `inferops.io/run-aggregate/v1alpha1`. The figures are computed by the
+name is `inferops.io/run-aggregate/v1alpha2`. The figures are computed by the
 aggregate of [the reliability analysis](reliability-analysis.md#the-aggregate-of-three-runs),
-and this command adds what that one does not check.
+and this command adds what that one does not check. The name was
+`inferops.io/run-aggregate/v1alpha1` until `V2-S5-005-PR1`, which changed the
+`exclusion` member of a run from text to an object. No document with the
+earlier name is committed.
 
 - Each run directory of the runs directory whose manifest names the experiment
   is given and is listed. No run is left out.
-- The result state of each run is read from its manifest.
+- The result state and the reason of each run are read from its manifest.
 - A run in the state PASSED or FAILED is counted. A run that worsens the figure
   is not dropped.
-- A run in the state INCONCLUSIVE, REFUSED, or ABORTED is listed with its value
-  and its exclusion, and it is not counted.
+- A run in the state INCONCLUSIVE, REFUSED, or ABORTED is not counted only when
+  the reason of its manifest is, character for character, a reason that the
+  freeze record of the manifest registers for the experiment, the result state,
+  and the run, and the freeze registry of the tree pins that record. Otherwise
+  the aggregate is refused. A result state alone leaves no run out.
+- A run that is not counted is listed with its value, the reason of its
+  manifest, the identifier of the registered reason, and the freeze record.
 - A counted run with no run analysis, or with no value for the figure, leaves
   the aggregate with no median.
 - The median is stated for exactly three counted runs. No confidence interval
@@ -191,7 +201,127 @@ experiment that conforms is not required.
 run whose run analysis does not replay, refuse the aggregate. A run with two
 run analyses is refused, because the aggregate reads one.
 
-An aggregate document lists, for each run, the digest of the manifest, the raw
+### A run that is not counted
+
+**A result state alone leaves no run out.** Until `V2-S5-005-PR1` the aggregate
+did not count a run in the state INCONCLUSIVE, REFUSED, or ABORTED, whatever
+reason its manifest stated. The document stated `result-state-inconclusive` for
+such a run, and it did not state the reason of the manifest. So one edit of a
+manifest, from FAILED to INCONCLUSIVE with a reason written after the run, took
+the run out of the median, and no document showed that reason. A review of the
+sprint on 2026-10-13 reported this with a probe. It was reported to the author,
+and no file in this repository records that review. The suite now runs the
+probe.
+
+The aggregate holds each such run to a reason that was registered before the
+run. It does this in order.
+
+1. **The freeze record.** The manifest names its freeze record by path, by
+   revision, and by content digest. The layout check holds the record to the
+   revision and the digest. The aggregate holds it to the freeze registry too:
+   the file `docs/proof/experiments/registry.v1alpha1.json` under the root must
+   pin that path with that digest. A record that the registry does not pin
+   registers no reason.
+2. **The exclusion reasons.** The record states them in the member
+   `exclusionReasons`, an object with exactly two members. `experimentId` is the
+   experiment identifier that the manifests of the runs state. `reasons` is a
+   list of at most 32 reasons. A record with no such member registers no
+   reason.
+3. **The comparison.** The reason of the manifest must be, character for
+   character, the `reason` of one entry whose `resultState` is the state of the
+   run, in a record whose `experimentId` is the experiment of the run. When the
+   entry states `runIds`, the run must be one of them.
+
+A reason has these members, and no other.
+
+| Member | Required | Statement |
+|---|---|---|
+| `id` | yes | An identifier of the reason, used once in the record. The aggregate repeats it |
+| `resultState` | yes | `INCONCLUSIVE`, `REFUSED`, or `ABORTED`. A reason for `PASSED` or `FAILED` is refused |
+| `reason` | yes | The text that a manifest must state: 1 to 2,000 characters, with no white space at its ends. One result state has one text once |
+| `runIds` | no | The run identifiers that the reason is for, each once. With no such member the reason is for each run of the experiment |
+
+The form, with a reason that is the reason of no experiment:
+
+```json
+"exclusionReasons": {
+  "experimentId": "example-experiment",
+  "reasons": [
+    {
+      "id": "example-reason",
+      "resultState": "ABORTED",
+      "reason": "An example reason. No experiment registers it."
+    }
+  ]
+}
+```
+
+A run that is not counted is listed like this. The `preregistration` member is
+how the manifest names the freeze record. Each run of the outer `runs` list,
+counted or not, states the same three values of its own manifest.
+
+```json
+{
+  "runId": "run-4",
+  "resultState": "ABORTED",
+  "counted": false,
+  "exclusion": {
+    "reasonId": "example-reason",
+    "reason": "An example reason. No experiment registers it.",
+    "preregistration": {
+      "freezeRecord": "docs/proof/experiments/example/freeze-r1.v1alpha1.json",
+      "freezeRevision": 1,
+      "freezeContentSha256": "<the content digest of the record>"
+    }
+  },
+  "value": null
+}
+```
+
+| Change to a run that is not counted | Refused by |
+|---|---|
+| The manifest states a reason that the record does not register, or one that differs from the registered text by one character | `replay-exclusion-refused`, with `analysis-exclusion-unregistered` |
+| The record has no `exclusionReasons` member, or the member registers the reason for another result state, for other runs, or for another experiment | `replay-exclusion-refused`, with `analysis-exclusion-unregistered` |
+| The run answers a later revision of the record, and that revision does not register the reason | `replay-exclusion-refused`, with `analysis-exclusion-unregistered` |
+| The member is not in its form | `replay-exclusion-refused`, with `analysis-exclusion-reasons-unsupported` |
+| The tree has no registry that can be read, or the registry does not pin the record with the digest of the manifest | `replay-exclusion-record-unpinned` |
+| The reason is added to the record after the run | `replay-aggregate-run-refused`, because the record no longer has the digest that each manifest states |
+| The same, with the digest in each manifest changed to match | `replay-exclusion-record-unpinned` |
+| The manifest states no reason | `replay-aggregate-run-refused`, because the manifest schema requires the reason and the layout check refuses the run |
+
+**A run in the state PASSED or FAILED is counted, whatever reason its manifest
+states.** No record is read for it, and a registered reason beside a counted
+state leaves no run out.
+
+**What the check does not do.**
+
+- **It does not decide that the reason is true.** The manifest is the authority
+  for the result state and for the reason. A person can change the manifest of
+  a FAILED run to a state that is not counted, with a reason that the record
+  registers. The aggregate accepts that manifest. It then states the reason,
+  the record, and another manifest digest than before, so the change is in the
+  document. The history of the manifest in Git and the review of the run hold
+  the classification. This tool does not.
+- **It reads one tree and not Git.** A freeze record, each manifest that names
+  it, and the registry, replaced together, are accepted, and the aggregate then
+  states another record digest. `python -m tools.experiment_freeze --check`
+  holds each committed record to its pin, and the history of the registry is in
+  Git.
+- **The freeze check does not read the member.** A committed record with an
+  `exclusionReasons` member that is not in its form passes the freeze check.
+  The aggregate refuses it when a run that is not counted names it.
+- **It compares text as it is.** Two texts that look the same and differ in a
+  code point are two reasons.
+- **It does not compare the freeze records of the runs.** Each run that is not
+  counted is held to the record of its own manifest. The runs of one aggregate
+  can name different revisions.
+- **No committed freeze record states the member.** The three committed records
+  are of E01, which has no numerical aggregate, and this change edits none of
+  them. No experiment has registered an exclusion reason, and no run was left
+  out of an aggregate of real runs.
+
+An aggregate document lists, for each run, the digest of the manifest, how the
+manifest names its freeze record, the raw
 evidence digest, and the path and the digest of the run analysis. For each run
 analysis it repeats the commit and the source digest that the run analysis
 states, and it states `same` or `differs` for the source files that are
@@ -261,12 +391,16 @@ run, as before.
 | `replay-aggregate-unsupported` | An aggregate is asked for a registered metric of run directories of one runs directory and one experiment, each given once, and each with at most one run analysis. |
 | `replay-aggregate-run-omitted` | An aggregate is given each run directory of the runs directory whose manifest names the experiment, and each directory there that is not given conforms to the layout. |
 | `replay-aggregate-run-refused` | Each run of an aggregate conforms to the layout, and its run analysis replays. |
+| `replay-exclusion-record-unpinned` | The freeze registry of the tree pins the freeze record that the manifest of each run that is not counted names, with the content digest that the manifest states, and that record is one JSON object. |
+| `replay-exclusion-refused` | The reliability analysis accepts the reason of each run that is not counted against the exclusion reasons of the freeze record that the manifest of the run names. The refusal names the rule of that tool. |
 
 A refusal of `verify` and of `repository` names a rule, a path, and a message.
 A refusal of `bind` and of `aggregate` names a rule and a message. A message
 can hold a count, the name of a role, a run identifier, the name of a
-directory, and the rule of another tool. It repeats no figure, no text of an
-evidence file, and no value of a declaration. A run directory outside the
+directory, and the rule of another tool. A refusal of an exclusion also holds
+the message of that rule, which names the run. It repeats no figure, no text of an
+evidence file, no value of a declaration, and no reason of a manifest or of a
+freeze record. A run directory outside the
 root is shown by its name alone. A refusal of the layout check names each
 rule of the layout that refused the directory.
 
@@ -392,8 +526,12 @@ In this change it prints three `pre-schema` lines and exits 0.
 - The comparison with Git reads the directories of the stated source rows. A
   document that leaves out a whole package is not refused by it.
 - The aggregate does not compare the declarations or the windows of its runs.
-- The manifest requires a reason for a run that is not counted. No rule holds
-  that reason to one that an experiment registered before the run.
+- The aggregate holds the reason of a run that is not counted to the freeze
+  record of its manifest. It does not decide that the reason is true of the
+  run, it does not read Git for the history of a record or of a manifest, and
+  it does not compare the freeze records of its runs. No committed freeze
+  record registers an exclusion reason.
+- The freeze check does not read the `exclusionReasons` member of a record.
 - The replay reads no correction. A correction that adds a caller record or a
   run analysis is not replayed.
 - The result page of a run, the role `result`, is written by a person. No tool
@@ -409,5 +547,9 @@ replay to each refusal that this page states, the aggregate to its rules, and
 the gate of the evidence index to a run that does not replay. It reads the text
 of the tool for a call that writes a file, and it compares the rules, the
 limitations, the boundaries, and the aggregate rules on this page with the
-tool's. [The validation record](../proof/testing/v2-s5-004-pr2-validation.md)
-states what was run for this change.
+tool's. It runs the probe that showed that a result state alone left a run
+out, and it holds an exclusion to each refusal that this page states.
+[The validation record](../proof/testing/v2-s5-004-pr2-validation.md)
+states what was run for the tool, and
+[a second record](../proof/testing/v2-s5-005-pr1-validation.md) states what
+was run for the exclusion reasons.

@@ -706,6 +706,11 @@ uv run --locked python -m tools.analysis_replay aggregate --metric NAME \
 Do not edit a stored run analysis. Change the evidence, the declaration, or the code,
 and print the document again. Do not add an option that states the commit or a result
 state: the command reads the commit from Git and each state from a manifest. Do not
+let a result state alone leave a run out of an aggregate, and do not add an option
+that states a reason: a run in the state `INCONCLUSIVE`, `REFUSED`, or `ABORTED` is
+not counted only for a reason that the freeze record of its manifest registers in
+its `exclusionReasons` member, and a run in the state `PASSED` or `FAILED` is always
+counted. Do not compare a reason in another way than character for character. Do not
 add a member for a result state, a claim status, or an evidence level to a run
 analysis, and do not let the gate of the evidence index add a claim or raise a level:
 it refuses a run whose analysis does not replay, and it does nothing else. A change
