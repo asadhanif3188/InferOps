@@ -45,6 +45,13 @@ earlier content. A run that is not counted does not choose its record: each
 run of the aggregate must name the same one. Each freeze record and each
 registry here is built by the suite, and it freezes no experiment.
 
+*The record is read at the executing revision.* A test that leaves a run out
+makes a clone in its temporary tree and commits the record and the registry.
+The run states that commit. A reason that is registered afterwards, with the
+tree made to agree with itself, refuses the aggregate, and so does a commit
+that the clone does not hold. A manifest that restates its executing revision
+to a later commit is accepted, and the suite measures that.
+
 *Nothing is promoted.* A document that replays holds no claim status, no
 evidence level, and no result state, the evidence index refuses a run whose
 analysis does not replay, and it states nothing about one that does.
@@ -59,10 +66,13 @@ import ast
 import copy
 import hashlib
 import json
+import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
+import zlib
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -125,6 +135,52 @@ OTHER_REASON = "An abort condition stopped the run. This document is a fixture."
 POST_HOC_REASON = "Excluded after inspection. No preregistered reason exists."
 
 
+#: The commit of each temporary clone that :func:`_commit` wrote last. A run
+#: that is built in such a tree states that commit as its executing revision.
+HEADS: dict[Path, str] = {}
+
+
+def _git(root: Path, *arguments: str) -> str:
+    done = subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=suite",
+            "-c",
+            "user.email=suite@example.invalid",
+            "-c",
+            "core.autocrlf=false",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "tag.gpgsign=false",
+            *arguments,
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=60,
+    )
+    return done.stdout.strip()
+
+
+def _commit(root: Path) -> str:
+    """Commit each file of a temporary tree to its own clone, and give the commit.
+
+    The clone is made in the tree when it has none. The checkout of this suite
+    is not read and not written.
+    """
+    if shutil.which("git") is None:
+        pytest.skip("git is not on PATH")
+    if not (root / ".git").exists():
+        _git(root, "init", "--quiet")
+    _git(root, "add", "--all")
+    _git(root, "commit", "--quiet", "--allow-empty", "-m", "a tree of the suite")
+    HEADS[root] = _git(root, "rev-parse", "HEAD")
+    return HEADS[root]
+
+
 def _run_id(case: str) -> str:
     return f"{case}-1"
 
@@ -160,6 +216,8 @@ def _manifest(
 ) -> dict[str, Any]:
     """A manifest of the published schema for one synthetic run directory."""
     manifest = copy.deepcopy(BASE)
+    if root in HEADS:
+        manifest["metadata"]["executingRevision"] = HEADS[root]
     manifest["metadata"].update(
         experimentId=experiment,
         runId=run_id,
@@ -1076,7 +1134,7 @@ THREE = {"zero-failure": "PASSED", "concurrency": "FAILED", "missing-signal": "F
 def test_the_aggregate_is_the_median_of_three_counted_runs(tmp_path: Path) -> None:
     _preregister(tmp_path)
     runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
-    document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    document = _aggregate(runs, tmp_path)
     values = sorted(_figure(case) or 0 for case in THREE)
     assert all(_figure(case) is not None for case in THREE)
     figures = document["aggregate"]
@@ -1098,7 +1156,7 @@ def test_the_aggregate_is_the_median_of_three_counted_runs(tmp_path: Path) -> No
     assert listed["abort-1"]["exclusion"] == {
         "reasonId": "fixture-aborted",
         "reason": REASON,
-        "preregistration": _spec(tmp_path),
+        "preregistration": _read_at(tmp_path),
     }
     assert document["schema"] == core.AGGREGATE_SCHEMA
     assert document["runsDirectory"] == f"{EXPERIMENT_REF}/runs"
@@ -1108,7 +1166,7 @@ def test_the_aggregate_is_the_median_of_three_counted_runs(tmp_path: Path) -> No
 
 def test_an_aggregate_states_the_digests_of_each_run(tmp_path: Path) -> None:
     runs = _runs(tmp_path, THREE)
-    document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    document = _aggregate(runs, tmp_path)
     assert [row["runId"] for row in document["runs"]] == sorted(
         _run_id(case) for case in THREE
     )
@@ -1129,9 +1187,7 @@ def test_an_aggregate_states_the_digests_of_each_run(tmp_path: Path) -> None:
 def test_the_run_with_the_worst_figure_is_counted(tmp_path: Path) -> None:
     """A FAILED run with the largest figure is a counted run, with its value."""
     states = {"zero-failure": "PASSED", "clock-ties": "FAILED", "concurrency": "FAILED"}
-    figures = core.aggregate_runs(METRIC, _runs(tmp_path, states), REVISION, tmp_path)[
-        "aggregate"
-    ]
+    figures = _aggregate(_runs(tmp_path, states), tmp_path)["aggregate"]
     listed = {row["runId"]: row for row in figures["runs"]}
     assert [listed[_run_id(case)]["value"] for case in states] == [0, 3000, 20900]
     assert all(row["counted"] for row in listed.values())
@@ -1141,7 +1197,7 @@ def test_the_run_with_the_worst_figure_is_counted(tmp_path: Path) -> None:
 def test_a_run_of_the_experiment_that_is_not_given_is_a_refusal(tmp_path: Path) -> None:
     runs = _runs(tmp_path, THREE | {"open-episode": "FAILED"})
     with pytest.raises(core.ReplayRefused) as refused:
-        core.aggregate_runs(METRIC, runs[:3], REVISION, tmp_path)
+        _aggregate(runs[:3], tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE_OMITTED
     assert "open-episode-1" in refused.value.message
 
@@ -1154,9 +1210,7 @@ def test_a_counted_run_with_no_value_leaves_no_median(tmp_path: Path) -> None:
         "concurrency": "FAILED",
         "open-episode": "FAILED",
     }
-    figures = core.aggregate_runs(METRIC, _runs(tmp_path, states), REVISION, tmp_path)[
-        "aggregate"
-    ]
+    figures = _aggregate(_runs(tmp_path, states), tmp_path)["aggregate"]
     assert (figures["countedRuns"], figures["median"], figures["reason"]) == (
         3,
         None,
@@ -1167,7 +1221,7 @@ def test_a_counted_run_with_no_value_leaves_no_median(tmp_path: Path) -> None:
 def test_a_counted_run_with_no_run_analysis_leaves_no_median(tmp_path: Path) -> None:
     runs = _runs(tmp_path, {"zero-failure": "PASSED", "concurrency": "FAILED"})
     runs.append(_raw_run(tmp_path, "missing-signal", "FAILED"))
-    document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    document = _aggregate(runs, tmp_path)
     assert document["aggregate"]["reason"] == "counted-run-without-value"
     assert document["aggregate"]["median"] is None
     bare = next(r for r in document["runs"] if r["runId"] == "missing-signal-1")
@@ -1177,9 +1231,7 @@ def test_a_counted_run_with_no_run_analysis_leaves_no_median(tmp_path: Path) -> 
 def test_two_counted_runs_have_no_median(tmp_path: Path) -> None:
     _preregister(tmp_path)
     states = {"zero-failure": "PASSED", "concurrency": "FAILED", "abort": "ABORTED"}
-    figures = core.aggregate_runs(METRIC, _runs(tmp_path, states), REVISION, tmp_path)[
-        "aggregate"
-    ]
+    figures = _aggregate(_runs(tmp_path, states), tmp_path)["aggregate"]
     assert (figures["countedRuns"], figures["median"], figures["reason"]) == (
         2,
         None,
@@ -1193,7 +1245,7 @@ def test_a_run_whose_analysis_does_not_replay_refuses_the_aggregate(
     runs = _runs(tmp_path, THREE)
     _rewrite(runs[1], _set_figure)
     with pytest.raises(core.ReplayRefused) as refused:
-        core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+        _aggregate(runs, tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE_RUN
     assert core.RULE_DOCUMENT in refused.value.message
 
@@ -1204,7 +1256,7 @@ def test_a_directory_beside_the_runs_with_no_valid_manifest_is_a_refusal(
     runs = _runs(tmp_path, THREE)
     (runs[0].parent / "scratch").mkdir()
     with pytest.raises(core.ReplayRefused) as refused:
-        core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+        _aggregate(runs, tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE_OMITTED
 
 
@@ -1222,18 +1274,15 @@ def test_a_run_is_not_left_out_by_another_spelling_of_an_argument(
     assert check_run(runs[2], tmp_path).status == run_core.CONFORMING
     spelled = runs[2] / "logs" / ".."
     with pytest.raises(core.ReplayRefused) as refused:
-        core.aggregate_runs(METRIC, [runs[0], runs[1], spelled], REVISION, tmp_path)
+        _aggregate([runs[0], runs[1], spelled], tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE_OMITTED
     assert "open-episode-1" in refused.value.message
     # With each run given, the other spelling gives the document of the plain one.
-    plain = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
-    assert (
-        core.aggregate_runs(METRIC, [*runs[:2], spelled, runs[3]], REVISION, tmp_path)
-        == plain
-    )
+    plain = _aggregate(runs, tmp_path)
+    assert _aggregate([*runs[:2], spelled, runs[3]], tmp_path) == plain
     for missing in (runs[2] / "caller.jsonl" / "..", runs[2] / "absent" / ".."):
         with pytest.raises(core.ReplayRefused):
-            core.aggregate_runs(METRIC, [runs[0], runs[1], missing], REVISION, tmp_path)
+            _aggregate([runs[0], runs[1], missing], tmp_path)
 
 
 def test_a_run_is_not_left_out_by_another_experiment_in_its_manifest_alone(
@@ -1251,7 +1300,7 @@ def test_a_run_is_not_left_out_by_another_experiment_in_its_manifest_alone(
     assert not run_core.validate(manifest)
     assert check_run(runs[3], tmp_path).status == core.REFUSED
     with pytest.raises(core.ReplayRefused) as refused:
-        core.aggregate_runs(METRIC, runs[:3], REVISION, tmp_path)
+        _aggregate(runs[:3], tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE_OMITTED
     assert "does not conform" in refused.value.message
 
@@ -1267,7 +1316,7 @@ def test_an_aggregate_states_the_code_of_each_run_analysis(tmp_path: Path) -> No
         document["analysisCode"]["revision"] = "d" * 40
 
     _rewrite(runs[0], other_code)
-    document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    document = _aggregate(runs, tmp_path)
     listed = {row["runId"]: row["runAnalysis"] for row in document["runs"]}
     changed = listed[runs[0].name]
     assert (changed["code"], changed["revision"]) == (core.CODE_DIFFERS, "d" * 40)
@@ -1287,10 +1336,10 @@ def test_a_run_of_another_experiment_beside_the_runs_is_not_required(
         _manifest(tmp_path, "other-1", [], "INCONCLUSIVE", "another-experiment"),
     )
     assert check_run(other, tmp_path).status == run_core.CONFORMING
-    document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    document = _aggregate(runs, tmp_path)
     assert len(document["runs"]) == 3
     with pytest.raises(core.ReplayRefused) as refused:
-        core.aggregate_runs(METRIC, [*runs, other], REVISION, tmp_path)
+        _aggregate([*runs, other], tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE
 
 
@@ -1306,7 +1355,7 @@ def test_an_aggregate_refuses_what_it_cannot_read(tmp_path: Path) -> None:
         assert refused.value.rule == core.RULE_AGGREGATE
     _store(runs[2], (runs[2] / ANALYSIS_FILE).read_text("utf-8"), "analysis-2.json")
     with pytest.raises(core.ReplayRefused) as refused:
-        core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+        _aggregate(runs, tmp_path)
     assert refused.value.rule == core.RULE_AGGREGATE
 
 
@@ -1361,11 +1410,16 @@ def _pin(root: Path, *refs: str) -> None:
     assert set(load_registry(root)) == set(refs)
 
 
-def _preregister(root: Path, reasons: dict[str, Any] | None = None) -> None:
-    """Before a run is built: a freeze record with exclusion reasons, and its pin."""
+def _preregister(root: Path, reasons: dict[str, Any] | None = None) -> str:
+    """Before a run is built: a freeze record with exclusion reasons, and its pin.
+
+    The two files are committed to a clone of the tree. Each run that is then
+    built states that commit as its executing revision.
+    """
     assert not (root / EXPERIMENT_REF / "runs").exists()
     _write(root / FREEZE_REF, _freeze(_reasons() if reasons is None else reasons))
     _pin(root, FREEZE_REF)
+    return _commit(root)
 
 
 def _spec(root: Path, ref: str = FREEZE_REF, revision: int = 1) -> dict[str, Any]:
@@ -1376,10 +1430,22 @@ def _spec(root: Path, ref: str = FREEZE_REF, revision: int = 1) -> dict[str, Any
     }
 
 
+def _read_at(root: Path, ref: str = FREEZE_REF, revision: int = 1) -> dict[str, Any]:
+    """How a row names the record of a run that is not counted."""
+    return _spec(root, ref, revision) | {"executingRevision": HEADS[root]}
+
+
 def _restate_manifest(run_dir: Path, change: Callable[[dict[str, Any]], None]) -> None:
     """Change the manifest of a run by hand, and no other file."""
     manifest = _read_json(run_dir / run_core.MANIFEST_NAME)
     change(manifest)
+    _write_json(run_dir / run_core.MANIFEST_NAME, manifest)
+
+
+def _executed(run_dir: Path, revision: str) -> None:
+    """Restate the executing revision of one manifest, and no other member."""
+    manifest = _read_json(run_dir / run_core.MANIFEST_NAME)
+    manifest["metadata"]["executingRevision"] = revision
     _write_json(run_dir / run_core.MANIFEST_NAME, manifest)
 
 
@@ -1396,9 +1462,14 @@ def _other_files(run_dir: Path) -> dict[str, str]:
     }
 
 
+def _aggregate(runs: list[Path], root: Path) -> dict[str, Any]:
+    """The aggregate, with the reader of commits that the command gives it."""
+    return core.aggregate_runs(METRIC, runs, REVISION, root, command.history(root))
+
+
 def _refusal(runs: list[Path], root: Path) -> core.ReplayRefused:
     with pytest.raises(core.ReplayRefused) as refused:
-        core.aggregate_runs(METRIC, runs, REVISION, root)
+        _aggregate(runs, root)
     return refused.value
 
 
@@ -1424,7 +1495,7 @@ def test_a_run_is_not_left_out_for_a_reason_that_no_record_registers(
     if preregistered:
         _preregister(tmp_path)
     runs = _runs(tmp_path, FOUR)
-    before = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
+    before = _aggregate(runs, tmp_path)["aggregate"]
     assert (before["countedRuns"], before["state"], before["median"]) == (
         4,
         analysis.NOT_COMPUTABLE,
@@ -1454,7 +1525,7 @@ def test_a_registered_reason_leaves_a_run_out_and_is_stated(
 ) -> None:
     _preregister(tmp_path)
     runs = _runs(tmp_path, THREE | {"abort": state})
-    document = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    document = _aggregate(runs, tmp_path)
     figures = document["aggregate"]
     assert (figures["countedRuns"], figures["state"], figures["median"]) == (
         3,
@@ -1469,20 +1540,27 @@ def test_a_registered_reason_leaves_a_run_out_and_is_stated(
         "exclusion": {
             "reasonId": f"fixture-{state.lower()}",
             "reason": REASON,
-            "preregistration": _spec(tmp_path),
+            "preregistration": _read_at(tmp_path),
         },
         "value": _figure("abort"),
     }
-    # Each run states the freeze record that its manifest names.
+    # Each run states the freeze record that its manifest names, and the
+    # commit that its manifest states as its executing revision.
     assert [r["preregistration"] for r in document["runs"]] == [_spec(tmp_path)] * 4
+    assert {r["executingRevision"] for r in document["runs"]} == {HEADS[tmp_path]}
     assert document["schema"] == "inferops.io/run-aggregate/v1alpha2"
 
 
 def test_an_excluded_run_needs_a_registry_that_pins_its_freeze_record(
     tmp_path: Path,
 ) -> None:
-    """A file that a manifest names is a frozen record only when it is pinned."""
+    """A file that a manifest names is a frozen record only when it is pinned.
+
+    The executing revision holds the record and no registry. A registry that
+    is written afterwards pins the record in the tree, and not at that commit.
+    """
     _write(tmp_path / FREEZE_REF, _freeze(_reasons()))
+    _commit(tmp_path)
     runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
     assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_RECORD
     _write(tmp_path / REGISTRY_PATH, "not a registry\n")
@@ -1490,16 +1568,13 @@ def test_an_excluded_run_needs_a_registry_that_pins_its_freeze_record(
     _pin(tmp_path)
     assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_RECORD
     _pin(tmp_path, FREEZE_REF)
-    assert core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]["median"]
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_HISTORY
+    assert "freeze registry of its executing revision" in refused.message
     # A registry is not read for runs that are all counted.
     (tmp_path / REGISTRY_PATH).unlink()
     _set_result(runs[-1], "FAILED")
-    assert (
-        core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"][
-            "countedRuns"
-        ]
-        == 4
-    )
+    assert _aggregate(runs, tmp_path)["aggregate"]["countedRuns"] == 4
 
 
 @pytest.mark.parametrize(
@@ -1520,6 +1595,7 @@ def test_a_record_that_does_not_register_the_reason_refuses_the_aggregate(
 ) -> None:
     _write(tmp_path / FREEZE_REF, _freeze(reasons))
     _pin(tmp_path, FREEZE_REF)
+    _commit(tmp_path)
     runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
     refused = _refusal(runs, tmp_path)
     assert refused.rule == core.RULE_EXCLUSION
@@ -1585,7 +1661,7 @@ def test_a_reason_of_a_named_run_leaves_that_run_out(tmp_path: Path) -> None:
     reasons["reasons"][2]["runIds"] = ["abort-1"]
     _preregister(tmp_path, reasons)
     runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
-    figures = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
+    figures = _aggregate(runs, tmp_path)["aggregate"]
     assert figures["countedRuns"] == 3
 
 
@@ -1611,6 +1687,7 @@ def _two_revisions(root: Path) -> list[Path]:
     narrowed["reasons"] = [r for r in narrowed["reasons"] if r["reason"] != REASON]
     _write(root / SECOND_REF, _freeze(narrowed, revision=2))
     _pin(root, FREEZE_REF, SECOND_REF)
+    _commit(root)
     return _runs(root, THREE | {"abort": "ABORTED"})
 
 
@@ -1623,16 +1700,16 @@ def test_a_reason_that_only_an_earlier_revision_registers_is_refused(
     """
     runs = _two_revisions(tmp_path)
     # Under revision 1 the reason is registered.
-    assert core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]["median"]
+    assert _aggregate(runs, tmp_path)["aggregate"]["median"]
     _answer(tmp_path, runs, SECOND_REF, 2)
     refused = _refusal(runs, tmp_path)
     assert refused.rule == core.RULE_EXCLUSION
     assert "analysis-exclusion-unregistered" in refused.message
     # The other reason is registered by revision 2, and the row names revision 2.
     _set_result(runs[-1], "ABORTED", OTHER_REASON)
-    figures = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
+    figures = _aggregate(runs, tmp_path)["aggregate"]
     row = next(r for r in figures["runs"] if r["runId"] == "abort-1")
-    assert row["exclusion"]["preregistration"] == _spec(tmp_path, SECOND_REF, 2)
+    assert row["exclusion"]["preregistration"] == _read_at(tmp_path, SECOND_REF, 2)
     assert row["exclusion"]["reasonId"] == "fixture-abort-2"
 
 
@@ -1653,12 +1730,7 @@ def test_a_run_does_not_go_back_to_an_earlier_revision_for_its_reason(
     assert refused.rule == core.RULE_EXCLUSION_RECORDS
     # Runs of two revisions that are all counted are aggregated as before.
     _set_result(runs[-1], "FAILED")
-    assert (
-        core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"][
-            "countedRuns"
-        ]
-        == 4
-    )
+    assert _aggregate(runs, tmp_path)["aggregate"]["countedRuns"] == 4
 
 
 def test_a_record_that_is_written_after_the_runs_gives_one_run_no_reason(
@@ -1737,7 +1809,7 @@ def test_a_registry_that_two_readers_could_read_in_two_ways_is_refused(
     """
     _preregister(tmp_path)
     runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
-    assert core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]["median"]
+    assert _aggregate(runs, tmp_path)["aggregate"]["median"]
     spec = _spec(tmp_path)
     registry = REGISTRIES[name].format(
         path=spec["freezeRecord"], digest=spec["freezeContentSha256"]
@@ -1775,12 +1847,13 @@ def test_a_reason_that_is_added_to_the_record_is_refused_while_its_pin_is_kept(
     The record alone: the layout check refuses each run, because the record no
     longer has the digest that the manifests state. The record with each
     manifest restated: the registry does not pin the new content. The record,
-    each manifest, and the registry, replaced together, are accepted, and the
-    document then states another record digest than an earlier aggregate did.
+    each manifest, and the registry, replaced together, agree in the tree. The
+    second commit of this change accepted them, and stated a median of
+    20,900 ms. They are now refused: the executing revision of the run holds
+    the record with its earlier content.
     """
     _preregister(tmp_path)
     runs = _runs(tmp_path, FOUR)
-    earlier = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
     _set_result(runs[-1], "INCONCLUSIVE", POST_HOC_REASON)
     assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION
 
@@ -1798,13 +1871,14 @@ def test_a_reason_that_is_added_to_the_record_is_refused_while_its_pin_is_kept(
     assert "does not pin" in refused.message
 
     _pin(tmp_path, FREEZE_REF)
-    later = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
-    assert later["aggregate"]["median"] == 20_900
-    assert {row["preregistration"]["freezeContentSha256"] for row in later["runs"]} != {
-        row["preregistration"]["freezeContentSha256"] for row in earlier["runs"]
+    assert all(check_run(run, tmp_path).status == run_core.CONFORMING for run in runs)
+    assert load_registry(tmp_path) == {
+        FREEZE_REF: _spec(tmp_path)["freezeContentSha256"]
     }
-    row = next(r for r in later["aggregate"]["runs"] if not r["counted"])
-    assert row["exclusion"]["reason"] == POST_HOC_REASON
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_HISTORY
+    assert "does not hold its freeze record" in refused.message
+    assert POST_HOC_REASON not in str(refused)
 
 
 def test_a_failed_run_with_a_registered_reason_is_counted(tmp_path: Path) -> None:
@@ -1818,7 +1892,7 @@ def test_a_failed_run_with_a_registered_reason_is_counted(tmp_path: Path) -> Non
     runs = _runs(tmp_path, states)
     _set_result(runs[-1], "FAILED", REASON)
     (tmp_path / REGISTRY_PATH).unlink()
-    figures = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)["aggregate"]
+    figures = _aggregate(runs, tmp_path)["aggregate"]
     row = next(r for r in figures["runs"] if r["runId"] == "concurrency-1")
     assert (row["counted"], row["exclusion"], row["value"]) == (True, None, 20_900)
     assert (figures["countedRuns"], figures["median"]) == (3, 3000)
@@ -1834,9 +1908,7 @@ def test_a_counted_run_with_no_value_is_not_hidden_by_an_exclusion(
         "open-episode": "FAILED",
         "abort": "ABORTED",
     }
-    figures = core.aggregate_runs(METRIC, _runs(tmp_path, states), REVISION, tmp_path)[
-        "aggregate"
-    ]
+    figures = _aggregate(_runs(tmp_path, states), tmp_path)["aggregate"]
     assert (figures["countedRuns"], figures["median"], figures["reason"]) == (
         3,
         None,
@@ -1856,10 +1928,10 @@ def test_a_substituted_reason_does_not_give_the_earlier_aggregate(
     """
     _preregister(tmp_path)
     runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
-    earlier = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    earlier = _aggregate(runs, tmp_path)
     stored = core.record_text(earlier)
     _set_result(runs[-1], "ABORTED", OTHER_REASON)
-    later = core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    later = _aggregate(runs, tmp_path)
     assert core.record_text(later) != stored
     was = next(r for r in earlier["aggregate"]["runs"] if not r["counted"])
     now = next(r for r in later["aggregate"]["runs"] if not r["counted"])
@@ -1945,6 +2017,654 @@ def test_the_aggregate_command_refuses_an_unregistered_exclusion(
     assert captured.out == b""
     assert captured.err.startswith(f"REFUSED  {core.RULE_EXCLUSION}: ".encode())
     assert POST_HOC_REASON.encode() not in captured.err
+
+
+# --------------------------------------------------------------------------
+# The freeze record at the executing revision of a run
+# --------------------------------------------------------------------------
+# Each test here makes a clone in its temporary tree, and each commit is a real
+# commit of that clone. The reader of commits is the one of the command.
+
+
+def _register_post_hoc(root: Path, runs: list[Path], *, in_place: bool) -> None:
+    """After the runs: register the reason of the probe, and make the tree agree.
+
+    In place, the reason is written into the record that each manifest names.
+    Otherwise it is written into a new record of revision 2. Each manifest is
+    restated to the record, and the registry is written again. No manifest is
+    given another executing revision.
+    """
+    if in_place:
+        _add_post_hoc_reason(root)
+        _restate_freeze_digest(root, runs)
+        _pin(root, FREEZE_REF)
+    else:
+        reasons = _reasons()
+        reasons["reasons"].append(
+            {
+                "id": "added-later",
+                "resultState": "INCONCLUSIVE",
+                "reason": POST_HOC_REASON,
+            }
+        )
+        _write(root / SECOND_REF, _freeze(reasons, revision=2))
+        _pin(root, FREEZE_REF, SECOND_REF)
+        _answer(root, runs, SECOND_REF, 2)
+    assert all(check_run(run, root).status == run_core.CONFORMING for run in runs)
+    specs = [
+        _read_json(run / run_core.MANIFEST_NAME)["metadata"]["spec"] for run in runs
+    ]
+    assert all(spec == specs[0] for spec in specs)
+
+
+def test_a_reason_that_the_executing_revision_registers_leaves_the_run_out(
+    tmp_path: Path,
+) -> None:
+    """Commit A holds the record with the reason, and a registry that pins it.
+
+    A run that states A as its executing revision, and that reason, is not
+    counted. The row states the reason, its identifier, the record, and A. A
+    later commit of the clone changes nothing.
+    """
+    first = _preregister(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    reader = command.history(tmp_path)
+    assert reader.commit_present(first)
+    held = reader.blob(first, FREEZE_REF)
+    assert held is not None
+    assert run_core.content_digest(held) == _spec(tmp_path)["freezeContentSha256"]
+    assert json.loads(held)[core.EXCLUSION_REASONS_MEMBER] == _reasons()
+    pinned = reader.blob(first, REGISTRY_PATH)
+    assert pinned is not None
+    assert core._registry_pins(pinned) == {FREEZE_REF: run_core.content_digest(held)}
+    document = _aggregate(runs, tmp_path)
+    figures = document["aggregate"]
+    assert (figures["countedRuns"], figures["median"]) == (3, 20_900)
+    row = next(r for r in figures["runs"] if not r["counted"])
+    assert row["exclusion"] == {
+        "reasonId": "fixture-aborted",
+        "reason": REASON,
+        "preregistration": {
+            "freezeRecord": FREEZE_REF,
+            "freezeRevision": 1,
+            "freezeContentSha256": run_core.content_digest(held),
+            "executingRevision": first,
+        },
+    }
+    stored = core.record_text(document)
+    # The runs are committed afterwards. The executing revision is still A.
+    assert _commit(tmp_path) != first
+    assert core.record_text(_aggregate(runs, tmp_path)) == stored
+
+
+@pytest.mark.parametrize("in_place", [True, False])
+@pytest.mark.parametrize("committed", [False, True])
+def test_a_reason_that_is_registered_after_the_executing_revision_is_refused(
+    tmp_path: Path, in_place: bool, committed: bool
+) -> None:
+    """The record, the registry, and each manifest are changed after the run.
+
+    Commit A holds a record that does not register the reason of the probe,
+    and a registry that pins that record. Four runs state A. Then the reason
+    is registered, in the record or in a new record, the registry pins the
+    result, and each manifest names it. The tree agrees with itself, and it is
+    committed or not. The second commit of this change gave a median of
+    20,900 ms for the tree. The authority is A, so the aggregate is refused.
+    """
+    first = _preregister(tmp_path)
+    runs = _runs(tmp_path, FOUR)
+    assert _aggregate(runs, tmp_path)["aggregate"]["countedRuns"] == 4
+    _set_result(runs[-1], "INCONCLUSIVE", POST_HOC_REASON)
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION
+
+    _register_post_hoc(tmp_path, runs, in_place=in_place)
+    spec = _read_json(runs[-1] / run_core.MANIFEST_NAME)["metadata"]["spec"]
+    assert load_registry(tmp_path)[spec["freezeRecord"]] == spec["freezeContentSha256"]
+    registered = _read_json(tmp_path / spec["freezeRecord"])
+    assert POST_HOC_REASON in json.dumps(registered[core.EXCLUSION_REASONS_MEMBER])
+    if committed:
+        assert _commit(tmp_path) != first
+    for run in runs:
+        manifest = _read_json(run / run_core.MANIFEST_NAME)
+        assert manifest["metadata"]["executingRevision"] == first
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_HISTORY
+    assert "does not hold its freeze record" in refused.message
+    assert "open-episode-1" in refused.message
+    assert POST_HOC_REASON not in str(refused)
+    # What A holds: the path of a new record is absent, and the record that
+    # was changed in place has its earlier content.
+    at_first = command.history(tmp_path).blob(first, spec["freezeRecord"])
+    if in_place:
+        assert at_first is not None
+        assert run_core.content_digest(at_first) != spec["freezeContentSha256"]
+        assert POST_HOC_REASON.encode() not in at_first
+    else:
+        assert at_first is None
+
+
+def test_a_manifest_that_restates_its_executing_revision_is_accepted(
+    tmp_path: Path,
+) -> None:
+    """A measured limit. The manifest is the authority for the executing revision.
+
+    The tree of the test above, committed as B. While the manifest of the run
+    states A, the aggregate is refused. With that manifest restated to B, the
+    aggregate reads the record at B and is accepted, and the row states B.
+    The aggregate does not decide which commit a run executed.
+    """
+    first = _preregister(tmp_path)
+    runs = _runs(tmp_path, FOUR)
+    _set_result(runs[-1], "INCONCLUSIVE", POST_HOC_REASON)
+    _register_post_hoc(tmp_path, runs, in_place=True)
+    second = _commit(tmp_path)
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_HISTORY
+    _executed(runs[-1], second)
+    document = _aggregate(runs, tmp_path)
+    row = next(r for r in document["aggregate"]["runs"] if not r["counted"])
+    assert row["exclusion"]["reason"] == POST_HOC_REASON
+    assert row["exclusion"]["preregistration"]["executingRevision"] == second
+    assert sorted(r["executingRevision"] for r in document["runs"]) == sorted(
+        [first] * 3 + [second]
+    )
+
+
+def _registry_text(records: str, kind: str = "ExperimentFreezeRegistry") -> str:
+    return f'{{{_HEAD}, "kind": "{kind}", "records": {records}}}'
+
+
+def _rows(*pins: tuple[str, str]) -> str:
+    return json.dumps(
+        [{"path": path, "contentSha256": digest} for path, digest in pins]
+    )
+
+
+#: A registry of a commit, by the path and the digest of the record. None is
+#: no registry.
+REGISTRIES_AT_REVISION: dict[str, Callable[[str, str], str | bytes | None]] = {
+    "absent": lambda path, digest: None,
+    "no pin": lambda path, digest: _registry_text("[]"),
+    "another digest": lambda path, digest: _registry_text(_rows((path, "0" * 64))),
+    "another path": lambda path, digest: _registry_text(
+        _rows((path + ".other", digest))
+    ),
+    "another kind": lambda path, digest: _registry_text(
+        _rows((path, digest)), kind="Another"
+    ),
+    "records twice": lambda path, digest: (
+        f'{{{_HEAD}, "kind": "ExperimentFreezeRegistry", "records": [], '
+        f'"records": {_rows((path, digest))}}}'
+    ),
+    "path twice in one record": lambda path, digest: _registry_text(
+        f'[{{"path": "another", "path": "{path}", "contentSha256": "{digest}"}}]'
+    ),
+    "record twice": lambda path, digest: _registry_text(
+        _rows((path, digest), (path, digest))
+    ),
+    "not text": lambda path, digest: b"\xff\xfe\x00",
+    "nested arrays": lambda path, digest: "[" * 100_000,
+}
+
+
+@pytest.mark.parametrize("name", sorted(REGISTRIES_AT_REVISION))
+def test_a_registry_that_does_not_pin_the_record_at_the_revision_is_a_refusal(
+    tmp_path: Path, name: str
+) -> None:
+    """The registry of commit A is absent, or it does not pin the record.
+
+    The registry of the tree is then written to pin the record, so each check
+    of the tree is held, and the reason is the one that the record registers.
+    """
+    _write(tmp_path / FREEZE_REF, _freeze(_reasons()))
+    digest = run_core.content_digest((tmp_path / FREEZE_REF).read_bytes())
+    registry = REGISTRIES_AT_REVISION[name](FREEZE_REF, digest)
+    if isinstance(registry, bytes):
+        (tmp_path / REGISTRY_PATH).write_bytes(registry)
+    elif registry is not None:
+        _write(tmp_path / REGISTRY_PATH, registry)
+    _commit(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    _pin(tmp_path, FREEZE_REF)
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_HISTORY
+    assert "freeze registry of its executing revision" in refused.message
+    # The same tree, committed, with the run restated to that commit, is accepted.
+    second = _commit(tmp_path)
+    _executed(runs[-1], second)
+    assert _aggregate(runs, tmp_path)["aggregate"]["median"] == 20_900
+
+
+def _consistent_tree(root: Path) -> list[Path]:
+    """A tree whose record registers the reason of each run, with its commit."""
+    _preregister(root)
+    return _runs(root, THREE | {"abort": "ABORTED"})
+
+
+def test_an_executing_revision_that_the_clone_does_not_hold_is_a_refusal(
+    tmp_path: Path,
+) -> None:
+    """No file of the tree is read in the place of a commit that is absent.
+
+    The tree registers the reason, and its registry pins the record. The
+    aggregate is refused for a commit that the clone does not hold, for the
+    identifier of a tag object, and for the identifier of a tree object.
+    """
+    runs = _consistent_tree(tmp_path)
+    first = HEADS[tmp_path]
+    assert _aggregate(runs, tmp_path)["aggregate"]["median"] == 20_900
+    _git(tmp_path, "tag", "-a", "v0", "-m", "an annotated tag")
+    for revision in (
+        "d" * 40,
+        _git(tmp_path, "rev-parse", "v0"),
+        _git(tmp_path, "rev-parse", first + "^{tree}"),
+    ):
+        assert revision != first and len(revision) == 40
+        _executed(runs[-1], revision)
+        assert check_run(runs[-1], tmp_path).status == run_core.CONFORMING
+        refused = _refusal(runs, tmp_path)
+        assert refused.rule == core.RULE_EXCLUSION_REVISION
+        assert "abort-1" in refused.message
+        assert tmp_path.name not in str(refused)
+
+
+def _writable(function: Callable[..., Any], name: str, _: Any) -> None:
+    """Git writes its objects read-only, and Windows does not remove such a file."""
+    os.chmod(name, stat.S_IWRITE)
+    function(name)
+
+
+def test_an_aggregate_with_no_reader_of_commits_leaves_no_run_out(
+    tmp_path: Path,
+) -> None:
+    """The function is given no reader, or the tree is in no clone."""
+    runs = _consistent_tree(tmp_path)
+    assert _aggregate(runs, tmp_path)["aggregate"]["median"] == 20_900
+    with pytest.raises(core.ReplayRefused) as refused:
+        core.aggregate_runs(METRIC, runs, REVISION, tmp_path)
+    assert refused.value.rule == core.RULE_EXCLUSION_REVISION
+    shutil.rmtree(tmp_path / ".git", onerror=_writable)
+    if command._git(tmp_path, "rev-parse", "--git-dir") is not None:
+        pytest.skip("the temporary directory is inside a Git checkout")
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_REVISION
+
+
+def test_no_commit_is_read_for_runs_that_are_all_counted(tmp_path: Path) -> None:
+    """PASSED and FAILED runs are counted whatever their executing revision is.
+
+    The reader of commits fails when it is called, the manifests state a
+    commit that no clone holds, and one FAILED run states a reason.
+    """
+
+    def fail(*_: str) -> Any:
+        raise AssertionError("a commit was read")
+
+    runs = _runs(tmp_path, FOUR)
+    _set_result(runs[1], "FAILED", REASON)
+    figures = core.aggregate_runs(
+        METRIC, runs, REVISION, tmp_path, core.History(fail, fail)
+    )["aggregate"]
+    assert (figures["countedRuns"], figures["median"]) == (4, None)
+    assert all(row["counted"] and row["exclusion"] is None for row in figures["runs"])
+
+
+def test_a_replacement_object_does_not_stand_for_the_executing_revision(
+    tmp_path: Path,
+) -> None:
+    """Git can be told to read one commit in the place of another.
+
+    Commit B registers the reason of the probe, and the clone is told to read
+    B where A is named. A plain read of A then gives the record of B. The
+    reader of the aggregate reads no replacement, so it gives the record of A.
+    """
+    first = _preregister(tmp_path)
+    runs = _runs(tmp_path, FOUR)
+    _set_result(runs[-1], "INCONCLUSIVE", POST_HOC_REASON)
+    _register_post_hoc(tmp_path, runs, in_place=True)
+    second = _commit(tmp_path)
+    _git(tmp_path, "replace", first, second)
+    plain = command._blob(tmp_path, first, FREEZE_REF)
+    assert plain is not None and POST_HOC_REASON.encode() in plain
+    held = command.history(tmp_path).blob(first, FREEZE_REF)
+    assert held is not None and POST_HOC_REASON.encode() not in held
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_HISTORY
+
+
+def test_a_file_of_a_commit_that_is_too_long_is_not_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runs = _consistent_tree(tmp_path)
+    first = HEADS[tmp_path]
+    assert _aggregate(runs, tmp_path)["aggregate"]["median"] == 20_900
+    size = len((tmp_path / FREEZE_REF).read_bytes())
+    monkeypatch.setattr(command, "MAX_HISTORY_BYTES", size)
+    assert command.history(tmp_path).blob(first, FREEZE_REF) is not None
+    monkeypatch.setattr(command, "MAX_HISTORY_BYTES", size - 1)
+    assert command.history(tmp_path).blob(first, FREEZE_REF) is None
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_HISTORY
+
+
+def test_the_reader_of_commits_reads_a_file_of_the_commit_and_nothing_else(
+    tmp_path: Path,
+) -> None:
+    """A directory, a file of the tree alone, and a path that the commit lacks."""
+    first = _preregister(tmp_path)
+    reader = command.history(tmp_path)
+    _write(tmp_path / "untracked.json", "{}\n")
+    (tmp_path / FREEZE_REF).write_bytes(b"changed in the tree\n")
+    for name in (EXPERIMENT_REF, "untracked.json", "absent.json"):
+        assert reader.blob(first, name) is None, name
+    held = reader.blob(first, FREEZE_REF)
+    assert held is not None and json.loads(held)["metadata"] == {"revision": 1}
+    assert not reader.commit_present("d" * 40)
+    assert not reader.commit_present("")
+
+
+def test_a_record_of_the_revision_in_another_form_is_a_refusal(tmp_path: Path) -> None:
+    """The record at the commit states a member twice. Its digest is the stated one.
+
+    The layout check refuses such a record in the tree, so no run directory
+    with it is built, and no aggregate reaches the commit. The function that
+    reads the commit is held by itself here, with the members of a manifest
+    that it reads.
+    """
+    record = (
+        '{"metadata": {"revision": 1}, "exclusionReasons": null, '
+        f'"exclusionReasons": {json.dumps(_reasons())}}}\n'
+    )
+    _write(tmp_path / FREEZE_REF, record)
+    _pin(tmp_path, FREEZE_REF)
+    first = _commit(tmp_path)
+    manifest = {
+        "metadata": {
+            "runId": "abort-1",
+            "executingRevision": first,
+            "spec": _spec(tmp_path),
+        }
+    }
+    run = core._Run(_run_ref("abort"), tmp_path, manifest, "0" * 64)
+    with pytest.raises(core.ReplayRefused) as refused:
+        core._frozen_reasons(run, command.history(tmp_path))
+    assert refused.value.rule == core.RULE_EXCLUSION_HISTORY
+    assert "one JSON object" in refused.value.message
+    # The same members with a record of one object give the reasons.
+    _write(tmp_path / FREEZE_REF, _freeze(_reasons()))
+    _pin(tmp_path, FREEZE_REF)
+    manifest["metadata"].update(
+        executingRevision=_commit(tmp_path), spec=_spec(tmp_path)
+    )
+    assert core._frozen_reasons(run, command.history(tmp_path)) == _reasons()
+
+
+def _object_file(root: Path, name: str) -> Path:
+    """The loose file of the object store that holds one object of a clone."""
+    identifier = _git(root, "rev-parse", name)
+    return root / ".git" / "objects" / identifier[:2] / identifier[2:]
+
+
+def test_a_replaced_file_of_the_object_store_does_not_give_another_record(
+    tmp_path: Path,
+) -> None:
+    """The two objects of commit A are overwritten with the files of the tree.
+
+    The tree registers the reason of the probe and agrees with itself. A plain
+    read of A then gives the record of the tree, because Git does not compute
+    the identifier of an object that it reads. The reader of the aggregate
+    computes it, so the aggregate is refused. A review of this commit obtained
+    a median of 20,900 ms this way before the reader held each object to its
+    identifier.
+    """
+    first = _preregister(tmp_path)
+    runs = _runs(tmp_path, FOUR)
+    _set_result(runs[-1], "INCONCLUSIVE", POST_HOC_REASON)
+    _register_post_hoc(tmp_path, runs, in_place=True)
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_HISTORY
+    for ref in (FREEZE_REF, REGISTRY_PATH):
+        data = (tmp_path / ref).read_bytes()
+        stored = _object_file(tmp_path, f"{first}:{ref}")
+        os.chmod(stored, stat.S_IWRITE | stat.S_IREAD)
+        stored.write_bytes(zlib.compress(b"blob %d\0" % len(data) + data))
+    plain = command._blob(tmp_path, first, FREEZE_REF)
+    assert plain is not None and POST_HOC_REASON.encode() in plain
+    assert command.history(tmp_path).blob(first, FREEZE_REF) is None
+    refused = _refusal(runs, tmp_path)
+    assert refused.rule == core.RULE_EXCLUSION_HISTORY
+    assert POST_HOC_REASON not in str(refused)
+
+
+def test_a_record_that_the_commit_holds_as_a_link_is_not_read(tmp_path: Path) -> None:
+    """The commit names the bytes of the record under the mode of a symbolic link.
+
+    The bytes have the content digest that each manifest states, and a plain
+    read of the path gives them. A path that is no regular file of the commit
+    is no freeze record of it.
+    """
+    if shutil.which("git") is None:
+        pytest.skip("git is not on PATH")
+    _write(tmp_path / FREEZE_REF, _freeze(_reasons()))
+    _pin(tmp_path, FREEZE_REF)
+    _git(tmp_path, "init", "--quiet")
+    _git(tmp_path, "add", "--", REGISTRY_PATH)
+    identifier = _git(tmp_path, "hash-object", "-w", "--", FREEZE_REF)
+    _git(
+        tmp_path,
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        f"120000,{identifier},{FREEZE_REF}",
+    )
+    _git(tmp_path, "commit", "--quiet", "-m", "a record under the mode of a link")
+    first = HEADS[tmp_path] = _git(tmp_path, "rev-parse", "HEAD")
+    assert _git(tmp_path, "ls-tree", first, "--", FREEZE_REF).startswith("120000 blob")
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    plain = command._blob(tmp_path, first, FREEZE_REF)
+    assert plain is not None
+    assert run_core.content_digest(plain) == _spec(tmp_path)["freezeContentSha256"]
+    assert command.history(tmp_path).blob(first, FREEZE_REF) is None
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_HISTORY
+
+
+def test_a_clone_that_fetches_the_objects_that_it_lacks_gives_no_commit(
+    tmp_path: Path,
+) -> None:
+    """A partial clone. Its commit A is present, and the two files of A are not.
+
+    A plain read of a file of A makes Git fetch it from the remote of the
+    clone. The reader of the aggregate fetches nothing, and it gives no commit
+    for a clone that is set to fetch. The objects are still absent afterwards.
+    A review of this commit obtained an accepted aggregate from such a clone.
+    """
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    first = _preregister(origin)
+    _git(origin, "config", "uploadpack.allowfilter", "true")
+    clone = tmp_path / "clone"
+    _git(
+        tmp_path,
+        "clone",
+        "--quiet",
+        "--filter=blob:none",
+        "--no-checkout",
+        origin.as_uri(),
+        "clone",
+    )
+
+    def missing() -> list[str]:
+        listed = _git(clone, "rev-list", "--objects", "--missing=print", first)
+        return [line for line in listed.splitlines() if line.startswith("?")]
+
+    assert len(missing()) == 2
+    for ref in (FREEZE_REF, REGISTRY_PATH):
+        _write(clone / ref, (origin / ref).read_bytes().decode("utf-8"))
+    HEADS[clone] = first
+    runs = _runs(clone, THREE | {"abort": "ABORTED"})
+    reader = command.history(clone)
+    assert not reader.commit_present(first)
+    assert reader.blob(first, FREEZE_REF) is None
+    assert _refusal(runs, clone).rule == core.RULE_EXCLUSION_REVISION
+    assert len(missing()) == 2
+    # The same files in the clone that holds each object are accepted.
+    HEADS[origin] = first
+    assert _aggregate(_runs(origin, THREE | {"abort": "ABORTED"}), origin)["aggregate"][
+        "median"
+    ]
+
+
+def test_the_environment_does_not_name_the_clone_of_the_reader(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A tree in no clone, with a variable that names the clone of another tree."""
+    other = tmp_path / "other"
+    other.mkdir()
+    first = _preregister(other)
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    if command._git(plain, "rev-parse", "--git-dir") is not None:
+        pytest.skip("the temporary directory is inside a Git checkout")
+    for ref in (FREEZE_REF, REGISTRY_PATH):
+        _write(plain / ref, (other / ref).read_bytes().decode("utf-8"))
+    HEADS[plain] = first
+    runs = _runs(plain, THREE | {"abort": "ABORTED"})
+    monkeypatch.setenv("GIT_DIR", str(other / ".git"))
+    assert command._commit_present(plain, first)
+    assert not command.history(plain).commit_present(first)
+    assert _refusal(runs, plain).rule == core.RULE_EXCLUSION_REVISION
+    monkeypatch.delenv("GIT_DIR")
+    monkeypatch.setenv(
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES", str(other / ".git" / "objects")
+    )
+    assert _refusal(runs, plain).rule == core.RULE_EXCLUSION_REVISION
+
+
+def test_a_host_with_no_git_leaves_no_run_out(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runs = _consistent_tree(tmp_path)
+    assert _aggregate(runs, tmp_path)["aggregate"]["median"] == 20_900
+
+    def absent(*_: Any, **__: Any) -> Any:
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(subprocess, "run", absent)
+    assert _refusal(runs, tmp_path).rule == core.RULE_EXCLUSION_REVISION
+
+
+def test_a_root_below_the_top_of_a_clone_reads_its_own_paths(tmp_path: Path) -> None:
+    """The root is a directory of a clone. A path above it is not read."""
+    root = tmp_path / "sub"
+    _write(root / "inside.json", '{"inside": true}\n')
+    _write(tmp_path / "outside.json", "{}\n")
+    first = _commit(tmp_path)
+    reader = command.history(root)
+    assert reader.commit_present(first)
+    assert reader.blob(first, "inside.json") == b'{"inside": true}\n'
+    for name in (
+        "../outside.json",
+        "./inside.json",
+        "inside.json/",
+        "/inside.json",
+        "",
+    ):
+        assert reader.blob(first, name) is None, name
+    assert command.history(tmp_path).blob(first, "sub/inside.json") is not None
+    # A path with a character that no file name of a record holds gives no content.
+    for name in ("a\0b", "a\nb", "sub\\inside.json"):
+        assert command.history(tmp_path).blob(first, name) is None
+
+
+def test_a_file_is_the_one_that_the_commit_identifier_names() -> None:
+    """The reader follows a path through objects that it is given, by their hashes."""
+
+    def held(kind: str, content: bytes) -> tuple[str, str, bytes]:
+        header = f"{kind} {len(content)}".encode() + b"\0"
+        return hashlib.sha1(header + content).hexdigest(), kind, content
+
+    def tree(mode: bytes, name: bytes, identifier: str) -> tuple[str, str, bytes]:
+        return held("tree", mode + b" " + name + b"\0" + bytes.fromhex(identifier))
+
+    blob = held("blob", b"content\n")
+    inner = tree(b"100644", b"record.json", blob[0])
+    outer = tree(b"40000", b"docs", inner[0])
+    commit = held("commit", f"tree {outer[0]}\nauthor a\n\nmessage\n".encode())
+    parts = ["docs", "record.json"]
+    chain = [commit, outer, inner, blob]
+    assert command.verified_file(commit[0], parts, chain) == b"content\n"
+    other = held("blob", b"another\n")
+    link = tree(b"120000", b"record.json", blob[0])
+    refused = {
+        "another commit identifier": ("0" * 40, parts, chain),
+        "a blob that the tree does not name": (commit[0], parts, [*chain[:3], other]),
+        "content under another identifier": (
+            commit[0],
+            parts,
+            [*chain[:3], (blob[0], "blob", b"another\n")],
+        ),
+        "a tree that the commit does not name": (
+            commit[0],
+            ["record.json"],
+            [commit, inner, blob],
+        ),
+        "another name": (commit[0], ["docs", "record.JSON"], chain),
+        "a link": (
+            commit[0],
+            parts,
+            [
+                held(
+                    "commit", f"tree {tree(b'40000', b'docs', link[0])[0]}\n".encode()
+                ),
+                tree(b"40000", b"docs", link[0]),
+                link,
+                blob,
+            ],
+        ),
+        "an object too few": (commit[0], parts, chain[:3]),
+        "a tree in the place of the file": (
+            commit[0],
+            ["docs"],
+            [commit, outer, inner],
+        ),
+    }
+    for name, (revision, path, objects) in refused.items():
+        assert command.verified_file(revision, path, objects) is None, name
+    # The link case has each hash and each name in order. Its mode alone refuses it.
+    revision, path, objects = refused["a link"]
+    assert revision != objects[0][0]
+    assert command.verified_file(objects[0][0], path, objects) is None
+    regular = [
+        held("commit", f"tree {outer[0]}\n".encode()),
+        outer,
+        inner,
+        blob,
+    ]
+    assert command.verified_file(regular[0][0], path, regular) == b"content\n"
+
+
+def test_the_aggregate_command_reads_the_executing_revision(
+    tmp_path: Path, no_git: None, capfdbinary: pytest.CaptureFixture[bytes]
+) -> None:
+    """The command, on a clone: an accepted exclusion, then the post-hoc tree."""
+    first = _preregister(tmp_path)
+    runs = _runs(tmp_path, THREE | {"abort": "ABORTED"})
+    arguments = ["aggregate", "--metric", METRIC, "--root", str(tmp_path)]
+    arguments += [str(run) for run in runs]
+    assert command.main(arguments) == 0
+    printed = json.loads(capfdbinary.readouterr().out)
+    row = next(r for r in printed["aggregate"]["runs"] if not r["counted"])
+    assert row["exclusion"]["preregistration"]["executingRevision"] == first
+    assert row["exclusion"]["reason"] == REASON
+    _set_result(runs[-1], "ABORTED", POST_HOC_REASON)
+    reasons = _reasons()
+    reasons["reasons"].append(
+        {"id": "added-later", "resultState": "ABORTED", "reason": POST_HOC_REASON}
+    )
+    _write(tmp_path / FREEZE_REF, _freeze(reasons))
+    _restate_freeze_digest(tmp_path, runs)
+    _pin(tmp_path, FREEZE_REF)
+    assert command.main(arguments) == 3
+    captured = capfdbinary.readouterr()
+    assert captured.out == b""
+    assert captured.err.startswith(f"REFUSED  {core.RULE_EXCLUSION_HISTORY}: ".encode())
+    assert POST_HOC_REASON.encode() not in captured.err
+    assert tmp_path.name.encode() not in captured.err
 
 
 def test_no_committed_freeze_record_registers_an_exclusion_reason() -> None:
@@ -2165,7 +2885,11 @@ def test_the_role_of_a_run_analysis_is_a_derived_role_of_the_layout() -> None:
 
 @pytest.fixture
 def no_git(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A command that reads no Git object: the commit is given, and no clone holds it."""
+    """A command that reads no commit of the analysis code.
+
+    The commit of the checkout is given, and no clone holds the commit that a
+    run analysis states. The reader of an executing revision is not replaced.
+    """
     monkeypatch.setattr(command, "checkout_revision", lambda: REVISION)
     monkeypatch.setattr(command, "_commit_present", lambda *_: False)
 
@@ -2350,27 +3074,6 @@ def test_a_name_in_another_script_does_not_stop_the_output(
     assert out.isascii() and "\\u2192" in out
 
 
-def _git(root: Path, *arguments: str) -> str:
-    done = subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.name=suite",
-            "-c",
-            "user.email=suite@example.invalid",
-            "-c",
-            "core.autocrlf=false",
-            *arguments,
-        ],
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=60,
-    )
-    return done.stdout.strip()
-
-
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is not on PATH")
 def test_the_commit_is_read_from_git_and_refused_while_a_source_differs(
     tmp_path: Path,
@@ -2532,7 +3235,7 @@ def _flat(text: str) -> str:
 def test_the_page_states_each_rule_as_the_module_does() -> None:
     rows = dict(re.findall(r"(?m)^\| `(replay-[a-z-]+)` \| (.+?) \|$", _page()))
     assert rows == dict(core.RULES)
-    assert len(core.RULES) == 17
+    assert len(core.RULES) == 19
 
 
 def test_the_page_states_each_limit_boundary_and_aggregate_rule() -> None:
@@ -2546,7 +3249,7 @@ def test_the_page_states_each_limit_boundary_and_aggregate_rule() -> None:
         assert statement in flat, statement
     assert len(core.LIMITATIONS) == 7
     assert len(core.DOES_NOT_ESTABLISH) == 5
-    assert len(core.AGGREGATE_RULES) == 9
+    assert len(core.AGGREGATE_RULES) == 10
 
 
 def test_the_page_names_each_source_package_and_both_schema_names() -> None:

@@ -436,8 +436,9 @@ neither. Each run is listed with its own value.
   and the run. The document then lists the run with its value, that reason,
   the identifier of the registered reason, and how the manifest names the
   freeze record, when the caller gives it. With no registered reason the
-  aggregate is refused. The function reads no file: its caller reads the
-  manifest, the freeze record, and the registry.
+  aggregate is refused. The function reads no file and no Git object: its
+  caller reads the manifest, the freeze record, and the registry, and it reads
+  the record and the registry at the executing revision of the run.
 - **A counted run with no value leaves the aggregate with no median.** An open
   episode in one run does not become a run that is left out.
 - The median is stated for exactly three counted runs. For any other number the
@@ -461,7 +462,8 @@ neither. Each run is listed with its own value.
   stated `result-state-inconclusive` for it. The
   [aggregate command of the replay tool](analysis-replay.md#a-run-that-is-not-counted)
   reads the reason from the manifest and the exclusion reasons from the freeze
-  record that the manifest names. The schema name of the document is now
+  record that the manifest names, at the commit that the manifest states as
+  its executing revision. The schema name of the document is now
   `inferops.io/reliability-aggregate/v1alpha2`, because the `exclusion` member
   of a run changed from text to an object.
 

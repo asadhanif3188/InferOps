@@ -13,9 +13,9 @@ run directory under ``docs/proof/experiments`` that the pre-schema register
 does not name. ``aggregate`` prints one figure of each run of one experiment
 and the median of three counted runs, with each result state read from its
 manifest. A run that is not counted is held to a reason that the freeze
-record of its manifest registers. ``sources`` prints the digest of each source
-file of the analysis
-code.
+record of its manifest registers, and that record and the freeze registry are
+read from the commit that the manifest states as its executing revision.
+``sources`` prints the digest of each source file of the analysis code.
 
 **Exit status 0 says that nothing was refused.** For ``verify`` it says that
 each given run directory names a run analysis and that each was reproduced
@@ -28,13 +28,22 @@ not usable.
 ``aggregate`` read the commit of the checkout and refuse while a source file
 of the analysis code does not have the content that the commit holds for it.
 ``verify`` and ``repository`` compare the commit that a document states with
-Git when the clone holds it. ``aggregate`` does not. No command contacts a
-cluster or a caller. See docs/testing/analysis-replay.md.
+Git when the clone holds it. ``aggregate`` does not compare the commit of a
+run analysis. For a run that is not counted it reads two files of the
+executing revision from the objects of the clone, and it refuses when the
+clone does not hold that commit. It checks out no commit. It tells Git to
+fetch nothing, and it reads no commit of a partial clone, which fetches the
+objects that it lacks. It holds each object that it reads to its SHA-1
+identifier. No command contacts a cluster or a caller. See
+docs/testing/analysis-replay.md.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
+import os
+import re
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -58,6 +67,7 @@ from .core import (
     RULE_REVISION,
     RULE_UNCOMMITTED,
     SOURCE_PACKAGES,
+    History,
     ReplayRefused,
     RunReplay,
     aggregate_runs,
@@ -70,6 +80,9 @@ from .core import (
 )
 
 _GIT_TIMEOUT_SECONDS = 60
+#: The longest file that is read from a commit for an aggregate.
+MAX_HISTORY_BYTES = 4 * 1024 * 1024
+_FULL_COMMIT = re.compile(r"[0-9a-f]{40}")
 
 
 def _emit(text: str) -> None:
@@ -154,6 +167,216 @@ def _tracked(root: Path, revision: str, package: str) -> list[str] | None:
     if listed is None:
         return None
     return [name for name in listed.decode("utf-8", "replace").split("\0") if name]
+
+
+def _history_git(root: Path, data: bytes | None, *arguments: str) -> bytes | None:
+    """What one Git command of the reader of commits prints, or None.
+
+    The command gets no variable of the environment whose name starts with
+    ``GIT_``, so no variable names another clone or another object directory.
+    It is told to fetch no object that the clone lacks, to use no transport,
+    to read no replacement object, and to ask no question.
+    """
+    environment = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.upper().startswith("GIT_")
+    }
+    environment.update(
+        GIT_NO_LAZY_FETCH="1", GIT_NO_REPLACE_OBJECTS="1", GIT_TERMINAL_PROMPT="0"
+    )
+    try:
+        done = subprocess.run(
+            [
+                "git",
+                "--no-replace-objects",
+                "-c",
+                "protocol.allow=never",
+                *arguments,
+            ],
+            cwd=root,
+            input=b"" if data is None else data,
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+            check=False,
+            env=environment,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    return done.stdout if done.returncode == 0 else None
+
+
+def _batch(printed: bytes, count: int) -> list[tuple[str, str, bytes]] | None:
+    """The objects that ``git cat-file --batch`` printed: identifier, type, content."""
+    objects: list[tuple[str, str, bytes]] = []
+    at = 0
+    for _ in range(count):
+        line_end = printed.find(b"\n", at)
+        if line_end < 0:
+            return None
+        head = printed[at:line_end].split(b" ")
+        if len(head) != 3 or not head[2].isdigit():
+            return None
+        size = int(head[2])
+        content = printed[line_end + 1 : line_end + 1 + size]
+        if (
+            len(content) != size
+            or printed[line_end + 1 + size : line_end + 2 + size] != b"\n"
+        ):
+            return None
+        objects.append(
+            (
+                head[0].decode("ascii", "replace"),
+                head[1].decode("ascii", "replace"),
+                content,
+            )
+        )
+        at = line_end + 2 + size
+    return objects if at == len(printed) else None
+
+
+def _hash_held(held: tuple[str, str, bytes]) -> bool:
+    """Whether an object has the SHA-1 identifier that Git states for it."""
+    identifier, kind, content = held
+    header = f"{kind} {len(content)}\0".encode("ascii", "replace")
+    return (
+        hashlib.sha1(header + content, usedforsecurity=False).hexdigest() == identifier
+    )
+
+
+def _tree_entry(tree: bytes, name: bytes) -> tuple[bytes, str] | None:
+    """The mode and the object identifier of one name in a tree object, or None."""
+    at = 0
+    while at < len(tree):
+        space = tree.find(b" ", at)
+        null = tree.find(b"\0", space)
+        if space < 0 or null < 0 or null + 21 > len(tree):
+            return None
+        if tree[space + 1 : null] == name:
+            return tree[at:space], tree[null + 1 : null + 21].hex()
+        at = null + 21
+    return None
+
+
+def verified_file(
+    revision: str, parts: Sequence[str], objects: Sequence[tuple[str, str, bytes]]
+) -> bytes | None:
+    """The content of a file of a commit, when each object has its identifier.
+
+    ``objects`` are the commit, its tree, and the object of each part of the
+    path, in order. Each must have the SHA-1 identifier that Git states for
+    it. The commit must have the identifier ``revision`` and name the tree,
+    each tree must name the next object under the next part of the path, and
+    the last object must be a regular file. So the content is the one that the
+    commit identifier names, whatever a file of the object store holds.
+    """
+    if len(objects) != len(parts) + 2 or not _commit_held(revision, objects[:2]):
+        return None
+    if not all(_hash_held(held) for held in objects[2:]):
+        return None
+    for index, part in enumerate(parts):
+        entry = _tree_entry(objects[index + 1][2], part.encode("utf-8"))
+        held = objects[index + 2]
+        last = index == len(parts) - 1
+        if entry is None or entry[1] != held[0]:
+            return None
+        if last and (held[1] != "blob" or entry[0] not in (b"100644", b"100755")):
+            return None
+        if not last and (held[1] != "tree" or entry[0] != b"40000"):
+            return None
+    return objects[-1][2]
+
+
+def history(root: Path = REPO_ROOT) -> History:
+    """A reader of the commits of the clone that holds ``root``.
+
+    Each read is a ``git cat-file`` of objects of the clone. No commit is
+    checked out and no file of the working tree is read. Git is told to fetch
+    nothing, and a clone that is set to fetch the objects that it lacks, a
+    partial clone, gives no commit and no file. A path is a path under
+    ``root``, with no part that is empty, ``.``, or ``..``.
+
+    **Each object is held to its identifier.** The reader computes the SHA-1
+    of the commit, of each tree on the path, and of the file, and it follows
+    the path through the trees itself. So a file of the object store that was
+    replaced, a replacement object, and another object directory do not give
+    another content for a commit identifier. A file longer than
+    ``MAX_HISTORY_BYTES`` is not read. A clone whose objects are not named by
+    SHA-1 gives no commit.
+    """
+    state: dict[str, str | None] = {}
+
+    def prefix() -> str | None:
+        """The path of the root in the clone, or None for no clone or a partial one."""
+        if "prefix" not in state:
+            state["prefix"] = None
+            lazy = _history_git(
+                root,
+                None,
+                "config",
+                "--get-regexp",
+                r"^(extensions\.partialclone|remote\..*\.(promisor|partialclonefilter))$",
+            )
+            # The command exits 1 when no such setting is present.
+            shown = _history_git(root, None, "rev-parse", "--show-prefix")
+            if lazy is None and shown is not None:
+                state["prefix"] = shown.decode("utf-8", "replace").strip()
+        return state["prefix"]
+
+    def objects(names: Sequence[str]) -> list[tuple[str, str, bytes]] | None:
+        asked = ("\n".join(names) + "\n").encode("utf-8")
+        sizes = _history_git(root, asked, "cat-file", "--batch-check")
+        if sizes is None:
+            return None
+        lines = sizes.decode("utf-8", "replace").splitlines()
+        if len(lines) != len(names):
+            return None
+        for line in lines:
+            head = line.split(" ")
+            if len(head) != 3 or not head[2].isdigit():
+                return None
+            if int(head[2]) > MAX_HISTORY_BYTES:
+                return None
+        printed = _history_git(root, asked, "cat-file", "--batch")
+        return None if printed is None else _batch(printed, len(names))
+
+    def read(revision: str, path: str) -> bytes | None:
+        held = prefix()
+        if held is None or _FULL_COMMIT.fullmatch(revision) is None:
+            return None
+        parts = [*(part for part in held.split("/") if part), *path.split("/")]
+        if any(
+            part in ("", ".", "..") or not part.isprintable() or "\\" in part
+            for part in path.split("/")
+        ):
+            return None
+        names = [revision, f"{revision}^{{tree}}"]
+        names += [
+            f"{revision}:{'/'.join(parts[:end])}" for end in range(1, len(parts) + 1)
+        ]
+        found = objects(names)
+        return None if found is None else verified_file(revision, parts, found)
+
+    def commit_present(revision: str) -> bool:
+        if prefix() is None or _FULL_COMMIT.fullmatch(revision) is None:
+            return False
+        found = objects([revision, f"{revision}^{{tree}}"])
+        return found is not None and _commit_held(revision, found)
+
+    return History(commit_present, read)
+
+
+def _commit_held(revision: str, objects: Sequence[tuple[str, str, bytes]]) -> bool:
+    """Whether a commit and its tree have their identifiers, and the commit names the tree."""
+    if len(objects) != 2 or not all(_hash_held(held) for held in objects):
+        return False
+    commit, tree = objects
+    return (
+        commit[0] == revision
+        and commit[1] == "commit"
+        and tree[1] == "tree"
+        and commit[2].split(b"\n", 1)[0] == b"tree " + tree[0].encode("ascii")
+    )
 
 
 def _say(lines: Sequence[str]) -> None:
@@ -322,7 +545,11 @@ def main(argv: list[str] | None = None) -> int:
             document = bind_run(arguments.run, declaration, revision, arguments.root)
         else:
             document = aggregate_runs(
-                arguments.metric, arguments.runs, revision, arguments.root
+                arguments.metric,
+                arguments.runs,
+                revision,
+                arguments.root,
+                history(arguments.root),
             )
     except ReplayRefused as refused:
         shown = str(refused).encode("ascii", "backslashreplace").decode("ascii")

@@ -1914,8 +1914,9 @@ class RunResult:
     ``exclusion_reasons`` is the ``exclusionReasons`` member of the freeze
     record that the manifest names, or None when that record has none.
     ``preregistration`` is how the manifest names that record: its path, its
-    revision, and its content digest. It is a mapping or None. The aggregate
-    repeats it and does not read it.
+    revision, and its content digest. The replay tool adds the executing
+    revision that it read the record at. It is a mapping or None. The
+    aggregate repeats it and does not read it.
 
     The caller reads the manifest and the freeze record. This module reads no
     file, so it does not check that the three are those of one run directory.

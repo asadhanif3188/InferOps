@@ -712,7 +712,9 @@ not counted only for a reason that the freeze record of its manifest registers i
 its `exclusionReasons` member, and a run in the state `PASSED` or `FAILED` is always
 counted. Do not compare a reason in another way than character for character, and do
 not let a run that is not counted take its reasons from another record than the one
-that each run of the aggregate names. A freeze record that registers exclusion
+that each run of the aggregate names. Do not read the reasons of such a run from
+the files of the tree: they are read from the commit that the manifest states as
+its executing revision, and a commit that the clone does not hold is a refusal. A freeze record that registers exclusion
 reasons states them in the form that
 [the replay page](docs/testing/analysis-replay.md#a-run-that-is-not-counted) gives:
 the freeze check does not read that member. Do not

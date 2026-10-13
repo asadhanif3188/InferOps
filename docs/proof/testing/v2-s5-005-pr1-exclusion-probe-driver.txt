@@ -20,13 +20,28 @@ directories are built, restate its digest in each manifest, and pin it in a
 freeze registry. The builders of the tree at the base write the freeze record
 themselves, so the driver cannot write it first there. Each record and each
 registry is synthetic and freezes no experiment.
+
+A case with a freeze record makes a clone in its own directory, with ``git
+init``, and commits the record and the registry to it. Each manifest then
+states that commit as its executing revision. The commit has a fixed author
+and a fixed time, and it holds the two files alone, so its identifier is the
+same on each host and at each revision of this repository. The clone of the
+working tree that the driver runs from is not read by a case and not written.
+
+The last case is the change that the second commit of the pull request still
+accepted. After the commit, the reason of the probe is written into the freeze
+record, each manifest is restated to the new digest, and the registry is
+written again to pin it. The tree then agrees with itself. No manifest is
+given another executing revision.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import runpy
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -34,6 +49,7 @@ from typing import Any
 REPO = Path.cwd().resolve()
 sys.path.insert(0, str(REPO))
 
+from tools.analysis_replay import __main__ as command  # noqa: E402
 from tools.analysis_replay import core  # noqa: E402
 from tools.experiment_run.core import content_digest  # noqa: E402
 
@@ -48,6 +64,7 @@ REGISTRY_REF = "docs/proof/experiments/registry.v1alpha1.json"
 REGISTERED = "The run decides no criterion. This document is a fixture."
 POST_HOC = "Excluded after inspection. No preregistered reason exists."
 THREE: dict[str, str] = SUITE["THREE"]
+COMMIT_TIME = "2026-10-13T00:00:00+00:00"
 
 
 def write_json(path: Path, document: Any) -> None:
@@ -58,6 +75,13 @@ def write_json(path: Path, document: Any) -> None:
 def read_json(path: Path) -> dict[str, Any]:
     document: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return document
+
+
+def restate(run: Path, member: str, value: Any, part: str | None = None) -> None:
+    manifest = read_json(run / MANIFEST)
+    target = manifest["metadata"] if part is None else manifest["metadata"][part]
+    target[member] = value
+    write_json(run / MANIFEST, manifest)
 
 
 def preregister(root: Path, runs: list[Path], reasons: list[dict[str, Any]]) -> None:
@@ -76,9 +100,7 @@ def preregister(root: Path, runs: list[Path], reasons: list[dict[str, Any]]) -> 
     )
     digest = content_digest(freeze.read_bytes())
     for run in runs:
-        manifest = read_json(run / MANIFEST)
-        manifest["metadata"]["spec"]["freezeContentSha256"] = digest
-        write_json(run / MANIFEST, manifest)
+        restate(run, "freezeContentSha256", digest, "spec")
     write_json(
         root / REGISTRY_REF,
         {
@@ -87,6 +109,49 @@ def preregister(root: Path, runs: list[Path], reasons: list[dict[str, Any]]) -> 
             "records": [{"path": FREEZE_REF, "contentSha256": digest}],
         },
     )
+
+
+def commit(root: Path, runs: list[Path]) -> str:
+    """Commit the record and the registry to a clone of the case, and state it.
+
+    Each manifest is given the commit as its executing revision. The commit
+    holds the two files alone, with a fixed author and a fixed time.
+    """
+    identity = {
+        "GIT_AUTHOR_NAME": "driver",
+        "GIT_AUTHOR_EMAIL": "driver@example.invalid",
+        "GIT_AUTHOR_DATE": COMMIT_TIME,
+        "GIT_COMMITTER_NAME": "driver",
+        "GIT_COMMITTER_EMAIL": "driver@example.invalid",
+        "GIT_COMMITTER_DATE": COMMIT_TIME,
+    }
+
+    def git(*arguments: str) -> str:
+        done = subprocess.run(
+            [
+                "git",
+                "-c",
+                "core.autocrlf=false",
+                "-c",
+                "commit.gpgsign=false",
+                *arguments,
+            ],
+            cwd=root,
+            env=os.environ | identity,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+        return done.stdout.strip()
+
+    git("init", "--quiet")
+    git("add", "--", FREEZE_REF, REGISTRY_REF)
+    git("commit", "--quiet", "-m", "a freeze record and a registry of the driver")
+    revision = git("rev-parse", "HEAD")
+    for run in runs:
+        restate(run, "executingRevision", revision)
+    return revision
 
 
 def set_result(run: Path, state: str, reason: str | None) -> None:
@@ -104,9 +169,17 @@ def other_files(run: Path) -> dict[str, str]:
 
 
 def aggregate(root: Path, runs: list[Path]) -> dict[str, Any]:
-    """The figures of an aggregate, or the rule that refused it."""
+    """The figures of an aggregate, or the rule that refused it.
+
+    The aggregate is given the reader of commits of the command, when the tree
+    has one. The tree at the base and the first two commits have none.
+    """
+    reader = getattr(command, "history", None)
     try:
-        document = core.aggregate_runs(METRIC, runs, REVISION, root)
+        if reader is None:
+            document = core.aggregate_runs(METRIC, runs, REVISION, root)
+        else:
+            document = core.aggregate_runs(METRIC, runs, REVISION, root, reader(root))
     except core.ReplayRefused as refused:
         return {"refused": refused.rule, "message": refused.message}
     figures = document["aggregate"]
@@ -134,11 +207,13 @@ def case(
     fourth: tuple[str, str],
     reasons: list[dict[str, Any]] | None,
     change: tuple[str, str | None] | None,
+    afterwards: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     runs: list[Path] = SUITE["_runs"](root, THREE | {fourth[0]: fourth[1]})
+    result: dict[str, Any] = {}
     if reasons is not None:
         preregister(root, runs, reasons)
-    result: dict[str, Any] = {}
+        result["executingRevision"] = commit(root, runs)
     reason = REGISTERED
     if change is not None:
         result["before"] = shown(aggregate(root, runs), POST_HOC)
@@ -148,6 +223,27 @@ def case(
         result["manifestChangedTo"] = read_json(runs[-1] / MANIFEST)["result"]
         result["eachOtherByteUnchanged"] = other_files(runs[-1]) == files
         result["replayOfTheChangedRun"] = core.replay_run(runs[-1], root).status
+    if afterwards is not None:
+        result["withTheManifestAlone"] = shown(aggregate(root, runs), reason)
+        preregister(root, runs, afterwards)
+        freeze = read_json(root / FREEZE_REF)
+        pin = read_json(root / REGISTRY_REF)["records"][0]["contentSha256"]
+        result["treeAfterwards"] = {
+            "theRecordRegistersTheReason": reason
+            in [entry["reason"] for entry in freeze["exclusionReasons"]["reasons"]],
+            "theRegistryPinsTheRecord": pin
+            == content_digest((root / FREEZE_REF).read_bytes()),
+            "eachManifestStatesThePinnedDigest": all(
+                read_json(run / MANIFEST)["metadata"]["spec"]["freezeContentSha256"]
+                == pin
+                for run in runs
+            ),
+            "eachManifestStatesTheExecutingRevision": all(
+                read_json(run / MANIFEST)["metadata"]["executingRevision"]
+                == result["executingRevision"]
+                for run in runs
+            ),
+        }
     result["after" if change is not None else "aggregate"] = shown(
         aggregate(root, runs), reason
     )
@@ -161,6 +257,7 @@ def registered(*states: str) -> list[dict[str, Any]]:
     ]
 
 
+ALL_STATES = registered("INCONCLUSIVE", "REFUSED", "ABORTED")
 CASES: dict[str, tuple[Any, ...]] = {
     "probe-no-registry": (
         ("open-episode", "FAILED"),
@@ -169,7 +266,7 @@ CASES: dict[str, tuple[Any, ...]] = {
     ),
     "probe-reason-not-registered": (
         ("open-episode", "FAILED"),
-        registered("INCONCLUSIVE", "REFUSED", "ABORTED"),
+        ALL_STATES,
         ("INCONCLUSIVE", POST_HOC),
     ),
     "probe-reason-of-another-state": (
@@ -179,18 +276,27 @@ CASES: dict[str, tuple[Any, ...]] = {
     ),
     "registered-reason-aborted": (
         ("abort", "ABORTED"),
-        registered("INCONCLUSIVE", "REFUSED", "ABORTED"),
+        ALL_STATES,
         None,
     ),
     "registered-reason-inconclusive": (
         ("abort", "INCONCLUSIVE"),
-        registered("INCONCLUSIVE", "REFUSED", "ABORTED"),
+        ALL_STATES,
         None,
     ),
     "failed-run-with-a-registered-reason-is-counted": (
         ("clock-ties", "FAILED"),
-        registered("INCONCLUSIVE", "REFUSED", "ABORTED"),
+        ALL_STATES,
         ("FAILED", REGISTERED),
+    ),
+    "probe-reason-registered-after-the-executing-revision": (
+        ("open-episode", "FAILED"),
+        ALL_STATES,
+        ("INCONCLUSIVE", POST_HOC),
+        [
+            *ALL_STATES,
+            {"id": "added-later", "resultState": "INCONCLUSIVE", "reason": POST_HOC},
+        ],
     ),
 }
 
@@ -198,14 +304,14 @@ CASES: dict[str, tuple[Any, ...]] = {
 def main(arguments: list[str]) -> int:
     work, output = Path(arguments[0]).resolve(), Path(arguments[1])
     results = {}
-    for name, (fourth, reasons, change) in CASES.items():
+    for name, parts in CASES.items():
         root = work / name
         root.mkdir(parents=True)
-        results[name] = case(root, fourth, reasons, change)
+        results[name] = case(root, *parts)
     document = {
         "synthetic": (
-            "Each run directory, freeze record, and registry was built by this "
-            "driver from committed synthetic files. No run executed."
+            "Each run directory, freeze record, registry, and commit was built by "
+            "this driver from committed synthetic files. No run executed."
         ),
         "metric": METRIC,
         "cases": results,

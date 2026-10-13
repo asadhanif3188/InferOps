@@ -358,6 +358,11 @@ no code in this repository checks the other statements of this list.
 - **That an evidence file that is present is listed.**
 - **That the freeze record exists, has the stated revision, and has the stated
   digest.** The validator does not read the freeze registry.
+- **That the executing revision is a commit of the repository, or the commit
+  that the run executed.** The validator checks the form of the identifier.
+  [The aggregate of the replay tool](../testing/analysis-replay.md#a-run-that-is-not-counted)
+  reads that commit for a run that is not counted, and it refuses when the
+  clone does not hold it. It does not decide that the run executed it.
 - **That the release, the binding, the runtime image, and the model are the ones of the
   executing commit, or the ones a cluster ran.**
 - **That `metadata.experimentId` and `metadata.runId` equal those of the caller

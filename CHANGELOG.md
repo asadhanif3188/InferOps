@@ -1428,23 +1428,31 @@ from `1.0.0`.
   freeze record that the manifest names. A run is not counted only when its reason
   is, character for character, a reason that the record registers for the experiment,
   the result state, and the run, the freeze registry of the tree pins that
-  record, and each run of the aggregate names that one record. The document then states the reason, the identifier of the registered
+  record, each run of the aggregate names that one record, and the commit that the
+  manifest states as the executing revision of the run holds that record, with that
+  content digest, and a freeze registry that pins it. The reasons are read from the
+  record of that commit, with `git cat-file`, no checkout, and no fetch, each object
+  is held to its SHA-1 identifier, and a commit that the
+  clone does not hold is a refusal: the files of the tree are not read in its
+  place. The document then states the reason, the identifier of the registered
   reason, and the path, the revision, and the content digest of the record. A reason
   that no record registers, a reason that differs by one character, a reason of
   another state, another run, or another experiment, a reason that only an earlier
   revision registers, a reason that was added to the record while the registry pins
-  the earlier content, a record that the registry does not pin, and one manifest
-  alone that names another record each refuse the aggregate. A run in the state `PASSED` or `FAILED` is
+  the earlier content, a record that the registry does not pin, one manifest
+  alone that names another record, and a reason that is written into a record after
+  the executing revision, with each manifest and the registry changed to match, each
+  refuse the aggregate. A run in the state `PASSED` or `FAILED` is
   counted whatever reason it states, and a counted run with no value still leaves no
   median. The command of `tools/reliability_analysis` reads no freeze record, so it
   now refuses a run that is given in one of the three states. The two schema names
   of an aggregate are now `v1alpha2`, because the `exclusion` member changed from
-  text to an object. Two rules are added to the analysis, which has 10, and three
-  to the replay, which has 17. **The check does not decide that a reason is true,
-  and it does not establish when a reason was registered.** The manifest is still
-  the authority for the state and the reason. The aggregate reads one tree and not
-  Git, so a record, each manifest, and the registry, replaced together, are
-  accepted. The freeze check does not read the new member, and no rule covers runs
+  text to an object. Two rules are added to the analysis, which has 10, and five
+  to the replay, which has 19. **The check does not decide that a reason is true,
+  or that a run executed the commit that its manifest states.** The manifest is
+  still the authority for the state, the reason, and the executing revision, so a
+  manifest that is restated to a later commit that holds the reason is accepted.
+  The check reads which commit holds the record, and it reads no time. The freeze check does not read the new member, and no rule covers runs
   of two revisions with a run left out. No freeze record,
   run, raw evidence file, claim, or evidence level was changed. See
   [the replay page](docs/testing/analysis-replay.md#a-run-that-is-not-counted) and
