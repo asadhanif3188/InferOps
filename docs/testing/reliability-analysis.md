@@ -430,8 +430,15 @@ neither. Each run is listed with its own value.
 - The one registered rule is `median-of-three`.
 - A run in the state `PASSED` or `FAILED` is counted. **A run that worsens the
   figure is not dropped.**
-- A run in the state `INCONCLUSIVE`, `REFUSED`, or `ABORTED` is listed with its
-  value and its exclusion, and it is not counted.
+- **A result state alone leaves no run out.** A run in the state
+  `INCONCLUSIVE`, `REFUSED`, or `ABORTED` is not counted only when its reason
+  is one that its exclusion reasons register for the experiment, the state,
+  and the run. The document then lists the run with its value, that reason,
+  the identifier of the registered reason, and how the manifest names the
+  freeze record, when the caller gives it. With no registered reason the
+  aggregate is refused. The function reads no file and no Git object: its
+  caller reads the manifest, the freeze record, and the registry, and it reads
+  the record and the registry at the executing revision of the run.
 - **A counted run with no value leaves the aggregate with no median.** An open
   episode in one run does not become a run that is left out.
 - The median is stated for exactly three counted runs. For any other number the
@@ -442,12 +449,23 @@ neither. Each run is listed with its own value.
   documents.
 - The result state of each run is an argument of the command. The command does
   not read a manifest, so it does not check that the state is the one that the
-  manifest of the run states, and it does not check that an exclusion has a
-  registered reason. (Since `V2-S5-004-PR2`
+  manifest of the run states. (Since `V2-S5-004-PR2`
   [the replay tool](analysis-replay.md#the-aggregate-of-the-runs-of-an-experiment)
   has an aggregate command of its own. It reads each result state from the
   manifest of the run, and it refuses when a run of the experiment is not
-  given. This command is unchanged.)
+  given.)
+- **The command has no registered reason to give.** It reads no manifest and
+  no freeze record. So a run that is given in the state `INCONCLUSIVE`,
+  `REFUSED`, or `ABORTED` refuses the command with
+  `analysis-exclusion-unregistered`, and the command has no option that states
+  a reason. Until `V2-S5-005-PR1` the command did not count such a run and
+  stated `result-state-inconclusive` for it. The
+  [aggregate command of the replay tool](analysis-replay.md#a-run-that-is-not-counted)
+  reads the reason from the manifest and the exclusion reasons from the freeze
+  record that the manifest names, at the commit that the manifest states as
+  its executing revision. The schema name of the document is now
+  `inferops.io/reliability-aggregate/v1alpha2`, because the `exclusion` member
+  of a run changed from text to an object.
 
 ## Rules of refusal
 
@@ -461,6 +479,8 @@ neither. Each run is listed with its own value.
 | `analysis-input-misnamed` | A stream is given under the name that its header states. |
 | `analysis-identity-differs` | The declaration and each input name one experiment and one run. |
 | `analysis-aggregate-unsupported` | An aggregate is asked for a registered metric of analysis documents of one experiment, each of another run, each with a registered result state. |
+| `analysis-exclusion-reasons-unsupported` | The exclusion reasons of a freeze record are one object with exactly an experiment identifier and a list of reasons. Each reason has its own identifier, one of the result states INCONCLUSIVE, REFUSED, and ABORTED, a reason as text, and, when it is for named runs alone, their run identifiers. No result state has one reason text twice. A record states at most 32 reasons. |
+| `analysis-exclusion-unregistered` | A run in the state INCONCLUSIVE, REFUSED, or ABORTED states a reason that the freeze record of its manifest registers, character for character, for the experiment, the result state, and the run. |
 
 | Exit status | Meaning |
 |---|---|

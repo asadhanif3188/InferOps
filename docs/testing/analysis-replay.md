@@ -89,16 +89,18 @@ A run analysis states the code in two forms.
   ignores and a file that Git is told not to compare.
 
 **The source digest does not cover each package that a source file imports.**
-Seven are outside it, and a change to one of them does not move the digest:
+Eight are outside it, and a change to one of them does not move the digest:
 
 - `tools/experiment_evidence`, the layout check, `tools/experiment_run`, the
   validator of the manifest and the result states, and `tools/evidence_index`,
   the digest function. This tool reads the three.
+- `tools/experiment_freeze`, the reader of the freeze registry. The aggregate
+  reads the registry for a run that is not counted.
 - `tools/llm_load`, `tools/model_acquisition`, `tools/runtime_configuration`,
   and `tools/runtime_packaging`, which the caller profile imports.
 
 The suite reads the imports of each source file and holds this list to them.
-It does not read the imports of the seven packages in turn.
+It does not read the imports of the eight packages in turn.
 
 ## A replay
 
@@ -130,7 +132,7 @@ It does not read the imports of the seven packages in turn.
 
 The function `replay_run` does steps 1 to 6. The commands `verify` and
 `repository` add step 7. The gate of the evidence index and the `aggregate`
-command do not: neither compares a commit with Git.
+command do not: neither compares the commit of a run analysis with Git.
 
 **What a replay refuses.** Step 3 runs before step 4. So a change that the
 reliability analysis itself refuses is stated as `replay-analysis-refused`,
@@ -162,17 +164,37 @@ command there.
 
 `python -m tools.analysis_replay aggregate --metric NAME <run directory> ...`
 prints one figure of each run and the median of three counted runs. The schema
-name is `inferops.io/run-aggregate/v1alpha1`. The figures are computed by the
+name is `inferops.io/run-aggregate/v1alpha2`. The figures are computed by the
 aggregate of [the reliability analysis](reliability-analysis.md#the-aggregate-of-three-runs),
-and this command adds what that one does not check.
+and this command adds what that one does not check. The name was
+`inferops.io/run-aggregate/v1alpha1` until `V2-S5-005-PR1`, which changed the
+`exclusion` member of a run from text to an object. No document with the
+earlier name is committed.
 
 - Each run directory of the runs directory whose manifest names the experiment
   is given and is listed. No run is left out.
-- The result state of each run is read from its manifest.
+- The result state and the reason of each run are read from its manifest.
 - A run in the state PASSED or FAILED is counted. A run that worsens the figure
   is not dropped.
-- A run in the state INCONCLUSIVE, REFUSED, or ABORTED is listed with its value
-  and its exclusion, and it is not counted.
+- A run in the state INCONCLUSIVE, REFUSED, or ABORTED is not counted only when
+  the reason of its manifest is, character for character, a reason that the
+  freeze record of the manifest registers for the experiment, the result state,
+  and the run, and the freeze registry of the tree pins that record. Otherwise
+  the aggregate is refused. A result state alone leaves no run out.
+- The freeze record and the freeze registry of a run that is not counted are
+  read from the commit that its manifest states as its executing revision.
+  The record has there the content digest that the manifest states, and the
+  registry of that commit pins it. A reason that a record holds only in the
+  tree, or only at another commit, leaves no run out.
+- When a run is not counted, each run of the aggregate names one freeze
+  record. A run does not take its reasons from another record than the one
+  that the counted runs answer.
+- A run that is not counted is listed with its value, the reason of its
+  manifest, the identifier of the registered reason, the freeze record, and
+  the executing revision that the record was read at.
+- The result state, the reason, and the executing revision of a run are
+  statements of its manifest. The aggregate does not decide that they are
+  true of the run.
 - A counted run with no run analysis, or with no value for the figure, leaves
   the aggregate with no median.
 - The median is stated for exactly three counted runs. No confidence interval
@@ -191,16 +213,242 @@ experiment that conforms is not required.
 run whose run analysis does not replay, refuse the aggregate. A run with two
 run analyses is refused, because the aggregate reads one.
 
-An aggregate document lists, for each run, the digest of the manifest, the raw
+### A run that is not counted
+
+**A result state alone leaves no run out.** Until `V2-S5-005-PR1` the aggregate
+did not count a run in the state INCONCLUSIVE, REFUSED, or ABORTED, whatever
+reason its manifest stated. The document stated `result-state-inconclusive` for
+such a run, and it did not state the reason of the manifest. So one edit of a
+manifest, from FAILED to INCONCLUSIVE with a reason written after the run, took
+the run out of the median, and no document showed that reason. A review of the
+sprint on 2026-10-13 reported this with a probe. It was reported to the author,
+and no file in this repository records that review. The suite now runs the
+probe.
+
+The first two commits of `V2-S5-005-PR1` held each such run to the freeze
+record and the freeze registry of the tree. That check read no Git. So a
+record, each manifest that names it, and the registry, changed together after
+a run, were accepted, and a reason that was written after the run left the
+run out. The third commit closes that for a manifest that keeps its executing
+revision: **the record and the registry are read from the commit that the
+manifest states as the executing revision of the run.**
+
+The aggregate holds each such run to a reason that the freeze record of its
+manifest registers. Step 1 reads files of the tree. Step 4 reads two files of
+a commit and no file of the tree, and it is held before steps 2 and 3, which
+read the record of that commit. So a run with a commit that the clone does
+not hold is refused for the commit, whatever its reason is.
+
+1. **The freeze record.** The manifest names its freeze record by path, by
+   revision, and by content digest. The layout check holds the record to the
+   revision and the digest. The aggregate holds it to the freeze registry too:
+   the file `docs/proof/experiments/registry.v1alpha1.json` under the root must
+   pin that path with that digest. A record that the registry does not pin
+   registers no reason. The registry must be one JSON object with no member
+   stated twice. The name of the record must be
+   `freeze-r<revision>.v1alpha1.json`. **Each run of the aggregate must name
+   the same record**: one path, one revision, and one content digest. So a
+   run that is not counted does not choose the record that registers its
+   reason.
+2. **The exclusion reasons.** The record states them in the member
+   `exclusionReasons`, an object with exactly two members. `experimentId` is the
+   experiment identifier that the manifests of the runs state. `reasons` is a
+   list of at most 32 reasons. A record with no such member registers no
+   reason.
+3. **The comparison.** The reason of the manifest must be, character for
+   character, the `reason` of one entry whose `resultState` is the state of the
+   run, in a record whose `experimentId` is the experiment of the run. When the
+   entry states `runIds`, the run must be one of them.
+4. **The executing revision.** The manifest states the commit that the run
+   executed, in `metadata.executingRevision`. The command reads two files
+   from that commit, out of the objects of the clone: the freeze record at
+   the path that the manifest names, and the freeze registry. The record
+   must have there the content digest that the manifest states. The registry
+   of that commit must be one JSON object with no member stated twice, and
+   it must pin that path with that digest. **The exclusion reasons of step 2
+   are the ones of the record at that commit.** A commit that the clone does
+   not hold is a refusal. The files of the tree are not read in its place.
+
+The command reads the commit with `git cat-file`, in the clone that holds the
+root. It checks out no commit and changes no branch.
+
+- **It holds each object to its identifier.** Git does not compute the
+  identifier of an object that it reads. The command computes the SHA-1 of
+  the commit, of each tree on the path, and of the file, and it follows the
+  path through the trees itself. So a file of the object store that was
+  overwritten, a replacement object, and another object directory do not
+  give another content for a commit identifier. A path that the commit holds
+  as a symbolic link is not read.
+- **It fetches nothing.** It runs Git with `GIT_NO_LAZY_FETCH=1` and with
+  `protocol.allow=never`, and it reads no commit of a partial clone: a clone
+  with `extensions.partialclone`, or with a remote that is a promisor, gives
+  no commit, and the aggregate is refused. Git before 2.45 does not know the
+  variable, and the refusal of a partial clone does not depend on it.
+- **It gives Git no variable whose name starts with `GIT_`.** So `GIT_DIR`
+  and `GIT_ALTERNATE_OBJECT_DIRECTORIES` do not name another clone.
+- It reads no object that is longer than 4 MiB, and no commit of a clone
+  whose objects are not named by SHA-1.
+
+`aggregate_runs` reads no Git object itself: its caller gives it a reader,
+and with no reader an aggregate with a run that is not counted is refused.
+
+**What step 4 establishes, and what it does not.**
+
+Established, for a run that is not counted:
+
+- The manifest states a full commit identifier as its executing revision, and
+  the clone holds a commit with that identifier.
+- The freeze record and the freeze registry were read from that commit.
+- The record of that commit has the path, the content digest, and, by its
+  name, the revision that the manifest states. The registry of that commit
+  pins the record with that digest.
+- The exact reason of the manifest is in the record at that commit, for the
+  experiment, the result state, and the run.
+
+Not established:
+
+- **That the run executed that commit.** The manifest states the executing
+  revision, and the aggregate does not decide that it is true. A manifest
+  that is restated to a later commit that holds the reason is accepted, and
+  the document then states that later commit. The suite measures this.
+- That the result state of the run is correct, or that the reason describes
+  what happened in the run.
+- That the commit was reviewed, signed, or merged. A commit that is in the
+  clone and on no branch is read like another.
+- When a commit was made. The check reads no time. It reads which commit
+  holds the record.
+- Anything about production reliability, high availability, or a service
+  level objective, any evidence level above C0, and any result of a real
+  experiment. No real run was aggregated.
+
+A reason has these members, and no other.
+
+| Member | Required | Statement |
+|---|---|---|
+| `id` | yes | An identifier of the reason, used once in the record. The aggregate repeats it |
+| `resultState` | yes | `INCONCLUSIVE`, `REFUSED`, or `ABORTED`. A reason for `PASSED` or `FAILED` is refused |
+| `reason` | yes | The text that a manifest must state: 1 to 2,000 characters, with no white space at its ends. One result state has one text once |
+| `runIds` | no | The run identifiers that the reason is for, each once. With no such member the reason is for each run of the experiment |
+
+The form, with a reason that is the reason of no experiment:
+
+```json
+"exclusionReasons": {
+  "experimentId": "example-experiment",
+  "reasons": [
+    {
+      "id": "example-reason",
+      "resultState": "ABORTED",
+      "reason": "An example reason. No experiment registers it."
+    }
+  ]
+}
+```
+
+A run that is not counted is listed like this. The `preregistration` member is
+how the manifest names the freeze record, with the executing revision that
+the record was read at. Each run of the outer `runs` list, counted or not,
+states the three values of the freeze record of its own manifest in
+`preregistration`, and its executing revision in `executingRevision`.
+
+```json
+{
+  "runId": "run-4",
+  "resultState": "ABORTED",
+  "counted": false,
+  "exclusion": {
+    "reasonId": "example-reason",
+    "reason": "An example reason. No experiment registers it.",
+    "preregistration": {
+      "freezeRecord": "docs/proof/experiments/example/freeze-r1.v1alpha1.json",
+      "freezeRevision": 1,
+      "freezeContentSha256": "<the content digest of the record>",
+      "executingRevision": "<the commit that the record was read at>"
+    }
+  },
+  "value": null
+}
+```
+
+| Change to a run that is not counted | Refused by |
+|---|---|
+| The manifest states a reason that the record does not register, or one that differs from the registered text by one character | `replay-exclusion-refused`, with `analysis-exclusion-unregistered` |
+| The record has no `exclusionReasons` member, or the member registers the reason for another result state, for other runs, or for another experiment | `replay-exclusion-refused`, with `analysis-exclusion-unregistered` |
+| Each run answers a later revision of the record, and that revision does not register the reason | `replay-exclusion-refused`, with `analysis-exclusion-unregistered` |
+| The manifest of one run alone names another record: an earlier revision that registers the reason, or a record that was written after the runs and added to the registry | `replay-exclusion-record-differs` |
+| Each manifest names a file that does not have the name of its revision | `replay-exclusion-record-differs` |
+| The member is not in its form | `replay-exclusion-refused`, with `analysis-exclusion-reasons-unsupported` |
+| The tree has no registry that can be read, the registry states a member twice, or the registry does not pin the record with the digest of the manifest | `replay-exclusion-record-unpinned` |
+| The reason is added to the record after the run | `replay-aggregate-run-refused`, because the record no longer has the digest that each manifest states |
+| The same, with the digest in each manifest changed to match | `replay-exclusion-record-unpinned` |
+| The same, with the registry of the tree changed to pin the new content, so that the tree agrees with itself, committed or not | `replay-exclusion-record-not-at-revision`, because the executing revision holds the record with its earlier content |
+| The reason is registered in a new record after the run, the registry pins it, and each manifest names it | `replay-exclusion-record-not-at-revision`, because the executing revision does not hold that path |
+| The executing revision holds the record, and its registry is absent, cannot be read as a registry, or does not pin the record with the digest of the manifest | `replay-exclusion-record-not-at-revision` |
+| The clone does not hold the executing revision, the identifier is the one of a tag object or of a tree, the tree is in no clone, or Git is not available | `replay-exclusion-revision-unavailable` |
+| The clone is a partial clone, which fetches the objects that it lacks | `replay-exclusion-revision-unavailable`. Nothing is fetched |
+| The clone is told to read another commit in the place of the executing revision, or a file of its object store is overwritten with another record | No other refusal of its own: the replacement is not read, and an object that does not have its identifier gives no content. The run is held to what the executing revision names. When that is not the record of the manifest, `replay-exclusion-record-not-at-revision` |
+| The manifest states no reason | `replay-aggregate-run-refused`, because the manifest schema requires the reason and the layout check refuses the run |
+
+**A run in the state PASSED or FAILED is counted, whatever reason its manifest
+states.** No record is read for it, and a registered reason beside a counted
+state leaves no run out.
+
+**What the check does not do.**
+
+- **It does not decide that the reason is true.** The manifest is the authority
+  for the result state and for the reason. A person can change the manifest of
+  a FAILED run to a state that is not counted, with a reason that the record
+  registers. The aggregate accepts that manifest. It then states the reason,
+  the record, and another manifest digest than before, so the change is in the
+  document. The history of the manifest in Git and the review of the run hold
+  the classification. This tool does not.
+- **It does not decide which commit a run executed.** The manifest is the
+  authority for the executing revision too. A freeze record, each manifest
+  that names it, and the registry, replaced together, are refused while the
+  manifest of the run states its earlier executing revision. With that
+  manifest restated to a later commit that holds the reason, they are
+  accepted, and the aggregate then states that commit and another manifest
+  digest. The history of each manifest is in Git, and no check here reads it.
+- **It holds a commit to its identifier, and to nothing else.** It computes
+  the SHA-1 of each object that it reads, so a commit identifier names its
+  content as far as SHA-1 does. The check does not read a signature, a branch,
+  or a remote, and it does not decide that a commit was reviewed.
+- **It needs the commit in the clone.** A shallow clone that does not hold
+  the executing revision refuses the aggregate, and so does each partial
+  clone. The command fetches nothing.
+- **It does not hold the manifests to the latest revision.** When each
+  manifest names an earlier revision that the registry pins, each run is held
+  to that revision.
+- **It does not hold the record to the freeze check.** It reads the name of
+  the record, its pin, and its `exclusionReasons` member. It does not compare
+  `exclusionReasons.experimentId` with another member of the record.
+- **The freeze check does not read the member.** A committed record with an
+  `exclusionReasons` member that is not in its form passes the freeze check.
+  The aggregate refuses it when a run that is not counted names it.
+- **It compares text as it is.** Two texts that look the same and differ in a
+  code point are two reasons.
+- **It has no rule for runs of two revisions with a run left out.** Runs that
+  are all counted are aggregated whatever records they name. When one run is
+  not counted and the runs name two records, the aggregate is refused, also
+  when the run was aborted under an earlier revision for a reason that the
+  earlier revision registers. No rule is registered for that case.
+- **No committed freeze record states the member.** The three committed records
+  are of E01, which has no numerical aggregate, and this change edits none of
+  them. No experiment has registered an exclusion reason, and no run was left
+  out of an aggregate of real runs.
+
+An aggregate document lists, for each run, the digest of the manifest, how the
+manifest names its freeze record, the raw
 evidence digest, and the path and the digest of the run analysis. For each run
 analysis it repeats the commit and the source digest that the run analysis
 states, and it states `same` or `differs` for the source files that are
 present. The `analysisCode` member of the aggregate is the code of the command
 that printed the aggregate. It is not the code of a listed figure.
 
-**The aggregate compares no commit with Git.** A run analysis that `verify`
-refuses with `replay-revision-differs` is accepted here. Run `verify` on each
-run directory for that check.
+**The aggregate compares no commit of a run analysis with Git.** A run
+analysis that `verify` refuses with `replay-revision-differs` is accepted here.
+Run `verify` on each run directory for that check. The one commit that the
+aggregate reads is the executing revision of a run that is not counted.
 
 | Metric | Path in the analysis of a run analysis |
 |---|---|
@@ -261,12 +509,19 @@ run, as before.
 | `replay-aggregate-unsupported` | An aggregate is asked for a registered metric of run directories of one runs directory and one experiment, each given once, and each with at most one run analysis. |
 | `replay-aggregate-run-omitted` | An aggregate is given each run directory of the runs directory whose manifest names the experiment, and each directory there that is not given conforms to the layout. |
 | `replay-aggregate-run-refused` | Each run of an aggregate conforms to the layout, and its run analysis replays. |
+| `replay-exclusion-record-unpinned` | The freeze registry of the tree pins the freeze record that the manifest of each run that is not counted names, with the content digest that the manifest states, and that record is one JSON object. The registry is one JSON object with no member stated twice. |
+| `replay-exclusion-record-differs` | When a run of an aggregate is not counted, each run of the aggregate names one freeze record: one path, one revision, and one content digest. The name of the record is freeze-r<revision>.v1alpha1.json. |
+| `replay-exclusion-revision-unavailable` | The clone gives, as a commit, the executing revision that the manifest of each run that is not counted states. When it does not, the files of the tree are not read in its place. |
+| `replay-exclusion-record-not-at-revision` | At the executing revision of each run that is not counted, the freeze record that its manifest names has the content digest that the manifest states, the freeze registry of that revision pins the record with that digest, and each of the two is one JSON object with no member stated twice. |
+| `replay-exclusion-refused` | The reliability analysis accepts the reason of each run that is not counted against the exclusion reasons that the freeze record of its manifest holds at the executing revision of the run. The refusal names the rule of that tool. |
 
 A refusal of `verify` and of `repository` names a rule, a path, and a message.
 A refusal of `bind` and of `aggregate` names a rule and a message. A message
 can hold a count, the name of a role, a run identifier, the name of a
-directory, and the rule of another tool. It repeats no figure, no text of an
-evidence file, and no value of a declaration. A run directory outside the
+directory, and the rule of another tool. A refusal of an exclusion also holds
+the message of that rule, which names the run. It repeats no figure, no text of an
+evidence file, no value of a declaration, and no reason of a manifest or of a
+freeze record. A run directory outside the
 root is shown by its name alone. A refusal of the layout check names each
 rule of the layout that refused the directory.
 
@@ -386,14 +641,20 @@ In this change it prints three `pre-schema` lines and exits 0.
   it, and the build of the evidence index reads the runs that a ledger bears
   on.
 - A stored aggregate document is held by no check.
-- The aggregate and the gate of the evidence index compare no commit with Git.
+- The aggregate and the gate of the evidence index compare no commit of a run
+  analysis with Git.
 - The gate of the evidence index does not read a run analysis that is stored
   under another role than `analysis`.
 - The comparison with Git reads the directories of the stated source rows. A
   document that leaves out a whole package is not refused by it.
 - The aggregate does not compare the declarations or the windows of its runs.
-- The manifest requires a reason for a run that is not counted. No rule holds
-  that reason to one that an experiment registered before the run.
+- The aggregate holds the reason of a run that is not counted to the freeze
+  record of its manifest, as the executing revision of the run holds it. It
+  does not decide that the reason is true of the run or that the run executed
+  that commit, it does not read Git for the history of a manifest, and it has
+  no rule for runs of two revisions with a run left out. No committed
+  freeze record registers an exclusion reason.
+- The freeze check does not read the `exclusionReasons` member of a record.
 - The replay reads no correction. A correction that adds a caller record or a
   run analysis is not replayed.
 - The result page of a run, the role `result`, is written by a person. No tool
@@ -409,5 +670,9 @@ replay to each refusal that this page states, the aggregate to its rules, and
 the gate of the evidence index to a run that does not replay. It reads the text
 of the tool for a call that writes a file, and it compares the rules, the
 limitations, the boundaries, and the aggregate rules on this page with the
-tool's. [The validation record](../proof/testing/v2-s5-004-pr2-validation.md)
-states what was run for this change.
+tool's. It runs the probe that showed that a result state alone left a run
+out, and it holds an exclusion to each refusal that this page states.
+[The validation record](../proof/testing/v2-s5-004-pr2-validation.md)
+states what was run for the tool, and
+[a second record](../proof/testing/v2-s5-005-pr1-validation.md) states what
+was run for the exclusion reasons.

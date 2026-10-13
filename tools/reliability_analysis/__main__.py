@@ -8,7 +8,10 @@
 ``analyze`` reads the declaration and the given evidence files and prints one
 analysis document. ``aggregate`` reads analysis documents, each with the result
 state of its run, and prints one figure of each run and the median of three
-counted runs.
+counted runs. It reads no manifest and no freeze record, so it has no
+registered reason for a run that is not counted: a run in the state
+INCONCLUSIVE, REFUSED, or ABORTED refuses the command. The aggregate command of
+``tools.analysis_replay`` reads both.
 
 **Exit status 0 says that the command printed a document.** It does not say
 that each metric has a value: a document names each metric that has none in

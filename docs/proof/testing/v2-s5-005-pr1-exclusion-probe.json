@@ -1,0 +1,404 @@
+{
+  "synthetic": "Each run directory, freeze record, registry, and commit was built by this driver from committed synthetic files. No run executed.",
+  "metric": "caller-failure-episode-ms",
+  "cases": {
+    "probe-no-registry": {
+      "before": {
+        "schema": "inferops.io/run-aggregate/v1alpha2",
+        "countedRuns": 4,
+        "state": "not-computable",
+        "reason": "not-three-counted-runs",
+        "median": null,
+        "runs": [
+          {
+            "runId": "concurrency-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "missing-signal-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "open-episode-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": null
+          },
+          {
+            "runId": "zero-failure-1",
+            "resultState": "PASSED",
+            "counted": true,
+            "exclusion": null,
+            "value": 0
+          }
+        ],
+        "statesTheReasonOfTheManifest": false
+      },
+      "manifestChangedTo": {
+        "state": "INCONCLUSIVE",
+        "reason": "Excluded after inspection. No preregistered reason exists."
+      },
+      "eachOtherByteUnchanged": true,
+      "replayOfTheChangedRun": "replayed",
+      "after": {
+        "refused": "replay-exclusion-record-unpinned",
+        "message": "the run open-episode-1 is not counted, and the tree has no freeze registry that can be read"
+      }
+    },
+    "probe-reason-not-registered": {
+      "executingRevision": "508941a129b1659de749746cdc0e8cc9b2f62f38",
+      "before": {
+        "schema": "inferops.io/run-aggregate/v1alpha2",
+        "countedRuns": 4,
+        "state": "not-computable",
+        "reason": "not-three-counted-runs",
+        "median": null,
+        "runs": [
+          {
+            "runId": "concurrency-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "missing-signal-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "open-episode-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": null
+          },
+          {
+            "runId": "zero-failure-1",
+            "resultState": "PASSED",
+            "counted": true,
+            "exclusion": null,
+            "value": 0
+          }
+        ],
+        "statesTheReasonOfTheManifest": false
+      },
+      "manifestChangedTo": {
+        "state": "INCONCLUSIVE",
+        "reason": "Excluded after inspection. No preregistered reason exists."
+      },
+      "eachOtherByteUnchanged": true,
+      "replayOfTheChangedRun": "replayed",
+      "after": {
+        "refused": "replay-exclusion-refused",
+        "message": "analysis-exclusion-unregistered: the run open-episode-1: its reason is not a registered exclusion reason"
+      }
+    },
+    "probe-reason-of-another-state": {
+      "executingRevision": "98cf4eceb09b2f2870b1cefcb10ab350bc53bbfe",
+      "before": {
+        "schema": "inferops.io/run-aggregate/v1alpha2",
+        "countedRuns": 4,
+        "state": "not-computable",
+        "reason": "not-three-counted-runs",
+        "median": null,
+        "runs": [
+          {
+            "runId": "concurrency-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "missing-signal-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "open-episode-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": null
+          },
+          {
+            "runId": "zero-failure-1",
+            "resultState": "PASSED",
+            "counted": true,
+            "exclusion": null,
+            "value": 0
+          }
+        ],
+        "statesTheReasonOfTheManifest": false
+      },
+      "manifestChangedTo": {
+        "state": "INCONCLUSIVE",
+        "reason": "The run decides no criterion. This document is a fixture."
+      },
+      "eachOtherByteUnchanged": true,
+      "replayOfTheChangedRun": "replayed",
+      "after": {
+        "refused": "replay-exclusion-refused",
+        "message": "analysis-exclusion-unregistered: the run open-episode-1: its reason is registered for another result state"
+      }
+    },
+    "registered-reason-aborted": {
+      "executingRevision": "508941a129b1659de749746cdc0e8cc9b2f62f38",
+      "aggregate": {
+        "schema": "inferops.io/run-aggregate/v1alpha2",
+        "countedRuns": 3,
+        "state": "computed",
+        "reason": null,
+        "median": 20900,
+        "runs": [
+          {
+            "runId": "abort-1",
+            "resultState": "ABORTED",
+            "counted": false,
+            "exclusion": {
+              "reasonId": "fixture-aborted",
+              "reason": "The run decides no criterion. This document is a fixture.",
+              "preregistration": {
+                "freezeRecord": "docs/proof/experiments/example-replay/freeze-r1.v1alpha1.json",
+                "freezeRevision": 1,
+                "freezeContentSha256": "0e3a4a2cbafe49e25e52121d90f440b8f0729acd2185ff1ad7ae5865ed98f57f",
+                "executingRevision": "508941a129b1659de749746cdc0e8cc9b2f62f38"
+              }
+            },
+            "value": null
+          },
+          {
+            "runId": "concurrency-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "missing-signal-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "zero-failure-1",
+            "resultState": "PASSED",
+            "counted": true,
+            "exclusion": null,
+            "value": 0
+          }
+        ],
+        "statesTheReasonOfTheManifest": true
+      }
+    },
+    "registered-reason-inconclusive": {
+      "executingRevision": "508941a129b1659de749746cdc0e8cc9b2f62f38",
+      "aggregate": {
+        "schema": "inferops.io/run-aggregate/v1alpha2",
+        "countedRuns": 3,
+        "state": "computed",
+        "reason": null,
+        "median": 20900,
+        "runs": [
+          {
+            "runId": "abort-1",
+            "resultState": "INCONCLUSIVE",
+            "counted": false,
+            "exclusion": {
+              "reasonId": "fixture-inconclusive",
+              "reason": "The run decides no criterion. This document is a fixture.",
+              "preregistration": {
+                "freezeRecord": "docs/proof/experiments/example-replay/freeze-r1.v1alpha1.json",
+                "freezeRevision": 1,
+                "freezeContentSha256": "0e3a4a2cbafe49e25e52121d90f440b8f0729acd2185ff1ad7ae5865ed98f57f",
+                "executingRevision": "508941a129b1659de749746cdc0e8cc9b2f62f38"
+              }
+            },
+            "value": null
+          },
+          {
+            "runId": "concurrency-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "missing-signal-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "zero-failure-1",
+            "resultState": "PASSED",
+            "counted": true,
+            "exclusion": null,
+            "value": 0
+          }
+        ],
+        "statesTheReasonOfTheManifest": true
+      }
+    },
+    "failed-run-with-a-registered-reason-is-counted": {
+      "executingRevision": "508941a129b1659de749746cdc0e8cc9b2f62f38",
+      "before": {
+        "schema": "inferops.io/run-aggregate/v1alpha2",
+        "countedRuns": 4,
+        "state": "not-computable",
+        "reason": "not-three-counted-runs",
+        "median": null,
+        "runs": [
+          {
+            "runId": "clock-ties-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 3000
+          },
+          {
+            "runId": "concurrency-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "missing-signal-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "zero-failure-1",
+            "resultState": "PASSED",
+            "counted": true,
+            "exclusion": null,
+            "value": 0
+          }
+        ],
+        "statesTheReasonOfTheManifest": false
+      },
+      "manifestChangedTo": {
+        "state": "FAILED",
+        "reason": "The run decides no criterion. This document is a fixture."
+      },
+      "eachOtherByteUnchanged": true,
+      "replayOfTheChangedRun": "replayed",
+      "after": {
+        "schema": "inferops.io/run-aggregate/v1alpha2",
+        "countedRuns": 4,
+        "state": "not-computable",
+        "reason": "not-three-counted-runs",
+        "median": null,
+        "runs": [
+          {
+            "runId": "clock-ties-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 3000
+          },
+          {
+            "runId": "concurrency-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "missing-signal-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "zero-failure-1",
+            "resultState": "PASSED",
+            "counted": true,
+            "exclusion": null,
+            "value": 0
+          }
+        ],
+        "statesTheReasonOfTheManifest": false
+      }
+    },
+    "probe-reason-registered-after-the-executing-revision": {
+      "executingRevision": "508941a129b1659de749746cdc0e8cc9b2f62f38",
+      "before": {
+        "schema": "inferops.io/run-aggregate/v1alpha2",
+        "countedRuns": 4,
+        "state": "not-computable",
+        "reason": "not-three-counted-runs",
+        "median": null,
+        "runs": [
+          {
+            "runId": "concurrency-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "missing-signal-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": 20900
+          },
+          {
+            "runId": "open-episode-1",
+            "resultState": "FAILED",
+            "counted": true,
+            "exclusion": null,
+            "value": null
+          },
+          {
+            "runId": "zero-failure-1",
+            "resultState": "PASSED",
+            "counted": true,
+            "exclusion": null,
+            "value": 0
+          }
+        ],
+        "statesTheReasonOfTheManifest": false
+      },
+      "manifestChangedTo": {
+        "state": "INCONCLUSIVE",
+        "reason": "Excluded after inspection. No preregistered reason exists."
+      },
+      "eachOtherByteUnchanged": true,
+      "replayOfTheChangedRun": "replayed",
+      "withTheManifestAlone": {
+        "refused": "replay-exclusion-refused",
+        "message": "analysis-exclusion-unregistered: the run open-episode-1: its reason is not a registered exclusion reason"
+      },
+      "treeAfterwards": {
+        "theRecordRegistersTheReason": true,
+        "theRegistryPinsTheRecord": true,
+        "eachManifestStatesThePinnedDigest": true,
+        "eachManifestStatesTheExecutingRevision": true
+      },
+      "after": {
+        "refused": "replay-exclusion-record-not-at-revision",
+        "message": "the run open-episode-1 is not counted, and its executing revision does not hold its freeze record with the digest that its manifest states"
+      }
+    }
+  }
+}

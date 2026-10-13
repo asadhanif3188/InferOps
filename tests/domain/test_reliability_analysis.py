@@ -29,6 +29,13 @@ no percentage, and no confidence interval. An aggregate document repeats the
 result state that it was given for each run. The aggregate is the median of three
 counted runs, and a counted run with no value is not dropped.
 
+*A result state alone leaves no run out.* A run in the state INCONCLUSIVE,
+REFUSED, or ABORTED is not counted only for a reason that its exclusion reasons
+register for the experiment, the state, and the run. The aggregate states that
+reason. A reason that is absent, changed, or registered for another state,
+another run, or another experiment refuses the aggregate, and so does a state
+with no reason at all.
+
 Six cases are committed under ``tests/domain/fixtures/reliability-analysis``:
 zero failure, concurrency, missing signal, open episode, clock ties, and abort.
 Each is the inputs and the analysis document. The suite builds each case again
@@ -2414,27 +2421,312 @@ def test_a_failed_run_is_counted_and_is_not_dropped() -> None:
     assert all(entry["counted"] for entry in analysis.aggregate(METRIC, runs)["runs"])
 
 
+REASONS = {
+    "INCONCLUSIVE": "The evidence decides no criterion. This text is synthetic.",
+    "REFUSED": "A precondition did not hold. This text is synthetic.",
+    "ABORTED": "An abort condition stopped the run. This text is synthetic.",
+}
+PREREGISTRATION = {
+    "freezeRecord": "docs/proof/experiments/example/freeze-r1.v1alpha1.json",
+    "freezeRevision": 1,
+    "freezeContentSha256": "a" * 64,
+}
+
+
+def exclusion_reasons(**changes: Any) -> dict[str, Any]:
+    """Synthetic exclusion reasons: one for each state that is not counted."""
+    policy: dict[str, Any] = {
+        "experimentId": EXPERIMENT,
+        "reasons": [
+            {"id": f"reason-{state.lower()}", "resultState": state, "reason": text}
+            for state, text in REASONS.items()
+        ],
+    }
+    policy.update(changes)
+    return policy
+
+
+def excluded(state: str, **changes: Any) -> analysis.RunResult:
+    """The result of a run that is not counted, with its registered reason."""
+    members: dict[str, Any] = {
+        "reason": REASONS[state],
+        "exclusion_reasons": exclusion_reasons(),
+        "preregistration": PREREGISTRATION,
+    }
+    members.update(changes)
+    return analysis.RunResult(state, **members)
+
+
+def three_and(result: str | analysis.RunResult) -> list[tuple[dict[str, Any], Any]]:
+    return [
+        (run_document("run-1", 100), "PASSED"),
+        (run_document("run-2", 200), "PASSED"),
+        (run_document("run-3", 300), "FAILED"),
+        (run_document("run-4", 5), result),
+    ]
+
+
+def refused_exclusion(result: str | analysis.RunResult) -> analysis.AnalysisRefused:
+    with pytest.raises(analysis.AnalysisRefused) as refused:
+        analysis.aggregate(METRIC, three_and(result))
+    return refused.value
+
+
 @pytest.mark.parametrize("state", list(analysis.EXCLUDED_STATES))
-def test_an_excluded_run_is_listed_with_its_reason(state: str) -> None:
+def test_an_excluded_run_is_listed_with_its_registered_reason(state: str) -> None:
+    document = analysis.aggregate(METRIC, three_and(excluded(state)))
+    assert document["median"] == 200
+    assert document["countedRuns"] == 3
+    assert document["runs"][3] == {
+        "runId": "run-4",
+        "resultState": state,
+        "counted": False,
+        "exclusion": {
+            "reasonId": f"reason-{state.lower()}",
+            "reason": REASONS[state],
+            "preregistration": PREREGISTRATION,
+        },
+        "value": 5,
+    }
+    assert document["schema"] == "inferops.io/reliability-aggregate/v1alpha2"
+
+
+@pytest.mark.parametrize("state", list(analysis.EXCLUDED_STATES))
+def test_a_result_state_alone_leaves_no_run_out(state: str) -> None:
+    """Before this change a state alone left a run out, with a generic reason."""
+    refused = refused_exclusion(state)
+    assert refused.rule == "analysis-exclusion-unregistered"
+    assert "no exclusion reason is registered" in refused.message
+    # A record that registers no reason is the same refusal.
+    refused = refused_exclusion(excluded(state, exclusion_reasons=None))
+    assert refused.rule == "analysis-exclusion-unregistered"
+    refused = refused_exclusion(
+        excluded(state, exclusion_reasons=exclusion_reasons(reasons=[]))
+    )
+    assert refused.rule == "analysis-exclusion-unregistered"
+
+
+@pytest.mark.parametrize("reason", [None, "", 7, ["reason"], {"reason": "text"}])
+def test_a_run_that_is_not_counted_and_states_no_reason_is_refused(
+    reason: Any,
+) -> None:
+    refused = refused_exclusion(excluded("ABORTED", reason=reason))
+    assert refused.rule == "analysis-exclusion-unregistered"
+    assert "states no reason" in refused.message
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda text: text + " ",
+        lambda text: " " + text,
+        lambda text: text.lower(),
+        lambda text: text[:-1],
+        lambda text: text.replace("This text", "This  text"),
+        lambda text: text + " Excluded after inspection.",
+        lambda text: "Excluded after inspection. No preregistered reason exists.",
+    ],
+)
+def test_a_reason_that_is_not_the_registered_text_is_refused(
+    change: Callable[[str], str],
+) -> None:
+    """The comparison is character for character. No reason is read as near."""
+    reason = change(REASONS["INCONCLUSIVE"])
+    assert reason != REASONS["INCONCLUSIVE"]
+    refused = refused_exclusion(excluded("INCONCLUSIVE", reason=reason))
+    assert refused.rule == "analysis-exclusion-unregistered"
+    assert "is not a registered exclusion reason" in refused.message
+
+
+def test_a_reason_of_another_result_state_is_refused() -> None:
+    refused = refused_exclusion(excluded("INCONCLUSIVE", reason=REASONS["ABORTED"]))
+    assert refused.rule == "analysis-exclusion-unregistered"
+    assert "another result state" in refused.message
+
+
+def test_a_reason_of_another_experiment_is_refused() -> None:
+    policy = exclusion_reasons(experimentId="another-experiment")
+    refused = refused_exclusion(excluded("REFUSED", exclusion_reasons=policy))
+    assert refused.rule == "analysis-exclusion-unregistered"
+    assert "another experiment" in refused.message
+
+
+def test_a_reason_that_is_registered_for_named_runs_is_held_to_them() -> None:
+    policy = exclusion_reasons()
+    policy["reasons"][2]["runIds"] = ["run-9", "run-4"]
+    document = analysis.aggregate(
+        METRIC, three_and(excluded("ABORTED", exclusion_reasons=policy))
+    )
+    assert document["runs"][3]["exclusion"]["reasonId"] == "reason-aborted"
+    policy["reasons"][2]["runIds"] = ["run-9"]
+    refused = refused_exclusion(excluded("ABORTED", exclusion_reasons=policy))
+    assert refused.rule == "analysis-exclusion-unregistered"
+    assert "other runs" in refused.message
+
+
+def _other_members(policy: dict[str, Any]) -> None:
+    policy["note"] = "another member"
+
+
+def _no_reasons(policy: dict[str, Any]) -> None:
+    del policy["reasons"]
+
+
+def _reason_entry(**changes: Any) -> Callable[[dict[str, Any]], None]:
+    def change(policy: dict[str, Any]) -> None:
+        for name, value in changes.items():
+            if value is ...:
+                del policy["reasons"][0][name]
+            else:
+                policy["reasons"][0][name] = value
+
+    return change
+
+
+def _repeat_identifier(policy: dict[str, Any]) -> None:
+    policy["reasons"][1]["id"] = policy["reasons"][0]["id"]
+
+
+def _repeat_text(policy: dict[str, Any]) -> None:
+    policy["reasons"].append({**policy["reasons"][0], "id": "second"})
+
+
+def _too_many(policy: dict[str, Any]) -> None:
+    policy["reasons"] = [
+        {"id": f"reason-{n}", "resultState": "ABORTED", "reason": f"Reason {n}."}
+        for n in range(analysis.MAX_EXCLUSION_REASONS + 1)
+    ]
+
+
+UNSUPPORTED_REASONS: dict[str, Callable[[dict[str, Any]], None]] = {
+    "another member": _other_members,
+    "no list of reasons": _no_reasons,
+    "an experiment that is no identifier": lambda p: p.update(experimentId="a b"),
+    "an experiment that is no text": lambda p: p.update(experimentId=7),
+    "reasons that are no list": lambda p: p.update(reasons={"id": "x"}),
+    "a reason that is no object": lambda p: p["reasons"].append("text"),
+    "a reason with another member": _reason_entry(note="x"),
+    "a reason with no identifier": _reason_entry(id=...),
+    "a reason with an identifier that is no text": _reason_entry(id=1),
+    "a reason for a counted state": _reason_entry(resultState="FAILED"),
+    "a reason for a passed run": _reason_entry(resultState="PASSED"),
+    "a reason for a state that is no text": _reason_entry(resultState=["ABORTED"]),
+    "a reason with no text": _reason_entry(reason=""),
+    "a reason that is no text": _reason_entry(reason=None),
+    "a reason with white space at an end": _reason_entry(reason="A reason. "),
+    "a reason that is too long": _reason_entry(reason="x" * 2001),
+    "runs that are no list": _reason_entry(runIds="run-4"),
+    "no run": _reason_entry(runIds=[]),
+    "a run that is no identifier": _reason_entry(runIds=["run 4"]),
+    "a run that is no text": _reason_entry(runIds=[4]),
+    "a run twice": _reason_entry(runIds=["run-4", "run-4"]),
+    "one identifier twice": _repeat_identifier,
+    "one text twice for one state": _repeat_text,
+    "too many reasons": _too_many,
+}
+
+
+@pytest.mark.parametrize("name", sorted(UNSUPPORTED_REASONS))
+def test_exclusion_reasons_in_another_form_are_refused(name: str) -> None:
+    """A record that is not in its form registers no reason, for any run."""
+    policy = exclusion_reasons()
+    UNSUPPORTED_REASONS[name](policy)
+    refused = refused_exclusion(excluded("ABORTED", exclusion_reasons=policy))
+    assert refused.rule == "analysis-exclusion-reasons-unsupported"
+
+
+@pytest.mark.parametrize("policy", ["text", ["list"], 7, True])
+def test_exclusion_reasons_that_are_no_object_are_refused(policy: Any) -> None:
+    refused = refused_exclusion(excluded("ABORTED", exclusion_reasons=policy))
+    assert refused.rule == "analysis-exclusion-reasons-unsupported"
+
+
+def test_one_reason_text_can_be_registered_for_two_states() -> None:
+    policy = exclusion_reasons()
+    policy["reasons"][1]["reason"] = REASONS["ABORTED"]
+    document = analysis.aggregate(
+        METRIC,
+        three_and(
+            excluded("REFUSED", reason=REASONS["ABORTED"], exclusion_reasons=policy)
+        ),
+    )
+    assert document["runs"][3]["exclusion"]["reasonId"] == "reason-refused"
+
+
+@pytest.mark.parametrize("state", ["PASSED", "FAILED"])
+def test_a_counted_run_is_counted_whatever_reason_it_states(state: str) -> None:
+    """A registered reason beside a counted state does not leave the run out."""
+    result = analysis.RunResult(
+        state, REASONS["ABORTED"], exclusion_reasons(), PREREGISTRATION
+    )
     document = analysis.aggregate(
         METRIC,
         [
             (run_document("run-1", 100), "PASSED"),
             (run_document("run-2", 200), "PASSED"),
-            (run_document("run-3", 300), "FAILED"),
-            (run_document("run-4", 5), state),
+            (run_document("run-3", 90_000), result),
         ],
     )
-    assert document["median"] == 200
-    assert document["countedRuns"] == 3
-    excluded = document["runs"][3]
-    assert excluded == {
-        "runId": "run-4",
+    assert document["runs"][2] == {
+        "runId": "run-3",
         "resultState": state,
-        "counted": False,
-        "exclusion": f"result-state-{state.lower()}",
-        "value": 5,
+        "counted": True,
+        "exclusion": None,
+        "value": 90_000,
     }
+    assert (document["countedRuns"], document["median"]) == (3, 200)
+
+
+def test_a_refusal_of_an_exclusion_repeats_no_text_of_a_reason() -> None:
+    marker = "MARKER-7f3a"
+    policy = exclusion_reasons()
+    policy["reasons"][0]["reason"] = f"A registered reason with {marker}."
+    for result in (
+        excluded("ABORTED", reason=f"A stated reason with {marker}."),
+        excluded("ABORTED", reason=f"A registered reason with {marker}."),
+        excluded("INCONCLUSIVE", reason=marker, exclusion_reasons=policy),
+        excluded("ABORTED", exclusion_reasons={**policy, "experimentId": marker}),
+        excluded("ABORTED", exclusion_reasons={**policy, marker: marker}),
+    ):
+        refused = refused_exclusion(result)
+        assert marker not in str(refused)
+        assert "run-4" in refused.message
+
+
+def test_an_excluded_run_with_no_value_stays_listed_and_a_counted_one_is_not_dropped() -> (
+    None
+):
+    """An exclusion does not hide a counted run that has no value."""
+    document = analysis.aggregate(
+        METRIC,
+        [
+            (run_document("run-1", 100), "PASSED"),
+            (run_document("run-2", None), "FAILED"),
+            (run_document("run-3", 300), "PASSED"),
+            (run_document("run-4", None), excluded("ABORTED")),
+        ],
+    )
+    assert (document["countedRuns"], document["reason"], document["median"]) == (
+        3,
+        "counted-run-without-value",
+        None,
+    )
+    assert [entry["counted"] for entry in document["runs"]] == [True, True, True, False]
+
+
+def test_the_preregistration_of_an_exclusion_is_repeated_and_is_not_read() -> None:
+    result = excluded("ABORTED", preregistration=None)
+    document = analysis.aggregate(METRIC, three_and(result))
+    assert document["runs"][3]["exclusion"]["preregistration"] is None
+    given = dict(PREREGISTRATION)
+    document = analysis.aggregate(
+        METRIC, three_and(excluded("ABORTED", preregistration=given))
+    )
+    stated = document["runs"][3]["exclusion"]["preregistration"]
+    assert stated == given and stated is not given
+    for other in (5, ["freeze"], "freeze-r1"):
+        refused = refused_exclusion(excluded("ABORTED", preregistration=other))
+        assert refused.rule == "analysis-aggregate-unsupported"
 
 
 def test_a_counted_run_with_no_value_leaves_no_median() -> None:
@@ -2468,7 +2760,7 @@ def test_an_exclusion_that_leaves_two_runs_leaves_no_median() -> None:
         METRIC,
         [
             (run_document("run-1", 100), "PASSED"),
-            (run_document("run-2", 200), "INCONCLUSIVE"),
+            (run_document("run-2", 200), excluded("INCONCLUSIVE")),
             (run_document("run-3", 300), "PASSED"),
         ],
     )
@@ -2493,6 +2785,8 @@ def test_a_value_that_is_not_a_whole_number_is_no_value(value: Any) -> None:
         [],
         [(run_document("run-1", 1), "PASSED"), (run_document("run-1", 2), "PASSED")],
         [(run_document("run-1", 1), "SUCCEEDED")],
+        [(run_document("run-1", 1), analysis.RunResult("SUCCEEDED"))],
+        [(run_document("run-1", 1), analysis.RunResult(["ABORTED"]))],  # type: ignore[arg-type]
         [({**run_document("run-1", 1), "schema": "another/v1"}, "PASSED")],
         [({**run_document("run-1", 1), "runId": 7}, "PASSED")],
         [
@@ -2502,7 +2796,7 @@ def test_a_value_that_is_not_a_whole_number_is_no_value(value: Any) -> None:
     ],
 )
 def test_an_aggregate_that_does_not_hold_its_rule_is_refused(
-    runs: list[tuple[dict[str, Any], str]],
+    runs: list[tuple[dict[str, Any], str | analysis.RunResult]],
 ) -> None:
     with pytest.raises(analysis.AnalysisRefused) as refused:
         analysis.aggregate(METRIC, runs)
@@ -2617,6 +2911,27 @@ def test_the_aggregate_command_refuses_a_file_that_is_not_a_document(
     path.write_text('{"schema": 1, "schema": 2}', "utf-8")
     assert main(["aggregate", "--metric", METRIC, f"{path}=PASSED"]) == 3
     assert "analysis-aggregate-unsupported" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("state", list(analysis.EXCLUDED_STATES))
+def test_the_aggregate_command_leaves_no_run_out(
+    state: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The command reads no freeze record, so it has no reason for an exclusion."""
+    arguments = ["aggregate", "--metric", METRIC]
+    for number in range(1, 5):
+        path = tmp_path / f"run-{number}.json"
+        path.write_text(
+            json.dumps(run_document(f"run-{number}", 100 * number)), "utf-8"
+        )
+        arguments.append(f"{path}={state if number == 4 else 'FAILED'}")
+    assert main(arguments) == 3
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("REFUSED  analysis-exclusion-unregistered: ")
+    with pytest.raises(SystemExit) as stopped:
+        main([*arguments, "--reason", "A reason of the command line."])
+    assert stopped.value.code == 2
 
 
 @pytest.mark.parametrize("run", ["analysis.json", "analysis.json=DONE", "=PASSED"])

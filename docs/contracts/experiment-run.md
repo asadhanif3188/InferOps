@@ -109,6 +109,15 @@ The five result states:
 A run keeps its manifest whatever its state. A run is not repeated to obtain another
 state: a second attempt is a second run, with another `runId`, and both stay.
 
+The validator requires the reason. It reads the text for the shape of a credential
+and for an absolute path of a host, and it does not compare the reason with a
+registered reason. Since `V2-S5-005-PR1`
+[the aggregate of the replay tool](../testing/analysis-replay.md#a-run-that-is-not-counted)
+does: it leaves a run in one of the last three states out of a median only when the
+reason is, character for character, one that the freeze record of the manifest
+registers, and each run of the aggregate names that one record. The schema is
+unchanged.
+
 ## Structure
 
 Fifteen top-level members, all required. `Required` says `yes` when the member's object
@@ -349,6 +358,11 @@ no code in this repository checks the other statements of this list.
 - **That an evidence file that is present is listed.**
 - **That the freeze record exists, has the stated revision, and has the stated
   digest.** The validator does not read the freeze registry.
+- **That the executing revision is a commit of the repository, or the commit
+  that the run executed.** The validator checks the form of the identifier.
+  [The aggregate of the replay tool](../testing/analysis-replay.md#a-run-that-is-not-counted)
+  reads that commit for a run that is not counted, and it refuses when the
+  clone does not hold it. It does not decide that the run executed it.
 - **That the release, the binding, the runtime image, and the model are the ones of the
   executing commit, or the ones a cluster ran.**
 - **That `metadata.experimentId` and `metadata.runId` equal those of the caller

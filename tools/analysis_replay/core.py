@@ -27,15 +27,34 @@ with the files that are present, and it states when they differ. The command
 compares the commit with Git when the commit is in the clone.
 
 *An aggregate of runs.* ``aggregate_runs`` reads the run directories of one
-experiment, takes the result state of each run from its manifest, and gives
-the median of three counted runs with each run listed.
+experiment, takes the result of each run from its manifest, and gives the
+median of three counted runs with each run listed.
+
+**A result state alone leaves no run out of the median.** A run in the state
+INCONCLUSIVE, REFUSED, or ABORTED is not counted only when the reason that
+its manifest states is one that the freeze record of the manifest registers
+for the experiment, the state, and the run, and the freeze registry of the
+tree pins that record. Each run of such an aggregate must name that one
+record. The aggregate then states the reason and the record. Otherwise the
+aggregate is refused. The tool does not decide that a reason is true of a
+run: the manifest states it.
+
+**The record that registers a reason is read at the executing revision.** The
+manifest of a run states the commit that the run executed. For a run that is
+not counted, the freeze record and the freeze registry are read from that
+commit, and the record must have there the content digest that the manifest
+states. So a reason that the record of that commit does not hold leaves no
+run out, whatever the tree holds. A commit that the clone cannot give is a
+refusal: the files of the tree are not read in its place. The manifest is the
+authority for the executing revision: the tool does not decide that a run
+executed the commit that its manifest states.
 
 **The module registers no claim.** A document that replays changes no claim
 status and no evidence level. ``gate_problems`` lets the evidence index refuse
 a run whose analysis does not replay. It promotes nothing.
 
 The module reads files and writes none. It reads no Git object: the command
-does. See docs/testing/analysis-replay.md and tests/testing/test_analysis_replay.py.
+does, and it gives the aggregate a ``History`` to read a commit with. See docs/testing/analysis-replay.md and tests/testing/test_analysis_replay.py.
 """
 
 from __future__ import annotations
@@ -57,6 +76,9 @@ from tools.experiment_evidence import (
     run_digests,
 )
 from tools.experiment_evidence.core import printable
+from tools.experiment_freeze import API_VERSION as FREEZE_API_VERSION
+from tools.experiment_freeze import REGISTRY_PATH, load_registry
+from tools.experiment_freeze.core import REGISTRY_KIND
 from tools.experiment_run.core import (
     CONFORMING,
     MANIFEST_NAME,
@@ -67,13 +89,19 @@ from tools.experiment_run.core import (
 )
 from tools.reliability_analysis import (
     AGGREGATE_METRICS,
+    EXCLUDED_STATES,
     INPUTS,
     AnalysisRefused,
+    RunResult,
     aggregate,
     analyze,
     read_declaration,
 )
 from tools.reliability_analysis import SCHEMA as ANALYSIS_SCHEMA
+from tools.reliability_analysis.core import RULE_EXCLUSION as ANALYSIS_EXCLUSION
+from tools.reliability_analysis.core import (
+    RULE_EXCLUSION_REASONS as ANALYSIS_EXCLUSION_REASONS,
+)
 
 __all__ = [
     "AGGREGATE_RULES",
@@ -83,6 +111,7 @@ __all__ = [
     "CODE_DIFFERS",
     "CODE_SAME",
     "DOES_NOT_ESTABLISH",
+    "EXCLUSION_REASONS_MEMBER",
     "LIMITATIONS",
     "NO_ANALYSIS",
     "REFUSED",
@@ -94,6 +123,7 @@ __all__ = [
     "SCHEMA",
     "SOURCE_PACKAGES",
     "AnalysisReplay",
+    "History",
     "ReplayRefused",
     "RunReplay",
     "aggregate_runs",
@@ -110,7 +140,7 @@ __all__ = [
 SCHEMA: Final = "inferops.io/run-analysis/v1alpha1"
 
 #: The schema name of an aggregate of runs.
-AGGREGATE_SCHEMA: Final = "inferops.io/run-aggregate/v1alpha1"
+AGGREGATE_SCHEMA: Final = "inferops.io/run-aggregate/v1alpha2"
 
 #: The role of the evidence layout that a run analysis has.
 ANALYSIS_ROLE: Final = "analysis"
@@ -158,6 +188,14 @@ RULE_UNCOMMITTED: Final = "replay-code-not-committed"
 RULE_AGGREGATE: Final = "replay-aggregate-unsupported"
 RULE_AGGREGATE_OMITTED: Final = "replay-aggregate-run-omitted"
 RULE_AGGREGATE_RUN: Final = "replay-aggregate-run-refused"
+RULE_EXCLUSION_RECORD: Final = "replay-exclusion-record-unpinned"
+RULE_EXCLUSION_RECORDS: Final = "replay-exclusion-record-differs"
+RULE_EXCLUSION_REVISION: Final = "replay-exclusion-revision-unavailable"
+RULE_EXCLUSION_HISTORY: Final = "replay-exclusion-record-not-at-revision"
+RULE_EXCLUSION: Final = "replay-exclusion-refused"
+
+#: The member of a freeze record that states its exclusion reasons.
+EXCLUSION_REASONS_MEMBER: Final = "exclusionReasons"
 
 #: Each rule of refusal, with its statement.
 RULES: Final[Mapping[str, str]] = {
@@ -220,6 +258,35 @@ RULES: Final[Mapping[str, str]] = {
     RULE_AGGREGATE_RUN: (
         "Each run of an aggregate conforms to the layout, and its run analysis replays."
     ),
+    RULE_EXCLUSION_RECORD: (
+        "The freeze registry of the tree pins the freeze record that the manifest "
+        "of each run that is not counted names, with the content digest that the "
+        "manifest states, and that record is one JSON object. The registry is one "
+        "JSON object with no member stated twice."
+    ),
+    RULE_EXCLUSION_RECORDS: (
+        "When a run of an aggregate is not counted, each run of the aggregate "
+        "names one freeze record: one path, one revision, and one content digest. "
+        "The name of the record is freeze-r<revision>.v1alpha1.json."
+    ),
+    RULE_EXCLUSION_REVISION: (
+        "The clone gives, as a commit, the executing revision that the manifest "
+        "of each run that is not counted states. When it does not, the files of "
+        "the tree are not read in its place."
+    ),
+    RULE_EXCLUSION_HISTORY: (
+        "At the executing revision of each run that is not counted, the freeze "
+        "record that its manifest names has the content digest that the manifest "
+        "states, the freeze registry of that revision pins the record with that "
+        "digest, and each of the two is one JSON object with no member stated "
+        "twice."
+    ),
+    RULE_EXCLUSION: (
+        "The reliability analysis accepts the reason of each run that is not "
+        "counted against the exclusion reasons that the freeze record of its "
+        "manifest holds at the executing revision of the run. The refusal names "
+        "the rule of that tool."
+    ),
 }
 
 #: What a stored run analysis is, stated in each document.
@@ -268,11 +335,28 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
 AGGREGATE_RULES: Final[tuple[str, ...]] = (
     "Each run directory of the runs directory whose manifest names the experiment "
     "is given and is listed. No run is left out.",
-    "The result state of each run is read from its manifest.",
+    "The result state and the reason of each run are read from its manifest.",
     "A run in the state PASSED or FAILED is counted. A run that worsens the figure "
     "is not dropped.",
-    "A run in the state INCONCLUSIVE, REFUSED, or ABORTED is listed with its value "
-    "and its exclusion, and it is not counted.",
+    "A run in the state INCONCLUSIVE, REFUSED, or ABORTED is not counted only when "
+    "the reason of its manifest is, character for character, a reason that the "
+    "freeze record of the manifest registers for the experiment, the result state, "
+    "and the run, and the freeze registry of the tree pins that record. Otherwise "
+    "the aggregate is refused. A result state alone leaves no run out.",
+    "The freeze record and the freeze registry of a run that is not counted are "
+    "read from the commit that its manifest states as its executing revision. "
+    "The record has there the content digest that the manifest states, and the "
+    "registry of that commit pins it. A reason that a record holds only in the "
+    "tree, or only at another commit, leaves no run out.",
+    "When a run is not counted, each run of the aggregate names one freeze "
+    "record. A run does not take its reasons from another record than the one "
+    "that the counted runs answer.",
+    "A run that is not counted is listed with its value, the reason of its "
+    "manifest, the identifier of the registered reason, the freeze record, and "
+    "the executing revision that the record was read at.",
+    "The result state, the reason, and the executing revision of a run are "
+    "statements of its manifest. The aggregate does not decide that they are "
+    "true of the run.",
     "A counted run with no run analysis, or with no value for the figure, leaves "
     "the aggregate with no median.",
     "The median is stated for exactly three counted runs. No confidence interval "
@@ -284,6 +368,21 @@ _DIGEST: Final = re.compile(r"[0-9a-f]{64}")
 _SOURCE_PATH: Final = re.compile(r"tools(/[A-Za-z0-9_]+)+\.py")
 _CODE_MEMBERS: Final = frozenset({"revision", "sourceSha256", "sources"})
 _ROW_MEMBERS: Final = frozenset({"path", "sha256"})
+
+
+@dataclass(frozen=True)
+class History:
+    """How an aggregate reads a commit of the clone. The command gives it from Git.
+
+    ``commit_present`` says whether the clone holds a commit with an
+    identifier. ``blob`` gives the content of one repository path at a commit,
+    or None when the commit holds no such file or the file cannot be read.
+    Neither reads a file of the working tree, and neither raises for a path
+    or an identifier that it cannot read.
+    """
+
+    commit_present: Callable[[str], bool]
+    blob: Callable[[str, str], bytes | None]
 
 
 class ReplayRefused(Exception):
@@ -803,21 +902,206 @@ def _sibling_experiment(directory: Path, root: Path) -> str | None:
     return experiment
 
 
+def _registry_pins(data: bytes) -> dict[str, str] | None:
+    """The pins of a freeze registry that was read from a commit, or None.
+
+    The registry must be one JSON object with no member stated twice, with the
+    version and the kind of a freeze registry, and each of its records must be
+    a path and a digest, with no path stated twice.
+    """
+    try:
+        document = json.loads(data.decode("utf-8"), object_pairs_hook=_no_repeat)
+    except (ValueError, RecursionError):
+        return None
+    if (
+        not isinstance(document, dict)
+        or document.get("apiVersion") != FREEZE_API_VERSION
+        or document.get("kind") != REGISTRY_KIND
+        or not isinstance(document.get("records"), list)
+    ):
+        return None
+    pins: dict[str, str] = {}
+    for item in document["records"]:
+        if (
+            not isinstance(item, dict)
+            or not isinstance(item.get("path"), str)
+            or not isinstance(item.get("contentSha256"), str)
+            or _DIGEST.fullmatch(item["contentSha256"]) is None
+            or item["path"] in pins
+        ):
+            return None
+        pins[item["path"]] = item["contentSha256"]
+    return pins
+
+
+def _frozen_reasons(run: _Run, history: History | None) -> object:
+    """The exclusion reasons of a run, read at its executing revision.
+
+    The freeze record and the freeze registry are read from the commit that
+    the manifest states, and from no file of the tree. The record must have
+    there the content digest that the manifest states, and the registry of
+    that commit must pin it with that digest.
+
+    Raises:
+        ReplayRefused: the clone does not give the commit, or the commit does
+            not hold that record and a registry that pins it.
+    """
+    metadata = run.manifest["metadata"]
+    run_id, spec = metadata["runId"], metadata["spec"]
+    revision = metadata["executingRevision"]
+    if (
+        history is None
+        or not isinstance(revision, str)
+        or _COMMIT.fullmatch(revision) is None
+        or not history.commit_present(revision)
+    ):
+        raise ReplayRefused(
+            RULE_EXCLUSION_REVISION,
+            f"the run {run_id} is not counted, and the clone does not give its "
+            "executing revision as a commit",
+        )
+    data = history.blob(revision, spec["freezeRecord"])
+    if data is None or content_digest(data) != spec["freezeContentSha256"]:
+        raise ReplayRefused(
+            RULE_EXCLUSION_HISTORY,
+            f"the run {run_id} is not counted, and its executing revision does not "
+            "hold its freeze record with the digest that its manifest states",
+        )
+    registry = history.blob(revision, REGISTRY_PATH)
+    pins = None if registry is None else _registry_pins(registry)
+    if pins is None or pins.get(spec["freezeRecord"]) != spec["freezeContentSha256"]:
+        raise ReplayRefused(
+            RULE_EXCLUSION_HISTORY,
+            f"the run {run_id} is not counted, and the freeze registry of its "
+            "executing revision does not pin its freeze record with the digest "
+            "that its manifest states",
+        )
+    try:
+        record = json.loads(data.decode("utf-8"), object_pairs_hook=_no_repeat)
+    except (ValueError, RecursionError) as fault:
+        raise ReplayRefused(
+            RULE_EXCLUSION_HISTORY,
+            f"the freeze record of the run {run_id} cannot be read at its executing "
+            "revision as one JSON object",
+        ) from fault
+    if not isinstance(record, dict):
+        raise ReplayRefused(
+            RULE_EXCLUSION_HISTORY,
+            f"the freeze record of the run {run_id} is not one JSON object at its "
+            "executing revision",
+        )
+    return record.get(EXCLUSION_REASONS_MEMBER)
+
+
+def _result(run: _Run, root: Path, history: History | None) -> RunResult:
+    """The result of a run for an aggregate, with what its freeze record registers.
+
+    A run in a counted state is given by its state, and no record is read for
+    it. For another run the function reads the freeze record that the manifest
+    names. The layout check held that record to the digest and the revision of
+    the manifest. This function holds it to the freeze registry of the tree
+    too, so a record that the registry does not pin registers no reason. The
+    registry is read first as JSON with no member stated twice, because its
+    own reader keeps the last of two members.
+
+    The tree is then not the authority for the reasons. They are read from the
+    record at the executing revision of the run, by :func:`_frozen_reasons`.
+
+    Raises:
+        ReplayRefused: the record does not have the name of its revision, the
+            registry does not pin the record with the digest of the manifest,
+            the registry or the record cannot be read, or the executing
+            revision does not hold the record and a registry that pins it.
+    """
+    result = run.manifest["result"]
+    state: str = result["state"]
+    if state not in EXCLUDED_STATES:
+        return RunResult(state)
+    run_id = run.manifest["metadata"]["runId"]
+    spec = run.manifest["metadata"]["spec"]
+    name = spec["freezeRecord"].rsplit("/", 1)[-1]
+    if name != f"freeze-r{spec['freezeRevision']}.v1alpha1.json":
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORDS,
+            f"the run {run_id} is not counted, and its freeze record does not have "
+            "the name of its revision",
+        )
+    try:
+        json.loads(
+            (root / REGISTRY_PATH).read_bytes().decode("utf-8"),
+            object_pairs_hook=_no_repeat,
+        )
+        pins = load_registry(root)
+    except (OSError, ValueError, RecursionError) as fault:
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORD,
+            f"the run {run_id} is not counted, and the tree has no freeze registry "
+            "that can be read",
+        ) from fault
+    if pins.get(spec["freezeRecord"]) != spec["freezeContentSha256"]:
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORD,
+            f"the run {run_id} is not counted, and the freeze registry does not pin "
+            "its freeze record with the digest that its manifest states",
+        )
+    try:
+        data = (root / spec["freezeRecord"]).read_bytes()
+        record = json.loads(
+            data.replace(b"\r\n", b"\n").decode("utf-8"), object_pairs_hook=_no_repeat
+        )
+    except (OSError, ValueError, RecursionError) as fault:
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORD,
+            f"the freeze record of the run {run_id} cannot be read as one JSON object",
+        ) from fault
+    if (
+        not isinstance(record, dict)
+        or content_digest(data) != spec["freezeContentSha256"]
+    ):
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORD,
+            f"the freeze record of the run {run_id} is not the one JSON object that "
+            "its manifest states",
+        )
+    return RunResult(
+        state,
+        result.get("reason"),
+        _frozen_reasons(run, history),
+        {
+            "freezeRecord": spec["freezeRecord"],
+            "freezeRevision": spec["freezeRevision"],
+            "freezeContentSha256": spec["freezeContentSha256"],
+            "executingRevision": run.manifest["metadata"]["executingRevision"],
+        },
+    )
+
+
 def aggregate_runs(
-    metric: str, run_dirs: Sequence[Path], revision: str, root: Path = REPO_ROOT
+    metric: str,
+    run_dirs: Sequence[Path],
+    revision: str,
+    root: Path = REPO_ROOT,
+    history: History | None = None,
 ) -> dict[str, Any]:
     """One figure of each run of one experiment, with the median of three runs.
 
     Each run directory is held to the layout check, and its run analysis is
     computed again. The result state of a run is the one that its manifest
-    states. Each run directory of the same runs directory whose manifest names
+    states. A run in a state that is not counted is held to a reason that the
+    freeze record of its manifest registers, and each row states how the
+    manifest names that record. That record and its registry are read through
+    ``history``, at the executing revision of the run. With no ``history``, an
+    aggregate with such a run is refused. No ``history`` is read for runs that
+    are all counted.
+
+    Each run directory of the same runs directory whose manifest names
     the experiment must be given, so no run is left out. The runs directory is
     read at its place under ``root``, and not at the spelling of an argument.
     The aggregate itself is the one of ``tools.reliability_analysis``.
 
-    The function compares no commit with Git. Each row states the commit and
-    the source digest that the run analysis of its run states, and whether the
-    source files that are present are those.
+    The function compares no commit of the analysis code with Git. Each row
+    states the commit and the source digest that the run analysis of its run
+    states, and whether the source files that are present are those.
 
     Raises:
         ReplayRefused: a rule of :data:`RULES` is not held.
@@ -828,7 +1112,7 @@ def aggregate_runs(
         raise ReplayRefused(RULE_AGGREGATE, "no run directory was given")
     code = analysis_code(revision)
     rows: list[dict[str, Any]] = []
-    pairs: list[tuple[Mapping[str, Any], str]] = []
+    documents: list[tuple[Mapping[str, Any], _Run]] = []
     experiments: set[str] = set()
     parents: set[str] = set()
     given: set[str] = set()
@@ -865,13 +1149,14 @@ def aggregate_runs(
                 "runId": run_id,
             }
         )
-        state: str = run.manifest["result"]["state"]
-        pairs.append((document, state))
+        documents.append((document, run))
         rows.append(
             {
                 "runId": run_id,
                 "runDirectory": run.ref,
                 "manifestSha256": run.manifest_sha256,
+                "preregistration": dict(metadata["spec"]),
+                "executingRevision": metadata["executingRevision"],
                 "rawEvidenceSha256": run_digests(
                     run.ref, run.manifest_sha256, run.manifest
                 ).raw,
@@ -917,9 +1202,32 @@ def aggregate_runs(
                 f"the run directory {printable(name)} names the experiment and was "
                 "not given",
             )
+    # The result of each run is read after the all-run rule, so a run that
+    # was left out is stated before a reason is. A run that is not counted
+    # does not choose its record: each run must name the same one.
+    if any(
+        run.manifest["result"]["state"] in EXCLUDED_STATES for _, run in documents
+    ) and (
+        len(
+            {
+                json.dumps(run.manifest["metadata"]["spec"], sort_keys=True)
+                for _, run in documents
+            }
+        )
+        != 1
+    ):
+        raise ReplayRefused(
+            RULE_EXCLUSION_RECORDS,
+            "a run is not counted, and the runs do not name one freeze record",
+        )
+    pairs: list[tuple[Mapping[str, Any], str | RunResult]] = [
+        (document, _result(run, root, history)) for document, run in documents
+    ]
     try:
         figures = aggregate(metric, pairs)
     except AnalysisRefused as refused:
+        if refused.rule in (ANALYSIS_EXCLUSION, ANALYSIS_EXCLUSION_REASONS):
+            raise ReplayRefused(RULE_EXCLUSION, str(refused)) from refused
         raise ReplayRefused(RULE_AGGREGATE, str(refused)) from refused
     return {
         "schema": AGGREGATE_SCHEMA,

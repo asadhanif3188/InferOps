@@ -269,7 +269,13 @@ a run directory. A run analysis states the digest of each evidence file that was
 read and the code that computed it. A replay computes it again from the raw evidence
 and refuses a stored copy that differs, so a figure that a person edited is not
 accepted. It was executed on synthetic run directories only, and it registers no
-claim.
+claim. Since `V2-S5-005-PR1` its aggregate leaves a run out of the median only for
+a reason that the freeze record of the run registers, and it states that reason. A
+result state alone leaves no run out. The record and the freeze registry are read
+from the commit that the manifest states as the executing revision of the run, so a
+reason that the record of that commit does not hold leaves no run out. The check does
+not decide that a reason is true of a run, or that the run executed that commit. No committed freeze record registers such a
+reason, and no real run was left out.
 
 ## Prerequisites
 
