@@ -113,6 +113,16 @@ bears on that run. The two ledgers in ``PRE_GATE_LEDGER_PATHS`` were written bef
 the gate existed and name no review; the gate lists them and does not call them
 compliant.
 
+**The analysis gate.** A run directory can hold a run analysis: a file with the role
+``analysis`` that ``tools.analysis_replay`` computes from the run's manifest and its
+evidence files. ``analysis_gate`` reads each run that a register change of any ledger
+bears on. A run whose manifest names such a file must replay: the run directory
+conforms to the evidence layout, and each run analysis is, byte for byte, what the
+tool computes again. A run whose manifest names no such file is not held, and none of
+the three committed runs names one. The gate refuses and promotes nothing: a run
+analysis that replays adds no claim, changes no claim status, and assigns no evidence
+level, and the index states nothing about it.
+
 **Two digests.** `evidenceSetSha256` covers every file a record cites and nothing else,
 so a change to the register's wording or to a ledger does not move it.
 `evidencePackSha256` covers the same files together with the register and every
@@ -181,6 +191,7 @@ __all__ = [
     "RELEASED_LEDGER_PATHS",
     "RESULT_REVIEW_KIND",
     "TEXT_SUFFIXES",
+    "analysis_gate",
     "apply_register_changes",
     "build_index",
     "content_sha256",
@@ -1627,6 +1638,36 @@ def review_gate(
     return {"reviewed": reviewed, "registeredBeforeTheGate": before_the_gate}
 
 
+def analysis_gate(
+    register: Mapping[str, Any],
+    ledgers: Sequence[Mapping[str, Any]],
+    repo_root: Path = REPO_ROOT,
+) -> list[str]:
+    """Every run a ledger bears on, held to the replay of its run analysis.
+
+    ``result_runs`` gives the runs of each ledger, the ledgers written before the
+    review gate included. For each run, ``tools.analysis_replay`` says why its
+    analysis does not replay. A run whose manifest names no file with the role
+    ``analysis`` is not held. Anything else that does not replay raises
+    ``ValueError``. The runs that were read are returned.
+
+    The gate reads one repository state, and it reads no Git object. It does not
+    show that a run analysis was committed before the register change. It promotes
+    nothing: a run that replays gets no claim, no status, and no level from it.
+    """
+    # Imported here: that tool takes its digests from this module.
+    from tools.analysis_replay import gate_problems
+
+    runs = sorted({run for ledger in ledgers for run in result_runs(register, ledger)})
+    for run in runs:
+        problems = gate_problems(repo_root / run, repo_root)
+        if problems:
+            raise ValueError(
+                f"the analysis of {run} does not replay: {'; '.join(problems)}"
+            )
+    return runs
+
+
 def build_index(
     register: Mapping[str, Any] | None = None,
     ledgers: Sequence[Mapping[str, Any]] | None = None,
@@ -1638,7 +1679,9 @@ def build_index(
     pack digest binds what is on disk, which is what a release ships. The released
     pack is recomputed from the arguments and the files, and raises if it is not
     the one the post-release ledger states. The result review gate then reads every
-    ledger, and raises if a result-bearing one has no matching review artifact.
+    ledger, and raises if a result-bearing one has no matching review artifact. The
+    analysis gate then reads every run a ledger bears on, and raises if a run
+    analysis that such a run names does not replay. It adds nothing to the index.
     """
     register = register if register is not None else load_register()
     ledgers = ledgers if ledgers is not None else load_ledgers()
@@ -1647,6 +1690,7 @@ def build_index(
     claims, records = _entries(register, ledgers, repo_root)
     released = released_pack(register, ledgers, repo_root)
     reviews = review_gate(register, ledgers, repo_root)
+    analysis_gate(register, ledgers, repo_root)
 
     return {
         "$id": "https://inferops.io/proof/v1-evidence-index.v1alpha1.json",

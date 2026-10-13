@@ -11,6 +11,10 @@ identities. Three run manifests that were committed before the schema state the 
 says how they are held. Since `V2-S5-002-PR2`,
 [the experiment evidence layout](../testing/experiment-evidence-layout.md) says where the directory of a run is, and
 a separate check opens the evidence files of one. This validator still opens none.
+Since `V2-S5-004-PR2`, [the replay of an analysis](../testing/analysis-replay.md) reads the
+manifest of a run directory for the evidence files and the result state of its run.
+No run produced a manifest of this schema for it to read. Its gate in the evidence
+index reads the three earlier manifests for the role of each file, and they name none.
 
 | Property | Value |
 |---|---|
@@ -488,7 +492,8 @@ run for this change.
 - **Nothing writes a manifest.** A person or a later tool writes one. No experiment
   runner in this repository produces this shape.
 - **Nothing reads one for analysis.** No tool computes a result from a manifest and its
-  evidence files.
+  evidence files. (Since `V2-S5-004-PR2` [the replay tool](../testing/analysis-replay.md)
+  computes figures from a manifest and its evidence files. It decides no result.)
 - **It does not define the evidence layout.** It names evidence files by a path inside
   the run's directory. Which files a run holds, where run directories are, and how a
   directory is checked are not decided here. [The experiment evidence layout](../testing/experiment-evidence-layout.md)

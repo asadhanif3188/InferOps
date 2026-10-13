@@ -10,6 +10,34 @@ from `1.0.0`.
 
 ### Added
 
+- **The analysis of an experiment run is bound to its evidence and can be computed
+  again. No run was analysed, the proof tree holds no run directory of the published
+  layout, and no claim was registered.** `V2-S5-004-PR2` adds `tools/analysis_replay`, one suite, one synthetic run
+  directory as an example, and one page. The tool reads a run directory: the
+  ExperimentRun manifest and the raw evidence files that it names. It prints one run
+  analysis: the reliability analysis, the digest of each input, the raw evidence
+  digest of the run, the declaration, and the code that computed the document, as a
+  commit identifier and a digest of the source files of seven packages. **A stored
+  document is not authoritative.** A replay holds the run directory to the layout
+  check, computes the document again, and compares the two byte for byte. It refuses
+  a figure, a statement, or a declared value that was changed by hand, an evidence
+  file that changed or is absent, and a file whose digest was changed in the manifest
+  to match. A document that another code wrote replays while the present code gives
+  the same bytes, and the output states that the code differs. The command compares
+  the stated commit with Git when the clone holds it. **An aggregate leaves no run
+  out.** It reads each result state from its manifest, refuses when a run directory
+  of the experiment is not given or a directory beside the runs does not conform to
+  the layout, counts a run that worsens the figure, lists an excluded run, and states
+  the median of exactly three counted runs. It compares no commit with Git.
+  **The evidence index refuses and promotes nothing.** Its build now refuses a run
+  that a ledger bears on when the run names a run analysis that does not replay. A
+  run analysis that replays adds no claim, changes no claim status, and assigns no
+  evidence level, and the index and its two digests are unchanged. The declaration
+  is still held to no frozen record, the layout check does not call the tool, and a
+  stored aggregate document is held by no check. See
+  [the replay page](docs/testing/analysis-replay.md) and
+  [the validation record](docs/proof/testing/v2-s5-004-pr2-validation.md). Evidence
+  level C0.
 - **The reliability metrics of an experiment run can be computed from its stored
   evidence. No run was analysed, no analysis of a real run is committed, and no figure
   was compared with a bound.** `V2-S5-004-PR1` adds `tools/reliability_analysis`, one

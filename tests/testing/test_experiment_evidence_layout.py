@@ -1200,9 +1200,9 @@ def test_the_form_of_a_correction_is_checked_alone() -> None:
 
 
 def test_the_repository_holds_three_earlier_run_directories_and_checks_none() -> None:
-    """No run directory of this layout is committed. The three that are committed
-    were written before the ExperimentRun schema, and the listing does not check
-    them: it says so for each."""
+    """No run directory of this layout is committed in the proof tree. The three
+    that are committed there were written before the ExperimentRun schema, and
+    the listing does not check them: it says so for each."""
     report = core.repository_report()
     assert [(run.path, run.status) for run in report.runs] == [
         (f"docs/proof/experiments/v2-e01/runs/{run_id}", run_core.PRE_SCHEMA)

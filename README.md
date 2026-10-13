@@ -263,7 +263,13 @@ the intervals with no Ready endpoint, the detection lag of a declared signal, th
 time in which a signal and the caller disagree, and the stabilized recovery. A value
 that was not read is not read as zero or as healthy. The analysis decides no result and
 states no percentage. It was executed on synthetic files only, and no run was
-analysed.
+analysed. Since `V2-S5-004-PR2`
+[the replay of an analysis](docs/testing/analysis-replay.md) binds those figures to
+a run directory. A run analysis states the digest of each evidence file that was
+read and the code that computed it. A replay computes it again from the raw evidence
+and refuses a stored copy that differs, so a figure that a person edited is not
+accepted. It was executed on synthetic run directories only, and it registers no
+claim.
 
 ## Prerequisites
 
