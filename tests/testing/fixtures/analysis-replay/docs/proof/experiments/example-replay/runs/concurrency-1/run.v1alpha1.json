@@ -1,0 +1,110 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRun",
+  "metadata": {
+    "experimentId": "example-experiment",
+    "runId": "concurrency-1",
+    "spec": {
+      "freezeRecord": "docs/proof/experiments/example-replay/freeze-r1.v1alpha1.json",
+      "freezeRevision": 1,
+      "freezeContentSha256": "018ff1e92501134d3a35666f5a824b71086363e9e1c012bcbd9df0e80941c304"
+    },
+    "executingRevision": "2222222222222222222222222222222222222222",
+    "startedAt": "2026-10-12T07:59:00Z",
+    "finishedAt": "2026-10-12T08:05:00Z"
+  },
+  "environment": {
+    "binding": {
+      "environment": "local",
+      "name": "local-docker-desktop",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "provider": "docker-desktop",
+    "kubernetesVersion": "v1.36.1",
+    "nodeCount": 1
+  },
+  "release": {
+    "releaseId": "4444444444444444444444444444444444444444444444444444444444444444",
+    "contractSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "helmValuesSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "desiredStateRevision": "2222222222222222222222222222222222222222"
+  },
+  "runtime": {
+    "image": "registry.example/runtime/server@sha256:7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "model": {
+    "identifier": "example-model-q8-0",
+    "revision": "8888888888888888888888888888888888888888",
+    "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "callerProfile": {
+    "applies": true,
+    "profileId": "RP-1",
+    "profileRevision": 1,
+    "contentSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+    "concurrency": 2
+  },
+  "fault": {
+    "registered": true,
+    "type": "delete-runtime-pod",
+    "injected": true,
+    "target": "pod/example-runtime-0",
+    "injectedAt": "2026-10-12T08:00:30.000Z"
+  },
+  "result": {
+    "state": "FAILED"
+  },
+  "evidenceLevel": {
+    "intended": "C2"
+  },
+  "evidence": {
+    "files": [
+      {
+        "role": "argo",
+        "path": "argo.jsonl",
+        "sha256": "e7f260206f95e6b877b59e463669011eebc7b4b7145fd53f1eb0ca82c57f9f4b"
+      },
+      {
+        "role": "caller",
+        "path": "caller.jsonl",
+        "sha256": "44d53f67951e10cb24b6d91bd5c0b6d92f0a3bc5283542763f4f6052ede127a6"
+      },
+      {
+        "role": "deployments",
+        "path": "deployments.jsonl",
+        "sha256": "ed7c63bdf5cada2642206116dbb45e5777838f8583e6ea4df4cda552f17aa8aa"
+      },
+      {
+        "role": "endpoints",
+        "path": "endpoints.jsonl",
+        "sha256": "8cbb2d3175f08c99f74d8a404cb80b6f8a7449b79138cee621a37410e8ce50b7"
+      },
+      {
+        "role": "operator-events",
+        "path": "operator-events.jsonl",
+        "sha256": "1e7ae3c202ec89122c456dadeaffe4afef085a0b37440ef9afb30f5f8156fd82"
+      },
+      {
+        "role": "pods",
+        "path": "pods.jsonl",
+        "sha256": "9fae4f82771af049409665eb9e1d16f23ca20be08d2c27306fb2c77b1665f099"
+      },
+      {
+        "role": "analysis",
+        "path": "analysis.json",
+        "sha256": "a02328a8984357cb48166dea99edd7e0c049a213c626294a9e9c92ec8d5b09bd"
+      }
+    ]
+  },
+  "cleanup": {
+    "state": "verified"
+  },
+  "limitations": [
+    "Fixture. No run executed. Every identity in this document is a placeholder, except the caller profile revision.",
+    "One run, on one provider, on one cluster with one node."
+  ],
+  "doesNotEstablish": [
+    "That a run executed. This document is a fixture.",
+    "Behaviour on another provider, another Kubernetes version, or another node count."
+  ]
+}

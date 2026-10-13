@@ -118,6 +118,18 @@ does not show that a review was committed before the register change, that a rev
 took place, or what a review concluded, and it does not bind a review to a change. [The experiments page](experiments/README.md#correction-of-the-second-run-claim-and-the-review-gate-2026-10-03)
 lists the refusals and the limits.
 
+**The analysis gate.** Since `V2-S5-004-PR2` the build also reads each run directory that a
+register change of a ledger bears on. A run whose manifest names a file with the
+role `analysis` must replay:
+[the replay tool](../testing/analysis-replay.md#the-evidence-index) computes each run
+analysis of the run again from the manifest and the evidence files, and the index is
+not built while one differs. A run whose manifest names no such file is not held, and
+none of the three committed runs names one. The gate adds nothing to the index:
+`summary` states nothing about a run analysis, and the two digests are unchanged. The
+gate promotes nothing. A run analysis that replays adds no claim, changes no claim
+status, and assigns no evidence level. The gate reads one repository state and no Git
+object.
+
 How the 39 records that executed their target behaviour identify the repository code
 that ran:
 

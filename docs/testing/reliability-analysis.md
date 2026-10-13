@@ -443,7 +443,11 @@ neither. Each run is listed with its own value.
 - The result state of each run is an argument of the command. The command does
   not read a manifest, so it does not check that the state is the one that the
   manifest of the run states, and it does not check that an exclusion has a
-  registered reason.
+  registered reason. (Since `V2-S5-004-PR2`
+  [the replay tool](analysis-replay.md#the-aggregate-of-the-runs-of-an-experiment)
+  has an aggregate command of its own. It reads each result state from the
+  manifest of the run, and it refuses when a run of the experiment is not
+  given. This command is unchanged.)
 
 ## Rules of refusal
 
@@ -545,6 +549,12 @@ is such a file. Give it the suffix `.json`. The layout check holds the file to
 its digest. It does not call this tool, and it does not compute the document
 again.
 
+Since `V2-S5-004-PR2` [the replay tool](analysis-replay.md) reads a run directory and
+prints a run analysis: the document of this tool with the digest of each input
+and the code that computed it. A replay computes a stored run analysis again. A
+document of this tool alone, stored under the role `analysis`, is bound to no
+evidence, and the replay refuses it.
+
 ## Commands
 
 ```sh
@@ -562,7 +572,9 @@ Both commands print one JSON document with sorted members and LF line endings.
 - No run was analysed. Each input of the suite is built by the suite.
 - The document does not state the digest of an input or the revision of the
   code, and nothing computes a committed document again from committed raw
-  files of a run. A later change owns both.
+  files of a run. A later change owns both. (Since `V2-S5-004-PR2`
+  [the replay tool](analysis-replay.md) does both, in a document of its own.
+  The document of this tool is unchanged.)
 - No frozen record of an experiment states a window, an expected state, a
   signal, or a bound, so no check holds a declaration to one.
 - No signal is read from a telemetry stream. A rate of errors and the

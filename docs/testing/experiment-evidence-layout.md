@@ -126,7 +126,9 @@ index's set digest: the SHA-256 over the sorted lines `<sha256>  <repository pat
 | Evidence set | The manifest and every evidence file. |
 
 No correction is in either digest. **No document stores either digest.** A later record
-that quotes one can be compared with the command's output.
+that quotes one can be compared with the command's output. (Since `V2-S5-004-PR2`
+[a run analysis](analysis-replay.md) states the raw evidence digest of its run, and
+its replay compares the two.)
 
 ## Roles: raw and derived
 
@@ -416,7 +418,10 @@ The suite asserts each, so closing one is a visible change.
   Nothing in the tree states how many corrections a run has.
 - **A corrections directory under another letter case is not read.**
 - **A derived file that was not computed from the raw files conforms.** The rule asks
-  for a raw file beside a derived file. No rule reads a derived file.
+  for a raw file beside a derived file. No rule reads a derived file. (Since
+  `V2-S5-004-PR2` [the replay of an analysis](analysis-replay.md) computes a run analysis
+  again and refuses one that differs. This check does not call it, so a run
+  directory with such a file still conforms.)
 - **A raw file other than a caller record is not read for its meaning.** A file with the
   role `pods` that holds no reading of a pod conforms.
 - **A secret with no published prefix passes.** So does a word of the shape that the
@@ -460,7 +465,9 @@ the others.
   (Since `V2-S5-004-PR1` [the reliability analysis](reliability-analysis.md) prints a document
   from files that it is given. A person can store it under the role `analysis`,
   and no such file exists. The tool does not read a run directory or a manifest,
-  and this check does not compute its document again.)
+  and this check does not compute its document again. Since `V2-S5-004-PR2`
+  [the replay tool](analysis-replay.md) reads a run directory and its manifest, and
+  it computes a run analysis again. This check still does not.)
 - **That a raw file is complete.** No rule requires a role, and no rule compares the
   times of two files.
 - **That the release, the binding, the runtime image, and the model of the manifest are
@@ -511,7 +518,9 @@ for this change, and what two independent reviews of its first commit found.
   shape, as [the ExperimentRun contract](../contracts/experiment-run.md) states.
 - **Nothing reads a run directory for analysis.** No tool computes a result from one.
   (Since `V2-S5-004-PR1` [the reliability analysis](reliability-analysis.md) computes figures
-  from evidence files that a command names. It decides no result.)
+  from evidence files that a command names. It decides no result. Since
+  `V2-S5-004-PR2` [the replay tool](analysis-replay.md) reads a run directory for
+  those figures. It decides no result, and no run directory of a run exists.)
 - **It defines no file form but the caller record's.** The roles name what a file holds.
   The tools of this repository that read a cluster write their own records, and none
   writes a file of this layout.

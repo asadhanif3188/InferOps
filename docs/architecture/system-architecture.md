@@ -972,6 +972,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | Which registered queries the telemetry collector is asked over the time of one experiment run, and why an answer with no series is not zero | [The telemetry of an experiment run](../environment/experiment-telemetry.md) |
 | How a fault injection, a reviewed detection, a reversal, an abort, and a manual action of one experiment run are recorded with a UTC instant | [The operator events of an experiment run](../environment/experiment-operator-events.md) |
 | How the caller failure episodes, the intervals with no Ready endpoint, the detection lag of a signal, and the stabilized recovery of one experiment run are computed from its stored evidence | [The reliability analysis of an experiment run](../testing/reliability-analysis.md) |
+| How a stored analysis of one experiment run is bound to the digests of its evidence files and to the code that computed it, and how it is computed again | [The replay of an experiment analysis](../testing/analysis-replay.md) |
 | What a PodDisruptionBudget of the release bounds, and that it does not bound a pod deletion | [The disruption budgets](../environment/disruption-budgets.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |

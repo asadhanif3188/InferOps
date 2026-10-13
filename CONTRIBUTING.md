@@ -693,6 +693,30 @@ six committed cases, so write them again with
 [The analysis page](docs/testing/reliability-analysis.md) states each definition,
 the clocks, the limits, and what a document does not establish.
 
+**A stored analysis of a run is held by a replay, and not by its own text.** A run
+analysis is the output of one command for one run directory.
+
+```sh
+uv run --locked python -m tools.analysis_replay bind RUN_DIRECTORY --declaration FILE
+uv run --locked python -m tools.analysis_replay verify RUN_DIRECTORY [RUN_DIRECTORY ...]
+uv run --locked python -m tools.analysis_replay aggregate --metric NAME \
+  RUN_DIRECTORY [RUN_DIRECTORY ...]
+```
+
+Do not edit a stored run analysis. Change the evidence, the declaration, or the code,
+and print the document again. Do not add an option that states the commit or a result
+state: the command reads the commit from Git and each state from a manifest. Do not
+add a member for a result state, a claim status, or an evidence level to a run
+analysis, and do not let the gate of the evidence index add a claim or raise a level:
+it refuses a run whose analysis does not replay, and it does nothing else. A change
+that adds a package that reads an input or computes a figure must add the package to
+the source packages of the tool. A change to a source file leaves the committed
+example as it is: the replay then states that the code differs. Write the example
+again with `python tests/testing/test_analysis_replay.py` when a figure or a
+statement of the document changes.
+[The replay page](docs/testing/analysis-replay.md) states the document, each rule,
+the limits, and what a replay does not establish.
+
 **A tier of two or more replicas renders a PodDisruptionBudget.** No value configures
 it. A change that adds a kind to the chart's render must also add it to the Argo CD
 project, to the residue kinds of the Application procedure, and to the ownership
