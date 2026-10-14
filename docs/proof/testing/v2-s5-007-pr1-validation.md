@@ -21,7 +21,7 @@ evidence level was changed.**
 | Date | 2026-10-14 |
 | Base | `32d1a4b`, the merge of pull request #144 |
 | Branch | `fix/v2-s5-007-evidence-role-docs` |
-| Commits | The first commit: the page, the guard, and this record. The second commit: the corrections of an independent review, and the record of them in this file |
+| Commits | The first commit, `c037640`: the page, the guard, and this record. The second commit: the corrections of an independent review, the record of them in this file, and the result of the default lane |
 | Host | One Windows workstation, Git Bash; Python 3.12.12 from `uv`. `gitleaks` is not installed |
 | Evidence level | C0. Every check reads committed files or text that a test changes in memory. No check contacts a cluster, a caller, or a telemetry collector |
 | Claim effect | None. No claim, ledger, register row, dashboard row, evidence-index entry, freeze record, run directory, or raw evidence file was added or changed |
@@ -63,8 +63,8 @@ The count is found across the line break of the page.
   A note in the bullet says that it stated a number until this change, and that
   the number was stale from `V2-S5-003-PR2`.
 - [`tests/testing/test_experiment_evidence_layout.py`](../../../tests/testing/test_experiment_evidence_layout.py):
-  the earlier role test is replaced by a guard and its controls. The suite has 241
-  tests. The base had 218.
+  the earlier role test is replaced by a guard and its controls. The suite has 244
+  tests. The base had 218. (At the first commit it had 241.)
 - [`docs/testing/experiment-evidence-layout.md`](../../testing/experiment-evidence-layout.md):
   one bullet says what the guard reads and refuses.
 - [The test inventory](../../testing/test-inventory.md) and
@@ -85,7 +85,7 @@ four places, and it reads no other place.
 | The role table of the layout page | Exactly one section `## Roles: raw and derived`. Its table rows, read inside that section only, are the roles of the module, each with its kind and description, in the order of the module. A table line that is no row of the form is refused |
 | The count row of the layout page | Exactly one row `\| Roles \| <total>: <raw> raw and <derived> derived \|`, with the three numbers of the module |
 | The index of the testing pages | Exactly one phrase "the <total> roles of an evidence file", with the number of the module in digits |
-| The ExperimentRun page | A link to `../testing/experiment-evidence-layout.md#roles-raw-and-derived`, and no number of roles in digits or in words from one to twenty, with or without "registered", "raw", or "derived" before "roles" |
+| The ExperimentRun page | A link to `../testing/experiment-evidence-layout.md#roles-raw-and-derived`, and no number of roles in digits or in words from one to twenty, followed by "roles" or "role names", with up to three of the words "registered", "evidence", "evidence-file", "file", "layout", "raw", and "derived" between them |
 
 The vocabulary is an argument of the guard. So a test can change the module's
 vocabulary and keep the pages, and the guard then refuses the pages.
@@ -94,13 +94,14 @@ vocabulary and keep the pages, and the guard then refuses the pages.
 |---|---:|---|
 | `test_the_pages_state_the_role_vocabulary_as_the_module_does` | 1 | The committed pages and the committed module. No finding |
 | `test_the_role_vocabulary_is_the_fourteen_registered_roles` | 1 | A tripwire. The 14 names in their order, the two derived roles, each kind `raw` or `derived`, and each name a lowercase DNS-label word sequence |
-| `test_a_page_that_drifts_from_the_role_vocabulary_is_refused` | 16 | A row that is missing, extra, duplicate, renamed, reclassified, with a misspelled kind, with an unquoted name, or renamed onto another role; a count row with another total, another raw count, or no row; an index count in other digits or in words; a count in the ExperimentRun page in digits or in words; a link with no anchor |
+| `test_a_page_that_drifts_from_the_role_vocabulary_is_refused` | 19 | A row that is missing, extra, duplicate, renamed, reclassified, with a misspelled kind, with an unquoted name, or renamed onto another role; a count row with another total, another raw count, or no row; an index count in other digits or in words; a count in the ExperimentRun page as "13 roles", "fourteen registered roles", "13 evidence roles", "14 registered evidence roles", and "13 role names"; a link with no anchor |
 | `test_a_role_table_out_of_the_order_of_the_module_is_refused` | 1 | The `analysis` row moved. The one finding is the order |
 | `test_a_role_table_outside_its_section_is_not_read` | 1 | The section heading renamed. The table under it is not read |
-| `test_a_vocabulary_that_drifts_from_the_pages_is_refused` | 4 | A role added to the module, removed, renamed, and moved from raw to derived, with the pages unchanged |
+| `test_a_vocabulary_that_drifts_from_the_pages_is_refused` | 4 | A role added to the module, removed, renamed, and moved from raw to derived, with the pages unchanged. Each case states the complete list of its findings |
 
 Each control asserts the finding that it expects, not only that some finding
-exists.
+exists. (At the first commit the four cases of the last test did not: see
+[the review](#the-independent-review).)
 
 ## What the guard does not do
 
@@ -113,9 +114,11 @@ exists.
   `V2-S5-002-PR2` states 13 roles, and so does the changelog entry of that change.
   Both were true at their revision. The record of `V2-S5-003-PR2` states the
   change from 13 to 14. None is edited.
-- **The words of the ExperimentRun check stop at twenty.** A count in words above
-  twenty, or a count stated in another form, such as "a vocabulary of 14", is not
-  refused. The page links to the table so that it needs no count.
+- **The ExperimentRun check reads one form of a count.** A count in words above
+  twenty, a count with a word between the number and the noun other than the
+  seven that it lists, and a count stated in another form, such as "a vocabulary
+  of 14" or "roles: 13", are not refused. The page links to the table so that it
+  needs no count.
 - **It decides nothing about the meaning of a role.** It compares names, kinds,
   and descriptions as text. It does not show that a file of a role holds what the
   description says.
@@ -128,6 +131,24 @@ suite of that tool asserts that the role is registered and raw.
 [The analysis replay](../../testing/analysis-replay.md) reads the file of the role
 as one of its six inputs. The guard keeps the role. No published record states
 that the role is invalid.
+
+## The independent review
+
+One reviewer read the first commit, `c037640`, against the base. It did not run
+the default lane. It ran the role tests of the suite and probed the patterns in
+memory. It reported no critical and no high finding. The second commit acts on
+three of its four findings.
+
+| Severity | Finding | What the first commit got wrong | Action |
+|---|---|---|---|
+| Medium | The pattern of the ExperimentRun check did not match "13 evidence roles", "thirteen evidence roles", or "13 role names". It matched only "registered", "raw", or "derived" between the number and "roles" | The defect was reported as "13 evidence roles", so the guard let the reported wording come back. The record listed "a vocabulary of 14" as not refused, and it did not list this form | The pattern takes up to three of seven words before "roles", and it takes "role names". Three controls are added. The limit is restated above |
+| Low | The record described a second commit that did not exist yet | The `Commits` row stated the second commit as done | The row now names `c037640`, and this commit makes the second commit true |
+| Low | The four cases of the module-vocabulary test asserted that some finding exists and two of the counts, and no finding of the table. "Renamed" would have passed on any one finding | The record said that each control asserts the finding that it expects | Each case now states its complete list of findings |
+| Low | The table reader reads each table line of the role section, so a line of a second table in that section is read as a row | Nothing. The page and the record say that the section is read | None |
+
+The reviewer found no other current page that states the number or the list of
+the roles, no edit under `docs/proof/` other than this record and its row in the
+proof index, and no private reference or path of a host in the change.
 
 ## Commands and results
 
@@ -154,8 +175,23 @@ Run from the repository root on the tree of the first commit. `P` is
 | `P -m tools.generated_release --check`, `P -m tools.gitops_desired_state --check`, `P -m tools.baseline_profile --check`, `P -m tools.runtime_model_cache --check`, `P -m tools.service_endpoint_state --check` | Exit 0 each |
 | `git diff --check` | Exit 0 |
 
-The default lane, `uv run --locked python -m pytest -q`, was started on this
-tree before the first commit. Its result is recorded with the second commit.
+**The default lane.** `uv run --locked python -m pytest -q` exited 0: 22,327
+passed, 42 skipped, 14 deselected, in 43 min 45 s. It started before the first
+commit, on a tree that differs from `c037640` only in the command table of this
+record, which was written while the lane ran. The skips are not passes, and this
+invocation did not print their reasons.
+
+**The tree of the second commit.** The second commit changes the suite and this
+record. It changes no page that the guard reads. The default lane was not run
+again on it. These commands were run on it:
+
+| Command | Result |
+|---|---|
+| `P -m pytest tests/testing/test_experiment_evidence_layout.py -q -k role` | Exit 0. 41 passed |
+| `P -m pytest tests/testing/test_document_links.py tests/testing/test_test_inventory.py tests/contracts/test_experiment_run_v1alpha1.py tests/testing/test_experiment_evidence_layout.py -q` | Exit 0. 2,281 passed, 2 skipped. The two skips are the two of this host in the layout suite |
+| `uv run --locked ruff format --check .`, `uv run --locked ruff check .`, `uv run --locked python -m mypy` | Exit 0 each. 748 files already formatted, one more than the first count: the formatter counts Markdown pages, and this record did not exist when the first count was taken; all checks passed; no issues in 414 source files |
+| `git diff --check` | Exit 0 |
+
 The hosted workflow result is not recorded here. It runs on the pull request.
 
 ## What did not change

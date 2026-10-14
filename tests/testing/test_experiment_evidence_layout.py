@@ -255,11 +255,14 @@ ROLE_COUNT_ROW = re.compile(
     r"(?m)^\| Roles \| (?P<total>\d+): (?P<raw>\d+) raw and (?P<derived>\d+) derived \|$"
 )
 INDEX_ROLE_COUNT = re.compile(r"the (?P<total>\d+) roles of an evidence file")
-#: A count of roles in words or digits, as the ExperimentRun page once stated one.
+#: A count of roles in words or digits, as the ExperimentRun page once stated one:
+#: a number, up to three of the words that can stand between it and the noun, and
+#: "roles" or "role names".
 STATED_ROLE_COUNT = re.compile(
     r"(?i)\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
     r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)"
-    r"(?:\s+(?:registered|raw|derived))?\s+roles\b"
+    r"(?:\s+(?:registered|evidence|evidence-file|file|layout|raw|derived)){0,3}"
+    r"\s+(?:roles|role\s+names)\b"
 )
 
 
@@ -456,6 +459,26 @@ OPERATOR_EVENTS_ROW = (
         ),
         (
             "contract",
+            "Every other role is a name that the writer chose.",
+            "Every other role is a name that the writer chose. The layout has 13 "
+            "evidence roles.",
+            "ExperimentRun page: states a count, '13 evidence roles'",
+        ),
+        (
+            "contract",
+            "Every other role is a name that the writer chose.",
+            "Every other role is a name that the writer chose. It has 14 registered "
+            "evidence roles.",
+            "ExperimentRun page: states a count, '14 registered evidence roles'",
+        ),
+        (
+            "contract",
+            "Every other role is a name that the writer chose.",
+            "Every other role is a name that the writer chose. It lists 13 role names.",
+            "ExperimentRun page: states a count, '13 role names'",
+        ),
+        (
+            "contract",
             ROLE_TABLE_LINK,
             "../testing/experiment-evidence-layout.md",
             "ExperimentRun page: no link to the role table",
@@ -477,6 +500,9 @@ OPERATOR_EVENTS_ROW = (
         "index-count-words",
         "contract-count-digits",
         "contract-count-words",
+        "contract-count-evidence-roles",
+        "contract-count-registered-evidence-roles",
+        "contract-count-role-names",
         "contract-link-anchor",
     ],
 )
@@ -512,11 +538,34 @@ def test_a_role_table_outside_its_section_is_not_read() -> None:
     assert "table: missing role 'caller'" in findings
 
 
-@pytest.mark.parametrize("change", ["added", "removed", "renamed", "reclassified"])
-def test_a_vocabulary_that_drifts_from_the_pages_is_refused(change: str) -> None:
+@pytest.mark.parametrize(
+    ("change", "expected"),
+    [
+        (
+            "added",
+            ["table: missing role 'profile'", "count row", "testing index"],
+        ),
+        (
+            "removed",
+            ["table: extra role 'operator-events'", "count row", "testing index"],
+        ),
+        (
+            "renamed",
+            [
+                "table: missing role 'operator-event'",
+                "table: extra role 'operator-events'",
+            ],
+        ),
+        ("reclassified", ["table: role 'operator-events' differs", "count row"]),
+    ],
+    ids=["added", "removed", "renamed", "reclassified"],
+)
+def test_a_vocabulary_that_drifts_from_the_pages_is_refused(
+    change: str, expected: list[str]
+) -> None:
     """The guard reads the vocabulary that it is given, so a role that is added
     to the module, removed, renamed, or moved to another kind and not to the pages
-    is refused."""
+    is refused. Each case states every finding that it gives."""
     roles = dict(core.ROLES)
     if change == "added":
         roles["profile"] = core.Role(core.RAW, "A profile.")
@@ -532,14 +581,9 @@ def test_a_vocabulary_that_drifts_from_the_pages_is_refused(change: str) -> None
             core.DERIVED, roles["operator-events"].holds
         )
     findings = _role_findings(roles, *_role_pages())
-    assert findings, change
-    if change != "reclassified":
-        assert any(item.startswith("testing index:") for item in findings) == (
-            change != "renamed"
-        )
-    assert any(item.startswith("count row:") for item in findings) == (
-        change != "renamed"
-    )
+    assert [
+        item if item.startswith("table:") else item.split(":")[0] for item in findings
+    ] == expected
 
 
 def test_the_package_exports_what_the_module_defines() -> None:
