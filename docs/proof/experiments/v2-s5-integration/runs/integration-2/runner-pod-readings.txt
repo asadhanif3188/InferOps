@@ -1,0 +1,6 @@
+reading=before-deletion readAt=2026-10-14T10:17:53.783Z
+inferops-reliability-integration-2-k8rds	uid=bfb7598e-ae08-4e01-ac35-cde966b89cf0	phase=Running	ready=True	restarts=0	started=2026-10-14T10:17:22Z
+reading=after-deletion readAt=2026-10-14T10:20:21.180Z
+inferops-reliability-integration-2-k8rds	uid=bfb7598e-ae08-4e01-ac35-cde966b89cf0	phase=Running	ready=True	restarts=0	started=2026-10-14T10:17:22Z
+reading=at-end readAt=2026-10-14T10:23:52.495Z
+inferops-reliability-integration-2-k8rds	uid=bfb7598e-ae08-4e01-ac35-cde966b89cf0	phase=Succeeded	ready=False	restarts=0	started=2026-10-14T10:17:22Z

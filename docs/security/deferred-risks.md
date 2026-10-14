@@ -141,6 +141,16 @@ procedure, the environment, and what it does and does not transfer.
 
 So what exists is a **correct policy that nothing applies**, and a declaration that
 is ignored is worse than an absence in exactly one way: it looks like a control.
+
+> **Dated note, 2026-10-14 (`V2-S5-006-PR1`).** The docker-desktop cluster was made
+> again at `v1.36.1` on 2026-10-05. Its kindnetd, `kindest/kindnetd:v20260528-9350166c`,
+> logs that it starts the `kube-network-policies` controller. On that cluster, the
+> first attempt of the Sprint 5 integration validation sent six requests from a pod
+> that no policy of the release admits, and none reached the API:
+> [its result page](../proof/experiments/v2-s5-integration/runs/integration-1/result.md)
+> states the three readings. That is an inference about one build on one provider,
+> and not a test of the plugin like the one above, and the accepted `kind` cluster
+> was not read. This entry is not re-assessed here, and it stays open.
 This entry moved from *untested* to *tested and negative*, which is a worse position
 than the register previously recorded rather than a better one.
 

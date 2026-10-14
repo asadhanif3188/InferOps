@@ -1,6 +1,6 @@
 # The operator events of an experiment run
 
-Status: **the tool is implemented, and logs that the test suite writes show each kind of event, each refusal, and the stored form at evidence level C0. No run recorded an event. No log of a real run is committed, and no claim is registered.**
+Status: **the tool is implemented, and logs that the test suite writes show each kind of event, each refusal, and the stored form at evidence level C0. No result-bearing run recorded an event. Since `V2-S5-006-PR1` the logs of the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation) are committed: in each, the control process recorded one `fault-injection-started` and one `fault-injection-finished`, and no operator recorded an event. No claim is registered.** (Until `V2-S5-006-PR1` this status said that no run recorded an event and that no log of a real run is committed.)
 
 An experiment run has events that no cluster object and no metric holds. The
 program that controls the run injects a fault. An operator reviews the signals
@@ -266,9 +266,15 @@ log that takes one more event has another digest.
 
 ## What is not done
 
-- No run recorded an event. The suite wrote each log in a temporary directory.
-- No procedure calls the tool. A later change that drives a run records the
-  fault injection, and an operator records the other events.
+- No result-bearing run recorded an event. The suite wrote each log in a
+  temporary directory. The two committed logs are of the attempts of the
+  integration validation. (Until `V2-S5-006-PR1` this item said that no run
+  recorded an event.)
+- One procedure calls the tool:
+  [the driver of the integration validation](../proof/experiments/v2-s5-integration/procedure/run-driver.txt)
+  opens the log, records the fault injection, and closes the log. No procedure
+  records an event of an operator. (Until `V2-S5-006-PR1` this item said that no
+  procedure calls the tool.)
 - No frozen record of an experiment registers a code, so no check holds a code
   to a registered set.
 - Nothing checks the order of the kinds: a `fault-injection-finished` with no

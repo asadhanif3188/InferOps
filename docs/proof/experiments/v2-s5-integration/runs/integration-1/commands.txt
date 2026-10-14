@@ -1,0 +1,629 @@
+#!/usr/bin/env bash
+# Drives one bounded integration validation of the Sprint 5 evidence path on the
+# docker-desktop provider, and prints one transcript. It is not a reliability
+# experiment: it computes no result of one, and it registers no claim. Run it
+# from the repository root:
+#
+#   bash run-driver.txt up RUN          read capacity, prepare the cluster, apply the release
+#   bash run-driver.txt capture RUN ID  one attempt: the runner, the collectors, the event
+#                                       log, one API pod replacement, and the runner cleanup
+#   bash run-driver.txt down RUN        remove what `up` installed
+#
+# RUN names the work directory of `up` and `down` (for example run-1). `capture`
+# also takes the attempt identifier as a third argument (for example
+# integration-1). One attempt identifier is one attempt. It is never reused, and
+# every attempt is kept, whatever it shows.
+#
+# This file is a pinned input of freeze-r1.v1alpha1.json beside it. `capture`
+# runs it from the committed tree: bash docs/proof/experiments/v2-s5-integration/procedure/run-driver.txt
+# It writes only under .artifacts/, which Git ignores, so the working tree stays
+# clean, and it refuses to start when a material file differs from its pin.
+#
+# It downloads no model: one preparation Helm release fills the model cache
+# claim from the local seed image, and is uninstalled before the Application is
+# applied, as in the earlier runs on this provider.
+#
+# What `capture` does, in this order, with no decision on what it reads:
+#   E0  the executing commit, the working tree, the freeze pins, the digests of
+#       the files it runs
+#   E1  the environment and the release, as the cluster reports them
+#   E2  open the operator event log
+#   E3  start the timeline collector and the telemetry collector, in the background
+#       one after the other: the second starts when the first has printed that it
+#       samples, because the two share the project kubeconfig that each rewrites
+#       when it starts. A collector that ended before the runner start refuses the
+#       attempt.
+#   E4  start the runner Job, at least STREAMS_LEAD_SECONDS after the first collector
+#   E5  at FAULT_AFTER_SECONDS after the runner start: delete one API pod, the
+#       first by name, with its default grace period. The control process records
+#       fault-injection-started before the command and fault-injection-finished
+#       after it. Only that one pod is deleted.
+#   E6  read the runner pod before and after the deletion, and at its end
+#   E7  wait for the Job, with a bound; wait for the two collectors
+#   E8  collect the caller record; close the event log
+#   E9  clean up the runner, and read what is left
+#   E10 hold each file to its own checker, and write the analysis declaration
+#       by the rule fixed below
+#
+# The analysis declaration rule, fixed before any attempt:
+#   window.from = the instant the runner start returned + WINDOW_LEAD_SECONDS
+#   window.to   = window.from + WINDOW_SECONDS
+#   expected    = the remote main commit, 2 API and 2 runtime Ready replicas,
+#                 2 Ready runtime endpoints
+#   signals     = Ready endpoints of each tier below 2, Ready pods of each tier
+#                 below 2, Application sync not Synced, health not Healthy
+set -u
+
+PHASE="${1:?give the phase: up, capture, or down}"
+RUN="${2:?give the run name, for example run-1}"
+ATTEMPT="${3:-}"
+EXPERIMENT="s5-integration-validation"
+FREEZE_RECORD="docs/proof/experiments/v2-s5-integration/freeze-r1.v1alpha1.json"
+WORK=".artifacts/s5-integration/${RUN}-driver"
+CAPACITY_COLLECTIONS=".artifacts/capacity-preflight/collections"
+CAPACITY_SCRIPT="scripts/environment/capacity-preflight.sh"
+APPLICATION_SCRIPT="scripts/environment/argocd-application.sh"
+BOOTSTRAP="scripts/environment/argocd-bootstrap.sh"
+PREREQUISITES="scripts/environment/terraform-prerequisites.sh"
+RUNNER_SCRIPT="scripts/environment/reliability-runner.sh"
+TIMELINE_SCRIPT="scripts/environment/experiment-timeline.sh"
+TELEMETRY_SCRIPT="scripts/environment/experiment-telemetry.sh"
+NAMESPACE="inferops-release"
+CONTROLLER_NAMESPACE="argocd"
+APPLICATION="local-docker-desktop-support-assistant"
+API_DEPLOYMENT="inferops-inferops-llm"
+RUNTIME_DEPLOYMENT="inferops-inferops-llm-runtime"
+INSTANCE_SELECTOR="app.kubernetes.io/instance=inferops"
+API_SELECTOR="app.kubernetes.io/instance=inferops,app.kubernetes.io/component=platform-api"
+RELEASE_DIRECTORY="gitops/environments/local-docker-desktop/workloads/support-assistant"
+KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings,poddisruptionbudgets"
+ROLLOUT_BUDGET_SECONDS=900
+
+# The bounds of one attempt. They are fixed here, before any attempt.
+RUNNER_DURATION_SECONDS=360
+STREAMS_LEAD_SECONDS=20
+FAULT_AFTER_SECONDS=150
+# Samples, not a time: the timeline collector has no time bound. 200 samples with
+# a pause of 2 s and two reads each cover the 360 s of the runner when a read
+# takes at least 0.25 s. E7c states whether the last read covered the window.
+TIMELINE_SAMPLES=200
+TIMELINE_INTERVAL_SECONDS=2
+TELEMETRY_SAMPLES=36
+TELEMETRY_INTERVAL_SECONDS=10
+JOB_WAIT_BOUND_SECONDS=900
+JOB_POLL_SECONDS=15
+COLLECTOR_WAIT_BOUND_SECONDS=1500
+COLLECTOR_START_BOUND_SECONDS=120
+WINDOW_LEAD_SECONDS=60
+WINDOW_SECONDS=240
+
+# A path that starts with a slash is an argument for a container here, and not
+# a path of this host.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
+step() { printf '\n##### %s\n' "$*"; }
+now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+instant() { date -u +%Y-%m-%dT%H:%M:%S.%3NZ; }
+
+# Runs one command, prints it, and prints its exit status. The status is also
+# left in LAST.
+run() {
+  printf '$ %s\n' "$*"
+  "$@"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+}
+
+refuse() {
+  printf '\nREFUSED: %s. Nothing after it was run, and nothing was cleaned up.\n' "$1"
+  printf 'The operator reads the state of the cluster first.\n'
+  run now
+  exit 1
+}
+
+# Runs one precondition or preparation command. A failure ends the phase.
+prepare() {
+  run "$@"
+  [ "${LAST}" -eq 0 ] || refuse "a precondition or a preparation step failed: $*"
+}
+
+k() { kubectl --context docker-desktop "$@"; }
+
+# Writes the output of one read to a file, with LF line ends, and prints the
+# command and its exit status. The file is not written when the read fails.
+read_into() {
+  local target="$1"
+  shift
+  printf '$ %s > %s\n' "$*" "${target}"
+  if "$@" >"${WORK}/read.tmp" 2>"${WORK}/read.err"; then
+    tr -d '\r' <"${WORK}/read.tmp" >"${target}"
+    LAST=0
+  else
+    LAST=$?
+    cat "${WORK}/read.err"
+  fi
+  printf '[exit %s]\n' "${LAST}"
+}
+
+independent_state() {
+  run k get namespaces -o name
+  run k get customresourcedefinitions -o name
+  run k get "${KINDS}" -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o name
+  run k get persistentvolumeclaims -n "${NAMESPACE}" -o name
+}
+
+# One reading of the V2 capacity gate, kept whatever its result. $1 names it.
+capacity_reading() {
+  local name="$1"
+  run bash "${CAPACITY_SCRIPT}" --into "${RUN}-${name}"
+  CAPACITY_EXIT="${LAST}"
+  if [ -d "${CAPACITY_COLLECTIONS}/${RUN}-${name}" ]; then
+    run ls "${CAPACITY_COLLECTIONS}/${RUN}-${name}"
+  else
+    printf 'The gate wrote no collection for this reading.\n'
+  fi
+  if [ "${CAPACITY_EXIT}" -ne 0 ]; then
+    printf '\nThe capacity gate exited %s at the reading %s. Nothing more is installed, and nothing is changed to fit.\n' "${CAPACITY_EXIT}" "${name}"
+    run now
+    exit 0
+  fi
+}
+
+# The runner pod of the attempt: name, UID, phase, Ready, restarts, start. $1
+# names the reading. The reading is printed and kept in the attempt's evidence.
+runner_pod() {
+  local label="$1" out
+  printf '$ k get pods -n %s -l inferops.io/run-id=%s,app.kubernetes.io/name=inferops-reliability-runner -o jsonpath=...\n' "${NAMESPACE}" "${ATTEMPT}"
+  out="$(k get pods -n "${NAMESPACE}" -l "inferops.io/run-id=${ATTEMPT},app.kubernetes.io/name=inferops-reliability-runner" \
+    -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}uid={.metadata.uid}{"\t"}phase={.status.phase}{"\t"}ready={.status.conditions[?(@.type=="Ready")].status}{"\t"}restarts={range .status.containerStatuses[*]}{.restartCount}{end}{"\t"}started={.status.startTime}{"\n"}{end}' 2>&1)"
+  LAST=$?
+  out="${out//$'\r'/}"
+  printf '%s\n[exit %s]\n' "${out}" "${LAST}"
+  printf 'reading=%s readAt=%s\n%s\n' "${label}" "$(instant)" "${out:-no pod}" >>"${A}/evidence/runner-pod-readings.txt"
+}
+
+# The node's clock, read between two instants of this host's clock. The node is
+# the one container of the provider, and its pods read the same kernel clock. So
+# the node instant minus each host instant bounds the skew of the pods' clock.
+node_clock() {
+  local label="$1" before node after
+  before="$(instant)"
+  node="$(docker exec desktop-control-plane date -u +%Y-%m-%dT%H:%M:%S.%3NZ 2>/dev/null | tr -d '\r')"
+  after="$(instant)"
+  printf 'clock=%s hostBefore=%s node=%s hostAfter=%s\n' "${label}" "${before}" "${node:-unread}" "${after}" |
+    tee -a "${A}/evidence/attempt.txt"
+}
+
+# Waits until the log of a collector started in the background states that it
+# samples, at most COLLECTOR_START_BOUND_SECONDS. Refuses when the collector
+# ended before that, or did not reach it.
+wait_sampling() {
+  local name="$1" pid="$2" log="$3" waited=0
+  while ! grep -q 'samples: ' "${log}" 2>/dev/null; do
+    kill -0 "${pid}" 2>/dev/null || { run tail -n 20 "${log}"; refuse "the ${name} collector ended before it sampled"; }
+    [ "${waited}" -lt "${COLLECTOR_START_BOUND_SECONDS}" ] || { run tail -n 20 "${log}"; refuse "the ${name} collector did not start sampling within ${COLLECTOR_START_BOUND_SECONDS}s"; }
+    sleep 1
+    waited=$((waited + 1))
+  done
+  printf 'the %s collector samples, %ss after its start, at %s\n' "${name}" "${waited}" "$(instant)"
+}
+
+release_pods() {
+  run k get pods -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" \
+    -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}uid={.metadata.uid}{"\t"}{.metadata.labels.app\.kubernetes\.io/component}{"\t"}phase={.status.phase}{"\t"}ready={.status.conditions[?(@.type=="Ready")].status}{"\t"}restarts={range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}'
+}
+
+# --------------------------------------------------------------------------
+up() {
+  step "0. Start: the date and the tool versions"
+  run now
+  run kubectl version --client -o json
+  run helm version --short
+  run terraform version
+  run docker version --format '{{.Client.Version}} {{.Server.Version}}'
+  run uv --version
+  run uv run --locked python --version
+  run git --version
+
+  step "P1. The executing commit, the working tree, and the commit the controller will read"
+  prepare git rev-parse HEAD
+  HEAD_COMMIT="$(git rev-parse HEAD)"
+  prepare git status --porcelain --untracked-files=all
+  [ -z "$(git status --porcelain --untracked-files=all)" ] || refuse "the working tree is not clean"
+  prepare git ls-remote origin refs/heads/main
+  REMOTE_COMMIT="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
+  printf 'executing commit: %s\nremote main:      %s\n' "${HEAD_COMMIT}" "${REMOTE_COMMIT}"
+  prepare git diff --stat --exit-code "${REMOTE_COMMIT}" HEAD -- charts gitops infra/argocd
+  [ ! -e "${WORK}/started-at" ] || refuse "the work directory of this run name was used before"
+  mkdir -p "${WORK}"
+  now >"${WORK}/started-at"
+  printf '%s' "${HEAD_COMMIT}" >"${WORK}/executing-commit"
+
+  step "P2. The files this run reads"
+  run sha256sum "$0" "${CAPACITY_SCRIPT}" "${APPLICATION_SCRIPT}" "${BOOTSTRAP}" \
+    "${PREREQUISITES}" scripts/environment/lib.sh infra/argocd/local-docker-desktop-support-assistant.yaml \
+    infra/argocd/workloads-project.yaml charts/inferops-llm/Chart.yaml \
+    "${RELEASE_DIRECTORY}/values.generated.yaml" "${RELEASE_DIRECTORY}/rendered-workload-release.yaml"
+  prepare uv run --locked python -m tools.gitops_desired_state --check
+
+  step "P3. The provider, and the cluster before the run"
+  printf '$ export INFEROPS_PROVIDER=docker-desktop\n'
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  prepare kubectl version --context docker-desktop
+  prepare k get nodes -o wide
+  read_into "${WORK}/namespaces.before" k get namespaces -o name
+  [ "${LAST}" -eq 0 ] || refuse "the namespaces were not read"
+  run cat "${WORK}/namespaces.before"
+  read_into "${WORK}/crds.before" k get customresourcedefinitions -o name
+  [ "${LAST}" -eq 0 ] || refuse "the custom resource definitions were not read"
+  run cat "${WORK}/crds.before"
+  prepare k get storageclasses
+  prepare k get pods --all-namespaces
+  if grep -q -e "^namespace/${NAMESPACE}\$" -e "^namespace/${CONTROLLER_NAMESPACE}\$" "${WORK}/namespaces.before"; then
+    refuse "the cluster already holds the release namespace or the controller namespace"
+  fi
+
+  step "C1. The capacity gate, before anything is installed"
+  capacity_reading before-install
+
+  step "P4. The API image at the executing commit, and the model seed image"
+  prepare bash scripts/environment/api-image.sh build
+  prepare bash scripts/environment/api-image.sh load
+  prepare bash scripts/environment/api-image.sh digest
+  API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)" || refuse "api-image.sh digest failed"
+  printf '%s' "${API_IMAGE_DIGEST}" >"${WORK}/api-image-digest"
+  prepare bash scripts/environment/model-seed-image.sh build
+  prepare bash scripts/environment/model-seed-image.sh load
+  prepare bash scripts/environment/model-seed-image.sh digest
+
+  step "P5. The platform namespace and the model cache claim"
+  prepare bash "${PREREQUISITES}" apply
+  run k get persistentvolumeclaims -n "${NAMESPACE}" -o wide
+
+  step "P6. Fill the claim from the seed image with one preparation Helm release, and remove that release"
+  printf '$ bash scripts/environment/api-image.sh values > %s/api-image-values.yaml\n' "${WORK}"
+  bash scripts/environment/api-image.sh values >"${WORK}/api-image-values.yaml" || refuse "api-image.sh values failed"
+  printf '$ bash scripts/environment/model-seed-image.sh values > %s/model-seed-values.yaml\n' "${WORK}"
+  bash scripts/environment/model-seed-image.sh values >"${WORK}/model-seed-values.yaml" || refuse "model-seed-image.sh values failed"
+  # The preparation release is the V1 real values file: one API replica and one
+  # runtime replica. It is not the release this run observes.
+  prepare helm --kube-context docker-desktop install inferops charts/inferops-llm \
+    --namespace "${NAMESPACE}" \
+    --values charts/inferops-llm/ci/real-values.yaml \
+    --values "${WORK}/api-image-values.yaml" \
+    --values "${WORK}/model-seed-values.yaml" \
+    --set model.acquisition.resources.limits.memory=2Gi \
+    --wait --timeout 15m
+  prepare helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --wait --timeout 600s
+  printf '$ kubectl --context docker-desktop get %s -n %s -l %s -o name\n' "${KINDS}" "${NAMESPACE}" "${INSTANCE_SELECTOR}"
+  printf '  repeated every 2 seconds, at most 120 times, until it prints nothing\n'
+  left="unread"
+  for _ in $(seq 1 120); do
+    left="$(k get "${KINDS}" -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o name)" ||
+      refuse "the query for what the preparation release left did not answer"
+    [ -n "${left}" ] || break
+    sleep 2
+  done
+  printf 'What the preparation release left: %s\n' "${left:-nothing}"
+  [ -z "${left}" ] || refuse "the preparation release left an object"
+
+  step "P7. Install the GitOps controller with the bootstrap procedure, and verify it"
+  prepare bash "${BOOTSTRAP}" install
+  prepare bash "${BOOTSTRAP}" verify
+
+  step "C2. The capacity gate again, before the Application is applied"
+  capacity_reading before-apply
+
+  step "D1. Apply the project and the Application"
+  run now
+  run bash "${APPLICATION_SCRIPT}" apply --api-image-digest "$(cat "${WORK}/api-image-digest")"
+
+  step "D2. Wait for the two rollouts, with one bound each"
+  run k rollout status "deployment/${API_DEPLOYMENT}" -n "${NAMESPACE}" --timeout="${ROLLOUT_BUDGET_SECONDS}s"
+  run k rollout status "deployment/${RUNTIME_DEPLOYMENT}" -n "${NAMESPACE}" --timeout="${ROLLOUT_BUDGET_SECONDS}s"
+  run now
+
+  step "D3. What the controller reports, and the commit it read"
+  run bash "${APPLICATION_SCRIPT}" verify
+  run k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+    -o 'jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status} operation={.status.operationState.phase}{"\n"}'
+  run k get networkpolicies -n "${NAMESPACE}" -o name
+  run k get pods -n "${NAMESPACE}" -o wide
+  run now
+}
+
+# --------------------------------------------------------------------------
+capture() {
+  [ -n "${ATTEMPT}" ] || { printf 'REFUSED: capture needs the attempt identifier as its third argument.\n'; exit 2; }
+  [[ "${ATTEMPT}" =~ ^integration-[1-9][0-9]?$ ]] || { printf 'REFUSED: the attempt identifier is integration-N.\n'; exit 2; }
+  [ -e "${WORK}/started-at" ] || { printf 'REFUSED: %s holds no start time. Run the phase up first.\n' "${WORK}"; exit 1; }
+  local A="${WORK}/${ATTEMPT}"
+  [ ! -e "${A}" ] || { printf 'REFUSED: %s exists. One attempt identifier is one attempt.\n' "${A}"; exit 1; }
+  # A refusal from here on spends the identifier: the next attempt takes the next
+  # number, and the directory of the refused one is kept.
+  mkdir -p "${A}/evidence"
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  # The runner script and the collectors call `python`. The locked environment
+  # comes first, so that is the interpreter that uv.lock pins.
+  export PATH="$(pwd)/.venv/Scripts:$(pwd)/.venv/bin:${PATH}"
+
+  step "E0. The executing commit, the working tree, and the files this attempt runs"
+  run now
+  prepare python --version
+  prepare python -c "import tools.reliability_runner, tools.experiment_timeline, tools.experiment_telemetry, tools.experiment_events"
+  prepare git rev-parse HEAD
+  HEAD_COMMIT="$(git rev-parse HEAD)"
+  prepare git status --porcelain --untracked-files=all
+  [ -z "$(git status --porcelain --untracked-files=all)" ] || refuse "the working tree is not clean"
+  REMOTE_COMMIT="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
+  printf 'executing commit: %s\nremote main:      %s\n' "${HEAD_COMMIT}" "${REMOTE_COMMIT}"
+  prepare git diff --stat --exit-code "${REMOTE_COMMIT}" HEAD -- charts gitops infra/argocd
+  printf '%s' "${HEAD_COMMIT}" >"${A}/executing-commit"
+  printf '%s' "${REMOTE_COMMIT}" >"${A}/remote-main"
+  # The frozen procedure: every material file has its pinned content.
+  prepare uv run --locked python -m tools.experiment_freeze --check
+  prepare uv run --locked python -m tools.experiment_freeze --changes "${FREEZE_RECORD}"
+  run sha256sum "$0" "${RUNNER_SCRIPT}" "${TIMELINE_SCRIPT}" "${TELEMETRY_SCRIPT}" scripts/environment/lib.sh \
+    tools/reliability_runner/incluster.py tools/reliability_runner/core.py \
+    tools/experiment_timeline/core.py tools/experiment_telemetry/core.py tools/experiment_events/core.py \
+    deploy/serving/reliability/rp-1-profile.v1.json \
+    "${RELEASE_DIRECTORY}/values.generated.yaml" "${RELEASE_DIRECTORY}/rendered-workload-release.yaml"
+
+  step "E1. The environment and the release, as the cluster reports them"
+  prepare kubectl version --context docker-desktop
+  run k get nodes -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}{.status.nodeInfo.kubeletVersion}{"\t"}{.status.nodeInfo.containerRuntimeVersion}{"\n"}{end}'
+  run k get daemonset kindnet -n kube-system -o 'jsonpath={.spec.template.spec.containers[0].image}{"\n"}'
+  run k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+    -o 'jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status}{"\n"}'
+  run k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" \
+    -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}replicas={.spec.replicas}{"\t"}ready={.status.readyReplicas}{"\t"}{range .spec.template.spec.containers[*]}{.image}{" "}{end}{"\n"}{end}'
+  run k get networkpolicies -n "${NAMESPACE}" -o name
+  release_pods
+
+  step "E1b. The state the declaration expects, before anything is captured"
+  local application_state api_ready runtime_ready
+  application_state="$(k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+    -o 'jsonpath={.status.sync.revision} {.status.sync.status} {.status.health.status}' 2>/dev/null | tr -d '\r')"
+  api_ready="$(k get deployment "${API_DEPLOYMENT}" -n "${NAMESPACE}" -o 'jsonpath={.status.readyReplicas}' 2>/dev/null | tr -d '\r')"
+  runtime_ready="$(k get deployment "${RUNTIME_DEPLOYMENT}" -n "${NAMESPACE}" -o 'jsonpath={.status.readyReplicas}' 2>/dev/null | tr -d '\r')"
+  printf 'application: %s\napi ready: %s\nruntime ready: %s\n' "${application_state}" "${api_ready}" "${runtime_ready}"
+  [ "${application_state}" = "${REMOTE_COMMIT} Synced Healthy" ] ||
+    refuse "the Application is not Synced and Healthy at the remote main"
+  [ "${api_ready}" = "2" ] && [ "${runtime_ready}" = "2" ] || refuse "the two Deployments do not each report 2 Ready replicas"
+  {
+    printf 'experimentId=%s\nattempt=%s\nexecutingCommit=%s\nremoteMain=%s\n' "${EXPERIMENT}" "${ATTEMPT}" "${HEAD_COMMIT}" "${REMOTE_COMMIT}"
+    printf 'applicationAtStart=%s\napiReadyAtStart=%s\nruntimeReadyAtStart=%s\n' "${application_state}" "${api_ready}" "${runtime_ready}"
+  } >>"${A}/evidence/attempt.txt"
+  node_clock start
+
+  step "E2. Open the operator event log"
+  EVENTS="${A}/evidence/operator-events.jsonl"
+  prepare uv run --locked python -m tools.experiment_events open --experiment "${EXPERIMENT}" --run "${ATTEMPT}" "${EVENTS}"
+
+  step "E3. Start the timeline collector and the telemetry collector, in the background"
+  run now
+  printf '$ bash %s --experiment %s --run %s --samples %s --interval %s --into %s > %s/timeline.log 2>&1 &\n' \
+    "${TIMELINE_SCRIPT}" "${EXPERIMENT}" "${ATTEMPT}" "${TIMELINE_SAMPLES}" "${TIMELINE_INTERVAL_SECONDS}" "${ATTEMPT}" "${A}"
+  bash "${TIMELINE_SCRIPT}" --experiment "${EXPERIMENT}" --run "${ATTEMPT}" \
+    --samples "${TIMELINE_SAMPLES}" --interval "${TIMELINE_INTERVAL_SECONDS}" --into "${ATTEMPT}" >"${A}/timeline.log" 2>&1 &
+  TIMELINE_PID=$!
+  local streams_epoch
+  streams_epoch="$(date -u +%s)"
+  wait_sampling timeline "${TIMELINE_PID}" "${A}/timeline.log"
+  printf '$ bash %s --experiment %s --run %s --samples %s --interval %s --into %s > %s/telemetry.log 2>&1 &\n' \
+    "${TELEMETRY_SCRIPT}" "${EXPERIMENT}" "${ATTEMPT}" "${TELEMETRY_SAMPLES}" "${TELEMETRY_INTERVAL_SECONDS}" "${ATTEMPT}" "${A}"
+  bash "${TELEMETRY_SCRIPT}" --experiment "${EXPERIMENT}" --run "${ATTEMPT}" \
+    --samples "${TELEMETRY_SAMPLES}" --interval "${TELEMETRY_INTERVAL_SECONDS}" --into "${ATTEMPT}" >"${A}/telemetry.log" 2>&1 &
+  TELEMETRY_PID=$!
+  wait_sampling telemetry "${TELEMETRY_PID}" "${A}/telemetry.log"
+  local lead=$((streams_epoch + STREAMS_LEAD_SECONDS - $(date -u +%s)))
+  [ "${lead}" -le 0 ] || { printf 'sleep %s\n' "${lead}"; sleep "${lead}"; }
+  kill -0 "${TIMELINE_PID}" 2>/dev/null || refuse "the timeline collector ended before the runner start"
+  kill -0 "${TELEMETRY_PID}" 2>/dev/null || refuse "the telemetry collector ended before the runner start"
+  printf 'both collectors are running at %s\n' "$(instant)"
+
+  step "E4. Start the runner Job against the API Service"
+  RELEASE_ID="$(awk -F'"' '/^  releaseId:/ { print $2 }' "${RELEASE_DIRECTORY}/rendered-workload-release.yaml")"
+  printf 'declared release identifier: %s\n' "${RELEASE_ID}"
+  run bash "${RUNNER_SCRIPT}" start --experiment-id "${EXPERIMENT}" --run-id "${ATTEMPT}" \
+    --duration-seconds "${RUNNER_DURATION_SECONDS}" --release-id "${RELEASE_ID}"
+  START_EXIT="${LAST}"
+  RUNNER_STARTED_AT="$(instant)"
+  printf 'runner start returned at %s\n' "${RUNNER_STARTED_AT}"
+  printf '%s' "${RUNNER_STARTED_AT}" >"${A}/runner-start-returned-at"
+  RUNNER_STARTED_EPOCH="$(date -u +%s)"
+  printf 'declaredReleaseId=%s\nrunnerStartExit=%s\nrunnerStartReturnedAt=%s\n' \
+    "${RELEASE_ID}" "${START_EXIT}" "${RUNNER_STARTED_AT}" >>"${A}/evidence/attempt.txt"
+
+  if [ "${START_EXIT}" -eq 0 ]; then
+    printf 'sleep 30\n'
+    sleep 30
+    step "E6a. The runner pod, before the deletion"
+    runner_pod before-deletion
+    release_pods
+
+    step "E5. Delete one API pod, the first by name, at ${FAULT_AFTER_SECONDS}s after the runner start"
+    WAIT_FOR=$((RUNNER_STARTED_EPOCH + FAULT_AFTER_SECONDS - $(date -u +%s)))
+    [ "${WAIT_FOR}" -le 0 ] || { printf 'sleep %s\n' "${WAIT_FOR}"; sleep "${WAIT_FOR}"; }
+    # The first Ready API pod by name. A pod that is not Ready is not a pod that
+    # serves, and deleting it would replace nothing that the caller reaches.
+    TARGET="$(k get pods -n "${NAMESPACE}" -l "${API_SELECTOR}" \
+      -o 'jsonpath={range .items[*]}{.metadata.name}{" "}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' |
+      tr -d '\r' | awk '$2 == "True" { print $1 }' | sort | head -n 1)"
+    printf 'the API pod to delete: %s\n' "${TARGET:-none}"
+    printf 'deletedPod=%s\n' "${TARGET:-none}" >>"${A}/evidence/attempt.txt"
+    if [ -n "${TARGET}" ]; then
+      run uv run --locked python -m tools.experiment_events record --kind fault-injection-started \
+        --actor control-process --code delete-api-pod --subject "pod/${TARGET}" "${EVENTS}"
+      run k delete pod "${TARGET}" -n "${NAMESPACE}" --wait=true --timeout=300s
+      run uv run --locked python -m tools.experiment_events record --kind fault-injection-finished \
+        --actor control-process --code delete-api-pod --subject "pod/${TARGET}" "${EVENTS}"
+      printf '%s' "${TARGET}" >"${A}/deleted-pod"
+    else
+      printf 'No API pod was read. Nothing was deleted.\n'
+    fi
+    run now
+    step "E6b. The runner pod and the release pods, after the deletion"
+    runner_pod after-deletion
+    release_pods
+
+    step "E7. Wait for the Job, at most ${JOB_WAIT_BOUND_SECONDS}s, reading its status every ${JOB_POLL_SECONDS}s"
+    local waited=0 status_line=""
+    while [ "${waited}" -le "${JOB_WAIT_BOUND_SECONDS}" ]; do
+      status_line="$(k get job "inferops-reliability-${ATTEMPT}" -n "${NAMESPACE}" \
+        -o 'jsonpath=succeeded={.status.succeeded} failed={.status.failed} completed={.status.completionTime}' 2>&1 | tr -d '\r')"
+      case "${status_line}" in
+        *"succeeded=1"* | *"failed=1"*) break ;;
+      esac
+      sleep "${JOB_POLL_SECONDS}"
+      waited=$((waited + JOB_POLL_SECONDS))
+    done
+    printf 'after %ss of waiting: %s\n' "${waited}" "${status_line}"
+    run bash "${RUNNER_SCRIPT}" status --run-id "${ATTEMPT}"
+    step "E6c. The runner pod, at its end"
+    runner_pod at-end
+    local job_line
+    job_line="$(k get job "inferops-reliability-${ATTEMPT}" -n "${NAMESPACE}" \
+      -o 'jsonpath=active={.status.active} succeeded={.status.succeeded} failed={.status.failed} ready={.status.ready} terminating={.status.terminating}' 2>&1)"
+    job_line="${job_line//$'\r'/}"
+    printf '%s\n' "${job_line}"
+    printf 'jobAtEnd=%s\n' "${job_line}" >>"${A}/evidence/attempt.txt"
+    run now
+  else
+    printf 'The runner start exited %s. No pod is deleted, and the attempt continues to its collection and cleanup.\n' "${START_EXIT}"
+  fi
+
+  step "E7b. Wait for the two collectors, at most ${COLLECTOR_WAIT_BOUND_SECONDS}s"
+  local waited_c=0
+  while [ "${waited_c}" -le "${COLLECTOR_WAIT_BOUND_SECONDS}" ]; do
+    if ! kill -0 "${TIMELINE_PID}" 2>/dev/null && ! kill -0 "${TELEMETRY_PID}" 2>/dev/null; then
+      break
+    fi
+    sleep 5
+    waited_c=$((waited_c + 5))
+  done
+  # A collector that still runs after the bound is not waited for: it is stated,
+  # and its streams are then absent.
+  local name pid
+  for name in timeline telemetry; do
+    if [ "${name}" = timeline ]; then pid="${TIMELINE_PID}"; else pid="${TELEMETRY_PID}"; fi
+    if kill -0 "${pid}" 2>/dev/null; then
+      printf '%s collector still runs after %ss. It is not waited for.\n' "${name}" "${waited_c}"
+      printf '%sCollectorExit=still-running\n' "${name}" >>"${A}/evidence/attempt.txt"
+    else
+      wait "${pid}"
+      LAST=$?
+      printf '%s collector exit %s\n' "${name}" "${LAST}"
+      printf '%sCollectorExit=%s\n' "${name}" "${LAST}" >>"${A}/evidence/attempt.txt"
+    fi
+  done
+  run tail -n 12 "${A}/timeline.log"
+  run tail -n 12 "${A}/telemetry.log"
+  run now
+
+  step "E8. Collect the caller record, and close the event log"
+  if [ "${START_EXIT}" -eq 0 ]; then
+    run bash "${RUNNER_SCRIPT}" collect --run-id "${ATTEMPT}"
+  fi
+  prepare uv run --locked python -m tools.experiment_events close "${EVENTS}"
+
+  step "E9. Clean up the runner, and read what is left"
+  run bash "${RUNNER_SCRIPT}" cleanup --run-id "${ATTEMPT}"
+  run k get jobs,configmaps,pods,networkpolicies -n "${NAMESPACE}" -l "inferops.io/run-id=${ATTEMPT}" -o name
+  run k get networkpolicies -n "${NAMESPACE}" -o name
+  release_pods
+  run k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+    -o 'jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status}{"\n"}'
+  node_clock end
+  run now
+
+  step "E10. Hold each file to its own checker"
+  local runs_dir=".artifacts/reliability-runner/runs/${ATTEMPT}"
+  local timeline_dir=".artifacts/experiment-timeline/collections/${ATTEMPT}/streams"
+  local telemetry_dir=".artifacts/experiment-telemetry/collections/${ATTEMPT}/streams"
+  for name in endpoints pods deployments argo; do
+    [ ! -f "${timeline_dir}/${name}.jsonl" ] || tr -d '\r' <"${timeline_dir}/${name}.jsonl" >"${A}/evidence/${name}.jsonl"
+  done
+  for name in telemetry resources; do
+    [ ! -f "${telemetry_dir}/${name}.jsonl" ] || tr -d '\r' <"${telemetry_dir}/${name}.jsonl" >"${A}/evidence/${name}.jsonl"
+  done
+  if [ -f "${runs_dir}/caller.jsonl" ]; then
+    tr -d '\r' <"${runs_dir}/caller.jsonl" >"${A}/evidence/caller.jsonl"
+  elif [ -f "${runs_dir}/caller.refused.jsonl" ]; then
+    tr -d '\r' <"${runs_dir}/caller.refused.jsonl" >"${A}/evidence/caller.refused.jsonl"
+  fi
+  run ls -l "${A}/evidence"
+  run uv run --locked python -m tools.experiment_timeline check \
+    "${A}/evidence/endpoints.jsonl" "${A}/evidence/pods.jsonl" "${A}/evidence/deployments.jsonl" "${A}/evidence/argo.jsonl"
+  run uv run --locked python -m tools.experiment_telemetry check "${A}/evidence/telemetry.jsonl" "${A}/evidence/resources.jsonl"
+  run uv run --locked python -m tools.experiment_events check "${EVENTS}"
+  if [ -f "${A}/evidence/caller.jsonl" ]; then
+    run uv run --locked python -m tools.reliability_runner verify "${A}/evidence/caller.jsonl" --plan "${runs_dir}/plan.json"
+  fi
+
+  step "E7c. Whether the last timeline read covers the analysis window, by the rule below"
+  # The last pods reading that finished, against the end of the window. It is
+  # stated, and it decides nothing here: the analysis states what it could read.
+  local window_to_epoch last_read
+  window_to_epoch=$((RUNNER_STARTED_EPOCH + WINDOW_LEAD_SECONDS + WINDOW_SECONDS))
+  last_read="$(python -c 'import json, sys
+lines = [json.loads(line) for line in open(sys.argv[1], encoding="utf-8")]
+reads = [line["read"]["finishedAt"] for line in lines if line.get("record") == "reading"]
+print(reads[-1] if reads else "")' "${A}/evidence/pods.jsonl" 2>/dev/null | tr -d '\r')"
+  printf 'last pods reading finished at: %s\nwindow ends at: %s\n' "${last_read:-none}" \
+    "$(date -u -d "@${window_to_epoch}" +%Y-%m-%dT%H:%M:%S.000Z)"
+  if [ -n "${last_read}" ] && [ "$(date -u -d "${last_read}" +%s)" -ge "${window_to_epoch}" ]; then
+    printf 'timelineCoversWindow=yes\n' | tee -a "${A}/evidence/attempt.txt"
+  else
+    printf 'timelineCoversWindow=no\n' | tee -a "${A}/evidence/attempt.txt"
+  fi
+
+  step "E11. The analysis declaration, by the rule fixed at the top of this driver"
+  local from_epoch to_epoch from_text to_text
+  from_epoch=$((RUNNER_STARTED_EPOCH + WINDOW_LEAD_SECONDS))
+  to_epoch=$((from_epoch + WINDOW_SECONDS))
+  from_text="$(date -u -d "@${from_epoch}" +%Y-%m-%dT%H:%M:%S.000Z)"
+  to_text="$(date -u -d "@${to_epoch}" +%Y-%m-%dT%H:%M:%S.000Z)"
+  printf '{"schema":"inferops.io/reliability-analysis-declaration/v1alpha1","experimentId":"%s","runId":"%s","window":{"from":"%s","to":"%s"},"expected":{"desiredRevision":"%s","readyReplicas":{"platform-api":2,"serving-runtime":2},"runtimeReadyEndpoints":2},"signals":[{"id":"api-ready-endpoints","source":"endpoints-ready","tier":"platform-api","problemBelow":2},{"id":"runtime-ready-endpoints","source":"endpoints-ready","tier":"serving-runtime","problemBelow":2},{"id":"api-ready-pods","source":"pods-ready","tier":"platform-api","problemBelow":2},{"id":"runtime-ready-pods","source":"pods-ready","tier":"serving-runtime","problemBelow":2},{"id":"application-sync","source":"application-sync-status","healthyValues":["Synced"]},{"id":"application-health","source":"application-health-status","healthyValues":["Healthy"]}]}\n' \
+    "${EXPERIMENT}" "${ATTEMPT}" "${from_text}" "${to_text}" "$(cat "${A}/remote-main")" >"${A}/declaration.json"
+  run cat "${A}/declaration.json"
+  run now
+}
+
+# --------------------------------------------------------------------------
+down() {
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  step "Z0. Start of the cleanup"
+  run now
+  independent_state
+
+  step "Z1. Remove the Application and what it applied, the controller, and the prerequisite layer"
+  run bash "${APPLICATION_SCRIPT}" remove --confirm
+  run helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --ignore-not-found --wait --timeout 600s
+  run bash "${BOOTSTRAP}" remove --confirm
+  run bash "${PREREQUISITES}" destroy --confirm
+
+  step "Z2. The cluster after the run, compared with what step P3 read"
+  independent_state
+  k get namespaces -o name | tr -d '\r' >"${WORK}/namespaces.after"
+  k get customresourcedefinitions -o name | tr -d '\r' >"${WORK}/crds.after"
+  run diff "${WORK}/namespaces.before" "${WORK}/namespaces.after"
+  run diff "${WORK}/crds.before" "${WORK}/crds.after"
+  run k get persistentvolumes -o name
+  run k get pods --all-namespaces
+  run now
+}
+
+case "${PHASE}" in
+  up) up ;;
+  capture) capture ;;
+  down) down ;;
+  *)
+    printf 'REFUSED: the phase is up, capture, or down.\n'
+    exit 2
+    ;;
+esac

@@ -75,6 +75,13 @@ R3 = "docs/proof/experiments/v2-e01/freeze-r3.v1alpha1.json"
 R2_PIN = "198f60b5133338e445b1c0fef9f9171ad3e58fe3bde66ac1e7a8d1d674730ac8"
 #: Revision 3's registered pin, written out for the same reason.
 R3_PIN = "b4aa013dc482a8f536395c094ab76dc2b753e04d7c139a4b0cadf17c672da739"
+#: The first record of another experiment directory: the Sprint 5 integration
+#: validation, registered by V2-S5-006-PR1. Its pin is written out for the same reason.
+S5I = "docs/proof/experiments/v2-s5-integration/freeze-r1.v1alpha1.json"
+S5I_PIN = "bec32edf1b1cdb29c3f49488f5f1149b7162a1009cda36f26ad0fdf79588b0df"
+#: Its second revision, registered by the same change after the first attempt.
+S5I_R2 = "docs/proof/experiments/v2-s5-integration/freeze-r2.v1alpha1.json"
+S5I_R2_PIN = "70d8dd0bd5fca5aeaf4913464b1b9a5a3b515fd5afcb218c7b1500c4f0b7903b"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so
@@ -109,7 +116,7 @@ def test_every_committed_record_holds_every_rule() -> None:
 
 
 def test_the_committed_records_are_the_pinned_ones() -> None:
-    assert record_paths() == sorted(FROZEN_RECORDS) == [R1, R2, R3]
+    assert record_paths() == sorted(FROZEN_RECORDS) == [R1, R2, R3, S5I, S5I_R2]
     assert load_registry() == dict(FROZEN_RECORDS)
 
 
@@ -131,7 +138,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "PASSED: 3 freeze record(s)" in result.stdout
+    assert "PASSED: 5 freeze record(s)" in result.stdout
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
@@ -692,6 +699,8 @@ def test_every_registered_record_keeps_the_pin_it_was_registered_with() -> None:
         R1: "fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9",
         R2: R2_PIN,
         R3: R3_PIN,
+        S5I: S5I_PIN,
+        S5I_R2: S5I_R2_PIN,
     }
 
 

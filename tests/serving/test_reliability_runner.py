@@ -1555,17 +1555,20 @@ def manifest(**changes: Any) -> dict[str, Any]:
     return core.build_manifest(plan(duration_seconds=300), image=IMAGE, **changes)
 
 
-def test_a_run_is_one_configmap_and_one_job_in_the_namespace_of_the_release() -> None:
+def test_a_run_is_one_policy_one_configmap_and_one_job_in_the_release_namespace() -> (
+    None
+):
     items = manifest()["items"]
     assert [(item["apiVersion"], item["kind"]) for item in items] == [
+        ("networking.k8s.io/v1", "NetworkPolicy"),
         ("v1", "ConfigMap"),
         ("batch/v1", "Job"),
     ]
     for item in items:
         assert item["metadata"]["name"] == "inferops-reliability-run-1"
         assert item["metadata"]["namespace"] == "inferops-release"
-    # No Service, no Ingress, no Gateway, no policy, and no account.
-    assert "Ingress" not in core.manifest_text(manifest())
+    # No Service, no Ingress object, no Gateway, and no account. The one policy is
+    # the allowance of the run, and the test below holds it.
     assert "Gateway" not in core.manifest_text(manifest())
 
 
@@ -1579,9 +1582,10 @@ def test_no_selector_of_the_release_selects_the_runner() -> None:
         if isinstance(selector, dict):
             selectors.append(selector.get("matchLabels", selector))
     assert len(selectors) >= 6
-    config_map, job = manifest()["items"]
+    policy, config_map, job = manifest()["items"]
     labels = job["spec"]["template"]["metadata"]["labels"]
     assert labels == job["metadata"]["labels"] == config_map["metadata"]["labels"]
+    assert labels == policy["metadata"]["labels"]
     assert "app.kubernetes.io/instance" not in labels
     assert labels["app.kubernetes.io/name"] == "inferops-reliability-runner"
     assert labels["inferops.io/run-id"] == "run-1"
@@ -1591,8 +1595,100 @@ def test_no_selector_of_the_release_selects_the_runner() -> None:
         assert not all(labels.get(key) == value for key, value in selector.items())
 
 
+def test_the_policy_of_a_run_admits_its_runner_to_the_api_pods_and_nothing_else() -> (
+    None
+):
+    """The release's policy admits its own pods and a named collector to the API, so
+    a network plugin that enforces it drops the runner's requests. In the first
+    attempt of the Sprint 5 integration validation no request reached the API, which
+    three readings attribute to that policy. The policy of a run admits
+    the pod of that run, by its run identifier, to the API pods on the API port, and
+    it is held here against the committed render of the chart."""
+    documents = [
+        document
+        for document in yaml.safe_load_all(RENDER_PATH.read_text(encoding="utf-8"))
+        if document
+    ]
+    (api,) = [
+        document
+        for document in documents
+        if document["kind"] == "Deployment"
+        and document["metadata"]["labels"]["app.kubernetes.io/component"]
+        == "platform-api"
+    ]
+    assert api["spec"]["selector"]["matchLabels"] == dict(core.API_POD_SELECTOR)
+    (container,) = [
+        c for c in api["spec"]["template"]["spec"]["containers"] if c["name"] == "api"
+    ]
+    assert [port["containerPort"] for port in container["ports"]] == [
+        core.API_CONTAINER_PORT
+    ]
+    release_policies = {
+        document["metadata"]["name"]: document["spec"]
+        for document in documents
+        if document["kind"] == "NetworkPolicy"
+    }
+    assert release_policies["inferops-inferops-llm-api"]["podSelector"] == {
+        "matchLabels": dict(core.API_POD_SELECTOR)
+    }
+    # The port that the release's own API policy admits is the port of the run's.
+    assert {
+        port["port"]
+        for rule in release_policies["inferops-inferops-llm-api"]["ingress"]
+        for port in rule["ports"]
+    } == {core.API_CONTAINER_PORT}
+
+    policy, _, job = manifest()["items"]
+    assert policy["metadata"]["name"] == "inferops-reliability-run-1"
+    assert policy["spec"] == {
+        "podSelector": {"matchLabels": dict(core.API_POD_SELECTOR)},
+        "policyTypes": ["Ingress"],
+        "ingress": [
+            {
+                "from": [
+                    {
+                        "podSelector": {
+                            "matchLabels": {
+                                "app.kubernetes.io/name": "inferops-reliability-runner",
+                                "inferops.io/run-id": "run-1",
+                            }
+                        }
+                    }
+                ],
+                "ports": [{"port": 8090, "protocol": "TCP"}],
+            }
+        ],
+    }
+    # The pod of this run carries every label that the rule names; the pod of
+    # another run does not, and no pod of the release does.
+    runner_labels = job["spec"]["template"]["metadata"]["labels"]
+    admitted = policy["spec"]["ingress"][0]["from"][0]["podSelector"]["matchLabels"]
+    assert all(runner_labels[key] == value for key, value in admitted.items())
+    other = core.build_manifest(
+        plan(run_id="run-2", duration_seconds=300), image=IMAGE
+    )["items"][2]["spec"]["template"]["metadata"]["labels"]
+    assert not all(other.get(key) == value for key, value in admitted.items())
+    for document in documents:
+        # The pod template of a workload, and the labels of a bare pod such as the
+        # pod of a Helm test.
+        for labels in (
+            document.get("spec", {})
+            .get("template", {})
+            .get("metadata", {})
+            .get("labels", {}),
+            document["metadata"].get("labels", {}) if document["kind"] == "Pod" else {},
+        ):
+            assert not all(labels.get(key) == value for key, value in admitted.items())
+    # It selects the API pods and no runtime pod, and it states no egress rule.
+    assert (
+        policy["spec"]["podSelector"]["matchLabels"]["app.kubernetes.io/component"]
+        == "platform-api"
+    )
+    assert "egress" not in policy["spec"]
+
+
 def test_the_job_is_bounded_and_it_runs_one_pod_once() -> None:
-    spec = manifest()["items"][1]["spec"]
+    spec = manifest()["items"][2]["spec"]
     assert (spec["completions"], spec["parallelism"], spec["backoffLimit"]) == (1, 1, 0)
     assert spec["activeDeadlineSeconds"] == 300 + 150 + 120
     assert spec["ttlSecondsAfterFinished"] == 3600
@@ -1603,7 +1699,7 @@ def test_the_job_is_bounded_and_it_runs_one_pod_once() -> None:
 
 
 def test_the_pod_holds_no_token_no_probe_and_no_second_container() -> None:
-    pod = manifest()["items"][1]["spec"]["template"]["spec"]
+    pod = manifest()["items"][2]["spec"]["template"]["spec"]
     assert pod["automountServiceAccountToken"] is False
     assert pod["enableServiceLinks"] is False
     assert "serviceAccountName" not in pod
@@ -1641,7 +1737,7 @@ def test_the_pod_holds_no_token_no_probe_and_no_second_container() -> None:
 
 
 def test_the_configmap_holds_the_runner_file_and_the_plan_with_their_digests() -> None:
-    config_map = manifest()["items"][0]
+    config_map = manifest()["items"][1]
     assert config_map["immutable"] is True
     assert set(config_map["data"]) == {"incluster.py", "plan.json"}
     source = config_map["data"]["incluster.py"]
@@ -1749,12 +1845,13 @@ def test_the_script_restates_the_names_of_the_tool_and_each_agrees() -> None:
     assert timeout > PROFILE.request_timeout_ms // 1000 + core.GRACE_MARGIN_SECONDS
 
 
-def test_the_script_changes_the_cluster_with_one_create_and_two_named_deletions() -> (
+def test_the_script_changes_the_cluster_with_one_create_and_three_named_deletions() -> (
     None
 ):
     calls = re.findall(r"inferops::target_kubectl\s+([a-z-]+)", SCRIPT_CODE)
     assert sorted(calls) == [
         "create",
+        "delete",
         "delete",
         "delete",
         "get",
@@ -1772,6 +1869,17 @@ def test_the_script_changes_the_cluster_with_one_create_and_two_named_deletions(
         'delete configmap "${job_name}" -n "${INFEROPS_RELEASE_NAMESPACE}"'
         in SCRIPT_CODE
     )
+    assert (
+        'delete networkpolicy "${job_name}" -n "${INFEROPS_RELEASE_NAMESPACE}"'
+        in SCRIPT_CODE
+    )
+    # The Job goes first, so the pod that the policy admits is gone before it.
+    assert SCRIPT_CODE.index('delete job "${job_name}"') < SCRIPT_CODE.index(
+        'delete networkpolicy "${job_name}"'
+    )
+    # A start refuses an earlier policy of the name, and a cleanup looks for one.
+    assert "get jobs,configmaps,networkpolicies" in SCRIPT_CODE
+    assert "get jobs,configmaps,pods,networkpolicies" in SCRIPT_CODE
     assert not re.search(r"(?<!target_)\bkubectl[ \t]+[a-z]", SCRIPT_CODE)
 
 
@@ -1855,8 +1963,13 @@ def test_the_guide_states_the_bounds_and_the_target_of_the_code() -> None:
         assert text in GUIDE, text
 
 
-def test_the_guide_says_that_no_run_was_started_in_a_cluster() -> None:
-    assert "No run was started in a cluster" in GUIDE
+def test_the_guide_states_where_the_runner_ran_and_keeps_the_earlier_status() -> None:
+    """Until V2-S5-006-PR1 the status said that no run was started in a cluster. The
+    status now names the non-result attempts, and it keeps the earlier statement."""
+    status = GUIDE.split("\n\n", 2)[1]
+    assert "Since `V2-S5-006-PR1` it ran in a cluster" in status
+    assert "two non-result attempts" in status
+    assert "no run was started in a cluster" in status
     assert "does not establish" in GUIDE.lower()
 
 

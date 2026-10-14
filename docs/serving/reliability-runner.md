@@ -1,7 +1,9 @@
 # The RP-1 in-cluster reliability runner
 
-Status: **implemented by `V2-S5-001-PR2`. No run was started in a cluster, and no
-request was sent to a model.** The runner sends the
+Status: **implemented by `V2-S5-001-PR2`. Since `V2-S5-006-PR1` it ran in a cluster in
+two non-result attempts, and in the second it sent 98 requests to the model.** (Until
+then this line said that no run was started in a cluster and that no request was
+sent to a model.) The runner sends the
 [RP-1 reliability workload](reliability-workload-rp-1.md) from a pod inside the
 cluster to the API Service, and it writes one caller record for each run. The loop,
 the classification, and the transport of the runner were executed against scripted
@@ -10,6 +12,15 @@ and the model were replaced, and it says nothing about either. The manifest, the
 script, and the pages were read and not executed: C0. The change registers no claim.
 The validation record is
 [`v2-s5-001-pr2-validation.md`](../proof/serving/v2-s5-001-pr2-validation.md).
+
+> **Since `V2-S5-006-PR1`:** the real path ran on the docker-desktop provider, in the
+> attempts of the [Sprint 5 integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation).
+> In the first attempt no request of the runner reached the API, and three readings
+> point to the release's network policy as the cause. A run is now
+> three objects: [the network policy of the run](#the-network-policy-of-a-run) admits
+> the pod of that run to the API pods. The statements below that say that no run
+> started are the state of `V2-S5-001-PR2`, and the paragraphs that this change
+> edits say so.
 
 > [!WARNING]
 > **A caller record is not a benchmark and not a verdict.** Each record carries the
@@ -40,12 +51,13 @@ not hold it.
 |---|---|
 | [`tools/reliability_runner/incluster.py`](../../tools/reliability_runner/incluster.py) | The one file that a runner pod executes. It imports the standard library and nothing else |
 | [`tools.reliability_runner`](../../tools/reliability_runner/) | The host tool. It writes the plan and the manifest of a run, and it checks a caller record. It contacts no cluster |
-| [`scripts/environment/reliability-runner.sh`](../../scripts/environment/reliability-runner.sh) | The real path. It creates the two objects of a run, reads the log of the pod, and deletes the two objects |
+| [`scripts/environment/reliability-runner.sh`](../../scripts/environment/reliability-runner.sh) | The real path. It creates the three objects of a run, reads the log of the pod, and deletes the three objects |
 | [`tests/serving/test_reliability_runner.py`](../../tests/serving/test_reliability_runner.py) | The suite |
 
 ### Why no image is built
 
-A run is one ConfigMap and one Job. The ConfigMap holds the runner file and the
+A run is one ConfigMap and one Job, and one network policy that
+[admits the pod of the run](#the-network-policy-of-a-run). The ConfigMap holds the runner file and the
 plan. The Job mounts both, read-only, and runs `python -I -u -B` on the file. The
 image of the Job is an interpreter and no more: an image that holds Python 3.12,
 named by digest. The script uses the image that the API Deployment names, because a
@@ -116,6 +128,54 @@ of the chart, and the namespace against the script library.
   for a request in flight, and it writes its end line with the state `interrupted`.
   `terminationGracePeriodSeconds` is one client deadline and 30 seconds. The suite
   calls the stop function directly. No signal was delivered to a runner process.
+
+### The network policy of a run
+
+The chart's policy admits traffic to the API pods from the pods of the release and
+from a named collector, and from nothing else. The runner is neither, by design: its
+labels match no selector of the release. So on a cluster whose network plugin
+enforces the policy, the requests of the runner do not reach the API. In the first
+attempt of the Sprint 5 integration validation, on 2026-10-14 on the docker-desktop
+provider, each of its six requests ended at the client deadline, and the API counted
+none. That the policy dropped them is an inference from those readings and from the
+logs of the API pods. (Until `V2-S5-006-PR1` this page said that whether the local
+cluster enforces the policy was not checked.)
+
+Since `V2-S5-006-PR1` the manifest of a run holds a third object, first in the List:
+a NetworkPolicy with the name and the labels of the run.
+
+| Member | Value |
+|---|---|
+| Selects | The API pods: `app.kubernetes.io/name: inferops-llm`, `app.kubernetes.io/instance: inferops`, `app.kubernetes.io/component: platform-api`. The selector of the API Deployment and of the release's API policy in the committed render |
+| Admits | A pod with `app.kubernetes.io/name: inferops-reliability-runner` and the `inferops.io/run-id` of the run, on TCP port 8090, the API container port of the committed render |
+| Types | `Ingress` only. It states no egress rule, and it selects no runtime pod |
+
+- **It edits no object of the release, and it widens what reaches the API.**
+  Network policies add up: a pod is admitted when one policy that selects it admits
+  the traffic. The default deny and the API policy of the release are unchanged, and
+  the runner does not carry a label of the release. While the policy exists, the API
+  pods admit one more set of pods on the API port than the release's policy alone
+  admits.
+- **It admits the pods labelled for the run, in the release namespace.** The rule
+  matches by label and not by identity: any pod in that namespace that carries
+  `app.kubernetes.io/name: inferops-reliability-runner` and the run's
+  `inferops.io/run-id` is admitted, and the labels are written in the manifest. So
+  whoever can create a pod in that namespace can be admitted while the policy
+  exists. The pod of another run has another run identifier and is not admitted. The
+  suite holds the selector and the port against the committed render.
+- **It lives until the cleanup, and not until the end of the pod.** `start` refuses
+  when a policy of the run's name exists. `kubectl create` makes the objects of the
+  List in their order and does not stop at a refused one, so a policy that is not
+  created leaves a Job whose requests are dropped, and a Job that is not created can
+  leave a policy: `start` then fails, and `cleanup` removes what was made. The time to
+  live of the finished Job removes the Job and its pod and not the policy, which has
+  no owner reference. `cleanup` deletes it after the Job and the ConfigMap, and it
+  fails when an object of the run, the policy included, is still present. When the
+  deletion of the Job or the ConfigMap fails, `cleanup` stops before the policy, and
+  a later `cleanup` removes it.
+- **The runner's own traffic out is not restricted.** No policy of the release selects
+  the runner pod, so its egress, DNS included, is open. That was so before this
+  change.
 
 **The client deadline is the timeout of each socket operation**, as it is in the V1
 transport. An answer that arrives in many slow parts can take longer than the
@@ -337,8 +397,10 @@ format. Its instants are not measurements, and its latencies describe nothing.
 ### The real path
 
 The real path runs only when an operator starts it. It needs a cluster that holds
-the release, and it sends real requests to the model. **The script was not executed
-against a cluster.** The text below states what its code does.
+the release, and it sends real requests to the model. (Until `V2-S5-006-PR1` this
+page said that the script was not executed against a cluster. The attempts of the
+Sprint 5 integration validation ran its four actions on the docker-desktop
+provider; their transcripts are in the run directories of that validation.)
 
 ```text
 INFEROPS_PROVIDER=<provider> scripts/environment/reliability-runner.sh start \
@@ -348,9 +410,9 @@ INFEROPS_PROVIDER=<provider> scripts/environment/reliability-runner.sh collect -
 INFEROPS_PROVIDER=<provider> scripts/environment/reliability-runner.sh cleanup --run-id ID
 ```
 
-- `start` verifies the selected target, and refuses when a Job or a ConfigMap of
-  the run's name exists. It writes `plan.json` and `manifest.json` under
-  `.artifacts/reliability-runner/runs/<run-id>/`, and creates the two objects. It
+- `start` verifies the selected target, and refuses when a Job, a ConfigMap, or a
+  network policy of the run's name exists. It writes `plan.json` and `manifest.json`
+  under `.artifacts/reliability-runner/runs/<run-id>/`, and creates the three objects. It
   does not wait for the run. A run identifier is used once: a second `start` under
   it is refused.
 - `status` prints the counts and the two times of the Job. It changes nothing.
@@ -358,25 +420,24 @@ INFEROPS_PROVIDER=<provider> scripts/environment/reliability-runner.sh cleanup -
   accepts it, the log is kept as `caller.jsonl`. When a rule refuses it, the log is
   kept as `caller.refused.jsonl`, the exit status is `5`, and a later `collect` can
   run. A `collect` before the run ends gives a log with no end line.
-- `cleanup` deletes the Job and the ConfigMap by name, and fails when an object of
-  the run is still present. It warns when no accepted record is kept.
+- `cleanup` deletes the Job, the ConfigMap, and the network policy by name, in that
+  order, and fails when an object of the run is still present. It warns when no
+  accepted record is kept.
 
 The directory under `.artifacts/` is host state. Version control ignores it.
 
 ## What this does not establish
 
-- **Nothing about a caller of a release.** No run was started in a cluster. The
-  script was read as text by the suite. One reviewer ran it against stand-ins for
-  `kubectl` outside the repository. That run is not committed, and it is not
-  evidence of this change. The four actions are not observed against a cluster.
-- **Nothing about a cluster whose network plugin enforces NetworkPolicy.** The chart
-  admits traffic to the API pods only from pods of the release, and from a named
-  collector. The runner is not a pod of the release, and its labels match no
-  selector of the committed render of the real profile. So the committed policy
-  does not admit the runner. On a cluster that enforces the policy, each request is
-  then expected to be a `transport-error` or a `timeout`. This was not run. The
-  chart has no allowance for a caller, and this change adds none. Whether the
-  selected local cluster enforces the policy was not checked in this change.
+- **Nothing about a caller of a release beyond the attempts of the integration
+  validation.** Those attempts ran on one provider, one node, and one release. (Until
+  `V2-S5-006-PR1` this bullet said that no run was started in a cluster.)
+- **Nothing about another network plugin.** The policy of a run was observed on one
+  plugin, kindnetd with its policy controller, on docker-desktop. Another plugin can
+  apply policies with other rules for traffic from a node or between policies.
+  (Until `V2-S5-006-PR1` this bullet said that the chart has no allowance for a
+  caller, and that whether the local cluster enforces the policy was not checked.
+  In the first attempt of the integration validation no request of the runner
+  reached the API, and three readings point to the policy as the cause.)
 - **Nothing about the log of a long run.** The record is the log of one container.
   A container runtime can rotate a log by size, and a rotated log loses its first
   lines. The checker then refuses the record, because its header is missing. No run
@@ -388,9 +449,9 @@ The directory under `.artifacts/` is host state. Version control ignores it.
   pod's wall clock. Nothing compares it with the clock of another collector.
 - **Nothing about capacity.** The pod requests 100 m of CPU and 64 Mi of memory.
   The capacity preflight does not count it.
-- **Nothing about ownership records.** The Job and the ConfigMap of a run are not
-  rows of the resource ownership inventory, and they do not carry the label
-  `app.kubernetes.io/part-of`.
+- **Nothing about ownership records.** The Job, the ConfigMap, and the network
+  policy of a run are not rows of the resource ownership inventory, and they do not
+  carry the label `app.kubernetes.io/part-of`.
 - **Nothing about how the Service spreads requests.** A record names no pod.
 - **Nothing about a representative workload, an overload point, or a production
   SLO.** A run under RP-1 cannot support C3.

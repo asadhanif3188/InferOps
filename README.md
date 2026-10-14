@@ -240,36 +240,49 @@ or a benchmark. Since `V2-S5-001-PR2` an
 whose pod sends the request to the API Service and writes one line of JSON for each
 request, with no prompt text and no completion text. The runner has no code that reads
 a readiness answer or a state of Argo CD. Its loop was executed against scripted
-answers and a loopback server, which is substituted execution. No run was started in a
-cluster, and no run executed under RP-1. Since `V2-S5-003-PR1` a script and a tool
+answers and a loopback server, which is substituted execution. No result-bearing run
+executed under RP-1. Since `V2-S5-006-PR1` the runner ran in a cluster in the two
+attempts of [a non-result integration validation](docs/proof/experiments/README.md#the-sprint-5-integration-validation),
+on the docker-desktop provider with one node, while one API pod was deleted: in the
+first no request reached the API, and in the second each of 98 requests succeeded.
+(Until `V2-S5-006-PR1` this paragraph said that no run was started in a cluster and
+that no run executed under RP-1.) Since `V2-S5-003-PR1` a script and a tool
 capture the [infrastructure timelines](docs/environment/experiment-timelines.md) of a
 run: a bounded number of samples of the Service endpoints, the pods, the Deployments,
 and the Argo CD Application, each with the two instants of its read in UTC. A value
 that was not read has a state and no value. A stream is what the cluster and the
-controller published. It is not a caller's result. The collector was executed against
-stand-ins for `kubectl` only, and no stream of a real run is committed. Since
+controller published. It is not a caller's result. The streams of the two attempts
+are committed, and they are the first that the collector read from a cluster. (Until
+`V2-S5-006-PR1` this paragraph said that the collector was executed against
+stand-ins for `kubectl` only, and that no stream of a real run is committed.) Since
 `V2-S5-003-PR2` a second script and tool read the
 [telemetry](docs/environment/experiment-telemetry.md) of a run from the release's
 telemetry collector, as a closed set of registered queries, and a third tool records
 the [operator events](docs/environment/experiment-operator-events.md) of a run: a
 fault injection, a reviewed detection, a reversal, an abort, and a manual action, each
 with a UTC instant. An answer with no series is stated as no series and not as zero,
-and an event holds no free text. Neither is a caller's result. No collector was read,
-and no run recorded an event. Since `V2-S5-004-PR1`
+and an event holds no free text. Neither is a caller's result. The two attempts read
+the release's telemetry collector through the Service proxy of the API server, and
+each of the 288 query reads of each attempt answered. The driver of each attempt
+recorded its fault injection in its log. (Until `V2-S5-006-PR1` this paragraph said
+that no collector was read and that no run recorded an event.) Since `V2-S5-004-PR1`
 [the reliability analysis](docs/testing/reliability-analysis.md) computes the figures
 of one run from its caller record, its timeline streams, and its log of operator
 events. It reads no telemetry stream. The figures are the caller failure episodes, the maximum success gap,
 the intervals with no Ready endpoint, the detection lag of a declared signal, the
 time in which a signal and the caller disagree, and the stabilized recovery. A value
 that was not read is not read as zero or as healthy. The analysis decides no result and
-states no percentage. It was executed on synthetic files only, and no run was
-analysed. Since `V2-S5-004-PR2`
+states no percentage. No result-bearing run was analysed. The two attempts were, and
+no figure of either is compared with a bound. (Until `V2-S5-006-PR1` this paragraph
+said that the analysis was executed on synthetic files only and that no run was
+analysed.) Since `V2-S5-004-PR2`
 [the replay of an analysis](docs/testing/analysis-replay.md) binds those figures to
 a run directory. A run analysis states the digest of each evidence file that was
 read and the code that computed it. A replay computes it again from the raw evidence
 and refuses a stored copy that differs, so a figure that a person edited is not
-accepted. It was executed on synthetic run directories only, and it registers no
-claim. Since `V2-S5-005-PR1` its aggregate leaves a run out of the median only for
+accepted. The run analyses of the two attempts replay, and it registers no claim.
+(Until `V2-S5-006-PR1` this paragraph said that it was executed on synthetic run
+directories only.) Since `V2-S5-005-PR1` its aggregate leaves a run out of the median only for
 a reason that the freeze record of the run registers, and it states that reason. A
 result state alone leaves no run out. The record and the freeze registry are read
 from the commit that the manifest states as the executing revision of the run, so a
@@ -429,7 +442,11 @@ fourteen block production use:
 - no pod-security property is enforced for a pod this platform deploys, although
   the chart renders the settings;
 - the local cluster plugin does not enforce the rendered network policy, which
-  [one experiment measured](docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md);
+  [one experiment measured](docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+  (since `V2-S5-006-PR1`, on the docker-desktop cluster made again at `v1.36.1`, three
+  readings point to its plugin applying the policy to a pod it does not admit; that is
+  an inference from [one attempt](docs/proof/experiments/v2-s5-integration/runs/integration-1/result.md),
+  and the deferred risk is not re-assessed);
 - no secret manager, rotation policy, or expiry check exists;
 - request records are written and nothing keeps them, so nothing can be
   reconstructed afterwards;
@@ -554,7 +571,7 @@ intention reads as a capability:
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Inference API surface | [docs/serving/inference-api-surface.md](docs/serving/inference-api-surface.md) | Decided shape; five endpoints, served in part |
 | InferOps inference API | [docs/serving/inference-api.md](docs/serving/inference-api.md) | Five ASGI routes with explicit mock or real adapter selection; repository tooling carries a loopback-only local HTTP carrier, while the distribution has no server dependency |
-| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; parsed by the platform domain, and no runtime component consumes it. EnvironmentBinding `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which selects the binding serving a contract and reads it beside a validated contract into a render context; nothing renders one. RenderedWorkloadRelease `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which defines its canonical form and source digests, checks its provenance, and builds one only from fields its input-trust policy classifies public or derived; since `V2-S2-001-PR2` one is generated for rendered values and can be written to a directory a caller names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S2-003-PR1` [a record](docs/domain/v1-synchronous-compatibility.md) says who owns each value of the V1 real release when V2 renders it; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](docs/environment/git-desired-state.md); since `V2-S3-002-PR2` one [Argo CD Application](docs/environment/argocd-application.md) reads its generated values, on a cluster where an operator applied it, and nothing reads the release document itself. ExperimentRun `v1alpha1` published as a schema with fixtures and an offline validator; no run produced a manifest of it, and nothing writes one |
+| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; parsed by the platform domain, and no runtime component consumes it. EnvironmentBinding `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which selects the binding serving a contract and reads it beside a validated contract into a render context; nothing renders one. RenderedWorkloadRelease `v1alpha1` published as a schema with fixtures and parsed by the platform domain, which defines its canonical form and source digests, checks its provenance, and builds one only from fields its input-trust policy classifies public or derived; since `V2-S2-001-PR2` one is generated for rendered values and can be written to a directory a caller names; since `V2-S2-002-PR1` a drift check compares a test's golden release with its declared sources; since `V2-S2-003-PR1` [a record](docs/domain/v1-synchronous-compatibility.md) says who owns each value of the V1 real release when V2 renders it; since `V2-S3-002-PR1` a second generated release is committed as [Git desired state](docs/environment/git-desired-state.md); since `V2-S3-002-PR2` one [Argo CD Application](docs/environment/argocd-application.md) reads its generated values, on a cluster where an operator applied it, and nothing reads the release document itself. ExperimentRun `v1alpha1` published as a schema with fixtures and an offline validator; since `V2-S5-006-PR1` the two attempts of [a non-result integration validation](docs/proof/experiments/README.md#the-sprint-5-integration-validation) each hold a manifest of it that validates, assembled by scripts run by hand, and no tool of the repository writes one (until `V2-S5-006-PR1` this row said that no run produced a manifest of it) |
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
 | Workload domain model | [docs/domain/workload-domain-model.md](docs/domain/workload-domain-model.md) | Typed domain objects, parsing, contract-version handling, and the seven-rule semantic validation pipeline implemented; the schema's profile conditions are not among its rules, and only the renderer input boundary applies them |
 | Workload template | [docs/scaffolding/workload-template.md](docs/scaffolding/workload-template.md) | Template, rendering library, and non-overwriting scaffolding command implemented and verified for mock and synchronous profiles; no generated workload is committed |

@@ -1,0 +1,140 @@
+
+##### 0. Start: the date and the tool versions
+$ now
+2026-10-14T08:35:11Z
+[exit 0]
+$ kubectl version --client -o json
+{
+  "clientVersion": {
+    "major": "1",
+    "minor": "36",
+    "gitVersion": "v1.36.1",
+    "gitCommit": "756939600b9a7180fc2df6550a4585b638875e67",
+    "gitTreeState": "clean",
+    "buildDate": "2026-05-12T09:54:35Z",
+    "goVersion": "go1.26.2",
+    "compiler": "gc",
+    "platform": "windows/amd64"
+  },
+  "kustomizeVersion": "v5.8.1"
+}
+[exit 0]
+$ helm version --short
+v3.19.0+g3d8990f
+[exit 0]
+$ terraform version
+Terraform v1.15.8
+on windows_386
+
+Your version of Terraform is out of date! The latest version
+is 1.16.5. You can update by downloading from https://developer.hashicorp.com/terraform/install
+[exit 0]
+$ docker version --format {{.Client.Version}} {{.Server.Version}}
+29.8.1 29.8.1
+[exit 0]
+$ uv --version
+uv 0.9.16 (a63e5b62e 2025-12-06)
+[exit 0]
+$ uv run --locked python --version
+Python 3.12.12
+[exit 0]
+$ git --version
+git version 2.45.1.windows.1
+[exit 0]
+
+##### P1. The executing commit, the working tree, and the commit the controller will read
+$ git rev-parse HEAD
+2d43331dd14f360c0b7eb4ddd950a42251bc5f8e
+[exit 0]
+$ git status --porcelain --untracked-files=all
+[exit 0]
+$ git ls-remote origin refs/heads/main
+2d43331dd14f360c0b7eb4ddd950a42251bc5f8e	refs/heads/main
+[exit 0]
+executing commit: 2d43331dd14f360c0b7eb4ddd950a42251bc5f8e
+remote main:      2d43331dd14f360c0b7eb4ddd950a42251bc5f8e
+$ git diff --stat --exit-code 2d43331dd14f360c0b7eb4ddd950a42251bc5f8e HEAD -- charts gitops infra/argocd
+[exit 0]
+
+##### P2. The files this run reads
+$ sha256sum <scratch>/driver.sh scripts/environment/capacity-preflight.sh scripts/environment/argocd-application.sh scripts/environment/argocd-bootstrap.sh scripts/environment/terraform-prerequisites.sh scripts/environment/lib.sh infra/argocd/local-docker-desktop-support-assistant.yaml infra/argocd/workloads-project.yaml charts/inferops-llm/Chart.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+b9ca1b2b7fbd66f97707f1e31928f0656050d4aa7115f317bd87a5daae9c39b6 *<scratch>/driver.sh
+5f839da7e8329b05125b139435f5ddeec80011b455304c37d50669c2ddd3b4b4 *scripts/environment/capacity-preflight.sh
+44aac3ff6cb0d92b969f559ae74d0b070f88019367c2cc0cda9d462a983969d2 *scripts/environment/argocd-application.sh
+9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25 *scripts/environment/argocd-bootstrap.sh
+ee8cf156690a0a6d840407e5531c09ec62b832571d205fe4fe7a44f4a9752603 *scripts/environment/terraform-prerequisites.sh
+b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd *scripts/environment/lib.sh
+42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd *infra/argocd/local-docker-desktop-support-assistant.yaml
+01d6515e2043767165dc4e06b3accfb7c616001ff21d9b24e09fc90bcb61c1bc *infra/argocd/workloads-project.yaml
+f354d999392c0223984ca74473c2a7452fb556d00fb60dcee7742865477c4411 *charts/inferops-llm/Chart.yaml
+6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930 *gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml
+810b4b27e40ec0cf1514d97caa5a7a27818aa12598b1c7b441e4b0ae3c5cb31a *gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+[exit 0]
+$ uv run --locked python -m tools.gitops_desired_state --check
+OK       local-docker-desktop/support-assistant: gitops/environments/local-docker-desktop/workloads/support-assistant
+OK       the tree holds the declared releases and nothing else
+[exit 0]
+
+##### P3. The provider, and the cluster before the run
+$ export INFEROPS_PROVIDER=docker-desktop
+$ kubectl version --context docker-desktop
+Client Version: v1.36.1
+Kustomize Version: v5.8.1
+Server Version: v1.36.1
+[exit 0]
+$ k get nodes -o wide
+NAME                    STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION                              CONTAINER-RUNTIME
+desktop-control-plane   Ready    control-plane   8d    v1.36.1   172.20.0.2    <none>        Debian GNU/Linux 13 (trixie)   6.18.54.1-microsoft-standard-WSL2 (amd64)   containerd://2.3.1
+[exit 0]
+$ k get namespaces -o name > .artifacts/s5-integration/run-1-driver/namespaces.before
+[exit 0]
+$ cat .artifacts/s5-integration/run-1-driver/namespaces.before
+namespace/default
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+[exit 0]
+$ k get customresourcedefinitions -o name > .artifacts/s5-integration/run-1-driver/crds.before
+[exit 0]
+$ cat .artifacts/s5-integration/run-1-driver/crds.before
+[exit 0]
+$ k get storageclasses
+NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+hostpath             rancher.io/local-path   Delete          WaitForFirstConsumer   false                  8d
+standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  8d
+[exit 0]
+$ k get pods --all-namespaces
+NAMESPACE            NAME                                            READY   STATUS    RESTARTS        AGE
+kube-system          coredns-589f44dc88-cf8g9                        1/1     Running   4 (9m7s ago)    8d
+kube-system          coredns-589f44dc88-czkv5                        1/1     Running   4 (9m7s ago)    8d
+kube-system          etcd-desktop-control-plane                      1/1     Running   4 (9m7s ago)    8d
+kube-system          kindnet-xlj8v                                   1/1     Running   4 (9m7s ago)    8d
+kube-system          kube-apiserver-desktop-control-plane            1/1     Running   4 (9m7s ago)    8d
+kube-system          kube-controller-manager-desktop-control-plane   1/1     Running   8 (9m7s ago)    8d
+kube-system          kube-proxy-mq4rc                                1/1     Running   4 (9m7s ago)    8d
+kube-system          kube-scheduler-desktop-control-plane            1/1     Running   8 (9m7s ago)    8d
+local-path-storage   local-path-provisioner-855c7b7774-q5jd6         1/1     Running   8 (8m23s ago)   8d
+[exit 0]
+
+##### C1. The capacity gate, before anything is installed
+$ bash scripts/environment/capacity-preflight.sh --into run-1-before-install
+[inferops] FAILED: '.artifacts/capacity-preflight/collections/run-1-before-install' already exists. A collection is one reading, and this script does not write into an earlier one. Give another name with --into.
+[exit 1]
+$ ls .artifacts/capacity-preflight/collections/run-1-before-install
+claims.json
+engine.json
+footprint.json
+namespace-limits.json
+nodes.json
+pods.json
+record.v1alpha1.json
+run.json
+version.json
+[exit 0]
+
+The capacity gate exited 1 at the reading before-install. Nothing more is installed, and nothing is changed to fit.
+$ now
+2026-10-14T08:35:21Z
+[exit 0]
+driver exit 0

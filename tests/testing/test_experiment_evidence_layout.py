@@ -57,6 +57,11 @@ from tools.reliability_runner import incluster
 pytestmark = pytest.mark.docs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+#: The run directories of the Sprint 5 integration validation, one for each
+#: attempt, added by V2-S5-006-PR1. Each is of the published layout. An attempt
+#: added later is a visible change of this tuple.
+INTEGRATION_RUNS = ("integration-1", "integration-2")
+INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 LAYOUT_DOC = REPO_ROOT / "docs" / "testing" / "experiment-evidence-layout.md"
 FIXTURES = REPO_ROOT / "contracts" / "experiment" / "examples" / "valid"
 REHEARSAL_RECORD = (
@@ -1541,10 +1546,11 @@ def test_the_form_of_a_correction_is_checked_alone() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_the_repository_holds_three_earlier_run_directories_and_checks_none() -> None:
-    """No run directory of this layout is committed in the proof tree. The three
-    that are committed there were written before the ExperimentRun schema, and
-    the listing does not check them: it says so for each."""
+def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -> None:
+    """The three run directories written before the ExperimentRun schema are not
+    checked: the listing says so for each. Since V2-S5-006-PR1 the proof tree also
+    holds the attempts of the Sprint 5 integration validation, which are of this
+    layout and conform."""
     report = core.repository_report()
     assert [(run.path, run.status) for run in report.runs] == [
         (f"docs/proof/experiments/v2-e01/runs/{run_id}", run_core.PRE_SCHEMA)
@@ -1553,9 +1559,10 @@ def test_the_repository_holds_three_earlier_run_directories_and_checks_none() ->
             "20261003-e01-abc-1",
             "20261006-e01-d-1",
         )
-    ]
+    ] + [(f"{INTEGRATION_DIRECTORY}/{run}", "conforming") for run in INTEGRATION_RUNS]
     assert report.findings == () and not report.refused
-    assert all(run.digests is None for run in report.runs)
+    assert all(run.digests is None for run in report.runs[:3])
+    assert all(run.digests is not None for run in report.runs[3:])
 
 
 def test_the_earlier_run_directories_would_not_conform(tmp_path: Path) -> None:
@@ -1703,8 +1710,10 @@ def test_the_command_passes_the_repository_and_names_what_it_did_not_check(
 ) -> None:
     assert command.main(["repository"]) == command.EXIT_OK
     out = capsys.readouterr().out.splitlines()
+    total = 3 + len(INTEGRATION_RUNS)
     assert out[-1] == (
-        "runs       3: 3 pre-schema and not checked, 0 conforming, 0 refused"
+        f"runs       {total}: 3 pre-schema and not checked, "
+        f"{len(INTEGRATION_RUNS)} conforming, 0 refused"
     )
     assert sum(1 for line in out if line.endswith("(not checked)")) == 3
 

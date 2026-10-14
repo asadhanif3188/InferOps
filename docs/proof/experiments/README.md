@@ -31,6 +31,14 @@ It gives a run directory the place that the three on this page have. Its `reposi
 command lists each of the three as `pre-schema` and does not check it. Its `check`
 command, given one of them, refuses it at its manifest. They are unchanged. No part
 of E01 ran in that change.
+**One record added by `V2-S5-006-PR1`**: [the Sprint 5 integration validation](#the-sprint-5-integration-validation),
+revision 1, in its own directory, committed before its first attempt. It is not one
+of the experiments E01 to E06, and it is not result-bearing. Its first attempt,
+`integration-1`, FAILED: no request of the runner reached the API, and three readings
+point to the release's network policy as the cause. Revision 2 gives each run its own network policy, and the second attempt,
+`integration-2`, PASSED. Both are kept, and they are the first two run directories of
+the published [evidence layout](../../testing/experiment-evidence-layout.md) in this
+tree.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -40,6 +48,8 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Superseded by revision 2 on 2026-10-03, and kept unchanged. E01-A, E01-B, and E01-C ran once under it, in [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md), and each PASSED under its criteria. That run carries an [audit limitation](#audit-of-the-first-run-2026-10-03) |
 | V2-E01, contract-to-deployment determinism | 2 | [`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. E01-A, E01-B, and E01-C ran once under it, in [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md), and each PASSED under its criteria. Superseded by revision 3 on 2026-10-06, and kept unchanged. Its E01-D environment identity is pending |
 | V2-E01, contract-to-deployment determinism | 3 | [`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. It names the E01-D environment. E01-D ran once under it, in [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md), and PASSED under its criteria. No static part ran under it. Since that run, one pinned input differs from its pin: [the runner's committed-run listing](#the-e01-d-run) |
+| Sprint 5 integration validation, `s5-integration-validation` | 1 | [`v2-s5-integration/freeze-r1.v1alpha1.json`](v2-s5-integration/freeze-r1.v1alpha1.json) | One part, S5I, at C2 | Frozen before its first attempt. Not result-bearing: [see below](#the-sprint-5-integration-validation). One attempt ran under it, [`integration-1`](v2-s5-integration/runs/integration-1/result.md), and FAILED on S5I-AC2. Superseded by revision 2 on 2026-10-14, and kept unchanged |
+| Sprint 5 integration validation, `s5-integration-validation` | 2 | [`v2-s5-integration/freeze-r2.v1alpha1.json`](v2-s5-integration/freeze-r2.v1alpha1.json) | One part, S5I, at C2 | Frozen. A run brings its own network policy. One attempt ran under it, [`integration-2`](v2-s5-integration/runs/integration-2/result.md), and PASSED under its criteria |
 
 ## Why a freeze comes first
 
@@ -868,3 +878,59 @@ business effect. That a person reviewed the result. Production readiness.
   edit to the committed-run listing.
 - The review of the result is a record of an automated session. No person and no
   outside party reviewed it.
+
+## The Sprint 5 integration validation
+
+[`v2-s5-integration/freeze-r1.v1alpha1.json`](v2-s5-integration/freeze-r1.v1alpha1.json)
+fixes one bounded validation of the Sprint 5 evidence path before its first attempt:
+the in-cluster RP-1 runner, the timeline and telemetry collectors, and the operator
+event log, run together against one release on the docker-desktop provider, with one
+API pod deleted while the runner sends. The procedure is
+[the driver beside it](v2-s5-integration/procedure/run-driver.txt), a pinned input of
+the record, and the record states seven acceptance criteria, `S5I-AC1` to `S5I-AC7`.
+
+- **It is not result-bearing.** No attempt is a run of E02, E03, E04, E05, or E06, no
+  figure of an attempt is compared with a bound, and no claim cites one.
+- **It has its own directory.** The freeze check holds one experiment in each
+  directory, so the record is not a revision of E01.
+- **Each attempt is kept.** An attempt has its own run directory under
+  `v2-s5-integration/runs/`, in the [evidence layout](../../testing/experiment-evidence-layout.md),
+  whatever it shows. A later attempt runs only under a later revision that states what
+  changed, or after an attempt that was refused before its capture.
+
+### The two attempts
+
+| Attempt | Revision | Executing commit | State | What it showed |
+|---|---|---|---|---|
+| [`integration-1`](v2-s5-integration/runs/integration-1/result.md) | 1 | `7f150c25af26f855a7390125be82dd44fba772a5` | FAILED on S5I-AC2 | The runner pod kept one UID and no restart while one API pod was replaced, and each stream passed its checker. Each of its six requests ended at the client deadline, and the API counted none. Three readings point to the network plugin applying the release's API policy, which admits only the pods of the release and a named collector; that is an inference |
+| [`integration-2`](v2-s5-integration/runs/integration-2/result.md) | 2 | `7089a53ac0a62933cfba74facfe998e73c5a4f97` | PASSED | 98 requests, each a success, 42 before the deletion of one API pod and 51 after the replacement was Ready. The runner pod kept one UID and no restart. Each stream, the log, the layout check, and the replay of the analysis passed |
+
+- **Both attempts used one release.** The phase up of the driver prepared it once; its
+  transcript is [`preparation/up-s5i-1-transcript.txt`](v2-s5-integration/preparation/up-s5i-1-transcript.txt).
+  That phase ran from [a draft of the driver](v2-s5-integration/preparation/draft-driver.txt)
+  outside the tree, before revision 1 was committed. Its function `up` is the one that
+  the committed driver holds. An earlier phase up, under another run name, refused at
+  its first capacity reading because a collection of that name already existed on the
+  host, and installed nothing: [`preparation/up-run-1-refused-transcript.txt`](v2-s5-integration/preparation/up-run-1-refused-transcript.txt).
+- **The release was removed after the second attempt**, by the phase down:
+  [`preparation/down-s5i-1-transcript.txt`](v2-s5-integration/preparation/down-s5i-1-transcript.txt).
+  The namespaces and the custom resource definitions of the cluster then equal those
+  read before the phase up. The images loaded into the node are left there.
+- **Revision 2 was written after the first attempt, and before the second.** It
+  changes the runner and its script so that a run brings its own network policy, and it
+  classifies each moved input. The procedure, the bounds, the criteria, and the fault
+  are those of revision 1, except that the start of the runner (procedure step 5) and
+  `S5I-AC7` name the network policy of the run.
+- **Revision 2 states the cause of the first failure more firmly than the evidence
+  does.** Its limitations say that the first attempt "observed" that the plugin
+  enforces the policy, and its purpose says that the attempt failed "because" it does.
+  The first attempt saw that no request reached the API; that the policy dropped them
+  is an inference from three readings, as [its result page](v2-s5-integration/runs/integration-1/result.md)
+  states. The record is pinned and is not edited. Its criteria and its procedure do not
+  depend on the wording.
+- **One correction is recorded for the first attempt**, at
+  [`corrections/integration-1/correction-1.v1alpha1.json`](v2-s5-integration/corrections/integration-1/correction-1.v1alpha1.json).
+  It corrects four statements of the result page and changes no state.
+- **What neither attempt establishes.** A recovery time, an availability, a service
+  level, a capacity, or a threshold; behaviour when a runtime pod is replaced; and
+  behaviour on another provider, node count, or network plugin.

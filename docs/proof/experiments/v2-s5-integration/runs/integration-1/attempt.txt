@@ -1,0 +1,17 @@
+experimentId=s5-integration-validation
+attempt=integration-1
+executingCommit=7f150c25af26f855a7390125be82dd44fba772a5
+remoteMain=2d43331dd14f360c0b7eb4ddd950a42251bc5f8e
+applicationAtStart=2d43331dd14f360c0b7eb4ddd950a42251bc5f8e Synced Healthy
+apiReadyAtStart=2
+runtimeReadyAtStart=2
+clock=start hostBefore=2026-10-14T08:58:07.351Z node=2026-10-14T08:58:07.802Z hostAfter=2026-10-14T08:58:07.878Z
+declaredReleaseId=b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db
+runnerStartExit=0
+runnerStartReturnedAt=2026-10-14T08:58:44.858Z
+deletedPod=inferops-inferops-llm-c66d85b99-p72ls
+jobAtEnd=active= succeeded=1 failed= ready=0 terminating=0
+timelineCollectorExit=0
+telemetryCollectorExit=0
+clock=end hostBefore=2026-10-14T09:08:57.845Z node=2026-10-14T09:08:58.228Z hostAfter=2026-10-14T09:08:58.314Z
+timelineCoversWindow=yes

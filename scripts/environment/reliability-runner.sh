@@ -3,7 +3,11 @@
 # and removes it. This is the real path of the reliability runner. It runs only
 # when an operator starts it.
 #
-# A run is one ConfigMap and one Job in the namespace of the release. The pod
+# A run is one NetworkPolicy, one ConfigMap, and one Job in the namespace of the
+# release. The NetworkPolicy admits the pod of the run, and no other pod, to the
+# API pods on the API port: the policy of the release admits only its own pods
+# and a named collector, and a cluster whose network plugin enforces it drops
+# the requests of the runner otherwise. The pod
 # of the Job executes one file, tools/reliability_runner/incluster.py, which
 # sends the RP-1 request to the API Service by its cluster DNS name. The pod
 # holds no service account token. It reads no Kubernetes API, no readiness
@@ -19,13 +23,14 @@
 # The four actions:
 #
 #   start     writes the plan and the manifest of the run under .artifacts/,
-#             and creates the two objects. It refuses when an object of that
+#             and creates the three objects. It refuses when an object of that
 #             name exists. It returns when the Job is created. It does not
 #             wait for the run.
 #   status    prints the state of the Job. It changes nothing.
 #   collect   reads the log of the pod, and checks it. It keeps the log as
 #             the caller record only when each rule accepts it.
-#   cleanup   deletes the Job and the ConfigMap of the run, by name.
+#   cleanup   deletes the Job, the ConfigMap, and the NetworkPolicy of the run,
+#             by name.
 #
 # A run has four bounds: its duration, its request ceiling, the active
 # deadline of the Job, and the time to live of the finished Job. Kubernetes
@@ -147,7 +152,7 @@ case "${action}" in
     # An object of this name is an earlier run, or what the time to live of an
     # earlier Job left. A Job that mounted an earlier ConfigMap would run an
     # earlier plan under this run identifier.
-    if ! existing="$(inferops::target_kubectl get jobs,configmaps \
+    if ! existing="$(inferops::target_kubectl get jobs,configmaps,networkpolicies \
       --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
       --field-selector "metadata.name=${job_name}" -o name 2>/dev/null | tr -d '\r')"; then
       inferops::fail "could not read whether '${job_name}' exists in '${INFEROPS_RELEASE_NAMESPACE}'. A read that did not answer is not a result of nothing there. Nothing was created."
@@ -180,7 +185,7 @@ case "${action}" in
 
     # create and not apply: an object that exists is a refusal, and not a change.
     inferops::target_kubectl create -f "$(inferops::native_path "${run_dir}/manifest.json")" ||
-      inferops::fail "the two objects were not both created. Remove what was created with 'cleanup'. The run identifier '${run_id}' is spent: '${run_rel}' is kept, and a new start needs another identifier."
+      inferops::fail "the three objects were not all created. Remove what was created with 'cleanup'. The run identifier '${run_id}' is spent: '${run_rel}' is kept, and a new start needs another identifier."
 
     inferops::log "job ${job_name} is created in ${INFEROPS_RELEASE_NAMESPACE}. This script does not wait for it."
     inferops::log "the run sends requests when its pod starts. It does not wait for the release to be ready."
@@ -251,8 +256,12 @@ case "${action}" in
     inferops::target_kubectl delete configmap "${job_name}" -n "${INFEROPS_RELEASE_NAMESPACE}" \
       --ignore-not-found --wait --timeout "${DELETE_TIMEOUT}" ||
       inferops::fail "configmap ${job_name} was not deleted."
+    # After the Job: the pod that the policy admits is gone first.
+    inferops::target_kubectl delete networkpolicy "${job_name}" -n "${INFEROPS_RELEASE_NAMESPACE}" \
+      --ignore-not-found --wait --timeout "${DELETE_TIMEOUT}" ||
+      inferops::fail "networkpolicy ${job_name} was not deleted."
 
-    if ! remaining="$(inferops::target_kubectl get jobs,configmaps,pods \
+    if ! remaining="$(inferops::target_kubectl get jobs,configmaps,pods,networkpolicies \
       --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
       --selector "inferops.io/run-id=${run_id},app.kubernetes.io/name=inferops-reliability-runner" \
       -o name 2>/dev/null | tr -d '\r')"; then

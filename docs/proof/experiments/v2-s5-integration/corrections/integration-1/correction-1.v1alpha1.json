@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRunCorrection",
+  "experimentId": "s5-integration-validation",
+  "runId": "integration-1",
+  "number": 1,
+  "recordedAt": "2026-10-14T11:07:48Z",
+  "manifestSha256": "9fda7db75604cc13304374c1d13752df7d2b7923659193294182a19d5ae4ea06",
+  "previousCorrectionSha256": null,
+  "corrects": [
+    {
+      "path": "result.md",
+      "sha256": "ef9ba052892fb1a44508758a11ccc1c46886fe40de3197155e024db0b6fa1686"
+    }
+  ],
+  "statements": [
+    "The section 'What the attempt did show' of result.md says that analysis.json states no success gap. It does not: analysis.json states the maximum success gap as not computable, with the reason fewer-than-two-successes. No request of this attempt succeeded, so the figure has no value. That is a missing value, and not a gap that is absent.",
+    "The row of S5I-AC6 in result.md does not say that the replay of this run prints 'code differs'. The analysis was bound at the executing commit 7f150c2, and the next commit of the same change, 7089a53, edited two source files of the analysis, tools/reliability_runner/core.py and tools/reliability_runner/__main__.py. The replay holds: the present code gives the stored bytes, and the stated commit holds the stated sources.",
+    "result.md states the two readings of the node's clock as within -0.09 s and +0.46 s of the host's two instants. Those are outer bounds. The node's instant minus the host's two instants was +0.451 s and -0.076 s at the start, and +0.383 s and -0.086 s at the end, as attempt.txt states.",
+    "result.md cites no file for the policy controller of the network plugin. The operator read of the plugin's log is kept beside the run directories, at preparation/kindnet-policy-controller-read.txt. It states that the plugin started the kube-network-policies controller before both attempts, and it is not a verdict on a packet."
+  ],
+  "files": []
+}

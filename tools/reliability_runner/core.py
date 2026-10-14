@@ -7,9 +7,10 @@ and nothing else:
 1. :func:`build_plan` loads the RP-1 profile through ``tools.reliability_profile``
    and writes the values of one run into a plan: the request, the two workers, the
    deadline, the success rule, the target, and the bounds of the run.
-2. :func:`build_manifest` writes one ConfigMap and one Job. The ConfigMap holds the
-   plan and the runner file. The Job mounts both and runs the file. No image is
-   built, and no image holds the runner.
+2. :func:`build_manifest` writes one NetworkPolicy, one ConfigMap, and one Job.
+   The ConfigMap holds the plan and the runner file. The Job mounts both and runs
+   the file. No image is built, and no image holds the runner. The NetworkPolicy
+   admits the pod of this run, and no other pod, to the API pods on the API port.
 3. :func:`read_record` checks a caller record, which is what a run wrote to its
    standard output, and refuses one that is not complete or not consistent.
 
@@ -88,6 +89,17 @@ RUNNER_PATH = REPO_ROOT / RUNNER_REF
 API_SERVICE = "inferops-inferops-llm"
 RELEASE_NAMESPACE = "inferops-release"
 API_SERVICE_PORT = 8090
+
+#: The pods of the API of that release, by the labels that its Deployment and its
+#: own network policy select them with, and the port of their container. The suite
+#: holds both against the committed render of the chart. The network policy of a
+#: run selects these pods and admits the pod of the run on this port.
+API_POD_SELECTOR: Mapping[str, str] = {
+    "app.kubernetes.io/name": "inferops-llm",
+    "app.kubernetes.io/instance": "inferops",
+    "app.kubernetes.io/component": "platform-api",
+}
+API_CONTAINER_PORT = 8090
 
 #: How long a worker waits after a request that is not a success. A refused
 #: connection and an error answer return in milliseconds, and a closed loop with no
@@ -345,7 +357,8 @@ def build_manifest(
     image_pull_policy: str = "Never",
     runner_path: Path = RUNNER_PATH,
 ) -> dict[str, Any]:
-    """One ConfigMap and one Job that run the plan once, as a ``v1`` List.
+    """One NetworkPolicy, one ConfigMap, and one Job that run the plan once, as a
+    ``v1`` List.
 
     The image is an interpreter and no more: it must hold Python 3.12, and it is
     named by digest. The API image of the release is one such image. The runner file
@@ -470,7 +483,36 @@ def build_manifest(
             },
         },
     }
-    return {"apiVersion": "v1", "kind": "List", "items": [config_map, job]}
+    # The release's network policy admits the pods of the release and a named
+    # collector to the API, and the runner is neither. Policies add up: this one
+    # admits the pod of this run, by its run identifier, to the API pods on the
+    # API port, and it changes no rule of the release. It is first in the List,
+    # so it exists before the pod that it admits.
+    policy = {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "NetworkPolicy",
+        "metadata": {"name": name, "namespace": namespace, "labels": labels},
+        "spec": {
+            "podSelector": {"matchLabels": dict(API_POD_SELECTOR)},
+            "policyTypes": ["Ingress"],
+            "ingress": [
+                {
+                    "from": [
+                        {
+                            "podSelector": {
+                                "matchLabels": {
+                                    "app.kubernetes.io/name": RUNNER_NAME,
+                                    "inferops.io/run-id": plan["runId"],
+                                }
+                            }
+                        }
+                    ],
+                    "ports": [{"port": API_CONTAINER_PORT, "protocol": "TCP"}],
+                }
+            ],
+        },
+    }
+    return {"apiVersion": "v1", "kind": "List", "items": [policy, config_map, job]}
 
 
 def manifest_text(manifest: Mapping[str, Any]) -> str:

@@ -67,6 +67,12 @@ tests/domain/fixtures/helm-values/** text eol=lf
 # copies whose digests no longer match the run that wrote them.
 docs/proof/experiments/v2-e01/runs/** text eol=lf
 
+# The Sprint 5 integration validation: its freeze record, the driver that bash runs
+# from the committed tree, and the files of each attempt, which its manifest names by
+# digest. Pinned so a Windows checkout cannot give bash a CRLF driver, and so the
+# files of an attempt keep the bytes that the attempt wrote.
+docs/proof/experiments/v2-s5-integration/** text eol=lf
+
 # The Git desired state holds generated releases, each compared byte for byte with
 # what its declared sources derive, and each release records the SHA-256 of its
 # values file's bytes. The renderer writes LF on every platform. Pinned so a

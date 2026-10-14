@@ -10,6 +10,25 @@ from `1.0.0`.
 
 ### Added
 
+- **The Sprint 5 evidence path ran together on one cluster. Two attempts are kept: the
+  first FAILED, the second PASSED. Neither is a run of E02 to E06, and no claim was
+  registered.** `V2-S5-006-PR1` freezes a bounded integration validation before its
+  first attempt, `docs/proof/experiments/v2-s5-integration/freeze-r1.v1alpha1.json`, with a
+  driver that is a pinned input. On the docker-desktop provider it starts the in-cluster
+  RP-1 runner against the API Service, the timeline and telemetry collectors, and the
+  operator event log together, deletes one API pod while the runner sends, and reads
+  the runner pod three times. The first attempt FAILED: the runner pod survived the
+  replacement and every stream passed its checker, but none of the six requests reached
+  the API. Three readings point to the release's API policy, which the network plugin
+  of that cluster applies, as the cause; that is an inference. Revision 2 gives each run of the runner its own network policy, created with the
+  Job and deleted by the cleanup, that admits the pod of that run to the API pods on the
+  API port; no rule of the release changes. The second attempt PASSED: 98 requests, each
+  a success, 51 of them after the replacement API pod was Ready, with one runner pod
+  throughout. Both run directories are the first of the published evidence layout in the
+  proof tree; each passes the layout check, and its analysis replays. The release was
+  removed afterwards. Not established: a recovery time, an availability, a service
+  level, behaviour when a runtime pod is replaced, or behaviour on another provider.
+
 - **The analysis of an experiment run is bound to its evidence and can be computed
   again. No run was analysed, the proof tree holds no run directory of the published
   layout, and no claim was registered.** `V2-S5-004-PR2` adds `tools/analysis_replay`, one suite, one synthetic run
