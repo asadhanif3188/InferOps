@@ -18,9 +18,9 @@ from `1.0.0`.
   RP-1 runner against the API Service, the timeline and telemetry collectors, and the
   operator event log together, deletes one API pod while the runner sends, and reads
   the runner pod three times. The first attempt FAILED: the runner pod survived the
-  replacement and every stream passed its checker, but the network plugin of that
-  cluster enforces the release's API policy, and none of the six requests reached the
-  API. Revision 2 gives each run of the runner its own network policy, created with the
+  replacement and every stream passed its checker, but none of the six requests reached
+  the API. Three readings point to the release's API policy, which the network plugin
+  of that cluster applies, as the cause; that is an inference. Revision 2 gives each run of the runner its own network policy, created with the
   Job and deleted by the cleanup, that admits the pod of that run to the API pods on the
   API port; no rule of the release changes. The second attempt PASSED: 98 requests, each
   a success, 51 of them after the replacement API pod was Ready, with one runner pod

@@ -1599,8 +1599,9 @@ def test_the_policy_of_a_run_admits_its_runner_to_the_api_pods_and_nothing_else(
     None
 ):
     """The release's policy admits its own pods and a named collector to the API, so
-    a network plugin that enforces it drops the runner's requests. The first attempt
-    of the Sprint 5 integration validation observed that. The policy of a run admits
+    a network plugin that enforces it drops the runner's requests. In the first
+    attempt of the Sprint 5 integration validation no request reached the API, which
+    three readings attribute to that policy. The policy of a run admits
     the pod of that run, by its run identifier, to the API pods on the API port, and
     it is held here against the committed render of the chart."""
     documents = [
@@ -1962,8 +1963,13 @@ def test_the_guide_states_the_bounds_and_the_target_of_the_code() -> None:
         assert text in GUIDE, text
 
 
-def test_the_guide_says_that_no_run_was_started_in_a_cluster() -> None:
-    assert "No run was started in a cluster" in GUIDE
+def test_the_guide_states_where_the_runner_ran_and_keeps_the_earlier_status() -> None:
+    """Until V2-S5-006-PR1 the status said that no run was started in a cluster. The
+    status now names the non-result attempts, and it keeps the earlier statement."""
+    status = GUIDE.split("\n\n", 2)[1]
+    assert "Since `V2-S5-006-PR1` it ran in a cluster" in status
+    assert "two non-result attempts" in status
+    assert "no run was started in a cluster" in status
     assert "does not establish" in GUIDE.lower()
 
 

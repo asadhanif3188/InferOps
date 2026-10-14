@@ -34,8 +34,8 @@ of E01 ran in that change.
 **One record added by `V2-S5-006-PR1`**: [the Sprint 5 integration validation](#the-sprint-5-integration-validation),
 revision 1, in its own directory, committed before its first attempt. It is not one
 of the experiments E01 to E06, and it is not result-bearing. Its first attempt,
-`integration-1`, FAILED: the network plugin of the cluster dropped each request of
-the runner. Revision 2 gives each run its own network policy, and the second attempt,
+`integration-1`, FAILED: no request of the runner reached the API, and three readings
+point to the release's network policy as the cause. Revision 2 gives each run its own network policy, and the second attempt,
 `integration-2`, PASSED. Both are kept, and they are the first two run directories of
 the published [evidence layout](../../testing/experiment-evidence-layout.md) in this
 tree.
@@ -902,7 +902,7 @@ the record, and the record states seven acceptance criteria, `S5I-AC1` to `S5I-A
 
 | Attempt | Revision | Executing commit | State | What it showed |
 |---|---|---|---|---|
-| [`integration-1`](v2-s5-integration/runs/integration-1/result.md) | 1 | `7f150c25af26f855a7390125be82dd44fba772a5` | FAILED on S5I-AC2 | The runner pod kept one UID and no restart while one API pod was replaced, and each stream passed its checker. Each of its six requests ended at the client deadline, and the API counted none: the network plugin enforces the release's API policy, which admits only the pods of the release and a named collector |
+| [`integration-1`](v2-s5-integration/runs/integration-1/result.md) | 1 | `7f150c25af26f855a7390125be82dd44fba772a5` | FAILED on S5I-AC2 | The runner pod kept one UID and no restart while one API pod was replaced, and each stream passed its checker. Each of its six requests ended at the client deadline, and the API counted none. Three readings point to the network plugin applying the release's API policy, which admits only the pods of the release and a named collector; that is an inference |
 | [`integration-2`](v2-s5-integration/runs/integration-2/result.md) | 2 | `7089a53ac0a62933cfba74facfe998e73c5a4f97` | PASSED | 98 requests, each a success, 42 before the deletion of one API pod and 51 after the replacement was Ready. The runner pod kept one UID and no restart. Each stream, the log, the layout check, and the replay of the analysis passed |
 
 - **Both attempts used one release.** The phase up of the driver prepared it once; its
@@ -919,7 +919,18 @@ the record, and the record states seven acceptance criteria, `S5I-AC1` to `S5I-A
 - **Revision 2 was written after the first attempt, and before the second.** It
   changes the runner and its script so that a run brings its own network policy, and it
   classifies each moved input. The procedure, the bounds, the criteria, and the fault
-  are those of revision 1.
+  are those of revision 1, except that the start of the runner (procedure step 5) and
+  `S5I-AC7` name the network policy of the run.
+- **Revision 2 states the cause of the first failure more firmly than the evidence
+  does.** Its limitations say that the first attempt "observed" that the plugin
+  enforces the policy, and its purpose says that the attempt failed "because" it does.
+  The first attempt saw that no request reached the API; that the policy dropped them
+  is an inference from three readings, as [its result page](v2-s5-integration/runs/integration-1/result.md)
+  states. The record is pinned and is not edited. Its criteria and its procedure do not
+  depend on the wording.
+- **One correction is recorded for the first attempt**, at
+  [`corrections/integration-1/correction-1.v1alpha1.json`](v2-s5-integration/corrections/integration-1/correction-1.v1alpha1.json).
+  It corrects four statements of the result page and changes no state.
 - **What neither attempt establishes.** A recovery time, an availability, a service
   level, a capacity, or a threshold; behaviour when a runtime pod is replaced; and
   behaviour on another provider, node count, or network plugin.

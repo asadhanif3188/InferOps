@@ -442,7 +442,11 @@ fourteen block production use:
 - no pod-security property is enforced for a pod this platform deploys, although
   the chart renders the settings;
 - the local cluster plugin does not enforce the rendered network policy, which
-  [one experiment measured](docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md);
+  [one experiment measured](docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+  (since `V2-S5-006-PR1`, on the docker-desktop cluster made again at `v1.36.1`, three
+  readings point to its plugin applying the policy to a pod it does not admit; that is
+  an inference from [one attempt](docs/proof/experiments/v2-s5-integration/runs/integration-1/result.md),
+  and the deferred risk is not re-assessed);
 - no secret manager, rotation policy, or expiry check exists;
 - request records are written and nothing keeps them, so nothing can be
   reconstructed afterwards;

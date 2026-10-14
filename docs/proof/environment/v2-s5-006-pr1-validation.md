@@ -68,8 +68,11 @@ precede what they govern. Each commit below was made before the step after it.
    The namespaces and the custom resource definitions of the cluster then equal those
    read before the phase `up`, and no persistent volume is left.
    [Transcript](../experiments/v2-s5-integration/preparation/down-s5i-1-transcript.txt).
-7. **This commit**: the run directory of attempt 2, the preparation transcripts, and
-   the pages that said that no run directory of the layout exists.
+7. **Commit `10b3e89`**: the run directory of attempt 2, the preparation transcripts,
+   and the pages that said that no run directory of the layout exists.
+8. **The commit after the independent review** of the three commits above: the first
+   correction of the first attempt, the operator read of the plugin, and the wording
+   that the review found too firm. No attempt ran after it.
 
 ## The two attempts
 
@@ -183,10 +186,54 @@ compared.
 - **Operator reads outside the procedure** are stated in the result page of attempt 1:
   one read of the runner's log during the attempt, and reads of the API pods' logs and
   of the plugin's log after it. None changed anything, and the driver read none.
-- **The network-policy notes are inferences.** The pages that state that the local
-  plugin does not enforce policy now carry a dated note; deferred risk `DR-04` is not
-  re-assessed and stays open, and ADR 0004's risk `R7` and the chart's comment are
-  not edited.
+- **The network-policy notes are inferences.** Four current pages that state that the
+  local plugin does not enforce policy now carry a dated note: the provider contract,
+  the troubleshooting guide, deferred risk `DR-04`, and the list of security limits in
+  the README. Others say the same and are not edited: ADR 0004's risk `R7`, the
+  security method's row for `DR-04`, the workload policy page, the security baseline
+  record, the README's summary of what V1 is not, which describes V1, and the chart's
+  comment, which this change does not touch because the chart
+  is pinned by the E01 freeze records. `DR-04` is not re-assessed and stays open. The
+  log lines of the plugin's policy controller that these notes cite are an operator
+  read, [kept beside the run directories](../experiments/v2-s5-integration/preparation/kindnet-policy-controller-read.txt).
+- **The driver's pin moved without being called material.** Revision 2 classifies the
+  driver as not material, because only the record that it checks the pins against
+  changed. That constant decides which pins an attempt is held to, so a reader can
+  weigh it otherwise.
+
+## What the independent review of this change found
+
+One reviewer read the three commits, recomputed the figures of the result pages from
+the evidence files, and checked the manifests, the freeze records, the network
+policy, the public safety of the transcripts, and the pages. Every recomputed figure
+matched. It found one high, three medium, and three low items, and each is fixed in
+the commit that follows the review:
+
+- **High: the cause of the first failure was stated as observed in five places.** The
+  result page and this record said it was an inference, and the CHANGELOG entry, the
+  experiments page, the runner page, and a test docstring said that the plugin
+  enforces the policy, or that the attempt observed or showed that it does. Each now
+  says that three readings point to the policy. Revision 2 says the same as the first
+  draft did; it is pinned, and the experiments page states the overstatement.
+- **Medium: the log line of the policy controller was cited and kept nowhere.** It is
+  now an operator read beside the run directories, made again while the same container
+  of the plugin ran.
+- **Medium: stale current text.** The status line of the runner page still said that no
+  run was started in a cluster, and so did a note of the test inventory; the README's
+  list of security limits had no dated note; and this record said that every page
+  that states non-enforcement carries one. Each is corrected, and the test that held
+  the old status line now holds the new one.
+- **Medium and low: four statements of the first attempt's result page.** It said that
+  the analysis states no success gap, when it states the gap as not computable; its
+  row for `S5I-AC6` omitted that the replay prints `code differs`; it gave outer bounds
+  for the clock readings without the readings; and it cited no file for the policy
+  controller. The run directory is committed, so it is not edited: the layout's first
+  correction in the proof tree, `corrections/integration-1/correction-1.v1alpha1.json`,
+  states the four. The layout check reads it, and the digests of the run do not move.
+- **Low: the experiments page said that the procedure and the criteria of revision 2
+  are those of revision 1.** Step 5 and `S5I-AC7` name the network policy; the page now
+  says so.
+- **Low: the driver's pin classified as not material.** Stated as a limitation above.
 
 ## Validation
 
@@ -203,4 +250,37 @@ the full default lane, and the hosted workflow are recorded in a later section.
 | `python -m tools.analysis_replay repository` | `runs        5: 3 pre-schema and not replayed, 0 with no analysis, 2 replayed, 0 refused` |
 | `python -m tools.analysis_replay verify` on each attempt | `replayed`, `revision  held` |
 | `python -m tools.experiment_timeline check`, `tools.experiment_telemetry check`, `tools.experiment_events check`, `tools.reliability_runner verify --plan` | Each passed in each attempt; the transcripts, step E10, hold the output |
-| `python -m tools.evidence_index --check`, `--gate` | Both passed at `7f150c2`; the index does not read the integration directory, because no ledger bears on it |
+| `python -m tools.evidence_index --check`, `--gate` | Both passed at `7f150c2` and at `10b3e89`; the index does not read the integration directory, because no ledger bears on it |
+
+### The default lane and the static checks, at `10b3e89`
+
+| Command | Result |
+|---|---|
+| `uv run --locked python -m pytest -q -p no:cacheprovider` | **1 failed, 22,341 passed, 39 skipped, 14 deselected** in 5,084.58 s. The failure is `tests/architecture/test_argocd_application_procedure.py::test_an_argocd_the_bootstrap_did_not_install_refuses[remove-unmarked]`: the stubbed script printed nothing. This change edits neither that script, its suite, nor `lib.sh`. The module, run again alone at the same commit, passed: 121 passed in 897.56 s. The run took longer than usual because a review and other suites ran on the host beside it |
+| `python -m mypy` and `python -m mypy --platform linux` | No issues in 414 source files, each |
+| `ruff format --check .`, `ruff check .` | 751 files already formatted; all checks passed. The count includes Markdown files |
+| `git diff --check` | No finding |
+| `git ls-files -s scripts/environment/reliability-runner.sh` | Mode `100755`, unchanged |
+| `gitleaks` | Not installed on this host. The hosted workflow runs it |
+
+### After the review fixes
+
+The suites that the fixes touch, at the commit that follows the review:
+`tests/serving/test_reliability_runner.py`, `tests/testing/test_test_inventory.py`,
+`tests/testing/test_document_links.py` (1,910 passed together), and
+`tests/testing/test_experiment_evidence_layout.py`,
+`tests/contracts/test_experiment_run_v1alpha1.py`, `tests/testing/test_experiment_freeze.py`,
+the repository test of the replay, `tests/testing/test_evidence_levels.py`,
+`tests/security/test_security_baseline.py`, and `tests/architecture/test_argocd_bootstrap.py`
+(2,158 passed, 3 skipped together). The layout's `repository` command reads the
+correction of the first attempt and still reports 2 conforming run directories.
+
+### Not run
+
+- **The hosted workflow.** This host has no GitHub command-line client, so no hosted
+  run of the final commit was started or observed here. It runs when the pull request
+  is opened.
+- **Helm, Terraform, and the image builds.** This change edits no chart, no Terraform,
+  and no image file.
+- **A replacement of a runtime pod.** The review allows an API or a runtime pod, and
+  the frozen procedure deletes one API pod.

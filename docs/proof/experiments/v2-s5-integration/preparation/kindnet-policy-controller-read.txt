@@ -1,0 +1,22 @@
+An operator read of the network plugin of the docker-desktop cluster. It is not in a
+transcript of the driver, and the driver did not read it. It was made at
+2026-10-14T11:07:07Z, after both attempts and the phase down, while the cluster was
+still running. It changed nothing.
+
+The same log was first read between 2026-10-14T08:26:29Z and 08:35:11Z, after the
+plugin started and before the phase up, while the procedure was decided. That output
+was not kept, and these lines are the read again.
+
+The container of the plugin started at 2026-10-14T08:26:29Z, before the phase up, and
+had not restarted since, so the log lines below are of the container that ran during
+both attempts. The lines state that the plugin started a policy controller and that
+its engine became ready. They are not a verdict on any packet, and the log held no
+line about a policy decision.
+
+$ kubectl --context docker-desktop -n kube-system get pods -l app=kindnet -o jsonpath='{range .items[*]}{.metadata.name}{" started="}{.status.containerStatuses[0].state.running.startedAt}{" restarts="}{.status.containerStatuses[0].restartCount}{" image="}{.status.containerStatuses[0].image}{"\n"}{end}'
+kindnet-xlj8v started=2026-10-14T08:26:29Z restarts=4 image=docker.io/kindest/kindnetd:v20260528-9350166c
+
+$ kubectl --context docker-desktop -n kube-system logs ds/kindnet | grep -E 'kube-network-policies|policy engine|Policy engine'
+I1014 08:26:34.019713       1 controller.go:173] "Starting controller" name="kube-network-policies"
+I1014 08:26:34.019935       1 controller.go:178] "Waiting for the policy engine to become ready..."
+I1014 08:26:36.024225       1 controller.go:185] "Policy engine is ready."

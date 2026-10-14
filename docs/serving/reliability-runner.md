@@ -1,7 +1,9 @@
 # The RP-1 in-cluster reliability runner
 
-Status: **implemented by `V2-S5-001-PR2`. No run was started in a cluster, and no
-request was sent to a model.** The runner sends the
+Status: **implemented by `V2-S5-001-PR2`. Since `V2-S5-006-PR1` it ran in a cluster in
+two non-result attempts, and in the second it sent 98 requests to the model.** (Until
+then this line said that no run was started in a cluster and that no request was
+sent to a model.) The runner sends the
 [RP-1 reliability workload](reliability-workload-rp-1.md) from a pod inside the
 cluster to the API Service, and it writes one caller record for each run. The loop,
 the classification, and the transport of the runner were executed against scripted
@@ -13,8 +15,8 @@ The validation record is
 
 > **Since `V2-S5-006-PR1`:** the real path ran on the docker-desktop provider, in the
 > attempts of the [Sprint 5 integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation).
-> The first attempt showed that the network plugin of that cluster enforces the
-> release's network policy: no request of the runner reached the API. A run is now
+> In the first attempt no request of the runner reached the API, and three readings
+> point to the release's network policy as the cause. A run is now
 > three objects: [the network policy of the run](#the-network-policy-of-a-run) admits
 > the pod of that run to the API pods. The statements below that say that no run
 > started are the state of `V2-S5-001-PR2`, and the paragraphs that this change
@@ -132,10 +134,11 @@ of the chart, and the namespace against the script library.
 The chart's policy admits traffic to the API pods from the pods of the release and
 from a named collector, and from nothing else. The runner is neither, by design: its
 labels match no selector of the release. So on a cluster whose network plugin
-enforces the policy, the requests of the runner do not reach the API. The first
-attempt of the Sprint 5 integration validation, on 2026-10-14, observed that on the
-docker-desktop provider: each of its six requests ended at the client deadline, and
-the API counted none. (Until `V2-S5-006-PR1` this page said that whether the local
+enforces the policy, the requests of the runner do not reach the API. In the first
+attempt of the Sprint 5 integration validation, on 2026-10-14 on the docker-desktop
+provider, each of its six requests ended at the client deadline, and the API counted
+none. That the policy dropped them is an inference from those readings and from the
+logs of the API pods. (Until `V2-S5-006-PR1` this page said that whether the local
 cluster enforces the policy was not checked.)
 
 Since `V2-S5-006-PR1` the manifest of a run holds a third object, first in the List:
@@ -433,7 +436,8 @@ The directory under `.artifacts/` is host state. Version control ignores it.
   apply policies with other rules for traffic from a node or between policies.
   (Until `V2-S5-006-PR1` this bullet said that the chart has no allowance for a
   caller, and that whether the local cluster enforces the policy was not checked.
-  The first attempt of the integration validation observed that it does.)
+  In the first attempt of the integration validation no request of the runner
+  reached the API, and three readings point to the policy as the cause.)
 - **Nothing about the log of a long run.** The record is the log of one container.
   A container runtime can rotate a log by size, and a rotated log loses its first
   lines. The checker then refuses the record, because its header is missing. No run
