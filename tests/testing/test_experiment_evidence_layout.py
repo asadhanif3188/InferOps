@@ -39,7 +39,7 @@ import os
 import re
 import shutil
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -231,17 +231,315 @@ def test_the_document_states_each_rule_as_the_module_does() -> None:
     assert len(core.RULES) == 21
 
 
-def test_the_document_states_each_role_as_the_module_does() -> None:
-    text = LAYOUT_DOC.read_text(encoding="utf-8")
-    rows = re.findall(r"(?m)^\| `([a-z-]+)` \| (raw|derived) \| (.+?) \|$", text)
-    assert [(name, kind, holds) for name, kind, holds in rows] == [
-        (name, role.kind, role.holds) for name, role in core.ROLES.items()
+# --------------------------------------------------------------------------
+# The role vocabulary and the pages that state it
+# --------------------------------------------------------------------------
+#
+# ``core.ROLES`` is the vocabulary. Four places of the current pages state it, and
+# the guard reads these four places and nothing else: the role table of the layout
+# page, the count row of the same page, the count in the index of the testing pages,
+# and the ExperimentRun page, which links to the table and states no count. A
+# review of the sprint on 2026-10-13 found the ExperimentRun page stating 13 roles
+# while the module registered 14. The validation records keep the counts of their
+# own revisions, and the guard does not read them.
+
+TESTING_INDEX = REPO_ROOT / "docs" / "testing" / "README.md"
+EXPERIMENT_RUN_DOC = REPO_ROOT / "docs" / "contracts" / "experiment-run.md"
+
+ROLE_SECTION = "## Roles: raw and derived"
+ROLE_TABLE_LINK = "../testing/experiment-evidence-layout.md#roles-raw-and-derived"
+ROLE_ROW = re.compile(
+    r"^\| `(?P<name>[^`|]+)` \| (?P<kind>[^|]+?) \| (?P<holds>.+?) \|$"
+)
+ROLE_COUNT_ROW = re.compile(
+    r"(?m)^\| Roles \| (?P<total>\d+): (?P<raw>\d+) raw and (?P<derived>\d+) derived \|$"
+)
+INDEX_ROLE_COUNT = re.compile(r"the (?P<total>\d+) roles of an evidence file")
+#: A count of roles in words or digits, as the ExperimentRun page once stated one.
+STATED_ROLE_COUNT = re.compile(
+    r"(?i)\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+    r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)"
+    r"(?:\s+(?:registered|raw|derived))?\s+roles\b"
+)
+
+
+def _role_section_rows(
+    layout: str,
+) -> tuple[list[tuple[str, str, str]], list[str]] | None:
+    """The rows of the role table, and each line of the table that is no row.
+
+    Only the section of the role table is read, so a table of the same shape in
+    another section is not a row of the vocabulary. ``None`` when the page has no
+    such section.
+    """
+    lines = layout.splitlines()
+    if lines.count(ROLE_SECTION) != 1:
+        return None
+    start = lines.index(ROLE_SECTION) + 1
+    end = next(
+        (i for i in range(start, len(lines)) if lines[i].startswith("#")), len(lines)
+    )
+    table = [line for line in lines[start:end] if line.startswith("|")]
+    rows: list[tuple[str, str, str]] = []
+    unread: list[str] = []
+    for line in table[2:]:
+        match = ROLE_ROW.match(line)
+        if match is None:
+            unread.append(line)
+        else:
+            rows.append((match["name"], match["kind"], match["holds"]))
+    return rows, unread
+
+
+def _role_findings(
+    roles: Mapping[str, core.Role], layout: str, index: str, contract: str
+) -> list[str]:
+    """Each place where a page states the role vocabulary otherwise than ``roles``."""
+    findings: list[str] = []
+    expected = [(name, role.kind, role.holds) for name, role in roles.items()]
+    section = _role_section_rows(layout)
+    if section is None:
+        findings.append(f"table: not one section {ROLE_SECTION!r}")
+    rows, unread = section or ([], [])
+    findings += [f"table: unreadable row {line!r}" for line in unread]
+    names = [name for name, _, _ in rows]
+    findings += sorted(
+        f"table: duplicate role {name!r}"
+        for name in set(names)
+        if names.count(name) > 1
+    )
+    findings += [f"table: missing role {name!r}" for name in roles if name not in names]
+    findings += [f"table: extra role {name!r}" for name in names if name not in roles]
+    findings += [
+        f"table: role {name!r} differs"
+        for name, kind, holds in rows
+        if name in roles and (kind, holds) != (roles[name].kind, roles[name].holds)
     ]
-    assert sum(1 for role in core.ROLES.values() if role.kind == core.RAW) == 12
+    if not findings and rows != expected:
+        findings.append("table: the rows are not in the order of the module")
+
+    raw = sum(1 for role in roles.values() if role.kind == core.RAW)
+    derived = sum(1 for role in roles.values() if role.kind == core.DERIVED)
+    counts = ROLE_COUNT_ROW.findall(layout)
+    if counts != [(str(len(roles)), str(raw), str(derived))]:
+        findings.append(
+            f"count row: {counts} for {len(roles)}: {raw} raw, {derived} derived"
+        )
+    totals = INDEX_ROLE_COUNT.findall(index)
+    if totals != [str(len(roles))]:
+        findings.append(f"testing index: {totals} for {len(roles)}")
+
+    if ROLE_TABLE_LINK not in contract:
+        findings.append("ExperimentRun page: no link to the role table")
+    findings += [
+        f"ExperimentRun page: states a count, {match.group(0)!r}"
+        for match in STATED_ROLE_COUNT.finditer(contract)
+    ]
+    return findings
+
+
+def _role_pages() -> tuple[str, str, str]:
+    return (
+        LAYOUT_DOC.read_text(encoding="utf-8"),
+        TESTING_INDEX.read_text(encoding="utf-8"),
+        EXPERIMENT_RUN_DOC.read_text(encoding="utf-8"),
+    )
+
+
+def test_the_pages_state_the_role_vocabulary_as_the_module_does() -> None:
+    assert _role_findings(core.ROLES, *_role_pages()) == []
+
+
+def test_the_role_vocabulary_is_the_fourteen_registered_roles() -> None:
+    """A tripwire. A role that is added, removed, renamed, or moved between raw and
+    derived changes this test, and the guard above then requires the pages to
+    follow. ``operator-events`` is the role that ``V2-S5-003-PR2`` added."""
+    assert list(core.ROLES) == [
+        "caller",
+        "endpoints",
+        "pods",
+        "deployments",
+        "argo",
+        "telemetry",
+        "resources",
+        "operator-events",
+        "transcript",
+        "commands",
+        "environment",
+        "release",
+        "analysis",
+        "result",
+    ]
     assert sorted(n for n, r in core.ROLES.items() if r.kind == core.DERIVED) == [
         "analysis",
         "result",
     ]
+    assert all(r.kind in (core.RAW, core.DERIVED) for r in core.ROLES.values())
+    assert all(re.fullmatch(r"[a-z]+(?:-[a-z]+)*", name) for name in core.ROLES)
+
+
+def _replace_once(text: str, old: str, new: str) -> str:
+    assert text.count(old) == 1, old
+    return text.replace(old, new)
+
+
+OPERATOR_EVENTS_ROW = (
+    "| `operator-events` | raw | The events that the control of the run and an "
+    "operator recorded, each with its time. |\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("page", "old", "new", "finding"),
+    [
+        ("layout", OPERATOR_EVENTS_ROW, "", "table: missing role 'operator-events'"),
+        (
+            "layout",
+            OPERATOR_EVENTS_ROW,
+            OPERATOR_EVENTS_ROW + "| `profile` | raw | A profile. |\n",
+            "table: extra role 'profile'",
+        ),
+        (
+            "layout",
+            OPERATOR_EVENTS_ROW,
+            OPERATOR_EVENTS_ROW * 2,
+            "table: duplicate role 'operator-events'",
+        ),
+        (
+            "layout",
+            "| `operator-events` |",
+            "| `operator-event` |",
+            "table: missing role 'operator-events'",
+        ),
+        (
+            "layout",
+            "| `operator-events` | raw |",
+            "| `operator-events` | derived |",
+            "table: role 'operator-events' differs",
+        ),
+        (
+            "layout",
+            "| `operator-events` | raw |",
+            "| `operator-events` | Raw |",
+            "table: role 'operator-events' differs",
+        ),
+        (
+            "layout",
+            "| `operator-events` | raw |",
+            "| operator-events | raw |",
+            "table: unreadable row",
+        ),
+        (
+            "layout",
+            "| `analysis` |",
+            "| `result` |",
+            "table: duplicate role 'result'",
+        ),
+        ("layout", "| Roles | 14:", "| Roles | 13:", "count row:"),
+        ("layout", "14: 12 raw", "14: 11 raw", "count row:"),
+        ("layout", "| Roles | 14: 12 raw and 2 derived |\n", "", "count row:"),
+        ("index", "the 14 roles of", "the 13 roles of", "testing index:"),
+        ("index", "the 14 roles of", "the fourteen roles of", "testing index:"),
+        (
+            "contract",
+            "Every other role is a name that the writer chose.",
+            "Every other role is a name that the writer chose. The layout "
+            "registers 13 roles.",
+            "ExperimentRun page: states a count, '13 roles'",
+        ),
+        (
+            "contract",
+            "Every other role is a name that the writer chose.",
+            "Every other role is a name that the writer chose. It has fourteen "
+            "registered roles.",
+            "ExperimentRun page: states a count, 'fourteen registered roles'",
+        ),
+        (
+            "contract",
+            ROLE_TABLE_LINK,
+            "../testing/experiment-evidence-layout.md",
+            "ExperimentRun page: no link to the role table",
+        ),
+    ],
+    ids=[
+        "row-missing",
+        "row-extra",
+        "row-duplicate",
+        "row-renamed",
+        "row-reclassified",
+        "row-kind-misspelled",
+        "row-name-unquoted",
+        "row-renamed-onto-another",
+        "count-row-total",
+        "count-row-raw",
+        "count-row-absent",
+        "index-count-digits",
+        "index-count-words",
+        "contract-count-digits",
+        "contract-count-words",
+        "contract-link-anchor",
+    ],
+)
+def test_a_page_that_drifts_from_the_role_vocabulary_is_refused(
+    page: str, old: str, new: str, finding: str
+) -> None:
+    pages = dict(zip(("layout", "index", "contract"), _role_pages(), strict=True))
+    pages[page] = _replace_once(pages[page], old, new)
+    findings = _role_findings(core.ROLES, **pages)
+    assert any(item.startswith(finding) for item in findings), findings
+
+
+def test_a_role_table_out_of_the_order_of_the_module_is_refused() -> None:
+    layout, index, contract = _role_pages()
+    analysis_row = next(
+        line + "\n" for line in layout.splitlines() if line.startswith("| `analysis` |")
+    )
+    layout = _replace_once(layout, analysis_row, "")
+    layout = _replace_once(
+        layout, OPERATOR_EVENTS_ROW, OPERATOR_EVENTS_ROW + analysis_row
+    )
+    assert _role_findings(core.ROLES, layout, index, contract) == [
+        "table: the rows are not in the order of the module"
+    ]
+
+
+def test_a_role_table_outside_its_section_is_not_read() -> None:
+    """A table of the same shape under another heading is not the vocabulary."""
+    layout, index, contract = _role_pages()
+    layout = _replace_once(layout, ROLE_SECTION + "\n", "## Another section\n")
+    findings = _role_findings(core.ROLES, layout, index, contract)
+    assert findings[0] == f"table: not one section {ROLE_SECTION!r}"
+    assert "table: missing role 'caller'" in findings
+
+
+@pytest.mark.parametrize("change", ["added", "removed", "renamed", "reclassified"])
+def test_a_vocabulary_that_drifts_from_the_pages_is_refused(change: str) -> None:
+    """The guard reads the vocabulary that it is given, so a role that is added
+    to the module, removed, renamed, or moved to another kind and not to the pages
+    is refused."""
+    roles = dict(core.ROLES)
+    if change == "added":
+        roles["profile"] = core.Role(core.RAW, "A profile.")
+    elif change == "removed":
+        del roles["operator-events"]
+    elif change == "renamed":
+        roles = {
+            ("operator-event" if name == "operator-events" else name): role
+            for name, role in roles.items()
+        }
+    else:
+        roles["operator-events"] = core.Role(
+            core.DERIVED, roles["operator-events"].holds
+        )
+    findings = _role_findings(roles, *_role_pages())
+    assert findings, change
+    if change != "reclassified":
+        assert any(item.startswith("testing index:") for item in findings) == (
+            change != "renamed"
+        )
+    assert any(item.startswith("count row:") for item in findings) == (
+        change != "renamed"
+    )
 
 
 def test_the_package_exports_what_the_module_defines() -> None:

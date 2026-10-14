@@ -513,8 +513,13 @@ run for this change.
   directory is checked are not decided here. [The experiment evidence layout](../testing/experiment-evidence-layout.md)
   decides them, since `V2-S5-002-PR2`.
 - **It does not define a role vocabulary.** One role has a meaning to a rule: `caller`.
-  Every other role is a name that the writer chose. The evidence layout registers 13
-  roles for a file of a run directory. The schema still accepts any role.
+  Every other role is a name that the writer chose. The evidence layout registers the
+  roles of a file of a run directory in
+  [its role table](../testing/experiment-evidence-layout.md#roles-raw-and-derived).
+  This page does not restate their number. The schema still accepts any role. (Until
+  `V2-S5-007-PR1` this bullet stated a number of roles. That number was stale from
+  `V2-S5-003-PR2`, which added the role `operator-events`. A test now compares the
+  role table with the module and refuses a number of roles on this page.)
 - **It does not describe a run that deploys nothing.** The environment, the release, the
   runtime image, and the model are required. The two static E01 runs have no value for
   them.
