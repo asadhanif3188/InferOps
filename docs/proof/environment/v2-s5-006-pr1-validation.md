@@ -275,11 +275,33 @@ the repository test of the replay, `tests/testing/test_evidence_levels.py`,
 (2,158 passed, 3 skipped together). The layout's `repository` command reads the
 correction of the first attempt and still reports 2 conforming run directories.
 
+### The first hosted run, and the change that followed it
+
+The pull request's hosted workflow ran its default-lane job on the merge of `c6a3dec`
+into `main`. Its log, as the owner passed it on, ends at 94 % of the lane; the summary
+of the failures is not in it. Up to there it shows one failure, at the position that
+`test_the_repository_command_replays_the_committed_attempts` of the replay suite takes
+in the order of collection. The test is named from that position, not from the log.
+
+That test required `revision  held` for both attempts. The hosted checkout holds one
+commit, the merge, and so neither commit that the attempts state; there the command
+states `revision  not-checked`, as it is built to. The same test, run in a clone of
+depth 1 of the branch, failed at that assertion, and passed in this repository's full
+clone. The commit after `c6a3dec` changes only the test: it reads which stated commits
+the clone holds with `git cat-file`, and requires `held` for those and `not-checked` for
+the rest. It then passed in the clone of depth 1 and in the full clone. In the clone of
+depth 1, the test files that follow the 94 % point and the suites that this change
+touches gave 3,260 passed, 5 skipped, and 6 failed. The 6 failures are E01 suites,
+which the hosted log shows passing; they fail only when the environment of this
+repository runs the files of another checkout.
+
+The other jobs of the hosted workflow, and a hosted run of the commit that follows,
+were not observed here.
+
 ### Not run
 
-- **The hosted workflow.** This host has no GitHub command-line client, so no hosted
-  run of the final commit was started or observed here. It runs when the pull request
-  is opened.
+- **A complete hosted run.** This host has no GitHub command-line client. The one
+  hosted log that was passed on is described above; no other job was observed.
 - **Helm, Terraform, and the image builds.** This change edits no chart, no Terraform,
   and no image file.
 - **A replacement of a runtime pod.** The review allows an API or a runtime pod, and

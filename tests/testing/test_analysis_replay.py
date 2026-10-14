@@ -3031,7 +3031,32 @@ def test_the_repository_command_replays_the_committed_attempts(
 ) -> None:
     """Three committed run directories were written before the schema. Since
     V2-S5-006-PR1 each attempt of the Sprint 5 integration validation is replayed:
-    its analysis is computed again with the same bytes."""
+    its analysis is computed again with the same bytes.
+
+    Where the clone holds the commit that an attempt states, the command states
+    that the revision held; otherwise it states that it did not check it. The
+    checkout of the hosted default lane holds one commit, so it holds neither
+    stated commit. Which commits the clone holds is read here with Git itself, not
+    with the function of the command. This test does not require that any clone
+    holds them."""
+    stated = [
+        json.loads(
+            (REPO_ROOT / INTEGRATION_DIRECTORY / run / "analysis.json").read_text(
+                encoding="utf-8"
+            )
+        )["analysisCode"]["revision"]
+        for run in INTEGRATION_RUNS
+    ]
+    present = sum(
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{revision}^{{commit}}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            check=False,
+        ).returncode
+        == 0
+        for revision in stated
+    )
     assert command.main(["repository"]) == 0
     lines = capsys.readouterr().out.splitlines()
     # The first attempt was bound before the same change gave the runner its
@@ -3042,9 +3067,9 @@ def test_the_repository_command_replays_the_committed_attempts(
     assert [line.split()[0] for line in lines if line.split()[0] != "source"] == [
         "pre-schema"
     ] * 3 + ["replayed", "revision"] * len(INTEGRATION_RUNS) + ["runs"]
-    assert sum(line.endswith("revision  held") for line in lines) == len(
-        INTEGRATION_RUNS
-    )
+    assert sum(line.endswith("revision  held") for line in lines) == present
+    unchecked = len(INTEGRATION_RUNS) - present
+    assert sum("revision  not-checked" in line for line in lines) == unchecked
     total = 3 + len(INTEGRATION_RUNS)
     assert lines[-1].endswith(
         f"{total}: 3 pre-schema and not replayed, 0 with no analysis, "
