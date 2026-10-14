@@ -190,6 +190,14 @@ vocabulary, and this layout adds one for a file of a run directory.
   change to the vocabulary. `V2-S5-003-PR2` made one such change: it added the raw role
   `operator-events`, and the vocabulary went from 13 roles to 14. Until then no role
   could name a log of operator events.
+- **The pages follow the module.** Since `V2-S5-007-PR1` a test compares the role
+  vocabulary of the module with four places: this table, the count row at the top
+  of this page, the count in [the index of the testing pages](README.md), and
+  [the ExperimentRun page](../contracts/experiment-run.md), which links to this
+  table and states no number of roles. It refuses a missing, extra, duplicate,
+  renamed, or reclassified role, a row out of the order of the module, and a count
+  that differs. A change to the vocabulary must change these places in the same
+  change. The test reads no other page, and it does not read a validation record.
 
 ### The caller record
 

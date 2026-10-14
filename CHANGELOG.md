@@ -1412,6 +1412,31 @@ from `1.0.0`.
 
 ### Fixed
 
+- **The ExperimentRun page stated 13 evidence roles while the layout registers 14,
+  and a test now holds the pages that state the vocabulary to the module.** Since
+  `V2-S5-003-PR2` added the raw role `operator-events`, the evidence layout has
+  registered 14 roles, 12 raw and 2 derived. One bullet of
+  [the ExperimentRun page](docs/contracts/experiment-run.md) still said 13. The
+  role table of the layout page was right and a test compared it with the module,
+  but no test read the count of another page. A review of the sprint on 2026-10-13
+  reported this. It was reported to the author, and no file in this repository
+  records that review. `V2-S5-007-PR1` closes it. **The bullet now links to the
+  role table and states no number of roles.** A test compares the vocabulary of
+  `tools/experiment_evidence` with four places: the role table of
+  [the layout page](docs/testing/experiment-evidence-layout.md#roles-raw-and-derived),
+  read inside its section only, the count row of that page, the count in the index
+  of the testing pages, and the ExperimentRun page, which must link to the table
+  and state no number of roles. Mutation tests drive it over a missing, extra,
+  duplicate, renamed, and reclassified role, a row out of order, a table outside
+  its section, a count that differs in digits or words, and a vocabulary changed
+  in the module and not in the pages. A tripwire test names the 14 roles in their
+  order. **Historical records are not edited.** The validation record of
+  `V2-S5-002-PR2` and the entry of that change above keep the count of 13 that was
+  true at their revision. The test reads no page other than the four. No role,
+  rule, run directory, raw evidence file, freeze record, claim, or evidence level
+  was changed. See
+  [the validation record](docs/proof/testing/v2-s5-007-pr1-validation.md). Evidence
+  level C0.
 - **An aggregate left a run out of the median for its result state alone, and it
   now holds the run to a reason that the freeze record of its manifest registers.
   No real run was aggregated, and no committed freeze record registers a reason.** The aggregate of
