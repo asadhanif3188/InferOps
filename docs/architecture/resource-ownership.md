@@ -80,8 +80,12 @@ their own run.
 
 Two workflows create an object in the namespace which neither Terraform nor the
 chart owns. The reliability runner creates one ConfigMap and one `batch/v1 Job`
-for a run, since `V2-S5-001-PR2`. Those two objects have no row in this
-inventory, and [the runner page](../serving/reliability-runner.md) says so. The
+for a run, since `V2-S5-001-PR2`, and one `NetworkPolicy` that admits the pod of
+the run to the API pods, since `V2-S5-006-PR1`. Its `cleanup` deletes the three
+by name. Those objects have no row in this inventory, and
+[the runner page](../serving/reliability-runner.md) says so. The runner does not
+carry the release's labels, so the release's policy does not admit it, and the
+policy of the run is what admits it. The
 multi-replica workflow creates one `batch/v1 Job` that
 sends the request set from inside the cluster, because a `kubectl port-forward`
 is served against a single endpoint and cannot exercise a Service's distribution.

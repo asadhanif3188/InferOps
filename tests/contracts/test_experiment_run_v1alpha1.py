@@ -68,6 +68,11 @@ from tools.reliability_runner import incluster
 pytestmark = pytest.mark.contract
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+#: The run directories of the Sprint 5 integration validation, one for each
+#: attempt, added by V2-S5-006-PR1. Each is of the published layout. An attempt
+#: added later is a visible change of this tuple.
+INTEGRATION_RUNS = ("integration-1",)
+INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 CONTRACT_DIR = REPO_ROOT / "contracts" / "experiment"
 SCHEMA_PATH = CONTRACT_DIR / "experiment-run.v1alpha1.schema.json"
 VALID_DIR = CONTRACT_DIR / "examples" / "valid"
@@ -1141,12 +1146,17 @@ def test_a_pre_schema_manifest_states_the_kind_and_the_schema_refuses_it(ref: st
     assert {"field-required", "field-unknown"} <= rules
 
 
-def test_the_committed_tree_holds_three_pre_schema_manifests_and_no_other():
+def test_the_committed_tree_holds_three_pre_schema_manifests_and_the_attempts():
+    """The three pre-schema manifests, and since V2-S5-006-PR1 the manifest of each
+    attempt of the Sprint 5 integration validation, which conforms."""
     report = core.repository_report()
     assert not report.refused
     assert report.findings == ()
     assert [(entry.path, entry.status) for entry in report.manifests] == [
         (ref, core.PRE_SCHEMA) for ref in sorted(PRE_SCHEMA_RECORDS)
+    ] + [
+        (f"{INTEGRATION_DIRECTORY}/{run}/run.v1alpha1.json", core.CONFORMING)
+        for run in INTEGRATION_RUNS
     ]
 
 
@@ -1404,7 +1414,10 @@ def test_the_repository_command_lists_the_committed_manifests(
     assert command.main(["repository"]) == 0
     output = capsys.readouterr().out.splitlines()
     assert output[:3] == [f"pre-schema {ref}" for ref in sorted(PRE_SCHEMA_RECORDS)]
-    assert output[3] == "manifests  3: 3 pre-schema, 0 conforming, 0 refused"
+    total = 3 + len(INTEGRATION_RUNS)
+    assert output[-1] == (
+        f"manifests  {total}: 3 pre-schema, {len(INTEGRATION_RUNS)} conforming, 0 refused"
+    )
 
 
 def test_the_repository_command_exits_3_on_a_refused_tree(

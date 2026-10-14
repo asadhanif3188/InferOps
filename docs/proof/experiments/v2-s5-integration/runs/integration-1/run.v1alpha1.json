@@ -1,0 +1,168 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRun",
+  "metadata": {
+    "experimentId": "s5-integration-validation",
+    "runId": "integration-1",
+    "spec": {
+      "freezeRecord": "docs/proof/experiments/v2-s5-integration/freeze-r1.v1alpha1.json",
+      "freezeRevision": 1,
+      "freezeContentSha256": "bec32edf1b1cdb29c3f49488f5f1149b7162a1009cda36f26ad0fdf79588b0df"
+    },
+    "executingRevision": "7f150c25af26f855a7390125be82dd44fba772a5",
+    "startedAt": "2026-10-14T08:57:57Z",
+    "finishedAt": "2026-10-14T09:09:01Z"
+  },
+  "environment": {
+    "binding": {
+      "environment": "local",
+      "name": "local-docker-desktop",
+      "sha256": "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
+    },
+    "provider": "docker-desktop",
+    "kubernetesVersion": "v1.36.1",
+    "nodeCount": 1
+  },
+  "release": {
+    "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
+    "contractSha256": "818ef5d113b325781e7477c226467487e8a5fae4f42a090a7e06eb2a2fcf5085",
+    "helmValuesSha256": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930",
+    "desiredStateRevision": "2d43331dd14f360c0b7eb4ddd950a42251bc5f8e"
+  },
+  "runtime": {
+    "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+  },
+  "model": {
+    "identifier": "qwen3-1-7b-q8-0",
+    "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+  },
+  "callerProfile": {
+    "applies": true,
+    "profileId": "RP-1",
+    "profileRevision": 1,
+    "contentSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+    "concurrency": 2
+  },
+  "fault": {
+    "registered": true,
+    "type": "delete-api-pod",
+    "injected": true,
+    "target": "pod/inferops-inferops-llm-c66d85b99-p72ls",
+    "injectedAt": "2026-10-14T09:01:15.459Z"
+  },
+  "result": {
+    "state": "FAILED",
+    "reason": "Criterion S5I-AC2 did not hold: each of the six requests of the runner ended with the outcome timeout, and none completed with the outcome success. The API counted no request in the telemetry stream, and the release's network policy admits no pod that carries the runner's labels. The other criteria held."
+  },
+  "evidenceLevel": {
+    "intended": "C2"
+  },
+  "cleanup": {
+    "state": "verified",
+    "left": [
+      "The release, the delivery controller, and the prerequisite layer stay installed for the next attempt. The phase down of the driver removes them after the last attempt."
+    ]
+  },
+  "limitations": [
+    "One attempt, on one provider, one node, and one Kubernetes version.",
+    "The instants of the caller record are on the runner pod's clock, and the instants of the streams and of the event log are on the host's clock. Two readings of the node's clock between two host instants bound the difference, and it is not otherwise measured.",
+    "The fault is injected between the two events of the log. injectedAt is the instant at which fault-injection-started was recorded.",
+    "The release was prepared by the phase up of a draft of the driver, run from outside the tree before the freeze record was committed. Its function up is the one that the committed driver holds.",
+    "That the network policy dropped the requests is inferred from three readings: six timeouts with no answer, no API request in the telemetry stream, and no line of the run in the logs of the API pods read after the attempt. No reading of the network plugin states a verdict."
+  ],
+  "doesNotEstablish": [
+    "A recovery time, an availability, a service level, a capacity, or a threshold. This attempt is not a run of E02, E03, E04, E05, or E06.",
+    "That the runner reaches the model. No request of this attempt completed.",
+    "Behaviour on another provider, on more than one node, or under another network plugin."
+  ],
+  "evidence": {
+    "files": [
+      {
+        "role": "analysis",
+        "path": "analysis.json",
+        "sha256": "adb76032112e603fe1c0c04bbd8e973ececb4f0df43661a67012278b1cd25a72"
+      },
+      {
+        "role": "argo",
+        "path": "argo.jsonl",
+        "sha256": "96facbe3056afad79181b8c384368190ce018e9797aa7fa6043ae1ffd6392119"
+      },
+      {
+        "role": "transcript",
+        "path": "attempt.txt",
+        "sha256": "33ab00870dbb916ea530e343bba72f25bf8bcdbaf5c4fd74008759c5d32e63d3"
+      },
+      {
+        "role": "caller",
+        "path": "caller.jsonl",
+        "sha256": "3108d82937f786c07bdd5f6f129da3a66cb73422f1ca1dea9477a2575b5ad13f"
+      },
+      {
+        "role": "commands",
+        "path": "commands.txt",
+        "sha256": "44e050fa184ee16130d7d8cd11d825e46d267e38a88050c5881523d887a20fb6"
+      },
+      {
+        "role": "transcript",
+        "path": "declaration.json",
+        "sha256": "7202cdcffac5581c590809abd28bc69804023d026dee82024a11950b22ef920b"
+      },
+      {
+        "role": "deployments",
+        "path": "deployments.jsonl",
+        "sha256": "9523eb96d6756d2b79589e91fdda6804fd4cda75285dafea7f0cc41dfa8e954d"
+      },
+      {
+        "role": "endpoints",
+        "path": "endpoints.jsonl",
+        "sha256": "3dc775d4ee21e50e3379617659d1d661076ec9c6cea6dea6d3f12b3d955876d8"
+      },
+      {
+        "role": "environment",
+        "path": "environment.txt",
+        "sha256": "2ce9f170f9c0753602df3f53768d5345a04ab11f947a001767d91cc61d292b4c"
+      },
+      {
+        "role": "operator-events",
+        "path": "operator-events.jsonl",
+        "sha256": "af5249d6f472aecc2439195565a731824650710496f1bf3bc8ff2abf713f3446"
+      },
+      {
+        "role": "pods",
+        "path": "pods.jsonl",
+        "sha256": "bff8444d6b86b98b63fd4e7d49348c7280611417d1ebf0c5bc24e00a2aa955d7"
+      },
+      {
+        "role": "release",
+        "path": "release.txt",
+        "sha256": "2757ae04cf974d4ce03e80db9b237d456fab49bd1e7394f2aaae380ef44565eb"
+      },
+      {
+        "role": "resources",
+        "path": "resources.jsonl",
+        "sha256": "374774845519f28e96e75b0655a13b93b69acb68780bacd6425a1c183dfdd532"
+      },
+      {
+        "role": "result",
+        "path": "result.md",
+        "sha256": "ef9ba052892fb1a44508758a11ccc1c46886fe40de3197155e024db0b6fa1686"
+      },
+      {
+        "role": "transcript",
+        "path": "runner-pod-readings.txt",
+        "sha256": "b80cec728c733ab97e1be41fa64c34d4445efe2b60c4ecbf8fe5ee0ea1ef3319"
+      },
+      {
+        "role": "telemetry",
+        "path": "telemetry.jsonl",
+        "sha256": "9064c897b8ce00fb1465acb6918d1b71cdf19f0447e73bd8557f99877405bde2"
+      },
+      {
+        "role": "transcript",
+        "path": "transcript.txt",
+        "sha256": "853a6efefbe89d08adccc8ec57c961ebfc07a54cb72d254493aecfc99c31bacb"
+      }
+    ]
+  }
+}

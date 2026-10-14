@@ -1,0 +1,12 @@
+##### E1. The environment and the release, as the cluster reports them
+$ kubectl version --context docker-desktop
+Client Version: v1.36.1
+Kustomize Version: v5.8.1
+Server Version: v1.36.1
+[exit 0]
+$ k get nodes -o jsonpath={range .items[*]}{.metadata.name}{"\t"}{.status.nodeInfo.kubeletVersion}{"\t"}{.status.nodeInfo.containerRuntimeVersion}{"\n"}{end}
+desktop-control-plane	v1.36.1	containerd://2.3.1
+[exit 0]
+$ k get daemonset kindnet -n kube-system -o jsonpath={.spec.template.spec.containers[0].image}{"\n"}
+docker.io/kindest/kindnetd:v20260528-9350166c
+[exit 0]

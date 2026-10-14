@@ -80,6 +80,11 @@ from typing import Any
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+#: The run directories of the Sprint 5 integration validation, one for each
+#: attempt, added by V2-S5-006-PR1. Each is of the published layout. An attempt
+#: added later is a visible change of this tuple.
+INTEGRATION_RUNS = ("integration-1",)
+INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 if __name__ == "__main__":
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -2669,13 +2674,13 @@ def test_the_aggregate_command_reads_the_executing_revision(
 
 def test_no_committed_freeze_record_registers_an_exclusion_reason() -> None:
     """Three committed records are of E01, and E01 has no numerical aggregate. The
-    fourth is the Sprint 5 integration validation, which computes no aggregate.
+    other two are the Sprint 5 integration validation, which computes no aggregate.
 
     This change edits none of them, and the freeze check does not read the
     member. The member is read when an aggregate reads it.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 4
+    assert len(records) == 5
     for record in records:
         assert core.EXCLUSION_REASONS_MEMBER not in _read_json(record)
     example = _read_json(EXAMPLE_ROOT / FREEZE_REF)
@@ -3021,15 +3026,29 @@ def test_sources_prints_one_line_for_each_source_file(
     ]
 
 
-def test_the_repository_command_replays_no_committed_run(
+def test_the_repository_command_replays_the_committed_attempts(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """The three committed run directories were written before the schema."""
+    """Three committed run directories were written before the schema. Since
+    V2-S5-006-PR1 each attempt of the Sprint 5 integration validation is replayed:
+    its analysis is computed again with the same bytes."""
     assert command.main(["repository"]) == 0
     lines = capsys.readouterr().out.splitlines()
-    assert [line.split()[0] for line in lines] == ["pre-schema"] * 3 + ["runs"]
+    # The first attempt was bound before the same change gave the runner its
+    # network policy, so its stated runner sources differ from the present ones.
+    # The replay still holds: the present code gives the stored bytes.
+    differs = [line.split()[-1] for line in lines if line.split()[0] == "source"]
+    assert all(path.startswith("tools/reliability_runner/") for path in differs)
+    assert [line.split()[0] for line in lines if line.split()[0] != "source"] == [
+        "pre-schema"
+    ] * 3 + ["replayed", "revision"] * len(INTEGRATION_RUNS) + ["runs"]
+    assert sum(line.endswith("revision  held") for line in lines) == len(
+        INTEGRATION_RUNS
+    )
+    total = 3 + len(INTEGRATION_RUNS)
     assert lines[-1].endswith(
-        "3: 3 pre-schema and not replayed, 0 with no analysis, 0 replayed, 0 refused"
+        f"{total}: 3 pre-schema and not replayed, 0 with no analysis, "
+        f"{len(INTEGRATION_RUNS)} replayed, 0 refused"
     )
 
 
@@ -3214,10 +3233,14 @@ def test_the_example_is_what_the_suite_builds_but_for_its_code(tmp_path: Path) -
 
 
 def test_the_example_is_outside_the_proof_tree() -> None:
-    """No run directory of the layout exists under ``docs/proof/experiments``."""
+    """The example is not in ``docs/proof/experiments``. Since V2-S5-006-PR1 the
+    run directories of the layout there are the attempts of the Sprint 5
+    integration validation, and no other."""
     assert not (REPO_ROOT / EXPERIMENT_REF).exists()
     listing = run_core.repository_report(REPO_ROOT)
-    assert [entry.status for entry in listing.manifests] == [run_core.PRE_SCHEMA] * 3
+    assert [entry.status for entry in listing.manifests] == [
+        run_core.PRE_SCHEMA
+    ] * 3 + [run_core.CONFORMING] * len(INTEGRATION_RUNS)
 
 
 # --------------------------------------------------------------------------

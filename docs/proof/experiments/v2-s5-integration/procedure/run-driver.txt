@@ -14,7 +14,8 @@
 # integration-1). One attempt identifier is one attempt. It is never reused, and
 # every attempt is kept, whatever it shows.
 #
-# This file is a pinned input of freeze-r1.v1alpha1.json beside it. `capture`
+# This file is a pinned input of the freeze records beside it. Revision 1 ran
+# integration-1 with this file naming revision 1; it names revision 2 since then. `capture`
 # runs it from the committed tree: bash docs/proof/experiments/v2-s5-integration/procedure/run-driver.txt
 # It writes only under .artifacts/, which Git ignores, so the working tree stays
 # clean, and it refuses to start when a material file differs from its pin.
@@ -58,7 +59,7 @@ PHASE="${1:?give the phase: up, capture, or down}"
 RUN="${2:?give the run name, for example run-1}"
 ATTEMPT="${3:-}"
 EXPERIMENT="s5-integration-validation"
-FREEZE_RECORD="docs/proof/experiments/v2-s5-integration/freeze-r1.v1alpha1.json"
+FREEZE_RECORD="docs/proof/experiments/v2-s5-integration/freeze-r2.v1alpha1.json"
 WORK=".artifacts/s5-integration/${RUN}-driver"
 CAPACITY_COLLECTIONS=".artifacts/capacity-preflight/collections"
 CAPACITY_SCRIPT="scripts/environment/capacity-preflight.sh"

@@ -1,0 +1,25 @@
+##### E1, continued
+$ k get application local-docker-desktop-support-assistant -n argocd -o jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status}{"\n"}
+revision=2d43331dd14f360c0b7eb4ddd950a42251bc5f8e sync=Synced health=Healthy
+[exit 0]
+$ k get deployments -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name}{"\t"}replicas={.spec.replicas}{"\t"}ready={.status.readyReplicas}{"\t"}{range .spec.template.spec.containers[*]}{.image}{" "}{end}{"\n"}{end}
+inferops-inferops-llm	replicas=2	ready=2	localhost/inferops-api@sha256:9cdc765b717a42069abb8f5688cb6ed3cd2b9ad286b7316eee1f8b23dedc1948 
+inferops-inferops-llm-collector	replicas=1	ready=1	prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996 
+inferops-inferops-llm-runtime	replicas=2	ready=2	ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384 
+[exit 0]
+$ k get networkpolicies -n inferops-release -o name
+networkpolicy.networking.k8s.io/inferops-inferops-llm-api
+networkpolicy.networking.k8s.io/inferops-inferops-llm-collector
+networkpolicy.networking.k8s.io/inferops-inferops-llm-default-deny
+networkpolicy.networking.k8s.io/inferops-inferops-llm-model-acquisition
+networkpolicy.networking.k8s.io/inferops-inferops-llm-release-test
+networkpolicy.networking.k8s.io/inferops-inferops-llm-runtime
+[exit 0]
+$ k get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name}{"\t"}uid={.metadata.uid}{"\t"}{.metadata.labels.app\.kubernetes\.io/component}{"\t"}phase={.status.phase}{"\t"}ready={.status.conditions[?(@.type=="Ready")].status}{"\t"}restarts={range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}
+inferops-inferops-llm-c66d85b99-p72ls	uid=982840cf-d64b-4000-ae89-6ec1ab943a7d	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-c66d85b99-zgcgp	uid=27215ca3-9c01-490c-8138-236986baa752	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-collector-7c6d4cf598-hlvxw	uid=e980d530-28c0-4ca3-9874-7d6baaa80f4c	telemetry-collector	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-25vtj	uid=4a0e6b04-93de-45a5-babb-982a4c91b818	serving-runtime	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-c48m9	uid=0d31a272-df42-4396-bcdd-8a0b527369b5	serving-runtime	phase=Running	ready=True	restarts=0 
+[exit 0]
+

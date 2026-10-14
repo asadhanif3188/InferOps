@@ -8,7 +8,7 @@
 
 ``plan`` prints the plan of one run of the committed RP-1 profile. Its target is the
 API Service of the release, and no option changes it. ``manifest``
-prints one ConfigMap and one Job that run a plan. ``verify`` checks a caller record,
+prints one NetworkPolicy, one ConfigMap, and one Job that run a plan. ``verify`` checks a caller record,
 which is the log of the pod of a run, and prints a summary of counts. ``rehearse``
 runs the loop of the runner against scripted answers and prints the caller record.
 

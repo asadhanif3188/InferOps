@@ -1627,6 +1627,10 @@ def test_the_review_record_describes_the_real_deployment_run_as_it_is() -> None:
     the run directory with the content digest the file has now. These are the checks
     the review gate makes when a ledger references the record. Since `V2-S3-005-PR1`
     one ledger does, and the tests below hold it.
+    A later freeze record adds a row to the registry, so the file's digest moves. The
+    review names the registry as it was reviewed: today's file without the rows that
+    were registered after it, in the form the file is written in. (Until
+    `V2-S5-006-PR1` added two rows, this test compared today's whole file.)
     The test does not show that a review took place or what it read."""
     review = json.loads(E01_D_REVIEW.read_text(encoding="utf-8"))
     subject = review["subject"]
@@ -1645,9 +1649,16 @@ def test_the_review_record_describes_the_real_deployment_run_as_it_is() -> None:
         "revision": 3,
         "contentSha256": manifest["metadata"]["freezeContentSha256"],
     }
-    assert subject["registry"]["contentSha256"] == content_digest(
-        (REPO_ROOT / REGISTRY_PATH).read_bytes()
-    )
+    registry = json.loads((REPO_ROOT / REGISTRY_PATH).read_text(encoding="utf-8"))
+    rows = registry["records"]
+    assert [row["registeredBy"] for row in rows[:3]] == [
+        "V2-S2-003-PR1",
+        "V2-S2-004-PR1",
+        "V2-S3-004-PR1",
+    ]
+    registry["records"] = rows[:3]
+    as_reviewed = (json.dumps(registry, indent=2, ensure_ascii=False) + "\n").encode()
+    assert subject["registry"]["contentSha256"] == content_digest(as_reviewed)
     assert subject["executingRevision"] == manifest["executingRevision"]
     assert subject["outcomes"] == manifest["outcomes"]
     assert review["review"]["reviewedRevision"] != subject["executingRevision"]
