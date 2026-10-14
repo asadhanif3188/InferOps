@@ -758,6 +758,11 @@ trusts it.
   engine.
 - **Anything about a network policy being enforced.** It is not, on this plugin,
   and the measurement that says so was taken on a cluster that is near to the
-  accepted one rather than the accepted one itself.
+  accepted one rather than the accepted one itself. (Since `V2-S5-006-PR1`: on the
+  docker-desktop cluster made again at `v1.36.1`, whose kindnetd starts a policy
+  controller, one attempt on 2026-10-14 saw the requests of a pod that no policy
+  of the release admits not reach the API. That is an inference from
+  [one attempt](../proof/experiments/v2-s5-integration/runs/integration-1/result.md), and it is not a test of the plugin. A release
+  that does not become ready there is worth checking against the policy first.)
 - **Anything about a cluster with more than one node.** Every measurement and
   every capacity statement here is about a single-node `kind` cluster.

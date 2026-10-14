@@ -48,7 +48,9 @@ must take one reading for each sample, and must treat a read that did not answer
 as no reading for that sample. Since `V2-S5-003-PR1`
 [the timeline collector](experiment-timelines.md) does that for a bounded number
 of samples, and its `endpoints` stream applies the rules of this page to each
-one. No stream of a real run is committed.
+one. Since `V2-S5-006-PR1` the `endpoints` streams of the two attempts of
+[a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation)
+are committed. (Until then this page said that no stream of a real run is committed.)
 
 ## What is read: the collection
 

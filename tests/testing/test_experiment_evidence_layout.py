@@ -60,7 +60,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: The run directories of the Sprint 5 integration validation, one for each
 #: attempt, added by V2-S5-006-PR1. Each is of the published layout. An attempt
 #: added later is a visible change of this tuple.
-INTEGRATION_RUNS = ("integration-1",)
+INTEGRATION_RUNS = ("integration-1", "integration-2")
 INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 LAYOUT_DOC = REPO_ROOT / "docs" / "testing" / "experiment-evidence-layout.md"
 FIXTURES = REPO_ROOT / "contracts" / "experiment" / "examples" / "valid"

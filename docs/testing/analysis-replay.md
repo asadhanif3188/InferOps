@@ -1,6 +1,6 @@
 # The replay of an experiment analysis
 
-Status: **the tool is implemented, and run directories that the test suite builds show the binding, each refusal, and the replay at evidence level C0. No run was analysed. One synthetic run directory with its run analysis is committed as an example, outside the proof tree. The proof tree holds no run directory of the published layout: its three run directories were written before the schema, and none names an analysis. No claim is registered, and no claim status changed.**
+Status: **the tool is implemented, and run directories that the test suite builds show the binding, each refusal, and the replay at evidence level C0. No result-bearing run was analysed. One synthetic run directory with its run analysis is committed as an example, outside the proof tree. Since `V2-S5-006-PR1` the proof tree holds two run directories of the published layout, the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation), and each holds a run analysis that replays. Its three earlier run directories were written before the schema, and none names an analysis. No claim is registered, and no claim status changed.** (Until `V2-S5-006-PR1` this status said that no run was analysed and that the proof tree holds no run directory of the published layout.)
 
 [The reliability analysis](reliability-analysis.md) computes the figures of one
 run from files that a command names. Its document states no digest of an input
@@ -434,7 +434,8 @@ state leaves no run out.
   earlier revision registers. No rule is registered for that case.
 - **No committed freeze record states the member.** The three committed records
   are of E01, which has no numerical aggregate, and this change edits none of
-  them. No experiment has registered an exclusion reason, and no run was left
+  them. (Since `V2-S5-006-PR1` two records of a non-result integration validation
+  are also committed, and neither states the member.) No experiment has registered an exclusion reason, and no run was left
   out of an aggregate of real runs.
 
 An aggregate document lists, for each run, the digest of the manifest, how the
@@ -578,8 +579,9 @@ the files of the `concurrency` case of
 [the reliability analysis](reliability-analysis.md#the-six-cases), and the
 suite holds each to the digest of that case. Its manifest is a fixture with
 placeholder identities, and its freeze record freezes no experiment. The
-example is outside `docs/proof/experiments`, so no run directory of the layout
-exists in the proof tree.
+example is outside `docs/proof/experiments`, so it is not a run directory of the
+proof tree. (Until `V2-S5-006-PR1` this sentence said that no run directory of the
+layout exists in the proof tree.)
 
 ```sh
 uv run --locked python -m tools.analysis_replay verify \
@@ -626,11 +628,18 @@ the output of `bind` in the run directory and names it in the manifest.
 `repository` prints `pre-schema` for a run directory whose manifest the
 pre-schema register names, `no-analysis` for a run that names no run analysis,
 `replayed` for each run analysis that was reproduced, and `REFUSED` otherwise.
-In this change it prints three `pre-schema` lines and exits 0.
+It prints three `pre-schema` lines and two `replayed` lines, one for each attempt
+of the integration validation, and exits 0. The first attempt prints
+`code differs`: its run analysis was bound before the same change edited two
+source files of the runner. Both print `revision  held`. (Until `V2-S5-006-PR1`
+it printed three `pre-schema` lines only.)
 
 ## What is not done
 
-- No run was analysed. Each run directory of the suite is built by the suite.
+- No result-bearing run was analysed. Each run directory of the suite is built by
+  the suite. The two run analyses of the proof tree are of the attempts of a
+  non-result integration validation, and no figure of either is compared with a
+  bound. (Until `V2-S5-006-PR1` this item said that no run was analysed.)
 - No frozen record of an experiment states a window, an expected state, or a
   signal, so no check holds a declaration to one. The tool does not compare the
   declaration with the manifest, except for the two identifiers.

@@ -1,6 +1,6 @@
 # The telemetry of an experiment run
 
-Status: **the collector script and the stream tool are implemented, and collections that the test suites build show each stream, each state of a read, and each result at evidence level C0. No cluster and no telemetry collector was read. No stream of a real run is committed, and no claim is registered. The script was executed against stand-ins for `kubectl` only.**
+Status: **the collector script and the stream tool are implemented, and collections that the test suites build show each stream, each state of a read, and each result at evidence level C0. Since `V2-S5-006-PR1` the script read one cluster and its telemetry collector in the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation), on the docker-desktop provider with one node, and the streams of both attempts are committed. Each of the 288 query reads of each attempt answered through the Service proxy of the API server. No claim is registered.** (Until `V2-S5-006-PR1` this status said that no cluster and no telemetry collector was read, that no stream of a real run is committed, and that the script was executed against stand-ins for `kubectl` only.)
 
 An experiment run compares what a caller observed with what the platform
 published at the same time. [The timelines page](experiment-timelines.md)
@@ -173,7 +173,9 @@ change nothing, and no stream holds what they return.
 file for it, and the sample states the read as `unanswered`. Each kubectl call
 of a read states `--request-timeout 10s`, and kubectl applies it to each
 request that the call makes. The call of the Service read can make more than
-one request. No run observed how long a read takes. A query that the collector
+one request. No run observed how long a read takes. (Since `V2-S5-006-PR1` the
+streams of two attempts on one provider state the two instants of each of their
+reads. No page states a duration from them.) A query that the collector
 refused and a query that the API server could not pass to the collector both
 fail the read, and the script does not tell them apart.
 
@@ -427,11 +429,18 @@ holds the value to no set of values.
   to each request that the call makes. The call of the Service read can make
   more than one request. No run observed how long a read takes. A query that the
   collector refused and a query that the API server could not pass to the
-  collector are both unanswered.
+  collector are both unanswered. (Since `V2-S5-006-PR1` the streams of two
+  attempts state the two instants of each of their reads. No page states a
+  duration from them.)
 - A read reaches the collector through the Service proxy of the API server. The
   network policy of the chart selects the pod of the collector and admits no
   connection to its port. Whether a cluster applies that policy to a connection
   from the API server is a property of its network plugin. No run observed it.
+  (Since `V2-S5-006-PR1` two attempts on the docker-desktop provider read
+  through it, and each of the 288 query reads of each attempt answered. The
+  requests of the runner of the first attempt all timed out, and its result page
+  infers that the network policy of the API dropped them. Why no policy stopped
+  the reads of the collector was not established.)
 - The series of the collector are in a volume that goes when its pod goes. A
   stream holds only what was read while the collection ran.
 - The resources stream reads what the API process publishes about itself. No
@@ -508,13 +517,20 @@ answer.
 
 ## What is not done
 
-- No cluster and no telemetry collector was read. The script ran against
-  stand-ins for `kubectl`, and the tool read collections that the suites built.
-  The form of an answer is the one that the query API documents. No answer of a
-  running collector was read by this tool.
-- No run observed that the Service proxy path reaches the collector, on any
-  provider.
-- No run directory holds a stream.
+- No result-bearing run read a cluster or a telemetry collector. The script read
+  one only in the two attempts of the integration validation, on one provider
+  with one node. In the suites it ran against stand-ins for `kubectl`, and the
+  tool read collections that the suites built. The form of an answer is the one
+  that the query API documents. (Until `V2-S5-006-PR1` this item said that no
+  cluster and no telemetry collector was read, and that no answer of a running
+  collector was read by this tool.)
+- The Service proxy path reached the collector in both attempts, on the
+  docker-desktop provider. No other provider was read. (Until `V2-S5-006-PR1`
+  this item said that no run observed that the path reaches the collector, on
+  any provider.)
+- Two run directories hold the streams, those of the two attempts, and neither
+  is of a result-bearing run. (Until `V2-S5-006-PR1` this item said that no run
+  directory holds a stream.)
 - No frozen record of an experiment names the query set.
 - No query reads the resource use of the serving runtime, of a container, or of
   a node.
@@ -525,8 +541,11 @@ answer.
 - The layout check does not hold a stream file to its form.
 - The script does not stop on a signal with a complete collection. A collection
   that was interrupted has no end file.
-- The script and the timeline collector are two processes. Nothing starts them
-  together, and nothing aligns their samples.
+- The script and the timeline collector are two processes. No tool starts them
+  together, and nothing aligns their samples. Since `V2-S5-006-PR1`
+  [the driver of the integration validation](../proof/experiments/v2-s5-integration/procedure/run-driver.txt)
+  starts both, one after the other, in the background. (Until `V2-S5-006-PR1`
+  this item said that nothing starts them together.)
 
 ## Tests
 

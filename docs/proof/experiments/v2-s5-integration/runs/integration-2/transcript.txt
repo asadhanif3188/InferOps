@@ -1,0 +1,357 @@
+
+##### E0. The executing commit, the working tree, and the files this attempt runs
+$ now
+2026-10-14T10:16:23Z
+[exit 0]
+$ python --version
+Python 3.12.12
+[exit 0]
+$ python -c import tools.reliability_runner, tools.experiment_timeline, tools.experiment_telemetry, tools.experiment_events
+[exit 0]
+$ git rev-parse HEAD
+7089a53ac0a62933cfba74facfe998e73c5a4f97
+[exit 0]
+$ git status --porcelain --untracked-files=all
+[exit 0]
+executing commit: 7089a53ac0a62933cfba74facfe998e73c5a4f97
+remote main:      2d43331dd14f360c0b7eb4ddd950a42251bc5f8e
+$ git diff --stat --exit-code 2d43331dd14f360c0b7eb4ddd950a42251bc5f8e HEAD -- charts gitops infra/argocd
+[exit 0]
+$ uv run --locked python -m tools.experiment_freeze --check
+PASSED: 5 freeze record(s), every rule held
+[exit 0]
+$ uv run --locked python -m tools.experiment_freeze --changes docs/proof/experiments/v2-s5-integration/freeze-r2.v1alpha1.json
+UNCHANGED: every material file of docs/proof/experiments/v2-s5-integration/freeze-r2.v1alpha1.json matches its material scope
+[exit 0]
+$ sha256sum docs/proof/experiments/v2-s5-integration/procedure/run-driver.txt scripts/environment/reliability-runner.sh scripts/environment/experiment-timeline.sh scripts/environment/experiment-telemetry.sh scripts/environment/lib.sh tools/reliability_runner/incluster.py tools/reliability_runner/core.py tools/experiment_timeline/core.py tools/experiment_telemetry/core.py tools/experiment_events/core.py deploy/serving/reliability/rp-1-profile.v1.json gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+633448763ebbabdf247defbf0fbfa1d879311c4a0fea79cec47c0e6055a77135 *docs/proof/experiments/v2-s5-integration/procedure/run-driver.txt
+066e6039cd45e43996b64e5acf8de93c7e1ff20acbdda2a1c1f55e8ce02dbb5b *scripts/environment/reliability-runner.sh
+557e2e364d7edbf7eac277c2ce68d4df61f0276592471fe90561384f610eadb0 *scripts/environment/experiment-timeline.sh
+95563acb62256339747e298b75a1916b746cf04ae7a5c94cf5fc4badf01889ca *scripts/environment/experiment-telemetry.sh
+b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd *scripts/environment/lib.sh
+8dcdccd05af5c0a48df2a6ce205af186a4ea0724286bb7a41c97d1f359e7999b *tools/reliability_runner/incluster.py
+6684f0cad1b382b92e8a4cb305a342ec9c231ebc0d6aa5991fc0cdcd3871d4dc *tools/reliability_runner/core.py
+07f226d3d560d42a10f09422b7eb9dfc1ce2fc6d76fc9579a6877361a1dc9c8f *tools/experiment_timeline/core.py
+e3bf958d5f59f499d448a8a62ad8ef1f0139bec3c2e7845fb22a801a05eaf3c2 *tools/experiment_telemetry/core.py
+efce501087f28bfa726921e7b4fdb8433c92032450224e26fd22f2a3ab0a42f8 *tools/experiment_events/core.py
+e9300b254f8e3c3541ca6fe09ccd906bd22dbbd74c1b2a9848de459fb5e6dc78 *deploy/serving/reliability/rp-1-profile.v1.json
+6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930 *gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml
+810b4b27e40ec0cf1514d97caa5a7a27818aa12598b1c7b441e4b0ae3c5cb31a *gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml
+[exit 0]
+
+##### E1. The environment and the release, as the cluster reports them
+$ kubectl version --context docker-desktop
+Client Version: v1.36.1
+Kustomize Version: v5.8.1
+Server Version: v1.36.1
+[exit 0]
+$ k get nodes -o jsonpath={range .items[*]}{.metadata.name}{"\t"}{.status.nodeInfo.kubeletVersion}{"\t"}{.status.nodeInfo.containerRuntimeVersion}{"\n"}{end}
+desktop-control-plane	v1.36.1	containerd://2.3.1
+[exit 0]
+$ k get daemonset kindnet -n kube-system -o jsonpath={.spec.template.spec.containers[0].image}{"\n"}
+docker.io/kindest/kindnetd:v20260528-9350166c
+[exit 0]
+$ k get application local-docker-desktop-support-assistant -n argocd -o jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status}{"\n"}
+revision=2d43331dd14f360c0b7eb4ddd950a42251bc5f8e sync=Synced health=Healthy
+[exit 0]
+$ k get deployments -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name}{"\t"}replicas={.spec.replicas}{"\t"}ready={.status.readyReplicas}{"\t"}{range .spec.template.spec.containers[*]}{.image}{" "}{end}{"\n"}{end}
+inferops-inferops-llm	replicas=2	ready=2	localhost/inferops-api@sha256:9cdc765b717a42069abb8f5688cb6ed3cd2b9ad286b7316eee1f8b23dedc1948 
+inferops-inferops-llm-collector	replicas=1	ready=1	prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996 
+inferops-inferops-llm-runtime	replicas=2	ready=2	ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384 
+[exit 0]
+$ k get networkpolicies -n inferops-release -o name
+networkpolicy.networking.k8s.io/inferops-inferops-llm-api
+networkpolicy.networking.k8s.io/inferops-inferops-llm-collector
+networkpolicy.networking.k8s.io/inferops-inferops-llm-default-deny
+networkpolicy.networking.k8s.io/inferops-inferops-llm-model-acquisition
+networkpolicy.networking.k8s.io/inferops-inferops-llm-release-test
+networkpolicy.networking.k8s.io/inferops-inferops-llm-runtime
+[exit 0]
+$ k get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name}{"\t"}uid={.metadata.uid}{"\t"}{.metadata.labels.app\.kubernetes\.io/component}{"\t"}phase={.status.phase}{"\t"}ready={.status.conditions[?(@.type=="Ready")].status}{"\t"}restarts={range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}
+inferops-inferops-llm-c66d85b99-27s46	uid=d72581b2-b75e-4db6-92d4-12ccf3cd4f72	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-c66d85b99-zgcgp	uid=27215ca3-9c01-490c-8138-236986baa752	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-collector-7c6d4cf598-hlvxw	uid=e980d530-28c0-4ca3-9874-7d6baaa80f4c	telemetry-collector	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-25vtj	uid=4a0e6b04-93de-45a5-babb-982a4c91b818	serving-runtime	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-c48m9	uid=0d31a272-df42-4396-bcdd-8a0b527369b5	serving-runtime	phase=Running	ready=True	restarts=0 
+[exit 0]
+
+##### E1b. The state the declaration expects, before anything is captured
+application: 2d43331dd14f360c0b7eb4ddd950a42251bc5f8e Synced Healthy
+api ready: 2
+runtime ready: 2
+clock=start hostBefore=2026-10-14T10:16:39.164Z node=2026-10-14T10:16:40.066Z hostAfter=2026-10-14T10:16:40.286Z
+
+##### E2. Open the operator event log
+$ uv run --locked python -m tools.experiment_events open --experiment s5-integration-validation --run integration-2 .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/operator-events.jsonl
+OPENED   operator-events.jsonl at 2026-10-14T10:16:40.774Z
+[exit 0]
+
+##### E3. Start the timeline collector and the telemetry collector, in the background
+$ now
+2026-10-14T10:16:40Z
+[exit 0]
+$ bash scripts/environment/experiment-timeline.sh --experiment s5-integration-validation --run integration-2 --samples 200 --interval 2 --into integration-2 > .artifacts/s5-integration/s5i-1-driver/integration-2/timeline.log 2>&1 &
+the timeline collector samples, 11s after its start, at 2026-10-14T10:16:54.353Z
+$ bash scripts/environment/experiment-telemetry.sh --experiment s5-integration-validation --run integration-2 --samples 36 --interval 10 --into integration-2 > .artifacts/s5-integration/s5i-1-driver/integration-2/telemetry.log 2>&1 &
+the telemetry collector samples, 10s after its start, at 2026-10-14T10:17:06.314Z
+both collectors are running at 2026-10-14T10:17:06.429Z
+
+##### E4. Start the runner Job against the API Service
+declared release identifier: b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db
+$ bash scripts/environment/reliability-runner.sh start --experiment-id s5-integration-validation --run-id integration-2 --duration-seconds 360 --release-id b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Reliability run integration-2 on docker-desktop: start ===
+[inferops] plan and manifest are in .artifacts/reliability-runner/runs/integration-2
+[inferops] image localhost/inferops-api@sha256:9cdc765b717a42069abb8f5688cb6ed3cd2b9ad286b7316eee1f8b23dedc1948
+networkpolicy.networking.k8s.io/inferops-reliability-integration-2 created
+configmap/inferops-reliability-integration-2 created
+job.batch/inferops-reliability-integration-2 created
+[inferops] job inferops-reliability-integration-2 is created in inferops-release. This script does not wait for it.
+[inferops] the run sends requests when its pod starts. It does not wait for the release to be ready.
+[exit 0]
+runner start returned at 2026-10-14T10:17:22.625Z
+sleep 30
+
+##### E6a. The runner pod, before the deletion
+$ k get pods -n inferops-release -l inferops.io/run-id=integration-2,app.kubernetes.io/name=inferops-reliability-runner -o jsonpath=...
+inferops-reliability-integration-2-k8rds	uid=bfb7598e-ae08-4e01-ac35-cde966b89cf0	phase=Running	ready=True	restarts=0	started=2026-10-14T10:17:22Z
+[exit 0]
+$ k get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name}{"\t"}uid={.metadata.uid}{"\t"}{.metadata.labels.app\.kubernetes\.io/component}{"\t"}phase={.status.phase}{"\t"}ready={.status.conditions[?(@.type=="Ready")].status}{"\t"}restarts={range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}
+inferops-inferops-llm-c66d85b99-27s46	uid=d72581b2-b75e-4db6-92d4-12ccf3cd4f72	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-c66d85b99-zgcgp	uid=27215ca3-9c01-490c-8138-236986baa752	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-collector-7c6d4cf598-hlvxw	uid=e980d530-28c0-4ca3-9874-7d6baaa80f4c	telemetry-collector	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-25vtj	uid=4a0e6b04-93de-45a5-babb-982a4c91b818	serving-runtime	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-c48m9	uid=0d31a272-df42-4396-bcdd-8a0b527369b5	serving-runtime	phase=Running	ready=True	restarts=0 
+[exit 0]
+
+##### E5. Delete one API pod, the first by name, at 150s after the runner start
+sleep 117
+the API pod to delete: inferops-inferops-llm-c66d85b99-27s46
+$ uv run --locked python -m tools.experiment_events record --kind fault-injection-started --actor control-process --code delete-api-pod --subject pod/inferops-inferops-llm-c66d85b99-27s46 .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/operator-events.jsonl
+{"actor":"control-process","code":"delete-api-pod","commit":null,"index":1,"kind":"fault-injection-started","occurredAt":null,"record":"event","recordedAt":"2026-10-14T10:19:55.410Z","subject":{"kind":"pod","name":"inferops-inferops-llm-c66d85b99-27s46"}}
+[exit 0]
+$ k delete pod inferops-inferops-llm-c66d85b99-27s46 -n inferops-release --wait=true --timeout=300s
+pod "inferops-inferops-llm-c66d85b99-27s46" deleted from inferops-release namespace
+[exit 0]
+$ uv run --locked python -m tools.experiment_events record --kind fault-injection-finished --actor control-process --code delete-api-pod --subject pod/inferops-inferops-llm-c66d85b99-27s46 .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/operator-events.jsonl
+{"actor":"control-process","code":"delete-api-pod","commit":null,"index":2,"kind":"fault-injection-finished","occurredAt":null,"record":"event","recordedAt":"2026-10-14T10:20:20.251Z","subject":{"kind":"pod","name":"inferops-inferops-llm-c66d85b99-27s46"}}
+[exit 0]
+$ now
+2026-10-14T10:20:20Z
+[exit 0]
+
+##### E6b. The runner pod and the release pods, after the deletion
+$ k get pods -n inferops-release -l inferops.io/run-id=integration-2,app.kubernetes.io/name=inferops-reliability-runner -o jsonpath=...
+inferops-reliability-integration-2-k8rds	uid=bfb7598e-ae08-4e01-ac35-cde966b89cf0	phase=Running	ready=True	restarts=0	started=2026-10-14T10:17:22Z
+[exit 0]
+$ k get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name}{"\t"}uid={.metadata.uid}{"\t"}{.metadata.labels.app\.kubernetes\.io/component}{"\t"}phase={.status.phase}{"\t"}ready={.status.conditions[?(@.type=="Ready")].status}{"\t"}restarts={range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}
+inferops-inferops-llm-c66d85b99-ksnlw	uid=7f7d023f-4450-4e91-bc8a-c8d783d0c842	platform-api	phase=Running	ready=False	restarts=0 
+inferops-inferops-llm-c66d85b99-zgcgp	uid=27215ca3-9c01-490c-8138-236986baa752	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-collector-7c6d4cf598-hlvxw	uid=e980d530-28c0-4ca3-9874-7d6baaa80f4c	telemetry-collector	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-25vtj	uid=4a0e6b04-93de-45a5-babb-982a4c91b818	serving-runtime	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-c48m9	uid=0d31a272-df42-4396-bcdd-8a0b527369b5	serving-runtime	phase=Running	ready=True	restarts=0 
+[exit 0]
+
+##### E7. Wait for the Job, at most 900s, reading its status every 15s
+after 180s of waiting: succeeded=1 failed= completed=2026-10-14T10:23:35Z
+$ bash scripts/environment/reliability-runner.sh status --run-id integration-2
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Reliability run integration-2 on docker-desktop: status ===
+active= succeeded=1 failed= started=2026-10-14T10:17:22Z completed=2026-10-14T10:23:35Z
+[exit 0]
+
+##### E6c. The runner pod, at its end
+$ k get pods -n inferops-release -l inferops.io/run-id=integration-2,app.kubernetes.io/name=inferops-reliability-runner -o jsonpath=...
+inferops-reliability-integration-2-k8rds	uid=bfb7598e-ae08-4e01-ac35-cde966b89cf0	phase=Succeeded	ready=False	restarts=0	started=2026-10-14T10:17:22Z
+[exit 0]
+active= succeeded=1 failed= ready=0 terminating=0
+$ now
+2026-10-14T10:23:52Z
+[exit 0]
+
+##### E7b. Wait for the two collectors, at most 1500s
+timeline collector exit 0
+telemetry collector exit 0
+$ tail -n 12 .artifacts/s5-integration/s5i-1-driver/integration-2/timeline.log
+[inferops] sample 198 of 200 at 2026-10-14T10:29:43.901Z: workload read answered, Application read answered
+[inferops] sample 199 of 200 at 2026-10-14T10:29:47.007Z: workload read answered, Application read answered
+[inferops] sample 200 of 200 at 2026-10-14T10:29:49.861Z: workload read answered, Application read answered
+[inferops] READ     endpoints: 200 reading(s): 200 answered
+[inferops] READ     pods: 200 reading(s): 200 answered
+[inferops] READ     deployments: 200 reading(s): 200 answered
+[inferops] READ     argo: 200 reading(s): 200 answered
+
+[inferops] === Result ===
+[inferops] 200 sample(s) were taken, and the four streams are in .artifacts/experiment-timeline/collections/integration-2/streams. This script judged none of them.
+[inferops] The streams state what the cluster published and what the delivery controller reported. They are not a request that a caller sent.
+[inferops] The directory holds the whole answer of each read. Do not commit it. The four files under streams/ are the evidence files.
+[exit 0]
+$ tail -n 12 .artifacts/s5-integration/s5i-1-driver/integration-2/telemetry.log
+[inferops] sample 33 of 36 at 2026-10-14T10:27:14.825Z: Service read answered, 11 of 11 queries answered
+[inferops] sample 34 of 36 at 2026-10-14T10:27:29.216Z: Service read answered, 11 of 11 queries answered
+[inferops] sample 35 of 36 at 2026-10-14T10:27:43.687Z: Service read answered, 11 of 11 queries answered
+[inferops] sample 36 of 36 at 2026-10-14T10:27:57.948Z: Service read answered, 11 of 11 queries answered
+[inferops] READ     telemetry: 288 reading(s): 288 answered; 249 with series, 39 with no series
+[inferops] READ     resources: 108 reading(s): 108 answered; 72 with series, 36 with no series
+
+[inferops] === Result ===
+[inferops] 36 sample(s) were taken, and the two streams are in .artifacts/experiment-telemetry/collections/integration-2/streams. This script judged none of them.
+[inferops] The streams state what the telemetry collector stored. They are not a request that a caller sent.
+[inferops] An answer with no series is not a value of zero. The streams state it as no-series.
+[inferops] The directory holds the whole answer of each read. Do not commit it. The two files under streams/ are the evidence files.
+[exit 0]
+$ now
+2026-10-14T10:30:03Z
+[exit 0]
+
+##### E8. Collect the caller record, and close the event log
+$ bash scripts/environment/reliability-runner.sh collect --run-id integration-2
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Reliability run integration-2 on docker-desktop: collect ===
+[inferops] {
+[inferops]   "endState": "duration",
+[inferops]   "experimentId": "s5-integration-validation",
+[inferops]   "finishedAt": "2026-10-14T10:23:31.281Z",
+[inferops]   "mode": "in-cluster",
+[inferops]   "outcomes": {
+[inferops]     "http-error": 0,
+[inferops]     "identity-refused": 0,
+[inferops]     "invalid-response": 0,
+[inferops]     "success": 98,
+[inferops]     "timeout": 0,
+[inferops]     "transport-error": 0
+[inferops]   },
+[inferops]   "planSha256": "6f44edca9cb91ce05d20f37c588dc579c7990307ed5ba9d199f885fdf419ade4",
+[inferops]   "profile": {
+[inferops]     "profileId": "RP-1",
+[inferops]     "profileRevision": 1,
+[inferops]     "profileSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+[inferops]   },
+[inferops]   "release": {
+[inferops]     "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
+[inferops]     "source": "declared"
+[inferops]   },
+[inferops]   "requests": 98,
+[inferops]   "runId": "integration-2",
+[inferops]   "runnerIsThisTree": true,
+[inferops]   "runnerSha256": "e319bfaa31c1994d92d99cb521f053e04608bb70e06e1c0bba2dd85f57933ebb",
+[inferops]   "startedAt": "2026-10-14T10:17:28.148Z",
+[inferops]   "target": "http://inferops-inferops-llm.inferops-release.svc:8090"
+[inferops] }
+[inferops] the caller record is in .artifacts/reliability-runner/runs/integration-2/caller.jsonl. Each rule accepted it. That does not say that a request succeeded: read the outcomes.
+[exit 0]
+$ uv run --locked python -m tools.experiment_events close .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/operator-events.jsonl
+{"byKind":{"detection-reviewed":0,"fault-injection-finished":1,"fault-injection-started":1,"manual-action":0,"reversal-accepted":0,"reversal-created":0,"reversal-decided":0,"run-aborted":0},"closedAt":"2026-10-14T10:30:18.006Z","events":2,"instantsOutOfOrder":[],"record":"end"}
+[exit 0]
+
+##### E9. Clean up the runner, and read what is left
+$ bash scripts/environment/reliability-runner.sh cleanup --run-id integration-2
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Reliability run integration-2 on docker-desktop: cleanup ===
+job.batch "inferops-reliability-integration-2" deleted from inferops-release namespace
+configmap "inferops-reliability-integration-2" deleted from inferops-release namespace
+networkpolicy.networking.k8s.io "inferops-reliability-integration-2" deleted from inferops-release namespace
+[inferops] no object of run integration-2 is left in inferops-release. The files under .artifacts/reliability-runner/runs/integration-2 are kept.
+[exit 0]
+$ k get jobs,configmaps,pods,networkpolicies -n inferops-release -l inferops.io/run-id=integration-2 -o name
+[exit 0]
+$ k get networkpolicies -n inferops-release -o name
+networkpolicy.networking.k8s.io/inferops-inferops-llm-api
+networkpolicy.networking.k8s.io/inferops-inferops-llm-collector
+networkpolicy.networking.k8s.io/inferops-inferops-llm-default-deny
+networkpolicy.networking.k8s.io/inferops-inferops-llm-model-acquisition
+networkpolicy.networking.k8s.io/inferops-inferops-llm-release-test
+networkpolicy.networking.k8s.io/inferops-inferops-llm-runtime
+[exit 0]
+$ k get pods -n inferops-release -l app.kubernetes.io/instance=inferops -o jsonpath={range .items[*]}{.metadata.name}{"\t"}uid={.metadata.uid}{"\t"}{.metadata.labels.app\.kubernetes\.io/component}{"\t"}phase={.status.phase}{"\t"}ready={.status.conditions[?(@.type=="Ready")].status}{"\t"}restarts={range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}
+inferops-inferops-llm-c66d85b99-ksnlw	uid=7f7d023f-4450-4e91-bc8a-c8d783d0c842	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-c66d85b99-zgcgp	uid=27215ca3-9c01-490c-8138-236986baa752	platform-api	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-collector-7c6d4cf598-hlvxw	uid=e980d530-28c0-4ca3-9874-7d6baaa80f4c	telemetry-collector	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-25vtj	uid=4a0e6b04-93de-45a5-babb-982a4c91b818	serving-runtime	phase=Running	ready=True	restarts=0 
+inferops-inferops-llm-runtime-79846f98f6-c48m9	uid=0d31a272-df42-4396-bcdd-8a0b527369b5	serving-runtime	phase=Running	ready=True	restarts=0 
+[exit 0]
+$ k get application local-docker-desktop-support-assistant -n argocd -o jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status}{"\n"}
+revision=2d43331dd14f360c0b7eb4ddd950a42251bc5f8e sync=Synced health=Healthy
+[exit 0]
+clock=end hostBefore=2026-10-14T10:30:30.282Z node=2026-10-14T10:30:30.665Z hostAfter=2026-10-14T10:30:30.738Z
+$ now
+2026-10-14T10:30:30Z
+[exit 0]
+
+##### E10. Hold each file to its own checker
+$ ls -l .artifacts/s5-integration/s5i-1-driver/integration-2/evidence
+total 2121
+-rw-r--r-- 1 <owner> 4096 229078 Oct 14 15:30 argo.jsonl
+-rw-r--r-- 1 <owner> 4096    814 Oct 14 15:30 attempt.txt
+-rw-r--r-- 1 <owner> 4096  52707 Oct 14 15:30 caller.jsonl
+-rw-r--r-- 1 <owner> 4096 531339 Oct 14 15:30 deployments.jsonl
+-rw-r--r-- 1 <owner> 4096 208906 Oct 14 15:30 endpoints.jsonl
+-rw-r--r-- 1 <owner> 4096   4713 Oct 14 15:30 operator-events.jsonl
+-rw-r--r-- 1 <owner> 4096 951604 Oct 14 15:30 pods.jsonl
+-rw-r--r-- 1 <owner> 4096  46983 Oct 14 15:30 resources.jsonl
+-rw-r--r-- 1 <owner> 4096    602 Oct 14 15:23 runner-pod-readings.txt
+-rw-r--r-- 1 <owner> 4096 123304 Oct 14 15:30 telemetry.jsonl
+[exit 0]
+$ uv run --locked python -m tools.experiment_timeline check .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/endpoints.jsonl .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/pods.jsonl .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/deployments.jsonl .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/argo.jsonl
+READ     endpoints: 200 reading(s): 200 answered
+READ     pods: 200 reading(s): 200 answered
+READ     deployments: 200 reading(s): 200 answered
+READ     argo: 200 reading(s): 200 answered
+[exit 0]
+$ uv run --locked python -m tools.experiment_telemetry check .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/telemetry.jsonl .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/resources.jsonl
+READ     telemetry: 288 reading(s): 288 answered; 249 with series, 39 with no series
+READ     resources: 108 reading(s): 108 answered; 72 with series, 36 with no series
+[exit 0]
+$ uv run --locked python -m tools.experiment_events check .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/operator-events.jsonl
+READ     operator-events: 2 event(s): 1 fault-injection-started, 1 fault-injection-finished
+[exit 0]
+$ uv run --locked python -m tools.reliability_runner verify .artifacts/s5-integration/s5i-1-driver/integration-2/evidence/caller.jsonl --plan .artifacts/reliability-runner/runs/integration-2/plan.json
+{
+  "endState": "duration",
+  "experimentId": "s5-integration-validation",
+  "finishedAt": "2026-10-14T10:23:31.281Z",
+  "mode": "in-cluster",
+  "outcomes": {
+    "http-error": 0,
+    "identity-refused": 0,
+    "invalid-response": 0,
+    "success": 98,
+    "timeout": 0,
+    "transport-error": 0
+  },
+  "planSha256": "6f44edca9cb91ce05d20f37c588dc579c7990307ed5ba9d199f885fdf419ade4",
+  "profile": {
+    "profileId": "RP-1",
+    "profileRevision": 1,
+    "profileSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+  },
+  "release": {
+    "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
+    "source": "declared"
+  },
+  "requests": 98,
+  "runId": "integration-2",
+  "runnerIsThisTree": true,
+  "runnerSha256": "e319bfaa31c1994d92d99cb521f053e04608bb70e06e1c0bba2dd85f57933ebb",
+  "startedAt": "2026-10-14T10:17:28.148Z",
+  "target": "http://inferops-inferops-llm.inferops-release.svc:8090"
+}
+[exit 0]
+
+##### E7c. Whether the last timeline read covers the analysis window, by the rule below
+last pods reading finished at: 2026-10-14T10:29:50.222Z
+window ends at: 2026-10-14T10:22:22.000Z
+timelineCoversWindow=yes
+
+##### E11. The analysis declaration, by the rule fixed at the top of this driver
+$ cat .artifacts/s5-integration/s5i-1-driver/integration-2/declaration.json
+{"schema":"inferops.io/reliability-analysis-declaration/v1alpha1","experimentId":"s5-integration-validation","runId":"integration-2","window":{"from":"2026-10-14T10:18:22.000Z","to":"2026-10-14T10:22:22.000Z"},"expected":{"desiredRevision":"2d43331dd14f360c0b7eb4ddd950a42251bc5f8e","readyReplicas":{"platform-api":2,"serving-runtime":2},"runtimeReadyEndpoints":2},"signals":[{"id":"api-ready-endpoints","source":"endpoints-ready","tier":"platform-api","problemBelow":2},{"id":"runtime-ready-endpoints","source":"endpoints-ready","tier":"serving-runtime","problemBelow":2},{"id":"api-ready-pods","source":"pods-ready","tier":"platform-api","problemBelow":2},{"id":"runtime-ready-pods","source":"pods-ready","tier":"serving-runtime","problemBelow":2},{"id":"application-sync","source":"application-sync-status","healthyValues":["Synced"]},{"id":"application-health","source":"application-health-status","healthyValues":["Healthy"]}]}
+[exit 0]
+$ now
+2026-10-14T10:30:34Z
+[exit 0]
+driver exit 0

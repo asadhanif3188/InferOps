@@ -1,6 +1,6 @@
 # The infrastructure timelines of an experiment run
 
-Status: **the collector and the stream tool are implemented, and collections that the test suites build show each stream, each state of a read, and each state of a field at evidence level C0. No cluster was read. No stream of a real run is committed, and no claim is registered. The collector was executed against stand-ins for `kubectl` only.**
+Status: **the collector and the stream tool are implemented, and collections that the test suites build show each stream, each state of a read, and each state of a field at evidence level C0. Since `V2-S5-006-PR1` the collector read one cluster in the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation), on the docker-desktop provider with one node, and the streams of both attempts are committed. No claim is registered.** (Until `V2-S5-006-PR1` this status said that no cluster was read, that no stream of a real run is committed, and that the collector was executed against stand-ins for `kubectl` only.)
 
 An experiment run compares what a caller observed with what the cluster and the
 delivery controller published at the same time. This page describes how the
@@ -464,11 +464,20 @@ prints a warning for each sample with a read that did not answer.
 
 ## What is not done
 
-- No cluster was read. The collector ran against stand-ins for `kubectl`, and the
-  tool read collections that the suites built.
-- No run directory holds a stream.
+- No result-bearing run read a cluster. The collector read one only in the two
+  attempts of the integration validation, on one provider with one node. In the
+  suites it ran against stand-ins for `kubectl`, and the tool read collections
+  that the suites built. (Until `V2-S5-006-PR1` this item said that no cluster
+  was read.)
+- Two run directories hold the streams, those of the two attempts, and neither
+  is of a result-bearing run. (Until `V2-S5-006-PR1` this item said that no run
+  directory holds a stream.)
 - No stream of this tool holds a metric or an operator event. Each has its own
-  tool since `V2-S5-003-PR2`, and nothing starts the three together.
+  tool since `V2-S5-003-PR2`, and no tool starts the three together. Since
+  `V2-S5-006-PR1`
+  [the driver of the integration validation](../proof/experiments/v2-s5-integration/procedure/run-driver.txt)
+  opens the event log and starts the two collectors. (Until `V2-S5-006-PR1` this
+  item said that nothing starts the three together.)
 - The tool does not merge a stream with a caller record. An analysis does that:
   since `V2-S5-004-PR1` [the reliability analysis](../testing/reliability-analysis.md)
   reads the four streams beside a caller record.

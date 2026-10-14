@@ -2,11 +2,16 @@
 
 Status: **published layout with an offline check**, added by `V2-S5-002-PR2`. The layout,
 its rules, its role vocabulary, its correction form, and a tool that checks a run
-directory are published here and checked on every change. **No run directory of this
-layout exists.** No run produced one, and no tool writes one. Each run directory that the
+directory are published here and checked on every change. **Two run directories of
+this layout exist, and neither is of a result-bearing run.** Since `V2-S5-006-PR1` the
+proof tree holds the two attempts of
+[a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation).
+Scripts run by hand assembled both, and they are not committed. No tool writes a run
+directory. (Until `V2-S5-006-PR1` this page said that no run directory of this layout
+exists and that no run produced one.) Each run directory that the
 suite checks is built by the suite, with a synthetic caller record and placeholder
 identities, except one copy of a committed run directory, which is refused at its
-manifest. The three run directories that are committed were written before the
+manifest, and the two attempts, which its listing reads in place. The three other run directories that are committed were written before the
 [ExperimentRun schema](../contracts/experiment-run.md).
 [The compatibility section](#the-three-earlier-run-directories) says how they are held.
 (Since `V2-S5-004-PR2` one synthetic run directory of this layout is committed as a test fixture,
@@ -102,8 +107,9 @@ lowercase hexadecimal characters.
   directory to CRLF to hold that. Git stores a file that holds a lone carriage return,
   or that Git reads as binary, byte for byte. For such a file that holds a CRLF, the
   digest is not the digest of the stored content. `.gitattributes` pins LF for the run
-  directories of one experiment directory, `v2-e01`, and for no other. This change does
-  not edit it.
+  directories of the experiment directory `v2-e01` and, since `V2-S5-006-PR1`, for every
+  file of `v2-s5-integration`, and for no other. (Until `V2-S5-006-PR1` this item said
+  that it pins LF for `v2-e01` only, and that this change does not edit it.)
 - **An evidence file is text of a known suffix.** The index hashes seven suffixes as
   text and every other file byte for byte. A file under another suffix could have two
   digests on two hosts. So an evidence file must have one of the seven suffixes, be
@@ -179,7 +185,10 @@ vocabulary, and this layout adds one for a file of a run directory.
   for each of the roles `telemetry` and `resources`, and
   [the operator event log](../environment/experiment-operator-events.md) is a file with
   the role `operator-events`. Each of the two tools defines and checks the form of its
-  files, and this check calls neither. No run directory holds such a file.)
+  files, and this check calls neither. No run directory holds such a file. Since
+  `V2-S5-006-PR1` each of the two attempts of the integration validation holds a file
+  of each of these seven roles, and the sentences above that say that no run directory
+  holds such a file no longer hold.)
 - **The tool's code does not name the delivery controller's product.** The role is
   `argo`, and its description says "the delivery controller". A suite of the
   architecture refuses a sixth build file that names the product, and the first
@@ -479,7 +488,9 @@ the others.
   and no such file exists. The tool does not read a run directory or a manifest,
   and this check does not compute its document again. Since `V2-S5-004-PR2`
   [the replay tool](analysis-replay.md) reads a run directory and its manifest, and
-  it computes a run analysis again. This check still does not.)
+  it computes a run analysis again. This check still does not. Since
+  `V2-S5-006-PR1` each of the two attempts of the integration validation holds a
+  file with the role `analysis`, a run analysis of the replay tool.)
 - **That a raw file is complete.** No rule requires a role, and no rule compares the
   times of two files.
 - **That the release, the binding, the runtime image, and the model of the manifest are
@@ -506,7 +517,9 @@ uv run --locked python -m pytest tests/testing/test_experiment_evidence_layout.p
 
 `repository` prints `pre-schema` for a directory whose manifest the register names, `ok`
 with the two digests for a directory that conforms, and `REFUSED` with each finding
-otherwise. In this change it prints three `pre-schema` lines and exits 0.
+otherwise. It prints three `pre-schema` lines and two `ok` lines, one for each attempt of
+the integration validation, and exits 0. (Until `V2-S5-006-PR1` it printed three
+`pre-schema` lines only.)
 
 `digests` prints one line for each file of a directory that has the form of an evidence
 file and that neither text rule refuses, in the order of the paths as text. It prints no
@@ -524,16 +537,22 @@ for this change, and what two independent reviews of its first commit found.
 
 ## What this layout does not do
 
-- **It is not evidence of a run.** No run directory of this layout exists.
-- **Nothing writes a run directory.** A person or a later tool writes one. No experiment
-  runner in this repository produces this layout. The E01 runner writes the earlier
+- **It is not evidence of a run.** A run directory is the evidence, and the layout is
+  not. The two run directories of this layout that exist are of attempts of a
+  non-result integration validation, and no claim cites either. (Until
+  `V2-S5-006-PR1` this item said that no run directory of this layout exists.)
+- **No tool writes a run directory.** A person or a later tool writes one. No experiment
+  runner in this repository produces this layout. The two that exist were assembled by
+  scripts run by hand, which are not committed. (Until `V2-S5-006-PR1` this item said
+  that nothing writes a run directory.) The E01 runner writes the earlier
   shape, as [the ExperimentRun contract](../contracts/experiment-run.md) states.
 - **Nothing reads a run directory for analysis.** No tool computes a result from one.
   (Since `V2-S5-004-PR1` [the reliability analysis](reliability-analysis.md) computes figures
   from evidence files that a command names. It decides no result. Since
   `V2-S5-004-PR2` [the replay tool](analysis-replay.md) reads a run directory for
-  those figures. It decides no result. The proof tree holds no run directory of
-  this layout for it to read.)
+  those figures. It decides no result. Since `V2-S5-006-PR1` it reads the two
+  attempts of the integration validation. Until then the proof tree held no run
+  directory of this layout for it to read.)
 - **It defines no file form but the caller record's.** The roles name what a file holds.
   The tools of this repository that read a cluster write their own records, and none
   writes a file of this layout.

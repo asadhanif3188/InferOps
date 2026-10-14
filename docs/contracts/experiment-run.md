@@ -2,8 +2,13 @@
 
 Status: **published schema**, at `v1alpha1` maturity, added by `V2-S5-002-PR1`. The
 schema, its identifier, its compatibility rules, its valid and invalid fixtures, and an
-offline validator are published here and checked on every change. **No run produced a
-manifest of this schema.** No tool writes one, no experiment runner reads one, and no
+offline validator are published here and checked on every change. **Two manifests of
+this schema exist, and neither is of a result-bearing run.** Since `V2-S5-006-PR1`, each
+of the two attempts of
+[a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation)
+holds one that validates. Scripts run by hand assembled both, and they are not
+committed. (Until `V2-S5-006-PR1` this page said that no run produced a manifest of
+this schema.) No tool writes one, no experiment runner reads one, and no
 analysis consumes one. The fixtures are hand-written documents with placeholder
 identities. Three run manifests that were committed before the schema state the same
 `apiVersion` and `kind` and do not conform:
@@ -13,8 +18,10 @@ says how they are held. Since `V2-S5-002-PR2`,
 a separate check opens the evidence files of one. This validator still opens none.
 Since `V2-S5-004-PR2`, [the replay of an analysis](../testing/analysis-replay.md) reads the
 manifest of a run directory for the evidence files and the result state of its run.
-No run produced a manifest of this schema for it to read. Its gate in the evidence
+It reads the manifests of the two attempts. (Until `V2-S5-006-PR1` this page said that
+no run produced a manifest of this schema for it to read.) Its gate in the evidence
 index reads the three earlier manifests for the role of each file, and they name none.
+No ledger bears on the two attempts, so the gate does not read them.
 
 | Property | Value |
 |---|---|
@@ -422,8 +429,10 @@ uv run --locked python -m tools.experiment_run repository
 
 The command reads every run manifest under `docs/proof/experiments/`. It prints
 `pre-schema` for a registered manifest with its registered content, `ok` for a manifest
-that validates, and `REFUSED` with each finding otherwise. In this change it prints
-three `pre-schema` lines and exits 0. The default-lane suite runs the same listing.
+that validates, and `REFUSED` with each finding otherwise. It prints three
+`pre-schema` lines and two `ok` lines, one for each attempt of the integration
+validation, and exits 0. (Until `V2-S5-006-PR1` it printed three `pre-schema` lines
+only.) The default-lane suite runs the same listing.
 
 **What the register does not do.**
 
@@ -502,9 +511,12 @@ run for this change.
 ## What this contract does not do
 
 - **It is not evidence of a run.** A manifest states what a run was. The evidence is in
-  the files it names.
-- **Nothing writes a manifest.** A person or a later tool writes one. No experiment
-  runner in this repository produces this shape.
+  the files it names. The two manifests that exist are of attempts of a non-result
+  integration validation, and no claim cites either.
+- **No tool writes a manifest.** A person or a later tool writes one. No experiment
+  runner in this repository produces this shape. The two manifests that exist were
+  assembled by scripts run by hand, which are not committed. (Until `V2-S5-006-PR1`
+  this bullet said that nothing writes a manifest.)
 - **Nothing reads one for analysis.** No tool computes a result from a manifest and its
   evidence files. (Since `V2-S5-004-PR2` [the replay tool](../testing/analysis-replay.md)
   computes figures from a manifest and its evidence files. It decides no result.)

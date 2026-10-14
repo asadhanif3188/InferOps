@@ -1,6 +1,6 @@
 # The reliability analysis of an experiment run
 
-Status: **the tool is implemented, and files that the test suite builds show each definition, the ends of each interval, each refusal, and the stored form at evidence level C0. No run was analysed. No analysis of a real run is committed, no bound was compared with a figure, and no claim is registered.**
+Status: **the tool is implemented, and files that the test suite builds show each definition, the ends of each interval, each refusal, and the stored form at evidence level C0. No result-bearing run was analysed. Since `V2-S5-006-PR1` the analyses of two real attempts are committed, inside their run analyses: the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation). No bound was compared with a figure, and no claim is registered.** (Until `V2-S5-006-PR1` this status said that no run was analysed and that no analysis of a real run is committed.)
 
 An experiment run leaves files: the caller record of the
 [reliability runner](../serving/reliability-runner.md), the four
@@ -589,7 +589,10 @@ Both commands print one JSON document with sorted members and LF line endings.
 
 ## What is not done
 
-- No run was analysed. Each input of the suite is built by the suite.
+- No result-bearing run was analysed. Each input of the suite is built by the
+  suite. The two analyses of real attempts are of a non-result integration
+  validation, and no figure of either is compared with a bound. (Until
+  `V2-S5-006-PR1` this item said that no run was analysed.)
 - The document does not state the digest of an input or the revision of the
   code, and nothing computes a committed document again from committed raw
   files of a run. A later change owns both. (Since `V2-S5-004-PR2`
