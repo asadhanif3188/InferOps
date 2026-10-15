@@ -825,21 +825,63 @@ DEFECTS: dict[str, list[tuple[str, Callable[[Path, Path], None]]]] = {
 }
 
 
+#: The defects whose rule is not observed rather than not held: the source the
+#: rule reads is absent.
+NOT_OBSERVED_CASES = frozenset(
+    {("three-restarts", "no r3"), ("ready-serves", "no completion")}
+)
+
+#: The other rules that a defect also breaks, measured. Every other defect breaks
+#: its own rule and no other, so a rule weakened to pass it is visible here.
+ALSO_NOT_HELD: dict[tuple[str, str], set[str]] = {
+    ("environment-qualified", "q1-1 refused"): {"release-qualified", "model-verified"},
+    ("three-restarts", "no r3"): {
+        "model-verified",
+        "one-at-a-time",
+        "readings-in-order",
+        "ready-held",
+        "ready-serves",
+        "stable-before-each-restart",
+        "stream-complete",
+        "two-replacements",
+    },
+    ("three-restarts", "a failed rollout"): {"readings-in-order", "stream-complete"},
+    ("two-replacements", "a third pod"): {
+        "model-verified",
+        "one-at-a-time",
+        "ready-held",
+        "ready-serves",
+    },
+}
+
 CASES = [
-    pytest.param(rule, apply, id=f"{rule}: {label}")
+    pytest.param(rule, label, apply, id=f"{rule}: {label}")
     for rule, defects in DEFECTS.items()
     for label, apply in defects
 ]
 
 
-@pytest.mark.parametrize(("rule", "apply"), CASES)
+@pytest.mark.parametrize(("rule", "label", "apply"), CASES)
 def test_one_defect_refuses_its_rule_with_its_category(
-    tmp_path: Path, root: Path, rule: str, apply: Callable[[Path, Path], None]
+    tmp_path: Path,
+    root: Path,
+    rule: str,
+    label: str,
+    apply: Callable[[Path, Path], None],
 ) -> None:
     directory = _directory(tmp_path)
     apply(directory, root)
     record = _record(directory, root)
-    assert _state(record, rule) != q2.HELD, rule
+    expected_state = (
+        q2.NOT_OBSERVED if (rule, label) in NOT_OBSERVED_CASES else q2.NOT_HELD
+    )
+    assert _state(record, rule) == expected_state, rule
+    others = {
+        item["ruleId"]
+        for item in record["findings"]
+        if item["state"] != q2.HELD and item["ruleId"] != rule
+    }
+    assert others == ALSO_NOT_HELD.get((rule, label), set())
     assert RULE_CATEGORIES[rule] in record["notHeld"]["categories"]
     expected = q2.REFUSED if rule in q2.PRECONDITION_RULES else q2.INCONCLUSIVE
     if rule not in q2.PRECONDITION_RULES:
@@ -1288,3 +1330,115 @@ def test_the_committed_characterization_q2_1_is_characterized_with_s_of_11000_ms
         "sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461"
     )
     assert not (directory / "capacity/pods.json").exists()
+
+
+# --------------------------------------------------------------------------
+# Boundaries and measured gaps, from the independent review
+# --------------------------------------------------------------------------
+
+
+def test_one_at_a_time_holds_for_an_equal_second(tmp_path: Path, root: Path) -> None:
+    """The second replacement may be created in the second the first became Ready.
+    In q2-1 that happened in each restart, so the rule does not order them."""
+    record = _record(_directory(tmp_path), root)
+    rows = [row for row in record["observations"] if row["restart"] == "r1"]
+    assert rows[1]["createdAt"] != rows[0]["readyAt"]
+    directory = _directory(tmp_path / "equal")
+    path = directory / "restarts/r1/watch.jsonl"
+    start = TIMING["r1"][0]
+    second = start + timedelta(seconds=1 + 20 + 31 + 1)
+    ready = start + timedelta(seconds=1 + 20 + 31)
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f'"creationTimestamp":"{_stamp(second)}"',
+            f'"creationTimestamp":"{_stamp(ready)}"',
+        ),
+        encoding="utf-8",
+        newline="\n",
+    )
+    assert _state(_record(directory, root), "one-at-a-time") == q2.HELD
+
+
+def test_a_deleted_event_after_ready_is_not_held(tmp_path: Path, root: Path) -> None:
+    def deleted(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        last = next(
+            e for e in reversed(events) if e["object"]["metadata"]["uid"] == _uid(13)
+        )
+        return [*events, {"type": "DELETED", "object": last["object"]}]
+
+    directory = _directory(tmp_path)
+    _lines("r1", deleted)(directory, root)
+    assert _state(_record(directory, root), "ready-held") == q2.NOT_HELD
+
+
+def test_an_image_identifier_without_the_reference_is_not_held(
+    tmp_path: Path, root: Path
+) -> None:
+    directory = _directory(tmp_path)
+    _edit(
+        "restarts/r2/after.pods.json",
+        lambda r: r["items"][1]["status"]["containerStatuses"][0].update(
+            imageID=RUNTIME_DIGEST
+        ),
+    )(directory, root)
+    assert _state(_record(directory, root), "model-verified") == q2.NOT_HELD
+
+
+def test_a_status_of_true_is_not_a_status_of_200(tmp_path: Path, root: Path) -> None:
+    directory = _directory(tmp_path)
+    path = next((directory / "restarts/r3").glob("completion.*.json"))
+    _edit(path.relative_to(directory).as_posix(), lambda c: c.update(httpStatus=True))(
+        directory, root
+    )
+    assert _state(_record(directory, root), "ready-serves") == q2.NOT_HELD
+
+
+@pytest.mark.parametrize(
+    ("member", "rule"),
+    [
+        ("freezeChanges", "procedure-frozen"),
+        ("qualificationFreezeChanges", "procedure-frozen"),
+        ("desiredStateDiff", "desired-revision-known"),
+        ("workingTree", "working-tree-clean"),
+    ],
+)
+def test_a_header_state_that_was_not_read_is_not_observed(
+    tmp_path: Path, root: Path, member: str, rule: str
+) -> None:
+    directory = _directory(tmp_path)
+    _header_set(**{member: "unread"})(directory, root)
+    record = _record(directory, root)
+    assert _state(record, rule) == q2.NOT_OBSERVED
+    assert record["result"] == q2.REFUSED
+
+
+def test_a_pod_identifier_of_another_form_raises_a_measured_gap(
+    tmp_path: Path, root: Path
+) -> None:
+    """A measured gap of the tool, which the page states: a list as a pod
+    identifier in the reading after a restart raises instead of refusing. kubectl
+    writes no such identifier. The tool is a pinned input of revision 2, so the gap
+    stays until a later revision, and this test fails when it is closed."""
+    directory = _directory(tmp_path)
+    _edit(
+        "restarts/r1/after.pods.json",
+        lambda r: r["items"][0]["metadata"].update(uid=[_uid(12)]),
+    )(directory, root)
+    with pytest.raises(TypeError):
+        _record(directory, root)
+
+
+def test_the_driver_restarts_only_inside_the_branch_of_held_preconditions() -> None:
+    """The loop of restarts is the body of the branch that the exit status 0 of the
+    precondition check opens, and the branch of a refusal of the phase up reads no
+    cluster state."""
+    text = _driver()
+    guard = (
+        'run uv run --locked python -m tools.runtime_startup --preconditions "${A}"\n'
+        '    if [ "${LAST}" -eq 0 ]; then\n'
+        "      for name in ${RESTARTS}; do\n"
+    )
+    assert guard in text
+    refusal = text.index('if [ -e "${Q1_WORK}/up-refusal" ]; then')
+    provenance = text.index("tools.desired_state_provenance")
+    assert refusal < text.index('  else\n    step "S1.', refusal) < provenance

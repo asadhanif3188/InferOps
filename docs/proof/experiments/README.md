@@ -44,6 +44,13 @@ revision 1, in its own directory, committed before any qualification. It is a
 prerequisite of the V2 reliability experiments and not one of them. Since
 `V2-S6-001-PR2` one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and
 it is `QUALIFIED`. (Until then this paragraph said that no qualification had run.)
+**Two records added by `V2-S6-002-PR1`**: [the Q2 runtime startup characterization](#the-q2-runtime-startup-characterization),
+revisions 1 and 2, in their own directory. Revision 1 could not be satisfied and was
+superseded before any characterization. One characterization ran under revision 2,
+[`q2-1`](v2-q2/runs/q2-1/result.md), and it is `CHARACTERIZED`, with S = 11,000 ms. It
+is a prerequisite of the V2 reliability experiments and not one of them. The same change
+edits `tools/experiment_evidence` again, which moves the three pins of that package in
+the Sprint 5 revision 2 once more.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -55,6 +62,8 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E01, contract-to-deployment determinism | 3 | [`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. It names the E01-D environment. E01-D ran once under it, in [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md), and PASSED under its criteria. No static part ran under it. Since that run, one pinned input differs from its pin: [the runner's committed-run listing](#the-e01-d-run) |
 | Sprint 5 integration validation, `s5-integration-validation` | 1 | [`v2-s5-integration/freeze-r1.v1alpha1.json`](v2-s5-integration/freeze-r1.v1alpha1.json) | One part, S5I, at C2 | Frozen before its first attempt. Not result-bearing: [see below](#the-sprint-5-integration-validation). One attempt ran under it, [`integration-1`](v2-s5-integration/runs/integration-1/result.md), and FAILED on S5I-AC2. Superseded by revision 2 on 2026-10-14, and kept unchanged. Seven pinned inputs differ from its pins: the four that revision 2 classifies, and the three files of `tools/experiment_evidence`, which `V2-S6-001-PR2` edited |
 | Sprint 5 integration validation, `s5-integration-validation` | 2 | [`v2-s5-integration/freeze-r2.v1alpha1.json`](v2-s5-integration/freeze-r2.v1alpha1.json) | One part, S5I, at C2 | Frozen. A run brings its own network policy. One attempt ran under it, [`integration-2`](v2-s5-integration/runs/integration-2/result.md), and PASSED under its criteria. Since `V2-S6-001-PR2`, three pinned inputs differ from their pins: the three files of `tools/experiment_evidence`, which that change edited after both attempts so that the layout check lists a Q1 qualification. A later attempt needs a revision that classifies them |
+| Q2 runtime startup characterization, `v2-q2-runtime-startup-characterization` | 1 | [`v2-q2/freeze-r1.v1alpha1.json`](v2-q2/freeze-r1.v1alpha1.json) | One part, Q2, at C2 | Superseded by revision 2 before any characterization, and kept unchanged: its precondition on the API image digest could not hold. No characterization ran under it |
+| Q2 runtime startup characterization, `v2-q2-runtime-startup-characterization` | 2 | [`v2-q2/freeze-r2.v1alpha1.json`](v2-q2/freeze-r2.v1alpha1.json) | One part, Q2, at C2 | Frozen before any characterization. One characterization ran under it, [`q2-1`](v2-q2/runs/q2-1/result.md), `CHARACTERIZED`, S = 11,000 ms. Not result-bearing: [see below](#the-q2-runtime-startup-characterization) |
 | Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). Since `V2-S6-001-PR2`, one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and it is `QUALIFIED`. No pinned input differs from its pin. (Until then this row said that no qualification ran under it.) |
 
 ## Why a freeze comes first
@@ -1012,12 +1021,13 @@ each rule.
   `CHARACTERIZED` record states S.
 - **S is the maximum and not an average.** The freeze record states the rule and no
   value. Later work derives other bounds from S, and they are not part of this record.
-- **Revision 1 could not be satisfied.** Revision 1 held the API Deployment to the API image digest that the record of `q1-1` states. The phase `up` of the Q1 driver builds the API image again, and its build at the first commit of `V2-S6-002-PR1` reported another digest, `sha256:cf30eac7cc2a75f9a91dac62c8c09a6080de5b2725d2b37262c15bafe924120d`, than `q1-1` states, `sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1`, while the freeze tool listed no changed input of the Q1 record. So that precondition could not hold. No characterization ran under revision 1. Revision 2 holds the API Deployment to the digest that the phase `up` declared, as Q1 does, and changes no other rule, bound, or step.
+- **Revision 1 could not be satisfied.** Revision 1 held the API Deployment to the API image manifest-list digest that the record of `q1-1` states. The phase `up` of the Q1 driver builds the API image again, and its build at the first commit of `V2-S6-002-PR1` reported another digest, `sha256:cf30eac7cc2a75f9a91dac62c8c09a6080de5b2725d2b37262c15bafe924120d`, than `q1-1` states, `sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1`, while the freeze tool listed no changed input of the Q1 record. So that precondition could not hold. No characterization ran under revision 1. Revision 2 holds the API Deployment to the digest that the phase `up` declared, as Q1 does, and changes no other rule, bound, or step.
 - **It has its own directory.** A characterization is committed under `v2-q2/runs/q2-N/`
   with its record, whatever it shows, and the layout check lists it as a qualification.
 - **One characterization has run, and it is `CHARACTERIZED`.** Under revision 2,
   `V2-S6-002-PR1` ran [`q2-1`](v2-q2/runs/q2-1/result.md) on 2026-10-15, at the commit
   `65bd9bb`, on the docker-desktop provider with one node, in the environment of `q1-1`.
   Each of the 16 rules held. The six intervals were 10,000 ms once and 11,000 ms five
-  times, so **S = 11,000 ms**. They are warm restarts, close to the probe period of 10 s.
+  times, so **S = 11,000 ms**. During each, the other runtime pod was Ready, and every
+  interval lies close to the probe period of 10 s.
   It is evidence at C2 of that one environment, and no claim cites it.

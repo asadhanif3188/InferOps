@@ -24,8 +24,9 @@ found.
 
 Story `V2-S6-002` characterizes the qualified release before any result-bearing
 reliability run. This change is its first part: three controlled runtime restarts in the
-qualified environment, with every observation kept, and S, the maximum interval from a
-runtime start to Ready, stated by a record. Later work derives bounds from S. This
+qualified environment, with every observation kept, and S, the maximum interval from
+the creation of a replacement runtime pod to its first Ready condition, stated by a
+record. Later work derives bounds from S. This
 change derives none.
 
 ## What this change adds
@@ -36,8 +37,9 @@ change derives none.
   same statements. Seven are preconditions: the phase `up` completed at the executing
   commit, the working tree was clean, the frozen inputs of Q2 and of Q1 are at their
   pins, the delivery paths equal the desired revision, the environment digest is the one
-  `q1-1` states, the release, the API image, and the runtime image are those of `q1-1`,
-  and both Deployments are at 2 Ready replicas. A precondition that is not held makes the
+  `q1-1` states, the release and the runtime image are those of `q1-1`, the API
+  Deployment runs the API image that the phase `up` declared (since revision 2), and both
+  Deployments are at 2 Ready replicas. A precondition that is not held makes the
   result `REFUSED`. Any other rule that is not held makes it `INCONCLUSIVE`. S has a value
   only when the result is `CHARACTERIZED`.
 - **The driver.** Its phases `up` and `down` run the phases of the Q1 driver without a
@@ -74,8 +76,9 @@ change derives none.
    freeze record allows a later qualification only after the environment or a frozen
    input changes. So Q2 runs the phase `up` of the Q1 driver and compares the capacity
    record of that phase with `q1-1`: the tool computes the environment identity with the
-   function of the Q1 tool, and compares the release identifier, the API image digest,
-   and the runtime image with the record of `q1-1`.
+   function of the Q1 tool, and compares the release identifier and the runtime image
+   with the record of `q1-1`. Revision 1 compared the API image digest with it too;
+   revision 2 compares it with the digest that the phase `up` declared.
 5. **The driver requests no restart after a refusal.** It asks the tool for the
    preconditions with `--preconditions` before the first restart, and it requests no
    later restart after a rollout that did not complete within 1800 s.
@@ -90,7 +93,11 @@ phase `up` of the work directory `q2run-1`, at the first commit, reported
 states `sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1`. The
 freeze tool listed no changed input of the Q1 record, and the Dockerfile copies only
 `src/inferops` and three paths of `tools/`, which the Q1 record pins. The build inputs
-were unchanged, and the digest was another one. This record does not establish why.
+were unchanged, and the digest was another one. The digest is the manifest-list digest.
+The independent review found that the transcripts show more: the builds of `q1-1`, of
+`q2run-1`, and of `q2-1` each printed the same image manifest, `sha256:bba83fa7…`, and
+the same config, `sha256:cd65ca24…`, and another attestation manifest. That is what the
+build printed; no rule reads it.
 
 What was done, in order:
 
@@ -160,11 +167,75 @@ first commit, the next rows before the second commit, and the rows from
 
 | Command | Result |
 |---|---|
-| `python -m pytest tests/domain/test_runtime_startup.py tests/testing/test_experiment_freeze.py tests/testing/test_experiment_evidence_layout.py -q` | Recorded in the commit message of the first commit |
+| `python -m pytest` over eleven suites before the first commit: `test_runtime_startup`, `test_environment_qualification`, `test_experiment_freeze`, `test_analysis_replay`, `test_experiment_e01`, `test_experiment_review`, `test_test_inventory`, `test_renderer_input_boundary`, `test_argocd_bootstrap`, `test_document_links`, `test_experiment_evidence_layout` | 3,001 passed, 3 skipped; after the leak fixes of the first commit, the three suites it edited again, 677 passed, 2 skipped |
 | `uv run --locked python -m tools.experiment_freeze --check` | `PASSED: 7 freeze record(s), every rule held` at the first commit, and `PASSED: 8` at the second |
 | `uv run --locked python -m tools.experiment_freeze --changes` of the Q1 and the Q2 records | Unchanged |
 | `bash -n docs/proof/experiments/v2-q2/procedure/q2-driver.txt` | No syntax error |
-| The seven suites that the freeze revision touches, before the second commit | 1,222 passed, 3 skipped |
+| `python -m pytest` over seven suites before the second commit: `test_runtime_startup`, `test_document_links`, `test_analysis_replay`, `test_experiment_e01`, `test_experiment_review`, `test_experiment_freeze`, `test_experiment_evidence_layout` | 1,222 passed, 3 skipped |
 | `uv run --locked python -m tools.runtime_startup --check` | `PASSED: 1 committed characterization(s), each record is what its directory gives` |
 | `uv run --locked python -m tools.experiment_evidence repository` | `runs 7: 3 pre-schema and not checked, 2 qualification(s) with the text rules only, 2 conforming, 0 refused` |
 | A search of the run directory and the transcript for host paths, account names, and home directories | No match after the redaction; `capacity/pods.json` is not committed |
+
+## What the independent review found
+
+Two independent reviews read the three commits after the run: one of the tool, the
+driver, and the tests, and one of the evidence and the pages against the committed
+files. The reviewers are automated sessions. Neither found a defect that changes the
+result or S: every figure of the run page matched the raw files, and the tool's rules
+could not be made to pass a wrong directory. The fourth commit closes what they found,
+and leaves the tool, the driver, and the freeze record unchanged, because each is a
+pinned input of revision 2 and the run executed under them.
+
+**What the first draft of the evidence got wrong, corrected in place:**
+
+- **The starts were called warm by comparison with the wrong reading.** The run page and
+  the Q2 page compared the six intervals only with the first starts of `q1-1`, 51 s. The
+  watch of `r1` holds the first runtime pods of this same phase `up`, started just after
+  the claim was filled: 21 s. Both readings are now stated, neither as an observation of
+  Q2, and the pages no longer say why the starts were shorter.
+- **The preconditions were described as "the images of `q1-1`"** in this record and on
+  the Q2 page, which is false under revision 2 for the API image. Corrected. The same
+  words remain in pinned files: the module docstring of the tool, a comment of the
+  driver, and the material-scope description of revision 2; the page states it.
+- **The API image was described as unknown content.** The transcripts show that the three
+  builds printed the same image manifest and config and another attestation manifest;
+  only the manifest-list digest, which the chart is given, differs. Now stated.
+- **The same-second order was named for `r1` only.** It occurred in each of the three
+  restarts. Corrected on the run page.
+- **The README said "six warm restarts".** There were three restarts and six
+  replacements. Corrected.
+- **The layout page counted one `qualification` line**, and three of its passages named
+  only `v2-q1/runs`. Corrected.
+- **The experiments page had no index rows and no status entry for Q2.** Added.
+- **Rule statements stronger than the checks.** `ready-serves` reads the content of each
+  completion file and not when or through which port-forward it was sent;
+  `environment-qualified` does not compare the instant of the capacity reading with the
+  apply. Both are now stated on the page and on the run page. The freeze statements are
+  kept.
+- **Two values of the run are in the host's local time**, the `restartedAt` annotation
+  and the Helm `LAST DEPLOYED` line, though the run page said that all instants are UTC.
+  Now stated; the raw files are not edited.
+- **Smaller corrections:** the start of the phase `up` (12:55:43 printed, 12:55:45 in its
+  start file), the end of the characterization (13:08:07.558 is the final header; the
+  driver printed 13:08:09.049 after the record), the order of the copy of the capacity
+  collection in the procedure, what the two waits of the driver do not enforce, the
+  driver comment about when the last replaced pod terminates, the definition of S in
+  this record (from the creation of a pod, not from a runtime start), the suites named
+  in the validation table, the citation of ADR 0002 for `/health`, and the reason for a
+  maximum (later work needs a conservative input; S is not a threshold).
+
+**What the review found in the tests, closed by the fourth commit:** each defect case now
+asserts the exact state of its rule and the exact set of other rules that it breaks; the
+equality boundary of `one-at-a-time`, a removal after Ready, an image identifier without
+the reference, a status of `true`, and each header state `unread` have their own cases;
+and a driver test holds that the restarts are the body of the branch that the exit
+status 0 of the precondition check opens.
+
+**What stays open, owed to a later revision of the freeze record** (stated on [the Q2
+page](../../environment/runtime-startup-characterization.md#measured-gaps-of-the-tool)):
+a pod identifier of another form raises instead of refusing, and the suite holds that
+gap; a later revision breaks the rebuild of `q2-1` unless `--check` rebuilds a
+characterization under the revision its header names; `preparation-completed` reads the
+absence of a refusal; no rule compares a cluster instant with a host instant; the driver
+has no trap; and the detail string of `release-qualified` and the sentence "a pod that
+replaces a deleted pod" of the record are imprecise.
