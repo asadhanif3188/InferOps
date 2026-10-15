@@ -123,6 +123,12 @@ ARGOCD_CUSTOM_RESOURCE = re.compile(
 #: run. A file is listed here by its exact path, so a second one fails the test.
 ARGOCD_RESOURCE_EVIDENCE = (
     "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1/argo.json",
+    # The five reconciliation samples of the first Q1 qualification, added by
+    # V2-S6-001-PR2: each is the Application as the cluster returned it.
+    *(
+        f"docs/proof/experiments/v2-q1/runs/q1-1/reconciliation/sample-00{n}.application.json"
+        for n in range(1, 6)
+    ),
 )
 
 CLUSTER_SCOPED_KINDS = frozenset(
@@ -738,13 +744,15 @@ def test_no_application_set_and_no_cluster_registration_is_committed() -> None:
     template assembles from parts is not matched. It reads no cluster, so an
     object a person creates with kubectl is not seen.
 
-    One more tracked file matches the pattern, and it is evidence, not a
-    manifest: the Application as a cluster returned it in a recorded run. It is
-    named by its exact path. This test holds that it is under the proof records,
-    that it is JSON with a status that only a cluster writes, and that it is the
-    committed Application and no other object. It does not hold that nothing
-    applies it: no procedure reads that directory, and the procedure suite holds
-    which files the procedure applies.
+    Six more tracked files match the pattern, and they are evidence, not
+    manifests: the Application as a cluster returned it, once in the E01-D run
+    and five times in the reconciliation samples of the first Q1 qualification.
+    Each is named by its exact path. This test holds that each is under the proof
+    records, that it is JSON with a status that only a cluster writes, and that it
+    is the committed Application and no other object. It does not hold that
+    nothing applies one: no procedure reads those directories, and the procedure
+    suite holds which files the procedure applies. (Until V2-S6-001-PR2 one such
+    file existed.)
     """
     quoting = {THIS_MODULE, REPO_ROOT / APPLICATION_MODULE_REL}
     files = [path for path in tracked_files() if path not in quoting]

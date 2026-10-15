@@ -1331,9 +1331,27 @@ def test_check_compares_each_committed_record_with_its_directory(
     ]
 
 
-def test_no_qualification_is_committed_by_this_change() -> None:
-    assert q1.committed_runs() == []
+def test_the_one_committed_qualification_is_what_its_directory_gives() -> None:
+    """V2-S6-001-PR2 committed q1-1. Its record is built again from the directory,
+    with the two pin copies of the directory and the registered freeze record."""
+    assert [path.name for path in q1.committed_runs()] == ["q1-1"]
+    assert q1.check_committed() == []
     assert cli.main(["--check"]) == 0
+
+
+def test_the_committed_qualification_is_qualified_with_every_rule_held() -> None:
+    (run,) = q1.committed_runs()
+    record = json.loads((run / q1.RECORD_FILE).read_text(encoding="utf-8"))
+    assert record["result"] == "QUALIFIED"
+    assert record["refusal"] == {"categories": [], "rules": []}
+    assert [f["state"] for f in record["findings"]] == ["held"] * 17
+    assert record["environmentSha256"] is not None
+    assert record["target"] == {
+        "apiReplicas": 2,
+        "provider": "docker-desktop",
+        "releaseKey": "local-docker-desktop/support-assistant",
+        "runtimeReplicas": 2,
+    }
 
 
 # --------------------------------------------------------------------------
@@ -1416,7 +1434,10 @@ def test_the_freeze_record_freezes_the_q1_target_and_holds_no_result() -> None:
     assert fault["status"] == "not-applicable"
     (bounds,) = fields["derivedNumericBounds"]
     assert bounds["status"] == "not-applicable"
-    assert not (FREEZE.parent / "runs").exists()
+    # The result is in a qualification directory, not in the freeze record. Since
+    # V2-S6-001-PR2 the one directory is q1-1.
+    assert "result" not in record
+    assert [path.name for path in (FREEZE.parent / "runs").iterdir()] == ["q1-1"]
 
 
 def test_the_freeze_record_pins_the_tool_and_the_driver() -> None:

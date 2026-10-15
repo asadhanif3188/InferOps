@@ -1,0 +1,10 @@
+{
+  "schema": "inferops.io/runtime-model-cache-collection/v1alpha1",
+  "runId": "q1-1",
+  "provider": "docker-desktop",
+  "namespace": "inferops-release",
+  "executingCommit": "08b89144f76d86cbbcf44de8845d04f018c88453",
+  "reportedRevision": "08b89144f76d86cbbcf44de8845d04f018c88453",
+  "startedAt": "2026-10-15T07:18:00Z",
+  "collectedAt": "2026-10-15T07:20:15Z"
+}

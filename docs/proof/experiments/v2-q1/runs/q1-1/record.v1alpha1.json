@@ -1,0 +1,295 @@
+{
+  "collection": {
+    "apiImageDigest": "sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1",
+    "controllerVerified": true,
+    "controllerVersion": "v3.5.3",
+    "desiredRevision": "08b89144f76d86cbbcf44de8845d04f018c88453",
+    "desiredStateDiff": "none",
+    "executingCommit": "08b89144f76d86cbbcf44de8845d04f018c88453",
+    "finishedAt": "2026-10-15T07:22:22Z",
+    "freezeChanges": "none",
+    "freezeRecord": "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+    "freezeRecordSha256": "f23426223d19abf19fa3c8beaaa138abe93bdef8ab376335eda50b0da3f29ded",
+    "provider": "docker-desktop",
+    "qualificationId": "q1-1",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "schema": "inferops.io/environment-qualification-collection/v1alpha1",
+    "startedAt": "2026-10-15T07:18:00Z",
+    "targetRefusal": null,
+    "upRefusal": null,
+    "workingTree": "clean"
+  },
+  "doesNotEstablish": [
+    "A record does not establish behaviour under a fault, the replacement of a pod, or a recovery from either.",
+    "A record does not establish a runtime start time, a caller gap, or any bound that later work derives.",
+    "A record does not establish a latency, a throughput, a success rate, or the reliability of the caller path. One completed request shows that the path answered once.",
+    "A record does not establish that a later run uses the same environment. A later run must state its own environment identity. No tool compares two identities yet.",
+    "A record does not establish that a source record is what its collection gives. The module reads the stored source records and does not build them again. It checks the caller record with the runner's reader.",
+    "A record does not establish capacity beyond the stated requests and limits on one node, or that a pod is scheduled in another state of the cluster.",
+    "A record does not establish production availability, high availability, a service level, or resilience to the loss of a node, a zone, or a region.",
+    "A record does not establish anything about another provider, another node, another Kubernetes version, or another release.",
+    "A record does not establish a representative workload. RP-1 is a fixed reliability profile."
+  ],
+  "environment": {
+    "containerEngine": {
+      "cpus": 12,
+      "memoryBytes": 10429960192
+    },
+    "kubernetesServerVersion": "v1.36.1",
+    "nodes": [
+      {
+        "allocatable": {
+          "cpuMillis": 12000,
+          "memoryBytes": 10429960192,
+          "pods": 110
+        },
+        "kubeletVersion": "v1.36.1",
+        "name": "desktop-control-plane"
+      }
+    ],
+    "provider": "docker-desktop"
+  },
+  "environmentSha256": "sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461",
+  "files": [
+    {
+      "name": "run.json",
+      "sha256": "27c105cae628ca8aafbad9e67e4a22bbd453579a1e58be5b48c59a1bd9d97bfd"
+    },
+    {
+      "name": "capacity/record.v1alpha1.json",
+      "sha256": "cc33c680a25a99d8c71703af55c4481bd346c085837cf22a9eb97240c7c2ef67"
+    },
+    {
+      "name": "provenance.json",
+      "sha256": "c16b5a3bb5a006f9a999527fb7884d5bec9b813606c7e19afb8925d676e46a73"
+    },
+    {
+      "name": "reconciliation.record.json",
+      "sha256": "3ba34ee7ce9d8d81f1b97f315bf9b9b6a45f899ef17f5923bdcab04d7a2196c8"
+    },
+    {
+      "name": "deployments.json",
+      "sha256": "23db621adbc250380e5c2cbb6ea1c48bc8166fd31a22b429d06fd683c85a388c"
+    },
+    {
+      "name": "endpoints/record.v1alpha1.json",
+      "sha256": "e450b2f7bbdaddfff79bc66a0a3427a22d6b14696a1a83ed5bbf0ce7b0e9e38c"
+    },
+    {
+      "name": "model-cache/record.v1alpha1.json",
+      "sha256": "49f9a8853ed2c461d7ba78461231df2c54eaea9e14fa66ebee746ca67a86be11"
+    },
+    {
+      "name": "plan.json",
+      "sha256": "6922125cf817c0190c2fb96612c245d4e4c04e2cde38aee8f0aba2e32dbf6066"
+    },
+    {
+      "name": "caller.jsonl",
+      "sha256": "f69f508e7d9545a4cbc753e298b3fc5d37d1f72fa4ae797764ce03d63a5c0c07"
+    },
+    {
+      "name": "pins/model-source.v1.json",
+      "sha256": "11187435073b286464397d42f022016dd76baea5f8d74397a3a83a3b8b2d5f8c"
+    },
+    {
+      "name": "pins/container-package.v1.json",
+      "sha256": "692ab69d6b4cf312762991e10f08094d6ec4888e8963ec1c0428205758b9eb26"
+    }
+  ],
+  "findings": [
+    {
+      "category": "target",
+      "criterion": "Q1-AC1",
+      "detail": "no refusal; the capacity collection read the selected target",
+      "ruleId": "target-reached",
+      "state": "held",
+      "statement": "The target check of the operating procedures selected the target and refused nothing."
+    },
+    {
+      "category": "provider-mismatch",
+      "criterion": "Q1-AC2",
+      "detail": "every source names docker-desktop",
+      "ruleId": "provider-selected",
+      "state": "held",
+      "statement": "The qualification selects the docker-desktop provider explicitly, the target check refused no provider, and every source record that names a provider names docker-desktop."
+    },
+    {
+      "category": "ambiguous-context",
+      "criterion": "Q1-AC3",
+      "detail": "one target, one node, and the runtime pods run on it",
+      "ruleId": "context-unambiguous",
+      "state": "held",
+      "statement": "The target check found one target, the cluster held no release and no controller before the phase up, the capacity collection names the context docker-desktop, the capacity record holds one node and a readable environment identity, and the runtime pods run on that node."
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q1-AC4",
+      "detail": "the working tree was clean",
+      "ruleId": "working-tree-clean",
+      "state": "held",
+      "statement": "The working tree was clean when the phase up started and when the qualification started."
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q1-AC5",
+      "detail": "the freeze record is the checkout's, and no material file changed",
+      "ruleId": "procedure-frozen",
+      "state": "held",
+      "statement": "The driver names the Q1 freeze record, the record has the content that the checkout holds, and the freeze tool listed no changed material file in the phase up or in the qualification."
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q1-AC6",
+      "detail": "the delivery paths of the executing commit equal those of the desired revision",
+      "ruleId": "desired-revision-known",
+      "state": "held",
+      "statement": "The desired revision is one full commit identifier, and the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision in the phase up and in the qualification."
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q1-AC7",
+      "detail": "each collection names the executing commit",
+      "ruleId": "one-executing-commit",
+      "state": "held",
+      "statement": "The capacity collection, the endpoint collection, the model cache collection, and the reconciliation collection name the executing commit of the qualification."
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q1-AC8",
+      "detail": "release b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db at the desired revision",
+      "ruleId": "release-provenance-resolved",
+      "state": "held",
+      "statement": "The provenance record resolves the target release key at the desired revision to one release identifier."
+    },
+    {
+      "category": "capacity",
+      "criterion": "Q1-AC9",
+      "detail": "ACCEPTED for 2 API and 2 runtime replicas",
+      "ruleId": "capacity-accepted",
+      "state": "held",
+      "statement": "The V2 capacity gate accepted the target release key with 2 API replicas and 2 runtime replicas before the release was applied."
+    },
+    {
+      "category": "reconciliation",
+      "criterion": "Q1-AC10",
+      "detail": "verified, version v3.5.3",
+      "ruleId": "controller-identified",
+      "state": "held",
+      "statement": "The verification of the delivery controller by its bootstrap procedure exited 0, and the driver states the controller version."
+    },
+    {
+      "category": "reconciliation",
+      "criterion": "Q1-AC11",
+      "detail": "5 samples settled at the desired revision and release",
+      "ruleId": "controller-reconciled",
+      "state": "held",
+      "statement": "The reconciliation record is complete, holds at least 5 samples, and in each sample the Application is settled at the desired revision, resolves to the provenance release, and has no finding in its revisions, its source, and its labels."
+    },
+    {
+      "category": "topology",
+      "criterion": "Q1-AC12",
+      "detail": "each Deployment states and reports 2 Ready replicas",
+      "ruleId": "deployments-ready",
+      "state": "held",
+      "statement": "The phase up completed its preparation, and the API Deployment and the runtime Deployment of the release each state 2 replicas, and each reports 2 replicas, 2 Ready, 2 available, and 2 updated at its current generation."
+    },
+    {
+      "category": "topology",
+      "criterion": "Q1-AC13",
+      "detail": "each Service has 2 endpoints, both Ready",
+      "ruleId": "endpoints-ready",
+      "state": "held",
+      "statement": "The endpoint record is OBSERVED, and the API Service and the runtime Service each have 2 endpoints, and both are Ready."
+    },
+    {
+      "category": "release-identity",
+      "criterion": "Q1-AC14",
+      "detail": "the declared API digest and the pinned runtime image",
+      "ruleId": "images-declared",
+      "state": "held",
+      "statement": "The api container of the API Deployment runs the API image digest that the driver built and declared, and the runtime container of the runtime Deployment runs the pinned runtime image."
+    },
+    {
+      "category": "model-mismatch",
+      "criterion": "Q1-AC15",
+      "detail": "15 model identity rules held for the pinned model",
+      "ruleId": "model-identity-verified",
+      "state": "held",
+      "statement": "The copies of the model pin and the runtime image pin have the content that the freeze record pins, the model cache record expects that model and that runtime image for 2 runtime replicas of the target release, and it holds each of its model identity rules."
+    },
+    {
+      "category": "caller",
+      "criterion": "Q1-AC16",
+      "detail": "34 of 34 requests have the outcome success",
+      "ruleId": "caller-completed",
+      "state": "held",
+      "statement": "The runner's reader accepts the caller record with its plan, in the mode in-cluster, for this qualification and the provenance release, the run ended by its own bound, and at least one request has the outcome success."
+    },
+    {
+      "category": "evidence",
+      "criterion": "Q1-AC17",
+      "detail": "the capacity reading precedes, and each other reading lies inside",
+      "ruleId": "readings-in-order",
+      "state": "held",
+      "statement": "The capacity reading precedes the qualification, and the endpoint reading, the model cache collection, the start of the caller run, and the first and the last reconciliation samples lie between the start and the end of the qualification."
+    }
+  ],
+  "identities": {
+    "apiImageDigest": "sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1",
+    "callerProfile": {
+      "profileId": "RP-1",
+      "profileRevision": 1,
+      "profileSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+    },
+    "chart": {
+      "name": "inferops-llm",
+      "version": "0.6.0"
+    },
+    "contractSha256": "818ef5d113b325781e7477c226467487e8a5fae4f42a090a7e06eb2a2fcf5085",
+    "deliveryControllerVersion": "v3.5.3",
+    "desiredStateRevision": "08b89144f76d86cbbcf44de8845d04f018c88453",
+    "environmentBinding": {
+      "name": "local-docker-desktop",
+      "sha256": "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
+    },
+    "executingCommit": "08b89144f76d86cbbcf44de8845d04f018c88453",
+    "freezeRecord": {
+      "contentSha256": "f23426223d19abf19fa3c8beaaa138abe93bdef8ab376335eda50b0da3f29ded",
+      "path": "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+    },
+    "helmValuesSha256": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930",
+    "kubernetes": {
+      "provider": "docker-desktop",
+      "serverVersion": "v1.36.1"
+    },
+    "model": {
+      "fileName": "Qwen3-1.7B-Q8_0.gguf",
+      "repository": "Qwen/Qwen3-1.7B-GGUF",
+      "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "sha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+      "sizeBytes": 1834426016
+    },
+    "platformDefaultsRevision": "cdcfd62baf6fff56ca179711855510c93194ce80",
+    "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "rendererRevision": "cdcfd62baf6fff56ca179711855510c93194ce80",
+    "runtimeImage": {
+      "digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "reference": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+    },
+    "workloadVersion": "0.2.0"
+  },
+  "qualification": "Q1",
+  "refusal": {
+    "categories": [],
+    "rules": []
+  },
+  "result": "QUALIFIED",
+  "schema": "inferops.io/environment-qualification/v1alpha1",
+  "target": {
+    "apiReplicas": 2,
+    "provider": "docker-desktop",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "runtimeReplicas": 2
+  }
+}

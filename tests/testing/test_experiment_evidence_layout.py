@@ -61,6 +61,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: attempt, added by V2-S5-006-PR1. Each is of the published layout. An attempt
 #: added later is a visible change of this tuple.
 INTEGRATION_RUNS = ("integration-1", "integration-2")
+#: The Q1 qualifications that the proof tree holds, since V2-S6-001-PR2.
+QUALIFICATION_RUNS = ("q1-1",)
 INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 LAYOUT_DOC = REPO_ROOT / "docs" / "testing" / "experiment-evidence-layout.md"
 FIXTURES = REPO_ROOT / "contracts" / "experiment" / "examples" / "valid"
@@ -1550,7 +1552,8 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
     """The three run directories written before the ExperimentRun schema are not
     checked: the listing says so for each. Since V2-S5-006-PR1 the proof tree also
     holds the attempts of the Sprint 5 integration validation, which are of this
-    layout and conform."""
+    layout and conform. Since V2-S6-001-PR2 it holds the Q1 qualifications, which
+    are listed with the text rules applied to their files."""
     report = core.repository_report()
     assert [(run.path, run.status) for run in report.runs] == [
         (f"docs/proof/experiments/v2-e01/runs/{run_id}", run_core.PRE_SCHEMA)
@@ -1559,10 +1562,168 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
             "20261003-e01-abc-1",
             "20261006-e01-d-1",
         )
+    ] + [
+        (f"{core.QUALIFICATIONS_REF}/runs/{run}", core.QUALIFICATION)
+        for run in QUALIFICATION_RUNS
     ] + [(f"{INTEGRATION_DIRECTORY}/{run}", "conforming") for run in INTEGRATION_RUNS]
     assert report.findings == () and not report.refused
-    assert all(run.digests is None for run in report.runs[:3])
-    assert all(run.digests is not None for run in report.runs[3:])
+    assert all(run.digests is None for run in report.runs[:4])
+    assert all(run.digests is not None for run in report.runs[4:])
+
+
+def _qualification(root: Path, name: str = "q1-1") -> Path:
+    """Write a tree with an empty pre-schema register and one qualification."""
+    _write_json(
+        root / run_core.PRE_SCHEMA_REGISTER_REF,
+        {
+            "schemaVersion": run_core.SUPPORTED_API_VERSION,
+            "kind": run_core.PRE_SCHEMA_REGISTER_KIND,
+            "records": [],
+        },
+    )
+    directory = root / core.QUALIFICATIONS_REF / "runs" / name
+    _write(directory / "run.json", "{}\n")
+    _write(directory / "capacity" / "record.v1alpha1.json", "{}\n")
+    _write(directory / "started-at", "2026-10-15T07:18:00Z\n")
+    _write(directory / core.QUALIFICATION_RECORD, "{}\n")
+    return directory
+
+
+def test_a_qualification_directory_is_listed_and_not_held_to_a_manifest(
+    tmp_path: Path,
+) -> None:
+    """A Q1 qualification has no ExperimentRun manifest. Its own tool holds it to
+    its record, so the listing states it and applies only the text rules."""
+    _qualification(tmp_path)
+    report = core.repository_report(tmp_path)
+    assert [(run.path, run.status, run.files) for run in report.runs] == [
+        (f"{core.QUALIFICATIONS_REF}/runs/q1-1", core.QUALIFICATION, 4)
+    ]
+    assert report.findings == () and not report.refused
+
+
+@pytest.mark.parametrize(
+    ("text", "rule"),
+    [
+        (f"key {PREFIXED_WORD}\n", core.RULE_FILE_CREDENTIAL),
+        (f"at {MAC_HOME}\n", core.RULE_FILE_PERSONAL_PATH),
+        (f"at {DRIVE_HOME}\n", core.RULE_FILE_PERSONAL_PATH),
+    ],
+)
+def test_a_qualification_file_that_a_text_rule_refuses_is_refused(
+    tmp_path: Path, text: str, rule: str
+) -> None:
+    directory = _qualification(tmp_path)
+    _write(directory / "transcript.txt", text)
+    report = core.repository_report(tmp_path)
+    assert [run.status for run in report.runs] == [core.REFUSED]
+    assert _rules(report.runs[0]) == [rule]
+    assert report.runs[0].findings[0].path == (
+        f"{core.QUALIFICATIONS_REF}/runs/q1-1/transcript.txt"
+    )
+
+
+@pytest.mark.parametrize(
+    ("data", "why"),
+    [
+        (b"\xff\xfe", "the file is not UTF-8 text"),
+        (b"x\0y", "the file holds a NUL character"),
+    ],
+)
+def test_a_qualification_file_that_is_not_text_is_refused(
+    tmp_path: Path, data: bytes, why: str
+) -> None:
+    directory = _qualification(tmp_path)
+    (directory / "a.txt").write_bytes(data)
+    report = core.repository_report(tmp_path)
+    assert [(f.rule, f.message) for f in report.runs[0].findings] == [
+        (core.RULE_FILE_FORM, why)
+    ]
+
+
+@pytest.mark.parametrize("emptied", [False, True])
+def test_a_qualification_with_no_record_is_refused(
+    tmp_path: Path, emptied: bool
+) -> None:
+    """A directory with no record, or with no file at all, is no qualification."""
+    directory = _qualification(tmp_path)
+    if emptied:
+        shutil.rmtree(directory)
+        directory.mkdir()
+    else:
+        (directory / core.QUALIFICATION_RECORD).unlink()
+    report = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for f in report.runs[0].findings] == [
+        (core.RULE_FILE_MISSING, f"{core.QUALIFICATIONS_REF}/runs/q1-1")
+    ]
+    assert report.refused
+
+
+def test_a_link_in_a_qualification_is_refused(tmp_path: Path) -> None:
+    directory = _qualification(tmp_path)
+    outside = tmp_path / "outside"
+    _write(outside / "a.json", "{}\n")
+    _junction(outside, directory / "linked")
+    report = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for f in report.runs[0].findings] == [
+        (core.RULE_FILE_NOT_REGULAR, f"{core.QUALIFICATIONS_REF}/runs/q1-1/linked")
+    ]
+
+
+@pytest.mark.parametrize("child", ["runs", "corrections"])
+def test_a_linked_runs_or_corrections_directory_is_not_followed(
+    tmp_path: Path, child: str
+) -> None:
+    """A link at the runs or the corrections directory of any experiment is the
+    finding. Until V2-S6-001-PR2 the listing followed it out of the tree."""
+    _qualification(tmp_path)
+    outside = tmp_path / "outside"
+    _write(outside / "q1-1" / core.QUALIFICATION_RECORD, "{}\n")
+    linked = tmp_path / core.QUALIFICATIONS_REF / child
+    if child == "runs":
+        shutil.rmtree(linked)
+    _junction(outside, linked)
+    report = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for f in report.findings] == [
+        (core.RULE_FILE_NOT_REGULAR, f"{core.QUALIFICATIONS_REF}/{child}")
+    ]
+    assert report.runs == () if child == "runs" else len(report.runs) == 1
+
+
+def test_a_directory_with_a_manifest_under_the_qualifications_is_a_run(
+    tmp_path: Path,
+) -> None:
+    """A manifest makes a directory a run of this layout wherever it is, so a
+    directory of the qualifications cannot leave the check of a run by its place."""
+    directory = _qualification(tmp_path)
+    _write(directory / run_core.MANIFEST_NAME, "{}\n")
+    report = core.repository_report(tmp_path)
+    assert [run.status for run in report.runs] == [core.REFUSED]
+
+
+def test_a_correction_of_a_qualification_is_refused(tmp_path: Path) -> None:
+    _qualification(tmp_path)
+    _write(
+        tmp_path / core.QUALIFICATIONS_REF / "corrections" / "q1-1" / "a.json", "{}\n"
+    )
+    report = core.repository_report(tmp_path)
+    assert [f.rule for f in report.findings] == [core.RULE_CORRECTION_RUN]
+    assert report.refused
+
+
+def test_a_directory_with_no_manifest_elsewhere_is_still_refused(
+    tmp_path: Path,
+) -> None:
+    """Only the Q1 directory holds qualifications. The same files in another
+    experiment directory are a run directory with no manifest."""
+    _qualification(tmp_path)
+    shutil.move(
+        str(tmp_path / core.QUALIFICATIONS_REF / "runs"),
+        str(tmp_path / EXPERIMENT_REF / "runs"),
+    )
+    report = core.repository_report(tmp_path)
+    assert [run.status for run in report.runs] == [core.REFUSED]
+    assert _rules(report.runs[0]) == [core.RULE_MANIFEST_MISSING]
 
 
 def test_the_earlier_run_directories_would_not_conform(tmp_path: Path) -> None:
@@ -1710,12 +1871,16 @@ def test_the_command_passes_the_repository_and_names_what_it_did_not_check(
 ) -> None:
     assert command.main(["repository"]) == command.EXIT_OK
     out = capsys.readouterr().out.splitlines()
-    total = 3 + len(INTEGRATION_RUNS)
+    total = 3 + len(QUALIFICATION_RUNS) + len(INTEGRATION_RUNS)
     assert out[-1] == (
         f"runs       {total}: 3 pre-schema and not checked, "
+        f"{len(QUALIFICATION_RUNS)} qualification(s) with the text rules only, "
         f"{len(INTEGRATION_RUNS)} conforming, 0 refused"
     )
     assert sum(1 for line in out if line.endswith("(not checked)")) == 3
+    assert [line.split()[1] for line in out if line.startswith("qualification ")] == [
+        f"{core.QUALIFICATIONS_REF}/runs/{run}" for run in QUALIFICATION_RUNS
+    ]
 
 
 def test_the_command_checks_a_run_directory_and_prints_its_two_digests(
