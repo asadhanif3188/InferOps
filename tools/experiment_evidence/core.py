@@ -108,6 +108,9 @@ QUALIFICATION: Final = "qualification"
 #: The one experiment directory whose ``runs`` directory holds Q1 qualifications.
 QUALIFICATIONS_REF: Final = f"{RUNS_ROOT_REF}/v2-q1"
 
+#: The file that each qualification holds: the record that its tool built.
+QUALIFICATION_RECORD: Final = "record.v1alpha1.json"
+
 
 @dataclass(frozen=True)
 class Role:
@@ -359,6 +362,11 @@ def form_problem(path: Path) -> str | None:
         return "the file has the name of a run manifest"
     if path.suffix not in EVIDENCE_SUFFIXES:
         return "the file suffix is not one the evidence index hashes as text"
+    return _content_problem(path)
+
+
+def _content_problem(path: Path) -> str | None:
+    """Why the content of a file is not text, or None when it is."""
     try:
         data = path.read_bytes()
     except OSError:
@@ -1098,9 +1106,10 @@ def _entries(parent: Path, shown: str) -> tuple[list[Path], list[Finding]]:
 def _qualification_report(directory: Path, shown: str) -> RunReport:
     """List one Q1 qualification directory, and apply the text rules to each file.
 
-    A link is a finding, and so is a file that is not UTF-8 text. The record of
-    the qualification is not read here: ``tools.environment_qualification
-    --check`` builds it again from the directory.
+    A link is a finding, and so is a directory with no record, and a file that is
+    unreadable, holds a NUL character, or is not UTF-8 text. The record of the
+    qualification is not read here: ``tools.environment_qualification --check``
+    builds it again from the directory.
     """
     present, links = _walk(directory)
     findings = [
@@ -1109,14 +1118,23 @@ def _qualification_report(directory: Path, shown: str) -> RunReport:
         )
         for name in links
     ]
+    if QUALIFICATION_RECORD not in present:
+        findings.append(
+            Finding(
+                shown,
+                RULE_FILE_MISSING,
+                f"the qualification holds no {QUALIFICATION_RECORD}",
+            )
+        )
     for name, path in present.items():
         ref = printable(f"{shown}/{name}")
-        try:
-            text = _text_of(path)
-        except (OSError, UnicodeDecodeError):
-            findings.append(Finding(ref, RULE_FILE_FORM, "the file is not UTF-8 text"))
+        problem = _content_problem(path)
+        if problem is not None:
+            findings.append(Finding(ref, RULE_FILE_FORM, problem))
             continue
-        findings.extend(Finding(ref, rule, why) for rule, why in text_problems(text))
+        findings.extend(
+            Finding(ref, rule, why) for rule, why in text_problems(_text_of(path))
+        )
     if findings:
         return RunReport(shown, REFUSED, tuple(sorted(findings)))
     return RunReport(shown, QUALIFICATION, files=len(present))
@@ -1165,6 +1183,12 @@ def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
         if _is_link(experiment) or not experiment.is_dir():
             continue
         children = _names(experiment)
+        for child in (RUNS_DIRECTORY, CORRECTIONS_DIRECTORY):
+            # A link at the runs or the corrections directory would be followed
+            # out of the tree. It is the finding, and it is not read.
+            if child in children and _is_link(experiment / child):
+                linked.add(f"{shown}/{child}")
+                children.discard(child)
         if RUNS_DIRECTORY in children:
             directories, found = _entries(
                 experiment / RUNS_DIRECTORY, f"{shown}/{RUNS_DIRECTORY}"

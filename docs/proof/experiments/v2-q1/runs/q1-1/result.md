@@ -23,7 +23,7 @@ what each phase printed.
 |---|---|---|---|
 | `up q1run-1` | 07:04:55 | 07:17:45 | The capacity gate before anything was installed (`ACCEPTED`); the API image built at the executing commit and loaded, and the model seed image loaded; the prerequisite layer with the model cache claim; the claim filled by one preparation Helm release, which was removed; the delivery controller installed and verified; the capacity gate again (`ACCEPTED`), the reading that Q1 reads; the Application applied; the two rollouts, each within its bound of 900 s |
 | `qualify q1run-1 q1-1` | 07:18:00 | 07:22:24 | Steps S0 to S9: the commit, the tree, the desired revision, and the freeze check; the provenance; the controller verification; 5 reconciliation samples; the Deployments; one endpoint reading; the model cache observation of each runtime pod; one RP-1 caller run; the header; the record |
-| `down q1run-1` | after 07:22:24 | 07:25:04 | The Application, the controller, and the prerequisite layer removed. The namespaces and the custom resource definitions equal those that the phase `up` read before it installed anything, and no persistent volume remains |
+| `down q1run-1` | 07:22:38 | 07:25:04 | The Application, the controller, and the prerequisite layer removed. The namespaces and the custom resource definitions equal those that the phase `up` read before it installed anything, and no persistent volume remains |
 
 `q1run-1` names the work directory under `.artifacts/`. An earlier collection of the
 capacity gate was named `run-1`, so a fresh name was taken; the run name is not a
@@ -44,8 +44,8 @@ qualification identifier and no rule reads it.
 | `Q1-AC9` | `capacity-accepted` | `ACCEPTED` for 2 API and 2 runtime replicas |
 | `Q1-AC10` | `controller-identified` | Verified, version `v3.5.3` |
 | `Q1-AC11` | `controller-reconciled` | 5 samples settled at the desired revision and release |
-| `Q1-AC12` | `deployments-ready` | Each Deployment states and reports 2 Ready replicas |
-| `Q1-AC13` | `endpoints-ready` | Each Service has 2 endpoints, both Ready |
+| `Q1-AC12` | `deployments-ready` | Each Deployment states and reports 2 Ready replicas. The rule reads the API and the runtime Deployment; the collector Deployment of the release states 1 replica and is not a target of Q1 |
+| `Q1-AC13` | `endpoints-ready` | Each Service has 2 endpoints, both Ready. The endpoint record covers the API and the runtime Service, and not the collector Service |
 | `Q1-AC14` | `images-declared` | The declared API digest and the pinned runtime image |
 | `Q1-AC15` | `model-identity-verified` | 15 model identity rules held for the pinned model |
 | `Q1-AC16` | `caller-completed` | 34 of 34 requests have the outcome success |
@@ -93,20 +93,28 @@ These are readings of this qualification. None is compared with a bound.
 - **The model cache record is `INCONCLUSIVE`, by design.** Its rules
   `capacity-preflight-sufficient` and `not-ready-while-loading` are not observed: Q1
   runs neither the V1 multi-replica preflight nor samples of the start. The 15 rules
-  that Q1 reads are held: one runtime image, one model argument, one claim mounted read
-  only and in effect read only, one directory, one file with the pinned byte count, a
-  verification in each pod, one reported model, and one completion from each runtime.
+  that Q1 reads are held. Among them: 2 runtime pods, each Ready; one runtime image; one
+  model argument; one claim, the prerequisite claim, and no second claim, mounted read
+  only and in effect read only at the revision of the model; one directory; one file
+  with the pinned byte count; a verification in each pod; one reported model; and one
+  completion from each runtime.
 - **The caller run.** RP-1 against the API Service, mode `in-cluster`, concurrency 2,
   from 07:20:44.212Z. It dispatched 34 requests in 61,967 ms and ended by its duration
   bound of 60 s, before its ceiling of 50. Each of the 34 has the outcome `success`. One
   run of 34 requests shows that the path answered. It is not a success rate.
-- **Startup probes failed while the pods started, and no pod restarted.** The pod
+- **Startup probes failed while the pods started, and no pod had restarted when
+  last read.** The pod
   events of the release namespace hold one failed startup probe for each API pod at
   07:16:31Z and two for each runtime pod between 07:16:56Z and 07:17:06Z, before each
   became Ready. At 07:17:45Z every pod of the release reported 0 restarts, and the two
   runtime containers reported 0 restarts when the model cache observation read them.
-  The events that name another pod template are of the preparation release, which was
-  removed before the Application was applied.
+  No pod read restart counts during or after the caller run. The events of the pods
+  `…-cd985464c-xk6fz`, `…-collector-f86bcbf84-wlhl7`, `…-runtime-77dc4cbd7-bl822`, and
+  `…-model-acquisition-dsxfk`, between 07:12:23Z and 07:13:14Z, are of the preparation
+  release, which was removed before the Application was applied. The pod
+  `…-model-acquisition-kgb4h`, scheduled at 07:15:44Z, is of the Application's own
+  acquisition Job, a PreSync hook, which the reconciliation samples state as
+  `Succeeded`.
 - **The controller reported the release as delivered.** At the end of the phase `up`
   the Application was `Synced` and `Healthy` at `08b8914`. Q1 does not read that
   report as the caller's result: `caller-completed` reads the caller record.
@@ -122,20 +130,33 @@ collections, with one exception:
   paths under a home directory in the controller's pods. The repository's publication
   check refuses a committed file with such a path, and the file was not edited. Its
   SHA-256, with LF, is `6f695f25d46e24bbb53a7efc94af8ae745f51032ffbe3e46e4770bcd9d9d2ccd`,
-  and it was 267,824 bytes. Q1 reads the stored capacity record and not this read, so
+  and it was 267,824 bytes, as the operator measured them before leaving it out; no
+  committed file corroborates the two values. Q1 reads the stored capacity record and
+  not this read, so
   `--check` is unaffected. The capacity record cannot be built again from this
   directory.
 
+The node read of the capacity collection, `capacity/nodes.json`, is committed whole.
+It holds the boot, machine, and system identifiers of the node's virtual machine,
+which neither text rule reads. They are kept on purpose: the committed capacity
+readings of `V2-S4-003-PR1` and `V2-S4-005-PR2` hold the same members of the same
+node.
+
 Two files were added after the phases: `transcript.txt`, the three transcripts joined in
 phase order, with terminal colour codes removed, the absolute path of the host
-written as `<repository>` (two lines), and trailing whitespace removed from six lines;
-and this page. The record does not list either,
+written as `<repository>` (two lines), and trailing whitespace removed from six lines,
+a count that the operator recorded and that the committed file cannot show; and this
+page. The record does not list either,
 because the tool lists only the files that it reads.
 
-No abort condition of the freeze record occurred: no tracked file changed while the
-phases ran, nobody changed a replica count, a request, a limit, or an object of the
-release, and each of the 18 target checks that the operating procedures printed
-verified the docker-desktop target. The one line of the transcript with the word
+No abort condition of the freeze record is shown. The transcript shows a clean
+working tree and no changed material file at the start of the phase `up` and at step
+S0 of the qualification, and each of the 18 target checks that the operating
+procedures printed verified the docker-desktop target. Nothing reads the tree after
+S0. That no tracked file changed while the qualification ran, and that nobody
+changed a replica count, a request, a limit, or an object of the release, is the
+operator's statement: the operator edited no file before the phase `down` ended, and
+ran no command against the release except the driver. The one line of the transcript with the word
 "refused" in the phase `up` is text of the chart's notes, which the preparation release
 printed.
 

@@ -298,7 +298,8 @@ refusal is kept, and no option weakens the target. Since `V2-S6-001-PR2` one qua
 has run: [`q1-1`](docs/proof/experiments/v2-q1/runs/q1-1/result.md) is `QUALIFIED`, at
 C2, on the docker-desktop provider with one node, and its environment identity is the
 one environment that E02A and E02B must share. It qualifies that one environment and no
-other, and it is not a result of any reliability experiment.
+other, and it is not a result of any reliability experiment. (Until then this
+paragraph said that no qualification had run.)
 
 ## Prerequisites
 

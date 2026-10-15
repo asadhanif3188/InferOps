@@ -43,7 +43,7 @@ tree.
 revision 1, in its own directory, committed before any qualification. It is a
 prerequisite of the V2 reliability experiments and not one of them. Since
 `V2-S6-001-PR2` one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and
-it is `QUALIFIED`.
+it is `QUALIFIED`. (Until then this paragraph said that no qualification had run.)
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -55,7 +55,7 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E01, contract-to-deployment determinism | 3 | [`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. It names the E01-D environment. E01-D ran once under it, in [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md), and PASSED under its criteria. No static part ran under it. Since that run, one pinned input differs from its pin: [the runner's committed-run listing](#the-e01-d-run) |
 | Sprint 5 integration validation, `s5-integration-validation` | 1 | [`v2-s5-integration/freeze-r1.v1alpha1.json`](v2-s5-integration/freeze-r1.v1alpha1.json) | One part, S5I, at C2 | Frozen before its first attempt. Not result-bearing: [see below](#the-sprint-5-integration-validation). One attempt ran under it, [`integration-1`](v2-s5-integration/runs/integration-1/result.md), and FAILED on S5I-AC2. Superseded by revision 2 on 2026-10-14, and kept unchanged. Seven pinned inputs differ from its pins: the four that revision 2 classifies, and the three files of `tools/experiment_evidence`, which `V2-S6-001-PR2` edited |
 | Sprint 5 integration validation, `s5-integration-validation` | 2 | [`v2-s5-integration/freeze-r2.v1alpha1.json`](v2-s5-integration/freeze-r2.v1alpha1.json) | One part, S5I, at C2 | Frozen. A run brings its own network policy. One attempt ran under it, [`integration-2`](v2-s5-integration/runs/integration-2/result.md), and PASSED under its criteria. Since `V2-S6-001-PR2`, three pinned inputs differ from their pins: the three files of `tools/experiment_evidence`, which that change edited after both attempts so that the layout check lists a Q1 qualification. A later attempt needs a revision that classifies them |
-| Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). One qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and it is `QUALIFIED`. No pinned input differs from its pin |
+| Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). Since `V2-S6-001-PR2`, one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and it is `QUALIFIED`. No pinned input differs from its pin. (Until then this row said that no qualification ran under it.) |
 
 ## Why a freeze comes first
 

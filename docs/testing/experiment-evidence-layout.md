@@ -11,7 +11,9 @@ directory. (Until `V2-S5-006-PR1` this page said that no run directory of this l
 exists and that no run produced one.) Each run directory that the
 suite checks is built by the suite, with a synthetic caller record and placeholder
 identities, except one copy of a committed run directory, which is refused at its
-manifest, and the two attempts, which its listing reads in place. The three other run directories that are committed were written before the
+manifest, and the two attempts, which its listing reads in place. Its listing also reads
+in place the Q1 qualification `q1-1`, which is not a run directory of this layout (see
+[the Q1 qualifications](#the-q1-qualifications)). The three other run directories that are committed were written before the
 [ExperimentRun schema](../contracts/experiment-run.md).
 [The compatibility section](#the-three-earlier-run-directories) says how they are held.
 (Since `V2-S5-004-PR2` one synthetic run directory of this layout is committed as a test fixture,
@@ -435,10 +437,12 @@ names the manifest of each by path and content digest.
 A qualification is not a run of an experiment, and it has no ExperimentRun manifest.
 Since `V2-S6-001-PR2`, which committed the first one, `q1-1`:
 
-- **The `repository` command lists each as `qualification`.** It applies the
-  credential-prefix rule and the personal-path rule to each file, and refuses a link and
-  a file that is not UTF-8 text. It applies no other rule of this layout. It refuses a
-  corrections directory with the name of a qualification.
+- **The `repository` command lists each directory with no manifest as
+  `qualification`.** It requires the record, `record.v1alpha1.json`, applies the
+  credential-prefix rule and the personal-path rule to each file, and refuses a link
+  and a file that is unreadable, holds a NUL character, or is not UTF-8 text. It
+  applies no other rule of this layout. It refuses a corrections directory with the
+  name of a qualification. A directory there with a manifest is checked as a run.
 - **`python -m tools.environment_qualification --check` holds each to its record.** It
   builds the record again from the directory and compares the bytes.
 - **Only that one directory holds qualifications.** A directory with no manifest under
@@ -446,7 +450,9 @@ Since `V2-S6-001-PR2`, which committed the first one, `q1-1`:
 
 (Until `V2-S6-001-PR2` the `repository` command refused every directory of a `runs`
 directory with no manifest, and it would have refused `q1-1` with
-`evidence-manifest-missing`.)
+`evidence-manifest-missing`. Until then it also followed a link at the `runs` or the
+`corrections` directory of an experiment; it now refuses the link and reads nothing
+through it.)
 
 ## Measured gaps
 

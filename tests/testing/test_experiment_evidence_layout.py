@@ -1585,6 +1585,7 @@ def _qualification(root: Path, name: str = "q1-1") -> Path:
     _write(directory / "run.json", "{}\n")
     _write(directory / "capacity" / "record.v1alpha1.json", "{}\n")
     _write(directory / "started-at", "2026-10-15T07:18:00Z\n")
+    _write(directory / core.QUALIFICATION_RECORD, "{}\n")
     return directory
 
 
@@ -1596,7 +1597,7 @@ def test_a_qualification_directory_is_listed_and_not_held_to_a_manifest(
     _qualification(tmp_path)
     report = core.repository_report(tmp_path)
     assert [(run.path, run.status, run.files) for run in report.runs] == [
-        (f"{core.QUALIFICATIONS_REF}/runs/q1-1", core.QUALIFICATION, 3)
+        (f"{core.QUALIFICATIONS_REF}/runs/q1-1", core.QUALIFICATION, 4)
     ]
     assert report.findings == () and not report.refused
 
@@ -1622,11 +1623,82 @@ def test_a_qualification_file_that_a_text_rule_refuses_is_refused(
     )
 
 
-def test_a_qualification_file_that_is_not_text_is_refused(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("data", "why"),
+    [
+        (b"\xff\xfe", "the file is not UTF-8 text"),
+        (b"x\0y", "the file holds a NUL character"),
+    ],
+)
+def test_a_qualification_file_that_is_not_text_is_refused(
+    tmp_path: Path, data: bytes, why: str
+) -> None:
     directory = _qualification(tmp_path)
-    (directory / "image.bin").write_bytes(b"\xff\xfe")
+    (directory / "a.txt").write_bytes(data)
     report = core.repository_report(tmp_path)
-    assert _rules(report.runs[0]) == [core.RULE_FILE_FORM]
+    assert [(f.rule, f.message) for f in report.runs[0].findings] == [
+        (core.RULE_FILE_FORM, why)
+    ]
+
+
+@pytest.mark.parametrize("emptied", [False, True])
+def test_a_qualification_with_no_record_is_refused(
+    tmp_path: Path, emptied: bool
+) -> None:
+    """A directory with no record, or with no file at all, is no qualification."""
+    directory = _qualification(tmp_path)
+    if emptied:
+        shutil.rmtree(directory)
+        directory.mkdir()
+    else:
+        (directory / core.QUALIFICATION_RECORD).unlink()
+    report = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for f in report.runs[0].findings] == [
+        (core.RULE_FILE_MISSING, f"{core.QUALIFICATIONS_REF}/runs/q1-1")
+    ]
+    assert report.refused
+
+
+def test_a_link_in_a_qualification_is_refused(tmp_path: Path) -> None:
+    directory = _qualification(tmp_path)
+    outside = tmp_path / "outside"
+    _write(outside / "a.json", "{}\n")
+    _junction(outside, directory / "linked")
+    report = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for f in report.runs[0].findings] == [
+        (core.RULE_FILE_NOT_REGULAR, f"{core.QUALIFICATIONS_REF}/runs/q1-1/linked")
+    ]
+
+
+@pytest.mark.parametrize("child", ["runs", "corrections"])
+def test_a_linked_runs_or_corrections_directory_is_not_followed(
+    tmp_path: Path, child: str
+) -> None:
+    """A link at the runs or the corrections directory of any experiment is the
+    finding. Until V2-S6-001-PR2 the listing followed it out of the tree."""
+    _qualification(tmp_path)
+    outside = tmp_path / "outside"
+    _write(outside / "q1-1" / core.QUALIFICATION_RECORD, "{}\n")
+    linked = tmp_path / core.QUALIFICATIONS_REF / child
+    if child == "runs":
+        shutil.rmtree(linked)
+    _junction(outside, linked)
+    report = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for f in report.findings] == [
+        (core.RULE_FILE_NOT_REGULAR, f"{core.QUALIFICATIONS_REF}/{child}")
+    ]
+    assert report.runs == () if child == "runs" else len(report.runs) == 1
+
+
+def test_a_directory_with_a_manifest_under_the_qualifications_is_a_run(
+    tmp_path: Path,
+) -> None:
+    """A manifest makes a directory a run of this layout wherever it is, so a
+    directory of the qualifications cannot leave the check of a run by its place."""
+    directory = _qualification(tmp_path)
+    _write(directory / run_core.MANIFEST_NAME, "{}\n")
+    report = core.repository_report(tmp_path)
+    assert [run.status for run in report.runs] == [core.REFUSED]
 
 
 def test_a_correction_of_a_qualification_is_refused(tmp_path: Path) -> None:

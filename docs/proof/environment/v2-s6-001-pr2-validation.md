@@ -56,19 +56,21 @@ limit, or a bound to pass, and it reconciles only the qualification's own eviden
    refused the committed directory with `evidence-manifest-missing`, because a
    qualification has no ExperimentRun manifest. `V2-S6-001-PR1` said where a
    qualification is committed and did not foresee this. The `repository` command now
-   lists each directory of `docs/proof/experiments/v2-q1/runs/` as `qualification`,
-   applies the credential-prefix rule and the personal-path rule to each of its files,
-   refuses a link, a file that is not UTF-8 text, and a corrections directory of one,
-   and still refuses a directory with no manifest under the `runs` directory of any other
-   experiment. Five new tests, seven cases with the parametrized one, and the two
-   existing tests of the repository listing hold it.
+   lists each directory of `docs/proof/experiments/v2-q1/runs/` that has no manifest
+   as `qualification`, requires its record, applies the credential-prefix rule and the
+   personal-path rule to each of its files, refuses a link, a file that is unreadable,
+   holds a NUL character, or is not UTF-8 text, and a corrections directory of one, and
+   still refuses a directory with no manifest under the `runs` directory of any other
+   experiment. A directory there with a manifest is checked as a run. The listing also
+   no longer follows a link at the `runs` or the `corrections` directory of any
+   experiment. The suite holds each of these.
 3. **The suites and the pages.** The Q1 suite holds that `q1-1` is the one committed
    qualification, that `--check` builds its record again, and that the record is
    `QUALIFIED` with every rule held. The test that no tracked file declares an Argo CD
    custom resource except the two committed manifests names, by exact path, the
    evidence files that hold the Application as a cluster returned it; it now names the
    five reconciliation samples of `q1-1` beside the one file of the E01-D run. The pages that said that no qualification had run
-   now say that one ran, each with a dated note.
+   now say that one ran, each with a "Since" or an "(Until …)" note.
 
 ## Decisions this change makes
 
@@ -122,7 +124,9 @@ In addition:
 - **The model cache record is `INCONCLUSIVE`, by design.** Q1 reads 15 of its 17
   rules, as frozen.
 - **The startup probe of each API pod failed once, and that of each runtime pod twice,
-  before each became Ready.** No pod restarted. Q1 reads readiness and not the start.
+  before each became Ready.** No pod had restarted when last read: the API pods at the
+  end of the phase `up`, and the runtime pods at 07:20:15Z, before the caller run.
+  Nothing read restart counts after it. Q1 reads readiness and not the start.
 - **The images were cached.** The phase `up` built the API image from the engine's
   cache and loaded the two images. A host without them takes longer; the bounds of the
   driver were not approached.
@@ -130,8 +134,9 @@ In addition:
 ## Validation
 
 Each command ran on the Windows host from Git Bash, at the tree of the first commit of
-this change, except the default lane, which ran before the correction of one test that
-it found (below).
+this change, except the three driver phases, which ran at `08b8914` before any file
+was edited, and the default lane, which ran before the correction of one test that it
+found (below). The second commit was validated again: see the last section.
 
 | Command | Result |
 |---|---|
@@ -171,3 +176,80 @@ not observed.
   ran. It passed alone, and this change touches neither the procedure nor its suite.
   The earlier record of `V2-S6-001-PR1` states a similar failure of a stub run in
   another procedure suite.
+
+## What the independent review found
+
+Two independent reviews read the first commit, `d78c0bc`: one of the code and the
+tests, and one of every page against the committed files of `q1-1`. Neither found a
+defect in the run, its record, or its result: `--check` builds the record again with
+the same bytes, and each identity, time, count, and digest of the run page that a
+committed file states was confirmed. Each finding below is what the first commit got
+wrong, and the second commit corrects it. The qualification was not run again, and no
+file of its directory except the run page was edited.
+
+**The review of the code** (two medium, three low):
+
+- **Medium: the qualification path checked less than the check of a run.** It refused a
+  file that is not UTF-8 text, but not a file that holds a NUL character, which the
+  check of a run refuses as not text. It now applies the same content test: an
+  unreadable file, a NUL character, and a file that is not UTF-8 text are each refused.
+- **Medium: an empty qualification directory was listed as a qualification, and a link
+  at a `runs` directory was followed.** A directory with no file, or with no record,
+  was listed with no finding; the record is now required. A link or junction at the
+  `runs` or the `corrections` directory of any experiment was followed out of the tree,
+  and the text rules were applied to what it pointed at. That was older than this
+  change and held for every experiment; the listing now refuses such a link and reads
+  nothing through it.
+- **Low:** no test held a link inside a qualification, or a directory with a manifest
+  under the qualifications (both are tested now); the test of the listing reads
+  `digests is None` for both the pre-schema runs and the qualification, so it does not
+  tell them apart by that value, while the status assertion beside it does; and
+  `capacity/nodes.json` holds the boot, machine, and system identifiers of the node's
+  virtual machine, which no text rule reads. They are kept, as in the committed capacity
+  readings of `V2-S4-003-PR1` and `V2-S4-005-PR2`, and the run page now says so.
+
+**The review of the pages** (one factual error, two overclaims, nine low):
+
+- **A false statement about the pod events.** The run page said that the events that
+  name another pod template are of the preparation release. One of them, the pod of
+  the acquisition Job scheduled at 07:15:44Z, is of the Application's own PreSync hook,
+  after the apply. The page now names the four pods of the preparation release and that
+  one.
+- **"No pod restarted" said more than the reads show.** The API pods were last read at
+  the end of the phase `up` and the runtime pods at 07:20:15Z; nothing read a restart
+  count during or after the caller run. The run page and this record now say "when last
+  read".
+- **This record said that each command ran at the tree of the first commit.** The three
+  driver phases ran at `08b8914`, before any file was edited. It now says so.
+- **Low:** the run page widened the abort conditions from the qualification to every
+  phase and stated what nobody did as if a file showed it (it now separates what the
+  transcript shows from the operator's statement); the phase `down` started at
+  07:22:38Z and not "after 07:22:24"; the two detail strings of `Q1-AC12` and `Q1-AC13`
+  say "each Deployment" and "each Service" while the rules read the API and the runtime
+  ones only (the page annotates them; the tool is frozen); the list of the 15 model cache
+  rules named about ten of them; this record said that a link refusal in a
+  qualification was tested when it was not, and that every directory of `v2-q1/runs/`
+  is a qualification when one with a manifest is checked as a run; four pages carried a
+  "Since" note without the usual "(Until …)" note, and one row neither; the Q1 page
+  listed only part of the environment identity that its digest covers; the layout page
+  did not say that its listing reads `q1-1` in place; and the digest and the size of the
+  file left out, and the count of the trailing-whitespace lines, are the operator's
+  measurements, which no committed file corroborates (the pages now say so).
+- **One finding is older than this change and is not corrected here.** The experiments
+  page says that one pinned input of E01 revision 3 differs from its pin, while the
+  freeze tool lists 30, none of which this change moved. `V2-S6-001-PR1` recorded the
+  same finding.
+
+## Validation of the second commit
+
+Each command ran on the Windows host from Git Bash, at the tree of the second commit.
+
+| Command | Result |
+|---|---|
+| `uv run --locked python -m pytest -q` | 22,495 passed, 39 skipped, 14 deselected, 0 failed, in 62 min |
+| `uv run --locked python -m ruff check .`, `ruff format --check .` | Passed |
+| `uv run --locked python -m mypy`, and with `--platform linux` | No issue in 418 source files, on each platform |
+| `uv run --locked python -m tools.environment_qualification --check` | `PASSED: 1 committed qualification(s), each record is what its directory gives` |
+| `uv run --locked python -m tools.experiment_evidence repository` | `runs       6: 3 pre-schema and not checked, 1 qualification(s) with the text rules only, 2 conforming, 0 refused` |
+| `uv run --locked python -m tools.experiment_freeze --check`, and `--changes` of Q1 revision 1 | `PASSED: 6 freeze record(s), every rule held`; `UNCHANGED` |
+| `git diff --check` | Clean |
