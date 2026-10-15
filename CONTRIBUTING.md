@@ -600,6 +600,27 @@ caller's result, and do not use a Prometheus `up` series in place of a record.
 [The endpoint-state page](docs/environment/service-endpoint-state.md) states the rules,
 the identities, and what a record does not establish.
 
+**Q1, the environment and identity qualification, is a frozen driver and a tool that
+reads files.** The driver runs the operating procedures and the collectors and writes one
+directory under `.artifacts/`. The tool prints one record whose result is `QUALIFIED` or
+`REFUSED`:
+
+```sh
+bash docs/proof/experiments/v2-q1/procedure/q1-driver.txt up RUN
+bash docs/proof/experiments/v2-q1/procedure/q1-driver.txt qualify RUN q1-N
+bash docs/proof/experiments/v2-q1/procedure/q1-driver.txt down RUN
+uv run --locked python -m tools.environment_qualification DIRECTORY
+uv run --locked python -m tools.environment_qualification --check
+```
+
+The driver changes the cluster: run it only when the host owner has authorized a
+qualification. Exit status 0 of the tool says `QUALIFIED`, and 5 says `REFUSED`. A refusal
+is a result: keep its directory, and do not change a replica count, a request, a limit, or
+a bound to obtain `QUALIFIED`. The driver and the tool are pinned inputs of the Q1 freeze
+record, so a change to either is a new revision of that record.
+[The Q1 page](docs/environment/environment-qualification.md) states the rules, the
+identities, and what a record does not establish.
+
 **The infrastructure timelines of an experiment run are captured by a script that changes
 nothing in the cluster and a tool that reads files.** The script samples the release a
 bounded number of times and writes a collection directory under `.artifacts/`. The tool

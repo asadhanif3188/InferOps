@@ -72,6 +72,7 @@ docs/proof/experiments/v2-e01/runs/** text eol=lf
 # digest. Pinned so a Windows checkout cannot give bash a CRLF driver, and so the
 # files of an attempt keep the bytes that the attempt wrote.
 docs/proof/experiments/v2-s5-integration/** text eol=lf
+docs/proof/experiments/v2-q1/** text eol=lf
 
 # The Git desired state holds generated releases, each compared byte for byte with
 # what its declared sources derive, and each release records the SHA-256 of its

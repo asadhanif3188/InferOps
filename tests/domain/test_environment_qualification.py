@@ -1,0 +1,1416 @@
+"""Q1, the environment and identity qualification, as a record.
+
+``tools.environment_qualification`` reads one directory that the frozen Q1
+driver writes, and returns one record. This suite holds the tool to four
+properties.
+
+*Each rule refuses what it names.* A directory that holds every source at the
+state Q1 requires is QUALIFIED. One defect in one source refuses one rule, with
+the category of that rule, and the record is REFUSED. A source that is absent
+gives the state not-observed, and that refuses too.
+
+*A refusal is not converted into a weaker target.* The target release key, the
+topology, the provider, and the model are constants. The command has no option
+for any of them, and a source for one replica refuses.
+
+*The rules are the frozen criteria.* Each rule is one acceptance criterion of
+the Q1 freeze record, with the same identifier and statement, and the page
+restates each rule. The driver names the freeze record, the experiment, and
+each file that the tool reads.
+
+*It says what it is not.* A record states no recovery, no bound, and no
+reliability figure, and each sentence of what it does not establish says so.
+
+Every directory in this suite is synthetic. Its figures are invented, except
+the pinned model, the pinned runtime image, and the RP-1 profile, which are the
+committed files. The caller record is written by the runner's own loop against
+scripted answers. No test contacts a cluster.
+"""
+
+from __future__ import annotations
+
+import copy
+import io
+import json
+import re
+import shutil
+import subprocess
+import sys
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+
+from tools import environment_qualification as q1
+from tools.environment_qualification import __main__ as cli
+from tools.experiment_freeze import core as freeze
+from tools.reliability_runner import core as runner
+from tools.reliability_runner import incluster
+
+pytestmark = pytest.mark.unit
+
+ROOT = Path(__file__).resolve().parents[2]
+PAGE = ROOT / "docs/environment/environment-qualification.md"
+DRIVER = ROOT / "docs/proof/experiments/v2-q1/procedure/q1-driver.txt"
+FREEZE = ROOT / "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+VALUES = (
+    ROOT / "gitops/environments/local-docker-desktop/workloads/support-assistant"
+    "/values.generated.yaml"
+)
+
+COMMIT = "1" * 39 + "2"
+DESIRED = "3" * 39 + "4"
+RELEASE_ID = "5" * 64
+API_DIGEST = "sha256:" + "6" * 64
+NODE = "desktop-control-plane"
+RUN_ID = "q1-1"
+
+MODEL_SOURCE = json.loads(
+    (ROOT / "docs/serving/model-source.v1.json").read_text("utf-8")
+)
+RUNTIME_IMAGE = json.loads(
+    (ROOT / "deploy/serving/runtime/container-package.v1.json").read_text("utf-8")
+)["container"]["imageReference"]
+PINNED_MODEL = {
+    "repository": MODEL_SOURCE["repository"],
+    "revision": MODEL_SOURCE["revision"],
+    "fileName": MODEL_SOURCE["file"],
+    "sha256": MODEL_SOURCE["sha256"],
+    "sizeBytes": MODEL_SOURCE["expectedSizeBytes"],
+}
+
+# The rule identifiers and categories, restated on purpose.
+RULE_CATEGORIES = {
+    "target-reached": "target",
+    "provider-selected": "provider-mismatch",
+    "context-unambiguous": "ambiguous-context",
+    "working-tree-clean": "desired-state",
+    "procedure-frozen": "desired-state",
+    "desired-revision-known": "desired-state",
+    "one-executing-commit": "desired-state",
+    "release-provenance-resolved": "desired-state",
+    "capacity-accepted": "capacity",
+    "controller-identified": "reconciliation",
+    "controller-reconciled": "reconciliation",
+    "deployments-ready": "topology",
+    "endpoints-ready": "topology",
+    "images-declared": "release-identity",
+    "model-identity-verified": "model-mismatch",
+    "caller-completed": "caller",
+    "readings-in-order": "evidence",
+}
+
+
+# --------------------------------------------------------------------------
+# A directory
+# --------------------------------------------------------------------------
+
+
+def instant(seconds: int) -> str:
+    moment = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=seconds)
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def header(**changes: Any) -> dict[str, Any]:
+    document: dict[str, Any] = {
+        "schema": q1.COLLECTION_SCHEMA,
+        "qualificationId": RUN_ID,
+        "provider": "docker-desktop",
+        "releaseKey": "local-docker-desktop/support-assistant",
+        "executingCommit": COMMIT,
+        "desiredRevision": DESIRED,
+        "workingTree": "clean",
+        "desiredStateDiff": "none",
+        "freezeRecord": "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+        "freezeRecordSha256": q1.lf_digest(FREEZE.read_bytes()),
+        "freezeChanges": "none",
+        "apiImageDigest": API_DIGEST,
+        "controllerVersion": "v3.5.3",
+        "controllerVerified": True,
+        "targetRefusal": None,
+        "startedAt": instant(0),
+        "finishedAt": instant(600),
+    }
+    document.update(changes)
+    return document
+
+
+def capacity() -> dict[str, Any]:
+    return {
+        "schema": "inferops.io/capacity-preflight/v1alpha1",
+        "result": "ACCEPTED",
+        "refusal": {"categories": [], "rules": []},
+        "collection": {
+            "provider": "docker-desktop",
+            "context": "docker-desktop",
+            "releaseKey": "local-docker-desktop/support-assistant",
+            "namespace": "inferops-release",
+            "executingCommit": COMMIT,
+            "collectedAt": instant(-300),
+        },
+        "environment": {
+            "provider": "docker-desktop",
+            "kubernetesServerVersion": "v1.36.1",
+            "containerEngine": {"cpus": 12, "memoryBytes": 10_000_000_000},
+        },
+        "nodes": [
+            {
+                "name": NODE,
+                "kubeletVersion": "v1.36.1",
+                "allocatable": {
+                    "cpuMillis": 12000,
+                    "memoryBytes": 10_000_000_000,
+                    "pods": 110,
+                    "ephemeralStorageBytes": 1,
+                },
+            }
+        ],
+        "footprint": {"topology": {"apiReplicas": 2, "runtimeReplicas": 2}},
+    }
+
+
+def provenance() -> list[dict[str, Any]]:
+    return [
+        {
+            "schema": "inferops.io/desired-state-provenance/v1alpha1",
+            "git": {"revision": DESIRED},
+            "desiredState": {"key": "local-docker-desktop/support-assistant"},
+            "release": {
+                "releaseId": RELEASE_ID,
+                "workloadVersion": "0.2.0",
+                "contractSha256": "7" * 64,
+                "valuesSha256": "8" * 64,
+                "environmentBinding": {
+                    "name": "local-docker-desktop",
+                    "sha256": "9" * 64,
+                },
+                "rendererRevision": "a" * 40,
+                "platformDefaultsRevision": "a" * 40,
+            },
+            "chart": {"name": "inferops-llm", "version": "0.6.0"},
+        }
+    ]
+
+
+def sample(index: int) -> dict[str, Any]:
+    compared = {"state": "compared", "findings": []}
+    return {
+        "index": index,
+        "observedAt": {"state": "reported", "value": instant(10 + index)},
+        "settled": {"value": True, "reasons": []},
+        "fields": {"resolvedRevision": {"state": "reported", "value": DESIRED}},
+        "consistency": {
+            "state": "provenance-resolved",
+            "releaseId": RELEASE_ID,
+            "revisions": dict(compared),
+            "source": dict(compared),
+            "labels": dict(compared),
+        },
+    }
+
+
+def reconciliation() -> dict[str, Any]:
+    return {
+        "schema": "inferops.io/reconciliation-observation/v1alpha1",
+        "collection": {
+            "complete": True,
+            "provider": {"state": "reported", "value": "docker-desktop"},
+            "repositoryRevision": {"state": "reported", "value": COMMIT},
+        },
+        "samples": [sample(index) for index in range(1, 6)],
+    }
+
+
+def deployment(component: str, name: str, container: str, image: str) -> dict[str, Any]:
+    return {
+        "kind": "Deployment",
+        "metadata": {
+            "name": name,
+            "generation": 1,
+            "labels": {
+                "app.kubernetes.io/instance": "inferops",
+                "app.kubernetes.io/component": component,
+            },
+        },
+        "spec": {
+            "replicas": 2,
+            "template": {"spec": {"containers": [{"name": container, "image": image}]}},
+        },
+        "status": {
+            "observedGeneration": 1,
+            "replicas": 2,
+            "readyReplicas": 2,
+            "availableReplicas": 2,
+            "updatedReplicas": 2,
+        },
+    }
+
+
+def deployments() -> dict[str, Any]:
+    return {
+        "kind": "List",
+        "items": [
+            deployment(
+                "platform-api",
+                "inferops-inferops-llm",
+                "api",
+                "localhost/inferops-api@" + API_DIGEST,
+            ),
+            deployment(
+                "serving-runtime",
+                "inferops-inferops-llm-runtime",
+                "runtime",
+                RUNTIME_IMAGE,
+            ),
+        ],
+    }
+
+
+def endpoints() -> dict[str, Any]:
+    def tier(name: str) -> dict[str, Any]:
+        return {
+            "tier": name,
+            "state": "observed",
+            "endpoints": {"total": 2, "ready": 2, "notReady": 0},
+        }
+
+    return {
+        "schema": "inferops.io/service-endpoint-state/v1alpha1",
+        "result": "OBSERVED",
+        "collection": {
+            "provider": "docker-desktop",
+            "executingCommit": COMMIT,
+            "readStartedAt": instant(20),
+        },
+        "tiers": [tier("platform-api"), tier("serving-runtime")],
+    }
+
+
+def model_cache() -> dict[str, Any]:
+    rules = [{"id": rule, "state": "held"} for rule in q1.MODEL_CACHE_RULES]
+    rules.append({"id": "capacity-preflight-sufficient", "state": "not-observed"})
+    return {
+        "schema": "inferops.io/runtime-model-cache-observation/v1alpha1",
+        "result": "INCONCLUSIVE",
+        "collection": {
+            "provider": "docker-desktop",
+            "executingCommit": COMMIT,
+            "collectedAt": instant(30),
+        },
+        "expected": {
+            "release": {"key": "local-docker-desktop/support-assistant"},
+            "runtimeReplicas": 2,
+            "model": dict(PINNED_MODEL),
+            "runtimeImage": {
+                "reference": RUNTIME_IMAGE,
+                "digest": RUNTIME_IMAGE.split("@", 1)[1],
+            },
+        },
+        "placement": {"nodes": [NODE], "distinctNodes": 1},
+        "rules": rules,
+    }
+
+
+def caller(answer: tuple[int, object] | None = None, **changes: Any) -> tuple[str, str]:
+    """A plan and the caller record that the runner's own loop writes for it."""
+    arguments: dict[str, Any] = {
+        "experiment_id": q1.EXPERIMENT_ID,
+        "run_id": RUN_ID,
+        "duration_seconds": 60,
+        "request_ceiling": 4,
+        "release_id": RELEASE_ID,
+    }
+    arguments.update(changes)
+    plan = runner.build_plan(**arguments)
+    text = runner.plan_text(plan)
+    body = {
+        "choices": [{"finish_reason": "stop", "message": {"content": "x"}}],
+        "usage": {"prompt_tokens": 30, "completion_tokens": 40},
+        "x_inferops": {"adapterKind": "real", "modelRef": "qwen3-1-7b-q8-0"},
+    }
+    status, payload = answer if answer is not None else (200, body)
+    out = io.StringIO()
+    ticks = [0]
+    now = [0.0]
+
+    def wall() -> datetime:
+        ticks[0] += 1
+        return datetime(2026, 1, 1, 0, 1, tzinfo=UTC) + timedelta(milliseconds=ticks[0])
+
+    def clock() -> float:
+        return now[0]
+
+    def transport(*_: object) -> tuple[int, object]:
+        now[0] += 1.0
+        return status, payload
+
+    incluster.Run(
+        plan,
+        out=out,
+        runner_sha256=runner.runner_digest(),
+        plan_sha256=runner.plan_digest(text),
+        transport=transport,
+        clock=clock,
+        wall=wall,
+        sleep=lambda _: None,
+    ).execute()
+    return text, out.getvalue()
+
+
+def write_json(path: Path, document: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(document, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+def write(
+    directory: Path,
+    changes: dict[str, Any] | None = None,
+    *,
+    without: tuple[str, ...] = (),
+) -> Path:
+    """Write one directory that is QUALIFIED unless a change or an absence says not."""
+    plan_text, caller_text = caller()
+    files: dict[str, Any] = {
+        q1.HEADER_FILE: header(),
+        q1.CAPACITY_RECORD: capacity(),
+        q1.PROVENANCE_FILE: provenance(),
+        q1.RECONCILIATION_RECORD: reconciliation(),
+        q1.DEPLOYMENTS_FILE: deployments(),
+        q1.ENDPOINTS_RECORD: endpoints(),
+        q1.MODEL_CACHE_RECORD: model_cache(),
+        q1.PLAN_FILE: plan_text,
+        q1.CALLER_FILE: caller_text,
+    }
+    files.update(changes or {})
+    for name, document in files.items():
+        if name in without:
+            continue
+        if isinstance(document, str):
+            (directory / name).parent.mkdir(parents=True, exist_ok=True)
+            (directory / name).write_text(document, encoding="utf-8", newline="\n")
+        else:
+            write_json(directory / name, document)
+    return directory
+
+
+@pytest.fixture
+def root(tmp_path: Path) -> Path:
+    """A checkout that holds the three files the tool reads from one."""
+    checkout = tmp_path / "checkout"
+    for name in (
+        "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+        "docs/serving/model-source.v1.json",
+        "deploy/serving/runtime/container-package.v1.json",
+    ):
+        (checkout / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / name, checkout / name)
+    return checkout
+
+
+def record_of(directory: Path, root: Path) -> dict[str, Any]:
+    return q1.build_record(directory, root)
+
+
+def states(record: dict[str, Any]) -> dict[str, str]:
+    return {item["ruleId"]: item["state"] for item in record["findings"]}
+
+
+# --------------------------------------------------------------------------
+# A qualified directory
+# --------------------------------------------------------------------------
+
+
+def test_a_directory_with_every_source_at_its_state_is_qualified(
+    tmp_path: Path, root: Path
+) -> None:
+    record = record_of(write(tmp_path / "run"), root)
+    assert record["result"] == "QUALIFIED"
+    assert set(states(record).values()) == {"held"}
+    assert record["refusal"] == {"categories": [], "rules": []}
+    assert record["schema"] == "inferops.io/environment-qualification/v1alpha1"
+    assert record["qualification"] == "Q1"
+    assert record["target"] == {
+        "releaseKey": "local-docker-desktop/support-assistant",
+        "apiReplicas": 2,
+        "runtimeReplicas": 2,
+        "provider": "docker-desktop",
+    }
+
+
+def test_the_record_states_each_identity_of_the_qualification(
+    tmp_path: Path, root: Path
+) -> None:
+    identities = record_of(write(tmp_path / "run"), root)["identities"]
+    assert identities["executingCommit"] == COMMIT
+    assert identities["desiredStateRevision"] == DESIRED
+    assert identities["releaseId"] == RELEASE_ID
+    assert identities["releaseKey"] == "local-docker-desktop/support-assistant"
+    assert identities["contractSha256"] == "7" * 64
+    assert identities["helmValuesSha256"] == "8" * 64
+    assert identities["environmentBinding"] == {
+        "name": "local-docker-desktop",
+        "sha256": "9" * 64,
+    }
+    assert identities["platformDefaultsRevision"] == "a" * 40
+    assert identities["chart"] == {"name": "inferops-llm", "version": "0.6.0"}
+    assert identities["deliveryControllerVersion"] == "v3.5.3"
+    assert identities["apiImageDigest"] == API_DIGEST
+    assert identities["runtimeImage"]["reference"] == RUNTIME_IMAGE
+    assert identities["model"] == PINNED_MODEL
+    assert identities["kubernetes"] == {
+        "provider": "docker-desktop",
+        "serverVersion": "v1.36.1",
+    }
+    assert identities["callerProfile"] == {
+        "profileId": "RP-1",
+        "profileRevision": 1,
+        "profileSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+    }
+    assert identities["freezeRecord"]["path"] == q1.FREEZE_RECORD
+
+
+def test_the_environment_identity_holds_no_address_and_has_a_digest(
+    tmp_path: Path, root: Path
+) -> None:
+    record = record_of(write(tmp_path / "run"), root)
+    assert record["environment"] == {
+        "provider": "docker-desktop",
+        "kubernetesServerVersion": "v1.36.1",
+        "nodes": [
+            {
+                "name": NODE,
+                "kubeletVersion": "v1.36.1",
+                "allocatable": {
+                    "cpuMillis": 12000,
+                    "memoryBytes": 10_000_000_000,
+                    "pods": 110,
+                },
+            }
+        ],
+        "containerEngine": {"cpus": 12, "memoryBytes": 10_000_000_000},
+    }
+    assert record["environmentSha256"] == q1.environment_digest(record["environment"])
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", record["environmentSha256"])
+
+
+def test_another_node_allocation_is_another_environment(
+    tmp_path: Path, root: Path
+) -> None:
+    changed = capacity()
+    changed["nodes"][0]["allocatable"]["memoryBytes"] -= 1
+    first = record_of(write(tmp_path / "a"), root)
+    second = record_of(write(tmp_path / "b", {q1.CAPACITY_RECORD: changed}), root)
+    assert first["environmentSha256"] != second["environmentSha256"]
+
+
+def test_the_record_lists_each_file_it_read_by_its_digest(
+    tmp_path: Path, root: Path
+) -> None:
+    directory = write(tmp_path / "run")
+    record = record_of(directory, root)
+    names = [item["name"] for item in record["files"]]
+    assert names == [name for name in q1.SOURCE_FILES if (directory / name).exists()]
+    for item in record["files"]:
+        assert item["sha256"] == q1.lf_digest((directory / item["name"]).read_bytes())
+
+
+# --------------------------------------------------------------------------
+# Each rule refuses
+# --------------------------------------------------------------------------
+
+
+def changed(document: Any, edit: Callable[[Any], Any]) -> Any:
+    copied = copy.deepcopy(document)
+    edit(copied)
+    return copied
+
+
+def _set(path: tuple[Any, ...], value: Any) -> Callable[[Any], None]:
+    def edit(document: Any) -> None:
+        for member in path[:-1]:
+            document = document[member]
+        document[path[-1]] = value
+
+    return edit
+
+
+Defect = tuple[str, dict[str, Any], str, str]
+
+_NO_SUCCESS_PLAN, _NO_SUCCESS_CALLER = caller(
+    answer=(503, {"code": "adapter-unavailable"})
+)
+
+DEFECTS: list[Defect] = [
+    (
+        "a caller run with no success",
+        {q1.PLAN_FILE: _NO_SUCCESS_PLAN, q1.CALLER_FILE: _NO_SUCCESS_CALLER},
+        "caller-completed",
+        "not-held",
+    ),
+    (
+        "target refused, provider",
+        {q1.HEADER_FILE: header(targetRefusal="provider-mismatch")},
+        "provider-selected",
+        "not-held",
+    ),
+    (
+        "target refused, missing",
+        {q1.HEADER_FILE: header(targetRefusal="target-missing")},
+        "target-reached",
+        "not-held",
+    ),
+    (
+        "target refused, ambiguous",
+        {q1.HEADER_FILE: header(targetRefusal="ambiguous-target")},
+        "context-unambiguous",
+        "not-held",
+    ),
+    (
+        "another provider selected",
+        {q1.HEADER_FILE: header(provider="kind")},
+        "provider-selected",
+        "not-held",
+    ),
+    (
+        "a source names another provider",
+        {
+            q1.ENDPOINTS_RECORD: changed(
+                endpoints(), _set(("collection", "provider"), "kind")
+            )
+        },
+        "provider-selected",
+        "not-held",
+    ),
+    (
+        "another context",
+        {
+            q1.CAPACITY_RECORD: changed(
+                capacity(), _set(("collection", "context"), "other")
+            )
+        },
+        "context-unambiguous",
+        "not-held",
+    ),
+    (
+        "two nodes",
+        {
+            q1.CAPACITY_RECORD: changed(
+                capacity(),
+                lambda doc: doc["nodes"].append(copy.deepcopy(doc["nodes"][0])),
+            )
+        },
+        "context-unambiguous",
+        "not-held",
+    ),
+    (
+        "runtime pods on another node",
+        {
+            q1.MODEL_CACHE_RECORD: changed(
+                model_cache(), _set(("placement", "nodes"), ["other"])
+            )
+        },
+        "context-unambiguous",
+        "not-held",
+    ),
+    (
+        "dirty working tree",
+        {q1.HEADER_FILE: header(workingTree="dirty")},
+        "working-tree-clean",
+        "not-held",
+    ),
+    (
+        "working tree not read",
+        {q1.HEADER_FILE: header(workingTree="unread")},
+        "working-tree-clean",
+        "not-observed",
+    ),
+    (
+        "another freeze record",
+        {
+            q1.HEADER_FILE: header(
+                freezeRecord="docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json"
+            )
+        },
+        "procedure-frozen",
+        "not-held",
+    ),
+    (
+        "a material file changed",
+        {q1.HEADER_FILE: header(freezeChanges="listed")},
+        "procedure-frozen",
+        "not-held",
+    ),
+    (
+        "freeze record of other content",
+        {q1.HEADER_FILE: header(freezeRecordSha256="0" * 64)},
+        "procedure-frozen",
+        "not-held",
+    ),
+    (
+        "desired revision unknown",
+        {q1.HEADER_FILE: header(desiredRevision=None)},
+        "desired-revision-known",
+        "not-observed",
+    ),
+    (
+        "desired revision of one repeated character",
+        {q1.HEADER_FILE: header(desiredRevision="0" * 40)},
+        "desired-revision-known",
+        "not-held",
+    ),
+    (
+        "delivery paths differ from the desired revision",
+        {q1.HEADER_FILE: header(desiredStateDiff="differs")},
+        "desired-revision-known",
+        "not-held",
+    ),
+    (
+        "a collection of another commit",
+        {
+            q1.MODEL_CACHE_RECORD: changed(
+                model_cache(), _set(("collection", "executingCommit"), "f" * 40)
+            )
+        },
+        "one-executing-commit",
+        "not-held",
+    ),
+    (
+        "provenance at another revision",
+        {
+            q1.PROVENANCE_FILE: changed(
+                provenance(), _set((0, "git", "revision"), "e" * 40)
+            )
+        },
+        "release-provenance-resolved",
+        "not-held",
+    ),
+    (
+        "provenance of another key",
+        {
+            q1.PROVENANCE_FILE: changed(
+                provenance(),
+                _set((0, "desiredState", "key"), "local-docker-desktop/other"),
+            )
+        },
+        "release-provenance-resolved",
+        "not-held",
+    ),
+    (
+        "two provenance records",
+        {q1.PROVENANCE_FILE: provenance() + provenance()},
+        "release-provenance-resolved",
+        "not-held",
+    ),
+    (
+        "capacity refused",
+        {
+            q1.CAPACITY_RECORD: changed(
+                capacity(),
+                lambda doc: doc.update(
+                    result="REFUSED",
+                    refusal={"categories": ["insufficient"], "rules": ["x"]},
+                ),
+            )
+        },
+        "capacity-accepted",
+        "not-held",
+    ),
+    (
+        "capacity of one runtime replica",
+        {
+            q1.CAPACITY_RECORD: changed(
+                capacity(), _set(("footprint", "topology", "runtimeReplicas"), 1)
+            )
+        },
+        "capacity-accepted",
+        "not-held",
+    ),
+    (
+        "controller verification failed",
+        {q1.HEADER_FILE: header(controllerVerified=False)},
+        "controller-identified",
+        "not-held",
+    ),
+    (
+        "controller not verified",
+        {q1.HEADER_FILE: header(controllerVerified=None)},
+        "controller-identified",
+        "not-observed",
+    ),
+    (
+        "reconciliation incomplete",
+        {
+            q1.RECONCILIATION_RECORD: changed(
+                reconciliation(), _set(("collection", "complete"), False)
+            )
+        },
+        "controller-reconciled",
+        "not-held",
+    ),
+    (
+        "four samples",
+        {
+            q1.RECONCILIATION_RECORD: changed(
+                reconciliation(), lambda doc: doc["samples"].pop()
+            )
+        },
+        "controller-reconciled",
+        "not-held",
+    ),
+    (
+        "a sample not settled",
+        {
+            q1.RECONCILIATION_RECORD: changed(
+                reconciliation(), _set(("samples", 2, "settled", "value"), False)
+            )
+        },
+        "controller-reconciled",
+        "not-held",
+    ),
+    (
+        "a sample at another revision",
+        {
+            q1.RECONCILIATION_RECORD: changed(
+                reconciliation(),
+                _set(("samples", 0, "fields", "resolvedRevision", "value"), "e" * 40),
+            )
+        },
+        "controller-reconciled",
+        "not-held",
+    ),
+    (
+        "a sample of another release",
+        {
+            q1.RECONCILIATION_RECORD: changed(
+                reconciliation(),
+                _set(("samples", 1, "consistency", "releaseId"), "e" * 64),
+            )
+        },
+        "controller-reconciled",
+        "not-held",
+    ),
+    (
+        "a label finding",
+        {
+            q1.RECONCILIATION_RECORD: changed(
+                reconciliation(),
+                _set(
+                    ("samples", 1, "consistency", "labels", "findings"), [{"rule": "x"}]
+                ),
+            )
+        },
+        "controller-reconciled",
+        "not-held",
+    ),
+    (
+        "labels compared in part",
+        {
+            q1.RECONCILIATION_RECORD: changed(
+                reconciliation(),
+                _set(
+                    ("samples", 1, "consistency", "labels", "state"), "compared-in-part"
+                ),
+            )
+        },
+        "controller-reconciled",
+        "not-held",
+    ),
+    (
+        "one runtime replica Ready",
+        {
+            q1.DEPLOYMENTS_FILE: changed(
+                deployments(), _set(("items", 1, "status", "readyReplicas"), 1)
+            )
+        },
+        "deployments-ready",
+        "not-held",
+    ),
+    (
+        "a runtime Deployment of one replica",
+        {
+            q1.DEPLOYMENTS_FILE: changed(
+                deployments(), _set(("items", 1, "spec", "replicas"), 1)
+            )
+        },
+        "deployments-ready",
+        "not-held",
+    ),
+    (
+        "a rollout that is not observed",
+        {
+            q1.DEPLOYMENTS_FILE: changed(
+                deployments(), _set(("items", 0, "metadata", "generation"), 2)
+            )
+        },
+        "deployments-ready",
+        "not-held",
+    ),
+    (
+        "a third pod in a rollout",
+        {
+            q1.DEPLOYMENTS_FILE: changed(
+                deployments(), _set(("items", 0, "status", "replicas"), 3)
+            )
+        },
+        "deployments-ready",
+        "not-held",
+    ),
+    (
+        "no API Deployment",
+        {q1.DEPLOYMENTS_FILE: changed(deployments(), lambda doc: doc["items"].pop(0))},
+        "deployments-ready",
+        "not-held",
+    ),
+    (
+        "one Ready runtime endpoint",
+        {
+            q1.ENDPOINTS_RECORD: changed(
+                endpoints(), _set(("tiers", 1, "endpoints", "ready"), 1)
+            )
+        },
+        "endpoints-ready",
+        "not-held",
+    ),
+    (
+        "a third API endpoint",
+        {
+            q1.ENDPOINTS_RECORD: changed(
+                endpoints(), _set(("tiers", 0, "endpoints", "total"), 3)
+            )
+        },
+        "endpoints-ready",
+        "not-held",
+    ),
+    (
+        "endpoint record refused",
+        {q1.ENDPOINTS_RECORD: changed(endpoints(), _set(("result",), "REFUSED"))},
+        "endpoints-ready",
+        "not-held",
+    ),
+    (
+        "another API image",
+        {
+            q1.DEPLOYMENTS_FILE: changed(
+                deployments(),
+                _set(
+                    ("items", 0, "spec", "template", "spec", "containers", 0, "image"),
+                    "localhost/inferops-api@sha256:" + "0" * 64,
+                ),
+            )
+        },
+        "images-declared",
+        "not-held",
+    ),
+    (
+        "another runtime image",
+        {
+            q1.DEPLOYMENTS_FILE: changed(
+                deployments(),
+                _set(
+                    ("items", 1, "spec", "template", "spec", "containers", 0, "image"),
+                    "ghcr.io/ggml-org/llama.cpp@sha256:" + "0" * 64,
+                ),
+            )
+        },
+        "images-declared",
+        "not-held",
+    ),
+    (
+        "no API image digest declared",
+        {q1.HEADER_FILE: header(apiImageDigest=None)},
+        "images-declared",
+        "not-observed",
+    ),
+    (
+        "another model revision expected",
+        {
+            q1.MODEL_CACHE_RECORD: changed(
+                model_cache(), _set(("expected", "model", "revision"), "0" * 40)
+            )
+        },
+        "model-identity-verified",
+        "not-held",
+    ),
+    (
+        "another model digest expected",
+        {
+            q1.MODEL_CACHE_RECORD: changed(
+                model_cache(),
+                _set(("expected", "model", "sha256"), "sha256:" + "0" * 64),
+            )
+        },
+        "model-identity-verified",
+        "not-held",
+    ),
+    (
+        "one runtime replica expected",
+        {
+            q1.MODEL_CACHE_RECORD: changed(
+                model_cache(), _set(("expected", "runtimeReplicas"), 1)
+            )
+        },
+        "model-identity-verified",
+        "not-held",
+    ),
+    (
+        "a model rule not held",
+        {
+            q1.MODEL_CACHE_RECORD: changed(
+                model_cache(), _set(("rules", 13, "state"), "not-held")
+            )
+        },
+        "model-identity-verified",
+        "not-held",
+    ),
+    (
+        "a model rule absent",
+        {
+            q1.MODEL_CACHE_RECORD: changed(
+                model_cache(), lambda doc: doc["rules"].pop(12)
+            )
+        },
+        "model-identity-verified",
+        "not-held",
+    ),
+    (
+        "a capacity reading after the start",
+        {
+            q1.CAPACITY_RECORD: changed(
+                capacity(), _set(("collection", "collectedAt"), instant(5))
+            )
+        },
+        "readings-in-order",
+        "not-held",
+    ),
+    (
+        "an endpoint reading after the end",
+        {
+            q1.ENDPOINTS_RECORD: changed(
+                endpoints(), _set(("collection", "readStartedAt"), instant(900))
+            )
+        },
+        "readings-in-order",
+        "not-held",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("changes", "rule", "state"),
+    [
+        pytest.param(changes, rule, state, id=name)
+        for name, changes, rule, state in DEFECTS
+    ],
+)
+def test_one_defect_refuses_its_rule_with_its_category(
+    tmp_path: Path, root: Path, changes: dict[str, Any], rule: str, state: str
+) -> None:
+    record = record_of(write(tmp_path / "run", changes), root)
+    assert record["result"] == "REFUSED"
+    assert states(record)[rule] == state
+    assert rule in record["refusal"]["rules"]
+    assert RULE_CATEGORIES[rule] in record["refusal"]["categories"]
+
+
+def test_each_rule_has_a_defect_in_this_suite() -> None:
+    assert {rule for _, _, rule, _ in DEFECTS} == set(RULE_CATEGORIES)
+
+
+def test_the_categories_are_listed_in_their_order_without_repetition(
+    tmp_path: Path, root: Path
+) -> None:
+    directory = write(
+        tmp_path / "run",
+        {
+            q1.HEADER_FILE: header(
+                workingTree="dirty", targetRefusal="provider-mismatch"
+            )
+        },
+    )
+    categories = record_of(directory, root)["refusal"]["categories"]
+    assert categories == [item for item in q1.CATEGORIES if item in categories]
+    assert len(categories) == len(set(categories))
+    assert {"target", "provider-mismatch", "desired-state"} <= set(categories)
+
+
+@pytest.mark.parametrize(
+    ("name", "rules"),
+    [
+        (
+            q1.CAPACITY_RECORD,
+            {"capacity-accepted", "target-reached", "context-unambiguous"},
+        ),
+        (q1.PROVENANCE_FILE, {"release-provenance-resolved", "controller-reconciled"}),
+        (q1.RECONCILIATION_RECORD, {"controller-reconciled", "one-executing-commit"}),
+        (q1.DEPLOYMENTS_FILE, {"deployments-ready", "images-declared"}),
+        (q1.ENDPOINTS_RECORD, {"endpoints-ready", "one-executing-commit"}),
+        (q1.MODEL_CACHE_RECORD, {"model-identity-verified", "context-unambiguous"}),
+        (q1.CALLER_FILE, {"caller-completed", "readings-in-order"}),
+        (q1.PLAN_FILE, {"caller-completed"}),
+    ],
+)
+def test_an_absent_source_is_not_observed_and_refuses(
+    tmp_path: Path, root: Path, name: str, rules: set[str]
+) -> None:
+    record = record_of(write(tmp_path / "run", without=(name,)), root)
+    assert record["result"] == "REFUSED"
+    for rule in rules:
+        assert states(record)[rule] == "not-observed", rule
+
+
+def test_a_source_of_another_schema_is_not_held_and_not_absent(
+    tmp_path: Path, root: Path
+) -> None:
+    wrong = changed(capacity(), _set(("schema",), "inferops.io/other/v1alpha1"))
+    record = record_of(write(tmp_path / "run", {q1.CAPACITY_RECORD: wrong}), root)
+    assert states(record)["capacity-accepted"] == "not-held"
+    unreadable = write(tmp_path / "text", {q1.ENDPOINTS_RECORD: "not json"})
+    assert states(record_of(unreadable, root))["endpoints-ready"] == "not-held"
+
+
+# --------------------------------------------------------------------------
+# The caller record
+# --------------------------------------------------------------------------
+
+
+def test_a_caller_record_with_no_success_refuses(tmp_path: Path, root: Path) -> None:
+    plan_text, caller_text = caller(answer=(503, {"code": "adapter-unavailable"}))
+    directory = write(
+        tmp_path / "run", {q1.PLAN_FILE: plan_text, q1.CALLER_FILE: caller_text}
+    )
+    record = record_of(directory, root)
+    assert states(record)["caller-completed"] == "not-held"
+    finding = next(
+        item for item in record["findings"] if item["ruleId"] == "caller-completed"
+    )
+    assert "success" in finding["detail"]
+
+
+def test_a_caller_record_of_another_plan_is_refused_by_the_runners_reader(
+    tmp_path: Path, root: Path
+) -> None:
+    other_plan, _ = caller(duration_seconds=61)
+    directory = write(tmp_path / "run", {q1.PLAN_FILE: other_plan})
+    finding = next(
+        item
+        for item in record_of(directory, root)["findings"]
+        if item["ruleId"] == "caller-completed"
+    )
+    assert finding["state"] == "not-held"
+    assert "runner-plan" in finding["detail"] or "caller-record" in finding["detail"]
+
+
+@pytest.mark.parametrize(
+    ("changes", "word"),
+    [
+        ({"experiment_id": "another-experiment"}, "experiment"),
+        ({"run_id": "q1-2"}, "run identifier"),
+        ({"release_id": "e" * 64}, "release"),
+    ],
+)
+def test_a_caller_record_of_another_run_refuses(
+    tmp_path: Path, root: Path, changes: dict[str, Any], word: str
+) -> None:
+    plan_text, caller_text = caller(**changes)
+    directory = write(
+        tmp_path / "run", {q1.PLAN_FILE: plan_text, q1.CALLER_FILE: caller_text}
+    )
+    finding = next(
+        item
+        for item in record_of(directory, root)["findings"]
+        if item["ruleId"] == "caller-completed"
+    )
+    assert finding["state"] == "not-held"
+    assert word in finding["detail"]
+
+
+def test_a_caller_record_kept_as_refused_refuses(tmp_path: Path, root: Path) -> None:
+    directory = write(tmp_path / "run")
+    (directory / q1.CALLER_REFUSED_FILE).write_text("{}\n", encoding="utf-8")
+    assert states(record_of(directory, root))["caller-completed"] == "not-held"
+
+
+# --------------------------------------------------------------------------
+# What is not a collection
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        pytest.param(None, id="absent"),
+        pytest.param("not json", id="not-json"),
+        pytest.param([], id="not-an-object"),
+        pytest.param({**header(), "context": "docker-desktop"}, id="extra-member"),
+        pytest.param(
+            {k: v for k, v in header().items() if k != "finishedAt"}, id="member-absent"
+        ),
+        pytest.param(header(schema="inferops.io/other/v1alpha1"), id="another-schema"),
+        pytest.param(header(qualificationId="q2-1"), id="another-qualification"),
+        pytest.param(header(executingCommit="HEAD"), id="commit-not-a-sha"),
+        pytest.param(
+            header(targetRefusal="refusing: provider-mismatch: x"), id="refusal-text"
+        ),
+        pytest.param(header(controllerVerified="yes"), id="verified-not-a-boolean"),
+    ],
+)
+def test_a_directory_without_a_usable_header_is_not_a_collection(
+    tmp_path: Path, document: Any
+) -> None:
+    directory = write(tmp_path / "run", without=(q1.HEADER_FILE,))
+    if isinstance(document, str):
+        (directory / q1.HEADER_FILE).write_text(document, encoding="utf-8")
+    elif document is not None:
+        write_json(directory / q1.HEADER_FILE, document)
+    with pytest.raises(q1.CollectionRefused):
+        q1.build_record(directory)
+    assert cli.main([str(directory)]) == 1
+
+
+def test_the_command_exits_0_for_qualified_and_5_for_refused(
+    tmp_path: Path,
+    root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        cli, "build_record", lambda directory: q1.build_record(directory, root)
+    )
+    assert cli.main([str(write(tmp_path / "good"))]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["result"] == "QUALIFIED"
+    refused = write(tmp_path / "bad", {q1.HEADER_FILE: header(workingTree="dirty")})
+    assert cli.main([str(refused)]) == 5
+    assert json.loads(capsys.readouterr().out)["result"] == "REFUSED"
+
+
+def test_the_command_has_no_option_for_the_target() -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["--key", "local-docker-desktop/other", "directory"])
+    assert exit_info.value.code == 2
+    with pytest.raises(SystemExit):
+        cli.main([])
+    source = (ROOT / "tools/environment_qualification/__main__.py").read_text("utf-8")
+    assert re.findall(r"add_argument\(\s*\"([^\"]+)\"", source) == [
+        "directory",
+        "--check",
+    ]
+
+
+def test_the_command_runs_as_a_module_and_refuses_a_missing_directory(
+    tmp_path: Path,
+) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "tools.environment_qualification",
+            str(tmp_path / "none"),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 1
+    assert completed.stderr.startswith("REFUSED  not-a-collection:")
+
+
+def test_check_compares_each_committed_record_with_its_directory(
+    tmp_path: Path, root: Path
+) -> None:
+    assert q1.check_committed(root) == []
+    run = write(root / "docs/proof/experiments/v2-q1/runs/q1-1")
+    assert q1.check_committed(root) == [
+        "docs/proof/experiments/v2-q1/runs/q1-1: no record.v1alpha1.json"
+    ]
+    (run / q1.RECORD_FILE).write_text(
+        q1.record_text(q1.build_record(run, root)), encoding="utf-8", newline="\n"
+    )
+    assert q1.check_committed(root) == []
+    write_json(
+        run / q1.DEPLOYMENTS_FILE,
+        changed(deployments(), _set(("items", 1, "spec", "replicas"), 1)),
+    )
+    assert q1.check_committed(root) == [
+        "docs/proof/experiments/v2-q1/runs/q1-1: record.v1alpha1.json is not what the directory gives"
+    ]
+
+
+def test_no_qualification_is_committed_by_this_change() -> None:
+    assert q1.committed_runs() == []
+    assert cli.main(["--check"]) == 0
+
+
+# --------------------------------------------------------------------------
+# The target is the desired-state release
+# --------------------------------------------------------------------------
+
+
+def test_the_target_is_the_desired_state_release_with_two_and_two_replicas() -> None:
+    from tools.gitops_desired_state import DESIRED_STATE_RELEASES, release_key
+
+    keys = [release_key(release) for release in DESIRED_STATE_RELEASES]
+    assert q1.TARGET_RELEASE_KEY in keys
+    values = yaml.safe_load(VALUES.read_text("utf-8"))
+    assert values["api"]["replicaCount"] == q1.TARGET_API_REPLICAS == 2
+    assert values["runtime"]["replicaCount"] == q1.TARGET_RUNTIME_REPLICAS == 2
+
+
+def test_the_model_rules_that_q1_reads_are_rules_of_the_observation() -> None:
+    from tools.runtime_model_cache import RULES as MODEL_RULES
+
+    identifiers = [rule.rule_id for rule in MODEL_RULES]
+    assert set(q1.MODEL_CACHE_RULES) <= set(identifiers)
+    assert set(identifiers) - set(q1.MODEL_CACHE_RULES) == {
+        "capacity-preflight-sufficient",
+        "not-ready-while-loading",
+    }
+
+
+def test_the_runtime_image_pin_is_the_one_the_observation_expects() -> None:
+    from tools.runtime_model_cache import expected_identity
+
+    expected = expected_identity()
+    assert expected["runtimeImage"]["reference"] == RUNTIME_IMAGE
+    assert expected["model"] == PINNED_MODEL
+    assert expected["runtimeReplicas"] == q1.TARGET_RUNTIME_REPLICAS
+
+
+# --------------------------------------------------------------------------
+# The rules are the frozen criteria, and the page and the driver restate them
+# --------------------------------------------------------------------------
+
+
+def test_the_rules_are_the_restated_rules_in_order() -> None:
+    assert [rule.rule_id for rule in q1.RULES] == list(RULE_CATEGORIES)
+    assert {rule.rule_id: rule.category for rule in q1.RULES} == RULE_CATEGORIES
+    assert [rule.criterion for rule in q1.RULES] == [
+        f"Q1-AC{index}" for index in range(1, len(q1.RULES) + 1)
+    ]
+    assert len(q1.RULES) == 17
+    assert set(RULE_CATEGORIES.values()) == set(q1.CATEGORIES)
+
+
+def test_each_rule_is_one_acceptance_criterion_of_the_freeze_record() -> None:
+    record = json.loads(FREEZE.read_text("utf-8"))
+    (entry,) = record["fields"]["acceptanceCriteria"]
+    assert entry["parts"] == ["Q1"]
+    assert entry["value"] == [
+        {"id": rule.criterion, "statement": rule.statement} for rule in q1.RULES
+    ]
+
+
+def test_the_freeze_record_freezes_the_q1_target_and_holds_no_result() -> None:
+    record = json.loads(FREEZE.read_text("utf-8"))
+    assert record["kind"] == "ExperimentFreeze"
+    assert record["metadata"]["experiment"] == q1.EXPERIMENT_ID
+    assert record["metadata"]["revision"] == 1
+    assert record["metadata"]["supersedes"] is None
+    fields = record["fields"]
+    (topology,) = fields["topology"]
+    assert topology["value"]["apiReplicas"] == 2
+    assert topology["value"]["runtimeReplicas"] == 2
+    assert topology["value"]["releaseKey"] == q1.TARGET_RELEASE_KEY
+    (profile,) = fields["callerProfileRevision"]
+    assert profile["value"]["contentSha256"] == (
+        "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+    )
+    (level,) = fields["intendedEvidenceLevel"]
+    assert level["value"] == "C2"
+    (fault,) = fields["fault"]
+    assert fault["status"] == "not-applicable"
+    (bounds,) = fields["derivedNumericBounds"]
+    assert bounds["status"] == "not-applicable"
+    assert not (FREEZE.parent / "runs").exists()
+
+
+def test_the_freeze_record_pins_the_tool_and_the_driver() -> None:
+    record = json.loads(FREEZE.read_text("utf-8"))
+    pinned = {item["path"]: item for item in record["pinnedInputs"]}
+    for path in (
+        "tools/environment_qualification/core.py",
+        "tools/environment_qualification/__main__.py",
+        "docs/proof/experiments/v2-q1/procedure/q1-driver.txt",
+        "scripts/environment/capacity-preflight.sh",
+        "docs/serving/model-source.v1.json",
+        "deploy/serving/runtime/container-package.v1.json",
+        "deploy/serving/reliability/rp-1-profile.v1.json",
+    ):
+        assert path in pinned, path
+        assert pinned[path]["sha256"] == freeze.content_digest(
+            (ROOT / path).read_bytes()
+        )
+    assert (
+        pinned["docs/proof/experiments/v2-q1/procedure/q1-driver.txt"]["role"]
+        == "procedure"
+    )
+
+
+def test_the_page_restates_each_rule_and_each_category() -> None:
+    page = PAGE.read_text("utf-8")
+    for rule in q1.RULES:
+        row = f"| `{rule.criterion}` | `{rule.rule_id}` | `{rule.category}` | {rule.statement} |"
+        assert row in page, rule.rule_id
+    assert f"{len(q1.RULES)} rules." in page
+    for category in q1.CATEGORIES:
+        assert f"`{category}`" in page
+
+
+def test_the_driver_names_the_freeze_record_the_experiment_and_each_file() -> None:
+    driver = DRIVER.read_text("utf-8")
+    assert f'FREEZE_RECORD="{q1.FREEZE_RECORD}"' in driver
+    assert f'EXPERIMENT="{q1.EXPERIMENT_ID}"' in driver
+    assert "python -m tools.experiment_freeze --changes" in driver
+    assert "python -m tools.environment_qualification" in driver
+    for name in q1.SOURCE_FILES:
+        assert name in driver, name
+    assert "refusing to select a target: " in driver
+    assert "--context docker-desktop" in driver
+
+
+def test_the_driver_is_valid_bash_with_lf_line_ends() -> None:
+    data = DRIVER.read_bytes()
+    assert b"\r\n" not in data
+    bash = shutil.which("bash")
+    if bash is None:  # pragma: no cover - every supported host has bash
+        pytest.skip("bash is not installed")
+    completed = subprocess.run(
+        [bash, "-n", str(DRIVER)], capture_output=True, text=True, check=False
+    )
+    assert completed.returncode == 0, completed.stderr
+
+
+def test_the_driver_changes_no_replica_count_request_or_limit() -> None:
+    driver = DRIVER.read_text("utf-8")
+    assert "kubectl scale" not in driver and "k scale" not in driver
+    assert "replicaCount" not in driver
+    assert not re.search(r"--set\s+(api|runtime)\.", driver)
+
+
+# --------------------------------------------------------------------------
+# What a record says it is not
+# --------------------------------------------------------------------------
+
+
+def test_each_sentence_of_what_a_record_does_not_establish_says_so() -> None:
+    for sentence in q1.DOES_NOT_ESTABLISH:
+        assert sentence.startswith("A record does not establish "), sentence
+        assert not re.search(r"\b(reliable|robust|guarantee|proves?)\b", sentence, re.I)
+
+
+def test_the_record_text_is_sorted_indented_json_with_one_final_lf(
+    tmp_path: Path, root: Path
+) -> None:
+    record = record_of(write(tmp_path / "run"), root)
+    text = q1.record_text(record)
+    assert text.endswith("}\n") and not text.endswith("\n\n")
+    assert json.loads(text) == record
+    assert text == json.dumps(record, indent=2, sort_keys=True) + "\n"

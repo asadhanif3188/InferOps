@@ -2673,14 +2673,15 @@ def test_the_aggregate_command_reads_the_executing_revision(
 
 
 def test_no_committed_freeze_record_registers_an_exclusion_reason() -> None:
-    """Three committed records are of E01, and E01 has no numerical aggregate. The
-    other two are the Sprint 5 integration validation, which computes no aggregate.
+    """Three committed records are of E01, and E01 has no numerical aggregate. Two
+    are the Sprint 5 integration validation, which computes no aggregate. One is the
+    Q1 environment qualification, added by V2-S6-001-PR1, which computes none either.
 
     This change edits none of them, and the freeze check does not read the
     member. The member is read when an aggregate reads it.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 5
+    assert len(records) == 6
     for record in records:
         assert core.EXCLUSION_REASONS_MEMBER not in _read_json(record)
     example = _read_json(EXAMPLE_ROOT / FREEZE_REF)
