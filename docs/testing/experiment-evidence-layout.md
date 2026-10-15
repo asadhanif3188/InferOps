@@ -446,7 +446,21 @@ Since `V2-S6-001-PR2`, which committed the first one, `q1-1`:
 - **`python -m tools.environment_qualification --check` holds each to its record.** It
   builds the record again from the directory and compares the bytes.
 - **Only that one directory holds qualifications.** A directory with no manifest under
-  the `runs` directory of any other experiment is refused at its manifest.
+  the `runs` directory of any other experiment is refused at its manifest. (Since
+  `V2-S6-002-PR1` this item is false as written: `v2-q2/runs/` holds qualifications too.
+  See below.)
+
+### The Q2 characterizations
+
+`docs/proof/experiments/v2-q2/runs/` holds the directories of
+[Q2, the runtime startup characterization](../environment/runtime-startup-characterization.md).
+A characterization is a qualification too: it is not a run of an experiment, and it has
+no ExperimentRun manifest. Since `V2-S6-002-PR1` the `repository` command treats a
+directory there as it treats one of `v2-q1/runs/`, with the same rules, and names
+`python -m tools.runtime_startup --check` as the check that builds its record again.
+The two experiment directories and their tools are `QUALIFICATION_TOOLS` in
+`tools/experiment_evidence`. A directory with no manifest under the `runs` directory of
+any other experiment is refused at its manifest.
 
 (Until `V2-S6-001-PR2` the `repository` command refused every directory of a `runs`
 directory with no manifest, and it would have refused `q1-1` with

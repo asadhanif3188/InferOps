@@ -1602,6 +1602,37 @@ def test_a_qualification_directory_is_listed_and_not_held_to_a_manifest(
     assert report.findings == () and not report.refused
 
 
+def test_a_q2_characterization_is_listed_as_a_qualification_of_its_own_tool(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Since V2-S6-002-PR1 the runs of v2-q2 are Q2 characterizations. They have no
+    manifest either, and tools.runtime_startup --check holds each to its record."""
+    _qualification(tmp_path)
+    q2_ref = "docs/proof/experiments/v2-q2"
+    directory = tmp_path / q2_ref / "runs" / "q2-1"
+    _write(directory / "run.json", "{}\n")
+    _write(directory / core.QUALIFICATION_RECORD, "{}\n")
+    report = core.repository_report(tmp_path)
+    assert [(run.path, run.status, run.files) for run in report.runs] == [
+        (f"{core.QUALIFICATIONS_REF}/runs/q1-1", core.QUALIFICATION, 4),
+        (f"{q2_ref}/runs/q2-1", core.QUALIFICATION, 2),
+    ]
+    assert dict(core.QUALIFICATION_TOOLS) == {
+        core.QUALIFICATIONS_REF: "tools.environment_qualification",
+        q2_ref: "tools.runtime_startup",
+    }
+    assert core.qualification_tool(f"{q2_ref}/runs/q2-1") == "tools.runtime_startup"
+    with pytest.raises(ValueError):
+        core.qualification_tool(
+            "docs/proof/experiments/v2-s5-integration/runs/integration-1"
+        )
+    (directory / core.QUALIFICATION_RECORD).unlink()
+    refused = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for run in refused.runs for f in run.findings] == [
+        (core.RULE_FILE_MISSING, f"{q2_ref}/runs/q2-1")
+    ]
+
+
 @pytest.mark.parametrize(
     ("text", "rule"),
     [

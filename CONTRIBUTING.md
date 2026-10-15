@@ -621,6 +621,28 @@ record, so a change to either is a new revision of that record.
 [The Q1 page](docs/environment/environment-qualification.md) states the rules, the
 identities, and what a record does not establish.
 
+**Q2, the runtime startup characterization, is a frozen driver and a tool that reads
+files.** Its phases `up` and `down` are those of the Q1 driver, run without a change. Its
+phase `characterize` restarts the runtime Deployment three times, one at a time, and
+writes one directory under `.artifacts/`. The tool prints one record whose result is
+`CHARACTERIZED`, `INCONCLUSIVE`, or `REFUSED`, with S, the maximum interval from the
+creation of a replacement runtime pod to its first Ready condition:
+
+```sh
+bash docs/proof/experiments/v2-q2/procedure/q2-driver.txt up RUN
+bash docs/proof/experiments/v2-q2/procedure/q2-driver.txt characterize RUN q2-N
+bash docs/proof/experiments/v2-q2/procedure/q2-driver.txt down RUN
+uv run --locked python -m tools.runtime_startup DIRECTORY
+uv run --locked python -m tools.runtime_startup --check
+```
+
+The driver changes the cluster: run it only when the host owner has authorized a
+characterization. Exit status 0 of the tool says `CHARACTERIZED`, 5 says `REFUSED`, and 6
+says `INCONCLUSIVE`. Keep every characterization, and never run one again for another S.
+The driver and the tool are pinned inputs of the Q2 freeze record, and so is everything
+the Q1 freeze record pins. [The Q2 page](docs/environment/runtime-startup-characterization.md)
+states the rules, the measurement, and what a record does not establish.
+
 **The infrastructure timelines of an experiment run are captured by a script that changes
 nothing in the cluster and a tool that reads files.** The script samples the release a
 bounded number of times and writes a collection directory under `.artifacts/`. The tool

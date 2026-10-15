@@ -7,8 +7,9 @@
 ``check`` holds each run directory it is given to its manifest and to the layout.
 ``repository`` checks every run directory under ``docs/proof/experiments``: a
 directory whose manifest the pre-schema register names is listed and not checked,
-and a Q1 qualification directory is listed with the two text rules applied to its
-files, because ``tools.environment_qualification --check`` holds it to its record.
+and a Q1 or Q2 qualification directory is listed with the two text rules applied to
+its files, because ``tools.environment_qualification --check`` or
+``tools.runtime_startup --check`` holds it to its record.
 ``digests`` prints one ``<sha256>  <path>`` line for each file of a directory that
 can be an evidence file, with the layout's digest, for the writer of a manifest.
 ``check`` checks a directory that the register names too, and refuses it at its
@@ -40,6 +41,7 @@ from .core import (
     check_run,
     digest_lines,
     printable,
+    qualification_tool,
     repository_report,
 )
 
@@ -61,7 +63,7 @@ def _run_lines(report: RunReport) -> list[str]:
     if report.status == QUALIFICATION:
         return [
             f"qualification {report.path}  ({report.files} file(s), text rules only; "
-            "its record is checked by tools.environment_qualification --check)"
+            f"its record is checked by {qualification_tool(report.path)} --check)"
         ]
     if report.digests is None:
         return [f"pre-schema {report.path}  (not checked)"]

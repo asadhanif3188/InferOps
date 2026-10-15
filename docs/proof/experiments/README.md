@@ -984,3 +984,33 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
   `capacity/pods.json`, holds container paths under a home directory in the
   controller's pods, and the publication check refuses it. [The page of
   `q1-1`](v2-q1/runs/q1-1/result.md) states its digest.
+
+## The Q2 runtime startup characterization
+
+[`v2-q2/freeze-r1.v1alpha1.json`](v2-q2/freeze-r1.v1alpha1.json) fixes Q2 before any
+characterization runs. Q2 measures, in the environment that [`q1-1`](v2-q1/runs/q1-1/result.md)
+selected, the interval from the creation of each replacement runtime pod to its first Ready
+condition, when the Deployment controller replaces it in a controlled restart. It runs
+three restarts of the runtime Deployment, one at a time, so one characterization has six
+observations. S is their maximum. The procedure is
+[the driver beside it](v2-q2/procedure/q2-driver.txt), and the record is built by
+[`tools/runtime_startup`](../../../tools/runtime_startup/core.py). Both are pinned inputs
+of the record, and so is everything that the Q1 record pins, because the phases `up` and
+`down` of the Q2 driver are those of the Q1 driver. The record states sixteen acceptance
+criteria, `Q2-AC1` to `Q2-AC16`, and each is one rule of the tool, with the same
+statement. [The Q2 page](../../environment/runtime-startup-characterization.md) describes
+each rule.
+
+- **It is a qualification, not an experiment.** A restart is a rollout restart of the
+  runtime Deployment, carried out by the Deployment controller under the chart's rollout
+  bounds. No pod is deleted by name, and no caller runs. No characterization is a result
+  of E02 to E06, no run of those experiments is used as one, and no claim cites S.
+- **The result is `CHARACTERIZED`, `INCONCLUSIVE`, or `REFUSED`.** Seven rules are
+  preconditions: when one is not held, the result is `REFUSED`, and the driver requests no
+  restart. When another rule is not held, the result is `INCONCLUSIVE`. Only a
+  `CHARACTERIZED` record states S.
+- **S is the maximum and not an average.** The freeze record states the rule and no
+  value. Later work derives other bounds from S, and they are not part of this record.
+- **It has its own directory.** A characterization is committed under `v2-q2/runs/q2-N/`
+  with its record, whatever it shows, and the layout check lists it as a qualification.
+- **No characterization has run.**

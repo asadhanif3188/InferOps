@@ -33,10 +33,12 @@ file it corrects, so a correction of a file that was edited is refused while the
 correction itself is unchanged.
 
 **Qualifications.** ``docs/proof/experiments/v2-q1/runs`` holds the directories of
-Q1, the environment and identity qualification, which are not runs of this layout
-and have no manifest. ``tools.environment_qualification --check`` holds each to its
-record. The ``repository`` command lists each and applies only the two text rules
-to its files, and a corrections directory of one is refused.
+Q1, the environment and identity qualification, and
+``docs/proof/experiments/v2-q2/runs`` holds those of Q2, the runtime startup
+characterization. Neither is a run of this layout, and neither has a manifest.
+``tools.environment_qualification --check`` and ``tools.runtime_startup --check``
+hold each to its record. The ``repository`` command lists each and applies only the
+two text rules to its files, and a corrections directory of one is refused.
 
 **What this module does not do.** It reads one tree. It does not read Git, so it
 does not show that a file was committed, or that a run directory and its
@@ -57,6 +59,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Final
 
 # The prefixes are the WorkloadContract validator's own list. A second list here
@@ -99,14 +102,33 @@ DERIVED: Final = "derived"
 #: those of the manifest listing: ``conforming`` and ``pre-schema``.
 REFUSED: Final = "refused"
 
-#: The status of a directory of a Q1 qualification. A qualification is not a run
-#: of this layout: it has no ExperimentRun manifest, and
-#: ``tools.environment_qualification --check`` holds it to its record. The
-#: ``repository`` command lists it and applies the two text rules to each file.
+#: The status of a directory of a qualification, Q1 or Q2. A qualification is
+#: not a run of this layout: it has no ExperimentRun manifest, and the tool that
+#: :data:`QUALIFICATION_TOOLS` names holds it to its record. The ``repository``
+#: command lists it and applies the two text rules to each file.
 QUALIFICATION: Final = "qualification"
 
-#: The one experiment directory whose ``runs`` directory holds Q1 qualifications.
+#: The experiment directory whose ``runs`` directory holds Q1 qualifications.
 QUALIFICATIONS_REF: Final = f"{RUNS_ROOT_REF}/v2-q1"
+
+#: Each experiment directory whose ``runs`` directory holds qualifications, and the
+#: tool whose ``--check`` builds the record of each again. Since V2-S6-002-PR1 the
+#: second holds the Q2 runtime startup characterizations.
+QUALIFICATION_TOOLS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        QUALIFICATIONS_REF: "tools.environment_qualification",
+        f"{RUNS_ROOT_REF}/v2-q2": "tools.runtime_startup",
+    }
+)
+
+
+def qualification_tool(path: str) -> str:
+    """The tool that holds the qualification directory ``path`` to its record."""
+    for ref, tool in QUALIFICATION_TOOLS.items():
+        if path.startswith(f"{ref}/"):
+            return tool
+    raise ValueError(f"{path} is not a qualification directory")
+
 
 #: The file that each qualification holds: the record that its tool built.
 QUALIFICATION_RECORD: Final = "record.v1alpha1.json"
@@ -1146,9 +1168,10 @@ def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
     The listing of ``tools.experiment_run`` gives each manifest and its status. A
     manifest that the pre-schema register names is listed and its directory is not
     checked: it was committed before this layout. Each other manifest has its
-    directory checked. A directory of ``docs/proof/experiments/v2-q1/runs`` with no
-    manifest is a Q1 qualification: it is listed, and only the two text rules are
-    applied to its files. Any other directory of a ``runs`` directory with no
+    directory checked. A directory of a ``runs`` directory that
+    :data:`QUALIFICATION_TOOLS` names, with no manifest, is a qualification: a Q1
+    or a Q2 one. It is listed, and only the two text rules are applied to its
+    files. Any other directory of a ``runs`` directory with no
     manifest is refused. A corrections directory of a run is refused when no run
     directory of this layout has its name: none, one that the pre-schema register
     names, or a qualification.
@@ -1198,7 +1221,7 @@ def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
                 run_ref = f"{shown}/{RUNS_DIRECTORY}/{run_dir.name}"
                 if run_ref in reports:
                     continue
-                if shown == QUALIFICATIONS_REF:
+                if shown in QUALIFICATION_TOOLS:
                     reports[run_ref] = _qualification_report(
                         run_dir, printable(run_ref)
                     )
