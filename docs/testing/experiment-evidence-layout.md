@@ -458,6 +458,7 @@ A characterization is a qualification too: it is not a run of an experiment, and
 no ExperimentRun manifest. Since `V2-S6-002-PR1` the `repository` command treats a
 directory there as it treats one of `v2-q1/runs/`, with the same rules, and names
 `python -m tools.runtime_startup --check` as the check that builds its record again.
+The first, `q2-1`, was committed by the same change.
 The two experiment directories and their tools are `QUALIFICATION_TOOLS` in
 `tools/experiment_evidence`. A directory with no manifest under the `runs` directory of
 any other experiment is refused at its manifest.

@@ -304,7 +304,10 @@ paragraph said that no qualification had run.) Since `V2-S6-002-PR1` the
 is frozen: in the environment that `q1-1` selected, a driver restarts the runtime
 Deployment three times, one at a time, and a tool states S, the maximum interval from
 the creation of a replacement runtime pod to its first Ready condition. A restart is not
-a fault, S is not a startup benchmark, and no claim cites it.
+a fault, S is not a startup benchmark, and no claim cites it. One characterization has
+run: [`q2-1`](docs/proof/experiments/v2-q2/runs/q2-1/result.md) is `CHARACTERIZED`, at C2,
+with S = 11,000 ms over six warm restarts of the runtime pods on the docker-desktop
+provider.
 
 ## Prerequisites
 

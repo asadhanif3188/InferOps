@@ -1266,3 +1266,25 @@ def test_the_tool_imports_no_network_or_process_module() -> None:
         text = (ROOT / "tools/runtime_startup" / name).read_text(encoding="utf-8")
         for module in ("subprocess", "socket", "urllib", "http", "requests"):
             assert not re.search(rf"^\s*(import|from)\s+{module}\b", text, re.MULTILINE)
+
+
+def test_the_committed_characterization_q2_1_is_characterized_with_s_of_11000_ms() -> (
+    None
+):
+    """V2-S6-002-PR1 ran q2-1 once under revision 2. Its record is what its
+    directory gives, each rule is held, and S is the maximum of its six intervals."""
+    directory = ROOT / "docs/proof/experiments/v2-q2/runs/q2-1"
+    assert q2.committed_runs() == [directory]
+    record = json.loads(
+        (directory / "record.v1alpha1.json").read_text(encoding="utf-8")
+    )
+    assert record["result"] == q2.CHARACTERIZED
+    assert {item["state"] for item in record["findings"]} == {q2.HELD}
+    values = [row["startToReadyMs"] for row in record["observations"]]
+    assert values == [11_000, 11_000, 11_000, 11_000, 10_000, 11_000]
+    assert record["bound"]["valueMs"] == max(values) == 11_000
+    assert record["collection"]["freezeRecord"] == q2.FREEZE_RECORD
+    assert record["identities"]["environmentSha256"] == (
+        "sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461"
+    )
+    assert not (directory / "capacity/pods.json").exists()

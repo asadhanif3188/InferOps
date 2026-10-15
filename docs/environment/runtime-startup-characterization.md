@@ -1,7 +1,11 @@
 # Q2: the runtime startup characterization
 
-Status: **the Q2 workflow is frozen, and no characterization has run.** The synthetic
-directories of the suite show each rule and each refusal at C0. No value of S exists.
+Status: **the Q2 workflow is frozen, and one characterization has run. Since
+`V2-S6-002-PR1`, characterization [`q2-1`](../proof/experiments/v2-q2/runs/q2-1/result.md) is `CHARACTERIZED`, at C2: on 2026-10-15, at the
+commit `65bd9bb`, under freeze revision 2, each of the 16 rules held on the docker-desktop
+provider with one node, in the environment of `q1-1`. S = 11,000 ms.** Its six intervals
+are of warm restarts and lie close to the probe period of 10 s; the run page states what
+they do not establish. The synthetic directories of the suite show each refusal at C0.
 
 Before a V2 reliability experiment runs, Q2 measures how long a serving runtime pod of
 the qualified release takes from its creation to its first Ready condition, when the
@@ -22,7 +26,7 @@ no claim cites it. Later work derives bounds from S. Those bounds are not part o
 | Tests | [`tests/domain/test_runtime_startup.py`](../../tests/domain/test_runtime_startup.py) |
 | Target | The release that `q1-1` qualified: key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop`, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461` |
 | Restarts | Three for each characterization, `r1`, `r2`, and `r3`, one at a time. Each replaces the 2 runtime pods, so a characterization has 6 observations |
-| Runs | None. A characterization is committed under `docs/proof/experiments/v2-q2/runs/q2-N/` |
+| Runs | One: [`q2-1`](../proof/experiments/v2-q2/runs/q2-1/result.md), `CHARACTERIZED`, S = 11,000 ms. A characterization is committed under `docs/proof/experiments/v2-q2/runs/q2-N/` |
 | Validation record | [`v2-s6-002-pr1-validation.md`](../proof/environment/v2-s6-002-pr1-validation.md) |
 
 ## A restart, and not a fault
@@ -233,7 +237,12 @@ not precede a runtime that could not answer for the whole of the restart.
 
 - One provider, one node, one Kubernetes version, one release, and one model.
 - The image cache and the model cache are warm: the runtime image is in the node, and
-  the model cache claim holds the verified model.
+  the model cache claim holds the verified model. In `q2-1` the intervals were 10 s and
+  11 s, much shorter than the first starts of `q1-1` after the claim was filled, which
+  were 51 s by the same conditions; S does not establish the start of a pod on a node
+  that has not loaded the model.
+- Every interval of `q2-1` lies close to the probe period of 10 s. The record does not
+  establish at what instant within an interval the runtime could first answer.
 - A replacement starts while the other runtime pod runs and holds its model. That is
   the state of a rollout under the chart's bounds. A start with no other runtime pod is
   not observed.

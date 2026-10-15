@@ -1015,4 +1015,9 @@ each rule.
 - **Revision 1 could not be satisfied.** Revision 1 held the API Deployment to the API image digest that the record of `q1-1` states. The phase `up` of the Q1 driver builds the API image again, and its build at the first commit of `V2-S6-002-PR1` reported another digest, `sha256:cf30eac7cc2a75f9a91dac62c8c09a6080de5b2725d2b37262c15bafe924120d`, than `q1-1` states, `sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1`, while the freeze tool listed no changed input of the Q1 record. So that precondition could not hold. No characterization ran under revision 1. Revision 2 holds the API Deployment to the digest that the phase `up` declared, as Q1 does, and changes no other rule, bound, or step.
 - **It has its own directory.** A characterization is committed under `v2-q2/runs/q2-N/`
   with its record, whatever it shows, and the layout check lists it as a qualification.
-- **No characterization has run.**
+- **One characterization has run, and it is `CHARACTERIZED`.** Under revision 2,
+  `V2-S6-002-PR1` ran [`q2-1`](v2-q2/runs/q2-1/result.md) on 2026-10-15, at the commit
+  `65bd9bb`, on the docker-desktop provider with one node, in the environment of `q1-1`.
+  Each of the 16 rules held. The six intervals were 10,000 ms once and 11,000 ms five
+  times, so **S = 11,000 ms**. They are warm restarts, close to the probe period of 10 s.
+  It is evidence at C2 of that one environment, and no claim cites it.

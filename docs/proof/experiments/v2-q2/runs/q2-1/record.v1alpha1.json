@@ -1,0 +1,399 @@
+{
+  "bound": {
+    "firstObservedAt": {
+      "pod": "inferops-inferops-llm-runtime-c9fcd6cd8-rfhsh",
+      "restart": "r1"
+    },
+    "observations": 6,
+    "rule": "the maximum startToReadyMs of every observation",
+    "symbol": "S",
+    "valueMs": 11000
+  },
+  "characterization": "Q2",
+  "collection": {
+    "apiImageDigest": "sha256:218cc858ad7788c7b309140e8255d558100ca5ef06fe15cd7b48d059241dff9b",
+    "characterizationId": "q2-1",
+    "desiredRevision": "486ca49ae99ed7257a503e291d5710be88f7ce26",
+    "desiredStateDiff": "none",
+    "executingCommit": "65bd9bb0629e047cdf23242754dc37179f420439",
+    "finishedAt": "2026-10-15T13:08:07.558Z",
+    "freezeChanges": "none",
+    "freezeRecord": "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json",
+    "freezeRecordSha256": "32e58c7984ad74ef229e5a2d3411e7de78971b17a554124a7fbe3acfe5bcaecd",
+    "provider": "docker-desktop",
+    "qualificationFreezeChanges": "none",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "schema": "inferops.io/runtime-startup-collection/v1alpha1",
+    "startedAt": "2026-10-15T13:05:33.485Z",
+    "targetRefusal": null,
+    "upExecutingCommit": "65bd9bb0629e047cdf23242754dc37179f420439",
+    "upRefusal": null,
+    "upStartedAt": "2026-10-15T12:55:45Z",
+    "workingTree": "clean"
+  },
+  "doesNotEstablish": [
+    "A record does not establish a startup benchmark, an average start time, a percentile, or a rate. It states six intervals and their maximum.",
+    "A record does not establish the start time of a pod that replaces a deleted pod, a pod that starts under caller traffic, or a pod that starts on a cold image cache or a cold model cache.",
+    "A record does not establish a recovery time, an availability, a service level, or the reliability of the caller path. No caller ran.",
+    "A record does not establish an interval shorter than its resolution. A cluster timestamp states whole seconds, so each interval can be up to one second shorter or longer than the time that passed.",
+    "A record does not establish that the readiness probe answered at the instant of the Ready condition. The kubelet sets the condition after the probe.",
+    "A record does not establish that a source record is what its collection gives. The module reads the stored source records and does not build them again.",
+    "A record does not establish a result of a reliability experiment, or a bound that later work derives from S.",
+    "A record does not establish production availability, high availability, or resilience to the loss of a node, a zone, or a region.",
+    "A record does not establish anything about another provider, another node, another Kubernetes version, another release, or another model."
+  ],
+  "environment": {
+    "containerEngine": {
+      "cpus": 12,
+      "memoryBytes": 10429960192
+    },
+    "kubernetesServerVersion": "v1.36.1",
+    "nodes": [
+      {
+        "allocatable": {
+          "cpuMillis": 12000,
+          "memoryBytes": 10429960192,
+          "pods": 110
+        },
+        "kubeletVersion": "v1.36.1",
+        "name": "desktop-control-plane"
+      }
+    ],
+    "provider": "docker-desktop"
+  },
+  "files": [
+    {
+      "name": "run.json",
+      "sha256": "dde2e78b35be353756ff3ef6b3992ff8bcc4ce9aa99332ad10df602e191d444e"
+    },
+    {
+      "name": "capacity/record.v1alpha1.json",
+      "sha256": "622c34fd5f3c87f5cd7fb5401d079328435008edf2156f6621484199f93c9cd4"
+    },
+    {
+      "name": "provenance.json",
+      "sha256": "54e3801b6b790284979eef32873c32d94e9370a6c9d227933d6aa979db957254"
+    },
+    {
+      "name": "deployments.json",
+      "sha256": "c31f147e1e3179251da22ee3ee74d425981f7cd63d71a253a40dac4fe3eb7ae8"
+    },
+    {
+      "name": "restarts/r1/restart.json",
+      "sha256": "cebc05655e0772e666379f452dc234a8435e275d5971b216fba5565324c42ba6"
+    },
+    {
+      "name": "restarts/r1/before.deployment.json",
+      "sha256": "1b86e835792b9373ebb4d0ccecefee7939ea34c9854f2432b331f2463bf1b8ee"
+    },
+    {
+      "name": "restarts/r1/before.pods.json",
+      "sha256": "c5513ba93d16effe3531f633f413c5758354fb7e887c0341568078a530e8f321"
+    },
+    {
+      "name": "restarts/r1/watch.jsonl",
+      "sha256": "329dfe571d5ad19bde90f3527f505d8f826d5d6decee20da72a0c852e6922edc"
+    },
+    {
+      "name": "restarts/r1/after.pods.json",
+      "sha256": "17d9ca9104de31df64b01e8147c7ec37d8eb853af16bf98c5872cbb3c33d31ec"
+    },
+    {
+      "name": "restarts/r1/completion.inferops-inferops-llm-runtime-c9fcd6cd8-qfxz7.json",
+      "sha256": "da4a8850256f7ccece591c8f2f8339494126b84390ebaeb71e885c19354f9944"
+    },
+    {
+      "name": "restarts/r1/completion.inferops-inferops-llm-runtime-c9fcd6cd8-rfhsh.json",
+      "sha256": "da4a8850256f7ccece591c8f2f8339494126b84390ebaeb71e885c19354f9944"
+    },
+    {
+      "name": "restarts/r2/restart.json",
+      "sha256": "b2753baf09d989a7a4a958a23b487c52461a262f29a3a09028c3cd7cec56e639"
+    },
+    {
+      "name": "restarts/r2/before.deployment.json",
+      "sha256": "5cca1d171dde85eee1a0d0c4760b131fb5bff9af648ffd9c1d4f6337b0335828"
+    },
+    {
+      "name": "restarts/r2/before.pods.json",
+      "sha256": "17d9ca9104de31df64b01e8147c7ec37d8eb853af16bf98c5872cbb3c33d31ec"
+    },
+    {
+      "name": "restarts/r2/watch.jsonl",
+      "sha256": "6bd1b7745ce19a18921b93b84a89eee683ff6e974c6acbe9d0960f2013454143"
+    },
+    {
+      "name": "restarts/r2/after.pods.json",
+      "sha256": "26354c89a9d4ecb402778353daaecbf5b1fd2b8dbcde1d95b79de43cce4ebbaf"
+    },
+    {
+      "name": "restarts/r2/completion.inferops-inferops-llm-runtime-b8c4486d-pp9wj.json",
+      "sha256": "da4a8850256f7ccece591c8f2f8339494126b84390ebaeb71e885c19354f9944"
+    },
+    {
+      "name": "restarts/r2/completion.inferops-inferops-llm-runtime-b8c4486d-zp7cg.json",
+      "sha256": "da4a8850256f7ccece591c8f2f8339494126b84390ebaeb71e885c19354f9944"
+    },
+    {
+      "name": "restarts/r3/restart.json",
+      "sha256": "f20c9a75f53dd18c9e0dc7033a0d1fbc7407a30921823f89a4b2c4814a92e386"
+    },
+    {
+      "name": "restarts/r3/before.deployment.json",
+      "sha256": "620205b239cd2fb76fe45c2dd2071511e1dbbab32fdb5f131edccb4fd8328342"
+    },
+    {
+      "name": "restarts/r3/before.pods.json",
+      "sha256": "26354c89a9d4ecb402778353daaecbf5b1fd2b8dbcde1d95b79de43cce4ebbaf"
+    },
+    {
+      "name": "restarts/r3/watch.jsonl",
+      "sha256": "2cfee87a66e758a290c51a6aaa48f91ea20c1fd4a97449c99f8f731b916ca3b5"
+    },
+    {
+      "name": "restarts/r3/after.pods.json",
+      "sha256": "f47e8a31ef5a522010203aaf01e091d3ac83a115361c0311337d9eaf58aefc38"
+    },
+    {
+      "name": "restarts/r3/completion.inferops-inferops-llm-runtime-5968885f85-bm9n8.json",
+      "sha256": "da4a8850256f7ccece591c8f2f8339494126b84390ebaeb71e885c19354f9944"
+    },
+    {
+      "name": "restarts/r3/completion.inferops-inferops-llm-runtime-5968885f85-glfcb.json",
+      "sha256": "da4a8850256f7ccece591c8f2f8339494126b84390ebaeb71e885c19354f9944"
+    }
+  ],
+  "findings": [
+    {
+      "category": "preparation",
+      "criterion": "Q2-AC1",
+      "detail": "the phase up completed at the executing commit",
+      "ruleId": "preparation-completed",
+      "state": "held"
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q2-AC2",
+      "detail": "the working tree was clean",
+      "ruleId": "working-tree-clean",
+      "state": "held"
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q2-AC3",
+      "detail": "the Q2 and the Q1 freeze records list no changed material file",
+      "ruleId": "procedure-frozen",
+      "state": "held"
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q2-AC4",
+      "detail": "the delivery paths equal the desired revision",
+      "ruleId": "desired-revision-known",
+      "state": "held"
+    },
+    {
+      "category": "environment",
+      "criterion": "Q2-AC5",
+      "detail": "the environment sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461 of q1-1",
+      "ruleId": "environment-qualified",
+      "state": "held"
+    },
+    {
+      "category": "release-identity",
+      "criterion": "Q2-AC6",
+      "detail": "release b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db with the images of q1-1",
+      "ruleId": "release-qualified",
+      "state": "held"
+    },
+    {
+      "category": "topology",
+      "criterion": "Q2-AC7",
+      "detail": "each Deployment states and reports 2 Ready replicas",
+      "ruleId": "topology-ready",
+      "state": "held"
+    },
+    {
+      "category": "measurement",
+      "criterion": "Q2-AC8",
+      "detail": "three restarts, each rolled out",
+      "ruleId": "three-restarts",
+      "state": "held"
+    },
+    {
+      "category": "topology",
+      "criterion": "Q2-AC9",
+      "detail": "2 Ready runtime pods and a settled Deployment before each restart",
+      "ruleId": "stable-before-each-restart",
+      "state": "held"
+    },
+    {
+      "category": "evidence",
+      "criterion": "Q2-AC10",
+      "detail": "each stream opens with the pods before and outlasts its rollout",
+      "ruleId": "stream-complete",
+      "state": "held"
+    },
+    {
+      "category": "measurement",
+      "criterion": "Q2-AC11",
+      "detail": "two replacements in each restart, each Ready",
+      "ruleId": "two-replacements",
+      "state": "held"
+    },
+    {
+      "category": "measurement",
+      "criterion": "Q2-AC12",
+      "detail": "in each restart the second replacement followed the first Ready",
+      "ruleId": "one-at-a-time",
+      "state": "held"
+    },
+    {
+      "category": "readiness",
+      "criterion": "Q2-AC13",
+      "detail": "each replacement stayed Ready, and no container restarted",
+      "ruleId": "ready-held",
+      "state": "held"
+    },
+    {
+      "category": "readiness",
+      "criterion": "Q2-AC14",
+      "detail": "each replacement verified the model and runs the image of q1-1",
+      "ruleId": "model-verified",
+      "state": "held"
+    },
+    {
+      "category": "readiness",
+      "criterion": "Q2-AC15",
+      "detail": "each replacement answered one completion",
+      "ruleId": "ready-serves",
+      "state": "held"
+    },
+    {
+      "category": "evidence",
+      "criterion": "Q2-AC16",
+      "detail": "the phase up, then three restarts in order",
+      "ruleId": "readings-in-order",
+      "state": "held"
+    }
+  ],
+  "identities": {
+    "apiImageDigest": "sha256:218cc858ad7788c7b309140e8255d558100ca5ef06fe15cd7b48d059241dff9b",
+    "desiredRevision": "486ca49ae99ed7257a503e291d5710be88f7ce26",
+    "environmentSha256": "sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461",
+    "executingCommit": "65bd9bb0629e047cdf23242754dc37179f420439",
+    "freezeRecord": {
+      "contentSha256": "32e58c7984ad74ef229e5a2d3411e7de78971b17a554124a7fbe3acfe5bcaecd",
+      "path": "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
+    },
+    "kubernetesServerVersion": "v1.36.1",
+    "provider": "docker-desktop",
+    "qualification": {
+      "contentSha256": "b6243ae6e4ef85e752a4dbd66d22ff17dfd42548eaa5ba8c7a3736490930d82d",
+      "path": "docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json",
+      "qualificationId": "q1-1"
+    },
+    "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "runtimeImage": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+  },
+  "measurement": {
+    "clock": "The cluster's timestamps: the creation instant of the pod and the transition instant of its Ready condition.",
+    "interval": "From the creation of a replacement pod to its first Ready condition in the watch stream.",
+    "resolutionMs": 1000
+  },
+  "notHeld": {
+    "categories": [],
+    "rules": []
+  },
+  "observations": [
+    {
+      "createdAt": "2026-10-15T13:05:52Z",
+      "createdToInitializedMs": 4000,
+      "initializedAt": "2026-10-15T13:05:56Z",
+      "initializedToReadyMs": 7000,
+      "order": 1,
+      "pod": "inferops-inferops-llm-runtime-c9fcd6cd8-rfhsh",
+      "readyAt": "2026-10-15T13:06:03Z",
+      "restart": "r1",
+      "runtimeStartedAt": "2026-10-15T13:05:56Z",
+      "scheduledAt": "2026-10-15T13:05:52Z",
+      "startToReadyMs": 11000
+    },
+    {
+      "createdAt": "2026-10-15T13:06:03Z",
+      "createdToInitializedMs": 3000,
+      "initializedAt": "2026-10-15T13:06:06Z",
+      "initializedToReadyMs": 8000,
+      "order": 2,
+      "pod": "inferops-inferops-llm-runtime-c9fcd6cd8-qfxz7",
+      "readyAt": "2026-10-15T13:06:14Z",
+      "restart": "r1",
+      "runtimeStartedAt": "2026-10-15T13:06:06Z",
+      "scheduledAt": "2026-10-15T13:06:03Z",
+      "startToReadyMs": 11000
+    },
+    {
+      "createdAt": "2026-10-15T13:06:40Z",
+      "createdToInitializedMs": 5000,
+      "initializedAt": "2026-10-15T13:06:45Z",
+      "initializedToReadyMs": 6000,
+      "order": 1,
+      "pod": "inferops-inferops-llm-runtime-b8c4486d-pp9wj",
+      "readyAt": "2026-10-15T13:06:51Z",
+      "restart": "r2",
+      "runtimeStartedAt": "2026-10-15T13:06:45Z",
+      "scheduledAt": "2026-10-15T13:06:40Z",
+      "startToReadyMs": 11000
+    },
+    {
+      "createdAt": "2026-10-15T13:06:51Z",
+      "createdToInitializedMs": 4000,
+      "initializedAt": "2026-10-15T13:06:55Z",
+      "initializedToReadyMs": 7000,
+      "order": 2,
+      "pod": "inferops-inferops-llm-runtime-b8c4486d-zp7cg",
+      "readyAt": "2026-10-15T13:07:02Z",
+      "restart": "r2",
+      "runtimeStartedAt": "2026-10-15T13:06:56Z",
+      "scheduledAt": "2026-10-15T13:06:51Z",
+      "startToReadyMs": 11000
+    },
+    {
+      "createdAt": "2026-10-15T13:07:25Z",
+      "createdToInitializedMs": 4000,
+      "initializedAt": "2026-10-15T13:07:29Z",
+      "initializedToReadyMs": 6000,
+      "order": 1,
+      "pod": "inferops-inferops-llm-runtime-5968885f85-glfcb",
+      "readyAt": "2026-10-15T13:07:35Z",
+      "restart": "r3",
+      "runtimeStartedAt": "2026-10-15T13:07:29Z",
+      "scheduledAt": "2026-10-15T13:07:25Z",
+      "startToReadyMs": 10000
+    },
+    {
+      "createdAt": "2026-10-15T13:07:35Z",
+      "createdToInitializedMs": 6000,
+      "initializedAt": "2026-10-15T13:07:41Z",
+      "initializedToReadyMs": 5000,
+      "order": 2,
+      "pod": "inferops-inferops-llm-runtime-5968885f85-bm9n8",
+      "readyAt": "2026-10-15T13:07:46Z",
+      "restart": "r3",
+      "runtimeStartedAt": "2026-10-15T13:07:41Z",
+      "scheduledAt": "2026-10-15T13:07:35Z",
+      "startToReadyMs": 11000
+    }
+  ],
+  "result": "CHARACTERIZED",
+  "schema": "inferops.io/runtime-startup-characterization/v1alpha1",
+  "target": {
+    "apiReplicas": 2,
+    "provider": "docker-desktop",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "replacementsPerRestart": 2,
+    "restarts": 3,
+    "runtimeReplicas": 2
+  }
+}

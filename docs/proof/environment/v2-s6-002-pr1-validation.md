@@ -1,10 +1,13 @@
 # V2-S6-002-PR1 validation: the Q2 runtime startup characterization
 
-Status: **the Q2 workflow is frozen, and no characterization has run yet. This record is
-written in two steps. The first commit of the change adds the freeze record, the driver,
-and the tool, before any characterization, and this record states what it validated.
-The run, its directory, and what it showed are added by the next commit of the same
-change.** No claim is registered.
+Status: **one characterization ran, [`q2-1`](../experiments/v2-q2/runs/q2-1/result.md),
+and it is `CHARACTERIZED`: each of the 16 rules held, and S = 11,000 ms. Evidence level
+C2, bounded to the docker-desktop provider with one node, in the environment of `q1-1`.
+No claim is registered.** The change has four commits. The first registered freeze
+revision 1, the tool, and the driver, before any characterization. The second
+registered revision 2, before any characterization, because a precondition of revision
+1 could not hold. The third adds the run. The fourth closes what the independent review
+found.
 
 | Property | Value |
 |---|---|
@@ -106,23 +109,54 @@ What was done, in order:
    It classifies the two pins that moved: the tool (material) and the driver (not
    material: it names revision 2).
 
+## The run
+
+Under revision 2, at the commit `65bd9bb`, with the work directory `q2run-2`, on
+2026-10-15 (UTC):
+
+1. The phase `up` of the Q1 driver ran from 12:55:43 to 13:05:14 and exited 0. The
+   controller reported the Application `Synced` and `Healthy` at `486ca49`. The API image
+   build reported `sha256:218cc858ad7788c7b309140e8255d558100ca5ef06fe15cd7b48d059241dff9b`,
+   a third digest for the same inputs.
+2. The characterization `q2-1` ran from 13:05:33 to 13:08:07. The 7 preconditions were
+   held before the first restart. Three restarts ran, each rolled out 21.8 s to 22.6 s
+   after its request, and each replaced the two runtime pods one after the other. After
+   each, the controller reported the Application `Synced` and `Healthy`: the rollout
+   restart's annotation of the pod template did not put the Application out of sync in
+   this run. Each replacement answered one completion with HTTP status 200.
+3. The tool exited 0: `CHARACTERIZED`. The six intervals from creation to Ready were
+   11,000, 11,000, 11,000, 11,000, 10,000, and 11,000 ms. **S = 11,000 ms.**
+4. The phase `down` exited 0 and ended at 13:09:53. The namespaces and the custom
+   resource definitions after it were those before the phase `up`.
+
+[The run page](../experiments/v2-q2/runs/q2-1/result.md) gives each observation with its
+two parts, the identities, and what is not committed.
+
 ## Parent-story acceptance
 
-| Criterion | State after the first commit |
+| Criterion | State after this change |
 |---|---|
-| Q2 executes 3 controlled runtime starts or restarts and freezes S as the maximum start-to-Ready interval | **Mechanism frozen; not executed.** Rules `Q2-AC1` to `Q2-AC16` decide it |
+| Q2 executes 3 controlled runtime starts or restarts and freezes S as the maximum start-to-Ready interval | **Met for this environment.** Three controlled restarts, six observations, all kept; the committed record of `q2-1` states S = 11,000 ms, and `tools.runtime_startup --check` builds it again |
 | The other criteria of the story | **Pending: later work.** This change derives no bound |
-| Qualification data is not promoted as a benchmark or as result-bearing reliability proof | **Held by the freeze record and the record:** the record states no average, percentile, or rate, and no claim cites S |
+| Qualification data is not promoted as a benchmark or as result-bearing reliability proof | **Held:** the record states no average, percentile, or rate, the pages say that S is not a startup benchmark, and no claim cites S |
 
 ## Evidence level and limitations
 
-The tool is evidence at C0: every directory it was given is synthetic, written by the
-suite. The limitations of a characterization are those of the freeze record and of [the
-page](../../environment/runtime-startup-characterization.md#limitations).
+The run is evidence at C2: a real cluster, the delivery controller, the real runtime,
+and the real model on one provider and one node. A characterization is a prerequisite and
+not a result, and its level raises no claim. The tool's suite is evidence at C0 over
+synthetic directories. Read S with the limitations of [the run
+page](../experiments/v2-q2/runs/q2-1/result.md#what-this-does-not-establish-and-what-to-read-with-it):
+the six starts were warm, every interval lies close to the probe period of 10 s, and the
+resolution is one second. The detail string of `release-qualified` says "with the images
+of q1-1" although the API image is the digest that the phase `up` declared; the rule's
+statement is right, and the tool is a pinned input of revision 2, so the string is kept.
 
-## Validation of the first commit
+## Validation
 
-Run from Git Bash on the Windows workstation, before the first commit.
+Run from Git Bash on the Windows workstation. The first two rows were run before the
+first commit, the next rows before the second commit, and the rows from
+`tools.runtime_startup --check` on after the run.
 
 | Command | Result |
 |---|---|
@@ -130,3 +164,7 @@ Run from Git Bash on the Windows workstation, before the first commit.
 | `uv run --locked python -m tools.experiment_freeze --check` | `PASSED: 7 freeze record(s), every rule held` at the first commit, and `PASSED: 8` at the second |
 | `uv run --locked python -m tools.experiment_freeze --changes` of the Q1 and the Q2 records | Unchanged |
 | `bash -n docs/proof/experiments/v2-q2/procedure/q2-driver.txt` | No syntax error |
+| The seven suites that the freeze revision touches, before the second commit | 1,222 passed, 3 skipped |
+| `uv run --locked python -m tools.runtime_startup --check` | `PASSED: 1 committed characterization(s), each record is what its directory gives` |
+| `uv run --locked python -m tools.experiment_evidence repository` | `runs 7: 3 pre-schema and not checked, 2 qualification(s) with the text rules only, 2 conforming, 0 refused` |
+| A search of the run directory and the transcript for host paths, account names, and home directories | No match after the redaction; `capacity/pods.json` is not committed |
