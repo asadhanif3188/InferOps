@@ -21,15 +21,18 @@ from `1.0.0`.
   target check that refused, another provider, another context, a dirty working tree, a
   changed material file, an unknown desired revision, a refused capacity reading, another
   model, a Deployment that is not Ready, and a caller run with no success each refuse,
-  with a category. An absent source refuses, and no option weakens the target. The record
+  with a category. An absent source refuses, a refusal of the phase that prepares
+  the release is kept with its reason, and no option weakens the target. The record
   states the identities that a result-bearing run records and an environment identity
-  with its digest, which E02A and E02B must share. The driver,
+  with its digest, which E02A and E02B must share; no tool compares two identities
+  yet. The driver,
   `docs/proof/experiments/v2-q1/procedure/q1-driver.txt`, and the tool are pinned inputs
   of `docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json`, whose 17 acceptance criteria
   are the rules. See [the Q1 page](docs/environment/environment-qualification.md) and
   [the validation record](docs/proof/environment/v2-s6-001-pr1-validation.md). Evidence
   level C0, over synthetic directories. Not established: that any environment holds the
-  topology, a runtime start time, a caller gap, or any bound of Q2, Q3, or Q4.
+  topology, a runtime start time, a caller gap, or any bound that later work
+  derives.
 - **The Sprint 5 evidence path ran together on one cluster. Two attempts are kept: the
   first FAILED, the second PASSED. Neither is a run of E02 to E06, and no claim was
   registered.** `V2-S5-006-PR1` freezes a bounded integration validation before its

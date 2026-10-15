@@ -85,7 +85,7 @@ S5I_R2_PIN = "70d8dd0bd5fca5aeaf4913464b1b9a5a3b515fd5afcb218c7b1500c4f0b7903b"
 #: The Q1 environment and identity qualification, registered by V2-S6-001-PR1
 #: before any qualification ran. Its pin is written out for the same reason.
 Q1 = "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
-Q1_PIN = "5fb7bcd5c3f4d8cf8a9394cbfca6b3f0968d0eb46eecee223dee89c81b3f9113"
+Q1_PIN = "f23426223d19abf19fa3c8beaaa138abe93bdef8ab376335eda50b0da3f29ded"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so

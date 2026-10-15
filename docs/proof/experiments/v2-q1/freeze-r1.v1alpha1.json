@@ -12,7 +12,7 @@
   "definition": {
     "purpose": "Decide, before any V2 reliability experiment runs, whether one local environment holds the target topology of the desired-state release: two platform API replicas and two serving runtime replicas, delivered by the controller at the desired revision, with both runtime replicas verifying the pinned model, and with the caller runner completing real requests through the API Service. The result is QUALIFIED or REFUSED.",
     "scope": "One release of the support assistant, key local-docker-desktop/support-assistant, delivered by the controller from the remote main, on the docker-desktop provider. One capacity reading before the Application is applied, one reading of the release, and one RP-1 run of the caller runner for each qualification.",
-    "notResultEvidence": "Q1 is a qualification and not a reliability experiment. No qualification is a result of E02, E03, E04, E05, or E06. It injects no fault, and it derives no bound: Q2, Q3, and Q4 are later work. No figure of the caller run is a latency, a throughput, an availability, or a threshold, and no claim cites one.",
+    "notResultEvidence": "Q1 is a qualification and not a reliability experiment. No qualification is a result of E02, E03, E04, E05, or E06. It injects no fault, and it derives no bound: that is later work. No figure of the caller run is a latency, a throughput, an availability, or a threshold, and no claim cites one.",
     "repetitionRule": "One qualification for each identifier. A qualification is never repeated for a cleaner outcome. A refused qualification is kept, and the refusal is not converted into a weaker target: no replica count, request, limit, or bound is changed to obtain QUALIFIED. A later qualification runs only after the environment or a frozen input changes, under a later revision of this record when a frozen input changes, and it takes the next identifier.",
     "selectedEnvironmentRule": "When a qualification is QUALIFIED, its record states the environment identity and its digest. E02A and E02B execute in that one environment. A run of either states its own environment identity, and a run whose identity differs from the qualified one is not a run of the controlled comparison. When the local environment is REFUSED, the refusal is retained, and a separate environment decision record precedes any other environment.",
     "limitations": [
@@ -20,12 +20,13 @@
       "The tool reads the stored source records. It does not build the capacity, endpoint, model cache, reconciliation, or provenance records again. The driver runs each tool on its collection in the same qualification, and the transcript shows each run.",
       "The capacity reading is taken before the Application is applied, because the gate refuses a cluster that already holds the release. It states requests and limits, not use.",
       "The model cache observation states the V1 multi-replica capacity preflight and the readiness of each pod while it loads. Q1 does not run the V1 preflight and does not sample the start, so those two rules of the observation are not read.",
-      "The controller version is the version that the bootstrap procedure pins. Its verification compares the installation with that pin, and Q1 reads the exit status of that verification.",
+      "The controller version is the version that the bootstrap procedure pins, and not a version that the cluster reported. The verification of the bootstrap procedure compares the installation with that pin, and Q1 reads the exit status of that verification.",
+      "The direct kubectl and Helm commands of the driver name the context docker-desktop and run no target check of their own. The operating procedures that the driver calls each run it.",
       "The caller run is one bounded RP-1 run. Its success count shows that the path answered. It is not a rate."
     ],
     "doesNotEstablish": [
       "A recovery time, an availability, a service level, a capacity figure, or a threshold.",
-      "A runtime start time, a caller gap, or a bound of Q2, Q3, or Q4.",
+      "A runtime start time, a caller gap, or any bound that later work derives.",
       "Behaviour under a fault, under the replacement of a pod, or under a rollout.",
       "Behaviour on another provider, on more than one node, or with another release.",
       "That the telemetry or the infrastructure state is caller truth. The caller record is the caller's own record."
@@ -37,14 +38,14 @@
       "title": "Environment and identity qualification",
       "question": "Can the selected local environment hold the declared target topology at its exact identities, with the controller reconciled, both runtime replicas on the pinned model, and the caller runner completing real requests through the API Service?",
       "procedure": [
-        "Prepare the release once, with the phase up of the driver, from the committed tree with a clean working tree and with every material file at its pin: the capacity gate before anything is installed; the API image built at the executing commit; the model cache claim filled from the local seed image by one preparation Helm release that is then removed; the delivery controller installed and verified by its bootstrap procedure; the capacity gate again, which is the reading that Q1 reads; the Application applied; and the two rollouts waited for, with a bound of 900 s each. When the target check or the capacity gate refuses, the phase up installs nothing more and changes nothing to fit.",
-        "Start a qualification with the phase qualify of the driver. Read the executing commit, the working tree, the desired revision as the remote main, whether the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision, and whether the freeze tool lists a changed material file. When the phase up refused, or one of these is not at its state, read no cluster state and go to the header.",
+        "Prepare the release once, with the phase up of the driver, from the committed tree with a clean working tree and with every material file at its pin: the capacity gate before anything is installed; the API image built at the executing commit; the model cache claim filled from the local seed image by one preparation Helm release that is then removed; the delivery controller installed and verified by its bootstrap procedure; the capacity gate again, which is the reading that Q1 reads; the Application applied; and the two rollouts waited for, with a bound of 900 s each. The phase up writes its start time first. When it then refuses on a working tree that is not clean, delivery paths that differ from the remote main, a changed material file, a cluster that already holds the release or the controller, or a refusal of the target check or of the capacity gate, or fails at a preparation step, it keeps the reason as upRefusal, installs nothing more, and changes nothing to fit.",
+        "Start a qualification with the phase qualify of the driver. Read the executing commit, the working tree, the desired revision as the remote main, whether the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision, and whether the freeze tool lists a changed material file. Refuse an identifier whose directory exists or that a collector already used. When the phase up refused or failed, or one of these is not at its state, read no cluster state and go to the header.",
         "Resolve the provenance of the target release key at the desired revision. Verify the delivery controller with its bootstrap procedure.",
         "Take 5 reconciliation samples, 10 s apart, and build the reconciliation record with the provenance comparison of the target release key.",
         "Read the Deployments of the release. Take one endpoint reading of the two Services.",
         "Observe the model cache in each runtime pod: the verification log, the mount table, the file identity, one model listing, and one completion through a port-forward to that pod. Build the model cache record.",
         "Run the caller runner once: RP-1 against the API Service for 60 s with a request ceiling of 50, with the provenance release identifier. Wait for the Job, at most 600 s. Collect the caller record, and clean up the runner.",
-        "Write the header of the directory, and build the Q1 record with the tool. The record states the result. The driver states none."
+        "Write the header of the directory, and build the Q1 record with the tool. Keep the record when the tool exits 0 (QUALIFIED) or 5 (REFUSED). The record states the result. The driver states none."
       ]
     }
   ],
@@ -82,7 +83,7 @@
         ],
         "status": "value",
         "value": {
-          "provider": "docker-desktop, selected explicitly and verified by the target check of the operating procedures before each read and each mutation",
+          "provider": "docker-desktop, selected explicitly. Each operating procedure that the driver calls runs the target check before its own reads and mutations. The direct kubectl and Helm commands of the driver name the context docker-desktop and run no target check",
           "context": "docker-desktop",
           "nodes": "one node, which the capacity record states and on which the runtime pods run",
           "recordedPerQualification": "The provider, the server version, each node with its kubelet version and what it allocates, and the container engine, as the capacity record states them, with the SHA-256 of their canonical text",
@@ -157,19 +158,19 @@
           },
           {
             "id": "Q1-AC3",
-            "statement": "The target check found one target, the capacity collection names the context docker-desktop, the capacity record holds one node, and the runtime pods run on that node."
+            "statement": "The target check found one target, the cluster held no release and no controller before the phase up, the capacity collection names the context docker-desktop, the capacity record holds one node and a readable environment identity, and the runtime pods run on that node."
           },
           {
             "id": "Q1-AC4",
-            "statement": "The working tree of the executing commit was clean."
+            "statement": "The working tree was clean when the phase up started and when the qualification started."
           },
           {
             "id": "Q1-AC5",
-            "statement": "The driver names the Q1 freeze record, the record has the content that the checkout holds, and the freeze tool listed no changed material file."
+            "statement": "The driver names the Q1 freeze record, the record has the content that the checkout holds, and the freeze tool listed no changed material file in the phase up or in the qualification."
           },
           {
             "id": "Q1-AC6",
-            "statement": "The desired revision is one full commit identifier, and the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision."
+            "statement": "The desired revision is one full commit identifier, and the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision in the phase up and in the qualification."
           },
           {
             "id": "Q1-AC7",
@@ -193,7 +194,7 @@
           },
           {
             "id": "Q1-AC12",
-            "statement": "The API Deployment and the runtime Deployment of the release each state 2 replicas, and each reports 2 replicas, 2 Ready, 2 available, and 2 updated at its current generation."
+            "statement": "The phase up completed its preparation, and the API Deployment and the runtime Deployment of the release each state 2 replicas, and each reports 2 replicas, 2 Ready, 2 available, and 2 updated at its current generation."
           },
           {
             "id": "Q1-AC13",
@@ -205,7 +206,7 @@
           },
           {
             "id": "Q1-AC15",
-            "statement": "The model cache record expects the pinned model and the pinned runtime image for 2 runtime replicas of the target release, and holds each of its model identity rules."
+            "statement": "The copies of the model pin and the runtime image pin have the content that the freeze record pins, the model cache record expects that model and that runtime image for 2 runtime replicas of the target release, and it holds each of its model identity rules."
           },
           {
             "id": "Q1-AC16",
@@ -213,7 +214,7 @@
           },
           {
             "id": "Q1-AC17",
-            "statement": "The capacity reading precedes the qualification, and each other reading lies between the start and the end of the qualification."
+            "statement": "The capacity reading precedes the qualification, and the endpoint reading, the model cache collection, the start of the caller run, and the first and the last reconciliation samples lie between the start and the end of the qualification."
           }
         ]
       }
@@ -224,7 +225,7 @@
           "Q1"
         ],
         "status": "not-applicable",
-        "reason": "Q1 derives no bound. The runtime start bound and the caller gap reference are derived by Q2 and Q3, and the experiment bounds by Q4, after a QUALIFIED Q1. The durations of the driver are bounds of the procedure, not acceptance bounds."
+        "reason": "Q1 derives no bound. Any bound is derived by later work, after a QUALIFIED Q1. The durations of the driver are bounds of the procedure, not acceptance bounds."
       }
     ],
     "evidencePaths": [
@@ -244,6 +245,8 @@
             "endpoints/": "The endpoint collection, with its record.",
             "model-cache/": "The model cache collection, with its record.",
             "plan.json, caller.jsonl": "The plan of the caller run and the caller record.",
+            "caller.refused.jsonl": "The caller log that a rule of its reader refused, when one was refused.",
+            "pins/model-source.v1.json, pins/container-package.v1.json": "The two pin files as the qualification read them. The tool holds each to the content that this record pins.",
             "record.v1alpha1.json": "The Q1 record, which states the result.",
             "transcript.txt": "What the phases printed, with the absolute path of the host removed."
           },
@@ -274,7 +277,7 @@
         "value": [
           "The phase qualify cleans up the caller runner and reads the objects that carry the label of the qualification.",
           "Keep the collections under .artifacts/ until the run directory is assembled.",
-          "After the last qualification, remove the Application, the controller, and the prerequisite layer with the phase down of the driver, and compare the namespaces and the custom resource definitions with those read before the phase up."
+          "After the last qualification, remove the Application, the controller, and the prerequisite layer with the phase down of the driver, and compare the namespaces and the custom resource definitions with those that the phase up read before it installed anything."
         ]
       }
     ],
@@ -290,7 +293,7 @@
     ]
   },
   "materialScope": {
-    "description": "The path of one qualification. The import closure of the nine tools that the driver runs; the driver; the nine procedures that it calls; the file that the caller runner executes in the cluster; the RP-1 profile and the V1 load profile that RP-1 reads; the model source record and the runtime container package, which pin the model and the runtime image; the chart, the desired-state tree, and the two manifests of the delivery controller, which together decide the release; the Terraform prerequisite layer; the two image build files and the build's ignore file; the whole inferops package that the API image copies; and the dependency lock.",
+    "description": "The path of one qualification. The import closure of the nine tools that the driver runs; the driver; the nine procedures that it calls and the bootstrap record of the controller; the file that the caller runner executes in the cluster; the RP-1 profile and the V1 load profile that RP-1 reads; the model source record and the runtime container package, which pin the model and the runtime image; the chart, the desired-state tree with the contract and the environment binding it is rendered from, and the two manifests of the delivery controller, which together decide the release; the Terraform prerequisite layer; the two image build files and the build's ignore file; the whole inferops package that the API image copies; and the dependency lock.",
     "entryModules": [
       "tools.environment_qualification.__main__",
       "tools.capacity_preflight.__main__",
@@ -317,6 +320,7 @@
       "scripts/environment/terraform-prerequisites.sh",
       "scripts/environment/argocd-bootstrap.sh",
       "scripts/environment/argocd-application.sh",
+      "docs/environment/argocd-bootstrap.v1alpha1.json",
       "tools/reliability_runner/incluster.py",
       "deploy/serving/reliability/rp-1-profile.v1.json",
       "deploy/serving/load/llm-load-profile.v1.json",
@@ -329,6 +333,8 @@
       "charts/inferops-llm/ci/real-values.yaml",
       "charts/inferops-llm/templates/**/*",
       "gitops/**/*",
+      "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
+      "contracts/environment/examples/valid/local-docker-desktop.yaml",
       "infra/argocd/*.yaml",
       "infra/terraform/environments/local/*.tf",
       "infra/terraform/environments/local/.terraform.lock.hcl",
@@ -454,6 +460,16 @@
       "sha256": "0031a614dec9813171f1e8147f11ed55d33bfa1730c8a39781064c43213cdccd"
     },
     {
+      "path": "contracts/environment/examples/valid/local-docker-desktop.yaml",
+      "role": "desired-state",
+      "sha256": "06c8c8aa1617516900ee74e35e73a9a60d1e6d44a5c2fdd9068e4a2027384249"
+    },
+    {
+      "path": "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
+      "role": "desired-state",
+      "sha256": "12c6dfe7fb7c073ed8ee55276d310d69499cf40f0173a5848609264cda0c4d32"
+    },
+    {
       "path": "deploy/api/Dockerfile",
       "role": "api-image-build",
       "sha256": "93fc6cbb25162b62c04527992faff4ef80edc39cb4e0956c1ff80e36546319df"
@@ -479,9 +495,14 @@
       "sha256": "692ab69d6b4cf312762991e10f08094d6ec4888e8963ec1c0428205758b9eb26"
     },
     {
+      "path": "docs/environment/argocd-bootstrap.v1alpha1.json",
+      "role": "delivery-controller-manifest",
+      "sha256": "d79f49a21aa2e85635c877fd32d4410f755dbd0d4a6b091f242260f66b7c43f9"
+    },
+    {
       "path": "docs/proof/experiments/v2-q1/procedure/q1-driver.txt",
       "role": "procedure",
-      "sha256": "af334cd9f56b2b968ef9f71f01aef0275a1fececf89c809491fa92daa4c7d2ac"
+      "sha256": "fc1f6aac371dfe768b040c59ff9f453ae2dfeae223ce69f826bba9ef257b1e4b"
     },
     {
       "path": "docs/serving/model-source.v1.json",
@@ -1076,7 +1097,7 @@
     {
       "path": "tools/environment_qualification/__init__.py",
       "role": "tool",
-      "sha256": "de77e74d8d48bf64b30a05f93c3d3365fa8e2af97eca4234073b0f91019fc282"
+      "sha256": "37c857b8f8d9b54b21bc926c4749fa781c8db65a91eafd311f94fcb0a31439a5"
     },
     {
       "path": "tools/environment_qualification/__main__.py",
@@ -1086,7 +1107,7 @@
     {
       "path": "tools/environment_qualification/core.py",
       "role": "tool",
-      "sha256": "438167d072803ec91d2c4b502330658fcf98cc8e5598768b61963029e4cf08c2"
+      "sha256": "9bed28fbb4dfffc1bfc08e704c9df0e30b469f7103151e07eda7a26046f10918"
     },
     {
       "path": "tools/experiment_freeze/__init__.py",

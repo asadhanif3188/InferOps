@@ -12,9 +12,11 @@ runs no procedure. It holds each source record to the identity and the state
 that Q1 requires, and it states each rule that refuses.
 
 **A refusal is a result.** No rule lowers a replica count, a request, a limit,
-or a bound to reach ``QUALIFIED``. The target release key, the topology, the
-provider, and the model are constants of this module, and no option of the
-command changes one. A refused environment stays refused until the environment
+or a bound to reach ``QUALIFIED``. The target release key, the topology, and
+the provider are constants of this module. The model and the runtime image are
+the ones whose pin files the freeze record pins by content: the driver copies
+the two files into the directory, and a copy of other content refuses. No
+option of the command changes any of them. A refused environment stays refused until the environment
 or a frozen input changes, and a later qualification is a new qualification.
 
 **A read that was not made is not a value.** An absent source gives the state
@@ -54,7 +56,8 @@ RECORD_SCHEMA: Final = "inferops.io/environment-qualification/v1alpha1"
 #: The schema name that the driver writes into the header of a directory.
 COLLECTION_SCHEMA: Final = "inferops.io/environment-qualification-collection/v1alpha1"
 
-#: The qualification that a record decides. Q2, Q3, and Q4 are other work.
+#: The qualification that a record decides. Later qualification work is not
+#: decided here.
 QUALIFICATION: Final = "Q1"
 
 #: The experiment identifier that the driver gives the caller runner.
@@ -81,6 +84,8 @@ RELEASE_NAMESPACE: Final = "inferops-release"
 RELEASE_INSTANCE: Final = "inferops"
 
 #: The checkout files that hold the pinned model and the pinned runtime image.
+#: The freeze record pins each by content. The driver copies each into the
+#: directory, so a record is built again from the files the qualification read.
 MODEL_SOURCE_FILE: Final = "docs/serving/model-source.v1.json"
 RUNTIME_PACKAGE_FILE: Final = "deploy/serving/runtime/container-package.v1.json"
 
@@ -95,6 +100,8 @@ MODEL_CACHE_RECORD: Final = "model-cache/record.v1alpha1.json"
 CALLER_FILE: Final = "caller.jsonl"
 CALLER_REFUSED_FILE: Final = "caller.refused.jsonl"
 PLAN_FILE: Final = "plan.json"
+MODEL_SOURCE_COPY: Final = "pins/model-source.v1.json"
+RUNTIME_PACKAGE_COPY: Final = "pins/container-package.v1.json"
 RECORD_FILE: Final = "record.v1alpha1.json"
 
 #: Every file that a record reads from a directory, in the order it lists them.
@@ -109,6 +116,8 @@ SOURCE_FILES: Final = (
     PLAN_FILE,
     CALLER_FILE,
     CALLER_REFUSED_FILE,
+    MODEL_SOURCE_COPY,
+    RUNTIME_PACKAGE_COPY,
 )
 
 #: The schema names of the source records. Each is written by its own tool.
@@ -201,6 +210,17 @@ WORKING_TREE_STATES: Final = ("clean", "dirty", "unread")
 DESIRED_STATE_DIFF_STATES: Final = ("none", "differs", "unread")
 FREEZE_CHANGE_STATES: Final = ("none", "listed", "unread")
 
+#: Why the phase up of the driver stopped before the release was applied, when
+#: it did. The driver writes one of these, or null when up completed.
+UP_REFUSALS: Final = (
+    "working-tree",
+    "delivery-paths",
+    "frozen-inputs",
+    "release-present",
+    "capacity",
+    "preparation-failed",
+)
+
 
 @dataclass(frozen=True)
 class Rule:
@@ -234,22 +254,25 @@ RULES: Final[tuple[Rule, ...]] = (
         "context-unambiguous",
         "Q1-AC3",
         AMBIGUOUS_CONTEXT,
-        "The target check found one target, the capacity collection names the "
-        "context docker-desktop, the capacity record holds one node, and the "
-        "runtime pods run on that node.",
+        "The target check found one target, the cluster held no release and no "
+        "controller before the phase up, the capacity collection names the context "
+        "docker-desktop, the capacity record holds one node and a readable "
+        "environment identity, and the runtime pods run on that node.",
     ),
     Rule(
         "working-tree-clean",
         "Q1-AC4",
         DESIRED_STATE,
-        "The working tree of the executing commit was clean.",
+        "The working tree was clean when the phase up started and when the "
+        "qualification started.",
     ),
     Rule(
         "procedure-frozen",
         "Q1-AC5",
         DESIRED_STATE,
         "The driver names the Q1 freeze record, the record has the content that "
-        "the checkout holds, and the freeze tool listed no changed material file.",
+        "the checkout holds, and the freeze tool listed no changed material file "
+        "in the phase up or in the qualification.",
     ),
     Rule(
         "desired-revision-known",
@@ -257,7 +280,7 @@ RULES: Final[tuple[Rule, ...]] = (
         DESIRED_STATE,
         "The desired revision is one full commit identifier, and the chart, the "
         "desired-state tree, and the controller manifests of the executing commit "
-        "equal those of that revision.",
+        "equal those of that revision in the phase up and in the qualification.",
     ),
     Rule(
         "one-executing-commit",
@@ -301,9 +324,9 @@ RULES: Final[tuple[Rule, ...]] = (
         "deployments-ready",
         "Q1-AC12",
         TOPOLOGY,
-        "The API Deployment and the runtime Deployment of the release each state "
-        "2 replicas, and each reports 2 replicas, 2 Ready, 2 available, and 2 "
-        "updated at its current generation.",
+        "The phase up completed its preparation, and the API Deployment and the "
+        "runtime Deployment of the release each state 2 replicas, and each reports "
+        "2 replicas, 2 Ready, 2 available, and 2 updated at its current generation.",
     ),
     Rule(
         "endpoints-ready",
@@ -324,9 +347,10 @@ RULES: Final[tuple[Rule, ...]] = (
         "model-identity-verified",
         "Q1-AC15",
         MODEL_MISMATCH,
-        "The model cache record expects the pinned model and the pinned runtime "
-        "image for 2 runtime replicas of the target release, and holds each of "
-        "its model identity rules.",
+        "The copies of the model pin and the runtime image pin have the content "
+        "that the freeze record pins, the model cache record expects that model "
+        "and that runtime image for 2 runtime replicas of the target release, and "
+        "it holds each of its model identity rules.",
     ),
     Rule(
         "caller-completed",
@@ -340,8 +364,10 @@ RULES: Final[tuple[Rule, ...]] = (
         "readings-in-order",
         "Q1-AC17",
         EVIDENCE,
-        "The capacity reading precedes the qualification, and each other reading "
-        "lies between the start and the end of the qualification.",
+        "The capacity reading precedes the qualification, and the endpoint "
+        "reading, the model cache collection, the start of the caller run, and the "
+        "first and the last reconciliation samples lie between the start and the "
+        "end of the qualification.",
     ),
 )
 
@@ -350,12 +376,13 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "A record does not establish behaviour under a fault, the replacement of a "
     "pod, or a recovery from either.",
     "A record does not establish a runtime start time, a caller gap, or any "
-    "bound that Q2, Q3, or Q4 derives.",
+    "bound that later work derives.",
     "A record does not establish a latency, a throughput, a success rate, or the "
     "reliability of the caller path. One completed request shows that the path "
     "answered once.",
     "A record does not establish that a later run uses the same environment. A "
-    "later run states its own environment identity and compares it with this one.",
+    "later run must state its own environment identity. No tool compares two "
+    "identities yet.",
     "A record does not establish that a source record is what its collection "
     "gives. The module reads the stored source records and does not build them "
     "again. It checks the caller record with the runner's reader.",
@@ -402,6 +429,7 @@ _HEADER: Final[dict[str, Callable[[object], bool]]] = {
     "controllerVersion": lambda value: value is None or _text(value, _VERSION),
     "controllerVerified": lambda value: value is None or isinstance(value, bool),
     "targetRefusal": lambda value: value is None or _text(value, _CATEGORY),
+    "upRefusal": lambda value: value is None or value in UP_REFUSALS,
     "startedAt": lambda value: _text(value, _INSTANT),
     "finishedAt": lambda value: _text(value, _INSTANT),
 }
@@ -449,7 +477,10 @@ def _instant(value: object) -> datetime | None:
         return None
     text = str(value)
     pattern = "%Y-%m-%dT%H:%M:%S.%fZ" if "." in text else "%Y-%m-%dT%H:%M:%SZ"
-    return datetime.strptime(text, pattern).replace(tzinfo=UTC)
+    try:
+        return datetime.strptime(text, pattern).replace(tzinfo=UTC)
+    except ValueError:
+        return None
 
 
 # --------------------------------------------------------------------------
@@ -532,6 +563,7 @@ class Sources:
     caller_text: str | None
     caller_refused: bool
     root: Path
+    directory: Path
 
 
 def read_sources(directory: Path, root: Path = REPO_ROOT) -> Sources:
@@ -563,6 +595,7 @@ def read_sources(directory: Path, root: Path = REPO_ROOT) -> Sources:
         caller_text=caller_text,
         caller_refused=(directory / CALLER_REFUSED_FILE).exists(),
         root=root,
+        directory=directory,
     )
 
 
@@ -607,12 +640,50 @@ def _container_image(deployment: Mapping[str, Any], name: str) -> list[object]:
     return [_dig(item, "image") for item in containers if _dig(item, "name") == name]
 
 
-def _pins(root: Path) -> tuple[dict[str, Any] | None, str | None]:
-    """The pinned model and the pinned runtime image reference of a checkout."""
-    model = None
-    image = None
+def _pins(
+    sources: Sources,
+) -> tuple[Outcome | None, dict[str, Any] | None, str | None]:
+    """The pinned model and runtime image reference, read from the copies.
+
+    Each copy must have the content that the freeze record of the checkout pins
+    for its file. The first member is the outcome of a copy that is absent or of
+    other content, and None when both copies are usable.
+    """
     try:
-        source = json.loads((root / MODEL_SOURCE_FILE).read_text(encoding="utf-8"))
+        record = json.loads((sources.root / FREEZE_RECORD).read_text(encoding="utf-8"))
+        pinned = {
+            item["path"]: item["sha256"] for item in _sequence(record["pinnedInputs"])
+        }
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+        return (
+            (NOT_OBSERVED, "the checkout holds no readable freeze record"),
+            None,
+            None,
+        )
+    documents: dict[str, Any] = {}
+    for copy, original in (
+        (MODEL_SOURCE_COPY, MODEL_SOURCE_FILE),
+        (RUNTIME_PACKAGE_COPY, RUNTIME_PACKAGE_FILE),
+    ):
+        data = _read_bytes(sources.directory, copy)
+        if data is None:
+            return (
+                (NOT_OBSERVED, f"{copy} is absent: the copy was not made"),
+                None,
+                None,
+            )
+        if pinned.get(original) != lf_digest(data):
+            return (
+                (NOT_HELD, f"{copy} differs from the content the freeze record pins"),
+                None,
+                None,
+            )
+        try:
+            documents[copy] = json.loads(data.decode("utf-8"))
+        except (UnicodeError, ValueError):
+            return (NOT_HELD, f"{copy} is unreadable"), None, None
+    try:
+        source = documents[MODEL_SOURCE_COPY]
         model = {
             "repository": source["repository"],
             "revision": source["revision"],
@@ -620,15 +691,16 @@ def _pins(root: Path) -> tuple[dict[str, Any] | None, str | None]:
             "sha256": source["sha256"],
             "sizeBytes": source["expectedSizeBytes"],
         }
-    except (OSError, UnicodeError, ValueError, KeyError, TypeError):
-        model = None
-    try:
-        package = json.loads((root / RUNTIME_PACKAGE_FILE).read_text(encoding="utf-8"))
-        reference = package["container"]["imageReference"]
-        image = reference if _text(reference, _IMAGE) else None
-    except (OSError, UnicodeError, ValueError, KeyError, TypeError):
-        image = None
-    return model, image
+        reference = documents[RUNTIME_PACKAGE_COPY]["container"]["imageReference"]
+    except (KeyError, TypeError):
+        return (NOT_HELD, "a pin copy states no model or no runtime image"), None, None
+    if not _text(reference, _IMAGE):
+        return (
+            (NOT_HELD, "the runtime image pin is not a reference by digest"),
+            None,
+            None,
+        )
+    return None, model, reference
 
 
 def environment_identity(sources: Sources) -> dict[str, Any] | None:
@@ -827,6 +899,12 @@ def _context_unambiguous(sources: Sources) -> Outcome:
     refusal = sources.header["targetRefusal"]
     if refusal in AMBIGUOUS_REFUSALS:
         return NOT_HELD, f"the target check refused with the category {refusal}"
+    if sources.header["upRefusal"] == "release-present":
+        return (
+            NOT_HELD,
+            "the cluster held the release namespace or the controller namespace "
+            "before the phase up",
+        )
     if not sources.capacity.read:
         return _missing(sources.capacity)
     context = _dig(sources.capacity.value, "collection", "context")
@@ -837,6 +915,8 @@ def _context_unambiguous(sources: Sources) -> Outcome:
     ]
     if len(nodes) != 1:
         return NOT_HELD, f"the capacity record holds {len(nodes)} nodes, not 1"
+    if environment_identity(sources) is None:
+        return NOT_HELD, "the capacity record states no readable environment identity"
     if not sources.model_cache.read:
         return _missing(sources.model_cache)
     placed = list(_sequence(_dig(sources.model_cache.value, "placement", "nodes")))
@@ -850,6 +930,8 @@ def _context_unambiguous(sources: Sources) -> Outcome:
 
 def _working_tree_clean(sources: Sources) -> Outcome:
     state = sources.header["workingTree"]
+    if sources.header["upRefusal"] == "working-tree":
+        return NOT_HELD, "the working tree was not clean when the phase up started"
     if state == "clean":
         return HELD, "the working tree was clean"
     if state == "unread":
@@ -864,7 +946,7 @@ def _procedure_frozen(sources: Sources) -> Outcome:
             NOT_HELD,
             f"the driver names {header['freezeRecord']}, not {FREEZE_RECORD}",
         )
-    if header["freezeChanges"] == "listed":
+    if header["freezeChanges"] == "listed" or header["upRefusal"] == "frozen-inputs":
         return NOT_HELD, "the freeze tool listed a changed material file"
     if header["freezeChanges"] == "unread" or header["freezeRecordSha256"] is None:
         return NOT_OBSERVED, "the freeze check or the record digest was not read"
@@ -884,6 +966,12 @@ def _desired_revision_known(sources: Sources) -> Outcome:
         return NOT_OBSERVED, "the desired revision was not read"
     if len(set(revision)) == 1:
         return NOT_HELD, "the desired revision is not a commit identifier"
+    if header["upRefusal"] == "delivery-paths":
+        return (
+            NOT_HELD,
+            "the delivery paths differed from the remote main when the phase up "
+            "started",
+        )
     if header["desiredStateDiff"] == "unread":
         return (
             NOT_OBSERVED,
@@ -931,6 +1019,8 @@ def _release_provenance_resolved(sources: Sources) -> Outcome:
     record = _provenance_record(sources)
     if record is None:
         return NOT_HELD, f"{PROVENANCE_FILE} is not a list of one provenance record"
+    if sources.header["desiredRevision"] is None:
+        return NOT_OBSERVED, "the desired revision was not read"
     if _dig(record, "git", "revision") != sources.header["desiredRevision"]:
         return NOT_HELD, "the provenance record resolves another revision"
     key = _dig(record, "desiredState", "key")
@@ -1027,6 +1117,8 @@ def _deployment_problem(deployment: Mapping[str, Any], replicas: int) -> str | N
 
 
 def _deployments_ready(sources: Sources) -> Outcome:
+    if sources.header["upRefusal"] == "preparation-failed":
+        return NOT_HELD, "the phase up failed before the release was applied"
     if not sources.deployments.read:
         return _missing(sources.deployments)
     if not isinstance(_dig(sources.deployments.value, "items"), list):
@@ -1051,7 +1143,9 @@ def _endpoints_ready(sources: Sources) -> Outcome:
     if _dig(record, "result") != "OBSERVED":
         return NOT_HELD, f"the endpoint record is {_dig(record, 'result')}"
     tiers = {
-        _dig(tier, "tier"): _mapping(tier) for tier in _sequence(_dig(record, "tiers"))
+        _dig(tier, "tier"): _mapping(tier)
+        for tier in _sequence(_dig(record, "tiers"))
+        if isinstance(_dig(tier, "tier"), str)
     }
     for tier, expected in (
         ("platform-api", TARGET_API_REPLICAS),
@@ -1071,14 +1165,11 @@ def _endpoints_ready(sources: Sources) -> Outcome:
 
 def _images_declared(sources: Sources) -> Outcome:
     digest = sources.header["apiImageDigest"]
-    _, runtime_image = _pins(sources.root)
+    problem, _, runtime_image = _pins(sources)
     if digest is None:
         return NOT_OBSERVED, "the driver states no API image digest"
-    if runtime_image is None:
-        return (
-            NOT_OBSERVED,
-            f"the checkout holds no runtime image pin in {RUNTIME_PACKAGE_FILE}",
-        )
+    if problem is not None or runtime_image is None:
+        return problem or (NOT_OBSERVED, "no runtime image pin was read")
     if not sources.deployments.read:
         return _missing(sources.deployments)
     api = _deployment(sources, "platform-api")
@@ -1098,9 +1189,9 @@ def _images_declared(sources: Sources) -> Outcome:
 def _model_identity_verified(sources: Sources) -> Outcome:
     if not sources.model_cache.read:
         return _missing(sources.model_cache)
-    model_pin, image_pin = _pins(sources.root)
-    if model_pin is None or image_pin is None:
-        return NOT_OBSERVED, "the checkout holds no model pin or runtime image pin"
+    problem, model_pin, image_pin = _pins(sources)
+    if problem is not None or model_pin is None or image_pin is None:
+        return problem or (NOT_OBSERVED, "no model pin was read")
     record = sources.model_cache.value
     expected = _mapping(_dig(record, "expected"))
     if _dig(expected, "release", "key") != TARGET_RELEASE_KEY:
@@ -1117,6 +1208,7 @@ def _model_identity_verified(sources: Sources) -> Outcome:
     states = {
         _dig(rule, "id"): _dig(rule, "state")
         for rule in _sequence(_dig(record, "rules"))
+        if isinstance(_dig(rule, "id"), str)
     }
     not_held = [rule for rule in MODEL_CACHE_RULES if states.get(rule) != "held"]
     if not_held:
@@ -1176,7 +1268,8 @@ def _readings_in_order(sources: Sources) -> Outcome:
         except ValueError:
             caller_start = None
     samples = _sequence(_dig(sources.reconciliation.value, "samples"))
-    observed = [_instant(_dig(sample, "observedAt", "value")) for sample in samples]
+    instants = [_instant(_dig(sample, "observedAt", "value")) for sample in samples]
+    observed = [] if None in instants else [item for item in instants if item]
     inside = {
         ENDPOINTS_RECORD: _instant(
             _dig(sources.endpoints.value, "collection", "readStartedAt")
@@ -1185,9 +1278,8 @@ def _readings_in_order(sources: Sources) -> Outcome:
             _dig(sources.model_cache.value, "collection", "collectedAt")
         ),
         CALLER_FILE: caller_start,
-        RECONCILIATION_RECORD: min(
-            (item for item in observed if item is not None), default=None
-        ),
+        RECONCILIATION_RECORD + " first sample": min(observed) if observed else None,
+        RECONCILIATION_RECORD + " last sample": max(observed) if observed else None,
     }
     if capacity is None or None in inside.values():
         absent = sorted(name for name, value in inside.items() if value is None)
@@ -1345,6 +1437,7 @@ __all__ = [
     "MINIMUM_RECONCILIATION_SAMPLES",
     "MODEL_CACHE_RECORD",
     "MODEL_CACHE_RULES",
+    "MODEL_SOURCE_COPY",
     "MODEL_SOURCE_FILE",
     "NOT_HELD",
     "NOT_OBSERVED",
@@ -1363,12 +1456,14 @@ __all__ = [
     "RULES",
     "RULE_STATES",
     "RUNS_PATTERN",
+    "RUNTIME_PACKAGE_COPY",
     "RUNTIME_PACKAGE_FILE",
     "SELECTED_PROVIDER",
     "SOURCE_FILES",
     "TARGET_API_REPLICAS",
     "TARGET_RELEASE_KEY",
     "TARGET_RUNTIME_REPLICAS",
+    "UP_REFUSALS",
     "CollectionRefused",
     "Rule",
     "Source",

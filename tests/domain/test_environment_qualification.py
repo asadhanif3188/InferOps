@@ -74,6 +74,15 @@ MODEL_SOURCE = json.loads(
 RUNTIME_IMAGE = json.loads(
     (ROOT / "deploy/serving/runtime/container-package.v1.json").read_text("utf-8")
 )["container"]["imageReference"]
+#: The two pin files, as the driver copies them: with LF line ends.
+PIN_TEXT = {
+    q1.MODEL_SOURCE_COPY: (ROOT / q1.MODEL_SOURCE_FILE)
+    .read_text("utf-8")
+    .replace("\r\n", "\n"),
+    q1.RUNTIME_PACKAGE_COPY: (ROOT / q1.RUNTIME_PACKAGE_FILE)
+    .read_text("utf-8")
+    .replace("\r\n", "\n"),
+}
 PINNED_MODEL = {
     "repository": MODEL_SOURCE["repository"],
     "revision": MODEL_SOURCE["revision"],
@@ -131,6 +140,7 @@ def header(**changes: Any) -> dict[str, Any]:
         "controllerVersion": "v3.5.3",
         "controllerVerified": True,
         "targetRefusal": None,
+        "upRefusal": None,
         "startedAt": instant(0),
         "finishedAt": instant(600),
     }
@@ -387,6 +397,8 @@ def write(
         q1.MODEL_CACHE_RECORD: model_cache(),
         q1.PLAN_FILE: plan_text,
         q1.CALLER_FILE: caller_text,
+        q1.MODEL_SOURCE_COPY: PIN_TEXT[q1.MODEL_SOURCE_COPY],
+        q1.RUNTIME_PACKAGE_COPY: PIN_TEXT[q1.RUNTIME_PACKAGE_COPY],
     }
     files.update(changes or {})
     for name, document in files.items():
@@ -548,6 +560,79 @@ _NO_SUCCESS_PLAN, _NO_SUCCESS_CALLER = caller(
 )
 
 DEFECTS: list[Defect] = [
+    (
+        "a model pin copy of other content",
+        {
+            q1.MODEL_SOURCE_COPY: PIN_TEXT[q1.MODEL_SOURCE_COPY].replace(
+                MODEL_SOURCE["revision"], "0" * 40
+            )
+        },
+        "model-identity-verified",
+        "not-held",
+    ),
+    (
+        "a runtime pin copy of other content",
+        {q1.RUNTIME_PACKAGE_COPY: PIN_TEXT[q1.RUNTIME_PACKAGE_COPY] + "\n"},
+        "images-declared",
+        "not-held",
+    ),
+    (
+        "up refused on a dirty working tree",
+        {q1.HEADER_FILE: header(upRefusal="working-tree")},
+        "working-tree-clean",
+        "not-held",
+    ),
+    (
+        "up refused on differing delivery paths",
+        {q1.HEADER_FILE: header(upRefusal="delivery-paths")},
+        "desired-revision-known",
+        "not-held",
+    ),
+    (
+        "up refused on a changed material file",
+        {q1.HEADER_FILE: header(upRefusal="frozen-inputs")},
+        "procedure-frozen",
+        "not-held",
+    ),
+    (
+        "up refused on a release already present",
+        {q1.HEADER_FILE: header(upRefusal="release-present")},
+        "context-unambiguous",
+        "not-held",
+    ),
+    (
+        "up failed at a preparation step",
+        {q1.HEADER_FILE: header(upRefusal="preparation-failed")},
+        "deployments-ready",
+        "not-held",
+    ),
+    (
+        "no readable environment identity",
+        {
+            q1.CAPACITY_RECORD: changed(
+                capacity(), lambda doc: doc["environment"].pop("containerEngine")
+            )
+        },
+        "context-unambiguous",
+        "not-held",
+    ),
+    (
+        "a reconciliation sample after the end",
+        {
+            q1.RECONCILIATION_RECORD: changed(
+                reconciliation(),
+                _set(("samples", 4, "observedAt", "value"), instant(900)),
+            )
+        },
+        "readings-in-order",
+        "not-held",
+    ),
+    (
+        "a start that is not a date",
+        {q1.HEADER_FILE: header(startedAt="2026-13-45T00:00:00Z")},
+        "readings-in-order",
+        "not-held",
+    ),
     (
         "a caller run with no success",
         {q1.PLAN_FILE: _NO_SUCCESS_PLAN, q1.CALLER_FILE: _NO_SUCCESS_CALLER},
@@ -1054,6 +1139,8 @@ def test_the_categories_are_listed_in_their_order_without_repetition(
         (q1.MODEL_CACHE_RECORD, {"model-identity-verified", "context-unambiguous"}),
         (q1.CALLER_FILE, {"caller-completed", "readings-in-order"}),
         (q1.PLAN_FILE, {"caller-completed"}),
+        (q1.MODEL_SOURCE_COPY, {"model-identity-verified", "images-declared"}),
+        (q1.RUNTIME_PACKAGE_COPY, {"model-identity-verified", "images-declared"}),
     ],
 )
 def test_an_absent_source_is_not_observed_and_refuses(
@@ -1388,11 +1475,20 @@ def test_the_driver_is_valid_bash_with_lf_line_ends() -> None:
     assert completed.returncode == 0, completed.stderr
 
 
-def test_the_driver_changes_no_replica_count_request_or_limit() -> None:
+def test_the_driver_sets_one_value_and_only_on_the_preparation_release() -> None:
+    """The driver scales nothing. Its one Helm value is the memory limit of the
+    acquisition job of the preparation release, which is removed before the
+    Application is applied. It states no value of the qualified release."""
     driver = DRIVER.read_text("utf-8")
     assert "kubectl scale" not in driver and "k scale" not in driver
     assert "replicaCount" not in driver
-    assert not re.search(r"--set\s+(api|runtime)\.", driver)
+    assert re.findall(r"--set(?:-string|-json)?\s+(\S+)", driver) == [
+        "model.acquisition.resources.limits.memory=2Gi"
+    ]
+    install = driver.index("helm --kube-context docker-desktop install inferops")
+    uninstall = driver.index("helm --kube-context docker-desktop uninstall inferops")
+    assert install < driver.index("--set model.acquisition") < uninstall
+    assert uninstall < driver.index('run bash "${APPLICATION_SCRIPT}" apply')
 
 
 # --------------------------------------------------------------------------
@@ -1414,3 +1510,104 @@ def test_the_record_text_is_sorted_indented_json_with_one_final_lf(
     assert text.endswith("}\n") and not text.endswith("\n\n")
     assert json.loads(text) == record
     assert text == json.dumps(record, indent=2, sort_keys=True) + "\n"
+
+
+# --------------------------------------------------------------------------
+# A source of another form refuses and does not raise
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("changes", "rule", "state"),
+    [
+        pytest.param(
+            {
+                q1.ENDPOINTS_RECORD: changed(
+                    endpoints(), _set(("tiers", 0, "tier"), ["platform-api"])
+                )
+            },
+            "endpoints-ready",
+            "not-held",
+            id="tier-not-text",
+        ),
+        pytest.param(
+            {
+                q1.MODEL_CACHE_RECORD: changed(
+                    model_cache(), _set(("rules", 0, "id"), {"id": "replica-count"})
+                )
+            },
+            "model-identity-verified",
+            "not-held",
+            id="rule-id-not-text",
+        ),
+        pytest.param(
+            {
+                q1.ENDPOINTS_RECORD: changed(
+                    endpoints(),
+                    _set(("collection", "readStartedAt"), "2026-01-01T24:00:00Z"),
+                )
+            },
+            "readings-in-order",
+            "not-observed",
+            id="instant-not-a-time",
+        ),
+        pytest.param(
+            {
+                q1.RECONCILIATION_RECORD: changed(
+                    reconciliation(), _set(("samples", 2, "observedAt"), None)
+                )
+            },
+            "readings-in-order",
+            "not-observed",
+            id="sample-without-instant",
+        ),
+        pytest.param(
+            {q1.HEADER_FILE: header(desiredRevision=None)},
+            "release-provenance-resolved",
+            "not-observed",
+            id="no-desired-revision-to-compare",
+        ),
+    ],
+)
+def test_a_member_of_another_form_refuses_and_does_not_raise(
+    tmp_path: Path, root: Path, changes: dict[str, Any], rule: str, state: str
+) -> None:
+    record = record_of(write(tmp_path / "run", changes), root)
+    assert record["result"] == "REFUSED"
+    assert states(record)[rule] == state
+
+
+def test_a_qualified_record_always_states_its_environment(
+    tmp_path: Path, root: Path
+) -> None:
+    record = record_of(write(tmp_path / "run"), root)
+    assert record["result"] == "QUALIFIED"
+    assert record["environment"] is not None
+    assert record["environmentSha256"] is not None
+
+
+def test_the_driver_keeps_the_record_of_a_refused_qualification() -> None:
+    driver = DRIVER.read_text("utf-8")
+    assert (
+        r"""0 | 5) tr -d '\r' <"${WORK}/record.tmp" >"${A}/${RECORD_FILE}" ;;"""
+        in driver
+    )
+    assert 'read_into "${A}/${RECORD_FILE}"' not in driver
+
+
+def test_the_driver_states_each_reason_of_a_refusal_of_up() -> None:
+    driver = DRIVER.read_text("utf-8")
+    stated = set(re.findall(r"up_refuse ([a-z-]+) ", driver))
+    stated |= set(re.findall(r"printf '([a-z-]+)' >\"\$\{WORK\}/up-refusal\"", driver))
+    assert stated == set(q1.UP_REFUSALS)
+    assert driver.index('now >"${WORK}/started-at"') < driver.index(
+        "up_refuse working-tree"
+    )
+
+
+def test_the_driver_refuses_a_reused_identifier_of_a_collection() -> None:
+    driver = DRIVER.read_text("utf-8")
+    assert (
+        'for used in "${OBSERVATIONS}/${QID}" "${ENDPOINT_COLLECTIONS}/${QID}" '
+        '"${RUNNER_RUNS}/${QID}"; do'
+    ) in driver

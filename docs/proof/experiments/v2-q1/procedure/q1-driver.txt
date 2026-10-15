@@ -22,28 +22,34 @@
 # claim from the local seed image, and is uninstalled before the Application is
 # applied, as in the earlier runs on this provider.
 #
-# A refusal is a result. When the target check or the capacity gate refuses in
-# `up`, nothing more is installed, and nothing is changed to fit: no replica
-# count, request, limit, or bound. `qualify` then writes a directory with what
-# exists, and the record is REFUSED. When the working tree is not clean, a
-# material file differs from its pin, or the delivery paths differ from the
-# desired revision, `qualify` reads no cluster state and the record is REFUSED.
+# A refusal is a result. When `up` refuses or fails after its start time is
+# written, it writes why into upRefusal, installs nothing more, and changes
+# nothing to fit: no replica count, request, limit, or bound. The reasons are a
+# working tree that is not clean, delivery paths that differ from the remote
+# main, a changed material file, a cluster that already holds the release or
+# the controller, a refusal of the target check or of the capacity gate, and a
+# preparation step that failed. `qualify` then reads no cluster state, writes a
+# directory with what exists, and the record is REFUSED. When the working tree
+# is not clean, a material file differs from its pin, or the delivery paths
+# differ from the desired revision when `qualify` starts, it reads no cluster
+# state either, and the record is REFUSED. `qualify` writes the record whether
+# the result is QUALIFIED or REFUSED.
 #
-# What `qualify` does, in this order, with no decision on what it reads:
-#   Q0  the executing commit, the working tree, the desired revision, the
+# What `qualify` does, in this order of steps S0 to S9, with no decision on what it reads:
+#   S0  the executing commit, the working tree, the desired revision, the
 #       freeze check, and the digests of the files it runs
-#   Q1  the provenance of the target release at the desired revision
-#   Q2  the verification of the delivery controller, and its pinned version
-#   Q3  the reconciliation observation: RECONCILIATION_SAMPLES samples
-#   Q4  the Deployments of the release
-#   Q5  the endpoint state of the two Services
-#   Q6  the model cache observation of each runtime pod: the verification log,
+#   S1  the provenance of the target release at the desired revision
+#   S2  the verification of the delivery controller, and its pinned version
+#   S3  the reconciliation observation: RECONCILIATION_SAMPLES samples
+#   S4  the Deployments of the release
+#   S5  the endpoint state of the two Services
+#   S6  the model cache observation of each runtime pod: the verification log,
 #       the mount table, the file identity, one model listing, and one completion
 #       through a port-forward to that pod
-#   Q7  the caller runner: one RP-1 run of CALLER_DURATION_SECONDS against the
+#   S7  the caller runner: one RP-1 run of CALLER_DURATION_SECONDS against the
 #       API Service, its collection, and its cleanup
-#   Q8  the header of the directory
-#   Q9  the record, which states the result
+#   S8  the header of the directory
+#   S9  the record, which states the result
 # The tool that builds the record states the result. This driver states none.
 set -u
 
@@ -97,6 +103,8 @@ PLAN_FILE="plan.json"
 CALLER_FILE="caller.jsonl"
 CALLER_REFUSED_FILE="caller.refused.jsonl"
 RECORD_FILE="record.v1alpha1.json"
+MODEL_SOURCE_COPY="pins/model-source.v1.json"
+RUNTIME_PACKAGE_COPY="pins/container-package.v1.json"
 
 # A path that starts with a slash is an argument for a container here, and not
 # a path of this host.
@@ -116,10 +124,24 @@ run() {
 }
 
 refuse() {
+  if [ -n "${UP_STARTED:-}" ] && [ ! -e "${WORK}/up-refusal" ]; then
+    printf 'preparation-failed' >"${WORK}/up-refusal"
+    printf 'The phase up failed. Run the phase qualify: it writes the REFUSED record.\n'
+  fi
   printf '\nREFUSED: %s. Nothing after it was run, and nothing was cleaned up.\n' "$1"
   printf 'The operator reads the state of the cluster first.\n'
   run now
   exit 1
+}
+
+# Ends the phase up with one stated reason, which the header of the qualification
+# states as upRefusal. Nothing more is installed, and nothing is changed to fit.
+up_refuse() {
+  printf '%s' "$1" >"${WORK}/up-refusal"
+  printf '\nThe phase up refused: %s (%s). Nothing more is installed, and nothing is changed to fit.\n' "$2" "$1"
+  printf 'Run the phase qualify: it writes the REFUSED record from what exists.\n'
+  run now
+  exit 0
 }
 
 # Runs one precondition or preparation command. A failure ends the phase.
@@ -169,12 +191,7 @@ capacity_reading() {
     category="$(sed -n 's/.*refusing to select a target: \([a-z][a-z-]*[a-z]\):.*/\1/p' \
       "${WORK}/capacity-${name}.err" | head -n 1)"
     [ -z "${category}" ] || printf '%s' "${category}" >"${WORK}/target-refusal"
-    printf '%s' "${name}" >"${WORK}/up-refused"
-    printf '\nThe capacity reading %s exited %s. Target refusal: %s. Nothing more is installed, and nothing is changed to fit.\n' \
-      "${name}" "${LAST}" "${category:-none}"
-    printf 'Run the phase qualify: it writes the REFUSED record from what exists.\n'
-    run now
-    exit 0
+    up_refuse capacity "the capacity reading ${name} exited ${LAST}, target refusal: ${category:-none}"
   fi
 }
 
@@ -191,18 +208,25 @@ up() {
   run git --version
 
   step "P1. The executing commit, the working tree, and the commit the controller will read"
-  prepare git rev-parse HEAD
-  HEAD_COMMIT="$(git rev-parse HEAD)"
-  prepare git status --porcelain --untracked-files=all
-  [ -z "$(git status --porcelain --untracked-files=all)" ] || refuse "the working tree is not clean"
-  prepare git ls-remote origin refs/heads/main
-  REMOTE_COMMIT="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
-  printf 'executing commit: %s\nremote main:      %s\n' "${HEAD_COMMIT}" "${REMOTE_COMMIT}"
-  prepare git diff --stat --exit-code "${REMOTE_COMMIT}" HEAD -- charts gitops infra/argocd
   [ ! -e "${WORK}/started-at" ] || refuse "the work directory of this run name was used before"
   mkdir -p "${WORK}"
   now >"${WORK}/started-at"
+  # From here on a refusal or a failure of up is kept as upRefusal.
+  UP_STARTED=1
+  prepare git rev-parse HEAD
+  HEAD_COMMIT="$(git rev-parse HEAD)"
   printf '%s' "${HEAD_COMMIT}" >"${WORK}/executing-commit"
+  prepare git status --porcelain --untracked-files=all
+  [ -z "$(git status --porcelain --untracked-files=all)" ] || up_refuse working-tree "the working tree is not clean"
+  prepare git ls-remote origin refs/heads/main
+  REMOTE_COMMIT="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
+  printf 'executing commit: %s\nremote main:      %s\n' "${HEAD_COMMIT}" "${REMOTE_COMMIT}"
+  run git diff --stat --exit-code "${REMOTE_COMMIT}" HEAD -- charts gitops infra/argocd
+  case "${LAST}" in
+    0) ;;
+    1) up_refuse delivery-paths "the delivery paths differ from the remote main" ;;
+    *) refuse "the delivery paths were not compared with the remote main" ;;
+  esac
 
   step "P2. The files this run reads, and the frozen procedure"
   run sha256sum "$0" "${CAPACITY_SCRIPT}" "${APPLICATION_SCRIPT}" "${BOOTSTRAP}" \
@@ -211,7 +235,12 @@ up() {
     "${RELEASE_DIRECTORY}/values.generated.yaml" "${RELEASE_DIRECTORY}/rendered-workload-release.yaml"
   prepare uv run --locked python -m tools.gitops_desired_state --check
   prepare uv run --locked python -m tools.experiment_freeze --check
-  prepare uv run --locked python -m tools.experiment_freeze --changes "${FREEZE_RECORD}"
+  run uv run --locked python -m tools.experiment_freeze --changes "${FREEZE_RECORD}"
+  case "${LAST}" in
+    0) ;;
+    1) up_refuse frozen-inputs "a material file differs from its pin" ;;
+    *) refuse "the freeze record was not read" ;;
+  esac
   read_into "${WORK}/expected.json" uv run --locked python -m tools.runtime_model_cache --expected
   [ "${LAST}" -eq 0 ] || refuse "the expected model identity was not derived"
   run cat "${WORK}/expected.json"
@@ -223,9 +252,11 @@ up() {
   run kubectl version --context docker-desktop
   run k get nodes -o wide
   read_into "${WORK}/namespaces.before" k get namespaces -o name
+  [ "${LAST}" -eq 0 ] || refuse "the namespaces were not read"
   read_into "${WORK}/crds.before" k get customresourcedefinitions -o name
-  if grep -q -e "^namespace/${NAMESPACE}\$" -e "^namespace/${CONTROLLER_NAMESPACE}\$" "${WORK}/namespaces.before" 2>/dev/null; then
-    refuse "the cluster already holds the release namespace or the controller namespace"
+  [ "${LAST}" -eq 0 ] || refuse "the custom resource definitions were not read"
+  if grep -q -e "^namespace/${NAMESPACE}\$" -e "^namespace/${CONTROLLER_NAMESPACE}\$" "${WORK}/namespaces.before"; then
+    up_refuse release-present "the cluster already holds the release namespace or the controller namespace"
   fi
 
   step "C1. The capacity gate, before anything is installed"
@@ -292,7 +323,7 @@ up() {
 }
 
 # --------------------------------------------------------------------------
-# Q6: the model cache observation, in the layout that its tool reads.
+# S6: the model cache observation, in the layout that its tool reads.
 model_cache() {
   local M="$1" pods model_path port alias_argument forward status
   mkdir -p "${M}"
@@ -390,7 +421,7 @@ PYTHON
   read_into "${A}/${MODEL_CACHE_RECORD}" uv run --locked python -m tools.runtime_model_cache "${M}"
 }
 
-# Q7: one RP-1 run of the caller runner against the API Service.
+# S7: one RP-1 run of the caller runner against the API Service.
 caller() {
   local release_id waited status_line runs_dir
   release_id="$(uv run --locked python -c 'import json,sys; print(json.load(open(sys.argv[1]))[0]["release"]["releaseId"])' \
@@ -428,7 +459,7 @@ caller() {
   [ ! -f "${runs_dir}/caller.refused.jsonl" ] || tr -d '\r' <"${runs_dir}/caller.refused.jsonl" >"${A}/${CALLER_REFUSED_FILE}"
 }
 
-# Q8: the header. Each value is what this driver read. A value it did not read
+# S8: the header. Each value is what this driver read. A value it did not read
 # is null, or the state unread.
 write_header() {
   uv run --locked python - "${A}" "${QID}" "${HEAD_COMMIT}" "${DESIRED:-}" "${TREE_STATE}" "${DIFF_STATE}" \
@@ -483,6 +514,7 @@ header = {
     "controllerVersion": version if controller != "unread" else None,
     "controllerVerified": {"verified": True, "failed": False}.get(controller),
     "targetRefusal": text(work / "target-refusal"),
+    "upRefusal": text(work / "up-refusal"),
     "startedAt": text(Path(directory) / "started-at"),
     "finishedAt": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
 }
@@ -500,6 +532,11 @@ qualify() {
   [ -e "${WORK}/started-at" ] || { printf 'REFUSED: %s holds no start time. Run the phase up first.\n' "${WORK}"; exit 1; }
   A="${WORK}/${QID}"
   [ ! -e "${A}" ] || { printf 'REFUSED: %s exists. One qualification identifier is one qualification.\n' "${A}"; exit 1; }
+  # The collectors name their directories by the identifier. A directory of an
+  # earlier qualification of another run name would be copied as this one's.
+  for used in "${OBSERVATIONS}/${QID}" "${ENDPOINT_COLLECTIONS}/${QID}" "${RUNNER_RUNS}/${QID}"; do
+    [ ! -e "${used}" ] || { printf 'REFUSED: %s exists. One qualification identifier is one qualification.\n' "${used}"; exit 1; }
+  done
   # From here on the identifier is spent: the next qualification takes the next
   # number, and this directory is kept, whatever it shows.
   mkdir -p "${A}"
@@ -509,7 +546,7 @@ qualify() {
   # The scripts call `python`. The locked environment comes first.
   export PATH="$(pwd)/.venv/Scripts:$(pwd)/.venv/bin:${PATH}"
 
-  step "Q0. The executing commit, the working tree, the desired revision, and the frozen procedure"
+  step "S0. The executing commit, the working tree, the desired revision, and the frozen procedure"
   run now
   HEAD_COMMIT="$(git rev-parse HEAD)"
   TREE_STATE="unread"
@@ -537,6 +574,10 @@ qualify() {
   esac
   run sha256sum "$0" "${CAPACITY_SCRIPT}" "${ENDPOINT_SCRIPT}" "${APPLICATION_SCRIPT}" "${RUNNER_SCRIPT}" \
     scripts/environment/lib.sh tools/environment_qualification/core.py "${FREEZE_RECORD}"
+  # The two pin files that the tool holds to the content the freeze record pins.
+  mkdir -p "${A}/pins"
+  tr -d '\r' <docs/serving/model-source.v1.json >"${A}/${MODEL_SOURCE_COPY}"
+  tr -d '\r' <deploy/serving/runtime/container-package.v1.json >"${A}/${RUNTIME_PACKAGE_COPY}"
 
   local collection
   collection="$(cat "${WORK}/capacity-collection" 2>/dev/null)"
@@ -544,21 +585,21 @@ qualify() {
     run cp -r "${CAPACITY_COLLECTIONS}/${collection}" "${A}/capacity"
   fi
 
-  if [ -e "${WORK}/up-refused" ]; then
-    printf '\nThe phase up refused at the capacity reading %s. No cluster state is read.\n' "$(cat "${WORK}/up-refused")"
+  if [ -e "${WORK}/up-refusal" ]; then
+    printf '\nThe phase up refused or failed: %s. No cluster state is read.\n' "$(cat "${WORK}/up-refusal")"
   elif [ "${TREE_STATE}" != "clean" ] || [ "${DIFF_STATE}" != "none" ] || [ "${FREEZE_STATE}" != "none" ]; then
     printf '\nThe working tree, the delivery paths, or the frozen inputs are not at their state. No cluster state is read.\n'
   else
-    step "Q1. The provenance of the target release at the desired revision"
+    step "S1. The provenance of the target release at the desired revision"
     read_into "${A}/${PROVENANCE_FILE}" uv run --locked python -m tools.desired_state_provenance \
       --revision "${DESIRED}" "${RELEASE_KEY}"
     run cat "${A}/${PROVENANCE_FILE}"
 
-    step "Q2. The verification of the delivery controller by its bootstrap procedure"
+    step "S2. The verification of the delivery controller by its bootstrap procedure"
     run bash "${BOOTSTRAP}" verify
     if [ "${LAST}" -eq 0 ]; then CONTROLLER_STATE="verified"; else CONTROLLER_STATE="failed"; fi
 
-    step "Q3. The reconciliation observation"
+    step "S3. The reconciliation observation"
     run bash "${APPLICATION_SCRIPT}" observe --samples "${RECONCILIATION_SAMPLES}" \
       --interval "${RECONCILIATION_INTERVAL_SECONDS}" --into "${QID}"
     if [ -d "${OBSERVATIONS}/${QID}" ]; then
@@ -567,25 +608,34 @@ qualify() {
         "${A}/reconciliation" --key "${RELEASE_KEY}"
     fi
 
-    step "Q4. The Deployments of the release"
+    step "S4. The Deployments of the release"
     read_into "${A}/${DEPLOYMENTS_FILE}" k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json
 
-    step "Q5. The endpoint state of the two Services"
+    step "S5. The endpoint state of the two Services"
     run bash "${ENDPOINT_SCRIPT}" --into "${QID}"
     [ ! -d "${ENDPOINT_COLLECTIONS}/${QID}" ] || run cp -r "${ENDPOINT_COLLECTIONS}/${QID}" "${A}/endpoints"
 
-    step "Q6. The model cache observation of each runtime pod"
+    step "S6. The model cache observation of each runtime pod"
     model_cache "${A}/model-cache"
 
-    step "Q7. The caller runner: one RP-1 run against the API Service"
+    step "S7. The caller runner: one RP-1 run against the API Service"
     caller
   fi
 
-  step "Q8. The header of the directory"
+  step "S8. The header of the directory"
   write_header
 
-  step "Q9. The record"
-  read_into "${A}/${RECORD_FILE}" uv run --locked python -m tools.environment_qualification "${A}"
+  step "S9. The record"
+  # Exit status 0 is QUALIFIED and 5 is REFUSED. Each of the two prints the record,
+  # and the record is kept. Any other status printed no record.
+  printf '$ uv run --locked python -m tools.environment_qualification %s > %s/%s\n' "${A}" "${A}" "${RECORD_FILE}"
+  uv run --locked python -m tools.environment_qualification "${A}" >"${WORK}/record.tmp"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+  case "${LAST}" in
+    0 | 5) tr -d '\r' <"${WORK}/record.tmp" >"${A}/${RECORD_FILE}" ;;
+    *) printf 'The tool printed no record. The directory is kept without one.\n'; run now; exit 1 ;;
+  esac
   printf '$ print the result and the state of each rule of %s/%s\n' "${A}" "${RECORD_FILE}"
   uv run --locked python - "${A}/${RECORD_FILE}" <<'PYTHON'
 import json

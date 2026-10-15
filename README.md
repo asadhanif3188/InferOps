@@ -290,7 +290,7 @@ reason that the record of that commit does not hold leaves no run out. The check
 not decide that a reason is true of a run, or that the run executed that commit. No committed freeze record registers such a
 reason, and no real run was left out. Since `V2-S6-001-PR1` the
 [Q1 environment and identity qualification](docs/environment/environment-qualification.md)
-is frozen before its first run: a driver and a tool decide whether one local environment
+is frozen before its first run: a driver collects and a tool decides whether one local environment
 holds the target topology of two API replicas and two runtime replicas at its exact
 identities, with the controller reconciled, both runtime replicas on the pinned model, and
 the caller runner completing real requests. The result is `QUALIFIED` or `REFUSED`. A

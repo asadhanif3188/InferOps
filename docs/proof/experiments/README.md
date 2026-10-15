@@ -953,14 +953,15 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
 [The Q1 page](../../environment/environment-qualification.md) describes each rule.
 
 - **It is a qualification, not an experiment.** Q1 injects no fault and derives no bound.
-  Q2, Q3, and Q4 are later work. No qualification is a result of E02 to E06, and no
-  claim cites one.
+  Any bound is later work. No qualification is a result of E02 to E06, and no claim
+  cites one.
 - **The result is `QUALIFIED` or `REFUSED`.** A refusal is kept, and it is not converted
   into a weaker target: no replica count, request, limit, or bound is changed to obtain
   `QUALIFIED`.
 - **It selects one environment.** A `QUALIFIED` record states the environment identity
   and its digest. E02A and E02B execute in that one environment, and a run whose identity
-  differs is not a run of the controlled comparison.
+  differs is not a run of the controlled comparison. This is a rule of the record: no
+  tool compares two identities yet, and no freeze record of E02A or E02B exists.
 - **It has its own directory.** The freeze check holds one experiment in each directory.
   A qualification is committed under `v2-q1/runs/q1-N/` with its record, whatever it shows.
 - **No qualification has run.** The record was registered by `V2-S6-001-PR1`, and no
