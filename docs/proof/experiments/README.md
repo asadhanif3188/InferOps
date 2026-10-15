@@ -39,6 +39,10 @@ point to the release's network policy as the cause. Revision 2 gives each run it
 `integration-2`, PASSED. Both are kept, and they are the first two run directories of
 the published [evidence layout](../../testing/experiment-evidence-layout.md) in this
 tree.
+**One record added by `V2-S6-001-PR1`**: [the Q1 environment qualification](#the-q1-environment-qualification),
+revision 1, in its own directory, committed before any qualification. It is a
+prerequisite of the V2 reliability experiments and not one of them, and no qualification
+has run.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -50,6 +54,7 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E01, contract-to-deployment determinism | 3 | [`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. It names the E01-D environment. E01-D ran once under it, in [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md), and PASSED under its criteria. No static part ran under it. Since that run, one pinned input differs from its pin: [the runner's committed-run listing](#the-e01-d-run) |
 | Sprint 5 integration validation, `s5-integration-validation` | 1 | [`v2-s5-integration/freeze-r1.v1alpha1.json`](v2-s5-integration/freeze-r1.v1alpha1.json) | One part, S5I, at C2 | Frozen before its first attempt. Not result-bearing: [see below](#the-sprint-5-integration-validation). One attempt ran under it, [`integration-1`](v2-s5-integration/runs/integration-1/result.md), and FAILED on S5I-AC2. Superseded by revision 2 on 2026-10-14, and kept unchanged |
 | Sprint 5 integration validation, `s5-integration-validation` | 2 | [`v2-s5-integration/freeze-r2.v1alpha1.json`](v2-s5-integration/freeze-r2.v1alpha1.json) | One part, S5I, at C2 | Frozen. A run brings its own network policy. One attempt ran under it, [`integration-2`](v2-s5-integration/runs/integration-2/result.md), and PASSED under its criteria |
+| Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). No qualification ran under it |
 
 ## Why a freeze comes first
 
@@ -934,3 +939,30 @@ the record, and the record states seven acceptance criteria, `S5I-AC1` to `S5I-A
 - **What neither attempt establishes.** A recovery time, an availability, a service
   level, a capacity, or a threshold; behaviour when a runtime pod is replaced; and
   behaviour on another provider, node count, or network plugin.
+
+## The Q1 environment qualification
+
+[`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) fixes Q1 before any
+qualification runs. Q1 decides whether one local environment holds the target topology
+of the desired-state release, two API replicas and two runtime replicas, at its exact
+identities, before a V2 reliability experiment runs. The procedure is
+[the driver beside it](v2-q1/procedure/q1-driver.txt), and the decision is made by
+[`tools/environment_qualification`](../../../tools/environment_qualification/core.py).
+Both are pinned inputs of the record. The record states seventeen acceptance criteria,
+`Q1-AC1` to `Q1-AC17`, and each is one rule of the tool, with the same statement.
+[The Q1 page](../../environment/environment-qualification.md) describes each rule.
+
+- **It is a qualification, not an experiment.** Q1 injects no fault and derives no bound.
+  Any bound is later work. No qualification is a result of E02 to E06, and no claim
+  cites one.
+- **The result is `QUALIFIED` or `REFUSED`.** A refusal is kept, and it is not converted
+  into a weaker target: no replica count, request, limit, or bound is changed to obtain
+  `QUALIFIED`.
+- **It selects one environment.** A `QUALIFIED` record states the environment identity
+  and its digest. E02A and E02B execute in that one environment, and a run whose identity
+  differs is not a run of the controlled comparison. This is a rule of the record: no
+  tool compares two identities yet, and no freeze record of E02A or E02B exists.
+- **It has its own directory.** The freeze check holds one experiment in each directory.
+  A qualification is committed under `v2-q1/runs/q1-N/` with its record, whatever it shows.
+- **No qualification has run.** The record was registered by `V2-S6-001-PR1`, and no
+  directory exists under `v2-q1/runs/`.

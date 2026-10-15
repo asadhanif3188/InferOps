@@ -1,0 +1,686 @@
+#!/usr/bin/env bash
+# Drives one Q1 environment and identity qualification of the V2 target
+# topology on the docker-desktop provider, and prints one transcript. Q1 is a
+# qualification. It is not a reliability experiment: it injects no fault, it
+# computes no bound, and it registers no claim. Run it from the repository root:
+#
+#   bash q1-driver.txt up RUN            read capacity, prepare the cluster, apply the release
+#   bash q1-driver.txt qualify RUN ID    read the release once, run the caller, write the record
+#   bash q1-driver.txt down RUN          remove what `up` installed
+#
+# RUN names the work directory of `up` and `down` (for example run-1). ID is
+# the qualification identifier, q1-N. One identifier is one qualification. It
+# is never reused, and every qualification is kept, whatever it shows.
+#
+# This file is a pinned input of the freeze record that it names. It runs from
+# the committed tree:
+#   bash docs/proof/experiments/v2-q1/procedure/q1-driver.txt
+# It writes only under .artifacts/, which Git ignores, so the working tree stays
+# clean.
+#
+# It downloads no model: one preparation Helm release fills the model cache
+# claim from the local seed image, and is uninstalled before the Application is
+# applied, as in the earlier runs on this provider.
+#
+# A refusal is a result. When `up` refuses or fails after its start time is
+# written, it writes why into upRefusal, installs nothing more, and changes
+# nothing to fit: no replica count, request, limit, or bound. The reasons are a
+# working tree that is not clean, delivery paths that differ from the remote
+# main, a changed material file, a cluster that already holds the release or
+# the controller, a refusal of the target check or of the capacity gate, and a
+# preparation step that failed. `qualify` then reads no cluster state, writes a
+# directory with what exists, and the record is REFUSED. When the working tree
+# is not clean, a material file differs from its pin, or the delivery paths
+# differ from the desired revision when `qualify` starts, it reads no cluster
+# state either, and the record is REFUSED. `qualify` writes the record whether
+# the result is QUALIFIED or REFUSED.
+#
+# What `qualify` does, in this order of steps S0 to S9, with no decision on what it reads:
+#   S0  the executing commit, the working tree, the desired revision, the
+#       freeze check, and the digests of the files it runs
+#   S1  the provenance of the target release at the desired revision
+#   S2  the verification of the delivery controller, and its pinned version
+#   S3  the reconciliation observation: RECONCILIATION_SAMPLES samples
+#   S4  the Deployments of the release
+#   S5  the endpoint state of the two Services
+#   S6  the model cache observation of each runtime pod: the verification log,
+#       the mount table, the file identity, one model listing, and one completion
+#       through a port-forward to that pod
+#   S7  the caller runner: one RP-1 run of CALLER_DURATION_SECONDS against the
+#       API Service, its collection, and its cleanup
+#   S8  the header of the directory
+#   S9  the record, which states the result
+# The tool that builds the record states the result. This driver states none.
+set -u
+
+PHASE="${1:?give the phase: up, qualify, or down}"
+RUN="${2:?give the run name, for example run-1}"
+QID="${3:-}"
+EXPERIMENT="v2-q1-environment-qualification"
+FREEZE_RECORD="docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+RELEASE_KEY="local-docker-desktop/support-assistant"
+WORK=".artifacts/v2-q1/${RUN}-driver"
+CAPACITY_COLLECTIONS=".artifacts/capacity-preflight/collections"
+ENDPOINT_COLLECTIONS=".artifacts/service-endpoint-state/collections"
+OBSERVATIONS=".artifacts/argocd-application/observations"
+RUNNER_RUNS=".artifacts/reliability-runner/runs"
+CAPACITY_SCRIPT="scripts/environment/capacity-preflight.sh"
+ENDPOINT_SCRIPT="scripts/environment/service-endpoint-state.sh"
+APPLICATION_SCRIPT="scripts/environment/argocd-application.sh"
+BOOTSTRAP="scripts/environment/argocd-bootstrap.sh"
+PREREQUISITES="scripts/environment/terraform-prerequisites.sh"
+RUNNER_SCRIPT="scripts/environment/reliability-runner.sh"
+NAMESPACE="inferops-release"
+CONTROLLER_NAMESPACE="argocd"
+APPLICATION="local-docker-desktop-support-assistant"
+API_DEPLOYMENT="inferops-inferops-llm"
+RUNTIME_DEPLOYMENT="inferops-inferops-llm-runtime"
+INSTANCE_SELECTOR="app.kubernetes.io/instance=inferops"
+RUNTIME_SELECTOR="app.kubernetes.io/instance=inferops,app.kubernetes.io/component=serving-runtime"
+RELEASE_DIRECTORY="gitops/environments/local-docker-desktop/workloads/support-assistant"
+KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings,poddisruptionbudgets"
+RUNTIME_PORT=8080
+FIRST_LOCAL_PORT=18320
+
+# The bounds of one qualification. They are fixed here, before any qualification.
+ROLLOUT_BUDGET_SECONDS=900
+RECONCILIATION_SAMPLES=5
+RECONCILIATION_INTERVAL_SECONDS=10
+CALLER_DURATION_SECONDS=60
+CALLER_REQUEST_CEILING=50
+JOB_WAIT_BOUND_SECONDS=600
+JOB_POLL_SECONDS=15
+
+# The files of a qualification directory. The tool restates each name.
+HEADER_FILE="run.json"
+CAPACITY_RECORD="capacity/record.v1alpha1.json"
+PROVENANCE_FILE="provenance.json"
+RECONCILIATION_RECORD="reconciliation.record.json"
+DEPLOYMENTS_FILE="deployments.json"
+ENDPOINTS_RECORD="endpoints/record.v1alpha1.json"
+MODEL_CACHE_RECORD="model-cache/record.v1alpha1.json"
+PLAN_FILE="plan.json"
+CALLER_FILE="caller.jsonl"
+CALLER_REFUSED_FILE="caller.refused.jsonl"
+RECORD_FILE="record.v1alpha1.json"
+MODEL_SOURCE_COPY="pins/model-source.v1.json"
+RUNTIME_PACKAGE_COPY="pins/container-package.v1.json"
+
+# A path that starts with a slash is an argument for a container here, and not
+# a path of this host.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
+step() { printf '\n##### %s\n' "$*"; }
+now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+# Runs one command, prints it, and prints its exit status. The status is also
+# left in LAST.
+run() {
+  printf '$ %s\n' "$*"
+  "$@"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+}
+
+refuse() {
+  if [ -n "${UP_STARTED:-}" ] && [ ! -e "${WORK}/up-refusal" ]; then
+    printf 'preparation-failed' >"${WORK}/up-refusal"
+    printf 'The phase up failed. Run the phase qualify: it writes the REFUSED record.\n'
+  fi
+  printf '\nREFUSED: %s. Nothing after it was run, and nothing was cleaned up.\n' "$1"
+  printf 'The operator reads the state of the cluster first.\n'
+  run now
+  exit 1
+}
+
+# Ends the phase up with one stated reason, which the header of the qualification
+# states as upRefusal. Nothing more is installed, and nothing is changed to fit.
+up_refuse() {
+  printf '%s' "$1" >"${WORK}/up-refusal"
+  printf '\nThe phase up refused: %s (%s). Nothing more is installed, and nothing is changed to fit.\n' "$2" "$1"
+  printf 'Run the phase qualify: it writes the REFUSED record from what exists.\n'
+  run now
+  exit 0
+}
+
+# Runs one precondition or preparation command. A failure ends the phase.
+prepare() {
+  run "$@"
+  [ "${LAST}" -eq 0 ] || refuse "a precondition or a preparation step failed: $*"
+}
+
+k() { kubectl --context docker-desktop "$@"; }
+
+# Writes the output of one read to a file, with LF line ends, and prints the
+# command and its exit status. The file is not written when the read fails.
+read_into() {
+  local target="$1"
+  shift
+  printf '$ %s > %s\n' "$*" "${target}"
+  if "$@" >"${WORK}/read.tmp" 2>"${WORK}/read.err"; then
+    tr -d '\r' <"${WORK}/read.tmp" >"${target}"
+    LAST=0
+  else
+    LAST=$?
+    cat "${WORK}/read.err"
+  fi
+  printf '[exit %s]\n' "${LAST}"
+}
+
+independent_state() {
+  run k get namespaces -o name
+  run k get customresourcedefinitions -o name
+  run k get "${KINDS}" -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o name
+  run k get persistentvolumeclaims -n "${NAMESPACE}" -o name
+}
+
+# One reading of the V2 capacity gate, kept whatever its result. $1 names it.
+# A refusal of the target check is kept as its category, and only the category:
+# the message can name a context. A refusal ends `up`, and `qualify` writes the
+# REFUSED record.
+capacity_reading() {
+  local name="$1" category
+  printf '$ bash %s --into %s 2> %s/capacity-%s.err\n' "${CAPACITY_SCRIPT}" "${RUN}-${name}" "${WORK}" "${name}"
+  bash "${CAPACITY_SCRIPT}" --into "${RUN}-${name}" 2>"${WORK}/capacity-${name}.err"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+  run tail -n 20 "${WORK}/capacity-${name}.err"
+  printf '%s' "${RUN}-${name}" >"${WORK}/capacity-collection"
+  if [ "${LAST}" -ne 0 ]; then
+    category="$(sed -n 's/.*refusing to select a target: \([a-z][a-z-]*[a-z]\):.*/\1/p' \
+      "${WORK}/capacity-${name}.err" | head -n 1)"
+    [ -z "${category}" ] || printf '%s' "${category}" >"${WORK}/target-refusal"
+    up_refuse capacity "the capacity reading ${name} exited ${LAST}, target refusal: ${category:-none}"
+  fi
+}
+
+# --------------------------------------------------------------------------
+up() {
+  step "0. Start: the date and the tool versions"
+  run now
+  run kubectl version --client -o json
+  run helm version --short
+  run terraform version
+  run docker version --format '{{.Client.Version}} {{.Server.Version}}'
+  run uv --version
+  run uv run --locked python --version
+  run git --version
+
+  step "P1. The executing commit, the working tree, and the commit the controller will read"
+  [ ! -e "${WORK}/started-at" ] || refuse "the work directory of this run name was used before"
+  mkdir -p "${WORK}"
+  now >"${WORK}/started-at"
+  # From here on a refusal or a failure of up is kept as upRefusal.
+  UP_STARTED=1
+  prepare git rev-parse HEAD
+  HEAD_COMMIT="$(git rev-parse HEAD)"
+  printf '%s' "${HEAD_COMMIT}" >"${WORK}/executing-commit"
+  prepare git status --porcelain --untracked-files=all
+  [ -z "$(git status --porcelain --untracked-files=all)" ] || up_refuse working-tree "the working tree is not clean"
+  prepare git ls-remote origin refs/heads/main
+  REMOTE_COMMIT="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
+  printf 'executing commit: %s\nremote main:      %s\n' "${HEAD_COMMIT}" "${REMOTE_COMMIT}"
+  run git diff --stat --exit-code "${REMOTE_COMMIT}" HEAD -- charts gitops infra/argocd
+  case "${LAST}" in
+    0) ;;
+    1) up_refuse delivery-paths "the delivery paths differ from the remote main" ;;
+    *) refuse "the delivery paths were not compared with the remote main" ;;
+  esac
+
+  step "P2. The files this run reads, and the frozen procedure"
+  run sha256sum "$0" "${CAPACITY_SCRIPT}" "${APPLICATION_SCRIPT}" "${BOOTSTRAP}" \
+    "${PREREQUISITES}" scripts/environment/lib.sh infra/argocd/local-docker-desktop-support-assistant.yaml \
+    infra/argocd/workloads-project.yaml charts/inferops-llm/Chart.yaml \
+    "${RELEASE_DIRECTORY}/values.generated.yaml" "${RELEASE_DIRECTORY}/rendered-workload-release.yaml"
+  prepare uv run --locked python -m tools.gitops_desired_state --check
+  prepare uv run --locked python -m tools.experiment_freeze --check
+  run uv run --locked python -m tools.experiment_freeze --changes "${FREEZE_RECORD}"
+  case "${LAST}" in
+    0) ;;
+    1) up_refuse frozen-inputs "a material file differs from its pin" ;;
+    *) refuse "the freeze record was not read" ;;
+  esac
+  read_into "${WORK}/expected.json" uv run --locked python -m tools.runtime_model_cache --expected
+  [ "${LAST}" -eq 0 ] || refuse "the expected model identity was not derived"
+  run cat "${WORK}/expected.json"
+
+  step "P3. The provider, and the cluster before the run"
+  printf '$ export INFEROPS_PROVIDER=docker-desktop\n'
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  run kubectl version --context docker-desktop
+  run k get nodes -o wide
+  read_into "${WORK}/namespaces.before" k get namespaces -o name
+  [ "${LAST}" -eq 0 ] || refuse "the namespaces were not read"
+  read_into "${WORK}/crds.before" k get customresourcedefinitions -o name
+  [ "${LAST}" -eq 0 ] || refuse "the custom resource definitions were not read"
+  if grep -q -e "^namespace/${NAMESPACE}\$" -e "^namespace/${CONTROLLER_NAMESPACE}\$" "${WORK}/namespaces.before"; then
+    up_refuse release-present "the cluster already holds the release namespace or the controller namespace"
+  fi
+
+  step "C1. The capacity gate, before anything is installed"
+  capacity_reading before-install
+
+  step "P4. The API image at the executing commit, and the model seed image"
+  prepare bash scripts/environment/api-image.sh build
+  prepare bash scripts/environment/api-image.sh load
+  API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)" || refuse "api-image.sh digest failed"
+  printf 'API image digest: %s\n' "${API_IMAGE_DIGEST}"
+  printf '%s' "${API_IMAGE_DIGEST}" >"${WORK}/api-image-digest"
+  prepare bash scripts/environment/model-seed-image.sh build
+  prepare bash scripts/environment/model-seed-image.sh load
+
+  step "P5. The platform namespace and the model cache claim"
+  prepare bash "${PREREQUISITES}" apply
+
+  step "P6. Fill the claim from the seed image with one preparation Helm release, and remove that release"
+  bash scripts/environment/api-image.sh values >"${WORK}/api-image-values.yaml" || refuse "api-image.sh values failed"
+  bash scripts/environment/model-seed-image.sh values >"${WORK}/model-seed-values.yaml" || refuse "model-seed-image.sh values failed"
+  # The preparation release is the V1 real values file: one API replica and one
+  # runtime replica. It is not the release that Q1 qualifies. Its acquisition
+  # job limit is raised because the chart's limit is too small on this cluster.
+  prepare helm --kube-context docker-desktop install inferops charts/inferops-llm \
+    --namespace "${NAMESPACE}" \
+    --values charts/inferops-llm/ci/real-values.yaml \
+    --values "${WORK}/api-image-values.yaml" \
+    --values "${WORK}/model-seed-values.yaml" \
+    --set model.acquisition.resources.limits.memory=2Gi \
+    --wait --timeout 15m
+  prepare helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --wait --timeout 600s
+  left="unread"
+  for _ in $(seq 1 120); do
+    left="$(k get "${KINDS}" -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o name)" ||
+      refuse "the query for what the preparation release left did not answer"
+    [ -n "${left}" ] || break
+    sleep 2
+  done
+  printf 'What the preparation release left: %s\n' "${left:-nothing}"
+  [ -z "${left}" ] || refuse "the preparation release left an object"
+
+  step "P7. Install the GitOps controller with the bootstrap procedure, and verify it"
+  prepare bash "${BOOTSTRAP}" install
+  prepare bash "${BOOTSTRAP}" verify
+
+  step "C2. The capacity gate again, before the Application is applied. Q1 reads this reading"
+  capacity_reading before-apply
+
+  step "D1. Apply the project and the Application"
+  run now
+  run bash "${APPLICATION_SCRIPT}" apply --api-image-digest "$(cat "${WORK}/api-image-digest")"
+
+  step "D2. Wait for the two rollouts, with one bound each"
+  run k rollout status "deployment/${API_DEPLOYMENT}" -n "${NAMESPACE}" --timeout="${ROLLOUT_BUDGET_SECONDS}s"
+  run k rollout status "deployment/${RUNTIME_DEPLOYMENT}" -n "${NAMESPACE}" --timeout="${ROLLOUT_BUDGET_SECONDS}s"
+  run now
+
+  step "D3. What the controller reports"
+  run bash "${APPLICATION_SCRIPT}" verify
+  run k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+    -o 'jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status}{"\n"}'
+  run k get pods -n "${NAMESPACE}" -o wide
+  run now
+}
+
+# --------------------------------------------------------------------------
+# S6: the model cache observation, in the layout that its tool reads.
+model_cache() {
+  local M="$1" pods model_path port alias_argument forward status
+  mkdir -p "${M}"
+  cp "${WORK}/expected.json" "${M}/expected.json"
+  k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" -o 'jsonpath={.status.sync.revision}' |
+    tr -d '\r' >"${A}/reported-revision"
+  read_into "${M}/runtime-pods.json" k get pods -n "${NAMESPACE}" -l "${RUNTIME_SELECTOR}" -o json
+  read_into "${M}/claims.json" k get persistentvolumeclaims -n "${NAMESPACE}" -o json
+  read_into "${M}/volumes.json" k get persistentvolumes -o json
+  read_into "${M}/events.txt" k get events -n "${NAMESPACE}" --field-selector involvedObject.kind=Pod \
+    -o 'jsonpath={range .items[*]}{.involvedObject.name}{"\t"}{.reason}{"\t"}{.count}{"\t"}{.firstTimestamp}{"\t"}{.lastTimestamp}{"\t"}{.message}{"\n"}{end}'
+  pods="$(k get pods -n "${NAMESPACE}" -l "${RUNTIME_SELECTOR}" -o 'jsonpath={range .items[*]}{.metadata.name}{"\n"}{end}' | tr -d '\r')"
+  model_path="$(uv run --locked python -c 'import json,sys; print(json.load(open(sys.argv[1]))["containerPath"])' "${M}/expected.json" | tr -d '\r')"
+  printf 'runtime pods:\n%s\nartifact path: %s\n' "${pods}" "${model_path}"
+  for pod in ${pods}; do
+    read_into "${M}/verify-model.${pod}.txt" k logs "${pod}" -n "${NAMESPACE}" -c verify-model
+    read_into "${M}/mountinfo.${pod}.txt" k exec "${pod}" -n "${NAMESPACE}" -c runtime -- cat /proc/self/mountinfo
+    read_into "${M}/artifact.${pod}.txt" k exec "${pod}" -n "${NAMESPACE}" -c runtime -- stat -c '%d %i %s' "${model_path}"
+  done
+  port="${FIRST_LOCAL_PORT}"
+  for pod in ${pods}; do
+    port=$((port + 1))
+    alias_argument="$(k get pod "${pod}" -n "${NAMESPACE}" -o 'jsonpath={.spec.containers[0].args}' |
+      uv run --locked python -c 'import json,sys; a=json.load(sys.stdin); print(a[a.index("--alias")+1])' | tr -d '\r')"
+    printf '$ kubectl --context docker-desktop port-forward pod/%s %s:%s -n %s &\n' "${pod}" "${port}" "${RUNTIME_PORT}" "${NAMESPACE}"
+    # kubectl is started directly. A background shell function is a subshell,
+    # and killing it leaves kubectl listening on the port.
+    kubectl --context docker-desktop port-forward "pod/${pod}" "${port}:${RUNTIME_PORT}" -n "${NAMESPACE}" >"${WORK}/forward.${pod}.txt" 2>&1 &
+    forward=$!
+    for _ in $(seq 1 30); do
+      grep -q 'Forwarding from' "${WORK}/forward.${pod}.txt" 2>/dev/null && break
+      sleep 1
+    done
+    if grep -q 'Forwarding from' "${WORK}/forward.${pod}.txt" && kill -0 "${forward}" 2>/dev/null; then
+      printf '$ curl GET http://127.0.0.1:%s/v1/models\n' "${port}"
+      status="$(curl --silent --show-error --max-time 60 --output "${WORK}/models.${pod}.raw.json" --write-out '%{http_code}' "http://127.0.0.1:${port}/v1/models")"
+      printf '[exit %s] http_status=%s\n' "$?" "${status}"
+      uv run --locked python - "${WORK}/models.${pod}.raw.json" "${status}" "${M}/models.${pod}.json" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+
+raw, status, out = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    listed = json.loads(Path(raw).read_text(encoding="utf-8"))["data"][0]
+except (OSError, ValueError, KeyError, IndexError, TypeError):
+    listed = {}
+document = {
+    "httpStatus": int(status) if status.isdigit() else None,
+    "id": listed.get("id"),
+    "meta": listed.get("meta"),
+}
+Path(out).write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+print(json.dumps(document, sort_keys=True))
+PYTHON
+      printf '$ curl POST http://127.0.0.1:%s/v1/chat/completions, model %s, max_tokens 16, once\n' "${port}" "${alias_argument}"
+      status="$(curl --silent --show-error --max-time 300 --output "${WORK}/completion.${pod}.raw.json" --write-out '%{http_code}' \
+        --header 'Content-Type: application/json' \
+        --data "{\"model\":\"${alias_argument}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word: ready\"}],\"max_tokens\":16,\"stream\":false}" \
+        "http://127.0.0.1:${port}/v1/chat/completions")"
+      printf '[exit %s] http_status=%s\n' "$?" "${status}"
+      uv run --locked python - "${WORK}/completion.${pod}.raw.json" "${status}" "${M}/completion.${pod}.json" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+
+raw, status, out = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    answer = json.loads(Path(raw).read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    answer = {}
+if not isinstance(answer, dict):
+    answer = {}
+choices = answer.get("choices") or [{}]
+usage = answer.get("usage") or {}
+document = {
+    "httpStatus": int(status) if status.isdigit() else None,
+    "model": answer.get("model"),
+    "finishReason": choices[0].get("finish_reason"),
+    "promptTokens": usage.get("prompt_tokens"),
+    "completionTokens": usage.get("completion_tokens"),
+}
+Path(out).write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+print(json.dumps(document, sort_keys=True))
+PYTHON
+    else
+      printf 'The port-forward to %s did not listen. No request was sent to that pod.\n' "${pod}"
+    fi
+    kill "${forward}" 2>/dev/null
+    wait "${forward}" 2>/dev/null
+  done
+  printf '{\n  "schema": "inferops.io/runtime-model-cache-collection/v1alpha1",\n  "runId": "%s",\n  "provider": "docker-desktop",\n  "namespace": "%s",\n  "executingCommit": "%s",\n  "reportedRevision": "%s",\n  "startedAt": "%s",\n  "collectedAt": "%s"\n}\n' \
+    "${QID}" "${NAMESPACE}" "${HEAD_COMMIT}" "$(cat "${A}/reported-revision")" "$(cat "${A}/started-at")" "$(now)" \
+    >"${M}/run.json"
+  read_into "${A}/${MODEL_CACHE_RECORD}" uv run --locked python -m tools.runtime_model_cache "${M}"
+}
+
+# S7: one RP-1 run of the caller runner against the API Service.
+caller() {
+  local release_id waited status_line runs_dir
+  release_id="$(uv run --locked python -c 'import json,sys; print(json.load(open(sys.argv[1]))[0]["release"]["releaseId"])' \
+    "${A}/${PROVENANCE_FILE}" 2>/dev/null | tr -d '\r')"
+  printf 'provenance release identifier: %s\n' "${release_id:-none}"
+  if [ -z "${release_id}" ]; then
+    printf 'No release identifier was read. The runner is not started.\n'
+    return
+  fi
+  run bash "${RUNNER_SCRIPT}" start --experiment-id "${EXPERIMENT}" --run-id "${QID}" \
+    --duration-seconds "${CALLER_DURATION_SECONDS}" --request-ceiling "${CALLER_REQUEST_CEILING}" \
+    --release-id "${release_id}"
+  if [ "${LAST}" -eq 0 ]; then
+    waited=0
+    status_line=""
+    while [ "${waited}" -le "${JOB_WAIT_BOUND_SECONDS}" ]; do
+      status_line="$(k get job "inferops-reliability-${QID}" -n "${NAMESPACE}" \
+        -o 'jsonpath=succeeded={.status.succeeded} failed={.status.failed}' 2>&1 | tr -d '\r')"
+      case "${status_line}" in
+        *"succeeded=1"* | *"failed=1"*) break ;;
+      esac
+      sleep "${JOB_POLL_SECONDS}"
+      waited=$((waited + JOB_POLL_SECONDS))
+    done
+    printf 'after %ss of waiting: %s\n' "${waited}" "${status_line}"
+    run bash "${RUNNER_SCRIPT}" collect --run-id "${QID}"
+  else
+    printf 'The runner start exited %s. The run continues to the cleanup.\n' "${LAST}"
+  fi
+  run bash "${RUNNER_SCRIPT}" cleanup --run-id "${QID}"
+  run k get jobs,configmaps,pods,networkpolicies -n "${NAMESPACE}" -l "inferops.io/run-id=${QID}" -o name
+  runs_dir="${RUNNER_RUNS}/${QID}"
+  [ ! -f "${runs_dir}/plan.json" ] || tr -d '\r' <"${runs_dir}/plan.json" >"${A}/${PLAN_FILE}"
+  [ ! -f "${runs_dir}/caller.jsonl" ] || tr -d '\r' <"${runs_dir}/caller.jsonl" >"${A}/${CALLER_FILE}"
+  [ ! -f "${runs_dir}/caller.refused.jsonl" ] || tr -d '\r' <"${runs_dir}/caller.refused.jsonl" >"${A}/${CALLER_REFUSED_FILE}"
+}
+
+# S8: the header. Each value is what this driver read. A value it did not read
+# is null, or the state unread.
+write_header() {
+  uv run --locked python - "${A}" "${QID}" "${HEAD_COMMIT}" "${DESIRED:-}" "${TREE_STATE}" "${DIFF_STATE}" \
+    "${FREEZE_RECORD}" "${FREEZE_STATE}" "${CONTROLLER_STATE}" "${RELEASE_KEY}" <<'PYTHON'
+import hashlib
+import json
+import re
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+(directory, qid, commit, desired, tree, diff, freeze, freeze_state, controller,
+ release_key) = sys.argv[1:11]
+work = Path(directory).parent
+
+
+def text(path: Path) -> str | None:
+    try:
+        value = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value or None
+
+
+try:
+    freeze_sha = hashlib.sha256(
+        Path(freeze).read_bytes().replace(b"\r\n", b"\n")
+    ).hexdigest()
+except OSError:
+    freeze_sha = None
+version = None
+match = re.search(
+    r'^readonly INFEROPS_ARGOCD_VERSION="(v[0-9]+\.[0-9]+\.[0-9]+)"$',
+    Path("scripts/environment/argocd-bootstrap.sh").read_text(encoding="utf-8"),
+    re.MULTILINE,
+)
+if match:
+    version = match.group(1)
+header = {
+    "schema": "inferops.io/environment-qualification-collection/v1alpha1",
+    "qualificationId": qid,
+    "provider": "docker-desktop",
+    "releaseKey": release_key,
+    "executingCommit": commit,
+    "desiredRevision": desired or None,
+    "workingTree": tree,
+    "desiredStateDiff": diff,
+    "freezeRecord": freeze,
+    "freezeRecordSha256": freeze_sha,
+    "freezeChanges": freeze_state,
+    "apiImageDigest": text(work / "api-image-digest"),
+    "controllerVersion": version if controller != "unread" else None,
+    "controllerVerified": {"verified": True, "failed": False}.get(controller),
+    "targetRefusal": text(work / "target-refusal"),
+    "upRefusal": text(work / "up-refusal"),
+    "startedAt": text(Path(directory) / "started-at"),
+    "finishedAt": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+}
+Path(directory, "run.json").write_text(
+    json.dumps(header, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+)
+print(json.dumps(header, indent=2, sort_keys=True))
+PYTHON
+}
+
+# --------------------------------------------------------------------------
+qualify() {
+  [ -n "${QID}" ] || { printf 'REFUSED: qualify needs the qualification identifier as its third argument.\n'; exit 2; }
+  [[ "${QID}" =~ ^q1-[1-9][0-9]?$ ]] || { printf 'REFUSED: the qualification identifier is q1-N.\n'; exit 2; }
+  [ -e "${WORK}/started-at" ] || { printf 'REFUSED: %s holds no start time. Run the phase up first.\n' "${WORK}"; exit 1; }
+  A="${WORK}/${QID}"
+  [ ! -e "${A}" ] || { printf 'REFUSED: %s exists. One qualification identifier is one qualification.\n' "${A}"; exit 1; }
+  # The collectors name their directories by the identifier. A directory of an
+  # earlier qualification of another run name would be copied as this one's.
+  for used in "${OBSERVATIONS}/${QID}" "${ENDPOINT_COLLECTIONS}/${QID}" "${RUNNER_RUNS}/${QID}"; do
+    [ ! -e "${used}" ] || { printf 'REFUSED: %s exists. One qualification identifier is one qualification.\n' "${used}"; exit 1; }
+  done
+  # From here on the identifier is spent: the next qualification takes the next
+  # number, and this directory is kept, whatever it shows.
+  mkdir -p "${A}"
+  now >"${A}/started-at"
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  # The scripts call `python`. The locked environment comes first.
+  export PATH="$(pwd)/.venv/Scripts:$(pwd)/.venv/bin:${PATH}"
+
+  step "S0. The executing commit, the working tree, the desired revision, and the frozen procedure"
+  run now
+  HEAD_COMMIT="$(git rev-parse HEAD)"
+  TREE_STATE="unread"
+  DIFF_STATE="unread"
+  FREEZE_STATE="unread"
+  CONTROLLER_STATE="unread"
+  DESIRED=""
+  run git status --porcelain --untracked-files=all
+  if [ "${LAST}" -eq 0 ]; then
+    if [ -z "$(git status --porcelain --untracked-files=all)" ]; then TREE_STATE="clean"; else TREE_STATE="dirty"; fi
+  fi
+  DESIRED="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
+  printf 'executing commit: %s\ndesired revision: %s\nworking tree:     %s\n' "${HEAD_COMMIT}" "${DESIRED:-unread}" "${TREE_STATE}"
+  if [ -n "${DESIRED}" ]; then
+    run git diff --stat --exit-code "${DESIRED}" HEAD -- charts gitops infra/argocd
+    case "${LAST}" in
+      0) DIFF_STATE="none" ;;
+      1) DIFF_STATE="differs" ;;
+    esac
+  fi
+  run uv run --locked python -m tools.experiment_freeze --changes "${FREEZE_RECORD}"
+  case "${LAST}" in
+    0) FREEZE_STATE="none" ;;
+    1) FREEZE_STATE="listed" ;;
+  esac
+  run sha256sum "$0" "${CAPACITY_SCRIPT}" "${ENDPOINT_SCRIPT}" "${APPLICATION_SCRIPT}" "${RUNNER_SCRIPT}" \
+    scripts/environment/lib.sh tools/environment_qualification/core.py "${FREEZE_RECORD}"
+  # The two pin files that the tool holds to the content the freeze record pins.
+  mkdir -p "${A}/pins"
+  tr -d '\r' <docs/serving/model-source.v1.json >"${A}/${MODEL_SOURCE_COPY}"
+  tr -d '\r' <deploy/serving/runtime/container-package.v1.json >"${A}/${RUNTIME_PACKAGE_COPY}"
+
+  local collection
+  collection="$(cat "${WORK}/capacity-collection" 2>/dev/null)"
+  if [ -n "${collection}" ] && [ -d "${CAPACITY_COLLECTIONS}/${collection}" ]; then
+    run cp -r "${CAPACITY_COLLECTIONS}/${collection}" "${A}/capacity"
+  fi
+
+  if [ -e "${WORK}/up-refusal" ]; then
+    printf '\nThe phase up refused or failed: %s. No cluster state is read.\n' "$(cat "${WORK}/up-refusal")"
+  elif [ "${TREE_STATE}" != "clean" ] || [ "${DIFF_STATE}" != "none" ] || [ "${FREEZE_STATE}" != "none" ]; then
+    printf '\nThe working tree, the delivery paths, or the frozen inputs are not at their state. No cluster state is read.\n'
+  else
+    step "S1. The provenance of the target release at the desired revision"
+    read_into "${A}/${PROVENANCE_FILE}" uv run --locked python -m tools.desired_state_provenance \
+      --revision "${DESIRED}" "${RELEASE_KEY}"
+    run cat "${A}/${PROVENANCE_FILE}"
+
+    step "S2. The verification of the delivery controller by its bootstrap procedure"
+    run bash "${BOOTSTRAP}" verify
+    if [ "${LAST}" -eq 0 ]; then CONTROLLER_STATE="verified"; else CONTROLLER_STATE="failed"; fi
+
+    step "S3. The reconciliation observation"
+    run bash "${APPLICATION_SCRIPT}" observe --samples "${RECONCILIATION_SAMPLES}" \
+      --interval "${RECONCILIATION_INTERVAL_SECONDS}" --into "${QID}"
+    if [ -d "${OBSERVATIONS}/${QID}" ]; then
+      run cp -r "${OBSERVATIONS}/${QID}" "${A}/reconciliation"
+      read_into "${A}/${RECONCILIATION_RECORD}" uv run --locked python -m tools.reconciliation_evidence \
+        "${A}/reconciliation" --key "${RELEASE_KEY}"
+    fi
+
+    step "S4. The Deployments of the release"
+    read_into "${A}/${DEPLOYMENTS_FILE}" k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json
+
+    step "S5. The endpoint state of the two Services"
+    run bash "${ENDPOINT_SCRIPT}" --into "${QID}"
+    [ ! -d "${ENDPOINT_COLLECTIONS}/${QID}" ] || run cp -r "${ENDPOINT_COLLECTIONS}/${QID}" "${A}/endpoints"
+
+    step "S6. The model cache observation of each runtime pod"
+    model_cache "${A}/model-cache"
+
+    step "S7. The caller runner: one RP-1 run against the API Service"
+    caller
+  fi
+
+  step "S8. The header of the directory"
+  write_header
+
+  step "S9. The record"
+  # Exit status 0 is QUALIFIED and 5 is REFUSED. Each of the two prints the record,
+  # and the record is kept. Any other status printed no record.
+  printf '$ uv run --locked python -m tools.environment_qualification %s > %s/%s\n' "${A}" "${A}" "${RECORD_FILE}"
+  uv run --locked python -m tools.environment_qualification "${A}" >"${WORK}/record.tmp"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+  case "${LAST}" in
+    0 | 5) tr -d '\r' <"${WORK}/record.tmp" >"${A}/${RECORD_FILE}" ;;
+    *) printf 'The tool printed no record. The directory is kept without one.\n'; run now; exit 1 ;;
+  esac
+  printf '$ print the result and the state of each rule of %s/%s\n' "${A}" "${RECORD_FILE}"
+  uv run --locked python - "${A}/${RECORD_FILE}" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+
+record = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+print("result:", record["result"])
+for finding in record["findings"]:
+    print(finding["state"].ljust(13), finding["criterion"].ljust(8), finding["ruleId"] + ":", finding["detail"])
+PYTHON
+  run now
+}
+
+# --------------------------------------------------------------------------
+down() {
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  step "Z0. Start of the cleanup"
+  run now
+  independent_state
+
+  step "Z1. Remove the Application and what it applied, the controller, and the prerequisite layer"
+  run bash "${APPLICATION_SCRIPT}" remove --confirm
+  run helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" --ignore-not-found --wait --timeout 600s
+  run bash "${BOOTSTRAP}" remove --confirm
+  run bash "${PREREQUISITES}" destroy --confirm
+
+  step "Z2. The cluster after the run, compared with what step P3 read"
+  independent_state
+  k get namespaces -o name | tr -d '\r' >"${WORK}/namespaces.after"
+  k get customresourcedefinitions -o name | tr -d '\r' >"${WORK}/crds.after"
+  run diff "${WORK}/namespaces.before" "${WORK}/namespaces.after"
+  run diff "${WORK}/crds.before" "${WORK}/crds.after"
+  run k get persistentvolumes -o name
+  run k get pods --all-namespaces
+  run now
+}
+
+case "${PHASE}" in
+  up) up ;;
+  qualify) qualify ;;
+  down) down ;;
+  *)
+    printf 'REFUSED: the phase is up, qualify, or down.\n'
+    exit 2
+    ;;
+esac
