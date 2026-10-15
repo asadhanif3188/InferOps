@@ -10,7 +10,7 @@ change.** No claim is registered.
 |---|---|
 | Branch | `test/v2-s6-002-q2-runtime-startup` |
 | Base | `486ca49ae99ed7257a503e291d5710be88f7ce26`, the merge of `V2-S6-001-PR2` |
-| Freeze record | [`v2-q2/freeze-r1.v1alpha1.json`](../experiments/v2-q2/freeze-r1.v1alpha1.json), registered by this change |
+| Freeze record | [`v2-q2/freeze-r2.v1alpha1.json`](../experiments/v2-q2/freeze-r2.v1alpha1.json), registered by this change. It supersedes [revision 1](../experiments/v2-q2/freeze-r1.v1alpha1.json), registered by the first commit of this change, under which no characterization ran |
 | Driver | [`v2-q2/procedure/q2-driver.txt`](../experiments/v2-q2/procedure/q2-driver.txt), a pinned input of the record |
 | Tool | [`tools/runtime_startup`](../../../tools/runtime_startup/core.py) |
 | Page | [Q2: the runtime startup characterization](../../environment/runtime-startup-characterization.md) |
@@ -77,6 +77,35 @@ change derives none.
    preconditions with `--preconditions` before the first restart, and it requests no
    later restart after a rollout that did not complete within 1800 s.
 
+## What the first commit got wrong: revision 1
+
+The first commit registered revision 1. Its precondition `release-qualified` held the
+API Deployment to the API image digest that the record of `q1-1` states. That cannot
+hold: the phase `up` of the Q1 driver builds the API image again, and on 2026-10-15 the
+phase `up` of the work directory `q2run-1`, at the first commit, reported
+`sha256:cf30eac7cc2a75f9a91dac62c8c09a6080de5b2725d2b37262c15bafe924120d`, where `q1-1`
+states `sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1`. The
+freeze tool listed no changed input of the Q1 record, and the Dockerfile copies only
+`src/inferops` and three paths of `tools/`, which the Q1 record pins. The build inputs
+were unchanged, and the digest was another one. This record does not establish why.
+
+What was done, in order:
+
+1. The phase `up` completed, with exit status 0.
+2. **No characterization ran under revision 1.** No identifier was spent. Instead, the
+   operator read the capacity collection, the provenance, and the Deployments once into a
+   scratch directory outside the repository, with a header written by hand, and ran
+   `python -m tools.runtime_startup --preconditions` on it. Six preconditions were held.
+   `release-qualified` was not held, with the detail "the declared API image is not the
+   one q1-1 states". The environment digest was the one of `q1-1`. That reading is an
+   operator check: it is not committed, and it is not a characterization.
+3. The phase `down` removed the release. The namespaces and the custom resource
+   definitions after it were those before the phase `up`.
+4. The second commit registers revision 2, which holds the API Deployment to the digest
+   that the phase `up` declared, as Q1 does. It changes no other rule, bound, or step.
+   It classifies the two pins that moved: the tool (material) and the driver (not
+   material: it names revision 2).
+
 ## Parent-story acceptance
 
 | Criterion | State after the first commit |
@@ -98,6 +127,6 @@ Run from Git Bash on the Windows workstation, before the first commit.
 | Command | Result |
 |---|---|
 | `python -m pytest tests/domain/test_runtime_startup.py tests/testing/test_experiment_freeze.py tests/testing/test_experiment_evidence_layout.py -q` | Recorded in the commit message of the first commit |
-| `uv run --locked python -m tools.experiment_freeze --check` | `PASSED: 7 freeze record(s), every rule held` |
+| `uv run --locked python -m tools.experiment_freeze --check` | `PASSED: 7 freeze record(s), every rule held` at the first commit, and `PASSED: 8` at the second |
 | `uv run --locked python -m tools.experiment_freeze --changes` of the Q1 and the Q2 records | Unchanged |
 | `bash -n docs/proof/experiments/v2-q2/procedure/q2-driver.txt` | No syntax error |

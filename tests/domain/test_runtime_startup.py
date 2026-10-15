@@ -1065,6 +1065,55 @@ def test_the_freeze_record_freezes_the_target_and_states_no_value_of_s() -> None
     assert sorted(bounds["value"]) == ["S", "derivedLater"]
 
 
+def test_revision_2_supersedes_revision_1_and_changes_one_criterion() -> None:
+    """Revision 1 held the API image to the digest of q1-1, which a build of the
+    same inputs does not report again. No characterization ran under it. Revision 2
+    changes that one criterion and classifies the two pins that moved."""
+    r1_path = "docs/proof/experiments/v2-q2/freeze-r1.v1alpha1.json"
+    assert q2.FREEZE_RECORD == "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
+    r1 = json.loads((ROOT / r1_path).read_text(encoding="utf-8"))
+    r2 = _freeze()
+    assert r2["metadata"]["revision"] == 2
+    assert r2["metadata"]["supersedes"] == {
+        "path": r1_path,
+        "contentSha256": freeze.content_digest((ROOT / r1_path).read_bytes()),
+    }
+    (before,) = r1["fields"]["acceptanceCriteria"]
+    (after,) = r2["fields"]["acceptanceCriteria"]
+    changed = [
+        old["id"]
+        for old, new in zip(before["value"], after["value"], strict=True)
+        if old != new
+    ]
+    assert changed == ["Q2-AC6"]
+    assert (
+        "q1-1 states and that the phase up declared" in before["value"][5]["statement"]
+    )
+    assert sorted(item["path"] for item in r2["inputChanges"]) == [
+        "docs/proof/experiments/v2-q2/procedure/q2-driver.txt",
+        "tools/runtime_startup/core.py",
+    ]
+
+
+def test_an_api_image_other_than_that_of_q1_1_is_held_when_it_is_declared(
+    tmp_path: Path, root: Path
+) -> None:
+    """The phase up builds the API image again. The rule holds the Deployment to
+    the digest that the phase up declared, whatever digest q1-1 states."""
+    directory = _directory(tmp_path)
+    other = "sha256:" + "f" * 64
+    _header_set(apiImageDigest=other)(directory, root)
+    _edit(
+        "deployments.json",
+        lambda r: r["items"][0]["spec"]["template"]["spec"]["containers"][0].update(
+            image=f"localhost/inferops-api@{other}"
+        ),
+    )(directory, root)
+    record = _record(directory, root)
+    assert _state(record, "release-qualified") == q2.HELD
+    assert record["result"] == q2.CHARACTERIZED
+
+
 def test_the_freeze_record_holds_every_rule_of_the_freeze_check() -> None:
     assert freeze.check_record(_freeze(), q2.FREEZE_RECORD) == []
 

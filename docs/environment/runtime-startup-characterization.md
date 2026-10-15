@@ -16,7 +16,7 @@ no claim cites it. Later work derives bounds from S. Those bounds are not part o
 
 | Property | Value |
 |---|---|
-| Freeze record | [`freeze-r1.v1alpha1.json`](../proof/experiments/v2-q2/freeze-r1.v1alpha1.json), experiment `v2-q2-runtime-startup-characterization`, part `Q2`, criteria `Q2-AC1` to `Q2-AC16` |
+| Freeze record | [`freeze-r2.v1alpha1.json`](../proof/experiments/v2-q2/freeze-r2.v1alpha1.json), experiment `v2-q2-runtime-startup-characterization`, part `Q2`, criteria `Q2-AC1` to `Q2-AC16`. It supersedes [revision 1](../proof/experiments/v2-q2/freeze-r1.v1alpha1.json), under which no characterization ran |
 | Driver | [`q2-driver.txt`](../proof/experiments/v2-q2/procedure/q2-driver.txt), a pinned input of the freeze record, with the phases `up`, `characterize`, and `down` |
 | Tool | [`tools/runtime_startup`](../../tools/runtime_startup/core.py): `python -m tools.runtime_startup DIRECTORY`, `--preconditions DIRECTORY`, and `--check` |
 | Tests | [`tests/domain/test_runtime_startup.py`](../../tests/domain/test_runtime_startup.py) |
@@ -185,7 +185,7 @@ The categories are `preparation`, `desired-state`, `environment`, `release-ident
 | `procedure-frozen` | Q2-AC3 | `desired-state` | yes | The driver names the Q2 freeze record, the record has the content that the checkout holds, and the freeze tool listed no changed material file of the Q2 record or of the Q1 record when the characterization started. |
 | `desired-revision-known` | Q2-AC4 | `desired-state` | yes | The desired revision is one full commit identifier, and the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision. |
 | `environment-qualified` | Q2-AC5 | `environment` | yes | The qualification q1-1 is QUALIFIED, the capacity gate accepted the target release key with 2 API replicas and 2 runtime replicas before the release was applied, and the environment identity of that capacity record has the digest that q1-1 states. |
-| `release-qualified` | Q2-AC6 | `release-identity` | yes | The provenance record resolves the target release key at the desired revision to the release identifier that q1-1 states, the API Deployment runs the API image digest that q1-1 states and that the phase up declared, and the runtime Deployment runs the runtime image that q1-1 states. |
+| `release-qualified` | Q2-AC6 | `release-identity` | yes | The provenance record resolves the target release key at the desired revision to the release identifier that q1-1 states, the API Deployment runs the API image digest that the phase up declared, and the runtime Deployment runs the runtime image that q1-1 states. |
 | `topology-ready` | Q2-AC7 | `topology` | yes | Before the first restart, the API Deployment and the runtime Deployment each state 2 replicas and report 2 replicas, 2 Ready, 2 available, and 2 updated at their current generation. |
 | `three-restarts` | Q2-AC8 | `measurement` | no | The directory holds the restarts r1, r2, and r3 and no other, the rollout restart of each exited 0, and the rollout of each completed within its bound. |
 | `stable-before-each-restart` | Q2-AC9 | `topology` | no | Before each restart, the runtime Deployment states 2 replicas and reports 2 replicas, 2 Ready, 2 available, and 2 updated at its current generation, and exactly 2 runtime pods exist, each Ready and none deleted. |
@@ -196,6 +196,11 @@ The categories are `preparation`, `desired-state`, `environment`, `release-ident
 | `model-verified` | Q2-AC14 | `readiness` | no | In the reading after the restart, the verify-model init container of each replacement terminated with exit code 0, and its runtime container runs the runtime image that q1-1 states. |
 | `ready-serves` | Q2-AC15 | `readiness` | no | Each replacement answered one completion through a port-forward to that pod after the rollout of its restart completed, with HTTP status 200, a finish reason, and at least one completion token. |
 | `readings-in-order` | Q2-AC16 | `evidence` | no | The phase up started before the characterization, each restart was requested after the characterization started and after the rollout of the restart before it completed, and each rollout completed after its request and before the characterization finished. |
+
+**`release-qualified` holds the API image to the digest that the phase `up`
+declared, not to the one of `q1-1`.** The phase `up` builds the API image again, and a
+build of unchanged inputs reported another digest. The inputs of that build are pinned
+by the Q1 record, and `procedure-frozen` holds them unchanged. Revision 1 held the API Deployment to the API image digest that the record of `q1-1` states. The phase `up` of the Q1 driver builds the API image again, and its build at the first commit of `V2-S6-002-PR1` reported another digest, `sha256:cf30eac7cc2a75f9a91dac62c8c09a6080de5b2725d2b37262c15bafe924120d`, than `q1-1` states, `sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1`, while the freeze tool listed no changed input of the Q1 record. So that precondition could not hold. No characterization ran under revision 1. Revision 2 holds the API Deployment to the digest that the phase `up` declared, as Q1 does, and changes no other rule, bound, or step.
 
 **`environment-qualified` uses the Q1 computation.** The tool imports the function of the
 Q1 tool that computes the environment identity of a capacity record, so one capacity

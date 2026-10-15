@@ -80,8 +80,11 @@ CHARACTERIZATION: Final = "Q2"
 #: The experiment identifier of the freeze record.
 EXPERIMENT_ID: Final = "v2-q2-runtime-startup-characterization"
 
-#: The freeze record that governs the driver and this module.
-FREEZE_RECORD: Final = "docs/proof/experiments/v2-q2/freeze-r1.v1alpha1.json"
+#: The freeze record that governs the driver and this module. Revision 2
+#: supersedes revision 1, under which no characterization ran: revision 1 held the
+#: API image to the digest that q1-1 states, and a build of unchanged inputs
+#: reports another digest.
+FREEZE_RECORD: Final = "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
 
 #: The freeze record of Q1, whose phase up prepares the release.
 QUALIFICATION_FREEZE_RECORD: Final = (
@@ -256,8 +259,8 @@ RULES: Final[tuple[Rule, ...]] = (
         RELEASE_IDENTITY,
         "The provenance record resolves the target release key at the desired "
         "revision to the release identifier that q1-1 states, the API Deployment "
-        "runs the API image digest that q1-1 states and that the phase up declared, "
-        "and the runtime Deployment runs the runtime image that q1-1 states.",
+        "runs the API image digest that the phase up declared, and the runtime "
+        "Deployment runs the runtime image that q1-1 states.",
     ),
     Rule(
         "topology-ready",
@@ -1064,14 +1067,13 @@ def _release_qualified(sources: Characterization) -> Outcome:
     release_id = _release_id(sources)
     if release_id is None or release_id != _dig(qualified, "identities", "releaseId"):
         return NOT_HELD, f"the release is not the one {QUALIFICATION_ID} states"
-    digest = _dig(qualified, "identities", "apiImageDigest")
-    if header["apiImageDigest"] is None:
+    # The API image is held to the digest that the phase up declared, and not
+    # to the one of q1-1: a build of the same inputs reports another digest. The
+    # inputs of the build are pinned by the Q1 record, which procedure-frozen
+    # holds unchanged.
+    digest = header["apiImageDigest"]
+    if digest is None:
         return NOT_OBSERVED, "the phase up declared no API image digest"
-    if header["apiImageDigest"] != digest:
-        return (
-            NOT_HELD,
-            f"the declared API image is not the one {QUALIFICATION_ID} states",
-        )
     if not sources.deployments.read:
         return _missing(sources.deployments)
     items = _items(sources.deployments)
@@ -1085,10 +1087,7 @@ def _release_qualified(sources: Characterization) -> Outcome:
     if len(api_images) != 1 or not _text(api_images[0], _IMAGE):
         return NOT_HELD, "the API Deployment does not run one api container by digest"
     if not str(api_images[0]).endswith("@" + str(digest)):
-        return (
-            NOT_HELD,
-            f"the api container runs another digest than {QUALIFICATION_ID}",
-        )
+        return NOT_HELD, "the api container runs another digest than the declared one"
     runtime_image = _dig(qualified, "identities", "runtimeImage", "reference")
     if _container_image(runtime[0], RUNTIME_CONTAINER) != [runtime_image]:
         return (

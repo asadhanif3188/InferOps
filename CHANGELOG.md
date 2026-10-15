@@ -19,8 +19,10 @@ from `1.0.0`.
   one observation of its interval from creation to its first Ready condition, read from a
   watch of the runtime pods at a resolution of one second, and S is the maximum of the
   six. Its 16 rules are the 16 acceptance criteria of
-  `docs/proof/experiments/v2-q2/freeze-r1.v1alpha1.json`; seven are preconditions, which
-  refuse and stop the driver before the first restart. The layout check of
+  `docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json`; seven are preconditions, which
+  refuse and stop the driver before the first restart. Revision 2 supersedes revision 1,
+  under which no characterization ran: revision 1 held the API image to the digest of
+  `q1-1`, and a build of unchanged inputs reported another digest. The layout check of
   `tools/experiment_evidence` lists a directory of `v2-q2/runs/` as a qualification, as
   it lists one of `v2-q1/runs/`. See [the Q2
   page](docs/environment/runtime-startup-characterization.md) and [the validation

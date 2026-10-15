@@ -987,8 +987,9 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
 
 ## The Q2 runtime startup characterization
 
-[`v2-q2/freeze-r1.v1alpha1.json`](v2-q2/freeze-r1.v1alpha1.json) fixes Q2 before any
-characterization runs. Q2 measures, in the environment that [`q1-1`](v2-q1/runs/q1-1/result.md)
+[`v2-q2/freeze-r2.v1alpha1.json`](v2-q2/freeze-r2.v1alpha1.json) fixes Q2 before any
+characterization runs. It supersedes [revision 1](v2-q2/freeze-r1.v1alpha1.json), under
+which no characterization ran. Q2 measures, in the environment that [`q1-1`](v2-q1/runs/q1-1/result.md)
 selected, the interval from the creation of each replacement runtime pod to its first Ready
 condition, when the Deployment controller replaces it in a controlled restart. It runs
 three restarts of the runtime Deployment, one at a time, so one characterization has six
@@ -1011,6 +1012,7 @@ each rule.
   `CHARACTERIZED` record states S.
 - **S is the maximum and not an average.** The freeze record states the rule and no
   value. Later work derives other bounds from S, and they are not part of this record.
+- **Revision 1 could not be satisfied.** Revision 1 held the API Deployment to the API image digest that the record of `q1-1` states. The phase `up` of the Q1 driver builds the API image again, and its build at the first commit of `V2-S6-002-PR1` reported another digest, `sha256:cf30eac7cc2a75f9a91dac62c8c09a6080de5b2725d2b37262c15bafe924120d`, than `q1-1` states, `sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1`, while the freeze tool listed no changed input of the Q1 record. So that precondition could not hold. No characterization ran under revision 1. Revision 2 holds the API Deployment to the digest that the phase `up` declared, as Q1 does, and changes no other rule, bound, or step.
 - **It has its own directory.** A characterization is committed under `v2-q2/runs/q2-N/`
   with its record, whatever it shows, and the layout check lists it as a qualification.
 - **No characterization has run.**
