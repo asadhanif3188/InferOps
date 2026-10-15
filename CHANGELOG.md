@@ -10,6 +10,26 @@ from `1.0.0`.
 
 ### Added
 
+- **The first Q1 environment and identity qualification ran, and it is `QUALIFIED`.**
+  `V2-S6-001-PR2` ran the frozen driver once, at the commit `08b8914`, on the
+  docker-desktop provider with one node: the phase `up`, the qualification `q1-1`, and
+  the phase `down`. Each of the 17 rules held: the capacity gate accepted the release
+  before it was applied, the controller delivered it at the desired revision and
+  reconciled it in 5 samples, 2 API and 2 runtime replicas were Ready with 2 Ready
+  endpoints each, both runtime replicas served the pinned model from one read-only claim,
+  and the in-cluster RP-1 runner completed 34 of 34 requests through the API Service. The
+  directory, its record, its transcript, and its page are committed under
+  `docs/proof/experiments/v2-q1/runs/q1-1/`, without the capacity gate's read of every
+  pod, which holds home-directory paths of the controller's containers. Its environment
+  identity is the selected environment of E02A and E02B. The layout check of
+  `tools/experiment_evidence` now lists a directory of `v2-q1/runs/` as a qualification
+  and applies its two text rules to each file; that edit moves three pins of the Sprint 5
+  integration validation, whose attempts are finished. See [the run
+  page](docs/proof/experiments/v2-q1/runs/q1-1/result.md) and [the validation
+  record](docs/proof/environment/v2-s6-001-pr2-validation.md). Evidence level C2,
+  bounded to that one environment. No claim is registered. Not established: behaviour
+  under a fault, a recovery, a latency, a success rate, any bound, or anything about
+  another provider or node.
 - **The Q1 environment and identity qualification is frozen before its first run. No
   qualification has run, so no environment is qualified or refused.** `V2-S6-001-PR1`
   adds `tools/environment_qualification`, which reads one directory that a frozen driver

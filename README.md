@@ -294,8 +294,11 @@ is frozen before its first run: a driver collects and a tool decides whether one
 holds the target topology of two API replicas and two runtime replicas at its exact
 identities, with the controller reconciled, both runtime replicas on the pinned model, and
 the caller runner completing real requests. The result is `QUALIFIED` or `REFUSED`. A
-refusal is kept, and no option weakens the target. No qualification has run, so no
-environment is qualified or refused.
+refusal is kept, and no option weakens the target. Since `V2-S6-001-PR2` one qualification
+has run: [`q1-1`](docs/proof/experiments/v2-q1/runs/q1-1/result.md) is `QUALIFIED`, at
+C2, on the docker-desktop provider with one node, and its environment identity is the
+one environment that E02A and E02B must share. It qualifies that one environment and no
+other, and it is not a result of any reliability experiment.
 
 ## Prerequisites
 

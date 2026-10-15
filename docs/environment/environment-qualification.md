@@ -1,10 +1,13 @@
 # Q1: the environment and identity qualification
 
-Status: **the Q1 workflow is frozen, and no qualification has run. The freeze
-record, the driver, and the tool that builds the record exist. Synthetic
-directories in the suite show a `QUALIFIED` record and each refusal at evidence
-level C0. No record of a real environment exists, so no environment is
-qualified or refused by this page.** The first qualification is later work.
+Status: **the Q1 workflow is frozen, and one qualification has run. Since
+`V2-S6-001-PR2`, [qualification `q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md)
+is `QUALIFIED`, at C2: on 2026-10-15, at the commit `08b8914`, every one of the 17
+rules held on the docker-desktop provider with one node. Its environment identity is
+the selected environment of E02A and E02B. It qualifies that one environment, and no
+other provider, node, Kubernetes version, or release.** The synthetic directories of the
+suite show each refusal at C0. (Until `V2-S6-001-PR2` this paragraph said that no
+qualification had run.)
 
 Before a V2 reliability experiment runs, Q1 decides whether one local
 environment holds the target topology of the desired-state release: two
@@ -20,8 +23,8 @@ Service. The result is `QUALIFIED` or `REFUSED`. There is no third result.
 | Tool | [`tools/environment_qualification`](../../tools/environment_qualification/core.py): `python -m tools.environment_qualification DIRECTORY` and `--check` |
 | Tests | [`tests/domain/test_environment_qualification.py`](../../tests/domain/test_environment_qualification.py) |
 | Target | Release key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop` |
-| Runs | None. A qualification is committed under `docs/proof/experiments/v2-q1/runs/q1-N/` |
-| Validation record | [`v2-s6-001-pr1-validation.md`](../proof/environment/v2-s6-001-pr1-validation.md) |
+| Runs | One: [`q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md), `QUALIFIED`, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`. A qualification is committed under `docs/proof/experiments/v2-q1/runs/q1-N/` |
+| Validation records | [`v2-s6-001-pr1-validation.md`](../proof/environment/v2-s6-001-pr1-validation.md), the frozen workflow; [`v2-s6-001-pr2-validation.md`](../proof/environment/v2-s6-001-pr2-validation.md), the first qualification |
 
 ## A refusal is a result
 
@@ -60,7 +63,12 @@ address, no context name, and no path.
 When a qualification is `QUALIFIED`, E02A and E02B execute in that one
 environment. A run of either states its own environment identity. A run whose
 identity differs from the qualified one is not a run of the controlled
-comparison. No run of E02A or E02B exists, so no comparison of identities has
+comparison. Qualification `q1-1` is `QUALIFIED`, so the selected environment is
+its identity: the docker-desktop provider, Kubernetes `v1.36.1`, one node
+`desktop-control-plane` allocating 12,000 millicores and 10,429,960,192 bytes of
+memory, and a container engine of 12 CPUs, with the digest
+`sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`.
+No run of E02A or E02B exists, so no comparison of identities has
 been made. This is a rule of the freeze record. No tool compares two identities
 yet, and no freeze record of E02A or E02B exists. When the local environment is
 `REFUSED`, the refusal is retained, and a separate environment decision record
@@ -112,6 +120,10 @@ only under `.artifacts/`.
 ## The directory
 
 The phase `qualify` writes one directory, `.artifacts/v2-q1/RUN-driver/q1-N/`.
+A committed qualification adds `transcript.txt` and its page, `result.md`. The
+evidence layout check lists a directory of `v2-q1/runs/` as a qualification: it
+applies the credential-prefix rule and the personal-path rule to each of its files,
+and holds it to no ExperimentRun manifest, which a qualification does not have.
 
 | File | What it holds | Written by |
 |---|---|---|

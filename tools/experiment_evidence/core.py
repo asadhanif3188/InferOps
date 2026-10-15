@@ -32,6 +32,12 @@ file beside the ``runs`` directory. It states the digest of the manifest and of 
 file it corrects, so a correction of a file that was edited is refused while the
 correction itself is unchanged.
 
+**Qualifications.** ``docs/proof/experiments/v2-q1/runs`` holds the directories of
+Q1, the environment and identity qualification, which are not runs of this layout
+and have no manifest. ``tools.environment_qualification --check`` holds each to its
+record. The ``repository`` command lists each and applies only the two text rules
+to its files, and a corrections directory of one is refused.
+
 **What this module does not do.** It reads one tree. It does not read Git, so it
 does not show that a file was committed, or that a run directory and its
 corrections were not replaced together. It does not judge a result. It does not
@@ -92,6 +98,15 @@ DERIVED: Final = "derived"
 #: The status of a run directory that a rule refused. The two other statuses are
 #: those of the manifest listing: ``conforming`` and ``pre-schema``.
 REFUSED: Final = "refused"
+
+#: The status of a directory of a Q1 qualification. A qualification is not a run
+#: of this layout: it has no ExperimentRun manifest, and
+#: ``tools.environment_qualification --check`` holds it to its record. The
+#: ``repository`` command lists it and applies the two text rules to each file.
+QUALIFICATION: Final = "qualification"
+
+#: The one experiment directory whose ``runs`` directory holds Q1 qualifications.
+QUALIFICATIONS_REF: Final = f"{RUNS_ROOT_REF}/v2-q1"
 
 
 @dataclass(frozen=True)
@@ -1080,15 +1095,45 @@ def _entries(parent: Path, shown: str) -> tuple[list[Path], list[Finding]]:
     return directories, findings
 
 
+def _qualification_report(directory: Path, shown: str) -> RunReport:
+    """List one Q1 qualification directory, and apply the text rules to each file.
+
+    A link is a finding, and so is a file that is not UTF-8 text. The record of
+    the qualification is not read here: ``tools.environment_qualification
+    --check`` builds it again from the directory.
+    """
+    present, links = _walk(directory)
+    findings = [
+        Finding(
+            printable(f"{shown}/{name}"), RULE_FILE_NOT_REGULAR, "the entry is a link"
+        )
+        for name in links
+    ]
+    for name, path in present.items():
+        ref = printable(f"{shown}/{name}")
+        try:
+            text = _text_of(path)
+        except (OSError, UnicodeDecodeError):
+            findings.append(Finding(ref, RULE_FILE_FORM, "the file is not UTF-8 text"))
+            continue
+        findings.extend(Finding(ref, rule, why) for rule, why in text_problems(text))
+    if findings:
+        return RunReport(shown, REFUSED, tuple(sorted(findings)))
+    return RunReport(shown, QUALIFICATION, files=len(present))
+
+
 def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
     """Check every run directory under ``docs/proof/experiments`` of a tree.
 
     The listing of ``tools.experiment_run`` gives each manifest and its status. A
     manifest that the pre-schema register names is listed and its directory is not
     checked: it was committed before this layout. Each other manifest has its
-    directory checked. A directory of a ``runs`` directory with no manifest is
-    refused. A corrections directory of a run is refused when no run directory of
-    this layout has its name: none, or one that the pre-schema register names.
+    directory checked. A directory of ``docs/proof/experiments/v2-q1/runs`` with no
+    manifest is a Q1 qualification: it is listed, and only the two text rules are
+    applied to its files. Any other directory of a ``runs`` directory with no
+    manifest is refused. A corrections directory of a run is refused when no run
+    directory of this layout has its name: none, one that the pre-schema register
+    names, or a qualification.
 
     The listing reads the files of the tree, tracked or not. It does not read Git.
     """
@@ -1127,7 +1172,13 @@ def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
             findings.extend(found)
             for run_dir in directories:
                 run_ref = f"{shown}/{RUNS_DIRECTORY}/{run_dir.name}"
-                if run_ref not in reports:
+                if run_ref in reports:
+                    continue
+                if shown == QUALIFICATIONS_REF:
+                    reports[run_ref] = _qualification_report(
+                        run_dir, printable(run_ref)
+                    )
+                else:
                     reports[run_ref] = check_run(run_dir, root)
         if CORRECTIONS_DIRECTORY in children:
             directories, found = _entries(
@@ -1136,7 +1187,7 @@ def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
             findings.extend(found)
             for correction_dir in directories:
                 report = reports.get(f"{shown}/{RUNS_DIRECTORY}/{correction_dir.name}")
-                if report is None or report.status == PRE_SCHEMA:
+                if report is None or report.status in (PRE_SCHEMA, QUALIFICATION):
                     findings.append(
                         Finding(
                             printable(

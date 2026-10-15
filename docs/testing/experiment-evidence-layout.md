@@ -35,7 +35,8 @@ directory of this layout exists is about the proof tree.
 **Three terms.** A *run directory* is the directory of one run. *The check* is what
 `tools/experiment_evidence` applies to one run directory. The `check` command applies it
 to the directories it is given. The `repository` command applies it to each run directory
-of the proof tree that the pre-schema register does not name.
+of the proof tree that the pre-schema register does not name and that is not a
+[Q1 qualification](#the-q1-qualifications).
 
 ## What it is for
 
@@ -344,7 +345,9 @@ read only when the run directory is in its place.
 run directory does not: an entry of a `runs` or `corrections` directory that is not a
 directory, a link above a run directory, and a corrections directory of a run with the
 name of no run directory of this layout. A corrections directory beside a run directory
-that is refused gets no finding of its own.
+that is refused gets no finding of its own. A directory of
+`docs/proof/experiments/v2-q1/runs` is listed as a qualification and is not held to a
+manifest: see [the Q1 qualifications](#the-q1-qualifications).
 
 **The names are compared as text.** A file system that ignores letter case opens a file
 under a name in another case. The check compares the name of the manifest, of each
@@ -424,6 +427,26 @@ names the manifest of each by path and content digest.
   name of one of them is refused. The dated notes of those runs are in
   [the experiments page](../proof/experiments/README.md), which this layout does not
   change.
+
+### The Q1 qualifications
+
+`docs/proof/experiments/v2-q1/runs/` holds the directories of
+[Q1, the environment and identity qualification](../environment/environment-qualification.md).
+A qualification is not a run of an experiment, and it has no ExperimentRun manifest.
+Since `V2-S6-001-PR2`, which committed the first one, `q1-1`:
+
+- **The `repository` command lists each as `qualification`.** It applies the
+  credential-prefix rule and the personal-path rule to each file, and refuses a link and
+  a file that is not UTF-8 text. It applies no other rule of this layout. It refuses a
+  corrections directory with the name of a qualification.
+- **`python -m tools.environment_qualification --check` holds each to its record.** It
+  builds the record again from the directory and compares the bytes.
+- **Only that one directory holds qualifications.** A directory with no manifest under
+  the `runs` directory of any other experiment is refused at its manifest.
+
+(Until `V2-S6-001-PR2` the `repository` command refused every directory of a `runs`
+directory with no manifest, and it would have refused `q1-1` with
+`evidence-manifest-missing`.)
 
 ## Measured gaps
 
@@ -515,11 +538,13 @@ uv run --locked python -m tools.experiment_evidence digests path/to/a/directory
 uv run --locked python -m pytest tests/testing/test_experiment_evidence_layout.py -q
 ```
 
-`repository` prints `pre-schema` for a directory whose manifest the register names, `ok`
-with the two digests for a directory that conforms, and `REFUSED` with each finding
-otherwise. It prints three `pre-schema` lines and two `ok` lines, one for each attempt of
-the integration validation, and exits 0. (Until `V2-S5-006-PR1` it printed three
-`pre-schema` lines only.)
+`repository` prints `pre-schema` for a directory whose manifest the register names,
+`qualification` for a Q1 qualification that no text rule refuses, `ok` with the two
+digests for a directory that conforms, and `REFUSED` with each finding otherwise. It
+prints three `pre-schema` lines, one `qualification` line, for `q1-1`, and two `ok`
+lines, one for each attempt of the integration validation, and exits 0. (Until
+`V2-S5-006-PR1` it printed three `pre-schema` lines only, and until `V2-S6-001-PR2` it
+printed no `qualification` line.)
 
 `digests` prints one line for each file of a directory that has the form of an evidence
 file and that neither text rule refuses, in the order of the paths as text. It prints no

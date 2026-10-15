@@ -1,0 +1,10 @@
+provider=docker-desktop
+serverVersion=v1.36.1
+repositoryRevision=08b89144f76d86cbbcf44de8845d04f018c88453
+procedureSha256=44aac3ff6cb0d92b969f559ae74d0b070f88019367c2cc0cda9d462a983969d2
+librarySha256=b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd
+application=local-docker-desktop-support-assistant
+applicationNamespace=argocd
+workloadNamespace=inferops-release
+requestedSamples=5
+intervalSeconds=10

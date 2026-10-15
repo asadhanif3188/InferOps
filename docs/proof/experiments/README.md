@@ -41,8 +41,9 @@ the published [evidence layout](../../testing/experiment-evidence-layout.md) in 
 tree.
 **One record added by `V2-S6-001-PR1`**: [the Q1 environment qualification](#the-q1-environment-qualification),
 revision 1, in its own directory, committed before any qualification. It is a
-prerequisite of the V2 reliability experiments and not one of them, and no qualification
-has run.
+prerequisite of the V2 reliability experiments and not one of them. Since
+`V2-S6-001-PR2` one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and
+it is `QUALIFIED`.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -52,9 +53,9 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E01, contract-to-deployment determinism | 1 | [`v2-e01/freeze-r1.v1alpha1.json`](v2-e01/freeze-r1.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Superseded by revision 2 on 2026-10-03, and kept unchanged. E01-A, E01-B, and E01-C ran once under it, in [`20261002-e01-abc-1`](v2-e01/runs/20261002-e01-abc-1/result.md), and each PASSED under its criteria. That run carries an [audit limitation](#audit-of-the-first-run-2026-10-03) |
 | V2-E01, contract-to-deployment determinism | 2 | [`v2-e01/freeze-r2.v1alpha1.json`](v2-e01/freeze-r2.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. E01-A, E01-B, and E01-C ran once under it, in [`20261003-e01-abc-1`](v2-e01/runs/20261003-e01-abc-1/result.md), and each PASSED under its criteria. Superseded by revision 3 on 2026-10-06, and kept unchanged. Its E01-D environment identity is pending |
 | V2-E01, contract-to-deployment determinism | 3 | [`v2-e01/freeze-r3.v1alpha1.json`](v2-e01/freeze-r3.v1alpha1.json) | E01-A, E01-B, E01-C at C0; E01-D at C2 | Frozen. It names the E01-D environment. E01-D ran once under it, in [`20261006-e01-d-1`](v2-e01/runs/20261006-e01-d-1/result.md), and PASSED under its criteria. No static part ran under it. Since that run, one pinned input differs from its pin: [the runner's committed-run listing](#the-e01-d-run) |
-| Sprint 5 integration validation, `s5-integration-validation` | 1 | [`v2-s5-integration/freeze-r1.v1alpha1.json`](v2-s5-integration/freeze-r1.v1alpha1.json) | One part, S5I, at C2 | Frozen before its first attempt. Not result-bearing: [see below](#the-sprint-5-integration-validation). One attempt ran under it, [`integration-1`](v2-s5-integration/runs/integration-1/result.md), and FAILED on S5I-AC2. Superseded by revision 2 on 2026-10-14, and kept unchanged |
-| Sprint 5 integration validation, `s5-integration-validation` | 2 | [`v2-s5-integration/freeze-r2.v1alpha1.json`](v2-s5-integration/freeze-r2.v1alpha1.json) | One part, S5I, at C2 | Frozen. A run brings its own network policy. One attempt ran under it, [`integration-2`](v2-s5-integration/runs/integration-2/result.md), and PASSED under its criteria |
-| Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). No qualification ran under it |
+| Sprint 5 integration validation, `s5-integration-validation` | 1 | [`v2-s5-integration/freeze-r1.v1alpha1.json`](v2-s5-integration/freeze-r1.v1alpha1.json) | One part, S5I, at C2 | Frozen before its first attempt. Not result-bearing: [see below](#the-sprint-5-integration-validation). One attempt ran under it, [`integration-1`](v2-s5-integration/runs/integration-1/result.md), and FAILED on S5I-AC2. Superseded by revision 2 on 2026-10-14, and kept unchanged. Seven pinned inputs differ from its pins: the four that revision 2 classifies, and the three files of `tools/experiment_evidence`, which `V2-S6-001-PR2` edited |
+| Sprint 5 integration validation, `s5-integration-validation` | 2 | [`v2-s5-integration/freeze-r2.v1alpha1.json`](v2-s5-integration/freeze-r2.v1alpha1.json) | One part, S5I, at C2 | Frozen. A run brings its own network policy. One attempt ran under it, [`integration-2`](v2-s5-integration/runs/integration-2/result.md), and PASSED under its criteria. Since `V2-S6-001-PR2`, three pinned inputs differ from their pins: the three files of `tools/experiment_evidence`, which that change edited after both attempts so that the layout check lists a Q1 qualification. A later attempt needs a revision that classifies them |
+| Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). One qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and it is `QUALIFIED`. No pinned input differs from its pin |
 
 ## Why a freeze comes first
 
@@ -964,5 +965,22 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
   tool compares two identities yet, and no freeze record of E02A or E02B exists.
 - **It has its own directory.** The freeze check holds one experiment in each directory.
   A qualification is committed under `v2-q1/runs/q1-N/` with its record, whatever it shows.
-- **No qualification has run.** The record was registered by `V2-S6-001-PR1`, and no
-  directory exists under `v2-q1/runs/`.
+- **One qualification has run, and it is `QUALIFIED`.** The record was registered by
+  `V2-S6-001-PR1`. Under it, `V2-S6-001-PR2` ran [`q1-1`](v2-q1/runs/q1-1/result.md) on
+  2026-10-15, at the commit `08b8914`, on the docker-desktop provider with one node, and
+  each of the 17 criteria held. Its environment identity,
+  `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`, is the
+  selected environment of E02A and E02B. It is evidence at C2 of that one environment,
+  and of no other provider, node, Kubernetes version, or release. (Until `V2-S6-001-PR2`
+  this item said that no qualification had run.)
+- **The layout check lists a qualification and does not hold it to a manifest.** A
+  qualification has no ExperimentRun manifest. Since `V2-S6-001-PR2`,
+  `python -m tools.experiment_evidence repository` lists each directory of
+  `v2-q1/runs/` as a qualification and applies its two text rules to each file, and
+  `python -m tools.environment_qualification --check` builds its record again. The
+  first draft of the run directory was refused by the layout check, which `V2-S6-001-PR1`
+  had not foreseen.
+- **One read is not committed.** The capacity gate's read of every pod of the cluster,
+  `capacity/pods.json`, holds container paths under a home directory in the
+  controller's pods, and the publication check refuses it. [The page of
+  `q1-1`](v2-q1/runs/q1-1/result.md) states its digest.

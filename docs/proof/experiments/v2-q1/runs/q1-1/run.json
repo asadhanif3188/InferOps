@@ -1,0 +1,20 @@
+{
+  "apiImageDigest": "sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1",
+  "controllerVerified": true,
+  "controllerVersion": "v3.5.3",
+  "desiredRevision": "08b89144f76d86cbbcf44de8845d04f018c88453",
+  "desiredStateDiff": "none",
+  "executingCommit": "08b89144f76d86cbbcf44de8845d04f018c88453",
+  "finishedAt": "2026-10-15T07:22:22Z",
+  "freezeChanges": "none",
+  "freezeRecord": "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+  "freezeRecordSha256": "f23426223d19abf19fa3c8beaaa138abe93bdef8ab376335eda50b0da3f29ded",
+  "provider": "docker-desktop",
+  "qualificationId": "q1-1",
+  "releaseKey": "local-docker-desktop/support-assistant",
+  "schema": "inferops.io/environment-qualification-collection/v1alpha1",
+  "startedAt": "2026-10-15T07:18:00Z",
+  "targetRefusal": null,
+  "upRefusal": null,
+  "workingTree": "clean"
+}

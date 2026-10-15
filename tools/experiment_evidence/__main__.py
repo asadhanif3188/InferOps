@@ -6,7 +6,9 @@
 
 ``check`` holds each run directory it is given to its manifest and to the layout.
 ``repository`` checks every run directory under ``docs/proof/experiments``: a
-directory whose manifest the pre-schema register names is listed and not checked.
+directory whose manifest the pre-schema register names is listed and not checked,
+and a Q1 qualification directory is listed with the two text rules applied to its
+files, because ``tools.environment_qualification --check`` holds it to its record.
 ``digests`` prints one ``<sha256>  <path>`` line for each file of a directory that
 can be an evidence file, with the layout's digest, for the writer of a manifest.
 ``check`` checks a directory that the register names too, and refuses it at its
@@ -31,6 +33,7 @@ from pathlib import Path
 from tools.experiment_run.core import CONFORMING, PRE_SCHEMA, REPO_ROOT
 
 from .core import (
+    QUALIFICATION,
     REFUSED,
     Finding,
     RunReport,
@@ -55,6 +58,11 @@ def _refusal(name: str, findings: Iterable[Finding]) -> list[str]:
 def _run_lines(report: RunReport) -> list[str]:
     if report.status == REFUSED:
         return _refusal(report.path, report.findings)
+    if report.status == QUALIFICATION:
+        return [
+            f"qualification {report.path}  ({report.files} file(s), text rules only; "
+            "its record is checked by tools.environment_qualification --check)"
+        ]
     if report.digests is None:
         return [f"pre-schema {report.path}  (not checked)"]
     return [
@@ -82,11 +90,12 @@ def _repository(root: Path) -> int:
         print("\n".join(_run_lines(run)))
     counts = {
         status: sum(1 for run in report.runs if run.status == status)
-        for status in (PRE_SCHEMA, CONFORMING, REFUSED)
+        for status in (PRE_SCHEMA, QUALIFICATION, CONFORMING, REFUSED)
     }
     print(
         f"runs       {len(report.runs)}: {counts[PRE_SCHEMA]} pre-schema and not "
-        f"checked, {counts[CONFORMING]} conforming, {counts[REFUSED]} refused"
+        f"checked, {counts[QUALIFICATION]} qualification(s) with the text rules "
+        f"only, {counts[CONFORMING]} conforming, {counts[REFUSED]} refused"
     )
     return EXIT_REFUSED if report.refused else EXIT_OK
 
