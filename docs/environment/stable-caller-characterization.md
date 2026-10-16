@@ -8,6 +8,13 @@ exists.** The engine's virtual machine had booted again since `q2-1`, and the me
 it reports differed from `q1-1` by 12,288 bytes; [the run page](../proof/experiments/v2-q3/runs/q3-1/result.md)
 states the reads. The synthetic directories of the suite show each refusal at C0.
 
+Merging `V2-S6-002-PR2` keeps `q3-1` as a valid `REFUSED` attempt. It does not complete
+`V2-S6-002`: G and the Q4 bounds are absent, the parent story's Q3 and Q4 criteria remain
+open, and `V2-S6-003` is blocked until Sprint 6 change control decides the environment
+identity and a matching chain of Q1, Q2, Q3, and Q4 exists. [The validation
+record](../proof/environment/v2-s6-002-pr2-validation.md#merge-disposition) states the
+disposition.
+
 Before a V2 reliability experiment runs, Q3 measures what the caller sees when the
 topology of the release is healthy and no fault is injected. It runs the [RP-1 caller runner](../serving/reliability-runner.md)
 once, for 360 s, against the API Service of the release that [the Q1 qualification

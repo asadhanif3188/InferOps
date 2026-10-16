@@ -7,6 +7,11 @@ level C2 for the refusal, on the docker-desktop provider with one node. No claim
 registered. The change freezes Q3 and the four Q4 formulas, adds the two tools, and keeps
 the refused run. The parent story's Q3 and Q4 criteria stay open.
 
+**Merge disposition.** Pull request #150 is mergeable as a valid preserved `REFUSED`
+qualification attempt. Merging the pull request does not mean that `V2-S6-002` is
+complete. [The merge disposition](#merge-disposition) and [the downstream
+state](#the-downstream-state) below state why.
+
 | Property | Value |
 |---|---|
 | Branch | `test/v2-s6-002-q3-q4-bounds` |
@@ -108,6 +113,38 @@ All commands ran from Git Bash in the locked environment (`uv run --locked`).
 | Default lane after the run | `python -m pytest -q` | 22,737 passed, 39 skipped, 2 failed, in 68 min. The two failures were guard tests of the layout suite that list the committed qualification directories and did not yet name `q3-1`; after the fix the layout suite passed: 258 passed, 2 skipped |
 | Whitespace | `git diff --check` | clean |
 
+The table above is the local validation of the change before its push, and it stays as it
+ran. After the fix of the two guard tests, only the affected suites ran again locally: the
+layout suite, 258 passed and 2 skipped; the documentation, inventory, Q3, Q4, and layout
+suites, 2142 passed and 2 skipped; and the same suites after the corrections of the
+independent review, 2354 passed and 2 skipped. The full local default lane did not run
+again.
+
+## Final hosted validation
+
+Added after the push. On the head `9246e9056e95f04a405b099742afb16d02c383d3`, the hosted
+workflow `checks`, run `38882852000`, attempt 1, started by the pull request, completed
+with the conclusion `success`. Each of its 11 jobs completed with `success`:
+
+| Hosted job | Conclusion |
+|---|---|
+| format, lint, and types | success |
+| Helm chart and rendered manifests | success |
+| API container image | success |
+| default-lane test suite | success |
+| secret scan | success |
+| dependency and image vulnerability scan | success |
+| Terraform format, validation, and lint | success |
+| documentation links and whitespace | success |
+| expected-failure controls | success |
+| software bill of materials | success |
+| distribution build | success |
+
+The conclusions were read from the check runs of the head commit. The job logs need an
+authenticated read, so no hosted test count is stated here. Every job runs on
+`ubuntu-24.04`, so the hosted default lane is a full default lane on Linux with the fix of
+the two guard tests in the tree. It does not change the local history above.
+
 ## What the independent review found
 
 An independent review read the whole change after the run. It found no defect in the
@@ -133,6 +170,69 @@ A pre-run review, before the freeze commit, found a stale pin of the Q4 tool, a 
 of what a record does not establish that was stronger than the rules, and imprecise
 wording about two host instants. The freeze commit corrects them, and its message states
 them.
+
+## Merge disposition
+
+Added after the push, before the merge. It changes no result, record, pin, or criterion.
+
+Pull request #150 is mergeable as a valid preserved `REFUSED` qualification attempt.
+Merging the pull request does not mean that `V2-S6-002` is complete.
+
+- `V2-S6-002-PR1` produced the Q2 characterization `q2-1`, `CHARACTERIZED`, with
+  S = 11,000 ms.
+- `V2-S6-002-PR2`, this change, froze the Q3 workflow and the four Q4 formulas, and
+  preserved `q3-1`, `REFUSED`.
+- The G that Q3 requires is absent.
+- The Q4 numeric bounds are absent. No bound record is committed.
+- The parent story's Q3 and Q4 acceptance criteria remain OPEN.
+- `V2-S6-003` is BLOCKED.
+- Further qualification work requires explicit Sprint 6 change control.
+
+The change is valid because it kept the frozen refusal as it happened. The story is not
+complete, because G and the Q4 bounds do not exist. Merging a valid refusal is not passing
+the parent story.
+
+## The downstream state
+
+```text
+Q1 q1-1
+QUALIFIED
+environment = sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461
+
+Q2 q2-1
+CHARACTERIZED
+S = 11,000 ms
+
+Q3 q3-1
+REFUSED
+G = absent
+
+Q4
+no bound record
+
+V2-S6-002
+INCOMPLETE
+
+V2-S6-003
+BLOCKED
+```
+
+`tools.experiment_bounds` refuses, with `bounds-environment-differs`, two source records
+that do not state the same provider, environment digest, release identifier, and
+qualification record. A later change therefore cannot combine `q2-1` with a Q3
+characterization run under another environment. If later change control selects a new Q1
+qualification or a new environment identity, its owner assesses whether Q2 must be
+characterized again under that same identity before Q4 can be computed. This change does
+not make that assessment.
+
+## The environment-identity decision is deferred
+
+This change does not decide whether the memory figure in bytes that the environment
+digest holds is a property that defines the qualification, or an unstable observation
+that should be represented in another way. That decision belongs to follow-up Sprint 6
+change control. This change removes no value from the identity, adds no tolerance,
+rounds or masks no figure, adds no wildcard, qualifies no environment again, relaxes no
+part of `environment-qualified`, and changes no Q3 acceptance criterion.
 
 ## What is not established
 
