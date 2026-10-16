@@ -84,7 +84,7 @@ states each value.
 | Phase `up` (Q1 driver, unchanged), work directory `q3run-1`, 07:26:17 to 07:33:55 | Exit 0. Both capacity readings `ACCEPTED`. Application `Synced` and `Healthy` at `b0bdcca`. API image digest declared: `sha256:de5173b2c143f6f80ecec4fab34b3d7be67e1713a604ba970bb40c07c4257953` |
 | Characterization `q3-1`, 07:34:10.644 to 07:34:24.556 | `REFUSED`. Held: the six preconditions other than `environment-qualified`. Not held: `environment-qualified`, digest `sha256:ac3a1022e86facb519bb0820b57d7a7fb32c0c6ea1011a59e88b8c1aa4efd087`. Not observed: the seven rules of the measurement. No caller and no watch was started |
 | Phase `down` (Q1 driver, unchanged), ended 07:36:23 | Exit 0. Namespaces and custom resource definitions equal to those before `up` |
-| Operator reads, by hand | Engine and node memory 10,429,972,480 B after the refusal (q1-1: 10,429,960,192 B), VM uptime 4,574 s. After `docker desktop restart`: same memory, uptime 5,580 s. After `wsl --shutdown`: uptime 9 s, memory 10,429,956,096 B |
+| Operator reads, by hand | Engine memory, and the memory that the node container's `/proc/meminfo` states, 10,429,972,480 B after the refusal (q1-1: 10,429,960,192 B, and the same figure in the capacity reading of `q3-1` for the node allocatable memory), VM uptime 4,574 s. After `docker desktop restart`: same memory, uptime 5,580 s. After `wsl --shutdown`: uptime 9 s, memory 10,429,956,096 B |
 
 `python -m tools.caller_characterization --check` builds the committed record again, byte
 for byte. `python -m tools.experiment_bounds --check` finds no committed bound record.
@@ -108,6 +108,32 @@ All commands ran from Git Bash in the locked environment (`uv run --locked`).
 | Default lane after the run | `python -m pytest -q` | 22,737 passed, 39 skipped, 2 failed, in 68 min. The two failures were guard tests of the layout suite that list the committed qualification directories and did not yet name `q3-1`; after the fix the layout suite passed: 258 passed, 2 skipped |
 | Whitespace | `git diff --check` | clean |
 
+## What the independent review found
+
+An independent review read the whole change after the run. It found no defect in the
+committed evidence and no private information. It found these defects of the first
+draft, which the last commit of this change corrects:
+
+- The test inventory said that the suite holds that the driver refuses a reused
+  identifier. The suite reads the driver as text, and the driver refuses an identifier
+  only within one work directory. The entry now says so, and the Q3 page states the gap.
+- The inventory said that the bound suite reads the committed bound records in place and
+  holds each to its sources. No bound record is committed, so that test holds at zero
+  records. The entry now says so. The Q3 entry now says that the one committed record is
+  `REFUSED` and exercises neither G nor the caller rules.
+- The Q3 page had no section for the measured gaps of the pinned tools and driver. It now
+  states six.
+- The operator row above said that the hand reads gave the node memory. They gave the
+  engine memory and the node container's `/proc/meminfo`; the node allocatable memory is
+  from the capacity reading.
+- Four pages said that the memory figure changes when the virtual machine boots. Two
+  boots were observed. The pages now say that it changed at each of the two.
+
+A pre-run review, before the freeze commit, found a stale pin of the Q4 tool, a sentence
+of what a record does not establish that was stronger than the rules, and imprecise
+wording about two host instants. The freeze commit corrects them, and its message states
+them.
+
 ## What is not established
 
 - G, any latency or gap of a caller, or any count of caller requests. No caller ran.
@@ -123,7 +149,8 @@ All commands ran from Git Bash in the locked environment (`uv run --locked`).
   computes the bounds stay open. Q2 is done (`V2-S6-002-PR1`). No qualification data is
   promoted as a benchmark or as result-bearing proof.
 - **The environment identity is a decision for later work.** On this host the digest of
-  `q1-1` does not survive a boot of the engine's virtual machine, and Q2, Q3, and the
+  `q1-1` did not hold across either of the two boots of the engine's virtual machine that
+  were observed, and Q2, Q3, and the
   rule that E02A and E02B share the environment of `q1-1` all compare that digest. A later
   change either qualifies the environment again and repeats the characterizations that
   depend on it, or revises how the environment identity treats the memory figure, under

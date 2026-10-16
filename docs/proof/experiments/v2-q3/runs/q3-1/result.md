@@ -20,7 +20,7 @@ requires of each one.
 | Desired revision | `b0bdccad4cce78ea532c206ecb4cbb99e4f4c420`, the remote main |
 | Release | `local-docker-desktop/support-assistant`, identifier `b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db`, the one of `q1-1` |
 | Environment | `sha256:ac3a1022e86facb519bb0820b57d7a7fb32c0c6ea1011a59e88b8c1aa4efd087`: Kubernetes `v1.36.1`, one node `desktop-control-plane`, 12 CPUs, 10,429,972,480 bytes of memory. Not the environment of `q1-1` |
-| API image | `sha256:de5173b2c143f6f80ecec4fab34b3d7be67e1713a604ba970bb40c07c4257953`, the manifest-list digest that the phase `up` declared, a fourth digest for the inputs that the Q1 record pins |
+| API image | `sha256:de5173b2c143f6f80ecec4fab34b3d7be67e1713a604ba970bb40c07c4257953`, the manifest-list digest that the phase `up` declared, a fourth manifest-list digest for the inputs that the Q1 record pins, after those of `q1-1`, of the attempt under Q2 revision 1, and of `q2-1`. The build printed the image manifest `bba83fa7…` and the config `cd65ca24…`, as [the builds of Q2](../../../v2-q2/runs/q2-1/result.md) did |
 
 ## What ran
 
@@ -56,8 +56,9 @@ Every other value of the identity is the same: the provider, the Kubernetes vers
 node name, its kubelet version, 12 CPUs and 12,000 m, and 110 pods. The difference is
 12,288 bytes.
 
-**The virtual machine of the engine had booted again.** After the refusal, the operator
-read the uptime of the node container: 4,574 s, so the machine had booted at about 06:19
+**The virtual machine of the engine had booted again.** After the refusal, between the
+end of the characterization at 07:34:26 and the start of the phase `down` at 07:35:15, the
+operator read the uptime of the node container: 4,574 s, so the machine had booted at about 06:19
 on 2026-10-16, after `q2-1`. These reads were made by hand and are in the last section of
 the transcript; they are not part of the record.
 
@@ -70,8 +71,9 @@ before any further characterization; no identifier was spent:
 - `wsl --shutdown` stopped the virtual machine, and the engine started it again: the
   uptime was 9 s, and the memory was **10,429,956,096 B**, a third figure.
 
-So the memory that this host reports changes when its virtual machine boots, and the
-environment digest of `q1-1` does not hold across a boot. No phase `up` and no further
+So the memory that this host reports changed at each of the two boots of its virtual
+machine that were observed, and the environment digest of `q1-1` did not hold across
+either. No phase `up` and no further
 characterization was run after the attempt.
 
 ## What this record establishes

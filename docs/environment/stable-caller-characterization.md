@@ -279,6 +279,39 @@ no rule shows that every request of the caller record lies inside the watch. The
 the driver's steps does: the watch starts before the runner `start`, and stops after the
 Job ended and the cleanup returned.
 
+## Measured gaps of the tool
+
+These were found by the independent review of `V2-S6-002-PR2`, after the run of `q3-1`.
+The tools and the driver are pinned inputs of revision 1, so each is stated here and left
+for a later revision.
+
+- **The environment is decided after the phase `up`.** `environment-qualified` reads the
+  capacity reading that the phase `up` took before the apply, so a characterization in
+  another environment is refused only after the release was prepared and applied. `q3-1`
+  cost a full phase `up` and a full phase `down`. No step reads the environment before
+  the phase `up`.
+- **The environment identity compares memory exactly.** The identity that the Q1 tool
+  computes holds each memory figure in bytes, and the digest compares it with no
+  tolerance. On this host the figure changed at each of the two boots of the engine's
+  virtual machine that were observed. [The Q1 page](environment-qualification.md#the-selected-environment)
+  states the reads.
+- **A reused identifier is refused per work directory.** The driver refuses a
+  characterization identifier whose directory exists under the work directory of the
+  phase `up` it is given. Under another run name, `q3-1` could be given again, and
+  `--check` does not detect two directories that state one identifier. The rule that a
+  characterization is never repeated is a procedure, not a check.
+- **A failure of the tool reads as a refusal in the transcript.** The driver starts the
+  caller only when `--preconditions` exits 0, and prints "The tool refused a precondition"
+  for any other exit status, also 1 or 2, which mean that the tool printed no state.
+  The record built after it states the result.
+- **The wait for the watch is not observed in Q3.** The driver counts the lines of the
+  watch output and waits until there are 4. `q2-1` showed one event on each line for the
+  same command, but no Q3 watch has started, because `q3-1` was refused before it.
+  `stream-complete` holds the opening events in either case.
+- **`upStartedAt` is the start file of the phase `up`.** The header states the instant
+  that the Q1 driver wrote to its start file, which is a moment after the first instant it
+  printed. For `q3-1` they are 07:26:19 and 07:26:17.
+
 ## What a record does not establish
 
 - A throughput, a rate, a capacity figure, or a benchmark. One closed-loop workload of

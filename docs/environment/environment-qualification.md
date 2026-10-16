@@ -83,9 +83,9 @@ booted again, the Q3 characterization [`q3-1`](../proof/experiments/v2-q3/runs/q
 read 10,429,972,480 bytes of memory for the engine and the node, 12,288 bytes more than
 `q1-1`, and every other value of the identity unchanged. It was refused. One further boot
 of the virtual machine, which the host owner authorized, gave 10,429,956,096 bytes. So on
-this host the memory figure, and with it the digest, changes when the virtual machine
-boots, and the selected environment cannot be met again by a later boot unless the
-figure comes back. The Q1 tool and the Q1 freeze record are unchanged. Whether the
+this host the memory figure, and with it the digest, changed at each of the two boots
+of the virtual machine that were observed, and the selected environment cannot be met
+again after a boot unless the figure comes back. The Q1 tool and the Q1 freeze record are unchanged. Whether the
 environment identity should keep the exact memory figure is not decided here.
 
 ## The procedure

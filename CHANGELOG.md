@@ -20,8 +20,8 @@ from `1.0.0`.
   started no caller. One authorized further boot gave 10,429,956,096 bytes, so no further
   characterization was run. No G and no Q4 bound record exist. The run is kept in
   `docs/proof/experiments/v2-q3/runs/q3-1/`. Evidence level C2 for the refusal, on one
-  provider. No claim is registered. The digest of `q1-1` does not hold across a boot of
-  the virtual machine on this host; [the Q1 page](docs/environment/environment-qualification.md#the-selected-environment)
+  provider. No claim is registered. The digest of `q1-1` did not hold across either of
+  the two boots of the virtual machine observed on this host; [the Q1 page](docs/environment/environment-qualification.md#the-selected-environment)
   states the reads.
 - **The Q3 stable caller characterization and the Q4 bound formulas are frozen before
   the first Q3 run.** `V2-S6-002-PR2` adds `tools/caller_characterization`, which reads

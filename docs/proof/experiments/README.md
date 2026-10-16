@@ -1004,7 +1004,7 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
 - **Its digest did not hold across a boot.** Since `V2-S6-002-PR2`: after the engine's
   virtual machine booted again, the memory figure of the identity changed, and the Q3
   characterization [`q3-1`](v2-q3/runs/q3-1/result.md) was refused on the environment.
-  A further boot gave another figure. [The Q1 page](../../environment/environment-qualification.md#the-selected-environment)
+  A further boot gave another figure: two boots were observed, and each changed it. [The Q1 page](../../environment/environment-qualification.md#the-selected-environment)
   states the reads.
 
 ## The Q2 runtime startup characterization
