@@ -116,8 +116,9 @@ All commands ran from Git Bash in the locked environment (`uv run --locked`).
 The table above is the local validation of the change before its push, and it stays as it
 ran. After the fix of the two guard tests, only the affected suites ran again locally: the
 layout suite, 258 passed and 2 skipped; the documentation, inventory, Q3, Q4, and layout
-suites, 2142 passed and 2 skipped; and the same suites after the corrections of the
-independent review, 2354 passed and 2 skipped. The full local default lane did not run
+suites, 2142 passed and 2 skipped; and, after the corrections of the independent review,
+those suites with the runtime startup and environment qualification suites, 2354 passed
+and 2 skipped. The full local default lane did not run
 again.
 
 ## Final hosted validation
@@ -142,8 +143,9 @@ with the conclusion `success`. Each of its 11 jobs completed with `success`:
 
 The conclusions were read from the check runs of the head commit. The job logs need an
 authenticated read, so no hosted test count is stated here. Every job runs on
-`ubuntu-24.04`, so the hosted default lane is a full default lane on Linux with the fix of
-the two guard tests in the tree. It does not change the local history above.
+`ubuntu-24.04`, and the default-lane job runs `uv run --locked python -m pytest -q`, the
+command of the local row above, so the hosted default lane is a full default lane on Linux
+with the fix of the two guard tests in the tree. It does not change the local history above.
 
 ## What the independent review found
 
