@@ -1313,3 +1313,38 @@ def test_the_tool_imports_no_network_or_process_module() -> None:
         )
         for module in ("subprocess", "socket", "urllib", "http", "requests"):
             assert not re.search(rf"^\s*(import|from)\s+{module}\b", text, re.MULTILINE)
+
+
+def test_the_committed_characterization_q3_1_is_refused_on_the_environment() -> None:
+    """V2-S6-002-PR2 ran q3-1 once under revision 1. Its record is what its
+    directory gives. Only environment-qualified refused it: the memory of the engine
+    and the node differed from q1-1 after the virtual machine booted again. No caller
+    ran, so the record states no caller and no G, and no bound record exists."""
+    directory = ROOT / "docs/proof/experiments/v2-q3/runs/q3-1"
+    assert q3.committed_runs() == [directory]
+    record = json.loads((directory / q3.RECORD_FILE).read_text(encoding="utf-8"))
+    assert record["result"] == q3.REFUSED
+    states = {item["ruleId"]: item["state"] for item in record["findings"]}
+    assert [rule for rule in q3.PRECONDITION_RULES if states[rule] != q3.HELD] == [
+        "environment-qualified"
+    ]
+    assert {
+        rule.rule_id: states[rule.rule_id]
+        for rule in q3.RULES
+        if rule.rule_id not in q3.PRECONDITION_RULES
+    } == {
+        rule.rule_id: q3.NOT_OBSERVED
+        for rule in q3.RULES
+        if rule.rule_id not in q3.PRECONDITION_RULES
+    }
+    assert record["caller"] is None
+    assert record["bound"]["valueMs"] is None
+    environment = record["environment"]
+    assert environment["containerEngine"]["memoryBytes"] == 10_429_972_480
+    assert record["identities"]["environmentSha256"] == (
+        "sha256:ac3a1022e86facb519bb0820b57d7a7fb32c0c6ea1011a59e88b8c1aa4efd087"
+    )
+    for name in ("watch.jsonl", "caller-run.json", "caller.jsonl", "plan.json"):
+        assert not (directory / name).exists(), name
+    assert not (directory / "capacity/pods.json").exists()
+    assert q4.committed_records() == []

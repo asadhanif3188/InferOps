@@ -1,8 +1,12 @@
 # Q3: the stable caller characterization, and the Q4 bounds
 
-Status: **the Q3 workflow and the Q4 formulas are frozen. No characterization has run,
-and no bound record exists.** The synthetic directories of the suite show each refusal
-at C0.
+Status: **the Q3 workflow and the Q4 formulas are frozen. One characterization has run,
+[`q3-1`](../proof/experiments/v2-q3/runs/q3-1/result.md), and it is `REFUSED`: on
+2026-10-16, at the commit `0307f7f`, its capacity reading was not of the environment of
+`q1-1`, so the driver started no caller. No G has been measured, and no bound record
+exists.** The engine's virtual machine had booted again since `q2-1`, and the memory that
+it reports differed from `q1-1` by 12,288 bytes; [the run page](../proof/experiments/v2-q3/runs/q3-1/result.md)
+states the reads. The synthetic directories of the suite show each refusal at C0.
 
 Before a V2 reliability experiment runs, Q3 measures what the caller sees when the
 topology of the release is healthy and no fault is injected. It runs the [RP-1 caller runner](../serving/reliability-runner.md)
@@ -30,8 +34,8 @@ cites it. **The Q4 bounds are experiment bounds, not production SLOs.**
 | Tests | [`tests/domain/test_caller_characterization.py`](../../tests/domain/test_caller_characterization.py) and [`tests/domain/test_experiment_bounds.py`](../../tests/domain/test_experiment_bounds.py) |
 | Target | The release that `q1-1` qualified: key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop`, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461` |
 | Caller | RP-1, revision 1: two closed-loop workers inside the cluster, one fixed request, to the API Service. Duration 360 s, request ceiling 2000 |
-| Runs | None yet. A characterization is committed under `docs/proof/experiments/v2-q3/runs/q3-N/` |
-| Bound records | None yet. A bound record is committed as `docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json` |
+| Runs | One: [`q3-1`](../proof/experiments/v2-q3/runs/q3-1/result.md), `REFUSED` on `environment-qualified`, no caller started. A characterization is committed under `docs/proof/experiments/v2-q3/runs/q3-N/` |
+| Bound records | None: no Q3 record is `CHARACTERIZED`. A bound record is committed as `docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json` |
 | Validation record | [`v2-s6-002-pr2-validation.md`](../proof/environment/v2-s6-002-pr2-validation.md) |
 
 ## Healthy is a state of the topology

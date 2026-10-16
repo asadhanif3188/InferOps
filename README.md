@@ -313,7 +313,10 @@ is frozen: in the same environment, a driver runs the RP-1 caller once for six m
 while the topology is healthy, and a tool states G, the p99 of the gaps between
 successive successful requests. The same freeze fixes the four Q4 formulas that derive
 the experiment bounds from S and G. The bounds are experiment bounds, not production
-SLOs, and no claim cites them.
+SLOs, and no claim cites them. One characterization has run:
+[`q3-1`](docs/proof/experiments/v2-q3/runs/q3-1/result.md) is `REFUSED`, because the
+engine's virtual machine had booted again and its memory figure no longer matched the
+environment of `q1-1`. No G and no bound has been stated.
 
 ## Prerequisites
 

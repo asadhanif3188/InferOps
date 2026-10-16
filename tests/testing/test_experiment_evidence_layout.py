@@ -66,6 +66,7 @@ INTEGRATION_RUNS = ("integration-1", "integration-2")
 QUALIFICATION_RUNS = (
     "docs/proof/experiments/v2-q1/runs/q1-1",
     "docs/proof/experiments/v2-q2/runs/q2-1",
+    "docs/proof/experiments/v2-q3/runs/q3-1",
 )
 INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 LAYOUT_DOC = REPO_ROOT / "docs" / "testing" / "experiment-evidence-layout.md"
@@ -1558,7 +1559,8 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
     holds the attempts of the Sprint 5 integration validation, which are of this
     layout and conform. Since V2-S6-001-PR2 it holds the Q1 qualifications, which
     are listed with the text rules applied to their files, and since V2-S6-002-PR1
-    the Q2 characterizations, which are listed in the same way."""
+    the Q2 characterizations, which are listed in the same way, and since
+    V2-S6-002-PR2 the Q3 characterizations."""
     report = core.repository_report()
     assert [(run.path, run.status) for run in report.runs] == [
         (f"docs/proof/experiments/v2-e01/runs/{run_id}", run_core.PRE_SCHEMA)

@@ -75,6 +75,19 @@ yet, and no freeze record of E02A or E02B exists. When the local environment is
 `REFUSED`, the refusal is retained, and a separate environment decision record
 precedes any other environment.
 
+**Since `V2-S6-002-PR2`: the digest of `q1-1` did not hold across a boot of the engine's
+virtual machine.** The Q2 tool (since `V2-S6-002-PR1`) and the Q3 tool compare the digest
+of their capacity reading with the one `q1-1` states, so two tools now compare
+identities. On 2026-10-16, after the virtual machine of the docker-desktop engine had
+booted again, the Q3 characterization [`q3-1`](../proof/experiments/v2-q3/runs/q3-1/result.md)
+read 10,429,972,480 bytes of memory for the engine and the node, 12,288 bytes more than
+`q1-1`, and every other value of the identity unchanged. It was refused. One further boot
+of the virtual machine, which the host owner authorized, gave 10,429,956,096 bytes. So on
+this host the memory figure, and with it the digest, changes when the virtual machine
+boots, and the selected environment cannot be met again by a later boot unless the
+figure comes back. The Q1 tool and the Q1 freeze record are unchanged. Whether the
+environment identity should keep the exact memory figure is not decided here.
+
 ## The procedure
 
 The driver runs from the committed tree with a clean working tree. It writes

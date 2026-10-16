@@ -10,6 +10,19 @@ from `1.0.0`.
 
 ### Added
 
+- **The first Q3 stable caller characterization ran, and it is `REFUSED` on the
+  environment.** `V2-S6-002-PR2` ran the frozen driver under Q3 revision 1, at the commit
+  `0307f7f`, on the docker-desktop provider: the phase `up` (exit 0, Application
+  `Synced`/`Healthy` at `b0bdcca`), the characterization `q3-1`, and the phase `down`.
+  The precondition `environment-qualified` was not held: the engine and the node reported
+  10,429,972,480 bytes of memory, 12,288 more than `q1-1`, after the engine's virtual
+  machine had booted again, so the environment digest was not that of `q1-1`. The driver
+  started no caller. One authorized further boot gave 10,429,956,096 bytes, so no further
+  characterization was run. No G and no Q4 bound record exist. The run is kept in
+  `docs/proof/experiments/v2-q3/runs/q3-1/`. Evidence level C2 for the refusal, on one
+  provider. No claim is registered. The digest of `q1-1` does not hold across a boot of
+  the virtual machine on this host; [the Q1 page](docs/environment/environment-qualification.md#the-selected-environment)
+  states the reads.
 - **The Q3 stable caller characterization and the Q4 bound formulas are frozen before
   the first Q3 run.** `V2-S6-002-PR2` adds `tools/caller_characterization`, which reads
   one directory that a frozen driver writes and prints one record whose result is
