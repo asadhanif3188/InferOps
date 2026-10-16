@@ -975,6 +975,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | How a stored analysis of one experiment run is bound to the digests of its evidence files and to the code that computed it, and how it is computed again | [The replay of an experiment analysis](../testing/analysis-replay.md) |
 | What a PodDisruptionBudget of the release bounds, and that it does not bound a pod deletion | [The disruption budgets](../environment/disruption-budgets.md) |
 | Whether one local environment holds the V2 target topology at its exact identities before an experiment runs, and how a refusal is kept | [Q1: the environment and identity qualification](../environment/environment-qualification.md) |
+| How long a replacement runtime pod takes from its creation to its first Ready condition in a controlled restart, and how S, the maximum, is stated | [Q2: the runtime startup characterization](../environment/runtime-startup-characterization.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |

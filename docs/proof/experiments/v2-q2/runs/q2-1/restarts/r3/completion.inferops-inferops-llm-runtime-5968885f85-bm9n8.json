@@ -1,0 +1,7 @@
+{
+  "completionTokens": 16,
+  "finishReason": "length",
+  "httpStatus": 200,
+  "model": "qwen3-1.7b-q8_0",
+  "promptTokens": 15
+}

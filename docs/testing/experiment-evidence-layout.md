@@ -12,8 +12,10 @@ exists and that no run produced one.) Each run directory that the
 suite checks is built by the suite, with a synthetic caller record and placeholder
 identities, except one copy of a committed run directory, which is refused at its
 manifest, and the two attempts, which its listing reads in place. Its listing also reads
-in place the Q1 qualification `q1-1`, which is not a run directory of this layout (see
-[the Q1 qualifications](#the-q1-qualifications)). The three other run directories that are committed were written before the
+in place the Q1 qualification `q1-1` and, since `V2-S6-002-PR1`, the Q2
+characterization `q2-1`, neither of which is a run directory of this layout (see
+[the Q1 qualifications](#the-q1-qualifications) and [the Q2
+characterizations](#the-q2-characterizations)). The three other run directories that are committed were written before the
 [ExperimentRun schema](../contracts/experiment-run.md).
 [The compatibility section](#the-three-earlier-run-directories) says how they are held.
 (Since `V2-S5-004-PR2` one synthetic run directory of this layout is committed as a test fixture,
@@ -38,7 +40,8 @@ directory of this layout exists is about the proof tree.
 `tools/experiment_evidence` applies to one run directory. The `check` command applies it
 to the directories it is given. The `repository` command applies it to each run directory
 of the proof tree that the pre-schema register does not name and that is not a
-[Q1 qualification](#the-q1-qualifications).
+[Q1 qualification](#the-q1-qualifications) or a
+[Q2 characterization](#the-q2-characterizations).
 
 ## What it is for
 
@@ -348,8 +351,10 @@ run directory does not: an entry of a `runs` or `corrections` directory that is 
 directory, a link above a run directory, and a corrections directory of a run with the
 name of no run directory of this layout. A corrections directory beside a run directory
 that is refused gets no finding of its own. A directory of
-`docs/proof/experiments/v2-q1/runs` is listed as a qualification and is not held to a
-manifest: see [the Q1 qualifications](#the-q1-qualifications).
+`docs/proof/experiments/v2-q1/runs` or of `docs/proof/experiments/v2-q2/runs` is listed
+as a qualification and is not held to a manifest: see [the Q1
+qualifications](#the-q1-qualifications) and [the Q2
+characterizations](#the-q2-characterizations).
 
 **The names are compared as text.** A file system that ignores letter case opens a file
 under a name in another case. The check compares the name of the manifest, of each
@@ -445,8 +450,22 @@ Since `V2-S6-001-PR2`, which committed the first one, `q1-1`:
   name of a qualification. A directory there with a manifest is checked as a run.
 - **`python -m tools.environment_qualification --check` holds each to its record.** It
   builds the record again from the directory and compares the bytes.
-- **Only that one directory holds qualifications.** A directory with no manifest under
-  the `runs` directory of any other experiment is refused at its manifest.
+- **Until `V2-S6-002-PR1` only that one directory held qualifications.** Since then
+  `v2-q2/runs/` holds them too; see below. A directory with no manifest under the `runs`
+  directory of any other experiment is refused at its manifest.
+
+### The Q2 characterizations
+
+`docs/proof/experiments/v2-q2/runs/` holds the directories of
+[Q2, the runtime startup characterization](../environment/runtime-startup-characterization.md).
+A characterization is a qualification too: it is not a run of an experiment, and it has
+no ExperimentRun manifest. Since `V2-S6-002-PR1` the `repository` command treats a
+directory there as it treats one of `v2-q1/runs/`, with the same rules, and names
+`python -m tools.runtime_startup --check` as the check that builds its record again.
+The first, `q2-1`, was committed by the same change.
+The two experiment directories and their tools are `QUALIFICATION_TOOLS` in
+`tools/experiment_evidence`. A directory with no manifest under the `runs` directory of
+any other experiment is refused at its manifest.
 
 (Until `V2-S6-001-PR2` the `repository` command refused every directory of a `runs`
 directory with no manifest, and it would have refused `q1-1` with
@@ -545,12 +564,13 @@ uv run --locked python -m pytest tests/testing/test_experiment_evidence_layout.p
 ```
 
 `repository` prints `pre-schema` for a directory whose manifest the register names,
-`qualification` for a Q1 qualification that no text rule refuses, `ok` with the two
-digests for a directory that conforms, and `REFUSED` with each finding otherwise. It
-prints three `pre-schema` lines, one `qualification` line, for `q1-1`, and two `ok`
-lines, one for each attempt of the integration validation, and exits 0. (Until
-`V2-S5-006-PR1` it printed three `pre-schema` lines only, and until `V2-S6-001-PR2` it
-printed no `qualification` line.)
+`qualification` for a Q1 qualification or a Q2 characterization that no text rule
+refuses, `ok` with the two digests for a directory that conforms, and `REFUSED` with each
+finding otherwise. It prints three `pre-schema` lines, two `qualification` lines, for
+`q1-1` and `q2-1`, and two `ok` lines, one for each attempt of the integration
+validation, and exits 0. (Until `V2-S5-006-PR1` it printed three `pre-schema` lines only,
+until `V2-S6-001-PR2` it printed no `qualification` line, and until `V2-S6-002-PR1` it
+printed one.)
 
 `digests` prints one line for each file of a directory that has the form of an evidence
 file and that neither text rule refuses, in the order of the paths as text. It prints no

@@ -10,6 +10,39 @@ from `1.0.0`.
 
 ### Added
 
+- **The first Q2 runtime startup characterization ran, and it is `CHARACTERIZED`, with S
+  = 11,000 ms.** `V2-S6-002-PR1` ran the frozen driver under freeze revision 2, at the
+  commit `65bd9bb`, on the docker-desktop provider with one node, in the environment of
+  `q1-1`: the phase `up` of the Q1 driver, the characterization `q2-1`, and the phase
+  `down`. Each of the 16 rules held. Three rollout restarts of the runtime Deployment
+  replaced the two runtime pods one after the other, six replacements in all, each Ready
+  10 s or 11 s after its creation, each verifying the model and answering one completion.
+  The controller reported the Application `Synced` and `Healthy` after each restart. The
+  directory, its record, its transcript, and its page are committed under
+  `docs/proof/experiments/v2-q2/runs/q2-1/`, without the capacity gate's read of every
+  pod. Evidence level C2, bounded to that one environment. No claim is registered. Not
+  established: a startup benchmark, the start of a pod on a node that has not loaded the
+  model or under caller traffic, a recovery time, or any bound derived from S.
+- **The Q2 runtime startup characterization is frozen before its first run.**
+  `V2-S6-002-PR1` adds `tools/runtime_startup`, which reads one directory that a frozen
+  driver writes and prints one record whose result is `CHARACTERIZED`, `INCONCLUSIVE`, or
+  `REFUSED`. In the environment that `q1-1` selected, the driver restarts the runtime
+  Deployment three times, one at a time, with `kubectl rollout restart`; its phases `up`
+  and `down` are those of the Q1 driver, run without a change. Each replacement pod is
+  one observation of its interval from creation to its first Ready condition, read from a
+  watch of the runtime pods at a resolution of one second, and S is the maximum of the
+  six. Its 16 rules are the 16 acceptance criteria of
+  `docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json`; seven are preconditions, which
+  refuse and stop the driver before the first restart. Revision 2 supersedes revision 1,
+  under which no characterization ran: revision 1 held the API image to the digest of
+  `q1-1`, and a build of unchanged inputs reported another digest. The layout check of
+  `tools/experiment_evidence` lists a directory of `v2-q2/runs/` as a qualification, as
+  it lists one of `v2-q1/runs/`. See [the Q2
+  page](docs/environment/runtime-startup-characterization.md) and [the validation
+  record](docs/proof/environment/v2-s6-002-pr1-validation.md). Evidence level C0 for the
+  tool, over synthetic directories. No claim is registered. Not established: a startup
+  benchmark, a recovery time, any bound derived from S, or anything about another
+  provider or node.
 - **The first Q1 environment and identity qualification ran, and it is `QUALIFIED`.**
   `V2-S6-001-PR2` ran the frozen driver once, at the commit `08b8914`, on the
   docker-desktop provider with one node: the phase `up`, the qualification `q1-1`, and

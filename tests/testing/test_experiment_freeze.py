@@ -86,6 +86,14 @@ S5I_R2_PIN = "70d8dd0bd5fca5aeaf4913464b1b9a5a3b515fd5afcb218c7b1500c4f0b7903b"
 #: before any qualification ran. Its pin is written out for the same reason.
 Q1 = "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
 Q1_PIN = "f23426223d19abf19fa3c8beaaa138abe93bdef8ab376335eda50b0da3f29ded"
+#: The Q2 runtime startup characterization, registered by V2-S6-002-PR1
+#: before any characterization ran. Its pin is written out for the same reason.
+Q2 = "docs/proof/experiments/v2-q2/freeze-r1.v1alpha1.json"
+Q2_PIN = "8db93109a86336cfd3999cccd42f6ceec8eae22b033d7f128d541e80332b1196"
+#: Its second revision, registered by the same change before any
+#: characterization ran: revision 1 held the API image to the digest of q1-1.
+Q2_R2 = "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
+Q2_R2_PIN = "32e58c7984ad74ef229e5a2d3411e7de78971b17a554124a7fbe3acfe5bcaecd"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so
@@ -120,7 +128,11 @@ def test_every_committed_record_holds_every_rule() -> None:
 
 
 def test_the_committed_records_are_the_pinned_ones() -> None:
-    assert record_paths() == sorted(FROZEN_RECORDS) == [R1, R2, R3, Q1, S5I, S5I_R2]
+    assert (
+        record_paths()
+        == sorted(FROZEN_RECORDS)
+        == [R1, R2, R3, Q1, Q2, Q2_R2, S5I, S5I_R2]
+    )
     assert load_registry() == dict(FROZEN_RECORDS)
 
 
@@ -142,7 +154,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "PASSED: 6 freeze record(s)" in result.stdout
+    assert "PASSED: 8 freeze record(s)" in result.stdout
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
@@ -706,6 +718,8 @@ def test_every_registered_record_keeps_the_pin_it_was_registered_with() -> None:
         S5I: S5I_PIN,
         S5I_R2: S5I_R2_PIN,
         Q1: Q1_PIN,
+        Q2: Q2_PIN,
+        Q2_R2: Q2_R2_PIN,
     }
 
 

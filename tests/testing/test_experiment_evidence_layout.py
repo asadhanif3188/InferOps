@@ -61,8 +61,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: attempt, added by V2-S5-006-PR1. Each is of the published layout. An attempt
 #: added later is a visible change of this tuple.
 INTEGRATION_RUNS = ("integration-1", "integration-2")
-#: The Q1 qualifications that the proof tree holds, since V2-S6-001-PR2.
-QUALIFICATION_RUNS = ("q1-1",)
+#: The qualifications that the proof tree holds: the Q1 qualification since
+#: V2-S6-001-PR2, and the Q2 characterization since V2-S6-002-PR1.
+QUALIFICATION_RUNS = (
+    "docs/proof/experiments/v2-q1/runs/q1-1",
+    "docs/proof/experiments/v2-q2/runs/q2-1",
+)
 INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 LAYOUT_DOC = REPO_ROOT / "docs" / "testing" / "experiment-evidence-layout.md"
 FIXTURES = REPO_ROOT / "contracts" / "experiment" / "examples" / "valid"
@@ -1553,7 +1557,8 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
     checked: the listing says so for each. Since V2-S5-006-PR1 the proof tree also
     holds the attempts of the Sprint 5 integration validation, which are of this
     layout and conform. Since V2-S6-001-PR2 it holds the Q1 qualifications, which
-    are listed with the text rules applied to their files."""
+    are listed with the text rules applied to their files, and since V2-S6-002-PR1
+    the Q2 characterizations, which are listed in the same way."""
     report = core.repository_report()
     assert [(run.path, run.status) for run in report.runs] == [
         (f"docs/proof/experiments/v2-e01/runs/{run_id}", run_core.PRE_SCHEMA)
@@ -1562,13 +1567,13 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
             "20261003-e01-abc-1",
             "20261006-e01-d-1",
         )
-    ] + [
-        (f"{core.QUALIFICATIONS_REF}/runs/{run}", core.QUALIFICATION)
-        for run in QUALIFICATION_RUNS
-    ] + [(f"{INTEGRATION_DIRECTORY}/{run}", "conforming") for run in INTEGRATION_RUNS]
+    ] + [(run, core.QUALIFICATION) for run in QUALIFICATION_RUNS] + [
+        (f"{INTEGRATION_DIRECTORY}/{run}", "conforming") for run in INTEGRATION_RUNS
+    ]
     assert report.findings == () and not report.refused
-    assert all(run.digests is None for run in report.runs[:4])
-    assert all(run.digests is not None for run in report.runs[4:])
+    unchecked = 3 + len(QUALIFICATION_RUNS)
+    assert all(run.digests is None for run in report.runs[:unchecked])
+    assert all(run.digests is not None for run in report.runs[unchecked:])
 
 
 def _qualification(root: Path, name: str = "q1-1") -> Path:
@@ -1600,6 +1605,37 @@ def test_a_qualification_directory_is_listed_and_not_held_to_a_manifest(
         (f"{core.QUALIFICATIONS_REF}/runs/q1-1", core.QUALIFICATION, 4)
     ]
     assert report.findings == () and not report.refused
+
+
+def test_a_q2_characterization_is_listed_as_a_qualification_of_its_own_tool(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Since V2-S6-002-PR1 the runs of v2-q2 are Q2 characterizations. They have no
+    manifest either, and tools.runtime_startup --check holds each to its record."""
+    _qualification(tmp_path)
+    q2_ref = "docs/proof/experiments/v2-q2"
+    directory = tmp_path / q2_ref / "runs" / "q2-1"
+    _write(directory / "run.json", "{}\n")
+    _write(directory / core.QUALIFICATION_RECORD, "{}\n")
+    report = core.repository_report(tmp_path)
+    assert [(run.path, run.status, run.files) for run in report.runs] == [
+        (f"{core.QUALIFICATIONS_REF}/runs/q1-1", core.QUALIFICATION, 4),
+        (f"{q2_ref}/runs/q2-1", core.QUALIFICATION, 2),
+    ]
+    assert dict(core.QUALIFICATION_TOOLS) == {
+        core.QUALIFICATIONS_REF: "tools.environment_qualification",
+        q2_ref: "tools.runtime_startup",
+    }
+    assert core.qualification_tool(f"{q2_ref}/runs/q2-1") == "tools.runtime_startup"
+    with pytest.raises(ValueError):
+        core.qualification_tool(
+            "docs/proof/experiments/v2-s5-integration/runs/integration-1"
+        )
+    (directory / core.QUALIFICATION_RECORD).unlink()
+    refused = core.repository_report(tmp_path)
+    assert [(f.rule, f.path) for run in refused.runs for f in run.findings] == [
+        (core.RULE_FILE_MISSING, f"{q2_ref}/runs/q2-1")
+    ]
 
 
 @pytest.mark.parametrize(
@@ -1879,7 +1915,7 @@ def test_the_command_passes_the_repository_and_names_what_it_did_not_check(
     )
     assert sum(1 for line in out if line.endswith("(not checked)")) == 3
     assert [line.split()[1] for line in out if line.startswith("qualification ")] == [
-        f"{core.QUALIFICATIONS_REF}/runs/{run}" for run in QUALIFICATION_RUNS
+        *QUALIFICATION_RUNS
     ]
 
 

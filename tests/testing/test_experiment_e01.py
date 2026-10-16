@@ -1631,7 +1631,7 @@ def test_the_review_record_describes_the_real_deployment_run_as_it_is() -> None:
     review names the registry as it was reviewed: today's file without the rows that
     were registered after it, in the form the file is written in. (Until
     `V2-S5-006-PR1` added two rows, this test compared today's whole file.
-    `V2-S6-001-PR1` added one more row.)
+    `V2-S6-001-PR1` added one more row, and `V2-S6-002-PR1` two more.)
     The test does not show that a review took place or what it read."""
     review = json.loads(E01_D_REVIEW.read_text(encoding="utf-8"))
     subject = review["subject"]

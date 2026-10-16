@@ -299,7 +299,15 @@ has run: [`q1-1`](docs/proof/experiments/v2-q1/runs/q1-1/result.md) is `QUALIFIE
 C2, on the docker-desktop provider with one node, and its environment identity is the
 one environment that E02A and E02B must share. It qualifies that one environment and no
 other, and it is not a result of any reliability experiment. (Until then this
-paragraph said that no qualification had run.)
+paragraph said that no qualification had run.) Since `V2-S6-002-PR1` the
+[Q2 runtime startup characterization](docs/environment/runtime-startup-characterization.md)
+is frozen: in the environment that `q1-1` selected, a driver restarts the runtime
+Deployment three times, one at a time, and a tool states S, the maximum interval from
+the creation of a replacement runtime pod to its first Ready condition. A restart is not
+a fault, S is not a startup benchmark, and no claim cites it. One characterization has
+run: [`q2-1`](docs/proof/experiments/v2-q2/runs/q2-1/result.md) is `CHARACTERIZED`, at C2,
+with S = 11,000 ms over six replacement runtime pods in three rollout restarts on the
+docker-desktop provider.
 
 ## Prerequisites
 
