@@ -18,6 +18,9 @@ result is `CHARACTERIZED`, `INCONCLUSIVE`, or `REFUSED`.
 Q2 is a qualification and not a reliability experiment. It injects no fault and runs no
 caller. S is not a startup benchmark, a capacity figure, a latency, or a threshold, and
 no claim cites it. Later work derives bounds from S. Those bounds are not part of Q2.
+(Since `V2-S6-002-PR2` [the Q3 page](stable-caller-characterization.md#the-q4-formulas)
+states the four Q4 formulas, which the Q3 freeze record fixes, and the tool that
+computes them from a Q2 record and a Q3 record.)
 
 | Property | Value |
 |---|---|

@@ -976,6 +976,7 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 | What a PodDisruptionBudget of the release bounds, and that it does not bound a pod deletion | [The disruption budgets](../environment/disruption-budgets.md) |
 | Whether one local environment holds the V2 target topology at its exact identities before an experiment runs, and how a refusal is kept | [Q1: the environment and identity qualification](../environment/environment-qualification.md) |
 | How long a replacement runtime pod takes from its creation to its first Ready condition in a controlled restart, and how S, the maximum, is stated | [Q2: the runtime startup characterization](../environment/runtime-startup-characterization.md) |
+| What the caller sees when the topology is healthy, how G, the p99 gap between successes, is stated, and how the experiment bounds are derived from S and G | [Q3: the stable caller characterization, and the Q4 bounds](../environment/stable-caller-characterization.md) |
 | Who owns each resource, as data | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) |
 | Who owns each resource, explained | [Resource ownership](resource-ownership.md) |
 | What belongs here and what does not | [Project boundaries](project-boundaries.md) |

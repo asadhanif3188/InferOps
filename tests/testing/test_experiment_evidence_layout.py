@@ -66,6 +66,7 @@ INTEGRATION_RUNS = ("integration-1", "integration-2")
 QUALIFICATION_RUNS = (
     "docs/proof/experiments/v2-q1/runs/q1-1",
     "docs/proof/experiments/v2-q2/runs/q2-1",
+    "docs/proof/experiments/v2-q3/runs/q3-1",
 )
 INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 LAYOUT_DOC = REPO_ROOT / "docs" / "testing" / "experiment-evidence-layout.md"
@@ -1558,7 +1559,8 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
     holds the attempts of the Sprint 5 integration validation, which are of this
     layout and conform. Since V2-S6-001-PR2 it holds the Q1 qualifications, which
     are listed with the text rules applied to their files, and since V2-S6-002-PR1
-    the Q2 characterizations, which are listed in the same way."""
+    the Q2 characterizations, which are listed in the same way, and since
+    V2-S6-002-PR2 the Q3 characterizations."""
     report = core.repository_report()
     assert [(run.path, run.status) for run in report.runs] == [
         (f"docs/proof/experiments/v2-e01/runs/{run_id}", run_core.PRE_SCHEMA)
@@ -1625,6 +1627,7 @@ def test_a_q2_characterization_is_listed_as_a_qualification_of_its_own_tool(
     assert dict(core.QUALIFICATION_TOOLS) == {
         core.QUALIFICATIONS_REF: "tools.environment_qualification",
         q2_ref: "tools.runtime_startup",
+        "docs/proof/experiments/v2-q3": "tools.caller_characterization",
     }
     assert core.qualification_tool(f"{q2_ref}/runs/q2-1") == "tools.runtime_startup"
     with pytest.raises(ValueError):
@@ -1636,6 +1639,32 @@ def test_a_q2_characterization_is_listed_as_a_qualification_of_its_own_tool(
     assert [(f.rule, f.path) for run in refused.runs for f in run.findings] == [
         (core.RULE_FILE_MISSING, f"{q2_ref}/runs/q2-1")
     ]
+
+
+def test_a_q3_characterization_is_listed_as_a_qualification_of_its_own_tool(
+    tmp_path: Path,
+) -> None:
+    """Since V2-S6-002-PR2 the runs of v2-q3 are Q3 characterizations. They have no
+    manifest either, and tools.caller_characterization --check holds each to its
+    record. A bound record of v2-q4 is not in a runs directory, and the layout
+    check does not list it."""
+    _qualification(tmp_path)
+    q3_ref = "docs/proof/experiments/v2-q3"
+    directory = tmp_path / q3_ref / "runs" / "q3-1"
+    _write(directory / "run.json", "{}\n")
+    _write(directory / "caller.jsonl", "{}\n")
+    _write(directory / core.QUALIFICATION_RECORD, "{}\n")
+    _write(tmp_path / "docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json", "{}\n")
+    report = core.repository_report(tmp_path)
+    assert [(run.path, run.status, run.files) for run in report.runs] == [
+        (f"{core.QUALIFICATIONS_REF}/runs/q1-1", core.QUALIFICATION, 4),
+        (f"{q3_ref}/runs/q3-1", core.QUALIFICATION, 3),
+    ]
+    assert report.findings == () and not report.refused
+    assert (
+        core.qualification_tool(f"{q3_ref}/runs/q3-1")
+        == "tools.caller_characterization"
+    )
 
 
 @pytest.mark.parametrize(

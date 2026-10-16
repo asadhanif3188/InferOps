@@ -10,6 +10,38 @@ from `1.0.0`.
 
 ### Added
 
+- **The first Q3 stable caller characterization ran, and it is `REFUSED` on the
+  environment.** `V2-S6-002-PR2` ran the frozen driver under Q3 revision 1, at the commit
+  `0307f7f`, on the docker-desktop provider: the phase `up` (exit 0, Application
+  `Synced`/`Healthy` at `b0bdcca`), the characterization `q3-1`, and the phase `down`.
+  The precondition `environment-qualified` was not held: the engine and the node reported
+  10,429,972,480 bytes of memory, 12,288 more than `q1-1`, after the engine's virtual
+  machine had booted again, so the environment digest was not that of `q1-1`. The driver
+  started no caller. One authorized further boot gave 10,429,956,096 bytes, so no further
+  characterization was run. No G and no Q4 bound record exist. The run is kept in
+  `docs/proof/experiments/v2-q3/runs/q3-1/`. Evidence level C2 for the refusal, on one
+  provider. No claim is registered. The digest of `q1-1` did not hold across either of
+  the two boots of the virtual machine observed on this host; [the Q1 page](docs/environment/environment-qualification.md#the-selected-environment)
+  states the reads.
+- **The Q3 stable caller characterization and the Q4 bound formulas are frozen before
+  the first Q3 run.** `V2-S6-002-PR2` adds `tools/caller_characterization`, which reads
+  one directory that a frozen driver writes and prints one record whose result is
+  `CHARACTERIZED`, `INCONCLUSIVE`, or `REFUSED`. In the environment that `q1-1` selected,
+  the driver runs one RP-1 caller run of 360 s against the API Service inside a watch of
+  the API pods and the runtime pods; its phases `up` and `down` are those of the Q1
+  driver, run without a change. G is the nearest-rank p99 of the gaps between successive
+  successful requests, or the maximum gap with fewer than 100 successes. Its 14 rules are
+  the 14 acceptance criteria of `docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json`;
+  seven are preconditions, which refuse and stop the driver before the caller starts.
+  The same record fixes the four Q4 formulas, which `tools/experiment_bounds` computes
+  from one committed Q2 record and one committed Q3 record: `runtime_start_bound_ms =
+  S`, `caller_gap_reference_ms = G`, `reversal_recovery_bound_ms = (2 * S) + 30000`,
+  and `caller_total_unavailability_bound_ms = max(2 * G, 5000)`. The layout check lists a
+  directory of `v2-q3/runs/` as a qualification. See [the Q3
+  page](docs/environment/stable-caller-characterization.md) and [the validation
+  record](docs/proof/environment/v2-s6-002-pr2-validation.md). Evidence level C0 for the
+  tools, over synthetic directories. No claim is registered. The bounds are experiment
+  bounds, not production SLOs.
 - **The first Q2 runtime startup characterization ran, and it is `CHARACTERIZED`, with S
   = 11,000 ms.** `V2-S6-002-PR1` ran the frozen driver under freeze revision 2, at the
   commit `65bd9bb`, on the docker-desktop provider with one node, in the environment of

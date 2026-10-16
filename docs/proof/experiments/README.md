@@ -51,6 +51,13 @@ superseded before any characterization. One characterization ran under revision 
 is a prerequisite of the V2 reliability experiments and not one of them. The same change
 edits `tools/experiment_evidence` again, which moves the three pins of that package in
 the Sprint 5 revision 2 once more.
+**One record added by `V2-S6-002-PR2`**: [the Q3 stable caller characterization and the
+Q4 bounds](#the-q3-stable-caller-characterization-and-the-q4-bounds), revision 1, in its
+own directory, committed before any characterization. It also fixes the four Q4 formulas.
+The same change edits `tools/experiment_evidence` once more, so that the layout check
+lists a Q3 characterization. One characterization ran under it, [`q3-1`](v2-q3/runs/q3-1/result.md),
+and it is `REFUSED`: its capacity reading was not of the environment of `q1-1`. No G was
+measured, and no bound record exists.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -64,6 +71,7 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | Sprint 5 integration validation, `s5-integration-validation` | 2 | [`v2-s5-integration/freeze-r2.v1alpha1.json`](v2-s5-integration/freeze-r2.v1alpha1.json) | One part, S5I, at C2 | Frozen. A run brings its own network policy. One attempt ran under it, [`integration-2`](v2-s5-integration/runs/integration-2/result.md), and PASSED under its criteria. Since `V2-S6-001-PR2`, three pinned inputs differ from their pins: the three files of `tools/experiment_evidence`, which that change edited after both attempts so that the layout check lists a Q1 qualification. A later attempt needs a revision that classifies them |
 | Q2 runtime startup characterization, `v2-q2-runtime-startup-characterization` | 1 | [`v2-q2/freeze-r1.v1alpha1.json`](v2-q2/freeze-r1.v1alpha1.json) | One part, Q2, at C2 | Superseded by revision 2 before any characterization, and kept unchanged: its precondition on the API image digest could not hold. No characterization ran under it |
 | Q2 runtime startup characterization, `v2-q2-runtime-startup-characterization` | 2 | [`v2-q2/freeze-r2.v1alpha1.json`](v2-q2/freeze-r2.v1alpha1.json) | One part, Q2, at C2 | Frozen before any characterization. One characterization ran under it, [`q2-1`](v2-q2/runs/q2-1/result.md), `CHARACTERIZED`, S = 11,000 ms. Not result-bearing: [see below](#the-q2-runtime-startup-characterization) |
+| Q3 stable caller characterization, `v2-q3-stable-caller-characterization` | 1 | [`v2-q3/freeze-r1.v1alpha1.json`](v2-q3/freeze-r1.v1alpha1.json) | One part, Q3, at C2 | Frozen before any characterization. It fixes the rule of G and the four Q4 formulas. Not result-bearing: [see below](#the-q3-stable-caller-characterization-and-the-q4-bounds). One characterization ran under it, [`q3-1`](v2-q3/runs/q3-1/result.md), `REFUSED` on the environment; no caller ran, no G, no bound record |
 | Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). Since `V2-S6-001-PR2`, one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and it is `QUALIFIED`. No pinned input differs from its pin. (Until then this row said that no qualification ran under it.) |
 
 ## Why a freeze comes first
@@ -993,6 +1001,11 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
   `capacity/pods.json`, holds container paths under a home directory in the
   controller's pods, and the publication check refuses it. [The page of
   `q1-1`](v2-q1/runs/q1-1/result.md) states its digest.
+- **Its digest did not hold across a boot.** Since `V2-S6-002-PR2`: after the engine's
+  virtual machine booted again, the memory figure of the identity changed, and the Q3
+  characterization [`q3-1`](v2-q3/runs/q3-1/result.md) was refused on the environment.
+  A further boot gave another figure: two boots were observed, and each changed it. [The Q1 page](../../environment/environment-qualification.md#the-selected-environment)
+  states the reads.
 
 ## The Q2 runtime startup characterization
 
@@ -1031,3 +1044,52 @@ each rule.
   times, so **S = 11,000 ms**. During each, the other runtime pod was Ready, and every
   interval lies close to the probe period of 10 s.
   It is evidence at C2 of that one environment, and no claim cites it.
+
+## The Q3 stable caller characterization and the Q4 bounds
+
+[`v2-q3/freeze-r1.v1alpha1.json`](v2-q3/freeze-r1.v1alpha1.json) fixes Q3 before any
+characterization runs. Q3 measures, in the environment that [`q1-1`](v2-q1/runs/q1-1/result.md)
+selected and with the target topology healthy, what one RP-1 caller run of 360 s sees
+through the API Service: the successful requests, the latency distribution, the gaps
+between successive successes, and the canonical errors. G is the nearest-rank p99 of the
+gaps, or the maximum gap with fewer than 100 successes. The procedure is
+[the driver beside it](v2-q3/procedure/q3-driver.txt), and the record is built by
+[`tools/caller_characterization`](../../../tools/caller_characterization/core.py). The
+record states fourteen acceptance criteria, `Q3-AC1` to `Q3-AC14`, and each is one rule
+of the tool, with the same statement. [The Q3 page](../../environment/stable-caller-characterization.md)
+describes each rule.
+
+- **It is a qualification, not an experiment.** Q3 injects no fault. Healthy is a state of
+  the topology that a watch of the API pods and the runtime pods holds, not of the caller:
+  a request that fails while the topology holds is counted and does not refuse. No
+  characterization is a result of E02 to E06, and no claim cites G.
+- **It also fixes the Q4 formulas, before G is observed.** `runtime_start_bound_ms = S`,
+  `caller_gap_reference_ms = G`, `reversal_recovery_bound_ms = (2 * S) + 30000`, and
+  `caller_total_unavailability_bound_ms = max(2 * G, 5000)`.
+  [`tools/experiment_bounds`](../../../tools/experiment_bounds/core.py), a pinned input of
+  the record, computes them from one committed `CHARACTERIZED` Q2 record and one committed
+  `CHARACTERIZED` Q3 record of the same environment and release, and binds the result to
+  the path and digest of each source record and of its freeze record. A bound record is
+  committed as `v2-q4/bounds-rN.v1alpha1.json`, and `python -m tools.experiment_bounds
+  --check` builds it again. The bounds are experiment bounds, not production SLOs.
+- **The result is `CHARACTERIZED`, `INCONCLUSIVE`, or `REFUSED`.** Seven rules are
+  preconditions: when one is not held, the result is `REFUSED`, and the driver starts no
+  caller. When another rule is not held, the result is `INCONCLUSIVE`. Only a
+  `CHARACTERIZED` record states G.
+- **A record is built under the revision that its header names.** The tool registers
+  each revision that a header may name, so a later revision does not refuse an earlier
+  characterization when `--check` builds it again. That closes, for Q3, a gap that the Q2
+  page states for Q2.
+- **It has its own directory.** A characterization is committed under `v2-q3/runs/q3-N/`
+  with its record, whatever it shows, and the layout check lists it as a qualification.
+- **One characterization has run, and it is `REFUSED`.** `V2-S6-002-PR2` ran
+  [`q3-1`](v2-q3/runs/q3-1/result.md) on 2026-10-16, at the commit `0307f7f`, on the
+  docker-desktop provider. The phase `up` and the six other preconditions held, but the
+  environment identity of the capacity reading had the digest
+  `sha256:ac3a1022e86facb519bb0820b57d7a7fb32c0c6ea1011a59e88b8c1aa4efd087`, not the one
+  of `q1-1`: the engine and the node reported 10,429,972,480 bytes of memory, 12,288 bytes
+  more, after the engine's virtual machine had booted again. The driver started no
+  caller. One further boot, which the host owner authorized, gave a third figure, so no
+  further characterization was run. No G was measured, and the Q4 tool built no bound
+  record. [The Q1 section](#the-q1-environment-qualification) and the Q1 page state what
+  this shows about the digest of `q1-1`.

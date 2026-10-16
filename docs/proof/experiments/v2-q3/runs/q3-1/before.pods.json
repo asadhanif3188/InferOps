@@ -1,0 +1,1457 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "annotations": {
+                    "inferops.io/configuration-checksum": "ae48e347b0dba018c6021b47671e965f2a5db6e266dcef294c6ea2daf1ae631f",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "prometheus.io/path": "/metrics",
+                    "prometheus.io/port": "8090",
+                    "prometheus.io/scrape": "true"
+                },
+                "creationTimestamp": "2026-10-16T07:33:27Z",
+                "generateName": "inferops-inferops-llm-cd67b6468-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/component": "platform-api",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant",
+                    "pod-template-hash": "cd67b6468"
+                },
+                "name": "inferops-inferops-llm-cd67b6468-86kmx",
+                "namespace": "inferops-release",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "apps/v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "ReplicaSet",
+                        "name": "inferops-inferops-llm-cd67b6468",
+                        "uid": "c1ddf79d-7e6f-4c57-8992-36ab0733c61b"
+                    }
+                ],
+                "resourceVersion": "455164",
+                "uid": "e12c08d8-afa2-437d-ad64-35daa10c3c53"
+            },
+            "spec": {
+                "automountServiceAccountToken": false,
+                "containers": [
+                    {
+                        "env": [
+                            {
+                                "name": "INFEROPS_POD_NAME",
+                                "valueFrom": {
+                                    "fieldRef": {
+                                        "apiVersion": "v1",
+                                        "fieldPath": "metadata.name"
+                                    }
+                                }
+                            }
+                        ],
+                        "envFrom": [
+                            {
+                                "configMapRef": {
+                                    "name": "inferops-inferops-llm-configuration"
+                                }
+                            }
+                        ],
+                        "image": "localhost/inferops-api@sha256:de5173b2c143f6f80ecec4fab34b3d7be67e1713a604ba970bb40c07c4257953",
+                        "imagePullPolicy": "Never",
+                        "lifecycle": {
+                            "preStop": {
+                                "sleep": {
+                                    "seconds": 5
+                                }
+                            }
+                        },
+                        "livenessProbe": {
+                            "failureThreshold": 3,
+                            "httpGet": {
+                                "path": "/health/live",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 2
+                        },
+                        "name": "api",
+                        "ports": [
+                            {
+                                "containerPort": 8090,
+                                "name": "http",
+                                "protocol": "TCP"
+                            }
+                        ],
+                        "readinessProbe": {
+                            "failureThreshold": 3,
+                            "httpGet": {
+                                "path": "/health/ready",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 5
+                        },
+                        "resources": {
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "512Mi"
+                            },
+                            "requests": {
+                                "cpu": "100m",
+                                "memory": "128Mi"
+                            }
+                        },
+                        "securityContext": {
+                            "allowPrivilegeEscalation": false,
+                            "capabilities": {
+                                "drop": [
+                                    "ALL"
+                                ]
+                            },
+                            "readOnlyRootFilesystem": true
+                        },
+                        "startupProbe": {
+                            "failureThreshold": 12,
+                            "httpGet": {
+                                "path": "/health/live",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 5,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 2
+                        },
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/tmp",
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "enableServiceLinks": true,
+                "nodeName": "desktop-control-plane",
+                "preemptionPolicy": "PreemptLowerPriority",
+                "priority": 0,
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {
+                    "fsGroup": 65534,
+                    "runAsGroup": 65534,
+                    "runAsNonRoot": true,
+                    "runAsUser": 65534,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "serviceAccount": "inferops-inferops-llm-api",
+                "serviceAccountName": "inferops-inferops-llm-api",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/not-ready",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    },
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/unreachable",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    }
+                ],
+                "volumes": [
+                    {
+                        "emptyDir": {
+                            "medium": "Memory",
+                            "sizeLimit": "16Mi"
+                        },
+                        "name": "tmp"
+                    }
+                ]
+            },
+            "status": {
+                "allocatedResources": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                },
+                "conditions": [
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:28Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "PodReadyToStartContainers"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:27Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:36Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:36Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "ContainersReady"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:27Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "PodScheduled"
+                    }
+                ],
+                "containerStatuses": [
+                    {
+                        "allocatedResources": {
+                            "cpu": "100m",
+                            "memory": "128Mi"
+                        },
+                        "containerID": "containerd://3e7dcb205fc2e65db5b084131aa53c656a81e77d4ff3b48ae8b23ccbc5f9f287",
+                        "image": "localhost/inferops-api:dev",
+                        "imageID": "localhost/inferops-api@sha256:218cc858ad7788c7b309140e8255d558100ca5ef06fe15cd7b48d059241dff9b",
+                        "lastState": {},
+                        "name": "api",
+                        "ready": true,
+                        "resources": {
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "512Mi"
+                            },
+                            "requests": {
+                                "cpu": "100m",
+                                "memory": "128Mi"
+                            }
+                        },
+                        "restartCount": 0,
+                        "started": true,
+                        "state": {
+                            "running": {
+                                "startedAt": "2026-10-16T07:33:28Z"
+                            }
+                        },
+                        "user": {
+                            "linux": {
+                                "gid": 65534,
+                                "supplementalGroups": [
+                                    65534
+                                ],
+                                "uid": 65534
+                            }
+                        },
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/tmp",
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                ],
+                "hostIP": "172.20.0.3",
+                "hostIPs": [
+                    {
+                        "ip": "172.20.0.3"
+                    }
+                ],
+                "observedGeneration": 1,
+                "phase": "Running",
+                "podIP": "10.244.0.16",
+                "podIPs": [
+                    {
+                        "ip": "10.244.0.16"
+                    }
+                ],
+                "qosClass": "Burstable",
+                "resources": {
+                    "limits": {
+                        "cpu": "1",
+                        "memory": "512Mi"
+                    },
+                    "requests": {
+                        "cpu": "79m",
+                        "memory": "128Mi"
+                    }
+                },
+                "startTime": "2026-10-16T07:33:27Z"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "annotations": {
+                    "inferops.io/configuration-checksum": "ae48e347b0dba018c6021b47671e965f2a5db6e266dcef294c6ea2daf1ae631f",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "prometheus.io/path": "/metrics",
+                    "prometheus.io/port": "8090",
+                    "prometheus.io/scrape": "true"
+                },
+                "creationTimestamp": "2026-10-16T07:33:27Z",
+                "generateName": "inferops-inferops-llm-cd67b6468-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/component": "platform-api",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant",
+                    "pod-template-hash": "cd67b6468"
+                },
+                "name": "inferops-inferops-llm-cd67b6468-dv2zg",
+                "namespace": "inferops-release",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "apps/v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "ReplicaSet",
+                        "name": "inferops-inferops-llm-cd67b6468",
+                        "uid": "c1ddf79d-7e6f-4c57-8992-36ab0733c61b"
+                    }
+                ],
+                "resourceVersion": "455166",
+                "uid": "f075ed09-eef2-4923-91ea-f12fb03e2b97"
+            },
+            "spec": {
+                "automountServiceAccountToken": false,
+                "containers": [
+                    {
+                        "env": [
+                            {
+                                "name": "INFEROPS_POD_NAME",
+                                "valueFrom": {
+                                    "fieldRef": {
+                                        "apiVersion": "v1",
+                                        "fieldPath": "metadata.name"
+                                    }
+                                }
+                            }
+                        ],
+                        "envFrom": [
+                            {
+                                "configMapRef": {
+                                    "name": "inferops-inferops-llm-configuration"
+                                }
+                            }
+                        ],
+                        "image": "localhost/inferops-api@sha256:de5173b2c143f6f80ecec4fab34b3d7be67e1713a604ba970bb40c07c4257953",
+                        "imagePullPolicy": "Never",
+                        "lifecycle": {
+                            "preStop": {
+                                "sleep": {
+                                    "seconds": 5
+                                }
+                            }
+                        },
+                        "livenessProbe": {
+                            "failureThreshold": 3,
+                            "httpGet": {
+                                "path": "/health/live",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 2
+                        },
+                        "name": "api",
+                        "ports": [
+                            {
+                                "containerPort": 8090,
+                                "name": "http",
+                                "protocol": "TCP"
+                            }
+                        ],
+                        "readinessProbe": {
+                            "failureThreshold": 3,
+                            "httpGet": {
+                                "path": "/health/ready",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 5
+                        },
+                        "resources": {
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "512Mi"
+                            },
+                            "requests": {
+                                "cpu": "100m",
+                                "memory": "128Mi"
+                            }
+                        },
+                        "securityContext": {
+                            "allowPrivilegeEscalation": false,
+                            "capabilities": {
+                                "drop": [
+                                    "ALL"
+                                ]
+                            },
+                            "readOnlyRootFilesystem": true
+                        },
+                        "startupProbe": {
+                            "failureThreshold": 12,
+                            "httpGet": {
+                                "path": "/health/live",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 5,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 2
+                        },
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/tmp",
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "enableServiceLinks": true,
+                "nodeName": "desktop-control-plane",
+                "preemptionPolicy": "PreemptLowerPriority",
+                "priority": 0,
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {
+                    "fsGroup": 65534,
+                    "runAsGroup": 65534,
+                    "runAsNonRoot": true,
+                    "runAsUser": 65534,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "serviceAccount": "inferops-inferops-llm-api",
+                "serviceAccountName": "inferops-inferops-llm-api",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/not-ready",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    },
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/unreachable",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    }
+                ],
+                "volumes": [
+                    {
+                        "emptyDir": {
+                            "medium": "Memory",
+                            "sizeLimit": "16Mi"
+                        },
+                        "name": "tmp"
+                    }
+                ]
+            },
+            "status": {
+                "allocatedResources": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                },
+                "conditions": [
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:28Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "PodReadyToStartContainers"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:27Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:36Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:36Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "ContainersReady"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:27Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "PodScheduled"
+                    }
+                ],
+                "containerStatuses": [
+                    {
+                        "allocatedResources": {
+                            "cpu": "100m",
+                            "memory": "128Mi"
+                        },
+                        "containerID": "containerd://8553e7cf8d6456e78147aba2fedf0d16c33f365834995847649079eb559aadff",
+                        "image": "localhost/inferops-api:dev",
+                        "imageID": "localhost/inferops-api@sha256:218cc858ad7788c7b309140e8255d558100ca5ef06fe15cd7b48d059241dff9b",
+                        "lastState": {},
+                        "name": "api",
+                        "ready": true,
+                        "resources": {
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "512Mi"
+                            },
+                            "requests": {
+                                "cpu": "100m",
+                                "memory": "128Mi"
+                            }
+                        },
+                        "restartCount": 0,
+                        "started": true,
+                        "state": {
+                            "running": {
+                                "startedAt": "2026-10-16T07:33:28Z"
+                            }
+                        },
+                        "user": {
+                            "linux": {
+                                "gid": 65534,
+                                "supplementalGroups": [
+                                    65534
+                                ],
+                                "uid": 65534
+                            }
+                        },
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/tmp",
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                ],
+                "hostIP": "172.20.0.3",
+                "hostIPs": [
+                    {
+                        "ip": "172.20.0.3"
+                    }
+                ],
+                "observedGeneration": 1,
+                "phase": "Running",
+                "podIP": "10.244.0.18",
+                "podIPs": [
+                    {
+                        "ip": "10.244.0.18"
+                    }
+                ],
+                "qosClass": "Burstable",
+                "resources": {
+                    "limits": {
+                        "cpu": "1",
+                        "memory": "512Mi"
+                    },
+                    "requests": {
+                        "cpu": "79m",
+                        "memory": "128Mi"
+                    }
+                },
+                "startTime": "2026-10-16T07:33:27Z"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "annotations": {
+                    "inferops.io/configuration-checksum": "ae48e347b0dba018c6021b47671e965f2a5db6e266dcef294c6ea2daf1ae631f",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "prometheus.io/path": "/metrics",
+                    "prometheus.io/port": "8080",
+                    "prometheus.io/scrape": "true"
+                },
+                "creationTimestamp": "2026-10-16T07:33:27Z",
+                "generateName": "inferops-inferops-llm-runtime-79846f98f6-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/component": "serving-runtime",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant",
+                    "pod-template-hash": "79846f98f6"
+                },
+                "name": "inferops-inferops-llm-runtime-79846f98f6-lspgg",
+                "namespace": "inferops-release",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "apps/v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "ReplicaSet",
+                        "name": "inferops-inferops-llm-runtime-79846f98f6",
+                        "uid": "81f972c6-8f4b-4634-9689-a0f46647c45b"
+                    }
+                ],
+                "resourceVersion": "455180",
+                "uid": "326aef95-5a4a-4447-8529-1691d6035872"
+            },
+            "spec": {
+                "automountServiceAccountToken": false,
+                "containers": [
+                    {
+                        "args": [
+                            "--model",
+                            "/models/Qwen3-1.7B-Q8_0.gguf",
+                            "--alias",
+                            "qwen3-1.7b-q8_0",
+                            "--host",
+                            "0.0.0.0",
+                            "--port",
+                            "8080",
+                            "--ctx-size",
+                            "4096",
+                            "--threads",
+                            "6",
+                            "--parallel",
+                            "1",
+                            "--n-predict",
+                            "128",
+                            "--temp",
+                            "0",
+                            "--metrics"
+                        ],
+                        "command": [
+                            "/app/llama-server"
+                        ],
+                        "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                        "imagePullPolicy": "IfNotPresent",
+                        "lifecycle": {
+                            "preStop": {
+                                "sleep": {
+                                    "seconds": 5
+                                }
+                            }
+                        },
+                        "livenessProbe": {
+                            "failureThreshold": 3,
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "tcpSocket": {
+                                "port": "http"
+                            },
+                            "timeoutSeconds": 3
+                        },
+                        "name": "runtime",
+                        "ports": [
+                            {
+                                "containerPort": 8080,
+                                "name": "http",
+                                "protocol": "TCP"
+                            }
+                        ],
+                        "readinessProbe": {
+                            "failureThreshold": 3,
+                            "httpGet": {
+                                "path": "/health",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 3
+                        },
+                        "resources": {
+                            "limits": {
+                                "cpu": "6",
+                                "memory": "3Gi"
+                            },
+                            "requests": {
+                                "cpu": "1",
+                                "memory": "2Gi"
+                            }
+                        },
+                        "securityContext": {
+                            "allowPrivilegeEscalation": false,
+                            "capabilities": {
+                                "drop": [
+                                    "ALL"
+                                ]
+                            },
+                            "readOnlyRootFilesystem": true
+                        },
+                        "startupProbe": {
+                            "failureThreshold": 60,
+                            "httpGet": {
+                                "path": "/health",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 3
+                        },
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/models",
+                                "name": "model-cache",
+                                "readOnly": true,
+                                "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+                            },
+                            {
+                                "mountPath": "/tmp",
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "enableServiceLinks": true,
+                "initContainers": [
+                    {
+                        "command": [
+                            "/bin/sh",
+                            "-c",
+                            "set -eu\nartifact='/models/Qwen3-1.7B-Q8_0.gguf'\nif [ ! -f \"$artifact\" ]; then\n  echo \"REFUSED: the mounted model cache holds no artifact for the declared revision\" \u003e\u00262\n  exit 1\nfi\npresent=$(stat -c %s \"$artifact\")\nif [ \"$present\" != \"1834426016\" ]; then\n  echo \"REFUSED: the mounted model artifact does not match the pinned byte count\" \u003e\u00262\n  exit 1\nfi\necho \"061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a  $artifact\" | sha256sum -c -\necho \"model artifact verified: byte count and SHA-256\"\n"
+                        ],
+                        "image": "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+                        "imagePullPolicy": "IfNotPresent",
+                        "name": "verify-model",
+                        "resources": {
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "64Mi"
+                            },
+                            "requests": {
+                                "cpu": "50m",
+                                "memory": "16Mi"
+                            }
+                        },
+                        "securityContext": {
+                            "allowPrivilegeEscalation": false,
+                            "capabilities": {
+                                "drop": [
+                                    "ALL"
+                                ]
+                            },
+                            "readOnlyRootFilesystem": true
+                        },
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/models",
+                                "name": "model-cache",
+                                "readOnly": true,
+                                "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+                            }
+                        ]
+                    }
+                ],
+                "nodeName": "desktop-control-plane",
+                "preemptionPolicy": "PreemptLowerPriority",
+                "priority": 0,
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {
+                    "fsGroup": 65534,
+                    "runAsGroup": 65534,
+                    "runAsNonRoot": true,
+                    "runAsUser": 65534,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "serviceAccount": "inferops-inferops-llm-runtime",
+                "serviceAccountName": "inferops-inferops-llm-runtime",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/not-ready",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    },
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/unreachable",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": "model-cache",
+                        "persistentVolumeClaim": {
+                            "claimName": "inferops-model-cache",
+                            "readOnly": true
+                        }
+                    },
+                    {
+                        "emptyDir": {
+                            "medium": "Memory",
+                            "sizeLimit": "64Mi"
+                        },
+                        "name": "tmp"
+                    }
+                ]
+            },
+            "status": {
+                "allocatedResources": {
+                    "cpu": "1",
+                    "memory": "2Gi"
+                },
+                "conditions": [
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:28Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "PodReadyToStartContainers"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:31Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:38Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:38Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "ContainersReady"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:27Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "PodScheduled"
+                    }
+                ],
+                "containerStatuses": [
+                    {
+                        "allocatedResources": {
+                            "cpu": "1",
+                            "memory": "2Gi"
+                        },
+                        "containerID": "containerd://7e43f55bb58eb0d922e381443fc6e13f85e675a489853205029619efc56f759f",
+                        "image": "sha256:5c22bb22018db939b6c099bfb7e7be2a08246152b386691fcd1d2a6362cfeec4",
+                        "imageID": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                        "lastState": {},
+                        "name": "runtime",
+                        "ready": true,
+                        "resources": {
+                            "limits": {
+                                "cpu": "6",
+                                "memory": "3Gi"
+                            },
+                            "requests": {
+                                "cpu": "1",
+                                "memory": "2Gi"
+                            }
+                        },
+                        "restartCount": 0,
+                        "started": true,
+                        "state": {
+                            "running": {
+                                "startedAt": "2026-10-16T07:33:31Z"
+                            }
+                        },
+                        "user": {
+                            "linux": {
+                                "gid": 65534,
+                                "supplementalGroups": [
+                                    65534
+                                ],
+                                "uid": 65534
+                            }
+                        },
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/models",
+                                "name": "model-cache",
+                                "readOnly": true,
+                                "recursiveReadOnly": "Disabled"
+                            },
+                            {
+                                "mountPath": "/tmp",
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                ],
+                "hostIP": "172.20.0.3",
+                "hostIPs": [
+                    {
+                        "ip": "172.20.0.3"
+                    }
+                ],
+                "initContainerStatuses": [
+                    {
+                        "allocatedResources": {
+                            "cpu": "50m",
+                            "memory": "16Mi"
+                        },
+                        "containerID": "containerd://37b24479d4a7c45b6811bbc521c48c63fc79cbac630b51a834e2573bdf6599da",
+                        "image": "sha256:db287cb6be81219cd18c1d82b70908f5d33eb028568b456f78eedff2ff2930e4",
+                        "imageID": "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+                        "lastState": {},
+                        "name": "verify-model",
+                        "ready": true,
+                        "resources": {
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "64Mi"
+                            },
+                            "requests": {
+                                "cpu": "50m",
+                                "memory": "16Mi"
+                            }
+                        },
+                        "restartCount": 0,
+                        "started": false,
+                        "state": {
+                            "terminated": {
+                                "containerID": "containerd://37b24479d4a7c45b6811bbc521c48c63fc79cbac630b51a834e2573bdf6599da",
+                                "exitCode": 0,
+                                "finishedAt": "2026-10-16T07:33:31Z",
+                                "reason": "Completed",
+                                "startedAt": "2026-10-16T07:33:28Z"
+                            }
+                        },
+                        "user": {
+                            "linux": {
+                                "gid": 65534,
+                                "supplementalGroups": [
+                                    65534
+                                ],
+                                "uid": 65534
+                            }
+                        },
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/models",
+                                "name": "model-cache",
+                                "readOnly": true,
+                                "recursiveReadOnly": "Disabled"
+                            }
+                        ]
+                    }
+                ],
+                "observedGeneration": 1,
+                "phase": "Running",
+                "podIP": "10.244.0.17",
+                "podIPs": [
+                    {
+                        "ip": "10.244.0.17"
+                    }
+                ],
+                "qosClass": "Burstable",
+                "resources": {
+                    "limits": {
+                        "cpu": "6",
+                        "memory": "3Gi"
+                    },
+                    "requests": {
+                        "cpu": "975m",
+                        "memory": "2Gi"
+                    }
+                },
+                "startTime": "2026-10-16T07:33:27Z"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "annotations": {
+                    "inferops.io/configuration-checksum": "ae48e347b0dba018c6021b47671e965f2a5db6e266dcef294c6ea2daf1ae631f",
+                    "inferops.io/cost-center": "demo-cost-center",
+                    "inferops.io/tenant": "demo",
+                    "prometheus.io/path": "/metrics",
+                    "prometheus.io/port": "8080",
+                    "prometheus.io/scrape": "true"
+                },
+                "creationTimestamp": "2026-10-16T07:33:27Z",
+                "generateName": "inferops-inferops-llm-runtime-79846f98f6-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/component": "serving-runtime",
+                    "app.kubernetes.io/instance": "inferops",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "inferops-llm",
+                    "app.kubernetes.io/part-of": "inferops",
+                    "app.kubernetes.io/version": "0.1.0",
+                    "helm.sh/chart": "inferops-llm-0.6.0",
+                    "inferops.io/lifecycle": "release",
+                    "inferops.io/owner": "team-platform-demo",
+                    "inferops.io/profile": "real",
+                    "inferops.io/workload": "support-assistant",
+                    "pod-template-hash": "79846f98f6"
+                },
+                "name": "inferops-inferops-llm-runtime-79846f98f6-pf8cz",
+                "namespace": "inferops-release",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "apps/v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "ReplicaSet",
+                        "name": "inferops-inferops-llm-runtime-79846f98f6",
+                        "uid": "81f972c6-8f4b-4634-9689-a0f46647c45b"
+                    }
+                ],
+                "resourceVersion": "455186",
+                "uid": "75ae6f87-2eb8-4c37-b859-fd1d625fa504"
+            },
+            "spec": {
+                "automountServiceAccountToken": false,
+                "containers": [
+                    {
+                        "args": [
+                            "--model",
+                            "/models/Qwen3-1.7B-Q8_0.gguf",
+                            "--alias",
+                            "qwen3-1.7b-q8_0",
+                            "--host",
+                            "0.0.0.0",
+                            "--port",
+                            "8080",
+                            "--ctx-size",
+                            "4096",
+                            "--threads",
+                            "6",
+                            "--parallel",
+                            "1",
+                            "--n-predict",
+                            "128",
+                            "--temp",
+                            "0",
+                            "--metrics"
+                        ],
+                        "command": [
+                            "/app/llama-server"
+                        ],
+                        "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                        "imagePullPolicy": "IfNotPresent",
+                        "lifecycle": {
+                            "preStop": {
+                                "sleep": {
+                                    "seconds": 5
+                                }
+                            }
+                        },
+                        "livenessProbe": {
+                            "failureThreshold": 3,
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "tcpSocket": {
+                                "port": "http"
+                            },
+                            "timeoutSeconds": 3
+                        },
+                        "name": "runtime",
+                        "ports": [
+                            {
+                                "containerPort": 8080,
+                                "name": "http",
+                                "protocol": "TCP"
+                            }
+                        ],
+                        "readinessProbe": {
+                            "failureThreshold": 3,
+                            "httpGet": {
+                                "path": "/health",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 3
+                        },
+                        "resources": {
+                            "limits": {
+                                "cpu": "6",
+                                "memory": "3Gi"
+                            },
+                            "requests": {
+                                "cpu": "1",
+                                "memory": "2Gi"
+                            }
+                        },
+                        "securityContext": {
+                            "allowPrivilegeEscalation": false,
+                            "capabilities": {
+                                "drop": [
+                                    "ALL"
+                                ]
+                            },
+                            "readOnlyRootFilesystem": true
+                        },
+                        "startupProbe": {
+                            "failureThreshold": 60,
+                            "httpGet": {
+                                "path": "/health",
+                                "port": "http",
+                                "scheme": "HTTP"
+                            },
+                            "periodSeconds": 10,
+                            "successThreshold": 1,
+                            "timeoutSeconds": 3
+                        },
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/models",
+                                "name": "model-cache",
+                                "readOnly": true,
+                                "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+                            },
+                            {
+                                "mountPath": "/tmp",
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "enableServiceLinks": true,
+                "initContainers": [
+                    {
+                        "command": [
+                            "/bin/sh",
+                            "-c",
+                            "set -eu\nartifact='/models/Qwen3-1.7B-Q8_0.gguf'\nif [ ! -f \"$artifact\" ]; then\n  echo \"REFUSED: the mounted model cache holds no artifact for the declared revision\" \u003e\u00262\n  exit 1\nfi\npresent=$(stat -c %s \"$artifact\")\nif [ \"$present\" != \"1834426016\" ]; then\n  echo \"REFUSED: the mounted model artifact does not match the pinned byte count\" \u003e\u00262\n  exit 1\nfi\necho \"061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a  $artifact\" | sha256sum -c -\necho \"model artifact verified: byte count and SHA-256\"\n"
+                        ],
+                        "image": "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+                        "imagePullPolicy": "IfNotPresent",
+                        "name": "verify-model",
+                        "resources": {
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "64Mi"
+                            },
+                            "requests": {
+                                "cpu": "50m",
+                                "memory": "16Mi"
+                            }
+                        },
+                        "securityContext": {
+                            "allowPrivilegeEscalation": false,
+                            "capabilities": {
+                                "drop": [
+                                    "ALL"
+                                ]
+                            },
+                            "readOnlyRootFilesystem": true
+                        },
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/models",
+                                "name": "model-cache",
+                                "readOnly": true,
+                                "subPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+                            }
+                        ]
+                    }
+                ],
+                "nodeName": "desktop-control-plane",
+                "preemptionPolicy": "PreemptLowerPriority",
+                "priority": 0,
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {
+                    "fsGroup": 65534,
+                    "runAsGroup": 65534,
+                    "runAsNonRoot": true,
+                    "runAsUser": 65534,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "serviceAccount": "inferops-inferops-llm-runtime",
+                "serviceAccountName": "inferops-inferops-llm-runtime",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/not-ready",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    },
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/unreachable",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": "model-cache",
+                        "persistentVolumeClaim": {
+                            "claimName": "inferops-model-cache",
+                            "readOnly": true
+                        }
+                    },
+                    {
+                        "emptyDir": {
+                            "medium": "Memory",
+                            "sizeLimit": "64Mi"
+                        },
+                        "name": "tmp"
+                    }
+                ]
+            },
+            "status": {
+                "allocatedResources": {
+                    "cpu": "1",
+                    "memory": "2Gi"
+                },
+                "conditions": [
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:28Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "PodReadyToStartContainers"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:31Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:38Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:38Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "ContainersReady"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2026-10-16T07:33:27Z",
+                        "observedGeneration": 1,
+                        "status": "True",
+                        "type": "PodScheduled"
+                    }
+                ],
+                "containerStatuses": [
+                    {
+                        "allocatedResources": {
+                            "cpu": "1",
+                            "memory": "2Gi"
+                        },
+                        "containerID": "containerd://5a998657485a1b4ef6b3927d15ec1422c9326b404868e35ff2ab8e14ad415808",
+                        "image": "sha256:5c22bb22018db939b6c099bfb7e7be2a08246152b386691fcd1d2a6362cfeec4",
+                        "imageID": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                        "lastState": {},
+                        "name": "runtime",
+                        "ready": true,
+                        "resources": {
+                            "limits": {
+                                "cpu": "6",
+                                "memory": "3Gi"
+                            },
+                            "requests": {
+                                "cpu": "1",
+                                "memory": "2Gi"
+                            }
+                        },
+                        "restartCount": 0,
+                        "started": true,
+                        "state": {
+                            "running": {
+                                "startedAt": "2026-10-16T07:33:31Z"
+                            }
+                        },
+                        "user": {
+                            "linux": {
+                                "gid": 65534,
+                                "supplementalGroups": [
+                                    65534
+                                ],
+                                "uid": 65534
+                            }
+                        },
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/models",
+                                "name": "model-cache",
+                                "readOnly": true,
+                                "recursiveReadOnly": "Disabled"
+                            },
+                            {
+                                "mountPath": "/tmp",
+                                "name": "tmp"
+                            }
+                        ]
+                    }
+                ],
+                "hostIP": "172.20.0.3",
+                "hostIPs": [
+                    {
+                        "ip": "172.20.0.3"
+                    }
+                ],
+                "initContainerStatuses": [
+                    {
+                        "allocatedResources": {
+                            "cpu": "50m",
+                            "memory": "16Mi"
+                        },
+                        "containerID": "containerd://ddbd7164eb4dbdce2cdb74a50cf17f3e5059b48b4ab0c8ff8a15e3c69386848d",
+                        "image": "sha256:db287cb6be81219cd18c1d82b70908f5d33eb028568b456f78eedff2ff2930e4",
+                        "imageID": "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+                        "lastState": {},
+                        "name": "verify-model",
+                        "ready": true,
+                        "resources": {
+                            "limits": {
+                                "cpu": "1",
+                                "memory": "64Mi"
+                            },
+                            "requests": {
+                                "cpu": "50m",
+                                "memory": "16Mi"
+                            }
+                        },
+                        "restartCount": 0,
+                        "started": false,
+                        "state": {
+                            "terminated": {
+                                "containerID": "containerd://ddbd7164eb4dbdce2cdb74a50cf17f3e5059b48b4ab0c8ff8a15e3c69386848d",
+                                "exitCode": 0,
+                                "finishedAt": "2026-10-16T07:33:31Z",
+                                "reason": "Completed",
+                                "startedAt": "2026-10-16T07:33:28Z"
+                            }
+                        },
+                        "user": {
+                            "linux": {
+                                "gid": 65534,
+                                "supplementalGroups": [
+                                    65534
+                                ],
+                                "uid": 65534
+                            }
+                        },
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/models",
+                                "name": "model-cache",
+                                "readOnly": true,
+                                "recursiveReadOnly": "Disabled"
+                            }
+                        ]
+                    }
+                ],
+                "observedGeneration": 1,
+                "phase": "Running",
+                "podIP": "10.244.0.19",
+                "podIPs": [
+                    {
+                        "ip": "10.244.0.19"
+                    }
+                ],
+                "qosClass": "Burstable",
+                "resources": {
+                    "limits": {
+                        "cpu": "6",
+                        "memory": "3Gi"
+                    },
+                    "requests": {
+                        "cpu": "975m",
+                        "memory": "2Gi"
+                    }
+                },
+                "startTime": "2026-10-16T07:33:27Z"
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

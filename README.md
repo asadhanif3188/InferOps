@@ -307,7 +307,16 @@ the creation of a replacement runtime pod to its first Ready condition. A restar
 a fault, S is not a startup benchmark, and no claim cites it. One characterization has
 run: [`q2-1`](docs/proof/experiments/v2-q2/runs/q2-1/result.md) is `CHARACTERIZED`, at C2,
 with S = 11,000 ms over six replacement runtime pods in three rollout restarts on the
-docker-desktop provider.
+docker-desktop provider. Since `V2-S6-002-PR2` the
+[Q3 stable caller characterization](docs/environment/stable-caller-characterization.md)
+is frozen: in the same environment, a driver runs the RP-1 caller once for six minutes
+while the topology is healthy, and a tool states G, the p99 of the gaps between
+successive successful requests. The same freeze fixes the four Q4 formulas that derive
+the experiment bounds from S and G. The bounds are experiment bounds, not production
+SLOs, and no claim cites them. One characterization has run:
+[`q3-1`](docs/proof/experiments/v2-q3/runs/q3-1/result.md) is `REFUSED`, because the
+engine's virtual machine had booted again and its memory figure no longer matched the
+environment of `q1-1`. No G and no bound has been stated.
 
 ## Prerequisites
 

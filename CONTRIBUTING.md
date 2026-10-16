@@ -643,6 +643,31 @@ The driver and the tool are pinned inputs of the Q2 freeze record, and so is eve
 the Q1 freeze record pins. [The Q2 page](docs/environment/runtime-startup-characterization.md)
 states the rules, the measurement, and what a record does not establish.
 
+**Q3, the stable caller characterization, is a frozen driver and a tool that reads
+files, and Q4 is a tool that reads two committed records.** The phases `up` and `down`
+of the Q3 driver are those of the Q1 driver. Its phase `characterize` runs one RP-1
+caller run of 360 s inside a watch of the API pods and the runtime pods, and writes one
+directory under `.artifacts/`. The Q3 tool prints one record with G, the p99 of the gaps
+between successive successful requests. The Q4 tool prints the four experiment bounds
+of one Q2 record and one Q3 record:
+
+```sh
+bash docs/proof/experiments/v2-q3/procedure/q3-driver.txt up RUN
+bash docs/proof/experiments/v2-q3/procedure/q3-driver.txt characterize RUN q3-N
+bash docs/proof/experiments/v2-q3/procedure/q3-driver.txt down RUN
+uv run --locked python -m tools.caller_characterization DIRECTORY
+uv run --locked python -m tools.caller_characterization --check
+uv run --locked python -m tools.experiment_bounds STARTUP_RECORD CALLER_RECORD
+uv run --locked python -m tools.experiment_bounds --check
+```
+
+The driver changes the cluster and sends real requests to the model: run it only when
+the host owner has authorized a characterization. Keep every characterization, and never
+run one again for another G. Both tools, the driver, and everything the Q1 freeze record
+pins are pinned inputs of the Q3 freeze record, so the formulas cannot change without a
+new revision. [The Q3 page](docs/environment/stable-caller-characterization.md) states
+the rules, the formulas, and what a record does not establish.
+
 **The infrastructure timelines of an experiment run are captured by a script that changes
 nothing in the cluster and a tool that reads files.** The script samples the release a
 bounded number of times and writes a collection directory under `.artifacts/`. The tool

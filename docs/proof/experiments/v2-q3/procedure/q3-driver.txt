@@ -1,0 +1,439 @@
+#!/usr/bin/env bash
+# Drives one Q3 stable caller characterization of the release that the Q1
+# qualification q1-1 qualified, on the docker-desktop provider, and prints one
+# transcript. Q3 is a qualification. It is not a reliability experiment: it
+# injects no fault, and it registers no claim. Run it from the repository root:
+#
+#   bash q3-driver.txt up RUN                prepare the release with the phase up of the Q1 driver
+#   bash q3-driver.txt characterize RUN ID   check the preconditions, run the caller once, write the record
+#   bash q3-driver.txt down RUN              remove what up installed, with the phase down of the Q1 driver
+#
+# RUN names the work directory of `up` and `down` (for example q3run-1). ID is
+# the characterization identifier, q3-N. One identifier is one
+# characterization. It is never reused, and every characterization is kept,
+# whatever it shows.
+#
+# This file is a pinned input of the freeze record that it names. It runs from
+# the committed tree:
+#   bash docs/proof/experiments/v2-q3/procedure/q3-driver.txt
+# It writes only under .artifacts/, which Git ignores, so the working tree stays
+# clean.
+#
+# The phases up and down are the phases of the Q1 driver, run without a change.
+# So the release is prepared, applied, and removed exactly as for the
+# qualification q1-1. This driver adds the phase characterize and no step to
+# the other two.
+#
+# The caller is one RP-1 run of the caller runner against the API Service, for
+# CALLER_DURATION_SECONDS, with the request ceiling CALLER_REQUEST_CEILING. No
+# pod is deleted, restarted, or scaled, and no replica count, request, limit,
+# or bound is changed. A watch of the API pods and the runtime pods records
+# every pod event while the caller runs.
+#
+# A refusal is a result. When the phase up refused, or the working tree is not
+# clean, the delivery paths differ from the desired revision, or the freeze
+# tool lists a changed material file of the Q3 or the Q1 record,
+# `characterize` reads no cluster state, starts no caller, and writes the
+# REFUSED record. When the tool refuses a precondition that it reads from the
+# cluster - the environment, the release, the images, or the topology of
+# q1-1 - the driver starts no caller either. It writes the record whatever the
+# result is.
+#
+# What `characterize` does, in this order of steps S0 to S7, with no decision on what it reads:
+#   S0  the executing commit, the working tree, the desired revision, the two
+#       freeze checks, and the digests of the files it runs
+#   S1  the provenance of the target release at the desired revision
+#   S2  the Deployments of the release, and the API pods and the runtime pods
+#   S3  the preconditions, as the tool decides them
+#   S4  start a watch of the API pods and the runtime pods; start the caller
+#       run; wait for its Job, at most JOB_WAIT_BOUND_SECONDS; collect its
+#       record; remove the objects of the run; wait WATCH_TAIL_SECONDS more and
+#       stop the watch
+#   S5  the Deployments and the pods again
+#   S6  the header of the directory
+#   S7  the record, which states the result
+# The tool that builds the record states the result and G. This driver states neither.
+set -u
+
+PHASE="${1:?give the phase: up, characterize, or down}"
+RUN="${2:?give the run name, for example q3run-1}"
+QID="${3:-}"
+EXPERIMENT="v2-q3-stable-caller-characterization"
+FREEZE_RECORD="docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json"
+Q1_FREEZE_RECORD="docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+Q1_DRIVER="docs/proof/experiments/v2-q1/procedure/q1-driver.txt"
+RELEASE_KEY="local-docker-desktop/support-assistant"
+Q1_WORK=".artifacts/v2-q1/${RUN}-driver"
+WORK=".artifacts/v2-q3/${RUN}-driver"
+CAPACITY_COLLECTIONS=".artifacts/capacity-preflight/collections"
+RUNNER_RUNS=".artifacts/reliability-runner/runs"
+RUNNER_SCRIPT="scripts/environment/reliability-runner.sh"
+NAMESPACE="inferops-release"
+CONTROLLER_NAMESPACE="argocd"
+APPLICATION="local-docker-desktop-support-assistant"
+INSTANCE_SELECTOR="app.kubernetes.io/instance=inferops"
+TIER_SELECTOR="app.kubernetes.io/instance=inferops,app.kubernetes.io/component in (platform-api,serving-runtime)"
+TIER_PODS=4
+
+# The bounds of one characterization. They are fixed here, before any characterization.
+CALLER_DURATION_SECONDS=360
+CALLER_REQUEST_CEILING=2000
+JOB_WAIT_BOUND_SECONDS=900
+JOB_POLL_SECONDS=15
+WATCH_OPEN_BOUND_SECONDS=30
+WATCH_TAIL_SECONDS=10
+
+# The files of a characterization directory. The tool restates each name.
+HEADER_FILE="run.json"
+PROVENANCE_FILE="provenance.json"
+DEPLOYMENTS_FILE="deployments.json"
+BEFORE_PODS_FILE="before.pods.json"
+WATCH_FILE="watch.jsonl"
+CALLER_RUN_FILE="caller-run.json"
+PLAN_FILE="plan.json"
+CALLER_FILE="caller.jsonl"
+CALLER_REFUSED_FILE="caller.refused.jsonl"
+AFTER_DEPLOYMENTS_FILE="after.deployments.json"
+AFTER_PODS_FILE="after.pods.json"
+RECORD_FILE="record.v1alpha1.json"
+
+# A path that starts with a slash is an argument for a container here, and not
+# a path of this host.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
+step() { printf '\n##### %s\n' "$*"; }
+now() { date -u +%Y-%m-%dT%H:%M:%S.%3NZ; }
+
+# Runs one command, prints it, and prints its exit status. The status is also
+# left in LAST.
+run() {
+  printf '$ %s\n' "$*"
+  "$@"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+}
+
+k() { kubectl --context docker-desktop "$@"; }
+
+# The watch that the phase characterize starts. When the driver ends before it
+# stops the watch, the trap stops it. The trap does not remove the objects of a
+# caller run: an interrupted run is removed with the cleanup action of the
+# runner script.
+WATCH_PID=""
+stop_watch() { [ -z "${WATCH_PID}" ] || kill "${WATCH_PID}" 2>/dev/null; }
+trap stop_watch EXIT
+
+# Writes the output of one read to a file, with LF line ends, and prints the
+# command and its exit status. The file is not written when the read fails.
+read_into() {
+  local target="$1"
+  shift
+  printf '$ %s > %s\n' "$*" "${target}"
+  if "$@" >"${WORK}/read.tmp" 2>"${WORK}/read.err"; then
+    tr -d '\r' <"${WORK}/read.tmp" >"${target}"
+    LAST=0
+  else
+    LAST=$?
+    cat "${WORK}/read.err"
+  fi
+  printf '[exit %s]\n' "${LAST}"
+}
+
+# A JSON value for the file of the caller run: a quoted text, a number, or null.
+json_text() { if [ -n "$1" ]; then printf '"%s"' "$1"; else printf 'null'; fi; }
+json_number() { if [ -n "$1" ]; then printf '%s' "$1"; else printf 'null'; fi; }
+
+# --------------------------------------------------------------------------
+up() {
+  step "U0. The phase up of the Q1 driver, without a change"
+  run bash "${Q1_DRIVER}" up "${RUN}"
+  printf '\nThe phase up of the Q1 driver exited %s.\n' "${LAST}"
+}
+
+down() {
+  step "Z0. The phase down of the Q1 driver, without a change"
+  run bash "${Q1_DRIVER}" down "${RUN}"
+  printf '\nThe phase down of the Q1 driver exited %s.\n' "${LAST}"
+}
+
+# --------------------------------------------------------------------------
+# S4: the caller run, inside one watch of the API pods and the runtime pods.
+caller_run() {
+  local watch release_id requested start_exit job_state ended collect_exit cleanup_exit
+  local watch_started watch_stopped waited status_line runs_dir
+  start_exit=""
+  job_state="not-started"
+  ended=""
+  collect_exit=""
+  cleanup_exit=""
+
+  step "S4. Start the watch of the API pods and the runtime pods"
+  printf '$ kubectl --context docker-desktop get pods -n %s -l "%s" --watch --output-watch-events -o json > %s/watch.raw &\n' \
+    "${NAMESPACE}" "${TIER_SELECTOR}" "${WORK}"
+  kubectl --context docker-desktop get pods -n "${NAMESPACE}" -l "${TIER_SELECTOR}" --watch --output-watch-events -o json \
+    >"${WORK}/watch.raw" 2>"${WORK}/watch.err" &
+  watch=$!
+  WATCH_PID="${watch}"
+  watch_started="$(now)"
+  printf 'watch started at: %s\n' "${watch_started}"
+  # The caller is started only after the watch has listed the pods that exist.
+  for _ in $(seq 1 "${WATCH_OPEN_BOUND_SECONDS}"); do
+    [ "$(grep -c . "${WORK}/watch.raw" 2>/dev/null)" -ge "${TIER_PODS}" ] && break
+    sleep 1
+  done
+  printf 'events before the caller: %s\n' "$(grep -c . "${WORK}/watch.raw" 2>/dev/null)"
+
+  step "S4. Start the caller run: one RP-1 run against the API Service"
+  release_id="$(uv run --locked python -c 'import json,sys; print(json.load(open(sys.argv[1]))[0]["release"]["releaseId"])' \
+    "${A}/${PROVENANCE_FILE}" 2>/dev/null | tr -d '\r')"
+  printf 'provenance release identifier: %s\n' "${release_id:-none}"
+  requested="$(now)"
+  printf 'requested at: %s\n' "${requested}"
+  if [ -n "${release_id}" ]; then
+    run bash "${RUNNER_SCRIPT}" start --experiment-id "${EXPERIMENT}" --run-id "${QID}" \
+      --duration-seconds "${CALLER_DURATION_SECONDS}" --request-ceiling "${CALLER_REQUEST_CEILING}" \
+      --release-id "${release_id}"
+    start_exit="${LAST}"
+  else
+    printf 'No release identifier was read. The runner is not started.\n'
+  fi
+
+  if [ "${start_exit}" = "0" ]; then
+    step "S4. Wait for the Job of the caller run, at most ${JOB_WAIT_BOUND_SECONDS} s"
+    job_state="unfinished"
+    waited=0
+    status_line=""
+    while [ "${waited}" -le "${JOB_WAIT_BOUND_SECONDS}" ]; do
+      status_line="$(k get job "inferops-reliability-${QID}" -n "${NAMESPACE}" \
+        -o 'jsonpath=succeeded={.status.succeeded} failed={.status.failed}' 2>&1 | tr -d '\r')"
+      case "${status_line}" in
+        *"succeeded=1"*) job_state="succeeded"; break ;;
+        *"failed=1"*) job_state="failed"; break ;;
+      esac
+      sleep "${JOB_POLL_SECONDS}"
+      waited=$((waited + JOB_POLL_SECONDS))
+    done
+    [ "${job_state}" = "unfinished" ] || ended="$(now)"
+    printf 'after %ss of waiting: %s\njob state: %s\nended at: %s\n' "${waited}" "${status_line}" "${job_state}" "${ended:-not ended}"
+    run k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+      -o 'jsonpath=revision={.status.sync.revision} sync={.status.sync.status} health={.status.health.status}{"\n"}'
+
+    step "S4. Collect the record of the caller run"
+    run bash "${RUNNER_SCRIPT}" collect --run-id "${QID}"
+    collect_exit="${LAST}"
+  else
+    printf 'The runner start exited %s. The run continues to the cleanup.\n' "${start_exit:-not run}"
+  fi
+
+  step "S4. Remove the objects of the caller run"
+  run bash "${RUNNER_SCRIPT}" cleanup --run-id "${QID}"
+  cleanup_exit="${LAST}"
+  run k get jobs,configmaps,pods,networkpolicies -n "${NAMESPACE}" -l "inferops.io/run-id=${QID}" -o name
+  runs_dir="${RUNNER_RUNS}/${QID}"
+  [ ! -f "${runs_dir}/plan.json" ] || tr -d '\r' <"${runs_dir}/plan.json" >"${A}/${PLAN_FILE}"
+  [ ! -f "${runs_dir}/caller.jsonl" ] || tr -d '\r' <"${runs_dir}/caller.jsonl" >"${A}/${CALLER_FILE}"
+  [ ! -f "${runs_dir}/caller.refused.jsonl" ] || tr -d '\r' <"${runs_dir}/caller.refused.jsonl" >"${A}/${CALLER_REFUSED_FILE}"
+
+  step "S4. Stop the watch, ${WATCH_TAIL_SECONDS} s after the caller run"
+  sleep "${WATCH_TAIL_SECONDS}"
+  kill "${watch}" 2>/dev/null
+  wait "${watch}" 2>/dev/null
+  WATCH_PID=""
+  watch_stopped="$(now)"
+  printf 'watch stopped at: %s\n' "${watch_stopped}"
+  run cat "${WORK}/watch.err"
+  tr -d '\r' <"${WORK}/watch.raw" >"${A}/${WATCH_FILE}"
+  printf 'events in the stream: %s\n' "$(grep -c . "${A}/${WATCH_FILE}")"
+  printf '{\n  "schema": "inferops.io/caller-characterization-run/v1alpha1",\n  "requestedAt": "%s",\n  "startExit": %s,\n  "jobState": "%s",\n  "jobEndedAt": %s,\n  "collectExit": %s,\n  "cleanupExit": %s,\n  "watchStartedAt": "%s",\n  "watchStoppedAt": "%s"\n}\n' \
+    "${requested}" "$(json_number "${start_exit}")" "${job_state}" "$(json_text "${ended}")" \
+    "$(json_number "${collect_exit}")" "$(json_number "${cleanup_exit}")" "${watch_started}" "${watch_stopped}" \
+    >"${A}/${CALLER_RUN_FILE}"
+  run cat "${A}/${CALLER_RUN_FILE}"
+}
+
+# S6: the header. Each value is what this driver read. A value it did not read
+# is null, or the state unread.
+write_header() {
+  uv run --locked python - "${A}" "${QID}" "${HEAD_COMMIT}" "${DESIRED:-}" "${TREE_STATE}" "${DIFF_STATE}" \
+    "${FREEZE_RECORD}" "${FREEZE_STATE}" "${Q1_FREEZE_STATE}" "${RELEASE_KEY}" "${Q1_WORK}" <<'PYTHON'
+import hashlib
+import json
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+(directory, qid, commit, desired, tree, diff, freeze, freeze_state, q1_state,
+ release_key, q1_work) = sys.argv[1:12]
+up = Path(q1_work)
+
+
+def text(path: Path) -> str | None:
+    try:
+        value = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value or None
+
+
+try:
+    freeze_sha = hashlib.sha256(
+        Path(freeze).read_bytes().replace(b"\r\n", b"\n")
+    ).hexdigest()
+except OSError:
+    freeze_sha = None
+header = {
+    "schema": "inferops.io/caller-characterization-collection/v1alpha1",
+    "characterizationId": qid,
+    "provider": "docker-desktop",
+    "releaseKey": release_key,
+    "executingCommit": commit,
+    "upExecutingCommit": text(up / "executing-commit"),
+    "desiredRevision": desired or None,
+    "workingTree": tree,
+    "desiredStateDiff": diff,
+    "freezeRecord": freeze,
+    "freezeRecordSha256": freeze_sha,
+    "freezeChanges": freeze_state,
+    "qualificationFreezeChanges": q1_state,
+    "apiImageDigest": text(up / "api-image-digest"),
+    "targetRefusal": text(up / "target-refusal"),
+    "upRefusal": text(up / "up-refusal"),
+    "upStartedAt": text(up / "started-at"),
+    "startedAt": text(Path(directory) / "started-at"),
+    "finishedAt": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+}
+Path(directory, "run.json").write_text(
+    json.dumps(header, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+)
+print(json.dumps(header, indent=2, sort_keys=True))
+PYTHON
+}
+
+# --------------------------------------------------------------------------
+characterize() {
+  [ -n "${QID}" ] || { printf 'REFUSED: characterize needs the characterization identifier as its third argument.\n'; exit 2; }
+  [[ "${QID}" =~ ^q3-[1-9][0-9]?$ ]] || { printf 'REFUSED: the characterization identifier is q3-N.\n'; exit 2; }
+  [ -e "${Q1_WORK}/started-at" ] || { printf 'REFUSED: %s holds no start time. Run the phase up first.\n' "${Q1_WORK}"; exit 1; }
+  A="${WORK}/${QID}"
+  [ ! -e "${A}" ] || { printf 'REFUSED: %s exists. One characterization identifier is one characterization.\n' "${A}"; exit 1; }
+  # From here on the identifier is spent: the next characterization takes the
+  # next number, and this directory is kept, whatever it shows.
+  mkdir -p "${A}"
+  now >"${A}/started-at"
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  export PATH="$(pwd)/.venv/Scripts:$(pwd)/.venv/bin:${PATH}"
+
+  step "S0. The executing commit, the working tree, the desired revision, and the frozen procedures"
+  run now
+  HEAD_COMMIT="$(git rev-parse HEAD)"
+  TREE_STATE="unread"
+  DIFF_STATE="unread"
+  FREEZE_STATE="unread"
+  Q1_FREEZE_STATE="unread"
+  DESIRED=""
+  run git status --porcelain --untracked-files=all
+  if [ "${LAST}" -eq 0 ]; then
+    if [ -z "$(git status --porcelain --untracked-files=all)" ]; then TREE_STATE="clean"; else TREE_STATE="dirty"; fi
+  fi
+  DESIRED="$(git ls-remote origin refs/heads/main | awk '{ print $1 }')"
+  printf 'executing commit: %s\ndesired revision: %s\nworking tree:     %s\n' "${HEAD_COMMIT}" "${DESIRED:-unread}" "${TREE_STATE}"
+  if [ -n "${DESIRED}" ]; then
+    run git diff --stat --exit-code "${DESIRED}" HEAD -- charts gitops infra/argocd
+    case "${LAST}" in
+      0) DIFF_STATE="none" ;;
+      1) DIFF_STATE="differs" ;;
+    esac
+  fi
+  run uv run --locked python -m tools.experiment_freeze --changes "${FREEZE_RECORD}"
+  case "${LAST}" in
+    0) FREEZE_STATE="none" ;;
+    1) FREEZE_STATE="listed" ;;
+  esac
+  run uv run --locked python -m tools.experiment_freeze --changes "${Q1_FREEZE_RECORD}"
+  case "${LAST}" in
+    0) Q1_FREEZE_STATE="none" ;;
+    1) Q1_FREEZE_STATE="listed" ;;
+  esac
+  run sha256sum "$0" "${Q1_DRIVER}" tools/caller_characterization/core.py tools/experiment_bounds/core.py \
+    "${FREEZE_RECORD}" "${Q1_FREEZE_RECORD}"
+
+  local collection
+  collection="$(cat "${Q1_WORK}/capacity-collection" 2>/dev/null)"
+  if [ -n "${collection}" ] && [ -d "${CAPACITY_COLLECTIONS}/${collection}" ]; then
+    run cp -r "${CAPACITY_COLLECTIONS}/${collection}" "${A}/capacity"
+  fi
+
+  if [ -e "${Q1_WORK}/up-refusal" ]; then
+    printf '\nThe phase up refused or failed: %s. No cluster state is read, and no caller is started.\n' "$(cat "${Q1_WORK}/up-refusal")"
+  elif [ "${TREE_STATE}" != "clean" ] || [ "${DIFF_STATE}" != "none" ] || [ "${FREEZE_STATE}" != "none" ] || [ "${Q1_FREEZE_STATE}" != "none" ]; then
+    printf '\nThe working tree, the delivery paths, or the frozen inputs are not at their state. No cluster state is read, and no caller is started.\n'
+  else
+    step "S1. The provenance of the target release at the desired revision"
+    read_into "${A}/${PROVENANCE_FILE}" uv run --locked python -m tools.desired_state_provenance \
+      --revision "${DESIRED}" "${RELEASE_KEY}"
+    run cat "${A}/${PROVENANCE_FILE}"
+
+    step "S2. The Deployments of the release, and the API pods and the runtime pods"
+    read_into "${A}/${DEPLOYMENTS_FILE}" k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json
+    read_into "${A}/${BEFORE_PODS_FILE}" k get pods -n "${NAMESPACE}" -l "${TIER_SELECTOR}" -o json
+    run k get pods -n "${NAMESPACE}" -l "${TIER_SELECTOR}" -o wide
+
+    step "S3. The preconditions, as the tool decides them"
+    write_header >/dev/null
+    run uv run --locked python -m tools.caller_characterization --preconditions "${A}"
+    if [ "${LAST}" -eq 0 ]; then
+      caller_run
+
+      step "S5. The Deployments and the pods after the caller run"
+      read_into "${A}/${AFTER_DEPLOYMENTS_FILE}" k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json
+      read_into "${A}/${AFTER_PODS_FILE}" k get pods -n "${NAMESPACE}" -l "${TIER_SELECTOR}" -o json
+      run k get pods -n "${NAMESPACE}" -l "${TIER_SELECTOR}" -o wide
+    else
+      printf '\nThe tool refused a precondition. No caller is started.\n'
+    fi
+  fi
+
+  step "S6. The header of the directory"
+  write_header
+
+  step "S7. The record"
+  # Exit status 0 is CHARACTERIZED, 5 is REFUSED, and 6 is INCONCLUSIVE. Each
+  # of the three prints the record, and the record is kept. Any other status
+  # printed no record.
+  printf '$ uv run --locked python -m tools.caller_characterization %s > %s/%s\n' "${A}" "${A}" "${RECORD_FILE}"
+  uv run --locked python -m tools.caller_characterization "${A}" >"${WORK}/record.tmp"
+  LAST=$?
+  printf '[exit %s]\n' "${LAST}"
+  case "${LAST}" in
+    0 | 5 | 6) tr -d '\r' <"${WORK}/record.tmp" >"${A}/${RECORD_FILE}" ;;
+    *) printf 'The tool printed no record. The directory is kept without one.\n'; run now; exit 1 ;;
+  esac
+  printf '$ print the result, G, what the caller saw, and the state of each rule of %s/%s\n' "${A}" "${RECORD_FILE}"
+  uv run --locked python - "${A}/${RECORD_FILE}" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+
+record = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+print("result:", record["result"])
+bound = record["bound"]
+print("G (ms):", bound["valueMs"], "rule:", bound["rule"], "successes:", bound["successes"])
+print("caller:", json.dumps(record["caller"], sort_keys=True))
+for finding in record["findings"]:
+    print(finding["state"].ljust(13), finding["criterion"].ljust(9), finding["ruleId"] + ":", finding["detail"])
+PYTHON
+  run now
+}
+
+mkdir -p "${WORK}"
+case "${PHASE}" in
+  up) up ;;
+  characterize) characterize ;;
+  down) down ;;
+  *)
+    printf 'REFUSED: the phase is up, characterize, or down.\n'
+    exit 2
+    ;;
+esac
