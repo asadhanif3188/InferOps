@@ -7,9 +7,10 @@
 ``check`` holds each run directory it is given to its manifest and to the layout.
 ``repository`` checks every run directory under ``docs/proof/experiments``: a
 directory whose manifest the pre-schema register names is listed and not checked,
-and a Q1 or Q2 qualification directory is listed with the two text rules applied to
-its files, because ``tools.environment_qualification --check`` or
-``tools.runtime_startup --check`` holds it to its record.
+and a Q1, Q2, or Q3 qualification directory is listed with the two text rules
+applied to its files, because ``tools.environment_qualification --check``,
+``tools.runtime_startup --check``, or ``tools.caller_characterization --check``
+holds it to its record.
 ``digests`` prints one ``<sha256>  <path>`` line for each file of a directory that
 can be an evidence file, with the layout's digest, for the writer of a manifest.
 ``check`` checks a directory that the register names too, and refuses it at its

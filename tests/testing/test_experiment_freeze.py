@@ -94,6 +94,11 @@ Q2_PIN = "8db93109a86336cfd3999cccd42f6ceec8eae22b033d7f128d541e80332b1196"
 #: characterization ran: revision 1 held the API image to the digest of q1-1.
 Q2_R2 = "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
 Q2_R2_PIN = "32e58c7984ad74ef229e5a2d3411e7de78971b17a554124a7fbe3acfe5bcaecd"
+#: The Q3 stable caller characterization, registered by V2-S6-002-PR2 before any
+#: characterization ran. It also fixes the Q4 formulas. Its pin is written out
+#: for the same reason.
+Q3 = "docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json"
+Q3_PIN = "b8c5f7acf2bde60d82f0909eb02fc2f01572e214351ea8b4d6e56043543d8c82"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so
@@ -131,7 +136,7 @@ def test_the_committed_records_are_the_pinned_ones() -> None:
     assert (
         record_paths()
         == sorted(FROZEN_RECORDS)
-        == [R1, R2, R3, Q1, Q2, Q2_R2, S5I, S5I_R2]
+        == [R1, R2, R3, Q1, Q2, Q2_R2, Q3, S5I, S5I_R2]
     )
     assert load_registry() == dict(FROZEN_RECORDS)
 
@@ -154,7 +159,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "PASSED: 8 freeze record(s)" in result.stdout
+    assert "PASSED: 9 freeze record(s)" in result.stdout
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
@@ -720,6 +725,7 @@ def test_every_registered_record_keeps_the_pin_it_was_registered_with() -> None:
         Q1: Q1_PIN,
         Q2: Q2_PIN,
         Q2_R2: Q2_R2_PIN,
+        Q3: Q3_PIN,
     }
 
 

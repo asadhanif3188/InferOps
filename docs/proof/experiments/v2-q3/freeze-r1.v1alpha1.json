@@ -1,0 +1,1362 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentFreeze",
+  "metadata": {
+    "experiment": "v2-q3-stable-caller-characterization",
+    "title": "Q3 stable caller characterization of the qualified release, and the Q4 bounds",
+    "revision": 1,
+    "registered": "2026-10-16",
+    "registeredBy": "V2-S6-002-PR2",
+    "supersedes": null
+  },
+  "definition": {
+    "purpose": "Measure, before any V2 reliability experiment runs, what the RP-1 caller sees through the API Service of the qualified release when the topology is healthy and nothing fails, and state G, the p99 of the gaps between successive successful requests. Fix, before that measurement, the four formulas by which Q4 derives the experiment bounds from S and G. The result is CHARACTERIZED, INCONCLUSIVE, or REFUSED.",
+    "scope": "The release that the qualification q1-1 qualified: key local-docker-desktop/support-assistant, 2 API replicas and 2 runtime replicas, delivered by the controller from the remote main, on the docker-desktop provider, in the environment that q1-1 selected. One caller run of RP-1 revision 1 for each characterization, for 360 s, with a request ceiling of 2000.",
+    "healthy": "Healthy is a state of the topology, read without the caller: before the caller, both Deployments are at 2 Ready replicas and exactly 2 API pods and 2 runtime pods exist, each Ready; while it runs, a watch of those pods shows no pod added, deleted, not Ready, or being deleted; after it, the same pods are Ready with no container restart, and both Deployments report 2 Ready replicas at their earlier generation. A caller request that does not succeed is a caller result, counted with its canonical error code, and not a reason to refuse or repeat the characterization.",
+    "measurement": "A gap is the time from the completion instant of one successful request to the completion instant of the next, in the order of their completions, with two of one instant in the order of their sequence numbers. The instants are the finishedAt instants of the caller record, from the wall clock of the runner pod, to one millisecond. The time before the first success and after the last one is not a gap. The record also states the number of requests, of successes, and of each outcome, the count of each canonical error code, and the nearest-rank p50, p90, and p99, the minimum, and the maximum of the latency of the successful requests and of the gaps. It states no rate.",
+    "derivation": "G is the nearest-rank p99 of the gaps of a characterization whose result is CHARACTERIZED: the gap at rank ceil(0.99 * n) of the n gaps in ascending order. When fewer than 100 requests succeeded, G is the maximum gap, and the record states that the p99 is not meaningful. The record of the characterization states G. This freeze record states the rule and no value.",
+    "bounds": "Q4 derives four experiment bounds from S, which a CHARACTERIZED Q2 record states, and from G: runtime_start_bound_ms = S; caller_gap_reference_ms = G; reversal_recovery_bound_ms = (2 * S) + 30000; caller_total_unavailability_bound_ms = max(2 * G, 5000). tools/experiment_bounds computes them from one committed Q2 record and one committed Q3 record, and refuses sources that are not CHARACTERIZED, not governed by a registered freeze record, or of another environment. The bound record is committed as docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json. The bounds are experiment bounds and not production service levels.",
+    "notResultEvidence": "Q3 is a qualification and not a reliability experiment. No characterization is a result of E02, E03, E04, E05, or E06, and no run of those experiments is used as a characterization. Q3 injects no fault. G is not a throughput figure, a capacity figure, a latency target, or a service level, and no claim cites it or a bound derived from it.",
+    "repetitionRule": "One characterization for each identifier. A characterization is never repeated for a lower or a higher G. Every characterization is kept, whatever its result. A later characterization runs only after the environment or a frozen input changes, under a later revision of this record when a frozen input changes, and it takes the next identifier. A bound record is built only from a CHARACTERIZED Q3 record, and a later bound record takes the next revision number.",
+    "limitations": [
+      "One provider, one node, one Kubernetes version, one release, one model, and one caller workload. Nothing here is portable to another environment.",
+      "The caller sends one fixed request, so the prompt cache of the runtime can make the prompt processing of later requests nearly free.",
+      "The caller runs inside the cluster, on the node that runs the release, and the capacity gate does not count it.",
+      "The gaps depend on the latency of a request and on the two closed-loop workers. No record shows how the Service spread the requests across the pods.",
+      "The watch reads the API pods and the runtime pods. The telemetry collector, the delivery controller, and the node are not read during the caller.",
+      "The gaps are differences of instants of the runner pod's clock. No rule compares that clock with the host clock or the cluster clock.",
+      "The direct kubectl commands of the driver name the context docker-desktop and run no target check of their own. The phase up of the Q1 driver and the runner script run the target check."
+    ],
+    "doesNotEstablish": [
+      "A throughput, a rate, a capacity figure, or a benchmark.",
+      "A service level, an availability, or a latency that a caller can expect.",
+      "What a caller sees while something fails or recovers.",
+      "That a bound derived from G is a production SLO.",
+      "Behaviour on another provider, on more than one node, or with another release, model, or caller workload."
+    ]
+  },
+  "parts": [
+    {
+      "id": "Q3",
+      "title": "Stable caller characterization",
+      "question": "In the environment that q1-1 qualified, with the target topology healthy, what does the RP-1 caller see through the API Service in six minutes, and what is the p99 of the gaps between its successive successful requests?",
+      "procedure": [
+        "Prepare the release with the phase up of the Q1 driver, run without a change, from the committed tree with a clean working tree and with every material file at its pin. The phase up keeps a refusal or a failure as upRefusal.",
+        "Start a characterization with the phase characterize of the Q3 driver. Read the executing commit, the working tree, the desired revision as the remote main, whether the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision, and whether the freeze tool lists a changed material file of this record or of the Q1 record. Refuse an identifier whose directory exists. When the phase up refused, or one of these is not at its state, read no cluster state, start no caller, and go to the header.",
+        "Copy the capacity collection that the phase up read before the Application was applied. Resolve the provenance of the target release key at the desired revision. Read the Deployments of the release, and the API pods and the runtime pods.",
+        "Ask the tool for the preconditions. When one is not held, start no caller, and go to the header.",
+        "Start a watch of the API pods and the runtime pods and wait until it lists 4 pods, at most 30 s. Start one caller run of RP-1 with the runner script: the experiment identifier of this record, the characterization identifier as the run identifier, a duration of 360 s, a request ceiling of 2000, and the release identifier of the provenance record. Wait for its Job, at most 900 s. Collect its record. Remove the objects of the run. Wait 10 s more, and stop the watch. Read the Deployments and the pods again.",
+        "Write the header of the directory, and build the Q3 record with the tool. Keep the record when the tool exits 0 (CHARACTERIZED), 5 (REFUSED), or 6 (INCONCLUSIVE). The record states the result and G. The driver states neither.",
+        "Remove the release with the phase down of the Q1 driver, run without a change.",
+        "When the Q3 record is CHARACTERIZED and committed, build the bound record with tools/experiment_bounds from the committed Q2 record and the committed Q3 record, and commit it."
+      ]
+    }
+  ],
+  "fields": {
+    "experimentIdVersion": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": {
+          "experiment": "v2-q3-stable-caller-characterization",
+          "freezeRevision": 1,
+          "definition": "This record states the purpose, the healthy state, the measurement, the derivation of G, the Q4 formulas, the procedure, and the acceptance criteria in full. A change to any of them, or to a pinned input, is a new revision of this record."
+        }
+      }
+    ],
+    "gitRevision": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": {
+          "preparedFrom": "b0bdccad4cce78ea532c206ecb4cbb99e4f4c420",
+          "pinnedInputs": "Every file in materialScope is pinned by its content digest in pinnedInputs. A record cannot name the commit that adds it, so the pins freeze the files and not a commit.",
+          "executingRevision": "Each characterization runs at a commit that holds this record, with a clean working tree, and the phase up runs at the same commit. The header names both. The delivery controller reads the remote main, and the driver reads no cluster state when the chart, the desired-state tree, or the controller manifests of the executing commit differ from it."
+        }
+      }
+    ],
+    "environmentIdentity": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": {
+          "provider": "docker-desktop, selected explicitly",
+          "context": "docker-desktop",
+          "qualification": "The environment that the qualification q1-1 selected, with the digest sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461. The tool computes the environment identity of the capacity record that the phase up read, as the Q1 tool computes it, and refuses another digest.",
+          "release": "The release identifier and the runtime image that the record of q1-1 states, and the API image digest that the phase up declared. The tool refuses another one."
+        }
+      }
+    ],
+    "callerProfileRevision": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": {
+          "profileId": "RP-1",
+          "profileRevision": 1,
+          "profileSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+          "durationSeconds": 360,
+          "requestCeiling": 2000,
+          "runner": "The in-cluster caller runner, started by scripts/environment/reliability-runner.sh, which the record pins with the file that the runner pod executes."
+        }
+      }
+    ],
+    "topology": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": {
+          "releaseKey": "local-docker-desktop/support-assistant",
+          "apiReplicas": 2,
+          "runtimeReplicas": 2,
+          "namespace": "inferops-release",
+          "nodes": 1,
+          "delivery": "The Application local-docker-desktop-support-assistant renders the chart at the commit that main names, with the generated values of the support assistant and the hand-written values of the Application, as for q1-1."
+        }
+      }
+    ],
+    "fault": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "not-applicable",
+        "reason": "Q3 injects no fault. The caller runs while the topology is healthy, and a rule holds that no pod was added, deleted, or not Ready while it ran."
+      }
+    ],
+    "repetitionCount": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": "No result-bearing run. One caller run of 360 s in each characterization. One characterization for each identifier, under definition.repetitionRule."
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "id": "Q3-AC1",
+            "statement": "The phase up of the Q1 driver completed: it states no refusal, the target check refused nothing, and it ran at the executing commit of the characterization."
+          },
+          {
+            "id": "Q3-AC2",
+            "statement": "The working tree was clean when the characterization started."
+          },
+          {
+            "id": "Q3-AC3",
+            "statement": "The driver names a registered revision of the Q3 freeze record, that revision has the content that the checkout holds, and the freeze tool listed no changed material file of it or of the Q1 record when the characterization started."
+          },
+          {
+            "id": "Q3-AC4",
+            "statement": "The desired revision is one full commit identifier, and the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision."
+          },
+          {
+            "id": "Q3-AC5",
+            "statement": "The qualification q1-1 is QUALIFIED, the capacity gate accepted the target release key with 2 API replicas and 2 runtime replicas, and the environment identity of that capacity record has the digest that q1-1 states."
+          },
+          {
+            "id": "Q3-AC6",
+            "statement": "The provenance record resolves the target release key at the desired revision to the release identifier that q1-1 states, the API Deployment runs the API image digest that the phase up declared, and the runtime Deployment runs the runtime image that q1-1 states."
+          },
+          {
+            "id": "Q3-AC7",
+            "statement": "Before the caller started, the API Deployment and the runtime Deployment each state 2 replicas and report 2 replicas, 2 Ready, 2 available, and 2 updated at their current generation, and exactly 2 API pods and 2 runtime pods exist, each Ready and none being deleted."
+          },
+          {
+            "id": "Q3-AC8",
+            "statement": "The start of the caller run exited 0, its Job succeeded within the wait bound, the runner script collected its record, and the cleanup exited 0."
+          },
+          {
+            "id": "Q3-AC9",
+            "statement": "The runner's reader accepts the caller record with its plan, in the mode in-cluster, for the Q3 experiment and the characterization identifier, with the release identifier of the provenance record declared, a duration of 360 s, and a request ceiling of 2000."
+          },
+          {
+            "id": "Q3-AC10",
+            "statement": "The caller run ended at its duration of 360 s, not at its ceiling or at a stop request, and it lasted at least 300,000 ms."
+          },
+          {
+            "id": "Q3-AC11",
+            "statement": "The caller record holds at least 2 successful requests, so at least one gap between successive successes."
+          },
+          {
+            "id": "Q3-AC12",
+            "statement": "The watch stream is a sequence of pod events of the API tier and the runtime tier with no ERROR event, it opens with one ADDED event for each pod of the reading before the caller, and the watch was started before the caller run was requested and stopped after the driver saw its Job end."
+          },
+          {
+            "id": "Q3-AC13",
+            "statement": "While the caller ran, the watch stream shows no pod that the reading before does not list, no deleted pod, and no pod that is not Ready or is being deleted; after it, the same 4 pods are Ready with the restart count of each container that they had before, and both Deployments report 2 Ready replicas at the generation that they stated before."
+          },
+          {
+            "id": "Q3-AC14",
+            "statement": "The phase up started before the characterization, the caller run was requested after the characterization started, and the driver saw its Job end after it was requested and before the characterization finished."
+          }
+        ]
+      }
+    ],
+    "derivedNumericBounds": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": {
+          "G": "The nearest-rank p99 of the gaps between successive successful requests of a characterization whose result is CHARACTERIZED, in milliseconds: the gap at rank ceil(0.99 * n) of the n gaps in ascending order. With fewer than 100 successful requests, the maximum gap, and the record states that the p99 is not meaningful. The record of that characterization states the value under bound.valueMs. This record states no value.",
+          "Q4": {
+            "formulas": {
+              "runtime_start_bound_ms": "S",
+              "caller_gap_reference_ms": "G",
+              "reversal_recovery_bound_ms": "(2 * S) + 30000",
+              "caller_total_unavailability_bound_ms": "max(2 * G, 5000)"
+            },
+            "inputs": "S from one CHARACTERIZED Q2 record governed by docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json, and G from one CHARACTERIZED Q3 record governed by this record, both of the environment and the release of q1-1.",
+            "tool": "tools/experiment_bounds",
+            "record": "docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json",
+            "boundary": "These are experiment bounds derived from two qualifications on one node. They are not service levels, availability targets, or production thresholds, and no figure of them is portable to another environment."
+          }
+        }
+      }
+    ],
+    "evidencePaths": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": {
+          "directory": "docs/proof/experiments/v2-q3/runs/<characterization>/, where <characterization> is q3-N",
+          "files": {
+            "run.json": "The header that the driver wrote.",
+            "capacity/": "The capacity collection that the phase up read before the Application was applied, with its record.",
+            "provenance.json": "The provenance of the target release at the desired revision.",
+            "deployments.json, before.pods.json": "The Deployments of the release, and the API pods and the runtime pods, before the caller.",
+            "watch.jsonl": "Every event of the watch of the API pods and the runtime pods, one on each line, in the order received.",
+            "caller-run.json": "The host instants and the exit statuses of the caller run and of the watch.",
+            "plan.json, caller.jsonl": "The plan of the caller run and its caller record, which holds no prompt text and no completion text. A refused record is kept as caller.refused.jsonl.",
+            "after.deployments.json, after.pods.json": "The Deployments and the pods after the caller.",
+            "record.v1alpha1.json": "The Q3 record, which states the result and G.",
+            "transcript.txt": "What the phases printed, with the absolute path of the host removed."
+          },
+          "bounds": "docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json",
+          "notCommitted": "The capacity gate's read of every pod of the cluster, when it holds a path under a home directory, as for q1-1. The run page names what was removed."
+        }
+      }
+    ],
+    "abortConditions": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": [
+          "A tracked file changes while the characterization runs.",
+          "A person changes a replica count, a request, a limit, or an object of the release while the characterization runs.",
+          "The cluster that the target check verifies is not the docker-desktop provider.",
+          "The Job of the caller run does not end within 900 s: the driver collects what exists and removes the run."
+        ],
+        "note": "An abort is stated in the run page, and the characterization is kept with the result that its record states."
+      }
+    ],
+    "cleanupProcedure": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": [
+          "The phase characterize removes the Job, the ConfigMap, and the network policy of the caller run with the cleanup action of the runner script, and stops the watch that it started.",
+          "Keep the collections under .artifacts/ until the run directory is assembled.",
+          "After the characterization, remove the Application, the controller, and the prerequisite layer with the phase down of the Q1 driver, and compare the namespaces and the custom resource definitions with those that the phase up read before it installed anything."
+        ]
+      }
+    ],
+    "intendedEvidenceLevel": [
+      {
+        "parts": [
+          "Q3"
+        ],
+        "status": "value",
+        "value": "C2",
+        "note": "Runtime: a real cluster, the delivery controller, the real runtime, the real model, and the in-cluster caller runner on one provider and one node. A characterization is a prerequisite and not a result, and its level does not raise the level of any claim."
+      }
+    ]
+  },
+  "materialScope": {
+    "description": "The path of one characterization and of the bounds derived from it. The phases up and down are the phases of the Q1 driver, so the scope holds the whole material scope of the Q1 freeze record: the import closure of its nine tools, its driver, the procedures it calls, among them the caller runner script, the bootstrap record of the controller, the file that the caller runner executes, the RP-1 profile and the V1 load profile, the model source record and the runtime container package, the chart, the desired-state tree with its contract and environment binding, the two manifests of the delivery controller, the Terraform prerequisite layer, the two image build files and the build's ignore file, the inferops package, and the dependency lock. It adds the Q3 driver, the import closure of the Q3 tool and of the Q4 bound tool, the Q1 freeze record, and the record of the qualification q1-1, which the Q3 tool holds the environment, the release, and the images to.",
+    "entryModules": [
+      "tools.caller_characterization.__main__",
+      "tools.experiment_bounds.__main__",
+      "tools.environment_qualification.__main__",
+      "tools.capacity_preflight.__main__",
+      "tools.service_endpoint_state.__main__",
+      "tools.runtime_model_cache.__main__",
+      "tools.reconciliation_evidence.__main__",
+      "tools.desired_state_provenance.__main__",
+      "tools.reliability_runner.__main__",
+      "tools.gitops_desired_state.__main__",
+      "tools.experiment_freeze.__main__"
+    ],
+    "packageRoots": {
+      "inferops": "src",
+      "tools": "."
+    },
+    "paths": [
+      "docs/proof/experiments/v2-q3/procedure/q3-driver.txt",
+      "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+      "docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json",
+      "docs/proof/experiments/v2-q1/procedure/q1-driver.txt",
+      "scripts/environment/lib.sh",
+      "scripts/environment/capacity-preflight.sh",
+      "scripts/environment/service-endpoint-state.sh",
+      "scripts/environment/reliability-runner.sh",
+      "scripts/environment/api-image.sh",
+      "scripts/environment/model-seed-image.sh",
+      "scripts/environment/terraform-prerequisites.sh",
+      "scripts/environment/argocd-bootstrap.sh",
+      "scripts/environment/argocd-application.sh",
+      "docs/environment/argocd-bootstrap.v1alpha1.json",
+      "tools/reliability_runner/incluster.py",
+      "deploy/serving/reliability/rp-1-profile.v1.json",
+      "deploy/serving/load/llm-load-profile.v1.json",
+      "docs/serving/model-source.v1.json",
+      "deploy/serving/runtime/container-package.v1.json",
+      "charts/inferops-llm/.helmignore",
+      "charts/inferops-llm/Chart.yaml",
+      "charts/inferops-llm/values.yaml",
+      "charts/inferops-llm/values.schema.json",
+      "charts/inferops-llm/ci/real-values.yaml",
+      "charts/inferops-llm/templates/**/*",
+      "gitops/**/*",
+      "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
+      "contracts/environment/examples/valid/local-docker-desktop.yaml",
+      "infra/argocd/*.yaml",
+      "infra/terraform/environments/local/*.tf",
+      "infra/terraform/environments/local/.terraform.lock.hcl",
+      "infra/terraform/modules/platform-prerequisites/*.tf",
+      "deploy/api/Dockerfile",
+      "deploy/model-seed/Dockerfile",
+      ".dockerignore",
+      "src/inferops/**/*",
+      "pyproject.toml",
+      "uv.lock"
+    ],
+    "exclusions": []
+  },
+  "pinnedInputs": [
+    {
+      "path": ".dockerignore",
+      "role": "api-image-build",
+      "sha256": "f67d36c877c55a837d82c6e78c16136e6c653be06b2c69bdaf8fd374834b54c1"
+    },
+    {
+      "path": "charts/inferops-llm/.helmignore",
+      "role": "chart",
+      "sha256": "6616c0dcb7188d2b5f90528049f6859d429e01dd72e01c48cfbc67b463419915"
+    },
+    {
+      "path": "charts/inferops-llm/Chart.yaml",
+      "role": "chart",
+      "sha256": "f354d999392c0223984ca74473c2a7452fb556d00fb60dcee7742865477c4411"
+    },
+    {
+      "path": "charts/inferops-llm/ci/real-values.yaml",
+      "role": "chart",
+      "sha256": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48"
+    },
+    {
+      "path": "charts/inferops-llm/templates/NOTES.txt",
+      "role": "chart",
+      "sha256": "b7c0e66995248f602052fc9448dfcbf8c2d53c1615a7526f3c1bb7fe1e974363"
+    },
+    {
+      "path": "charts/inferops-llm/templates/_helpers.tpl",
+      "role": "chart",
+      "sha256": "5d7d9400651d8c6c864f95aa9a30f13b3a2047b9f36fbeee13d68156bee3cd2e"
+    },
+    {
+      "path": "charts/inferops-llm/templates/_validate.tpl",
+      "role": "chart",
+      "sha256": "57a7b0e670c21bdc3610e9b4cda21e8a9dc72ba361f8b41316d449b9a51bfc48"
+    },
+    {
+      "path": "charts/inferops-llm/templates/api-deployment.yaml",
+      "role": "chart",
+      "sha256": "2b792c84d607886de4e313e6f66d734a801d9769a2e37bda7f5786479b624212"
+    },
+    {
+      "path": "charts/inferops-llm/templates/api-disruption-budget.yaml",
+      "role": "chart",
+      "sha256": "55353d6f028441ffbdeb8e93775ece5bcc7a52ee49b066d2ed17e9a4f571a3d6"
+    },
+    {
+      "path": "charts/inferops-llm/templates/api-service.yaml",
+      "role": "chart",
+      "sha256": "ae2ade9a5de1b2b8875d3b0bc0459400554bc10d33e23b9f0b9d248528ed346a"
+    },
+    {
+      "path": "charts/inferops-llm/templates/configmap.yaml",
+      "role": "chart",
+      "sha256": "22529d32db43e80934239e1567d344a67ecb1ce4f380bdee88e13297c67a4e45"
+    },
+    {
+      "path": "charts/inferops-llm/templates/model-acquisition-job.yaml",
+      "role": "chart",
+      "sha256": "0320986c90d7245a21fedd7b05cf13dffbc3425d6820f1cc1c67efc7ea944098"
+    },
+    {
+      "path": "charts/inferops-llm/templates/networkpolicy.yaml",
+      "role": "chart",
+      "sha256": "f18f83703fcbb6b7098dc9bd8b2f81738a89fc6c28dc3191dd4e44870bb8d0e5"
+    },
+    {
+      "path": "charts/inferops-llm/templates/runtime-deployment.yaml",
+      "role": "chart",
+      "sha256": "f23b2d05ec2633aef394f4e96c7f3be07d1ea28c5b4687c50ed6069135d8e8ef"
+    },
+    {
+      "path": "charts/inferops-llm/templates/runtime-disruption-budget.yaml",
+      "role": "chart",
+      "sha256": "aeecdb2c4a2ccb14db367f85f0425ccc702012592d987692a082a8775e9f6a63"
+    },
+    {
+      "path": "charts/inferops-llm/templates/runtime-service.yaml",
+      "role": "chart",
+      "sha256": "f01dc18891b1401d321bca4f01e1a3be1193e7cb4bf2d7a07ff4ebc4a996eaad"
+    },
+    {
+      "path": "charts/inferops-llm/templates/serviceaccount.yaml",
+      "role": "chart",
+      "sha256": "92732605addd07dff5d59a7e5e9883ac277e299b8d684abe62b81d3408181955"
+    },
+    {
+      "path": "charts/inferops-llm/templates/telemetry-collector.yaml",
+      "role": "chart",
+      "sha256": "3cf5b09891a77a59b2101a7eb4f7ec76d5cf27333e66711699dcfca50fae170a"
+    },
+    {
+      "path": "charts/inferops-llm/templates/telemetry-scrape-config.yaml",
+      "role": "chart",
+      "sha256": "3fdecea5037a897bf126fa7ebb5e1dfbe2edf79078183efe7df916e6c39e5442"
+    },
+    {
+      "path": "charts/inferops-llm/templates/tests/connection.yaml",
+      "role": "chart",
+      "sha256": "b62f9728d0234f1ab403b6ac0b0a61c3e8b37eef7873d697a14a4474441e99f4"
+    },
+    {
+      "path": "charts/inferops-llm/values.schema.json",
+      "role": "chart",
+      "sha256": "69909a02069e0c556b65c4d62a96f9f64f5487c6f074cbbf9ad1c96586361cb2"
+    },
+    {
+      "path": "charts/inferops-llm/values.yaml",
+      "role": "chart",
+      "sha256": "0031a614dec9813171f1e8147f11ed55d33bfa1730c8a39781064c43213cdccd"
+    },
+    {
+      "path": "contracts/environment/examples/valid/local-docker-desktop.yaml",
+      "role": "desired-state",
+      "sha256": "06c8c8aa1617516900ee74e35e73a9a60d1e6d44a5c2fdd9068e4a2027384249"
+    },
+    {
+      "path": "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
+      "role": "desired-state",
+      "sha256": "12c6dfe7fb7c073ed8ee55276d310d69499cf40f0173a5848609264cda0c4d32"
+    },
+    {
+      "path": "deploy/api/Dockerfile",
+      "role": "api-image-build",
+      "sha256": "93fc6cbb25162b62c04527992faff4ef80edc39cb4e0956c1ff80e36546319df"
+    },
+    {
+      "path": "deploy/model-seed/Dockerfile",
+      "role": "model-seed-image-build",
+      "sha256": "03581a1db3e9b70a4c0c4f39310d3cdddf4cb680b52011ef3241c091c8755133"
+    },
+    {
+      "path": "deploy/serving/load/llm-load-profile.v1.json",
+      "role": "caller-profile",
+      "sha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5"
+    },
+    {
+      "path": "deploy/serving/reliability/rp-1-profile.v1.json",
+      "role": "caller-profile",
+      "sha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+    },
+    {
+      "path": "deploy/serving/runtime/container-package.v1.json",
+      "role": "runtime-package",
+      "sha256": "692ab69d6b4cf312762991e10f08094d6ec4888e8963ec1c0428205758b9eb26"
+    },
+    {
+      "path": "docs/environment/argocd-bootstrap.v1alpha1.json",
+      "role": "delivery-controller-manifest",
+      "sha256": "d79f49a21aa2e85635c877fd32d4410f755dbd0d4a6b091f242260f66b7c43f9"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+      "role": "qualification-freeze",
+      "sha256": "f23426223d19abf19fa3c8beaaa138abe93bdef8ab376335eda50b0da3f29ded"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q1/procedure/q1-driver.txt",
+      "role": "procedure",
+      "sha256": "fc1f6aac371dfe768b040c59ff9f453ae2dfeae223ce69f826bba9ef257b1e4b"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json",
+      "role": "qualification-record",
+      "sha256": "b6243ae6e4ef85e752a4dbd66d22ff17dfd42548eaa5ba8c7a3736490930d82d"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q3/procedure/q3-driver.txt",
+      "role": "procedure",
+      "sha256": "6318ade8b55411d71a76a204d8d4b148b29dbaf4c8ac42fd87bbaf958487bb90"
+    },
+    {
+      "path": "docs/serving/model-source.v1.json",
+      "role": "model-source",
+      "sha256": "11187435073b286464397d42f022016dd76baea5f8d74397a3a83a3b8b2d5f8c"
+    },
+    {
+      "path": "gitops/README.md",
+      "role": "desired-state",
+      "sha256": "1430f3fa2c1db3570cbb9aabe216eb2f7119ccf46b4c5f1fe7593516f7e1962c"
+    },
+    {
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+      "role": "desired-state",
+      "sha256": "810b4b27e40ec0cf1514d97caa5a7a27818aa12598b1c7b441e4b0ae3c5cb31a"
+    },
+    {
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+      "role": "desired-state",
+      "sha256": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
+    },
+    {
+      "path": "infra/argocd/local-docker-desktop-support-assistant.yaml",
+      "role": "delivery-controller-manifest",
+      "sha256": "42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd"
+    },
+    {
+      "path": "infra/argocd/workloads-project.yaml",
+      "role": "delivery-controller-manifest",
+      "sha256": "01d6515e2043767165dc4e06b3accfb7c616001ff21d9b24e09fc90bcb61c1bc"
+    },
+    {
+      "path": "infra/terraform/environments/local/.terraform.lock.hcl",
+      "role": "prerequisites",
+      "sha256": "26537f2d413f775e018ab2798b46109d2d25db543ca04464555442aee381ec7b"
+    },
+    {
+      "path": "infra/terraform/environments/local/main.tf",
+      "role": "prerequisites",
+      "sha256": "e8987e9af0028e514d90bf3f9839fe93601e202eeab9a65887d333c461986395"
+    },
+    {
+      "path": "infra/terraform/environments/local/outputs.tf",
+      "role": "prerequisites",
+      "sha256": "ee41a7097067d6242bf863bd81af427c1705db4b838c6d6313ccd6a2282344fb"
+    },
+    {
+      "path": "infra/terraform/environments/local/variables.tf",
+      "role": "prerequisites",
+      "sha256": "a941abf57cee298bf96421ccbd6d597ea923e7ff8e8c660f60b14efc467d182a"
+    },
+    {
+      "path": "infra/terraform/environments/local/versions.tf",
+      "role": "prerequisites",
+      "sha256": "0fb6a9c438392807afdb3eb0ab97215728ac0bc6a48a312baf9ee52ea7a049c4"
+    },
+    {
+      "path": "infra/terraform/modules/platform-prerequisites/main.tf",
+      "role": "prerequisites",
+      "sha256": "9cdfd413f3733d46ef2cd79ee2346adbb7c1bc3828b5999f371b749df64c9f26"
+    },
+    {
+      "path": "infra/terraform/modules/platform-prerequisites/outputs.tf",
+      "role": "prerequisites",
+      "sha256": "ecdb543dfea7831c9b29a86e9f026e7c1a687c62a05e83e65dabb4c65176d7e7"
+    },
+    {
+      "path": "infra/terraform/modules/platform-prerequisites/variables.tf",
+      "role": "prerequisites",
+      "sha256": "5461be1116732f12142138c35d8223a168a930862d21df70cea6c814da4b86c7"
+    },
+    {
+      "path": "infra/terraform/modules/platform-prerequisites/versions.tf",
+      "role": "prerequisites",
+      "sha256": "e58863407444a56514a718253baec862aa1b3043448dca458e1d72c5e74a1f75"
+    },
+    {
+      "path": "pyproject.toml",
+      "role": "dependencies",
+      "sha256": "58b45d56c5c77a526e4ce3c779ae96173f5088742d2d679987597133de936ab0"
+    },
+    {
+      "path": "scripts/environment/api-image.sh",
+      "role": "operating-procedure",
+      "sha256": "26d52decf240650496ef4b7fd687ba6e82d36960d98c4f909722804566c131a7"
+    },
+    {
+      "path": "scripts/environment/argocd-application.sh",
+      "role": "operating-procedure",
+      "sha256": "44aac3ff6cb0d92b969f559ae74d0b070f88019367c2cc0cda9d462a983969d2"
+    },
+    {
+      "path": "scripts/environment/argocd-bootstrap.sh",
+      "role": "operating-procedure",
+      "sha256": "9f35dcfc8eb997090259418043882c28763cf199b568dfdd943ed1c0d9477c25"
+    },
+    {
+      "path": "scripts/environment/capacity-preflight.sh",
+      "role": "operating-procedure",
+      "sha256": "5f839da7e8329b05125b139435f5ddeec80011b455304c37d50669c2ddd3b4b4"
+    },
+    {
+      "path": "scripts/environment/lib.sh",
+      "role": "operating-procedure",
+      "sha256": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd"
+    },
+    {
+      "path": "scripts/environment/model-seed-image.sh",
+      "role": "operating-procedure",
+      "sha256": "9e72ecc398f433c9e2505d808411c22528e63487d6f65494dd4111ee42e2477e"
+    },
+    {
+      "path": "scripts/environment/reliability-runner.sh",
+      "role": "operating-procedure",
+      "sha256": "066e6039cd45e43996b64e5acf8de93c7e1ff20acbdda2a1c1f55e8ce02dbb5b"
+    },
+    {
+      "path": "scripts/environment/service-endpoint-state.sh",
+      "role": "operating-procedure",
+      "sha256": "5fa459484afe9d12ba22783ec75b9e467188ca9a121c18e3a8d73cbf0f1a9103"
+    },
+    {
+      "path": "scripts/environment/terraform-prerequisites.sh",
+      "role": "operating-procedure",
+      "sha256": "ee8cf156690a0a6d840407e5531c09ec62b832571d205fe4fe7a44f4a9752603"
+    },
+    {
+      "path": "src/inferops/__init__.py",
+      "role": "api-image-source",
+      "sha256": "871ae3c4e73373b9e916405fb585676c84ed70c62405abeac50fabf17465adff"
+    },
+    {
+      "path": "src/inferops/adapters/__init__.py",
+      "role": "api-image-source",
+      "sha256": "5cbdaf1206b7b00b89bced6aad46854fee67d4ca87eab28d51e302f39cd11ee4"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/__init__.py",
+      "role": "api-image-source",
+      "sha256": "a6eb27ce0ad79924d689ac218f9ac1c58d31cd5616c7da75941e29ff5591015c"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/adapter.py",
+      "role": "api-image-source",
+      "sha256": "019c2dbe72c2b4b2eda4945f56856795f83dc2c54463fceb782773fe255a1aec"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/capabilities.py",
+      "role": "api-image-source",
+      "sha256": "ed657ee54f4fd3ff71239b313c745201e375a6ad0a8cb986c839d8c7b86f6b4b"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/configuration.py",
+      "role": "api-image-source",
+      "sha256": "7135e1f6c5584fe485c9fb3c5ec25fd49d6e98a25d7d0c39a84a5b751dea4fa9"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/http_transport.py",
+      "role": "api-image-source",
+      "sha256": "13a19ffb189b416a48881f357316776199d483812ad358ecf43ec42f03390649"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/inference.py",
+      "role": "api-image-source",
+      "sha256": "c4ed5323306d361c59a814f48d3622dc509375e08293a175e56c7f7b3a4c3f66"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/metadata.py",
+      "role": "api-image-source",
+      "sha256": "ce873ea4da0a7b4b3979f2414e1bcc70f36eb8333959e945245de745bd7020c4"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/pins.py",
+      "role": "api-image-source",
+      "sha256": "85d86ca0700e38ecfd626f22bb8bc67db8e9a51125c52fe755f3a1c2b2405546"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/readiness.py",
+      "role": "api-image-source",
+      "sha256": "f877f91e44462c4cab2cbb4ade6ec11972792ad0979c110d9c880a253efb759c"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/settings.py",
+      "role": "api-image-source",
+      "sha256": "45a3dc13cfd893c782be062dde20c86388f87f1dff375099d6a99642ec884001"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/transport.py",
+      "role": "api-image-source",
+      "sha256": "d169cec0ae8727ebf1af5e7c85350f3195a1e5418c835b13c5c7e4ada5524276"
+    },
+    {
+      "path": "src/inferops/adapters/mock_serving.py",
+      "role": "api-image-source",
+      "sha256": "72f31817b7589d32bab4520c7184ba21e513b6ef935ee761242e911b723a23c9"
+    },
+    {
+      "path": "src/inferops/api/__init__.py",
+      "role": "api-image-source",
+      "sha256": "ba90f871e88b120862ebbeff45921fc58a608f9cfa1e73ffd2a003fe15df34cd"
+    },
+    {
+      "path": "src/inferops/api/application.py",
+      "role": "api-image-source",
+      "sha256": "dc829593d82b3b28da9eccc8443fbd6ae6c3e36fee2a83f168bd21ccf0469b3c"
+    },
+    {
+      "path": "src/inferops/api/errors.py",
+      "role": "api-image-source",
+      "sha256": "554fafcd5aeb4e1419d15e9ca3a5fb688963fa401fcb9a5c014aaa3e4a4c30cb"
+    },
+    {
+      "path": "src/inferops/api/identifiers.py",
+      "role": "api-image-source",
+      "sha256": "e8315d05ccb9ce814cb93147508f0f46ca000e90a5a28934ddb479aa970e6490"
+    },
+    {
+      "path": "src/inferops/api/lifecycle.py",
+      "role": "api-image-source",
+      "sha256": "bd2aece5be9631f9bde312e29bd4f2111cf3abf52090b09b136ca339b9bc9f81"
+    },
+    {
+      "path": "src/inferops/api/metrics.py",
+      "role": "api-image-source",
+      "sha256": "a58a43c402fc9c476ec4376a0d0c2a02df79f4e39807e8a9a8cbdede03e85b00"
+    },
+    {
+      "path": "src/inferops/api/observability.py",
+      "role": "api-image-source",
+      "sha256": "1b37d88b8dc34707ad95e3a2194b0cade574867691a57d0b31871e6e72a54f38"
+    },
+    {
+      "path": "src/inferops/api/responses.py",
+      "role": "api-image-source",
+      "sha256": "d3f7ed7522329196c96f24fabbaeb190149cccd9f9873b24497f8fbd452d61f4"
+    },
+    {
+      "path": "src/inferops/api/selection.py",
+      "role": "api-image-source",
+      "sha256": "f73e1c5d708f59c8c46dd4107b0bf4ba5a4634f30f60b9276038054a94b725be"
+    },
+    {
+      "path": "src/inferops/api/surface.py",
+      "role": "api-image-source",
+      "sha256": "ac81932c64c1e93e021d29a2567748ab88f3e413bd2945237e512a88785739ad"
+    },
+    {
+      "path": "src/inferops/api/validation.py",
+      "role": "api-image-source",
+      "sha256": "e5bbb62653ddc03ec5e18d094a752237c95f20282c6ca02f41ce4c8c24afae2c"
+    },
+    {
+      "path": "src/inferops/domain/__init__.py",
+      "role": "api-image-source",
+      "sha256": "bbbb9f098f2a31746200e6f62bdd3ec3fc8a9610e346575b354bf8f596cf6ce2"
+    },
+    {
+      "path": "src/inferops/domain/context.py",
+      "role": "api-image-source",
+      "sha256": "4d833e2e684b8c714ab8b649616bb8ad84a62cd2324b716aa4f8e151b44cbeb2"
+    },
+    {
+      "path": "src/inferops/domain/environment/__init__.py",
+      "role": "api-image-source",
+      "sha256": "f560fcb6076e7b5f6abb92260c5f0aa036e99a019ddf0cc8032daa6823d00333"
+    },
+    {
+      "path": "src/inferops/domain/environment/binding.py",
+      "role": "api-image-source",
+      "sha256": "827637be73f57ee37021f63f45c931051a8046aa20c1662fafa07aae3c3ece66"
+    },
+    {
+      "path": "src/inferops/domain/environment/errors.py",
+      "role": "api-image-source",
+      "sha256": "3f4ffdf2ca1f80021fbd26b7efcbd3ee5eb17f6728a9359373e7cba79e81af84"
+    },
+    {
+      "path": "src/inferops/domain/environment/parsing.py",
+      "role": "api-image-source",
+      "sha256": "0ae16bb095fda6c0f14bcabf1f31b68a897414db3c69d6fbcf051ea2373f30eb"
+    },
+    {
+      "path": "src/inferops/domain/environment/selection.py",
+      "role": "api-image-source",
+      "sha256": "4550cd6e189ff7b20e64b7eba2e3f5a64e62240d8c87b433152662cc9560f47c"
+    },
+    {
+      "path": "src/inferops/domain/environment/values.py",
+      "role": "api-image-source",
+      "sha256": "887c4007216e5c843a35add485966b3d27ccde0dd596041d1a63e4ebe6a1d766"
+    },
+    {
+      "path": "src/inferops/domain/environment/versions.py",
+      "role": "api-image-source",
+      "sha256": "79778ca8c19ea198ea7f3776bfcd86f0e4e7ccad184f73810b2d89e2b1781c6c"
+    },
+    {
+      "path": "src/inferops/domain/release/__init__.py",
+      "role": "api-image-source",
+      "sha256": "857959b49b8cbc259ae0e09bf5b976f0fb7d831cd06b80df68cfd80106a2a011"
+    },
+    {
+      "path": "src/inferops/domain/release/canonical.py",
+      "role": "api-image-source",
+      "sha256": "f40f3121e3dca0fd4763fb8a942c4af7f3a643ccf34794f9bed186d40e002caa"
+    },
+    {
+      "path": "src/inferops/domain/release/errors.py",
+      "role": "api-image-source",
+      "sha256": "4c7f9227f47d2dfbf4c7a9af5fb4c10233970095e1d93b8547260b6485daf45e"
+    },
+    {
+      "path": "src/inferops/domain/release/parsing.py",
+      "role": "api-image-source",
+      "sha256": "a7a02ff0d1a573057ede8a2495c9fff2b4eb1487c5920aff8c3e1491a29b0ecd"
+    },
+    {
+      "path": "src/inferops/domain/release/provenance.py",
+      "role": "api-image-source",
+      "sha256": "1cfa02b04d1c3f04f1d3f1d2afdf54a62ced7c55fef40fe826476af6634d2c64"
+    },
+    {
+      "path": "src/inferops/domain/release/release.py",
+      "role": "api-image-source",
+      "sha256": "59090281c7ad0bcaa34ecd93f0fb2cf38c0f7075b5dc6235ac800db7c8abc5b1"
+    },
+    {
+      "path": "src/inferops/domain/release/values.py",
+      "role": "api-image-source",
+      "sha256": "0ad4a3ea228846eb29bb0c5e61864d2e2706dd3f5fdf8b91d23d7c1832070bcf"
+    },
+    {
+      "path": "src/inferops/domain/release/versions.py",
+      "role": "api-image-source",
+      "sha256": "e08e149da56999f45c431cc5b28c3f857b89827e669ae5b8a33330032fb3fca7"
+    },
+    {
+      "path": "src/inferops/domain/render/__init__.py",
+      "role": "api-image-source",
+      "sha256": "b231173d482ebe535dfb081af23f0392c55cdb525a1938942a991bcc526c40e3"
+    },
+    {
+      "path": "src/inferops/domain/render/acceptance.py",
+      "role": "api-image-source",
+      "sha256": "627b50121f538c89f4e37a43df82ce699a6e27fde49cae264ea2471db6561ae3"
+    },
+    {
+      "path": "src/inferops/domain/render/conflicts.py",
+      "role": "api-image-source",
+      "sha256": "1fcdd35a7eb55ebd8c99259579b62735ec94c714b20694e2c392fb81cea1795f"
+    },
+    {
+      "path": "src/inferops/domain/render/defaults.py",
+      "role": "api-image-source",
+      "sha256": "73c435fda51854a41cebd548473ae629a6ef6ec525cf810bd2887230c0bff793"
+    },
+    {
+      "path": "src/inferops/domain/render/errors.py",
+      "role": "api-image-source",
+      "sha256": "9c54cf30cd9c94e0258ca547cc7df7fb9278ecc7bcdcd2ffa47aa6e41b11c09b"
+    },
+    {
+      "path": "src/inferops/domain/render/generation.py",
+      "role": "api-image-source",
+      "sha256": "2dc6c75bda20bffb346621557040056d3eb4363ee4e6c204b753d655d56078a3"
+    },
+    {
+      "path": "src/inferops/domain/render/helm_values.py",
+      "role": "api-image-source",
+      "sha256": "fffcdeb860f79f1fe89e52dfd228a0f64194a0cda92c710272a0a2c5adcd26ac"
+    },
+    {
+      "path": "src/inferops/domain/render/normalization.py",
+      "role": "api-image-source",
+      "sha256": "9a1a59c4eb5d6c5bfe83c05d9df8e0d6ec8bf749a7762d82f36f299e312024d6"
+    },
+    {
+      "path": "src/inferops/domain/render/ownership.py",
+      "role": "api-image-source",
+      "sha256": "40475e86ed681eb1116001661b14ae74e8294dfa7ba4899b0fd924bdf49b5b17"
+    },
+    {
+      "path": "src/inferops/domain/render/recording.py",
+      "role": "api-image-source",
+      "sha256": "da60a4996a1eeb61e4cc94237dff9aca6ed35a4a09777a48bca112bb9509709e"
+    },
+    {
+      "path": "src/inferops/domain/render/renderer.py",
+      "role": "api-image-source",
+      "sha256": "bd79bf4c4cd074e3b1dfa903b6e945488285ac3b01aabae48c90dbaf9200d2a1"
+    },
+    {
+      "path": "src/inferops/domain/render/support.py",
+      "role": "api-image-source",
+      "sha256": "b64dc3da4873e42898cd1b067bbeccfd982b93b99d8a2b91c73368e54f3c96bd"
+    },
+    {
+      "path": "src/inferops/domain/render/values_yaml.py",
+      "role": "api-image-source",
+      "sha256": "933c169e177509df53720acbe3663c0354b1570dc50c9de2c3140075e736a516"
+    },
+    {
+      "path": "src/inferops/domain/render/writing.py",
+      "role": "api-image-source",
+      "sha256": "f3dd441cc5f0c6a9f92e2486b198e359bd17ea00da4ab70460a9b0394a8313c0"
+    },
+    {
+      "path": "src/inferops/domain/serving/__init__.py",
+      "role": "api-image-source",
+      "sha256": "ac90e4a3dd59f021686dce91c3c10185b7639cf619cd7852e62a5c34eee82c66"
+    },
+    {
+      "path": "src/inferops/domain/serving/contract.py",
+      "role": "api-image-source",
+      "sha256": "96372b2d766605414c62cad06be188eb13ab08c7e15e53420453dea81eab0d3b"
+    },
+    {
+      "path": "src/inferops/domain/serving/errors.py",
+      "role": "api-image-source",
+      "sha256": "454fd252c6bd2722d90dd26f9dfb0e5955898bacfc3f994f4b7eaf213e3dcc4c"
+    },
+    {
+      "path": "src/inferops/domain/serving/test_double.py",
+      "role": "api-image-source",
+      "sha256": "f79e7dc9c16b2fba94dd014ac3023f94f8f5fc3240869b24d8706eec0d2c30b1"
+    },
+    {
+      "path": "src/inferops/domain/serving/values.py",
+      "role": "api-image-source",
+      "sha256": "ba1d1a70e7d006d9fb8554439deb2f1e5958b490ce5b39d94394d15f10fb7ce8"
+    },
+    {
+      "path": "src/inferops/domain/workload/__init__.py",
+      "role": "api-image-source",
+      "sha256": "c0501df503eea8b7601a9e34e772fd549f9f83be4196836620dc2ebadc2734ae"
+    },
+    {
+      "path": "src/inferops/domain/workload/contract.py",
+      "role": "api-image-source",
+      "sha256": "b85e7b2597a5310bdb964191b7b7f83fe1bdedb72780ddb2c8fb4718545c3fc2"
+    },
+    {
+      "path": "src/inferops/domain/workload/errors.py",
+      "role": "api-image-source",
+      "sha256": "f0735dd4ce03efafd6d5a177021bfa22b8ae90f41de27994cd838dadf1038aab"
+    },
+    {
+      "path": "src/inferops/domain/workload/parsing.py",
+      "role": "api-image-source",
+      "sha256": "578a6cd13ceaaabdbc9ac31ee6def51544837ab93f817af43d3f970758ee96e8"
+    },
+    {
+      "path": "src/inferops/domain/workload/validation.py",
+      "role": "api-image-source",
+      "sha256": "45a8f4f4bb6a242231633926e1d178c35d6bb9424f3d4a2e2df5c4324a80bfdb"
+    },
+    {
+      "path": "src/inferops/domain/workload/values.py",
+      "role": "api-image-source",
+      "sha256": "3a2a4c6d79a6caee3afb2b67b47220f3e746c68b47fc4e004b0913142e6587d2"
+    },
+    {
+      "path": "src/inferops/domain/workload/versions.py",
+      "role": "api-image-source",
+      "sha256": "00a8bc3f3ad17c83765c5ce34c18c1affee1cb6175a2ece4519bb21848819ff6"
+    },
+    {
+      "path": "src/inferops/scaffolding/__init__.py",
+      "role": "api-image-source",
+      "sha256": "7e3ad88fb5304624a5a06faa32483a2e7ba7dc603ca3287f9831d87076d257a3"
+    },
+    {
+      "path": "src/inferops/scaffolding/parameters.py",
+      "role": "api-image-source",
+      "sha256": "e9d014381630254c03de5fedc8a4e5bf1b14e9ee44f99b97f854eb5ae0c93fef"
+    },
+    {
+      "path": "src/inferops/scaffolding/template.py",
+      "role": "api-image-source",
+      "sha256": "5c6046fe466908871260b23d11aedb2388e557dbbb771f3baf11bd01858e29a3"
+    },
+    {
+      "path": "src/inferops/scaffolding/templates/__init__.py",
+      "role": "api-image-source",
+      "sha256": "8b3521c5d3318ff226e32900f8c4e7d71f3386e7888f56c5d4f9d884f000788c"
+    },
+    {
+      "path": "src/inferops/scaffolding/templates/contract_test_mock_llm.py",
+      "role": "api-image-source",
+      "sha256": "844019ac8d542adfa6c44e1cab16c55364b12c01ba21b620532150d8e1f5704e"
+    },
+    {
+      "path": "src/inferops/scaffolding/templates/contract_test_synchronous_llm.py",
+      "role": "api-image-source",
+      "sha256": "d5cbdf7dd8bf647029a7f915c2bf1f1b85e6283943d974139db92fbfcaa2f61f"
+    },
+    {
+      "path": "src/inferops/scaffolding/templates/readme_mock_llm.py",
+      "role": "api-image-source",
+      "sha256": "9945bccb8c3e0fafbb09c2e396025bd445d2aa0688d0accb0061c33af8117889"
+    },
+    {
+      "path": "src/inferops/scaffolding/templates/readme_synchronous_llm.py",
+      "role": "api-image-source",
+      "sha256": "cbb63abf305d70842df0b2d24b8cd8c31a8cd20af6e0c772fccc5948f6e8cb61"
+    },
+    {
+      "path": "src/inferops/scaffolding/templates/workload_mock_llm.py",
+      "role": "api-image-source",
+      "sha256": "924889b80d13764a230226049605c26b0cf0831291fc157268bb4b0316a9cf6a"
+    },
+    {
+      "path": "src/inferops/scaffolding/templates/workload_synchronous_llm.py",
+      "role": "api-image-source",
+      "sha256": "553d17140c0c4355d3d8998705a25bf9e8c6d9de474b71aa07ef1ea4d67354e0"
+    },
+    {
+      "path": "src/inferops/telemetry/__init__.py",
+      "role": "api-image-source",
+      "sha256": "f1d9571661ee3e328f006c1fe534a1d076190d2df8a187849d1fd558a6730f30"
+    },
+    {
+      "path": "src/inferops/telemetry/names.py",
+      "role": "api-image-source",
+      "sha256": "b056b3e8a042db3e695a7b1b4a6115f9ebc52982cc6f84b79f28158235b09239"
+    },
+    {
+      "path": "src/inferops/telemetry/process.py",
+      "role": "api-image-source",
+      "sha256": "6035257ef7c7f19ea94b6890a29f026375d6b8bef52948b1e92512422aedd090"
+    },
+    {
+      "path": "src/inferops/telemetry/records.py",
+      "role": "api-image-source",
+      "sha256": "154db0cd92f66931d0fb2b9f43001d30d2fdfbec1f90f0712c1139d74216cad5"
+    },
+    {
+      "path": "src/inferops/telemetry/registry.py",
+      "role": "api-image-source",
+      "sha256": "bb341b32521e167cab92f9682f6438f5fc93ca8ee9e2561441ee0169493503c0"
+    },
+    {
+      "path": "src/inferops/telemetry/resource.py",
+      "role": "api-image-source",
+      "sha256": "9e53ddfedc679f64368e9094d25dc11e481646a0f20ca166538d2c33d3462ea7"
+    },
+    {
+      "path": "tools/__init__.py",
+      "role": "tool",
+      "sha256": "2aa0150d36adadb891175596f532622211973267f11c20201a7e4fb10bd18ddb"
+    },
+    {
+      "path": "tools/api_carrier/__init__.py",
+      "role": "tool",
+      "sha256": "40e548179f50b3539766a8107a98f75be40b30154de441e90701acb5b694c15e"
+    },
+    {
+      "path": "tools/api_carrier/http_server.py",
+      "role": "tool",
+      "sha256": "2b575783d2e02e009e74d6578f64bcaeedb7340a3082f34f0dc5019b19d76f92"
+    },
+    {
+      "path": "tools/caller_characterization/__init__.py",
+      "role": "tool",
+      "sha256": "6a9df4957404fc345249b8b2450d2da2cec8faf070aebb982cab5fbc2a1f7b29"
+    },
+    {
+      "path": "tools/caller_characterization/__main__.py",
+      "role": "tool",
+      "sha256": "45d85fe6e76dbdafb81a11725ed4a0e9264a655a3819dca935259975a22e8048"
+    },
+    {
+      "path": "tools/caller_characterization/core.py",
+      "role": "tool",
+      "sha256": "31aa8fa6c58199fa9841f9a803849bf9df95bff91907218eaac0f4b3d180b807"
+    },
+    {
+      "path": "tools/capacity_preflight/__init__.py",
+      "role": "tool",
+      "sha256": "a262ab59fb25c229feeceab95ae0208e63e92f4ed3688a90fccc82810deb0e14"
+    },
+    {
+      "path": "tools/capacity_preflight/__main__.py",
+      "role": "tool",
+      "sha256": "38c88add091e4f3c8250ee20a736ce31cc41eb84a4cbac0214b4df209264c61a"
+    },
+    {
+      "path": "tools/capacity_preflight/core.py",
+      "role": "tool",
+      "sha256": "1c866f7688d1a22e656580cd4b165ff46cf6c0d7f209b183d47f2ef71875263a"
+    },
+    {
+      "path": "tools/desired_state_provenance/__init__.py",
+      "role": "tool",
+      "sha256": "93acee68f49731045e96750f5474aeb0bc3833e7c55f61af2b5fe25d95ddb992"
+    },
+    {
+      "path": "tools/desired_state_provenance/__main__.py",
+      "role": "tool",
+      "sha256": "405f1b8068da8ca7f40ced16636eae3eb05ecf6cbaa57a3b72d23446ea7972b5"
+    },
+    {
+      "path": "tools/desired_state_provenance/core.py",
+      "role": "tool",
+      "sha256": "0db751fc83a3cf9473bff91215d2afc4987c95f99e477b602f746a5fbbede22d"
+    },
+    {
+      "path": "tools/environment_qualification/__init__.py",
+      "role": "tool",
+      "sha256": "37c857b8f8d9b54b21bc926c4749fa781c8db65a91eafd311f94fcb0a31439a5"
+    },
+    {
+      "path": "tools/environment_qualification/__main__.py",
+      "role": "tool",
+      "sha256": "81cd4d0f30c718476a265966604543ed6b6254e5be8bde919c1adc79d3346d06"
+    },
+    {
+      "path": "tools/environment_qualification/core.py",
+      "role": "tool",
+      "sha256": "9bed28fbb4dfffc1bfc08e704c9df0e30b469f7103151e07eda7a26046f10918"
+    },
+    {
+      "path": "tools/experiment_bounds/__init__.py",
+      "role": "tool",
+      "sha256": "1920011d7515b1d867e67044d0e64d4849b8924a38692534484435d51ad57dbe"
+    },
+    {
+      "path": "tools/experiment_bounds/__main__.py",
+      "role": "tool",
+      "sha256": "6f9cb776735d2e914a7693a927b586dd3010cecc0890887b29a80b0ccf3cbca1"
+    },
+    {
+      "path": "tools/experiment_bounds/core.py",
+      "role": "tool",
+      "sha256": "b5a02e8d7d1dd31a590415f56bed4922628df04f2770d3f27fd30a840ff13067"
+    },
+    {
+      "path": "tools/experiment_freeze/__init__.py",
+      "role": "tool",
+      "sha256": "938f5d3c48d11f759c72d9ca99f376f26396b2b46eb9eb0cc43647f91def57ad"
+    },
+    {
+      "path": "tools/experiment_freeze/__main__.py",
+      "role": "tool",
+      "sha256": "8929bc5b4b9c4a0166ec6ff0cc7610d1ae2267327ab45123dccea45ea003535a"
+    },
+    {
+      "path": "tools/experiment_freeze/core.py",
+      "role": "tool",
+      "sha256": "db9b1c1fd83668a77639ab8e1e56dbe3ab422460d30a22be4a6be3d68b0f4b46"
+    },
+    {
+      "path": "tools/generated_release/__init__.py",
+      "role": "tool",
+      "sha256": "203fc27a0acc71325c68e345e3a6e04bc076c81a7a4ddc4bc3713618c5b30ad6"
+    },
+    {
+      "path": "tools/generated_release/core.py",
+      "role": "tool",
+      "sha256": "90afa0824d5fc6cf3f90b71beaaeb45533f8753b7eefd8ee6ec5548f304fca6f"
+    },
+    {
+      "path": "tools/gitops_desired_state/__init__.py",
+      "role": "tool",
+      "sha256": "c4a67ba4c44b6803891d27aa4088b82a4e57650739f1e5d3a1564b40a93e805e"
+    },
+    {
+      "path": "tools/gitops_desired_state/__main__.py",
+      "role": "tool",
+      "sha256": "27b2ae1ffd644003674997616b573bd374b6872dd76a4b337968cd90b45fe0c0"
+    },
+    {
+      "path": "tools/gitops_desired_state/core.py",
+      "role": "tool",
+      "sha256": "90af23836d4456d57979e7bd6ee57a7a36f4f008a10d8898d3300ea7a2bead25"
+    },
+    {
+      "path": "tools/llm_load/__init__.py",
+      "role": "tool",
+      "sha256": "82545fc341c363accc0ee7c144cd89d5f7268ec7bccdd35659ae6a0c75c824f0"
+    },
+    {
+      "path": "tools/llm_load/core.py",
+      "role": "tool",
+      "sha256": "57df93e5bff1af0b231daa44593e00016bcbbc48f7c10d6564b8b2b227e78a6c"
+    },
+    {
+      "path": "tools/local_composition/__init__.py",
+      "role": "tool",
+      "sha256": "a7bfc29a5a509021d68c05ec9c0f34a63480007d7e55987936fa9e8474039424"
+    },
+    {
+      "path": "tools/local_composition/core.py",
+      "role": "tool",
+      "sha256": "f1117cd52750b636692faa13254220ad877492320d4bb38f7c2c25ba700d4c0d"
+    },
+    {
+      "path": "tools/local_composition/http_server.py",
+      "role": "tool",
+      "sha256": "dde885d016acbded76d8fd35a46ceec9a34a3567fe133c3c1c8a2b47567d2c72"
+    },
+    {
+      "path": "tools/model_acquisition/__init__.py",
+      "role": "tool",
+      "sha256": "6008e3bb4505376726ce6ed88692dbfd0a67ccfc35e448496849cda2e78eba89"
+    },
+    {
+      "path": "tools/model_acquisition/core.py",
+      "role": "tool",
+      "sha256": "05ba3648ef6fa3e73ac23600cf77197f5769b949e31c5dec12cba5266fb64dd7"
+    },
+    {
+      "path": "tools/reconciliation_evidence/__init__.py",
+      "role": "tool",
+      "sha256": "e3738056c00f52428b4ee3d051f44a0c06b9bc0535f2c0310fcb3a1e9423a019"
+    },
+    {
+      "path": "tools/reconciliation_evidence/__main__.py",
+      "role": "tool",
+      "sha256": "e384182742a9c7db203de76aa3f5b8974f3f44152b0047415a1ba59ee997dd4d"
+    },
+    {
+      "path": "tools/reconciliation_evidence/core.py",
+      "role": "tool",
+      "sha256": "affa06c7d41976dc14c49cb82c3337fb4d4bdb26ad2fd7ec5de75b27fa699e11"
+    },
+    {
+      "path": "tools/reliability_profile/__init__.py",
+      "role": "tool",
+      "sha256": "f7ec32f9067c2dd9fb20b56f6ff320646d0ed77357bc70770acc48a912a82e76"
+    },
+    {
+      "path": "tools/reliability_profile/core.py",
+      "role": "tool",
+      "sha256": "42043378966c0a39c54fed6d253f828a81848aaaf8248332d553d4c8aa04d2a9"
+    },
+    {
+      "path": "tools/reliability_runner/__init__.py",
+      "role": "tool",
+      "sha256": "c7153b466df80f2a221179c92e992fe5d19fdc3f8f39e64666b243a49ea8928d"
+    },
+    {
+      "path": "tools/reliability_runner/__main__.py",
+      "role": "tool",
+      "sha256": "02783a1e567780393c61e211edadd67dd0bd30bb13599a8a84e02ce172f3d55a"
+    },
+    {
+      "path": "tools/reliability_runner/core.py",
+      "role": "tool",
+      "sha256": "86929fcb26e2c6490f8070f6b78c80e0d6f5f99d88d3869f4917133fc1cb2ba0"
+    },
+    {
+      "path": "tools/reliability_runner/incluster.py",
+      "role": "tool",
+      "sha256": "e319bfaa31c1994d92d99cb521f053e04608bb70e06e1c0bba2dd85f57933ebb"
+    },
+    {
+      "path": "tools/runtime_configuration/__init__.py",
+      "role": "tool",
+      "sha256": "b4f1a12a432dff42f927f64d9e5dfedf9672cd866c7d5e1da662a2e48b92ad09"
+    },
+    {
+      "path": "tools/runtime_configuration/core.py",
+      "role": "tool",
+      "sha256": "a234f50699ff8475553e1fcccb50a78fe24aca1608123d55f0ea6837f5b63fd6"
+    },
+    {
+      "path": "tools/runtime_model_cache/__init__.py",
+      "role": "tool",
+      "sha256": "dfb232020b7d2d6d41db3835ebcadc1c7c0e9c154da59d6bfee1acfca94889a3"
+    },
+    {
+      "path": "tools/runtime_model_cache/__main__.py",
+      "role": "tool",
+      "sha256": "15084a5ac5c064ba71cc16e2ac77ab96d823f139cc68f050775063463f5c7508"
+    },
+    {
+      "path": "tools/runtime_model_cache/core.py",
+      "role": "tool",
+      "sha256": "bf122245bd40aae9b9432c5bd0272b8d2a44518deb8f788f712db85a23aa7f96"
+    },
+    {
+      "path": "tools/runtime_packaging/__init__.py",
+      "role": "tool",
+      "sha256": "8f29be11b6bd5fc54ffdd6b50252d65931a0329fae46d90c85107cc187fbf66e"
+    },
+    {
+      "path": "tools/runtime_packaging/core.py",
+      "role": "tool",
+      "sha256": "310eca0203c27d5550028ee5f981e72eafea47d361130fa6a6af5f17a18d2c2e"
+    },
+    {
+      "path": "tools/runtime_startup/__init__.py",
+      "role": "tool",
+      "sha256": "78a79a6e8654a675ccd3a385eea90a0821170b9dc46ddad3b10a07ae8a9d60f9"
+    },
+    {
+      "path": "tools/runtime_startup/core.py",
+      "role": "tool",
+      "sha256": "3a9efd214cf1d62bcd799c31890262e2e901f757e2c71bfb60d4e8589d594e83"
+    },
+    {
+      "path": "tools/service_endpoint_state/__init__.py",
+      "role": "tool",
+      "sha256": "69696d4c5b270bb075e5618401f874f0106216243a21390d21e9b4b5010df105"
+    },
+    {
+      "path": "tools/service_endpoint_state/__main__.py",
+      "role": "tool",
+      "sha256": "fdc26db193b38dc0df63b9b0db9aeaf8302fb81d77f45e5e2620576f0ff546bb"
+    },
+    {
+      "path": "tools/service_endpoint_state/core.py",
+      "role": "tool",
+      "sha256": "643bfbe3585ba9ee032f73003ee582b545967ba4d053bc099212b380809315f4"
+    },
+    {
+      "path": "tools/serving_baseline/__init__.py",
+      "role": "tool",
+      "sha256": "0c8062ea74dfed3692d168bf16fee850d3bfdbb1b4890eac21b196d1030d2a8f"
+    },
+    {
+      "path": "tools/serving_baseline/core.py",
+      "role": "tool",
+      "sha256": "851afbb6ea77697542b5f80a99b3464ab3bfb41e1650c847c1bd69b16c8f5252"
+    },
+    {
+      "path": "uv.lock",
+      "role": "dependencies",
+      "sha256": "4bab9f981da7e582c5493aa1eb21c99cbcc76bcb2772dacd70e22c06d0b93301"
+    }
+  ]
+}

@@ -33,10 +33,12 @@ file it corrects, so a correction of a file that was edited is refused while the
 correction itself is unchanged.
 
 **Qualifications.** ``docs/proof/experiments/v2-q1/runs`` holds the directories of
-Q1, the environment and identity qualification, and
+Q1, the environment and identity qualification,
 ``docs/proof/experiments/v2-q2/runs`` holds those of Q2, the runtime startup
-characterization. Neither is a run of this layout, and neither has a manifest.
-``tools.environment_qualification --check`` and ``tools.runtime_startup --check``
+characterization, and ``docs/proof/experiments/v2-q3/runs`` holds those of Q3, the
+stable caller characterization. None is a run of this layout, and none has a
+manifest. ``tools.environment_qualification --check``,
+``tools.runtime_startup --check``, and ``tools.caller_characterization --check``
 hold each to its record. The ``repository`` command lists each and applies only the
 two text rules to its files, and a corrections directory of one is refused.
 
@@ -102,7 +104,7 @@ DERIVED: Final = "derived"
 #: those of the manifest listing: ``conforming`` and ``pre-schema``.
 REFUSED: Final = "refused"
 
-#: The status of a directory of a qualification, Q1 or Q2. A qualification is
+#: The status of a directory of a qualification, Q1, Q2, or Q3. A qualification is
 #: not a run of this layout: it has no ExperimentRun manifest, and the tool that
 #: :data:`QUALIFICATION_TOOLS` names holds it to its record. The ``repository``
 #: command lists it and applies the two text rules to each file.
@@ -113,11 +115,13 @@ QUALIFICATIONS_REF: Final = f"{RUNS_ROOT_REF}/v2-q1"
 
 #: Each experiment directory whose ``runs`` directory holds qualifications, and the
 #: tool whose ``--check`` builds the record of each again. Since V2-S6-002-PR1 the
-#: second holds the Q2 runtime startup characterizations.
+#: second holds the Q2 runtime startup characterizations, and since V2-S6-002-PR2
+#: the third holds the Q3 stable caller characterizations.
 QUALIFICATION_TOOLS: Final[Mapping[str, str]] = MappingProxyType(
     {
         QUALIFICATIONS_REF: "tools.environment_qualification",
         f"{RUNS_ROOT_REF}/v2-q2": "tools.runtime_startup",
+        f"{RUNS_ROOT_REF}/v2-q3": "tools.caller_characterization",
     }
 )
 
@@ -1169,8 +1173,8 @@ def repository_report(root: Path = REPO_ROOT) -> RepositoryReport:
     manifest that the pre-schema register names is listed and its directory is not
     checked: it was committed before this layout. Each other manifest has its
     directory checked. A directory of a ``runs`` directory that
-    :data:`QUALIFICATION_TOOLS` names, with no manifest, is a qualification: a Q1
-    or a Q2 one. It is listed, and only the two text rules are applied to its
+    :data:`QUALIFICATION_TOOLS` names, with no manifest, is a qualification: a Q1,
+    a Q2, or a Q3 one. It is listed, and only the two text rules are applied to its
     files. Any other directory of a ``runs`` directory with no
     manifest is refused. A corrections directory of a run is refused when no run
     directory of this layout has its name: none, one that the pre-schema register

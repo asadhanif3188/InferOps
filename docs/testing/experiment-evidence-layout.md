@@ -465,7 +465,20 @@ directory there as it treats one of `v2-q1/runs/`, with the same rules, and name
 The first, `q2-1`, was committed by the same change.
 The two experiment directories and their tools are `QUALIFICATION_TOOLS` in
 `tools/experiment_evidence`. A directory with no manifest under the `runs` directory of
-any other experiment is refused at its manifest.
+any other experiment is refused at its manifest. (Since `V2-S6-002-PR2` there are three:
+see below.)
+
+### The Q3 characterizations
+
+`docs/proof/experiments/v2-q3/runs/` holds the directories of
+[Q3, the stable caller characterization](../environment/stable-caller-characterization.md).
+They are qualifications too. Since `V2-S6-002-PR2` the `repository` command treats a
+directory there as it treats one of `v2-q1/runs/`, with the same rules, and names
+`python -m tools.caller_characterization --check` as the check that builds its record
+again. The three experiment directories and their tools are `QUALIFICATION_TOOLS`. A Q4
+bound record, `docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json`, is not in a `runs`
+directory, and the `repository` command does not list it: `python -m
+tools.experiment_bounds --check` builds it again.
 
 (Until `V2-S6-001-PR2` the `repository` command refused every directory of a `runs`
 directory with no manifest, and it would have refused `q1-1` with
