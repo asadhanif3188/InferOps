@@ -1,8 +1,9 @@
 """Q2, the runtime startup characterization of the qualified release.
 
 A frozen driver restarts the runtime Deployment three times, one at a time, in
-the environment that the Q1 qualification q1-1 selected, and writes what the
-cluster answered into one directory. This package reads that directory and
+the environment that a Q1 qualification selected (q1-1 under revision 2 of the
+freeze record, q1-2 under revision 3), and writes what the cluster answered into
+one directory. This package reads that directory and
 returns one record. Every replacement pod is one observation of its interval
 from creation to Ready, and S is the maximum. The result is ``CHARACTERIZED``,
 ``INCONCLUSIVE``, or ``REFUSED``.

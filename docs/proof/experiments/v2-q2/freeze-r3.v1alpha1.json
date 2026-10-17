@@ -505,7 +505,7 @@
     {
       "path": "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json",
       "role": "qualification-freeze",
-      "sha256": "90b50953967dc5795cb17921b9ff03f57fd6883ca830621d0db0710250496ce9"
+      "sha256": "add73e7e4e9ed20253b0e67734d463cf27f20d685014bae57c79ce241ea48d22"
     },
     {
       "path": "docs/proof/experiments/v2-q1/procedure/q1-driver.txt",
@@ -1120,7 +1120,7 @@
     {
       "path": "tools/environment_qualification/core.py",
       "role": "tool",
-      "sha256": "c43d90e415ff63a77f57f87a33b354e3805302e8f6410485ef1981250e6a4553"
+      "sha256": "b83f0d98de5ea332292dba14b1be4f2fe77e6b2c51196f623ac7d2bf189d0ff5"
     },
     {
       "path": "tools/experiment_freeze/__init__.py",
@@ -1280,7 +1280,7 @@
     {
       "path": "tools/runtime_startup/__init__.py",
       "role": "tool",
-      "sha256": "03b468e96ed97a66b76d82c79f93541db5b143620b9de7324ff6fe4523590068"
+      "sha256": "52862c11be0c32b41e95731acbe12368bc5737679aadea31b7998d354401c399"
     },
     {
       "path": "tools/runtime_startup/__main__.py",
@@ -1290,7 +1290,7 @@
     {
       "path": "tools/runtime_startup/core.py",
       "role": "tool",
-      "sha256": "4a8b6f92af4938b571ba793bc68475701b9ecd6f3b35c53f80c89eb222393ad2"
+      "sha256": "469e7ca3d4b81ceab3543528d7bd91e98a78822d21114f9b409f2246b5862b76"
     },
     {
       "path": "tools/service_endpoint_state/__init__.py",
@@ -1334,7 +1334,7 @@
     {
       "path": "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json",
       "from": null,
-      "to": "90b50953967dc5795cb17921b9ff03f57fd6883ca830621d0db0710250496ce9",
+      "to": "add73e7e4e9ed20253b0e67734d463cf27f20d685014bae57c79ce241ea48d22",
       "material": true,
       "reason": "Revision 2 of the Q1 freeze record governs the phase up and the qualification q1-2 that this record's characterizations are held to."
     },
@@ -1369,21 +1369,21 @@
     {
       "path": "tools/environment_qualification/core.py",
       "from": "9bed28fbb4dfffc1bfc08e704c9df0e30b469f7103151e07eda7a26046f10918",
-      "to": "c43d90e415ff63a77f57f87a33b354e3805302e8f6410485ef1981250e6a4553",
+      "to": "b83f0d98de5ea332292dba14b1be4f2fe77e6b2c51196f623ac7d2bf189d0ff5",
       "material": true,
       "reason": "The module states the stable environment identity, revision 2, for a record of revision 2 of the Q1 freeze record, and the exact identity for a record of revision 1. It builds each record under the revision its header names. It names revision 2 as its freeze record."
     },
     {
       "path": "tools/runtime_startup/__init__.py",
       "from": "78a79a6e8654a675ccd3a385eea90a0821170b9dc46ddad3b10a07ae8a9d60f9",
-      "to": "03b468e96ed97a66b76d82c79f93541db5b143620b9de7324ff6fe4523590068",
+      "to": "52862c11be0c32b41e95731acbe12368bc5737679aadea31b7998d354401c399",
       "material": false,
       "reason": "The package exports the names that the module adds. No rule reads it."
     },
     {
       "path": "tools/runtime_startup/core.py",
       "from": "3a9efd214cf1d62bcd799c31890262e2e901f757e2c71bfb60d4e8589d594e83",
-      "to": "4a8b6f92af4938b571ba793bc68475701b9ecd6f3b35c53f80c89eb222393ad2",
+      "to": "469e7ca3d4b81ceab3543528d7bd91e98a78822d21114f9b409f2246b5862b76",
       "material": true,
       "reason": "The module holds a characterization of revision 3 to the qualification q1-2 of revision 2 of the Q1 freeze record and to the stable environment identity, and a characterization of revision 2 to q1-1 and to the exact identity. It builds each record under the revision its header names. It names revision 3 as its freeze record."
     }

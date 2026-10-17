@@ -1613,3 +1613,18 @@ def test_revision_3_supersedes_revision_2_and_changes_three_statements() -> None
     assert material["tools/environment_qualification/core.py"] is True
     assert material["docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json"]
     assert material["docs/proof/experiments/v2-q2/procedure/q2-driver.txt"] is False
+
+
+def test_an_unregistered_revision_states_no_freeze_record_and_refuses(
+    tmp_path: Path, root: Path
+) -> None:
+    """As in the Q3 tool, a header that names no registered revision states no
+    freeze record, and procedure-frozen refuses it."""
+    directory = _directory(tmp_path)
+    _header_set(freezeRecord="docs/proof/experiments/v2-q2/freeze-r9.v1alpha1.json")(
+        directory, root
+    )
+    record = _record(directory, root)
+    assert record["identities"]["freezeRecord"] == {"path": None, "contentSha256": None}
+    assert _state(record, "procedure-frozen") == q2.NOT_HELD
+    assert record["result"] == q2.REFUSED

@@ -84,12 +84,17 @@ to the gate on its own reading, apart from its identity. [ADR 0021](../architect
 When a qualification is `QUALIFIED`, E02A and E02B execute in that one
 environment. A run of either states its own environment identity. A run whose
 identity differs from the qualified one is not a run of the controlled
-comparison. Qualification `q1-1` is `QUALIFIED`, so the selected environment is
-its identity: the docker-desktop provider, Kubernetes server `v1.36.1`, one node
+comparison. Qualification `q1-1` is `QUALIFIED`, and until `V2-S6-004-PR1` the
+selected environment was its exact identity: the docker-desktop provider, Kubernetes server `v1.36.1`, one node
 `desktop-control-plane` with kubelet `v1.36.1` allocating 12,000 millicores,
 10,429,960,192 bytes of memory, and 110 pods, and a container engine of 12 CPUs and
 10,429,960,192 bytes of memory, with the digest
 `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`.
+Since `V2-S6-004-PR1`, `q1-1` stays a `QUALIFIED` record of revision 1 and selects no
+environment: its exact identity cannot be met again after a start of the virtual
+machine, and the Q2 and Q3 revisions of the next lineage hold their characterizations
+to `q1-2`. The selection passes to `q1-2`, a qualification under revision 2, and only
+if it is `QUALIFIED`; until then no environment is selected for E02A and E02B.
 No run of E02A or E02B exists, so no comparison of identities has
 been made. This is a rule of the freeze record. No freeze record of E02A or E02B
 exists. (Until `V2-S6-004-PR1` this paragraph also said that no tool compares two

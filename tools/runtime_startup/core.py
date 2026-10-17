@@ -1028,7 +1028,10 @@ def identities(sources: Characterization) -> dict[str, Any]:
     header = sources.header
     environment = _environment(sources)
     lineage = sources.lineage
-    freeze = _read_bytes(sources.root, lineage.freeze_record)
+    freeze_path = (
+        header["freezeRecord"] if header["freezeRecord"] in FREEZE_RECORDS else None
+    )
+    freeze = None if freeze_path is None else _read_bytes(sources.root, freeze_path)
     qualification = _read_bytes(sources.root, lineage.qualification_record)
     return {
         "executingCommit": header["executingCommit"],
@@ -1054,7 +1057,7 @@ def identities(sources: Characterization) -> dict[str, Any]:
             else lf_digest(qualification),
         },
         "freezeRecord": {
-            "path": lineage.freeze_record,
+            "path": freeze_path,
             "contentSha256": None if freeze is None else lf_digest(freeze),
         },
     }

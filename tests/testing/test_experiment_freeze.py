@@ -103,13 +103,13 @@ Q3_PIN = "b8c5f7acf2bde60d82f0909eb02fc2f01572e214351ea8b4d6e56043543d8c82"
 #: qualification ran: its records state the stable environment identity, which
 #: holds no memory figure. Its pin is written out for the same reason.
 Q1_R2 = "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json"
-Q1_R2_PIN = "90b50953967dc5795cb17921b9ff03f57fd6883ca830621d0db0710250496ce9"
+Q1_R2_PIN = "add73e7e4e9ed20253b0e67734d463cf27f20d685014bae57c79ce241ea48d22"
 #: The third revision of Q2 and the second of Q3, registered by the same change:
 #: each holds a characterization to q1-2 and to the stable environment identity.
 Q2_R3 = "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json"
-Q2_R3_PIN = "7dcb3bb311aa678b61aeae93c9027c9b3668e2eaae96b945f84f8e251c640fdf"
+Q2_R3_PIN = "421628933641f8b7c064913c7af0b82d5f8663582e3dd1155a4ac2d8a6dc19af"
 Q3_R2 = "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json"
-Q3_R2_PIN = "f8543f90c9627024246db5dc318529e88d2292122b2b3a2161cac5532ee46ac2"
+Q3_R2_PIN = "f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so

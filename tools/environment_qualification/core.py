@@ -1078,7 +1078,8 @@ def _procedure_frozen(sources: Sources) -> Outcome:
     if header["freezeRecord"] not in FREEZE_RECORDS:
         return (
             NOT_HELD,
-            f"the driver names {header['freezeRecord']}, not {FREEZE_RECORD}",
+            f"the driver names {header['freezeRecord']}, not a registered "
+            f"revision: {', '.join(FREEZE_RECORDS)}",
         )
     if header["freezeChanges"] == "listed" or header["upRefusal"] == "frozen-inputs":
         return NOT_HELD, "the freeze tool listed a changed material file"

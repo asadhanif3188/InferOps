@@ -16,7 +16,7 @@ No claim is registered.
 | Branch | `fix/v2-s6-004-environment-identity` |
 | Base | `9c1cc120ef03b0cb9b236c92a8aa010c1227e42e`, the merge of `V2-S6-002-PR2` (pull request #150) |
 | Decision record | [ADR 0021](../../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md) |
-| Freeze records | [`v2-q1/freeze-r2.v1alpha1.json`](../experiments/v2-q1/freeze-r2.v1alpha1.json), SHA-256 `90b50953967dc5795cb17921b9ff03f57fd6883ca830621d0db0710250496ce9`, 189 pinned inputs; [`v2-q2/freeze-r3.v1alpha1.json`](../experiments/v2-q2/freeze-r3.v1alpha1.json), SHA-256 `7dcb3bb311aa678b61aeae93c9027c9b3668e2eaae96b945f84f8e251c640fdf`, 194 pinned inputs; [`v2-q3/freeze-r2.v1alpha1.json`](../experiments/v2-q3/freeze-r2.v1alpha1.json), SHA-256 `f8543f90c9627024246db5dc318529e88d2292122b2b3a2161cac5532ee46ac2`, 199 pinned inputs. All three registered by this change |
+| Freeze records | [`v2-q1/freeze-r2.v1alpha1.json`](../experiments/v2-q1/freeze-r2.v1alpha1.json), SHA-256 `add73e7e4e9ed20253b0e67734d463cf27f20d685014bae57c79ce241ea48d22`, 189 pinned inputs; [`v2-q2/freeze-r3.v1alpha1.json`](../experiments/v2-q2/freeze-r3.v1alpha1.json), SHA-256 `421628933641f8b7c064913c7af0b82d5f8663582e3dd1155a4ac2d8a6dc19af`, 194 pinned inputs; [`v2-q3/freeze-r2.v1alpha1.json`](../experiments/v2-q3/freeze-r2.v1alpha1.json), SHA-256 `f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff`, 199 pinned inputs. All three registered by this change |
 | Tools | [`tools/environment_qualification`](../../../tools/environment_qualification/core.py), [`tools/runtime_startup`](../../../tools/runtime_startup/core.py), [`tools/caller_characterization`](../../../tools/caller_characterization/core.py), and [`tools/experiment_bounds`](../../../tools/experiment_bounds/core.py) |
 | Drivers | The Q1, Q2, and Q3 drivers name the new revisions. Their steps are unchanged |
 | Suites | [`test_environment_qualification.py`](../../../tests/domain/test_environment_qualification.py), [`test_runtime_startup.py`](../../../tests/domain/test_runtime_startup.py), [`test_caller_characterization.py`](../../../tests/domain/test_caller_characterization.py), [`test_experiment_bounds.py`](../../../tests/domain/test_experiment_bounds.py), and [`test_experiment_freeze.py`](../../../tests/testing/test_experiment_freeze.py) |
@@ -131,6 +131,27 @@ All commands ran from Git Bash in the locked environment (`uv run --locked`).
 | Targeted suites | the four tool suites, `tests/testing`, and the decision-authority suite | 9,309 passed, 3 skipped, 1 failed: `test_analysis_replay` counted 9 committed freeze records, and there are 12. Its count and its docstring were corrected, and it passed |
 | Default lane | `python -m pytest -q` | 22,803 passed, 42 skipped, 14 deselected, in 70 min, on the tree of this commit before this table's figures were written |
 | Whitespace | `git diff --check` | clean |
+
+The table above is the local validation of the first commit, and it stays as it ran.
+
+## What the independent review found
+
+An independent review read the first commit before the push. It ran the four `--check`
+commands and two suites, and found no critical and no high finding. It confirmed that
+every moved pin of the three revisions is classified, that `q1-1`, `q2-1`, and `q3-1`
+rebuild under the revisions they name, that the capacity readings of all three have one
+stable identity, and that the real-gate test is not vacuous.
+
+| ID | Severity | Finding | What changed |
+|---|---|---|---|
+| M1 | medium | The first commit still said in two places, in the present tense, that the exact identity of `q1-1` is the selected environment of E02A and E02B, while two other places said it was so only until this change. A later freeze author could not tell which environment to name | The Q1 page and the experiments index now say that `q1-1` selects no environment since this change, and that the selection passes to `q1-2` only if it is `QUALIFIED` |
+| L1 | low | The package docstrings of the Q2 and Q3 tools still said that the tools hold a run to `q1-1` | Each names both lineages. The two files are pinned, so the three revisions were generated again, after every correction below, and registered with their new digests: the digests in the table at the top are those of this second generation, and the first commit registered others. No run used either generation |
+| L2 | low | The detail of a refused `procedure-frozen` in Q1 named only the current revision, although two are registered | It names both. A test holds it |
+| L3 | low | The Q2 record stated the current freeze record when the header named an unregistered revision; the Q3 record states none | The Q2 record states none too. A test holds it |
+| L4 | low | The docstring of a Q1 test said that `procedure-frozen` refuses a run under revision 1; the test held only that the freeze check lists a moved file | The docstring says what holds it: the driver, the freeze check, and the Q2 and Q3 revisions of the next lineage, which refuse a qualification that is not of revision 2. No Q1 rule refuses such a header on its own |
+| L5 | low | The review read the Q4 lineage-mix test as also differing in the release identifier | No change: both lineages in that test state the same release identifier, and the existing refusal case "another environment" varies the environment digest alone |
+
+After these corrections the affected suites ran again: the four tool suites, `tests/testing`, and the decision-authority suite, 9,314 passed and 3 skipped; ruff, mypy on win32 and linux, the freeze check (12 records), the three `--changes`, and the four `--check` commands were clean. The full local default lane did not run again.
 
 ## What is not established
 

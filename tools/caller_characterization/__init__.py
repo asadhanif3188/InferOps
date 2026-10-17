@@ -1,8 +1,9 @@
 """Q3, the stable caller characterization of the qualified release.
 
 A frozen driver runs the RP-1 caller runner once, for six minutes, against the
-API Service of the release that the Q1 qualification q1-1 qualified, and
-watches the pods of the release while it runs. This package reads the directory
+API Service of the release that a Q1 qualification qualified (q1-1 under
+revision 1 of the freeze record, q1-2 under revision 2), and watches the pods of
+the release while it runs. This package reads the directory
 that the driver wrote and returns one record. G is the p99 of the gaps between
 successive successful requests, or the maximum gap when fewer than 100 requests
 succeeded. The result is ``CHARACTERIZED``, ``INCONCLUSIVE``, or ``REFUSED``.

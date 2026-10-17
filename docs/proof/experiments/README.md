@@ -1000,10 +1000,12 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
   `V2-S6-001-PR1`. Under it, `V2-S6-001-PR2` ran [`q1-1`](v2-q1/runs/q1-1/result.md) on
   2026-10-15, at the commit `08b8914`, on the docker-desktop provider with one node, and
   each of the 17 criteria held. Its environment identity,
-  `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`, is the
-  selected environment of E02A and E02B. It is evidence at C2 of that one environment,
-  and of no other provider, node, Kubernetes version, or release. (Until `V2-S6-001-PR2`
-  this item said that no qualification had run.)
+  `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`, was the
+  selected environment of E02A and E02B until `V2-S6-004-PR1`. It is evidence at C2 of
+  that one environment, and of no other provider, node, Kubernetes version, or release.
+  (Until `V2-S6-001-PR2` this item said that no qualification had run.) Since
+  `V2-S6-004-PR1` it selects no environment: the selection passes to `q1-2` under
+  revision 2, and only if `q1-2` is `QUALIFIED`.
 - **The layout check lists a qualification and does not hold it to a manifest.** A
   qualification has no ExperimentRun manifest. Since `V2-S6-001-PR2`,
   `python -m tools.experiment_evidence repository` lists each directory of

@@ -1729,8 +1729,11 @@ def test_revision_2_supersedes_revision_1_and_changes_no_criterion() -> None:
 
 
 def test_revision_1_can_no_longer_govern_a_new_qualification() -> None:
-    """A driver run under revision 1 finds the moved Q1 tool, so the freeze check
-    lists a changed material file and procedure-frozen refuses it."""
+    """The driver names revision 2, and the freeze check of revision 1 lists the
+    moved Q1 tool, so a run under revision 1 would state freezeChanges "listed".
+    No Q1 rule refuses a header that names revision 1 with no listed change: the
+    driver and the freeze check stop it, and the Q2 and Q3 revisions of the next
+    lineage refuse a qualification that is not of revision 2."""
     r1 = json.loads(FREEZE_R1.read_text("utf-8"))
     changed_paths = {change.path for change in freeze.changed_inputs(r1)}
     assert "tools/environment_qualification/core.py" in changed_paths
@@ -1953,3 +1956,17 @@ def test_the_driver_refuses_a_reused_identifier_of_a_collection() -> None:
         'for used in "${OBSERVATIONS}/${QID}" "${ENDPOINT_COLLECTIONS}/${QID}" '
         '"${RUNNER_RUNS}/${QID}"; do'
     ) in driver
+
+
+def test_an_unregistered_revision_is_refused_with_every_registered_one_named(
+    tmp_path: Path, root: Path
+) -> None:
+    unregistered = "docs/proof/experiments/v2-q1/freeze-r3.v1alpha1.json"
+    record = record_of(
+        write(tmp_path / "run", {q1.HEADER_FILE: header(freezeRecord=unregistered)}),
+        root,
+    )
+    (finding,) = [f for f in record["findings"] if f["ruleId"] == "procedure-frozen"]
+    assert finding["state"] == "not-held"
+    for revision in q1.FREEZE_RECORDS:
+        assert revision in finding["detail"]
