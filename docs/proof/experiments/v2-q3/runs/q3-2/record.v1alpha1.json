@@ -1,0 +1,293 @@
+{
+  "bound": {
+    "gaps": 152,
+    "method": "The nearest-rank p99 of the gaps between successive successes: the gap at rank ceil(0.99 * n) of the n gaps in ascending order. With fewer than 100 successes, the maximum gap.",
+    "minimumSuccessesForPercentile": 100,
+    "percentile": 99,
+    "percentileMeaningful": true,
+    "rule": "p99",
+    "successes": 153,
+    "symbol": "G",
+    "valueMs": 10113
+  },
+  "caller": {
+    "canonicalErrors": {},
+    "elapsedMs": 362958,
+    "endState": "duration",
+    "finishedAt": "2026-10-17T15:50:01.875Z",
+    "firstSuccessAt": "2026-10-17T15:44:02.022Z",
+    "gaps": {
+      "count": 152,
+      "maxMs": 11417,
+      "minMs": 12,
+      "p50Ms": 2117,
+      "p90Ms": 4495,
+      "p99Ms": 10113
+    },
+    "lastSuccessAt": "2026-10-17T15:50:01.874Z",
+    "outcomes": {
+      "http-error": 0,
+      "identity-refused": 0,
+      "invalid-response": 0,
+      "success": 153,
+      "timeout": 0,
+      "transport-error": 0
+    },
+    "requests": 153,
+    "startedAt": "2026-10-17T15:43:58.983Z",
+    "successLatency": {
+      "count": 153,
+      "maxMs": 16679,
+      "minMs": 1739,
+      "p50Ms": 4338,
+      "p90Ms": 6841,
+      "p99Ms": 12804
+    },
+    "successes": 153
+  },
+  "characterization": "Q3",
+  "collection": {
+    "apiImageDigest": "sha256:bfb5c2b003f0f292594206bd85be5f5119fe5a9cc972a617d35f692ce9009aab",
+    "characterizationId": "q3-2",
+    "desiredRevision": "ed892a4eac2ee505996f53b6d3e0da31b8e4e204",
+    "desiredStateDiff": "none",
+    "executingCommit": "0dbea911050395b400a1c03bf76e0579bb1c152b",
+    "finishedAt": "2026-10-17T15:51:05.641Z",
+    "freezeChanges": "none",
+    "freezeRecord": "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json",
+    "freezeRecordSha256": "f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff",
+    "provider": "docker-desktop",
+    "qualificationFreezeChanges": "none",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "schema": "inferops.io/caller-characterization-collection/v1alpha1",
+    "startedAt": "2026-10-17T15:43:20.778Z",
+    "targetRefusal": null,
+    "upExecutingCommit": "0dbea911050395b400a1c03bf76e0579bb1c152b",
+    "upRefusal": null,
+    "upStartedAt": "2026-10-17T15:31:15Z",
+    "workingTree": "clean"
+  },
+  "doesNotEstablish": [
+    "A record does not establish a throughput, a rate, a capacity figure, or a benchmark. It states one closed-loop workload of two callers, sent for six minutes on one node.",
+    "A record does not establish a service level, an availability, or a latency that a caller can expect. Its latency figures describe the requests of one run.",
+    "A record does not establish what a caller sees while something fails or recovers. By the rules of the record, no API pod or runtime pod was added, deleted, not Ready, or restarted while the caller ran; the Service endpoints, the path from the API to the runtime, and the node were not read.",
+    "A record does not establish that a percentile of fewer than 100 successes is meaningful. With fewer, G is the maximum gap.",
+    "A record does not establish that the clock of the runner pod agrees with another clock. The gaps are differences of the instants of that one clock.",
+    "A record does not establish that a source record is what its collection gives. The module reads the stored source records and does not build them again.",
+    "A record does not establish a result of a reliability experiment. The bounds derived from G are stated by another record.",
+    "A record does not establish production availability, high availability, or resilience to the loss of a node, a zone, or a region.",
+    "A record does not establish anything about another provider, another node, another Kubernetes version, another release, another model, or another caller workload."
+  ],
+  "environment": {
+    "containerEngine": {
+      "cpus": 12
+    },
+    "identityRevision": 2,
+    "kubernetesServerVersion": "v1.36.1",
+    "nodes": [
+      {
+        "allocatable": {
+          "cpuMillis": 12000,
+          "pods": 110
+        },
+        "kubeletVersion": "v1.36.1",
+        "name": "desktop-control-plane"
+      }
+    ],
+    "provider": "docker-desktop"
+  },
+  "files": [
+    {
+      "name": "run.json",
+      "sha256": "6665426d9f2b0816dd3be8a45e3e79962dbb1139677d1099bf67ced2db7aa81f"
+    },
+    {
+      "name": "capacity/record.v1alpha1.json",
+      "sha256": "2bb7f9e0640c45432a48fe910c6ac6978d64756e705d21b60faebae45bfafa87"
+    },
+    {
+      "name": "provenance.json",
+      "sha256": "f237c9e0b48b6903694329864d088914323220cffbaad4fa33c99c39df4987b5"
+    },
+    {
+      "name": "deployments.json",
+      "sha256": "8450e6450b17010df2591bfa2371e8d3408afdb18b72a782f911d4962608fee4"
+    },
+    {
+      "name": "before.pods.json",
+      "sha256": "67c11d8a367b3981aa030407c91659e0d98afd15a8493ad042553979813b3a71"
+    },
+    {
+      "name": "watch.jsonl",
+      "sha256": "b229112a2912714b2ab5385b78f5c57d04bac36fc6da76fd2551fd3880928856"
+    },
+    {
+      "name": "caller-run.json",
+      "sha256": "be6d68fd15ede3af960c53d3469def7d92944dc6434d5fd0497aab6c084a9efc"
+    },
+    {
+      "name": "plan.json",
+      "sha256": "ba2e71e615d3cf012bb005ba1a4e693a01c065ff3ad2614e38c0bf620d279084"
+    },
+    {
+      "name": "caller.jsonl",
+      "sha256": "8b5e5f9363cd0c713d46eb4ec43adf6a5f2dd12a77232fb8cdec3043d98cabad"
+    },
+    {
+      "name": "after.deployments.json",
+      "sha256": "8450e6450b17010df2591bfa2371e8d3408afdb18b72a782f911d4962608fee4"
+    },
+    {
+      "name": "after.pods.json",
+      "sha256": "8e140f02bc84412b91323e080f1671ecfa9cf605875cfd1d515e54f212391468"
+    }
+  ],
+  "findings": [
+    {
+      "category": "preparation",
+      "criterion": "Q3-AC1",
+      "detail": "the phase up completed at the executing commit",
+      "ruleId": "preparation-completed",
+      "state": "held"
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q3-AC2",
+      "detail": "the working tree was clean",
+      "ruleId": "working-tree-clean",
+      "state": "held"
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q3-AC3",
+      "detail": "the Q3 and the Q1 freeze records list no changed material file",
+      "ruleId": "procedure-frozen",
+      "state": "held"
+    },
+    {
+      "category": "desired-state",
+      "criterion": "Q3-AC4",
+      "detail": "the delivery paths equal the desired revision",
+      "ruleId": "desired-revision-known",
+      "state": "held"
+    },
+    {
+      "category": "environment",
+      "criterion": "Q3-AC5",
+      "detail": "the environment sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c of q1-2",
+      "ruleId": "environment-qualified",
+      "state": "held"
+    },
+    {
+      "category": "release-identity",
+      "criterion": "Q3-AC6",
+      "detail": "release b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db, the declared API image, and the runtime image of q1-2",
+      "ruleId": "release-qualified",
+      "state": "held"
+    },
+    {
+      "category": "topology",
+      "criterion": "Q3-AC7",
+      "detail": "each Deployment at 2 Ready replicas, and 2 Ready pods of each tier",
+      "ruleId": "topology-ready",
+      "state": "held"
+    },
+    {
+      "category": "caller",
+      "criterion": "Q3-AC8",
+      "detail": "the caller run started, succeeded, was collected, and was removed",
+      "ruleId": "caller-run-completed",
+      "state": "held"
+    },
+    {
+      "category": "caller",
+      "criterion": "Q3-AC9",
+      "detail": "the record of 153 requests is accepted",
+      "ruleId": "caller-record-accepted",
+      "state": "held"
+    },
+    {
+      "category": "measurement",
+      "criterion": "Q3-AC10",
+      "detail": "the run lasted 362958 ms, to its duration",
+      "ruleId": "five-minutes-run",
+      "state": "held"
+    },
+    {
+      "category": "measurement",
+      "criterion": "Q3-AC11",
+      "detail": "153 successful requests, 152 gaps",
+      "ruleId": "gaps-observed",
+      "state": "held"
+    },
+    {
+      "category": "evidence",
+      "criterion": "Q3-AC12",
+      "detail": "the stream opens with the pods before and outlasts the caller run",
+      "ruleId": "stream-complete",
+      "state": "held"
+    },
+    {
+      "category": "topology",
+      "criterion": "Q3-AC13",
+      "detail": "the same 4 pods stayed Ready, and no container restarted",
+      "ruleId": "topology-held",
+      "state": "held"
+    },
+    {
+      "category": "evidence",
+      "criterion": "Q3-AC14",
+      "detail": "the phase up, then the caller run, inside the characterization",
+      "ruleId": "readings-in-order",
+      "state": "held"
+    }
+  ],
+  "identities": {
+    "apiImageDigest": "sha256:bfb5c2b003f0f292594206bd85be5f5119fe5a9cc972a617d35f692ce9009aab",
+    "callerProfile": {
+      "profileId": "RP-1",
+      "profileRevision": 1,
+      "profileSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+    },
+    "desiredRevision": "ed892a4eac2ee505996f53b6d3e0da31b8e4e204",
+    "environmentSha256": "sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c",
+    "executingCommit": "0dbea911050395b400a1c03bf76e0579bb1c152b",
+    "freezeRecord": {
+      "contentSha256": "f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff",
+      "path": "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json"
+    },
+    "kubernetesServerVersion": "v1.36.1",
+    "planSha256": "ba2e71e615d3cf012bb005ba1a4e693a01c065ff3ad2614e38c0bf620d279084",
+    "provider": "docker-desktop",
+    "qualification": {
+      "contentSha256": "1141cbd1c0acd7eff839395a89eba3fe116a060dafb3941128bf23c440ec1b3d",
+      "path": "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+      "qualificationId": "q1-2"
+    },
+    "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "runnerSha256": "e319bfaa31c1994d92d99cb521f053e04608bb70e06e1c0bba2dd85f57933ebb",
+    "runtimeImage": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+  },
+  "measurement": {
+    "clock": "The wall clock of the runner pod, to one millisecond: the finishedAt instant of each request line.",
+    "gap": "From the completion instant of one successful request to the completion instant of the next successful request, in the order of their completions.",
+    "latency": "The latencyMs of each successful request, from the monotonic clock of the runner pod.",
+    "percentiles": "Nearest rank: the value at rank ceil(p/100 * n) of the n values in ascending order."
+  },
+  "notHeld": {
+    "categories": [],
+    "rules": []
+  },
+  "result": "CHARACTERIZED",
+  "schema": "inferops.io/caller-characterization/v1alpha1",
+  "target": {
+    "apiReplicas": 2,
+    "callerDurationSeconds": 360,
+    "callerRequestCeiling": 2000,
+    "minimumRunMs": 300000,
+    "provider": "docker-desktop",
+    "releaseKey": "local-docker-desktop/support-assistant",
+    "runtimeReplicas": 2
+  }
+}

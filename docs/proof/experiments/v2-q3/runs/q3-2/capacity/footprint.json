@@ -1,0 +1,218 @@
+{
+  "components": [
+    {
+      "class": "steady",
+      "component": "platform-api",
+      "containers": [
+        {
+          "limits": {
+            "memory": "512Mi"
+          },
+          "name": "api",
+          "requests": {
+            "cpu": "100m",
+            "memory": "128Mi"
+          },
+          "source": "api.resources"
+        }
+      ],
+      "initContainers": [],
+      "kind": "Deployment",
+      "pod": {
+        "cpuRequestMillis": 100,
+        "memoryLimitBytes": 536870912,
+        "memoryRequestBytes": 134217728
+      },
+      "replicas": 2,
+      "surgePods": 1,
+      "surgeSource": "api.rollout.maxSurge"
+    },
+    {
+      "class": "steady",
+      "component": "serving-runtime",
+      "containers": [
+        {
+          "limits": {
+            "memory": "3Gi"
+          },
+          "name": "runtime",
+          "requests": {
+            "cpu": "1",
+            "memory": "2Gi"
+          },
+          "source": "runtime.resources"
+        }
+      ],
+      "initContainers": [
+        {
+          "limits": {
+            "memory": "64Mi"
+          },
+          "name": "verify-model",
+          "requests": {
+            "cpu": "50m",
+            "memory": "16Mi"
+          },
+          "source": "model.integrity.resources"
+        }
+      ],
+      "kind": "Deployment",
+      "pod": {
+        "cpuRequestMillis": 1000,
+        "memoryLimitBytes": 3221225472,
+        "memoryRequestBytes": 2147483648
+      },
+      "replicas": 2,
+      "surgePods": 0,
+      "surgeSource": "runtime.rollout.maxSurge"
+    },
+    {
+      "class": "steady",
+      "component": "telemetry-collector",
+      "containers": [
+        {
+          "limits": {
+            "memory": "512Mi"
+          },
+          "name": "collector",
+          "requests": {
+            "cpu": "100m",
+            "memory": "128Mi"
+          },
+          "source": "telemetry.collection.collector.resources"
+        }
+      ],
+      "initContainers": [],
+      "kind": "Deployment",
+      "pod": {
+        "cpuRequestMillis": 100,
+        "memoryLimitBytes": 536870912,
+        "memoryRequestBytes": 134217728
+      },
+      "replicas": 1,
+      "surgePods": 1,
+      "surgeSource": "Kubernetes default: the chart states no strategy for this Deployment, and the default surge is 25 percent of the replicas, rounded up"
+    },
+    {
+      "class": "transient",
+      "component": "model-acquisition",
+      "containers": [
+        {
+          "limits": {
+            "memory": "128Mi"
+          },
+          "name": "acquire-model",
+          "requests": {
+            "cpu": "100m",
+            "memory": "32Mi"
+          },
+          "source": "model.acquisition.resources"
+        }
+      ],
+      "initContainers": [],
+      "kind": "Job",
+      "pod": {
+        "cpuRequestMillis": 100,
+        "memoryLimitBytes": 134217728,
+        "memoryRequestBytes": 33554432
+      },
+      "replicas": 1,
+      "surgePods": 0,
+      "surgeSource": "none: a hook Job has no rollout"
+    },
+    {
+      "class": "transient",
+      "component": "connection-test",
+      "containers": [
+        {
+          "limits": {
+            "memory": "64Mi"
+          },
+          "name": "connection",
+          "requests": {
+            "cpu": "10m",
+            "memory": "16Mi"
+          },
+          "source": "tests.resources"
+        }
+      ],
+      "initContainers": [],
+      "kind": "Pod",
+      "pod": {
+        "cpuRequestMillis": 10,
+        "memoryLimitBytes": 67108864,
+        "memoryRequestBytes": 16777216
+      },
+      "replicas": 1,
+      "surgePods": 0,
+      "surgeSource": "none: a test pod has no rollout"
+    }
+  ],
+  "model": {
+    "artifactBytes": 1834426016,
+    "cacheClaimName": "inferops-model-cache",
+    "identifier": "qwen3-1-7b-q8-0"
+  },
+  "placementConstraints": [],
+  "release": {
+    "key": "local-docker-desktop/support-assistant",
+    "name": "inferops",
+    "namespace": "inferops-release"
+  },
+  "schema": "inferops.io/capacity-preflight-footprint/v1alpha1",
+  "sources": {
+    "application": {
+      "path": "infra/argocd/local-docker-desktop-support-assistant.yaml",
+      "repoURL": "https://github.com/asadhanif3188/InferOps.git",
+      "sha256": "sha256:42eb763ef6711ad134fdf909ae6541eab70163fa8ab11251fe066d7915d946dd",
+      "targetRevision": "main"
+    },
+    "chart": {
+      "name": "inferops-llm",
+      "path": "charts/inferops-llm",
+      "version": "0.6.0"
+    },
+    "chartDefaults": {
+      "path": "charts/inferops-llm/values.yaml",
+      "sha256": "sha256:0031a614dec9813171f1e8147f11ed55d33bfa1730c8a39781064c43213cdccd"
+    },
+    "generatedValues": {
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+      "sha256": "sha256:6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
+    }
+  },
+  "topology": {
+    "apiReplicas": 2,
+    "runtimeReplicas": 2
+  },
+  "totals": {
+    "required": {
+      "cpuRequestMillis": 3110,
+      "memoryLimitBytes": 9865003008,
+      "memoryRequestBytes": 5553258496,
+      "pods": 9
+    },
+    "reserve": {
+      "cpuMillis": 500,
+      "memoryBytes": 536870912
+    },
+    "rolloutHeadroom": {
+      "cpuRequestMillis": 200,
+      "memoryLimitBytes": 1073741824,
+      "memoryRequestBytes": 268435456,
+      "pods": 2
+    },
+    "steady": {
+      "cpuRequestMillis": 2300,
+      "memoryLimitBytes": 8053063680,
+      "memoryRequestBytes": 4697620480,
+      "pods": 5
+    },
+    "transient": {
+      "cpuRequestMillis": 110,
+      "memoryLimitBytes": 201326592,
+      "memoryRequestBytes": 50331648,
+      "pods": 2
+    }
+  }
+}
