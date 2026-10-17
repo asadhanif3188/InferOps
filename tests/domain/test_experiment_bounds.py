@@ -325,3 +325,97 @@ def test_the_tool_imports_no_network_or_process_module() -> None:
         text = (ROOT / "tools/experiment_bounds" / name).read_text(encoding="utf-8")
         for module in ("subprocess", "socket", "urllib", "http", "requests"):
             assert not re.search(rf"^\s*(import|from)\s+{module}\b", text, re.MULTILINE)
+
+
+# --------------------------------------------------------------------------
+# Two lineages: q1-1 with the exact identity, q1-2 with the stable identity
+# --------------------------------------------------------------------------
+
+Q2_R3 = "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json"
+Q3_R2 = "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json"
+NEXT_STARTUP = "docs/proof/experiments/v2-q2/runs/q2-2/record.v1alpha1.json"
+NEXT_CALLER = "docs/proof/experiments/v2-q3/runs/q3-2/record.v1alpha1.json"
+#: What a characterization of q1-2 states: the stable identity has another
+#: digest than any exact identity, and the qualification is another record.
+NEXT_SHARED = {
+    "provider": "docker-desktop",
+    "environmentSha256": "sha256:" + "3" * 64,
+    "releaseId": "5" * 64,
+    "qualification": {
+        "qualificationId": "q1-2",
+        "path": "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+        "contentSha256": "6" * 64,
+    },
+}
+
+
+def _next_lineage(root: Path) -> None:
+    """Write a Q2 source of revision 3 and a Q3 source of revision 2, of q1-2."""
+    for freeze_path, text in ((Q2_R3, "Q2 revision 3"), (Q3_R2, "Q3 revision 2")):
+        _write(root / freeze_path, f'{{"stand-in": "{text}"}}\n')
+    for path, schema, identifier, symbol, value, freeze_path, text in (
+        (NEXT_STARTUP, q4.STARTUP_SCHEMA, "q2-2", "S", 12_000, Q2_R3, "Q2 revision 3"),
+        (NEXT_CALLER, q4.CALLER_SCHEMA, "q3-2", "G", 1_800, Q3_R2, "Q3 revision 2"),
+    ):
+        source = _source(
+            schema,
+            identifier,
+            symbol,
+            value,
+            freeze_path,
+            f'{{"stand-in": "{text}"}}\n',
+        )
+        source["identities"].update(copy.deepcopy(NEXT_SHARED))
+        _write(root / path, source)
+
+
+def test_the_revisions_of_each_lineage_may_govern_a_source() -> None:
+    assert q4.STARTUP_FREEZE_RECORDS == (
+        "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json",
+        Q2_R3,
+    )
+    assert q4.CALLER_FREEZE_RECORDS == (
+        "docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json",
+        Q3_R2,
+    )
+
+
+def test_two_sources_of_the_q1_2_lineage_give_a_record(root: Path) -> None:
+    _next_lineage(root)
+    record = q4.build_record(NEXT_STARTUP, NEXT_CALLER, root)
+    assert _values(record)["runtime_start_bound_ms"] == 12_000
+    assert _values(record)["caller_gap_reference_ms"] == 1_800
+
+
+@pytest.mark.parametrize(
+    ("startup", "caller"),
+    [
+        pytest.param(STARTUP, NEXT_CALLER, id="q2-of-q1-1-with-q3-of-q1-2"),
+        pytest.param(NEXT_STARTUP, CALLER, id="q2-of-q1-2-with-q3-of-q1-1"),
+    ],
+)
+def test_a_source_of_one_lineage_is_never_combined_with_one_of_the_other(
+    root: Path, startup: str, caller: str
+) -> None:
+    """q2-1 is bound to q1-1 and its exact identity. A Q3 characterization of
+    q1-2 states another environment digest and another qualification record, so
+    the comparison refuses the pair, whatever the two bounds are."""
+    _next_lineage(root)
+    with pytest.raises(q4.BoundsRefused) as refused:
+        q4.build_record(startup, caller, root)
+    assert refused.value.rule == "bounds-environment-differs"
+
+
+def test_a_shared_digest_with_another_qualification_record_is_still_refused(
+    root: Path,
+) -> None:
+    """The qualification record is compared by its identifier, path, and content
+    digest, apart from the environment digest."""
+    _next_lineage(root)
+    _change(
+        NEXT_CALLER,
+        lambda d: d["identities"]["qualification"].update(contentSha256="7" * 64),
+    )(root)
+    with pytest.raises(q4.BoundsRefused) as refused:
+        q4.build_record(NEXT_STARTUP, NEXT_CALLER, root)
+    assert refused.value.rule == "bounds-environment-differs"

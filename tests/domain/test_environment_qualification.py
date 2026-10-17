@@ -45,6 +45,7 @@ import pytest
 import yaml
 
 from tools import environment_qualification as q1
+from tools.capacity_preflight import core as capacity_core
 from tools.environment_qualification import __main__ as cli
 from tools.experiment_freeze import core as freeze
 from tools.reliability_runner import core as runner
@@ -55,7 +56,8 @@ pytestmark = pytest.mark.unit
 ROOT = Path(__file__).resolve().parents[2]
 PAGE = ROOT / "docs/environment/environment-qualification.md"
 DRIVER = ROOT / "docs/proof/experiments/v2-q1/procedure/q1-driver.txt"
-FREEZE = ROOT / "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+FREEZE = ROOT / "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json"
+FREEZE_R1 = ROOT / "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
 VALUES = (
     ROOT / "gitops/environments/local-docker-desktop/workloads/support-assistant"
     "/values.generated.yaml"
@@ -133,7 +135,7 @@ def header(**changes: Any) -> dict[str, Any]:
         "desiredRevision": DESIRED,
         "workingTree": "clean",
         "desiredStateDiff": "none",
-        "freezeRecord": "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+        "freezeRecord": "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json",
         "freezeRecordSha256": q1.lf_digest(FREEZE.read_bytes()),
         "freezeChanges": "none",
         "apiImageDigest": API_DIGEST,
@@ -414,10 +416,11 @@ def write(
 
 @pytest.fixture
 def root(tmp_path: Path) -> Path:
-    """A checkout that holds the three files the tool reads from one."""
+    """A checkout that holds the four files the tool reads from one."""
     checkout = tmp_path / "checkout"
     for name in (
         "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+        "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json",
         "docs/serving/model-source.v1.json",
         "deploy/serving/runtime/container-package.v1.json",
     ):
@@ -432,6 +435,39 @@ def record_of(directory: Path, root: Path) -> dict[str, Any]:
 
 def states(record: dict[str, Any]) -> dict[str, str]:
     return {item["ruleId"]: item["state"] for item in record["findings"]}
+
+
+def changed(document: Any, edit: Callable[[Any], Any]) -> Any:
+    copied = copy.deepcopy(document)
+    edit(copied)
+    return copied
+
+
+def _set(path: tuple[Any, ...], value: Any) -> Callable[[Any], None]:
+    def edit(document: Any) -> None:
+        for member in path[:-1]:
+            document = document[member]
+        document[path[-1]] = value
+
+    return edit
+
+
+def _drop(path: tuple[Any, ...]) -> Callable[[Any], None]:
+    def edit(document: Any) -> None:
+        for member in path[:-1]:
+            document = document[member]
+        del document[path[-1]]
+
+    return edit
+
+
+def header_r1(**changes: Any) -> dict[str, Any]:
+    """A header of a qualification under revision 1, which decided q1-1."""
+    return header(
+        freezeRecord="docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+        freezeRecordSha256=q1.lf_digest(FREEZE_R1.read_bytes()),
+        **changes,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -488,10 +524,35 @@ def test_the_record_states_each_identity_of_the_qualification(
     assert identities["freezeRecord"]["path"] == q1.FREEZE_RECORD
 
 
-def test_the_environment_identity_holds_no_address_and_has_a_digest(
+def test_the_stable_environment_identity_holds_no_memory_figure_and_has_a_digest(
     tmp_path: Path, root: Path
 ) -> None:
+    """Revision 2: the facts of the configuration, and no memory figure."""
     record = record_of(write(tmp_path / "run"), root)
+    assert record["environment"] == {
+        "provider": "docker-desktop",
+        "kubernetesServerVersion": "v1.36.1",
+        "nodes": [
+            {
+                "name": NODE,
+                "kubeletVersion": "v1.36.1",
+                "allocatable": {"cpuMillis": 12000, "pods": 110},
+            }
+        ],
+        "containerEngine": {"cpus": 12},
+        "identityRevision": 2,
+    }
+    assert record["environmentSha256"] == q1.environment_digest(record["environment"])
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", record["environmentSha256"])
+    assert "memoryBytes" not in json.dumps(record["environment"])
+
+
+def test_the_exact_environment_identity_of_revision_1_holds_the_memory_figures(
+    tmp_path: Path, root: Path
+) -> None:
+    """Revision 1, which decided q1-1, states memory to the byte, unchanged."""
+    record = record_of(write(tmp_path / "run", {q1.HEADER_FILE: header_r1()}), root)
+    assert record["result"] == "QUALIFIED"
     assert record["environment"] == {
         "provider": "docker-desktop",
         "kubernetesServerVersion": "v1.36.1",
@@ -508,18 +569,235 @@ def test_the_environment_identity_holds_no_address_and_has_a_digest(
         ],
         "containerEngine": {"cpus": 12, "memoryBytes": 10_000_000_000},
     }
-    assert record["environmentSha256"] == q1.environment_digest(record["environment"])
-    assert re.fullmatch(r"sha256:[0-9a-f]{64}", record["environmentSha256"])
+    assert record["doesNotEstablish"] == list(q1.DOES_NOT_ESTABLISH_R1)
 
 
-def test_another_node_allocation_is_another_environment(
+def test_under_revision_1_another_memory_reading_is_another_environment(
     tmp_path: Path, root: Path
 ) -> None:
     changed = capacity()
     changed["nodes"][0]["allocatable"]["memoryBytes"] -= 1
-    first = record_of(write(tmp_path / "a"), root)
-    second = record_of(write(tmp_path / "b", {q1.CAPACITY_RECORD: changed}), root)
+    first = record_of(write(tmp_path / "a", {q1.HEADER_FILE: header_r1()}), root)
+    second = record_of(
+        write(
+            tmp_path / "b",
+            {q1.HEADER_FILE: header_r1(), q1.CAPACITY_RECORD: changed},
+        ),
+        root,
+    )
     assert first["environmentSha256"] != second["environmentSha256"]
+
+
+#: The memory that this host reported after three starts of its Docker Desktop
+#: virtual machine: q1-1 and q3-1, whose capacity records state it for the
+#: container engine and for the node alike, and the reading by hand after a later
+#: start that the q3-1 result page states. Each differs from the others.
+OBSERVED_MEMORY = (
+    pytest.param(10_429_960_192, id="q1-1"),
+    pytest.param(10_429_972_480, id="q3-1"),
+    pytest.param(10_429_956_096, id="later-start"),
+)
+
+
+@pytest.mark.parametrize("memory", OBSERVED_MEMORY)
+def test_a_memory_reading_of_another_start_is_the_same_stable_environment(
+    tmp_path: Path, root: Path, memory: int
+) -> None:
+    """The decided semantics: a memory figure is a capacity fact, not identity."""
+    reading = capacity()
+    reading["environment"]["containerEngine"]["memoryBytes"] = memory
+    reading["nodes"][0]["allocatable"]["memoryBytes"] = memory
+    reference = record_of(write(tmp_path / "a"), root)
+    record = record_of(write(tmp_path / "b", {q1.CAPACITY_RECORD: reading}), root)
+    assert record["result"] == "QUALIFIED"
+    assert record["environmentSha256"] == reference["environmentSha256"]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(_set(("environment", "containerEngine", "cpus"), 8), id="cpus"),
+        pytest.param(
+            _set(("nodes", 0, "allocatable", "cpuMillis"), 8000), id="cpu-millis"
+        ),
+        pytest.param(_set(("nodes", 0, "allocatable", "pods"), 100), id="pods"),
+        pytest.param(_set(("nodes", 0, "kubeletVersion"), "v1.35.0"), id="kubelet"),
+        pytest.param(
+            _set(("environment", "kubernetesServerVersion"), "v1.35.0"),
+            id="server-version",
+        ),
+        pytest.param(_set(("nodes", 0, "name"), "another-node"), id="node-name"),
+        pytest.param(_set(("environment", "provider"), "kind"), id="provider"),
+    ],
+)
+def test_each_fact_of_the_configuration_is_part_of_the_stable_identity(
+    tmp_path: Path, root: Path, change: Callable[[Any], None]
+) -> None:
+    reference = record_of(write(tmp_path / "a"), root)
+    record = record_of(
+        write(tmp_path / "b", {q1.CAPACITY_RECORD: changed(capacity(), change)}),
+        root,
+    )
+    assert record["environmentSha256"] is not None
+    assert record["environmentSha256"] != reference["environmentSha256"]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(_drop(("environment", "provider")), id="no-provider"),
+        pytest.param(
+            _set(("environment", "provider"), "Docker Desktop"), id="provider-form"
+        ),
+        pytest.param(
+            _drop(("environment", "kubernetesServerVersion")), id="no-version"
+        ),
+        pytest.param(
+            _set(("environment", "kubernetesServerVersion"), "1.36"), id="version-form"
+        ),
+        pytest.param(_drop(("environment", "containerEngine", "cpus")), id="no-cpus"),
+        pytest.param(
+            _set(("environment", "containerEngine", "cpus"), -1), id="cpus-negative"
+        ),
+        pytest.param(
+            _set(("environment", "containerEngine", "cpus"), True), id="cpus-bool"
+        ),
+        pytest.param(
+            _set(("environment", "containerEngine", "cpus"), "12"), id="cpus-text"
+        ),
+        pytest.param(
+            _drop(("nodes", 0, "allocatable", "cpuMillis")), id="no-cpu-millis"
+        ),
+        pytest.param(
+            _set(("nodes", 0, "allocatable", "pods"), 1.5), id="pods-fraction"
+        ),
+        pytest.param(_drop(("nodes", 0, "kubeletVersion")), id="no-kubelet"),
+        pytest.param(_set(("nodes", 0, "name"), "Not A Name"), id="name-form"),
+        pytest.param(_set(("nodes",), []), id="no-node"),
+        pytest.param(_set(("environment",), "docker-desktop"), id="environment-form"),
+    ],
+)
+def test_an_absent_or_malformed_identity_input_refuses_and_states_no_identity(
+    tmp_path: Path, root: Path, change: Callable[[Any], None]
+) -> None:
+    record = record_of(
+        write(tmp_path / "run", {q1.CAPACITY_RECORD: changed(capacity(), change)}),
+        root,
+    )
+    assert record["result"] == "REFUSED"
+    assert record["environment"] is None
+    assert record["environmentSha256"] is None
+    assert states(record)["context-unambiguous"] == "not-held"
+
+
+def test_an_unreadable_capacity_record_states_no_identity(
+    tmp_path: Path, root: Path
+) -> None:
+    record = record_of(write(tmp_path / "run", {q1.CAPACITY_RECORD: "{not json"}), root)
+    assert record["result"] == "REFUSED"
+    assert record["environment"] is None
+    assert record["environmentSha256"] is None
+
+
+def test_the_identity_does_not_depend_on_the_order_of_the_capacity_record(
+    tmp_path: Path, root: Path
+) -> None:
+    def reversed_members(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: reversed_members(value[k]) for k in reversed(list(value))}
+        if isinstance(value, list):
+            return [reversed_members(item) for item in value]
+        return value
+
+    directory = write(tmp_path / "b")
+    (directory / q1.CAPACITY_RECORD).write_text(
+        json.dumps(reversed_members(capacity())), encoding="utf-8", newline="\n"
+    )
+    assert (
+        record_of(directory, root)["environmentSha256"]
+        == record_of(write(tmp_path / "a"), root)["environmentSha256"]
+    )
+
+
+def test_no_identity_of_one_revision_has_the_digest_of_one_of_the_other(
+    tmp_path: Path, root: Path
+) -> None:
+    sources = q1.read_sources(write(tmp_path / "run"), root)
+    exact = q1.environment_identity(sources)
+    stable = q1.stable_environment_identity(sources)
+    assert exact is not None and stable is not None
+    assert q1.IDENTITY_REVISION_MEMBER not in exact
+    assert stable[q1.IDENTITY_REVISION_MEMBER] == q1.STABLE_IDENTITY_REVISION
+    assert q1.environment_digest(exact) != q1.environment_digest(stable)
+    assert q1.identity_of(q1.FREEZE_RECORD_R1) is q1.environment_identity
+    assert q1.identity_of(q1.FREEZE_RECORD) is q1.stable_environment_identity
+    assert tuple(q1.REVISIONS) == q1.FREEZE_RECORDS
+
+
+def test_insufficient_memory_is_refused_although_the_stable_identity_matches(
+    tmp_path: Path, root: Path
+) -> None:
+    """The capacity gate decides memory for each reading, apart from identity.
+
+    The real gate is run on the committed capacity collection of q1-1 with the
+    node and the engine at 8 GiB, which is less than the declared limits and the
+    reserve. The gate refuses, and the stable identity is unchanged. A Q1
+    directory whose capacity reading the gate refused is REFUSED on
+    capacity-accepted, while its stable identity has the accepted digest.
+    """
+    collection = tmp_path / "capacity"
+    shutil.copytree(
+        ROOT / "docs/proof/experiments/v2-q1/runs/q1-1/capacity", collection
+    )
+    (collection / "record.v1alpha1.json").unlink()
+    nodes = json.loads((collection / "nodes.json").read_text("utf-8"))
+    for figures in ("allocatable", "capacity"):
+        nodes["items"][0]["status"][figures]["memory"] = "8388608Ki"
+    write_json(collection / "nodes.json", nodes)
+    write_json(collection / "engine.json", {"cpus": 12, "memoryBytes": 8 * 2**30})
+    accepted = json.loads(
+        (
+            ROOT
+            / "docs/proof/experiments/v2-q1/runs/q1-1/capacity/record.v1alpha1.json"
+        ).read_text("utf-8")
+    )
+    refused = capacity_core.build_record(collection)
+    assert accepted["result"] == "ACCEPTED"
+    assert refused["result"] == "REFUSED"
+    assert "memory-limits-fit" in refused["refusal"]["rules"]
+
+    def stable(record: dict[str, Any]) -> dict[str, Any] | None:
+        return q1.stable_environment_identity(
+            q1.Sources(
+                header={},
+                capacity=q1.Source("capacity", value=record),
+                provenance=q1.Source("", problem="absent"),
+                reconciliation=q1.Source("", problem="absent"),
+                deployments=q1.Source("", problem="absent"),
+                endpoints=q1.Source("", problem="absent"),
+                model_cache=q1.Source("", problem="absent"),
+                plan=q1.Source("", problem="absent"),
+                caller_text=None,
+                caller_refused=False,
+                root=root,
+                directory=collection,
+            )
+        )
+
+    assert stable(refused) is not None
+    assert stable(refused) == stable(accepted)
+
+    reading = capacity()
+    reading["result"] = "REFUSED"
+    reading["refusal"] = {"categories": ["capacity"], "rules": ["memory-limits-fit"]}
+    reading["environment"]["containerEngine"]["memoryBytes"] = 8 * 2**30
+    reading["nodes"][0]["allocatable"]["memoryBytes"] = 8 * 2**30
+    reference = record_of(write(tmp_path / "a"), root)
+    record = record_of(write(tmp_path / "b", {q1.CAPACITY_RECORD: reading}), root)
+    assert record["environmentSha256"] == reference["environmentSha256"]
+    assert record["result"] == "REFUSED"
+    assert record["refusal"]["rules"] == ["capacity-accepted"]
+    assert states(record)["capacity-accepted"] == "not-held"
 
 
 def test_the_record_lists_each_file_it_read_by_its_digest(
@@ -536,21 +814,6 @@ def test_the_record_lists_each_file_it_read_by_its_digest(
 # --------------------------------------------------------------------------
 # Each rule refuses
 # --------------------------------------------------------------------------
-
-
-def changed(document: Any, edit: Callable[[Any], Any]) -> Any:
-    copied = copy.deepcopy(document)
-    edit(copied)
-    return copied
-
-
-def _set(path: tuple[Any, ...], value: Any) -> Callable[[Any], None]:
-    def edit(document: Any) -> None:
-        for member in path[:-1]:
-            document = document[member]
-        document[path[-1]] = value
-
-    return edit
 
 
 Defect = tuple[str, dict[str, Any], str, str]
@@ -720,7 +983,7 @@ DEFECTS: list[Defect] = [
         "another freeze record",
         {
             q1.HEADER_FILE: header(
-                freezeRecord="docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json"
+                freezeRecord="docs/proof/experiments/v2-q1/freeze-r3.v1alpha1.json"
             )
         },
         "procedure-frozen",
@@ -1417,8 +1680,11 @@ def test_the_freeze_record_freezes_the_q1_target_and_holds_no_result() -> None:
     record = json.loads(FREEZE.read_text("utf-8"))
     assert record["kind"] == "ExperimentFreeze"
     assert record["metadata"]["experiment"] == q1.EXPERIMENT_ID
-    assert record["metadata"]["revision"] == 1
-    assert record["metadata"]["supersedes"] is None
+    assert record["metadata"]["revision"] == 2
+    assert record["metadata"]["supersedes"] == {
+        "path": "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+        "contentSha256": freeze.content_digest(FREEZE_R1.read_bytes()),
+    }
     fields = record["fields"]
     (topology,) = fields["topology"]
     assert topology["value"]["apiReplicas"] == 2
@@ -1438,6 +1704,64 @@ def test_the_freeze_record_freezes_the_q1_target_and_holds_no_result() -> None:
     # V2-S6-001-PR2 the one directory is q1-1.
     assert "result" not in record
     assert [path.name for path in (FREEZE.parent / "runs").iterdir()] == ["q1-1"]
+
+
+def test_revision_2_supersedes_revision_1_and_changes_no_criterion() -> None:
+    """Revision 2 changes the identity that a record states, and nothing that a
+    rule holds: the same seventeen criteria, the same target, the same scope."""
+    r1 = json.loads(FREEZE_R1.read_text("utf-8"))
+    r2 = json.loads(FREEZE.read_text("utf-8"))
+    assert r1["metadata"]["revision"] == 1
+    assert r1["metadata"]["supersedes"] is None
+    assert r2["fields"]["acceptanceCriteria"] == r1["fields"]["acceptanceCriteria"]
+    assert r2["fields"]["topology"] == r1["fields"]["topology"]
+    assert r2["materialScope"] == r1["materialScope"]
+    assert {change["path"]: change["material"] for change in r2["inputChanges"]} == {
+        "docs/proof/experiments/v2-q1/procedure/q1-driver.txt": False,
+        "tools/environment_qualification/__init__.py": False,
+        "tools/environment_qualification/core.py": True,
+    }
+    (identity,) = r2["fields"]["environmentIdentity"]
+    assert "no memory figure" in identity["value"]["recordedPerQualification"]
+    assert "Q1-AC9" in identity["value"]["capacity"]
+    assert (ROOT / identity["value"]["decision"]).is_file()
+    assert freeze.changed_inputs(r2) == []
+
+
+def test_revision_1_can_no_longer_govern_a_new_qualification() -> None:
+    """The driver names revision 2, and the freeze check of revision 1 lists the
+    moved Q1 tool, so a run under revision 1 would state freezeChanges "listed".
+    No Q1 rule refuses a header that names revision 1 with no listed change: the
+    driver and the freeze check stop it, and the Q2 and Q3 revisions of the next
+    lineage refuse a qualification that is not of revision 2."""
+    r1 = json.loads(FREEZE_R1.read_text("utf-8"))
+    changed_paths = {change.path for change in freeze.changed_inputs(r1)}
+    assert "tools/environment_qualification/core.py" in changed_paths
+    driver = DRIVER.read_text("utf-8")
+    assert f'FREEZE_RECORD="{q1.FREEZE_RECORD}"' in driver
+    assert "freeze-r1.v1alpha1.json" not in driver
+
+
+def test_the_committed_q1_1_keeps_its_exact_identity_and_digest() -> None:
+    """q1-1 was decided under revision 1. It is built again under revision 1,
+    with the exact identity, its memory figures, and the digest it states."""
+    (run,) = q1.committed_runs()
+    record = json.loads((run / q1.RECORD_FILE).read_text(encoding="utf-8"))
+    assert record["collection"]["freezeRecord"] == q1.FREEZE_RECORD_R1
+    assert record["environment"]["containerEngine"]["memoryBytes"] == 10_429_960_192
+    assert record["environment"]["nodes"][0]["allocatable"]["memoryBytes"] == (
+        10_429_960_192
+    )
+    assert q1.IDENTITY_REVISION_MEMBER not in record["environment"]
+    assert record["environmentSha256"] == (
+        "sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461"
+    )
+    assert record["doesNotEstablish"] == list(q1.DOES_NOT_ESTABLISH_R1)
+    assert q1.record_text(q1.build_record(run)) == record_text_of(run)
+
+
+def record_text_of(run: Path) -> str:
+    return (run / q1.RECORD_FILE).read_bytes().replace(b"\r\n", b"\n").decode()
 
 
 def test_the_freeze_record_pins_the_tool_and_the_driver() -> None:
@@ -1518,7 +1842,7 @@ def test_the_driver_sets_one_value_and_only_on_the_preparation_release() -> None
 
 
 def test_each_sentence_of_what_a_record_does_not_establish_says_so() -> None:
-    for sentence in q1.DOES_NOT_ESTABLISH:
+    for sentence in (*q1.DOES_NOT_ESTABLISH, *q1.DOES_NOT_ESTABLISH_R1):
         assert sentence.startswith("A record does not establish "), sentence
         assert not re.search(r"\b(reliable|robust|guarantee|proves?)\b", sentence, re.I)
 
@@ -1632,3 +1956,17 @@ def test_the_driver_refuses_a_reused_identifier_of_a_collection() -> None:
         'for used in "${OBSERVATIONS}/${QID}" "${ENDPOINT_COLLECTIONS}/${QID}" '
         '"${RUNNER_RUNS}/${QID}"; do'
     ) in driver
+
+
+def test_an_unregistered_revision_is_refused_with_every_registered_one_named(
+    tmp_path: Path, root: Path
+) -> None:
+    unregistered = "docs/proof/experiments/v2-q1/freeze-r3.v1alpha1.json"
+    record = record_of(
+        write(tmp_path / "run", {q1.HEADER_FILE: header(freezeRecord=unregistered)}),
+        root,
+    )
+    (finding,) = [f for f in record["findings"] if f["ruleId"] == "procedure-frozen"]
+    assert finding["state"] == "not-held"
+    for revision in q1.FREEZE_RECORDS:
+        assert revision in finding["detail"]

@@ -1,8 +1,9 @@
 """Q2, the runtime startup characterization of the qualified release.
 
 A frozen driver restarts the runtime Deployment three times, one at a time, in
-the environment that the Q1 qualification q1-1 selected, and writes what the
-cluster answered into one directory. This package reads that directory and
+the environment that a Q1 qualification selected (q1-1 under revision 2 of the
+freeze record, q1-2 under revision 3), and writes what the cluster answered into
+one directory. This package reads that directory and
 returns one record. Every replacement pod is one observation of its interval
 from creation to Ready, and S is the maximum. The result is ``CHARACTERIZED``,
 ``INCONCLUSIVE``, or ``REFUSED``.
@@ -25,10 +26,13 @@ from .core import (
     DOES_NOT_ESTABLISH,
     EXPERIMENT_ID,
     FREEZE_RECORD,
+    FREEZE_RECORD_R2,
+    FREEZE_RECORDS,
     HEADER_FILE,
     HELD,
     INCONCLUSIVE,
     INCONCLUSIVE_EXIT,
+    LINEAGES,
     NOT_HELD,
     NOT_OBSERVED,
     PRECONDITION_RULES,
@@ -51,6 +55,7 @@ from .core import (
     RESULT_STATES,
     RULE_STATES,
     RULES,
+    RULES_R2,
     RUNS_PATTERN,
     SELECTED_PROVIDER,
     TARGET_API_REPLICAS,
@@ -59,6 +64,7 @@ from .core import (
     WATCH_FILE,
     Characterization,
     CollectionRefused,
+    Lineage,
     Replacement,
     Restart,
     Rule,
@@ -70,6 +76,7 @@ from .core import (
     evaluate,
     identities,
     lf_digest,
+    lineage_of,
     observations,
     preconditions,
     read_characterization,
@@ -94,10 +101,13 @@ __all__ = [
     "DOES_NOT_ESTABLISH",
     "EXPERIMENT_ID",
     "FREEZE_RECORD",
+    "FREEZE_RECORDS",
+    "FREEZE_RECORD_R2",
     "HEADER_FILE",
     "HELD",
     "INCONCLUSIVE",
     "INCONCLUSIVE_EXIT",
+    "LINEAGES",
     "NOT_HELD",
     "NOT_OBSERVED",
     "PRECONDITION_RULES",
@@ -119,6 +129,7 @@ __all__ = [
     "RESTART_SCHEMA",
     "RESULT_STATES",
     "RULES",
+    "RULES_R2",
     "RULE_STATES",
     "RUNS_PATTERN",
     "SELECTED_PROVIDER",
@@ -128,6 +139,7 @@ __all__ = [
     "WATCH_FILE",
     "Characterization",
     "CollectionRefused",
+    "Lineage",
     "Replacement",
     "Restart",
     "Rule",
@@ -139,6 +151,7 @@ __all__ = [
     "evaluate",
     "identities",
     "lf_digest",
+    "lineage_of",
     "observations",
     "preconditions",
     "read_characterization",

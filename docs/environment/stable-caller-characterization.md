@@ -15,6 +15,16 @@ identity and a matching chain of Q1, Q2, Q3, and Q4 exists. [The validation
 record](../proof/environment/v2-s6-002-pr2-validation.md#merge-disposition) states the
 disposition.
 
+**Since `V2-S6-004-PR1`, the environment identity is decided, and revision 2 holds the
+next characterization to `q1-2`.** [ADR 0021](../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md) decides that the identity states
+the configuration and that memory is a capacity fact. [Revision 2](../proof/experiments/v2-q3/freeze-r2.v1alpha1.json)
+holds a characterization to the qualification `q1-2` of revision 2 of the Q1 freeze
+record, compares the stable identity of its capacity reading with the one `q1-2` states,
+and still requires the capacity gate to have accepted that reading. The rule of G and the
+four formulas of Q4 are unchanged. No characterization has run under it, `q1-2` has not
+run, G and the Q4 bounds are still absent, and `V2-S6-003` stays blocked. `q3-1` stays a
+`REFUSED` record of revision 1.
+
 Before a V2 reliability experiment runs, Q3 measures what the caller sees when the
 topology of the release is healthy and no fault is injected. It runs the [RP-1 caller runner](../serving/reliability-runner.md)
 once, for 360 s, against the API Service of the release that [the Q1 qualification
@@ -34,16 +44,16 @@ cites it. **The Q4 bounds are experiment bounds, not production SLOs.**
 
 | Property | Value |
 |---|---|
-| Freeze record | [`freeze-r1.v1alpha1.json`](../proof/experiments/v2-q3/freeze-r1.v1alpha1.json), experiment `v2-q3-stable-caller-characterization`, part `Q3`, criteria `Q3-AC1` to `Q3-AC14`. It also freezes the rule of G and the four formulas of Q4 |
+| Freeze record | [`freeze-r2.v1alpha1.json`](../proof/experiments/v2-q3/freeze-r2.v1alpha1.json), experiment `v2-q3-stable-caller-characterization`, part `Q3`, criteria `Q3-AC1` to `Q3-AC14`. It also freezes the rule of G and the four formulas of Q4, unchanged from [revision 1](../proof/experiments/v2-q3/freeze-r1.v1alpha1.json), which governed `q3-1` and which it supersedes |
 | Driver | [`q3-driver.txt`](../proof/experiments/v2-q3/procedure/q3-driver.txt), a pinned input of the freeze record, with the phases `up`, `characterize`, and `down` |
 | Q3 tool | [`tools/caller_characterization`](../../tools/caller_characterization/core.py): `python -m tools.caller_characterization DIRECTORY`, `--preconditions DIRECTORY`, and `--check` |
 | Q4 tool | [`tools/experiment_bounds`](../../tools/experiment_bounds/core.py): `python -m tools.experiment_bounds STARTUP_RECORD CALLER_RECORD` and `--check`. A pinned input of the Q3 freeze record |
 | Tests | [`tests/domain/test_caller_characterization.py`](../../tests/domain/test_caller_characterization.py) and [`tests/domain/test_experiment_bounds.py`](../../tests/domain/test_experiment_bounds.py) |
-| Target | The release that `q1-1` qualified: key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop`, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461` |
+| Target | Under revision 2, the release that `q1-2` qualifies, in the stable environment identity that `q1-2` states: key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop`. Under revision 1, the release that `q1-1` qualified, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461` |
 | Caller | RP-1, revision 1: two closed-loop workers inside the cluster, one fixed request, to the API Service. Duration 360 s, request ceiling 2000 |
 | Runs | One: [`q3-1`](../proof/experiments/v2-q3/runs/q3-1/result.md), `REFUSED` on `environment-qualified`, no caller started. A characterization is committed under `docs/proof/experiments/v2-q3/runs/q3-N/` |
 | Bound records | None: no Q3 record is `CHARACTERIZED`. A bound record is committed as `docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json` |
-| Validation record | [`v2-s6-002-pr2-validation.md`](../proof/environment/v2-s6-002-pr2-validation.md) |
+| Validation records | [`v2-s6-002-pr2-validation.md`](../proof/environment/v2-s6-002-pr2-validation.md); [`v2-s6-004-pr1-validation.md`](../proof/environment/v2-s6-004-pr1-validation.md), revision 2 |
 
 ## Healthy is a state of the topology
 
@@ -216,8 +226,8 @@ header: the command prints no record and exits 1.
 | `notHeld` | The categories of the rules that are not held, in the order below, and the rules |
 | `collection` | The header |
 | `target` | The release key, the two replica counts, the provider, the caller duration and ceiling, and the least run length |
-| `identities` | The executing commit, the desired revision, the release key and identifier, the API image digest, the runtime image, the provider, the server version, the environment digest, the caller profile, the digests of the runner file and of the plan, the record of `q1-1` with its digest, and the freeze record that the header names, with its digest |
-| `environment` | The environment identity, computed from the capacity record as the Q1 tool computes it |
+| `identities` | The executing commit, the desired revision, the release key and identifier, the API image digest, the runtime image, the provider, the server version, the environment digest, the caller profile, the digests of the runner file and of the plan, the record of the qualification with its digest (`q1-1` under revision 1, `q1-2` under revision 2), and the freeze record that the header names, with its digest |
+| `environment` | The environment identity, computed from the capacity record as the Q1 tool computes it for the Q1 revision of the lineage: exact under revision 1, stable under revision 2 |
 | `measurement` | The gap, the clock, the latency, and the percentile method |
 | `caller` | What the caller saw, when the runner's reader accepts the record: counts, outcomes, canonical errors, latency and gap figures, and the first and last success. Null otherwise |
 | `bound` | G: the symbol, the rule (`p99` or `maximum`), `valueMs`, the percentile, the method, the least number of successes, whether the percentile is meaningful, and the numbers of successes and gaps. Null values unless the result is `CHARACTERIZED` |
@@ -234,15 +244,21 @@ committed directory again and compares it with the committed record.
 accepts each revision of the Q3 freeze record that the tool registers, in
 `FREEZE_RECORDS`, and compares the header with the content of that revision. So a later
 revision that registers itself does not refuse a characterization of revision 1 when
-`--check` builds it again. (The Q2 tool compares with its one revision, and its page
-states that gap.)
+`--check` builds it again. Since revision 2 the tool also takes the qualification, its Q1
+revision, and the rules from the revision that the header names, so `q3-1` is built
+again under revision 1, with `q1-1` and the exact identity, and stays `REFUSED`. (Until
+`V2-S6-004-PR1` the Q2 tool compared with its one revision, and its page stated that
+gap. Revision 3 of Q2 closes it.)
 
 ## The rules
 
 14 rules. Each is required, and each is one acceptance criterion of the freeze record,
 with the same identifier and statement. A rule is `held`, `not-held`, or `not-observed`.
 The categories are `preparation`, `desired-state`, `environment`, `release-identity`,
-`topology`, `caller`, `measurement`, and `evidence`, in that order.
+`topology`, `caller`, `measurement`, and `evidence`, in that order. The table states
+revision 2. Under revision 1, which governed `q3-1`, `environment-qualified` and
+`release-qualified` name `q1-1`, and `environment-qualified` compares the environment
+identity that the Q1 tool computed then, which holds memory to the byte.
 
 | Rule | Criterion | Category | Refuses | Statement |
 |---|---|---|---|---|
@@ -250,8 +266,8 @@ The categories are `preparation`, `desired-state`, `environment`, `release-ident
 | `working-tree-clean` | Q3-AC2 | `desired-state` | yes | The working tree was clean when the characterization started. |
 | `procedure-frozen` | Q3-AC3 | `desired-state` | yes | The driver names a registered revision of the Q3 freeze record, that revision has the content that the checkout holds, and the freeze tool listed no changed material file of it or of the Q1 record when the characterization started. |
 | `desired-revision-known` | Q3-AC4 | `desired-state` | yes | The desired revision is one full commit identifier, and the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision. |
-| `environment-qualified` | Q3-AC5 | `environment` | yes | The qualification q1-1 is QUALIFIED, the capacity gate accepted the target release key with 2 API replicas and 2 runtime replicas, and the environment identity of that capacity record has the digest that q1-1 states. |
-| `release-qualified` | Q3-AC6 | `release-identity` | yes | The provenance record resolves the target release key at the desired revision to the release identifier that q1-1 states, the API Deployment runs the API image digest that the phase up declared, and the runtime Deployment runs the runtime image that q1-1 states. |
+| `environment-qualified` | Q3-AC5 | `environment` | yes | The qualification q1-2 is QUALIFIED under revision 2 of the Q1 freeze record, the capacity gate accepted the target release key with 2 API replicas and 2 runtime replicas, and the stable environment identity of that capacity record has the digest that q1-2 states. |
+| `release-qualified` | Q3-AC6 | `release-identity` | yes | The provenance record resolves the target release key at the desired revision to the release identifier that q1-2 states, the API Deployment runs the API image digest that the phase up declared, and the runtime Deployment runs the runtime image that q1-2 states. |
 | `topology-ready` | Q3-AC7 | `topology` | yes | Before the caller started, the API Deployment and the runtime Deployment each state 2 replicas and report 2 replicas, 2 Ready, 2 available, and 2 updated at their current generation, and exactly 2 API pods and 2 runtime pods exist, each Ready and none being deleted. |
 | `caller-run-completed` | Q3-AC8 | `caller` | no | The start of the caller run exited 0, its Job succeeded within the wait bound, the runner script collected its record, and the cleanup exited 0. |
 | `caller-record-accepted` | Q3-AC9 | `caller` | no | The runner's reader accepts the caller record with its plan, in the mode in-cluster, for the Q3 experiment and the characterization identifier, with the release identifier of the provenance record declared, a duration of 360 s, and a request ceiling of 2000. |
@@ -301,7 +317,9 @@ for a later revision.
   computes holds each memory figure in bytes, and the digest compares it with no
   tolerance. On this host the figure changed at each of the two boots of the engine's
   virtual machine that were observed. [The Q1 page](environment-qualification.md#the-selected-environment)
-  states the reads.
+  states the reads. **Decided by [ADR 0021](../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md)** (`V2-S6-004-PR1`): revision 2
+  compares the stable identity, which holds no memory figure, and the capacity gate
+  decides memory for each reading. Revision 1 keeps the exact comparison for `q3-1`.
 - **A reused identifier is refused per work directory.** The driver refuses a
   characterization identifier whose directory exists under the work directory of the
   phase `up` it is given. Under another run name, `q3-1` could be given again, and

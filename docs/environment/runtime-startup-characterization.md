@@ -8,6 +8,16 @@ are of restarts during which the other runtime pod was Ready, and they lie close
 probe period of 10 s; the run page states what they do not establish. The synthetic
 directories of the suite show each refusal at C0.
 
+**Since `V2-S6-004-PR1`, revision 3 holds the next characterization to `q1-2` and to the
+stable environment identity.** [ADR 0021](../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md) decides that the identity states the
+configuration and that memory is a capacity fact. [Revision 3](../proof/experiments/v2-q2/freeze-r3.v1alpha1.json)
+holds a characterization to the qualification `q1-2` of revision 2 of the Q1 freeze
+record, compares the stable identity of its capacity reading with the one `q1-2` states,
+and still requires the capacity gate to have accepted that reading. No characterization
+has run under it, and `q1-2` has not run. `q2-1` stays a record of revision 2, bound to
+`q1-1` and its exact identity, and it is not a source that can be combined with a
+characterization of `q1-2`.
+
 Before a V2 reliability experiment runs, Q2 measures how long a serving runtime pod of
 the qualified release takes from its creation to its first Ready condition, when the
 Deployment controller replaces it in a controlled restart. It runs in the environment
@@ -24,14 +34,14 @@ computes them from a Q2 record and a Q3 record.)
 
 | Property | Value |
 |---|---|
-| Freeze record | [`freeze-r2.v1alpha1.json`](../proof/experiments/v2-q2/freeze-r2.v1alpha1.json), experiment `v2-q2-runtime-startup-characterization`, part `Q2`, criteria `Q2-AC1` to `Q2-AC16`. It supersedes [revision 1](../proof/experiments/v2-q2/freeze-r1.v1alpha1.json), under which no characterization ran |
+| Freeze record | [`freeze-r3.v1alpha1.json`](../proof/experiments/v2-q2/freeze-r3.v1alpha1.json), experiment `v2-q2-runtime-startup-characterization`, part `Q2`, criteria `Q2-AC1` to `Q2-AC16`. It supersedes [revision 2](../proof/experiments/v2-q2/freeze-r2.v1alpha1.json), which governed `q2-1` and superseded [revision 1](../proof/experiments/v2-q2/freeze-r1.v1alpha1.json), under which no characterization ran |
 | Driver | [`q2-driver.txt`](../proof/experiments/v2-q2/procedure/q2-driver.txt), a pinned input of the freeze record, with the phases `up`, `characterize`, and `down` |
 | Tool | [`tools/runtime_startup`](../../tools/runtime_startup/core.py): `python -m tools.runtime_startup DIRECTORY`, `--preconditions DIRECTORY`, and `--check` |
 | Tests | [`tests/domain/test_runtime_startup.py`](../../tests/domain/test_runtime_startup.py) |
-| Target | The release that `q1-1` qualified: key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop`, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461` |
+| Target | Under revision 3, the release that `q1-2` qualifies, in the stable environment identity that `q1-2` states: key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop`. Under revision 2, the release that `q1-1` qualified, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461` |
 | Restarts | Three for each characterization, `r1`, `r2`, and `r3`, one at a time. Each replaces the 2 runtime pods, so a characterization has 6 observations |
 | Runs | One: [`q2-1`](../proof/experiments/v2-q2/runs/q2-1/result.md), `CHARACTERIZED`, S = 11,000 ms. A characterization is committed under `docs/proof/experiments/v2-q2/runs/q2-N/` |
-| Validation record | [`v2-s6-002-pr1-validation.md`](../proof/environment/v2-s6-002-pr1-validation.md) |
+| Validation records | [`v2-s6-002-pr1-validation.md`](../proof/environment/v2-s6-002-pr1-validation.md); [`v2-s6-004-pr1-validation.md`](../proof/environment/v2-s6-004-pr1-validation.md), revision 3 |
 
 ## A restart, and not a fault
 
@@ -181,8 +191,8 @@ not a header: the command prints no record and exits 1.
 | `notHeld` | The categories of the rules that are not held, in the order below, and the rules |
 | `collection` | The header |
 | `target` | The release key, the two replica counts, the provider, the number of restarts, and the replacements of each |
-| `identities` | The executing commit, the desired revision, the release key and identifier, the API image digest, the runtime image, the provider, the server version, the environment digest, the record of `q1-1` with its digest, and the freeze record with its digest. An identity that was not read is null |
-| `environment` | The environment identity, computed from the capacity record as the Q1 tool computes it |
+| `identities` | The executing commit, the desired revision, the release key and identifier, the API image digest, the runtime image, the provider, the server version, the environment digest, the record of the qualification with its digest (`q1-1` under revision 2, `q1-2` under revision 3), and the freeze record with its digest. An identity that was not read is null |
+| `environment` | The environment identity, computed from the capacity record as the Q1 tool computes it for the Q1 revision of the lineage: exact under revision 2, stable under revision 3 |
 | `measurement` | The interval, the clock, and the resolution of 1000 ms |
 | `observations` | One row for each replacement: the restart, its order, the pod, the creation, scheduling, Initialized, runtime start, and Ready instants, `startToReadyMs`, and its two parts |
 | `bound` | S: the symbol, the rule, `valueMs`, the number of observations, and the first observation with that value. `valueMs` is null unless the result is `CHARACTERIZED` |
@@ -195,13 +205,17 @@ when it is `INCONCLUSIVE`. It exits 1 when the directory is not a characterizati
 directory, and 2 when the arguments are not usable. `--preconditions` prints the state of
 the seven preconditions, and exits 0 when each is held and 5 otherwise. `--check` builds
 the record of each committed directory again and compares it with the committed record.
-It reads the record of `q1-1` and the freeze record from the checkout, and neither
-changes once it is committed.
+It builds each record under the revision that its header names, with the
+qualification of that revision, and reads that qualification's record and the freeze
+record from the checkout. Neither changes once it is committed.
 
 ## The rules
 
 16 rules. Each is required, and each is one acceptance criterion of the freeze record,
-with the same identifier and statement. A rule is `held`, `not-held`, or `not-observed`.
+with the same identifier and statement. The table states revision 3. Under revision 2,
+which governed `q2-1`, `environment-qualified`, `release-qualified`, and `model-verified`
+name `q1-1`, and `environment-qualified` compares the environment identity that the Q1
+tool computed then, which holds memory to the byte. A rule is `held`, `not-held`, or `not-observed`.
 The categories are `preparation`, `desired-state`, `environment`, `release-identity`,
 `topology`, `measurement`, `readiness`, and `evidence`, in that order.
 
@@ -211,8 +225,8 @@ The categories are `preparation`, `desired-state`, `environment`, `release-ident
 | `working-tree-clean` | Q2-AC2 | `desired-state` | yes | The working tree was clean when the characterization started. |
 | `procedure-frozen` | Q2-AC3 | `desired-state` | yes | The driver names the Q2 freeze record, the record has the content that the checkout holds, and the freeze tool listed no changed material file of the Q2 record or of the Q1 record when the characterization started. |
 | `desired-revision-known` | Q2-AC4 | `desired-state` | yes | The desired revision is one full commit identifier, and the chart, the desired-state tree, and the controller manifests of the executing commit equal those of that revision. |
-| `environment-qualified` | Q2-AC5 | `environment` | yes | The qualification q1-1 is QUALIFIED, the capacity gate accepted the target release key with 2 API replicas and 2 runtime replicas before the release was applied, and the environment identity of that capacity record has the digest that q1-1 states. |
-| `release-qualified` | Q2-AC6 | `release-identity` | yes | The provenance record resolves the target release key at the desired revision to the release identifier that q1-1 states, the API Deployment runs the API image digest that the phase up declared, and the runtime Deployment runs the runtime image that q1-1 states. |
+| `environment-qualified` | Q2-AC5 | `environment` | yes | The qualification q1-2 is QUALIFIED under revision 2 of the Q1 freeze record, the capacity gate accepted the target release key with 2 API replicas and 2 runtime replicas before the release was applied, and the stable environment identity of that capacity record has the digest that q1-2 states. |
+| `release-qualified` | Q2-AC6 | `release-identity` | yes | The provenance record resolves the target release key at the desired revision to the release identifier that q1-2 states, the API Deployment runs the API image digest that the phase up declared, and the runtime Deployment runs the runtime image that q1-2 states. |
 | `topology-ready` | Q2-AC7 | `topology` | yes | Before the first restart, the API Deployment and the runtime Deployment each state 2 replicas and report 2 replicas, 2 Ready, 2 available, and 2 updated at their current generation. |
 | `three-restarts` | Q2-AC8 | `measurement` | no | The directory holds the restarts r1, r2, and r3 and no other, the rollout restart of each exited 0, and the rollout of each completed within its bound. |
 | `stable-before-each-restart` | Q2-AC9 | `topology` | no | Before each restart, the runtime Deployment states 2 replicas and reports 2 replicas, 2 Ready, 2 available, and 2 updated at its current generation, and exactly 2 runtime pods exist, each Ready and none deleted. |
@@ -220,7 +234,7 @@ The categories are `preparation`, `desired-state`, `environment`, `release-ident
 | `two-replacements` | Q2-AC11 | `measurement` | no | Each restart created exactly 2 runtime pods that the reading before it does not list, each with a creation instant, each became Ready in the stream no earlier than its creation, and the reading after the restart lists exactly those 2 pods, each Ready. |
 | `one-at-a-time` | Q2-AC12 | `measurement` | no | In each restart, the second replacement was created no earlier than the first replacement became Ready. |
 | `ready-held` | Q2-AC13 | `readiness` | no | Each replacement stayed Ready in the stream from the event in which it first became Ready to the end of the stream, and the reading after the restart states no restart of its init container or of its runtime container. |
-| `model-verified` | Q2-AC14 | `readiness` | no | In the reading after the restart, the verify-model init container of each replacement terminated with exit code 0, and its runtime container runs the runtime image that q1-1 states. |
+| `model-verified` | Q2-AC14 | `readiness` | no | In the reading after the restart, the verify-model init container of each replacement terminated with exit code 0, and its runtime container runs the runtime image that q1-2 states. |
 | `ready-serves` | Q2-AC15 | `readiness` | no | Each replacement answered one completion through a port-forward to that pod after the rollout of its restart completed, with HTTP status 200, a finish reason, and at least one completion token. |
 | `readings-in-order` | Q2-AC16 | `evidence` | no | The phase up started before the characterization, each restart was requested after the characterization started and after the rollout of the restart before it completed, and each rollout completed after its request and before the characterization finished. |
 
@@ -232,7 +246,9 @@ by the Q1 record, and `procedure-frozen` holds them unchanged. Revision 1 held t
 
 **`environment-qualified` uses the Q1 computation.** The tool imports the function of the
 Q1 tool that computes the environment identity of a capacity record, so one capacity
-record has one digest in both tools.
+record has one digest in both tools. Since revision 3 it takes the identity of the Q1
+revision of its lineage: the stable identity for `q1-2`, and the exact identity for
+`q1-1`. It also requires the record of the qualification to be of that Q1 revision.
 
 **`ready-serves` holds an answer, not an instant.** The driver sends the completion
 after the rollout of its restart completed, not at the instant of Ready. The rule reads
@@ -247,7 +263,8 @@ statement says "before the release was applied". That order is the order of the 
 **The detail of `release-qualified` overstates.** Its detail string, when the rule is
 held, reads "with the images of q1-1", which is not true of the API image under revision
 2. The statement of the rule is right. The tool is a pinned input of revision 2, so the
-string is kept until a later revision.
+string is kept until a later revision. Revision 3 keeps it, naming `q1-2`: the string is
+part of the record of `q2-1`, which is built again byte for byte.
 
 ## Measured gaps of the tool
 
@@ -263,7 +280,9 @@ later revision. The suite holds the first one.
   holds the header to the one freeze record that the tool names, with the content that
   the checkout holds. A revision 3 that changes the tool makes `--check` rebuild `q2-1`
   as `REFUSED`. The next revision must let `--check` rebuild a characterization under the
-  revision that its header names.
+  revision that its header names. **Closed by revision 3** (`V2-S6-004-PR1`): the tool
+  registers revisions 2 and 3, and builds each record under the revision, the
+  qualification, and the rules that its header names. `q2-1` is built again unchanged.
 - **`preparation-completed` reads the absence of a refusal.** The driver requires only the
   start file of the phase `up`. A phase `up` that was stopped without writing a refusal
   is caught by `release-qualified` and `topology-ready`, which read the cluster, and not

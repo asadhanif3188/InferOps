@@ -3,11 +3,21 @@
 Status: **the Q1 workflow is frozen, and one qualification has run. Since
 `V2-S6-001-PR2`, [qualification `q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md)
 is `QUALIFIED`, at C2: on 2026-10-15, at the commit `08b8914`, every one of the 17
-rules held on the docker-desktop provider with one node. Its environment identity is
-the selected environment of E02A and E02B. It qualifies that one environment, and no
+rules held on the docker-desktop provider with one node. Its environment identity was
+the selected environment of E02A and E02B until `V2-S6-004-PR1`. It qualifies that one environment, and no
 other provider, node, Kubernetes version, or release.** The synthetic directories of the
 suite show each refusal at C0. (Until `V2-S6-001-PR2` this paragraph said that no
 qualification had run.)
+
+**Since `V2-S6-004-PR1`, the environment identity states the configuration, and memory
+is a capacity fact.** [ADR 0021](../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md) decides it, after the exact identity of `q1-1`
+did not hold across a start of the virtual machine ([below](#the-selected-environment)).
+[Revision 2 of the freeze record](../proof/experiments/v2-q1/freeze-r2.v1alpha1.json)
+records the stable identity, and the next qualification, `q1-2`, runs under it. No
+qualification has run under revision 2. `q1-1` stays a record of revision 1, with its
+exact identity and its digest. The Q2 and Q3 revisions registered by the same change
+hold the next characterizations to `q1-2`, so a later freeze record of E02A and E02B
+names the stable identity of `q1-2`, when `q1-2` is `QUALIFIED`.
 
 Before a V2 reliability experiment runs, Q1 decides whether one local
 environment holds the target topology of the desired-state release: two
@@ -18,13 +28,13 @@ Service. The result is `QUALIFIED` or `REFUSED`. There is no third result.
 
 | Property | Value |
 |---|---|
-| Freeze record | [`freeze-r1.v1alpha1.json`](../proof/experiments/v2-q1/freeze-r1.v1alpha1.json), experiment `v2-q1-environment-qualification`, part `Q1`, criteria `Q1-AC1` to `Q1-AC17` |
+| Freeze record | [`freeze-r2.v1alpha1.json`](../proof/experiments/v2-q1/freeze-r2.v1alpha1.json), experiment `v2-q1-environment-qualification`, part `Q1`, criteria `Q1-AC1` to `Q1-AC17`. It supersedes [revision 1](../proof/experiments/v2-q1/freeze-r1.v1alpha1.json), which decided `q1-1`, and changes the identity that a record states and no criterion |
 | Driver | [`q1-driver.txt`](../proof/experiments/v2-q1/procedure/q1-driver.txt), a pinned input of the freeze record, with the phases `up`, `qualify`, and `down` |
 | Tool | [`tools/environment_qualification`](../../tools/environment_qualification/core.py): `python -m tools.environment_qualification DIRECTORY` and `--check` |
 | Tests | [`tests/domain/test_environment_qualification.py`](../../tests/domain/test_environment_qualification.py) |
 | Target | Release key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop` |
-| Runs | One: [`q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md), `QUALIFIED`, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`. A qualification is committed under `docs/proof/experiments/v2-q1/runs/q1-N/` |
-| Validation records | [`v2-s6-001-pr1-validation.md`](../proof/environment/v2-s6-001-pr1-validation.md), the frozen workflow; [`v2-s6-001-pr2-validation.md`](../proof/environment/v2-s6-001-pr2-validation.md), the first qualification |
+| Runs | One: [`q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md), `QUALIFIED` under revision 1, exact environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`. None under revision 2; the next identifier is `q1-2`. A qualification is committed under `docs/proof/experiments/v2-q1/runs/q1-N/` |
+| Validation records | [`v2-s6-001-pr1-validation.md`](../proof/environment/v2-s6-001-pr1-validation.md), the frozen workflow; [`v2-s6-001-pr2-validation.md`](../proof/environment/v2-s6-001-pr2-validation.md), the first qualification; [`v2-s6-004-pr1-validation.md`](../proof/environment/v2-s6-004-pr1-validation.md), the stable identity and revision 2 |
 
 ## A refusal is a result
 
@@ -54,24 +64,41 @@ state `not-observed` to each rule that reads it. A source of another form gives
 
 ## The selected environment
 
-A record states the environment identity: the provider, the server version,
-each node with its kubelet version and what it allocates, and the container
-engine, as the capacity record states them. It also states the SHA-256 of the
-canonical JSON text of that identity, `environmentSha256`. The identity holds no
-address, no context name, and no path.
+A record of revision 2 states the **stable environment identity**: the provider, the
+server version, each node with its kubelet version and the CPU and the pods that it
+allocates, and the CPU count of the container engine, as the capacity record states
+them, with `identityRevision` 2. It holds no memory figure. A record of revision 1, such
+as `q1-1`, states the **exact environment identity**, which also holds the memory of each
+node and of the engine to the byte, and no `identityRevision`. Each record also states
+the SHA-256 of the canonical JSON text of its identity, `environmentSha256`, so no
+identity of one revision has the digest of one of the other. The identity holds no
+address, no context name, and no path. When a part of it cannot be read, the record
+states none, and `context-unambiguous` refuses.
+
+**Memory is a capacity fact.** The capacity record of each qualification states the
+memory of the node and of the engine, and `capacity-accepted` requires the capacity gate
+to have accepted the target on it: the declared limits and the reserve fit the memory
+that the node allocates, and the node is not under memory pressure. A later run is held
+to the gate on its own reading, apart from its identity. [ADR 0021](../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md) decides this.
 
 When a qualification is `QUALIFIED`, E02A and E02B execute in that one
 environment. A run of either states its own environment identity. A run whose
 identity differs from the qualified one is not a run of the controlled
-comparison. Qualification `q1-1` is `QUALIFIED`, so the selected environment is
-its identity: the docker-desktop provider, Kubernetes server `v1.36.1`, one node
+comparison. Qualification `q1-1` is `QUALIFIED`, and until `V2-S6-004-PR1` the
+selected environment was its exact identity: the docker-desktop provider, Kubernetes server `v1.36.1`, one node
 `desktop-control-plane` with kubelet `v1.36.1` allocating 12,000 millicores,
 10,429,960,192 bytes of memory, and 110 pods, and a container engine of 12 CPUs and
 10,429,960,192 bytes of memory, with the digest
 `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`.
+Since `V2-S6-004-PR1`, `q1-1` stays a `QUALIFIED` record of revision 1 and selects no
+environment: its exact identity cannot be met again after a start of the virtual
+machine, and the Q2 and Q3 revisions of the next lineage hold their characterizations
+to `q1-2`. The selection passes to `q1-2`, a qualification under revision 2, and only
+if it is `QUALIFIED`; until then no environment is selected for E02A and E02B.
 No run of E02A or E02B exists, so no comparison of identities has
-been made. This is a rule of the freeze record. No tool compares two identities
-yet, and no freeze record of E02A or E02B exists. When the local environment is
+been made. This is a rule of the freeze record. No freeze record of E02A or E02B
+exists. (Until `V2-S6-004-PR1` this paragraph also said that no tool compares two
+identities; the Q2 and Q3 tools compare them.) When the local environment is
 `REFUSED`, the refusal is retained, and a separate environment decision record
 precedes any other environment.
 
@@ -85,8 +112,12 @@ read 10,429,972,480 bytes of memory for the engine and the node, 12,288 bytes mo
 of the virtual machine, which the host owner authorized, gave 10,429,956,096 bytes. So on
 this host the memory figure, and with it the digest, changed at each of the two boots
 of the virtual machine that were observed, and the selected environment cannot be met
-again after a boot unless the figure comes back. The Q1 tool and the Q1 freeze record are unchanged. Whether the
-environment identity should keep the exact memory figure is not decided here.
+again after a boot unless the figure comes back. Until `V2-S6-004-PR1` this paragraph
+ended: "The Q1 tool and the Q1 freeze record are unchanged. Whether the environment
+identity should keep the exact memory figure is not decided here." [ADR 0021](../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md)
+decides that it should not, and revision 2 of the freeze record states the stable
+identity. The capacity readings of `q1-1` and `q3-1` have one stable identity. `q3-1`
+is still built under revision 1 of the Q3 freeze record, and it stays `REFUSED`.
 
 ## The procedure
 
@@ -184,7 +215,7 @@ of capacity is stated by the capacity record, or by its absence.
 | `collection` | The header |
 | `target` | The release key, the two replica counts, and the provider that Q1 qualifies |
 | `identities` | The executing commit, the desired revision, the release key and identifier, the workload version, the contract digest, the Helm values digest, the environment binding, the renderer and platform-default revisions, the chart, the controller version, the API image digest, the runtime image, the model, the provider and server version, the caller profile, and the freeze record. An identity that was not read is null |
-| `environment`, `environmentSha256` | The environment identity and its digest. Null when a part was not readable |
+| `environment`, `environmentSha256` | The environment identity and its digest: the stable identity under revision 2, the exact one under revision 1. Null when a part was not readable |
 | `files` | The name and the SHA-256, with CRLF read as LF, of each file of the directory that the tool read |
 | `findings` | The state of each rule, with its criterion, its category, and a detail |
 | `doesNotEstablish` | What no record establishes |
@@ -273,10 +304,17 @@ and `evidence`.
 
 ## What a record does not establish
 
+A record of revision 2 states these sentences. A record of revision 1 states the list
+that it was decided with: the same list without the two sentences on memory, and with
+"A later run must state its own environment identity. No tool compares two identities
+yet." in place of the second half of the fourth sentence.
+
 - A record does not establish behaviour under a fault, the replacement of a pod, or a recovery from either.
 - A record does not establish a runtime start time, a caller gap, or any bound that later work derives.
 - A record does not establish a latency, a throughput, a success rate, or the reliability of the caller path. One completed request shows that the path answered once.
-- A record does not establish that a later run uses the same environment. A later run must state its own environment identity. No tool compares two identities yet.
+- A record does not establish that a later run uses the same environment. A later run states its own environment identity, and the tool of that run compares it with the one this record states.
+- A record does not establish the memory of a later environment of the same identity. The stable environment identity holds no memory figure. Each reading of an environment is held to the capacity gate, which decides whether the declared limits fit.
+- A record does not establish that memory above the declared limits has no effect on a later measurement, or why the container engine and the node report other memory figures after each start of the virtual machine.
 - A record does not establish that a source record is what its collection gives. The module reads the stored source records and does not build them again. It checks the caller record with the runner's reader.
 - A record does not establish capacity beyond the stated requests and limits on one node, or that a pod is scheduled in another state of the cluster.
 - A record does not establish production availability, high availability, a service level, or resilience to the loss of a node, a zone, or a region.

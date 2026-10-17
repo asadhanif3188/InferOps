@@ -99,6 +99,17 @@ Q2_R2_PIN = "32e58c7984ad74ef229e5a2d3411e7de78971b17a554124a7fbe3acfe5bcaecd"
 #: for the same reason.
 Q3 = "docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json"
 Q3_PIN = "b8c5f7acf2bde60d82f0909eb02fc2f01572e214351ea8b4d6e56043543d8c82"
+#: The second revision of Q1, registered by V2-S6-004-PR1 before any later
+#: qualification ran: its records state the stable environment identity, which
+#: holds no memory figure. Its pin is written out for the same reason.
+Q1_R2 = "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json"
+Q1_R2_PIN = "add73e7e4e9ed20253b0e67734d463cf27f20d685014bae57c79ce241ea48d22"
+#: The third revision of Q2 and the second of Q3, registered by the same change:
+#: each holds a characterization to q1-2 and to the stable environment identity.
+Q2_R3 = "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json"
+Q2_R3_PIN = "421628933641f8b7c064913c7af0b82d5f8663582e3dd1155a4ac2d8a6dc19af"
+Q3_R2 = "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json"
+Q3_R2_PIN = "f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so
@@ -136,7 +147,7 @@ def test_the_committed_records_are_the_pinned_ones() -> None:
     assert (
         record_paths()
         == sorted(FROZEN_RECORDS)
-        == [R1, R2, R3, Q1, Q2, Q2_R2, Q3, S5I, S5I_R2]
+        == [R1, R2, R3, Q1, Q1_R2, Q2, Q2_R2, Q2_R3, Q3, Q3_R2, S5I, S5I_R2]
     )
     assert load_registry() == dict(FROZEN_RECORDS)
 
@@ -159,7 +170,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "PASSED: 9 freeze record(s)" in result.stdout
+    assert "PASSED: 12 freeze record(s)" in result.stdout
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
@@ -723,9 +734,12 @@ def test_every_registered_record_keeps_the_pin_it_was_registered_with() -> None:
         S5I: S5I_PIN,
         S5I_R2: S5I_R2_PIN,
         Q1: Q1_PIN,
+        Q1_R2: Q1_R2_PIN,
         Q2: Q2_PIN,
         Q2_R2: Q2_R2_PIN,
+        Q2_R3: Q2_R3_PIN,
         Q3: Q3_PIN,
+        Q3_R2: Q3_R2_PIN,
     }
 
 

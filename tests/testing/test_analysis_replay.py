@@ -2679,13 +2679,15 @@ def test_no_committed_freeze_record_registers_an_exclusion_reason() -> None:
     Two are the Q2 runtime startup characterization, revisions 1 and 2, added by
     V2-S6-002-PR1, which states a maximum and computes no aggregate. One is the Q3
     stable caller characterization, added by V2-S6-002-PR2, which states one
-    percentile of one run and computes no aggregate over runs.
+    percentile of one run and computes no aggregate over runs. Three more are Q1
+    revision 2, Q2 revision 3, and Q3 revision 2, added by V2-S6-004-PR1, which
+    change the environment identity and compute no aggregate either.
 
     This change edits none of them, and the freeze check does not read the
     member. The member is read when an aggregate reads it.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 9
+    assert len(records) == 12
     for record in records:
         assert core.EXCLUSION_REASONS_MEMBER not in _read_json(record)
     example = _read_json(EXAMPLE_ROOT / FREEZE_REF)

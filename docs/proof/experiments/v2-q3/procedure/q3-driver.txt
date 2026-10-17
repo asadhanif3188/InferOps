@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Drives one Q3 stable caller characterization of the release that the Q1
-# qualification q1-1 qualified, on the docker-desktop provider, and prints one
+# qualification q1-2 qualified, on the docker-desktop provider, and prints one
 # transcript. Q3 is a qualification. It is not a reliability experiment: it
 # injects no fault, and it registers no claim. Run it from the repository root:
 #
@@ -21,7 +21,7 @@
 #
 # The phases up and down are the phases of the Q1 driver, run without a change.
 # So the release is prepared, applied, and removed exactly as for the
-# qualification q1-1. This driver adds the phase characterize and no step to
+# qualification q1-2. This driver adds the phase characterize and no step to
 # the other two.
 #
 # The caller is one RP-1 run of the caller runner against the API Service, for
@@ -36,7 +36,7 @@
 # `characterize` reads no cluster state, starts no caller, and writes the
 # REFUSED record. When the tool refuses a precondition that it reads from the
 # cluster - the environment, the release, the images, or the topology of
-# q1-1 - the driver starts no caller either. It writes the record whatever the
+# q1-2 - the driver starts no caller either. It writes the record whatever the
 # result is.
 #
 # What `characterize` does, in this order of steps S0 to S7, with no decision on what it reads:
@@ -59,8 +59,8 @@ PHASE="${1:?give the phase: up, characterize, or down}"
 RUN="${2:?give the run name, for example q3run-1}"
 QID="${3:-}"
 EXPERIMENT="v2-q3-stable-caller-characterization"
-FREEZE_RECORD="docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json"
-Q1_FREEZE_RECORD="docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+FREEZE_RECORD="docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json"
+Q1_FREEZE_RECORD="docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json"
 Q1_DRIVER="docs/proof/experiments/v2-q1/procedure/q1-driver.txt"
 RELEASE_KEY="local-docker-desktop/support-assistant"
 Q1_WORK=".artifacts/v2-q1/${RUN}-driver"

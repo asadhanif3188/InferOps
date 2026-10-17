@@ -1,8 +1,8 @@
 """Q2, the runtime startup characterization: the rules, the refusals, and S.
 
 Every directory here is written by this suite under pytest's temporary
-directory, beside a stand-in for the record of the qualification q1-1 and for
-the Q2 freeze record. The suite gives the tool one defect at a time and holds
+directory, beside a stand-in for the record of the qualification that the
+current revision names, q1-2, and for the Q2 freeze record. The suite gives the tool one defect at a time and holds
 the rule that the defect breaks, its category, and the result: REFUSED for a
 precondition, INCONCLUSIVE for a rule of the measurement. It holds S to the
 maximum of the observations, and to no value when the result is not
@@ -135,11 +135,17 @@ def _capacity() -> dict[str, Any]:
     }
 
 
-def _environment_sha() -> str:
-    """The digest that the Q1 tool computes for the capacity record above."""
+def _environment_sha(
+    identity: Callable[[q1.Sources], dict[str, Any] | None] = (
+        q1.stable_environment_identity
+    ),
+    capacity: dict[str, Any] | None = None,
+) -> str:
+    """The digest that the Q1 tool computes for the capacity record above: the
+    stable identity of the current lineage, unless another identity is given."""
     sources = q1.Sources(
         header={},
-        capacity=q1.Source("capacity", value=_capacity()),
+        capacity=q1.Source("capacity", value=capacity or _capacity()),
         provenance=q1.Source("", problem="absent"),
         reconciliation=q1.Source("", problem="absent"),
         deployments=q1.Source("", problem="absent"),
@@ -151,17 +157,25 @@ def _environment_sha() -> str:
         root=ROOT,
         directory=ROOT,
     )
-    environment = q1.environment_identity(sources)
+    environment = identity(sources)
     assert environment is not None
     return q1.environment_digest(environment)
 
 
-def _qualification() -> dict[str, Any]:
+def _qualification(
+    qualification_id: str = q2.QUALIFICATION_ID,
+    freeze_record: str = q2.QUALIFICATION_FREEZE_RECORD,
+    environment_sha: str | None = None,
+) -> dict[str, Any]:
+    """A stand-in for the record of the qualification of the current lineage."""
     return {
         "schema": q2.core.QUALIFICATION_SCHEMA,
         "result": "QUALIFIED",
-        "collection": {"qualificationId": "q1-1"},
-        "environmentSha256": _environment_sha(),
+        "collection": {
+            "qualificationId": qualification_id,
+            "freezeRecord": freeze_record,
+        },
+        "environmentSha256": environment_sha or _environment_sha(),
         "identities": {
             "releaseId": RELEASE_ID,
             "apiImageDigest": API_DIGEST,
@@ -359,7 +373,7 @@ def _header() -> dict[str, Any]:
 
 @pytest.fixture
 def root(tmp_path: Path) -> Path:
-    """A checkout that holds the stand-in freeze record and the record of q1-1."""
+    """A checkout that holds the stand-in freeze record and the record of q1-2."""
     checkout = tmp_path / "checkout"
     _write(checkout / q2.FREEZE_RECORD, FREEZE_TEXT)
     _write(checkout / q2.QUALIFICATION_RECORD, _qualification())
@@ -642,7 +656,18 @@ DEFECTS: dict[str, list[tuple[str, Callable[[Path, Path], None]]]] = {
         ("delivery paths differ", _header_set(desiredStateDiff="differs")),
     ],
     "environment-qualified": [
-        ("q1-1 refused", _qualification_set(lambda r: r.update(result="REFUSED"))),
+        (
+            "the qualification refused",
+            _qualification_set(lambda r: r.update(result="REFUSED")),
+        ),
+        (
+            "a qualification of revision 1 of the Q1 freeze record",
+            _qualification_set(
+                lambda r: r["collection"].update(
+                    freezeRecord="docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+                )
+            ),
+        ),
         (
             "another node",
             _edit(
@@ -834,7 +859,10 @@ NOT_OBSERVED_CASES = frozenset(
 #: The other rules that a defect also breaks, measured. Every other defect breaks
 #: its own rule and no other, so a rule weakened to pass it is visible here.
 ALSO_NOT_HELD: dict[tuple[str, str], set[str]] = {
-    ("environment-qualified", "q1-1 refused"): {"release-qualified", "model-verified"},
+    ("environment-qualified", "the qualification refused"): {
+        "release-qualified",
+        "model-verified",
+    },
     ("three-restarts", "no r3"): {
         "model-verified",
         "one-at-a-time",
@@ -1112,9 +1140,9 @@ def test_revision_2_supersedes_revision_1_and_changes_one_criterion() -> None:
     same inputs does not report again. No characterization ran under it. Revision 2
     changes that one criterion and classifies the two pins that moved."""
     r1_path = "docs/proof/experiments/v2-q2/freeze-r1.v1alpha1.json"
-    assert q2.FREEZE_RECORD == "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
+    assert q2.FREEZE_RECORD_R2 == "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
     r1 = json.loads((ROOT / r1_path).read_text(encoding="utf-8"))
-    r2 = _freeze()
+    r2 = json.loads((ROOT / q2.FREEZE_RECORD_R2).read_text(encoding="utf-8"))
     assert r2["metadata"]["revision"] == 2
     assert r2["metadata"]["supersedes"] == {
         "path": r1_path,
@@ -1160,7 +1188,10 @@ def test_the_freeze_record_holds_every_rule_of_the_freeze_check() -> None:
     assert freeze.check_record(_freeze(), q2.FREEZE_RECORD) == []
 
 
-def test_the_freeze_record_pins_the_tool_the_drivers_and_q1_1() -> None:
+def test_the_freeze_record_pins_the_tool_the_drivers_and_the_q1_freeze() -> None:
+    """Revision 3 pins revision 2 of the Q1 freeze record. It pins no
+    qualification record: q1-2 does not exist when it is registered, and the
+    record of q1-1 is no longer the one it holds a characterization to."""
     pinned = {item["path"] for item in _freeze()["pinnedInputs"]}
     for path in (
         "tools/runtime_startup/core.py",
@@ -1169,10 +1200,11 @@ def test_the_freeze_record_pins_the_tool_the_drivers_and_q1_1() -> None:
         "docs/proof/experiments/v2-q2/procedure/q2-driver.txt",
         "docs/proof/experiments/v2-q1/procedure/q1-driver.txt",
         q2.QUALIFICATION_FREEZE_RECORD,
-        q2.QUALIFICATION_RECORD,
         "charts/inferops-llm/values.yaml",
     ):
         assert path in pinned, path
+    assert q2.QUALIFICATION_FREEZE_RECORD.endswith("/freeze-r2.v1alpha1.json")
+    assert not [path for path in pinned if "/runs/" in path]
 
 
 def test_the_scope_of_q2_holds_the_scope_of_q1() -> None:
@@ -1188,10 +1220,14 @@ def test_the_freeze_record_lists_no_changed_material_file() -> None:
     assert freeze.changed_inputs(_freeze()) == []
 
 
-def test_the_qualification_record_is_q1_1_and_qualified() -> None:
-    record = json.loads((ROOT / q2.QUALIFICATION_RECORD).read_text(encoding="utf-8"))
+def test_the_qualification_of_revision_2_is_q1_1_and_qualified() -> None:
+    lineage = q2.LINEAGES[q2.FREEZE_RECORD_R2]
+    record = json.loads(
+        (ROOT / lineage.qualification_record).read_text(encoding="utf-8")
+    )
     assert record["result"] == "QUALIFIED"
-    assert record["collection"]["qualificationId"] == q2.QUALIFICATION_ID
+    assert record["collection"]["qualificationId"] == lineage.qualification_id
+    assert record["collection"]["freezeRecord"] == lineage.qualification_freeze_record
     assert record["environmentSha256"] == (
         "sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461"
     )
@@ -1325,7 +1361,8 @@ def test_the_committed_characterization_q2_1_is_characterized_with_s_of_11000_ms
     values = [row["startToReadyMs"] for row in record["observations"]]
     assert values == [11_000, 11_000, 11_000, 11_000, 10_000, 11_000]
     assert record["bound"]["valueMs"] == max(values) == 11_000
-    assert record["collection"]["freezeRecord"] == q2.FREEZE_RECORD
+    assert record["collection"]["freezeRecord"] == q2.FREEZE_RECORD_R2
+    assert record["identities"]["qualification"]["qualificationId"] == "q1-1"
     assert record["identities"]["environmentSha256"] == (
         "sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461"
     )
@@ -1442,3 +1479,152 @@ def test_the_driver_restarts_only_inside_the_branch_of_held_preconditions() -> N
     refusal = text.index('if [ -e "${Q1_WORK}/up-refusal" ]; then')
     provenance = text.index("tools.desired_state_provenance")
     assert refusal < text.index('  else\n    step "S1.', refusal) < provenance
+
+
+# --------------------------------------------------------------------------
+# Revision 3: the stable environment identity of q1-2, and revision 2 kept
+# --------------------------------------------------------------------------
+
+
+def test_the_lineages_name_q1_1_for_revision_2_and_q1_2_for_revision_3() -> None:
+    assert (
+        q2.FREEZE_RECORDS
+        == tuple(q2.LINEAGES)
+        == (
+            "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json",
+            "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json",
+        )
+    )
+    r2 = q2.LINEAGES[q2.FREEZE_RECORD_R2]
+    r3 = q2.LINEAGES[q2.FREEZE_RECORD]
+    assert (r2.qualification_id, r2.qualification_freeze_record) == (
+        "q1-1",
+        "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+    )
+    assert (r3.qualification_id, r3.qualification_freeze_record) == (
+        "q1-2",
+        "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json",
+    )
+    assert r2.rules == q2.RULES_R2
+    assert r3.rules == q2.RULES
+    assert not (ROOT / r3.qualification_record).exists()
+
+
+@pytest.mark.parametrize("memory", [10_429_960_192, 10_429_972_480, 10_429_956_096])
+def test_another_memory_reading_holds_the_environment_under_revision_3(
+    tmp_path: Path, root: Path, memory: int
+) -> None:
+    """The stable identity holds no memory figure. A reading of another start of
+    the virtual machine, which the gate accepts, is the environment of q1-2."""
+    directory = _directory(tmp_path)
+
+    def other_memory(record: dict[str, Any]) -> None:
+        record["environment"]["containerEngine"]["memoryBytes"] = memory
+        record["nodes"][0]["allocatable"]["memoryBytes"] = memory
+
+    _edit("capacity/record.v1alpha1.json", other_memory)(directory, root)
+    record = _record(directory, root)
+    assert _state(record, "environment-qualified") == q2.HELD
+    assert record["result"] == q2.CHARACTERIZED
+
+
+def test_a_refused_gate_refuses_although_the_stable_identity_matches(
+    tmp_path: Path, root: Path
+) -> None:
+    """Memory is decided by the capacity gate for each reading. A reading that
+    the gate refused, with less memory than the limits need, refuses Q2 even
+    though its stable identity is the one q1-2 states."""
+    directory = _directory(tmp_path)
+
+    def insufficient(record: dict[str, Any]) -> None:
+        record["result"] = "REFUSED"
+        record["refusal"] = {"categories": ["capacity"], "rules": ["memory-limits-fit"]}
+        record["environment"]["containerEngine"]["memoryBytes"] = 8 * 2**30
+        record["nodes"][0]["allocatable"]["memoryBytes"] = 8 * 2**30
+
+    _edit("capacity/record.v1alpha1.json", insufficient)(directory, root)
+    capacity = _read(directory / "capacity/record.v1alpha1.json")
+    assert _environment_sha(capacity=capacity) == _environment_sha()
+    record = _record(directory, root)
+    assert _state(record, "environment-qualified") == q2.NOT_HELD
+    assert record["result"] == q2.REFUSED
+
+
+def test_a_characterization_of_revision_2_is_held_to_q1_1_and_the_exact_identity(
+    tmp_path: Path, root: Path
+) -> None:
+    """A record of revision 2 is built again under revision 2: q1-1, its Q1
+    freeze revision, and the exact identity, which compares memory to the byte."""
+    lineage = q2.LINEAGES[q2.FREEZE_RECORD_R2]
+    _write(root / q2.FREEZE_RECORD_R2, FREEZE_TEXT)
+    _write(
+        root / lineage.qualification_record,
+        _qualification(
+            "q1-1",
+            lineage.qualification_freeze_record,
+            _environment_sha(q1.environment_identity),
+        ),
+    )
+    directory = _directory(tmp_path)
+    _header_set(freezeRecord=q2.FREEZE_RECORD_R2)(directory, root)
+    record = _record(directory, root)
+    assert record["result"] == q2.CHARACTERIZED
+    assert record["identities"]["qualification"]["qualificationId"] == "q1-1"
+    assert record["identities"]["freezeRecord"]["path"] == q2.FREEZE_RECORD_R2
+    assert record["environment"]["containerEngine"]["memoryBytes"] == 10_429_960_192
+
+    _edit(
+        "capacity/record.v1alpha1.json",
+        lambda r: r["environment"]["containerEngine"].update(
+            memoryBytes=10_429_972_480
+        ),
+    )(directory, root)
+    record = _record(directory, root)
+    assert _state(record, "environment-qualified") == q2.NOT_HELD
+    assert record["result"] == q2.REFUSED
+
+
+def test_revision_3_supersedes_revision_2_and_changes_three_statements() -> None:
+    r2 = json.loads((ROOT / q2.FREEZE_RECORD_R2).read_text(encoding="utf-8"))
+    r3 = _freeze()
+    assert r3["metadata"]["revision"] == 3
+    assert r3["metadata"]["registeredBy"] == "V2-S6-004-PR1"
+    assert r3["metadata"]["supersedes"] == {
+        "path": q2.FREEZE_RECORD_R2,
+        "contentSha256": freeze.content_digest(
+            (ROOT / q2.FREEZE_RECORD_R2).read_bytes()
+        ),
+    }
+    (before,) = r2["fields"]["acceptanceCriteria"]
+    (after,) = r3["fields"]["acceptanceCriteria"]
+    changed = [
+        old["id"]
+        for old, new in zip(before["value"], after["value"], strict=True)
+        if old != new
+    ]
+    assert changed == ["Q2-AC5", "Q2-AC6", "Q2-AC14"]
+    assert "stable environment identity" in after["value"][4]["statement"]
+    assert "q1-1" not in json.dumps(after["value"])
+    for name in ("restart", "measurement", "derivation"):
+        assert r3["definition"][name] == r2["definition"][name]
+    assert r3["fields"]["derivedNumericBounds"] == r2["fields"]["derivedNumericBounds"]
+    material = {item["path"]: item["material"] for item in r3["inputChanges"]}
+    assert material["tools/runtime_startup/core.py"] is True
+    assert material["tools/environment_qualification/core.py"] is True
+    assert material["docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json"]
+    assert material["docs/proof/experiments/v2-q2/procedure/q2-driver.txt"] is False
+
+
+def test_an_unregistered_revision_states_no_freeze_record_and_refuses(
+    tmp_path: Path, root: Path
+) -> None:
+    """As in the Q3 tool, a header that names no registered revision states no
+    freeze record, and procedure-frozen refuses it."""
+    directory = _directory(tmp_path)
+    _header_set(freezeRecord="docs/proof/experiments/v2-q2/freeze-r9.v1alpha1.json")(
+        directory, root
+    )
+    record = _record(directory, root)
+    assert record["identities"]["freezeRecord"] == {"path": None, "contentSha256": None}
+    assert _state(record, "procedure-frozen") == q2.NOT_HELD
+    assert record["result"] == q2.REFUSED

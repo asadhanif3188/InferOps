@@ -212,6 +212,13 @@
       "owner": "repository-maintainer",
       "assignedOn": "2026-10-08",
       "basis": "assigned-at-acceptance"
+    },
+    {
+      "decisionId": "ADR-0021",
+      "path": "docs/architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-10-17",
+      "basis": "assigned-at-acceptance"
     }
   ],
   "transferRules": [
