@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "repository": "Qwen/Qwen3-1.7B-GGUF",
+  "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+  "file": "Qwen3-1.7B-Q8_0.gguf",
+  "sourceUrl": "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true",
+  "license": {
+    "spdx": "Apache-2.0",
+    "reference": "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/blob/90862c4b9d2787eaed51d12237eafdfe7c5f6077/LICENSE"
+  },
+  "expectedSizeBytes": 1834426016,
+  "sha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+  "cache": {
+    "path": ".cache/inferops/models",
+    "artifactRelativePath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf"
+  }
+}

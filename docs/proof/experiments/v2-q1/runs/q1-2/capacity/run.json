@@ -1,0 +1,9 @@
+{
+  "collectedAt": "2026-10-17T15:04:17Z",
+  "context": "docker-desktop",
+  "executingCommit": "ed892a4eac2ee505996f53b6d3e0da31b8e4e204",
+  "namespace": "inferops-release",
+  "provider": "docker-desktop",
+  "releaseKey": "local-docker-desktop/support-assistant",
+  "schema": "inferops.io/capacity-preflight-collection/v1alpha1"
+}
