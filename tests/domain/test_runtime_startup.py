@@ -1352,7 +1352,7 @@ def test_the_committed_characterization_q2_1_is_characterized_with_s_of_11000_ms
     """V2-S6-002-PR1 ran q2-1 once under revision 2. Its record is what its
     directory gives, each rule is held, and S is the maximum of its six intervals."""
     directory = ROOT / "docs/proof/experiments/v2-q2/runs/q2-1"
-    assert q2.committed_runs() == [directory]
+    assert directory in q2.committed_runs()
     record = json.loads(
         (directory / "record.v1alpha1.json").read_text(encoding="utf-8")
     )
@@ -1367,6 +1367,37 @@ def test_the_committed_characterization_q2_1_is_characterized_with_s_of_11000_ms
         "sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461"
     )
     assert not (directory / "capacity/pods.json").exists()
+
+
+def test_the_committed_characterization_q2_2_is_characterized_under_revision_3() -> (
+    None
+):
+    """V2-S6-004-PR2 ran q2-2 once under revision 3, after q1-2 was QUALIFIED. Its
+    record is what its directory gives, each rule is held, S is the maximum of its
+    six intervals, and it is bound to q1-2 and to its stable environment identity."""
+    runs = ROOT / "docs/proof/experiments/v2-q2/runs"
+    directory = runs / "q2-2"
+    assert q2.committed_runs() == [runs / "q2-1", directory]
+    record = json.loads(
+        (directory / "record.v1alpha1.json").read_text(encoding="utf-8")
+    )
+    assert record["result"] == q2.CHARACTERIZED
+    assert {item["state"] for item in record["findings"]} == {q2.HELD}
+    assert len(record["findings"]) == 16
+    values = [row["startToReadyMs"] for row in record["observations"]]
+    assert values == [11_000] * 6
+    assert record["bound"]["valueMs"] == max(values) == 11_000
+    assert record["collection"]["freezeRecord"] == q2.FREEZE_RECORD
+    qualification = record["identities"]["qualification"]
+    assert qualification["qualificationId"] == "q1-2"
+    assert qualification["path"] == (
+        "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json"
+    )
+    assert record["identities"]["environmentSha256"] == (
+        "sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c"
+    )
+    assert not (directory / "capacity/pods.json").exists()
+    assert q2.check_committed() == []
 
 
 # --------------------------------------------------------------------------
@@ -1507,7 +1538,9 @@ def test_the_lineages_name_q1_1_for_revision_2_and_q1_2_for_revision_3() -> None
     )
     assert r2.rules == q2.RULES_R2
     assert r3.rules == q2.RULES
-    assert not (ROOT / r3.qualification_record).exists()
+    # Since V2-S6-004-PR2 the record of q1-2 is committed. The revision does not pin
+    # it; each characterization states its digest.
+    assert (ROOT / r3.qualification_record).is_file()
 
 
 @pytest.mark.parametrize("memory", [10_429_960_192, 10_429_972_480, 10_429_956_096])

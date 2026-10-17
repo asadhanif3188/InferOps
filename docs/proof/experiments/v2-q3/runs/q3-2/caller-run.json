@@ -1,0 +1,11 @@
+{
+  "schema": "inferops.io/caller-characterization-run/v1alpha1",
+  "requestedAt": "2026-10-17T15:43:36.453Z",
+  "startExit": 0,
+  "jobState": "succeeded",
+  "jobEndedAt": "2026-10-17T15:50:19.547Z",
+  "collectExit": 0,
+  "cleanupExit": 0,
+  "watchStartedAt": "2026-10-17T15:43:35.482Z",
+  "watchStoppedAt": "2026-10-17T15:50:59.386Z"
+}

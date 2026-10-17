@@ -320,6 +320,68 @@ def test_each_committed_bound_record_is_what_its_sources_give() -> None:
     assert q4.check_committed() == []
 
 
+def test_the_committed_bound_record_r1_binds_q2_2_and_q3_2_of_the_q1_2_lineage() -> (
+    None
+):
+    """V2-S6-004-PR2 built bounds-r1 with the tool from q2-2 and q3-2. Each value
+    is recomputed here from the formulas written out, not from the tool, and each
+    source is bound by the digest of its committed bytes. Both sources name q1-2
+    and its stable environment identity, so the pair is of one lineage."""
+    (path,) = q4.committed_records()
+    assert path == ROOT / "docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json"
+    record = json.loads(path.read_text(encoding="utf-8"))
+    startup_path = "docs/proof/experiments/v2-q2/runs/q2-2/record.v1alpha1.json"
+    caller_path = "docs/proof/experiments/v2-q3/runs/q3-2/record.v1alpha1.json"
+    startup = json.loads((ROOT / startup_path).read_text(encoding="utf-8"))
+    caller = json.loads((ROOT / caller_path).read_text(encoding="utf-8"))
+    s_ms, g_ms = startup["bound"]["valueMs"], caller["bound"]["valueMs"]
+    assert (s_ms, g_ms) == (11_000, 10_113)
+    assert {item["name"]: item["valueMs"] for item in record["bounds"]} == {
+        "runtime_start_bound_ms": s_ms,
+        "caller_gap_reference_ms": g_ms,
+        "reversal_recovery_bound_ms": 2 * s_ms + 30_000,
+        "caller_total_unavailability_bound_ms": max(2 * g_ms, 5_000),
+    }
+    for symbol, source_path, freeze_path in (
+        ("S", startup_path, "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json"),
+        ("G", caller_path, "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json"),
+    ):
+        stated = record["inputs"][symbol]
+        assert stated["record"] == {
+            "path": source_path,
+            "contentSha256": q4.lf_digest((ROOT / source_path).read_bytes()),
+        }
+        assert stated["freezeRecord"] == {
+            "path": freeze_path,
+            "contentSha256": q4.lf_digest((ROOT / freeze_path).read_bytes()),
+        }
+    qualification = record["environment"]["qualification"]
+    assert qualification["qualificationId"] == "q1-2"
+    assert qualification["path"] == (
+        "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json"
+    )
+    assert record["environment"]["environmentSha256"] == (
+        "sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c"
+    )
+    for source in (startup, caller):
+        assert source["identities"]["qualification"] == qualification
+        assert (
+            source["identities"]["environmentSha256"]
+            == (record["environment"]["environmentSha256"])
+        )
+
+
+def test_the_tool_refuses_q2_1_with_q3_2_because_the_lineages_differ() -> None:
+    """q2-1 is bound to q1-1 and its exact identity. It cannot be combined with a
+    Q3 characterization of q1-2, so S and G of one bound record share a lineage."""
+    with pytest.raises(q4.BoundsRefused) as refused:
+        q4.build_record(
+            "docs/proof/experiments/v2-q2/runs/q2-1/record.v1alpha1.json",
+            "docs/proof/experiments/v2-q3/runs/q3-2/record.v1alpha1.json",
+        )
+    assert refused.value.rule == "bounds-environment-differs"
+
+
 def test_the_tool_imports_no_network_or_process_module() -> None:
     for name in ("core.py", "__main__.py", "__init__.py"):
         text = (ROOT / "tools/experiment_bounds" / name).read_text(encoding="utf-8")

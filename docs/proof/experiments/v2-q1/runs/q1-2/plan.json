@@ -1,0 +1,66 @@
+{
+  "answerMembers": {
+    "adapterKind": "adapterKind",
+    "errorConditionId": "conditionId",
+    "errorDetails": "details",
+    "extension": "x_inferops",
+    "modelRef": "modelRef"
+  },
+  "boundary": "RP-1 is a reliability workload: one fixed public request, sent by two closed-loop workers. It is not a representative production workload, an overload test, or a benchmark. Concurrency 2 is a fixed choice and not a measured threshold. No figure from a run under it is a portable capacity figure or a production SLO.",
+  "bounds": {
+    "durationSeconds": 60,
+    "pauseAfterNonSuccessMs": 1000,
+    "requestCeiling": 50
+  },
+  "caller": {
+    "concurrency": 2
+  },
+  "experimentId": "v2-q1-environment-qualification",
+  "kind": "ReliabilityRunPlan",
+  "mode": "in-cluster",
+  "profile": {
+    "profileId": "RP-1",
+    "profileRevision": 1,
+    "profileSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+  },
+  "release": {
+    "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
+    "source": "declared"
+  },
+  "request": {
+    "body": {
+      "messages": [
+        {
+          "content": "You are a terse assistant. Answer in at most two sentences. Name three things a Kubernetes readiness probe is for.",
+          "role": "user"
+        }
+      ],
+      "model": "qwen3-1-7b-q8-0",
+      "stream": false
+    },
+    "contentType": "application/json",
+    "correlationIdHeader": "X-InferOps-Correlation-ID",
+    "method": "POST",
+    "path": "/v1/chat/completions",
+    "requestIdHeader": "X-InferOps-Request-ID"
+  },
+  "runId": "q1-2",
+  "schemaVersion": "inferops.io/reliability-run-plan/v1alpha1",
+  "success": {
+    "requireChoice": true,
+    "requireUsage": true,
+    "requiredAdapterKind": "real",
+    "requiredModelRef": "qwen3-1-7b-q8-0",
+    "requiredStatus": 200
+  },
+  "target": {
+    "baseUrl": "http://inferops-inferops-llm.inferops-release.svc:8090",
+    "kind": "api-service",
+    "namespace": "inferops-release",
+    "port": 8090,
+    "service": "inferops-inferops-llm"
+  },
+  "timeouts": {
+    "requestTimeoutMs": 150000
+  }
+}

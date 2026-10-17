@@ -1,0 +1,70 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "kind": "PersistentVolume",
+            "metadata": {
+                "annotations": {
+                    "local.path.provisioner/selected-node": "desktop-control-plane",
+                    "pv.kubernetes.io/provisioned-by": "rancher.io/local-path"
+                },
+                "creationTimestamp": "2026-10-17T15:02:23Z",
+                "finalizers": [
+                    "kubernetes.io/pv-protection"
+                ],
+                "name": "pvc-d2dceb05-83d3-4746-9114-867209a872db",
+                "resourceVersion": "488654",
+                "uid": "c8a0a1d9-a450-4c36-8d1f-c77e94edbe91"
+            },
+            "spec": {
+                "accessModes": [
+                    "ReadWriteOnce"
+                ],
+                "capacity": {
+                    "storage": "4Gi"
+                },
+                "claimRef": {
+                    "apiVersion": "v1",
+                    "kind": "PersistentVolumeClaim",
+                    "name": "inferops-model-cache",
+                    "namespace": "inferops-release",
+                    "resourceVersion": "488630",
+                    "uid": "d2dceb05-83d3-4746-9114-867209a872db"
+                },
+                "hostPath": {
+                    "path": "/var/local-path-provisioner/pvc-d2dceb05-83d3-4746-9114-867209a872db_inferops-release_inferops-model-cache",
+                    "type": "DirectoryOrCreate"
+                },
+                "nodeAffinity": {
+                    "required": {
+                        "nodeSelectorTerms": [
+                            {
+                                "matchExpressions": [
+                                    {
+                                        "key": "kubernetes.io/hostname",
+                                        "operator": "In",
+                                        "values": [
+                                            "desktop-control-plane"
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "persistentVolumeReclaimPolicy": "Delete",
+                "storageClassName": "standard",
+                "volumeMode": "Filesystem"
+            },
+            "status": {
+                "lastPhaseTransitionTime": "2026-10-17T15:02:23Z",
+                "phase": "Bound"
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}
