@@ -47,6 +47,21 @@
       "path": "docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json",
       "contentSha256": "b8c5f7acf2bde60d82f0909eb02fc2f01572e214351ea8b4d6e56043543d8c82",
       "registeredBy": "V2-S6-002-PR2"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json",
+      "contentSha256": "90b50953967dc5795cb17921b9ff03f57fd6883ca830621d0db0710250496ce9",
+      "registeredBy": "V2-S6-004-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json",
+      "contentSha256": "7dcb3bb311aa678b61aeae93c9027c9b3668e2eaae96b945f84f8e251c640fdf",
+      "registeredBy": "V2-S6-004-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json",
+      "contentSha256": "f8543f90c9627024246db5dc318529e88d2292122b2b3a2161cac5532ee46ac2",
+      "registeredBy": "V2-S6-004-PR1"
     }
   ]
 }

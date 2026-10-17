@@ -529,6 +529,7 @@ def test_the_document_counts_the_decisions_the_register_holds() -> None:
         18: "eighteen",
         19: "nineteen",
         20: "twenty",
+        21: "twenty-one",
     }
     total = len(DECISION_OWNERS)
     retrospective = sum(

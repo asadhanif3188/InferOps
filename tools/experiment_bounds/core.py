@@ -59,11 +59,20 @@ CALLER_RECORD_PATTERN: Final = re.compile(
 )
 
 #: The freeze records that may govern a source record. Revision 1 of Q2 governed
-#: no characterization, so it is not listed.
+#: no characterization, so it is not listed. Revision 2 of Q2 and revision 1 of
+#: Q3 hold a characterization to q1-1 and to the exact environment identity;
+#: revision 3 of Q2 and revision 2 of Q3 hold it to q1-2 and to the stable
+#: environment identity. A record of one lineage never states the environment
+#: digest and the qualification record of the other, so the comparison of the two
+#: sources refuses a pair of two lineages.
 STARTUP_FREEZE_RECORDS: Final = (
     "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json",
+    "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json",
 )
-CALLER_FREEZE_RECORDS: Final = ("docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json",)
+CALLER_FREEZE_RECORDS: Final = (
+    "docs/proof/experiments/v2-q3/freeze-r1.v1alpha1.json",
+    "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json",
+)
 
 #: Where committed bound records are found.
 BOUNDS_PATTERN: Final = "docs/proof/experiments/v2-q4/bounds-r*.v1alpha1.json"

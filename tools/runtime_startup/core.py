@@ -3,8 +3,9 @@
 Q2 measures how long a serving runtime pod of the qualified release takes from
 its creation to its first Ready condition, when the Deployment controller
 replaces it in a controlled restart. It runs three restarts, one at a time, in
-the environment that the Q1 qualification ``q1-1`` selected. Every replacement
-pod is one observation. ``S`` is the maximum of the observations. The result is
+the environment that a Q1 qualification selected: ``q1-1`` under revision 2 of
+the freeze record, and ``q1-2`` under revision 3. Every replacement pod is one
+observation. ``S`` is the maximum of the observations. The result is
 ``CHARACTERIZED``, ``INCONCLUSIVE``, or ``REFUSED``.
 
 A frozen driver prepares the release with the phase ``up`` of the Q1 driver,
@@ -26,7 +27,7 @@ answered. The completion is not a part of the measured interval.
 **A precondition that is not held refuses.** The phase ``up`` completed, the
 working tree was clean, the frozen inputs are at their pins, the delivery paths
 equal the desired revision, and the environment, the release, and the images are
-the ones that ``q1-1`` states. When one of these is not held, the result is
+the ones that the qualification states. When one of these is not held, the result is
 ``REFUSED``, and the driver requests no restart. When each is held and a rule of
 the measurement is not held, the result is ``INCONCLUSIVE``. A record states
 ``S`` only when the result is ``CHARACTERIZED``.
@@ -50,9 +51,10 @@ import hashlib
 import json
 import re
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Final
 
 from tools.environment_qualification.core import (
@@ -60,7 +62,7 @@ from tools.environment_qualification.core import (
     Source,
     Sources,
     environment_digest,
-    environment_identity,
+    identity_of,
 )
 
 REPO_ROOT: Final = Path(__file__).resolve().parents[2]
@@ -80,22 +82,36 @@ CHARACTERIZATION: Final = "Q2"
 #: The experiment identifier of the freeze record.
 EXPERIMENT_ID: Final = "v2-q2-runtime-startup-characterization"
 
-#: The freeze record that governs the driver and this module. Revision 2
-#: supersedes revision 1, under which no characterization ran: revision 1 held the
-#: API image to the digest that q1-1 states, and a build of unchanged inputs
-#: reports another digest.
-FREEZE_RECORD: Final = "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
+#: Revision 2 of the Q2 freeze record. It supersedes revision 1, under which no
+#: characterization ran: revision 1 held the API image to the digest that q1-1
+#: states, and a build of unchanged inputs reports another digest. Revision 2
+#: holds Q2 to q1-1 and to the exact environment identity. It governed q2-1.
+FREEZE_RECORD_R2: Final = "docs/proof/experiments/v2-q2/freeze-r2.v1alpha1.json"
 
-#: The freeze record of Q1, whose phase up prepares the release.
+#: The freeze record that governs the driver and this module. Revision 3
+#: supersedes revision 2: it holds Q2 to the qualification q1-2, decided under
+#: revision 2 of the Q1 freeze record, and to the stable environment identity,
+#: which holds no memory figure. See ADR-0021.
+FREEZE_RECORD: Final = "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json"
+
+#: Every revision of the Q2 freeze record that a header may name. A record is
+#: built again under the revision that its header names, with the qualification
+#: and the rules of that revision, so a later revision leaves the records of
+#: earlier revisions as they were. Revision 1 governed no characterization.
+FREEZE_RECORDS: Final = (FREEZE_RECORD_R2, FREEZE_RECORD)
+
+#: The freeze record of Q1 whose phase up prepares the release, for revision 3.
 QUALIFICATION_FREEZE_RECORD: Final = (
-    "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+    "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json"
 )
 
-#: The qualification that selected the environment, and its committed record.
-#: Q2 holds the environment, the release, and the images to that record.
-QUALIFICATION_ID: Final = "q1-1"
+#: The qualification that selects the environment for revision 3, and where its
+#: record is committed. Q2 holds the environment, the release, and the images to
+#: that record. The record does not exist when revision 3 is registered, so the
+#: freeze record does not pin it: each characterization states its content digest.
+QUALIFICATION_ID: Final = "q1-2"
 QUALIFICATION_RECORD: Final = (
-    "docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json"
+    "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json"
 )
 
 #: The schema name of a Q1 record.
@@ -104,7 +120,8 @@ QUALIFICATION_SCHEMA: Final = "inferops.io/environment-qualification/v1alpha1"
 #: Where committed characterization directories are found.
 RUNS_PATTERN: Final = "docs/proof/experiments/v2-q2/runs/*"
 
-#: The target of Q2: the release that q1-1 qualified. No option changes it.
+#: The target of Q2: the release that the qualification qualified. No option
+#: changes it.
 TARGET_RELEASE_KEY: Final = "local-docker-desktop/support-assistant"
 TARGET_API_REPLICAS: Final = 2
 TARGET_RUNTIME_REPLICAS: Final = 2
@@ -211,9 +228,10 @@ class Rule:
     statement: str
 
 
-#: Every rule, in the order a record states them. Each one is one acceptance
-#: criterion of the freeze record, with the same statement.
-RULES: Final[tuple[Rule, ...]] = (
+#: Every rule of revision 2, in the order a record states them. Each one is one
+#: acceptance criterion of revision 2 of the freeze record, with the same
+#: statement.
+RULES_R2: Final[tuple[Rule, ...]] = (
     Rule(
         "preparation-completed",
         "Q2-AC1",
@@ -346,6 +364,89 @@ RULES: Final[tuple[Rule, ...]] = (
         "request and before the characterization finished.",
     ),
 )
+
+
+def _restated(
+    rules: tuple[Rule, ...], statements: Mapping[str, str]
+) -> tuple[Rule, ...]:
+    """The rules, with the statement of each rule that ``statements`` names."""
+    unknown = set(statements) - {rule.rule_id for rule in rules}
+    if unknown:
+        raise ValueError(f"no such rule: {sorted(unknown)}")
+    return tuple(
+        replace(rule, statement=statements.get(rule.rule_id, rule.statement))
+        for rule in rules
+    )
+
+
+#: Every rule of revision 3, the current one, in the order a record states them.
+#: Each one is one acceptance criterion of revision 3 of the freeze record, with
+#: the same statement. Three statements name q1-2, and the environment rule
+#: compares the stable environment identity.
+RULES: Final[tuple[Rule, ...]] = _restated(
+    RULES_R2,
+    {
+        "environment-qualified": (
+            "The qualification q1-2 is QUALIFIED under revision 2 of the Q1 freeze "
+            "record, the capacity gate accepted the target release key with 2 API "
+            "replicas and 2 runtime replicas before the release was applied, and "
+            "the stable environment identity of that capacity record has the digest "
+            "that q1-2 states."
+        ),
+        "release-qualified": (
+            "The provenance record resolves the target release key at the desired "
+            "revision to the release identifier that q1-2 states, the API Deployment "
+            "runs the API image digest that the phase up declared, and the runtime "
+            "Deployment runs the runtime image that q1-2 states."
+        ),
+        "model-verified": (
+            "In the reading after the restart, the verify-model init container of "
+            "each replacement terminated with exit code 0, and its runtime container "
+            "runs the runtime image that q1-2 states."
+        ),
+    },
+)
+
+
+@dataclass(frozen=True)
+class Lineage:
+    """What one revision of the Q2 freeze record holds a characterization to."""
+
+    freeze_record: str
+    qualification_freeze_record: str
+    qualification_id: str
+    qualification_record: str
+    rules: tuple[Rule, ...]
+
+
+#: Each revision of the Q2 freeze record that a header may name.
+LINEAGES: Final[Mapping[str, Lineage]] = MappingProxyType(
+    {
+        FREEZE_RECORD_R2: Lineage(
+            FREEZE_RECORD_R2,
+            "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json",
+            "q1-1",
+            "docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json",
+            RULES_R2,
+        ),
+        FREEZE_RECORD: Lineage(
+            FREEZE_RECORD,
+            QUALIFICATION_FREEZE_RECORD,
+            QUALIFICATION_ID,
+            QUALIFICATION_RECORD,
+            RULES,
+        ),
+    }
+)
+
+
+def lineage_of(header: Mapping[str, Any]) -> Lineage:
+    """The lineage of the revision that a header names, or of the current one."""
+    named = header.get("freezeRecord")
+    if isinstance(named, str) and named in LINEAGES:
+        return LINEAGES[named]
+    return LINEAGES[FREEZE_RECORD]
+
 
 #: The rules whose failure refuses: they decide whether the characterization may
 #: run in the qualified environment. The driver requests no restart unless each
@@ -625,6 +726,7 @@ class Characterization:
     provenance: Source
     deployments: Source
     qualification: Source
+    lineage: Lineage
     restarts: tuple[Restart, ...]
     others: tuple[str, ...]
     root: Path
@@ -664,12 +766,16 @@ def read_characterization(directory: Path, root: Path = REPO_ROOT) -> Characteri
         if restarts_dir.is_dir()
         else []
     )
+    lineage = lineage_of(header)
     return Characterization(
         header=header,
         capacity=_json_source(directory, CAPACITY_RECORD, CAPACITY_SCHEMA),
         provenance=_json_source(directory, PROVENANCE_FILE),
         deployments=_json_source(directory, DEPLOYMENTS_FILE),
-        qualification=_json_source(root, QUALIFICATION_RECORD, QUALIFICATION_SCHEMA),
+        qualification=_json_source(
+            root, lineage.qualification_record, QUALIFICATION_SCHEMA
+        ),
+        lineage=lineage,
         restarts=tuple(_read_restart(directory, name) for name in RESTARTS),
         others=tuple(name for name in names if name not in RESTARTS),
         root=root,
@@ -683,7 +789,11 @@ def read_characterization(directory: Path, root: Path = REPO_ROOT) -> Characteri
 
 
 def _environment(sources: Characterization) -> dict[str, Any] | None:
-    """The environment identity of the capacity record, as Q1 computes it."""
+    """The environment identity of the capacity record, as Q1 computes it.
+
+    It is the identity that the records of the Q1 freeze revision of the lineage
+    state: exact for q1-1, stable for q1-2.
+    """
     absent = Source("", problem=ABSENT)
     qualification = Sources(
         header={},
@@ -699,15 +809,18 @@ def _environment(sources: Characterization) -> dict[str, Any] | None:
         root=sources.root,
         directory=sources.directory,
     )
-    return environment_identity(qualification)
+    return identity_of(sources.lineage.qualification_freeze_record)(qualification)
 
 
 def _qualified(sources: Characterization) -> Mapping[str, Any]:
-    """The identities that the record of q1-1 states, or nothing."""
+    """The identities that the record of the qualification states, or nothing."""
     record = _mapping(sources.qualification.value)
     if record.get("result") != "QUALIFIED":
         return {}
-    if _dig(record, "collection", "qualificationId") != QUALIFICATION_ID:
+    if (
+        _dig(record, "collection", "qualificationId")
+        != sources.lineage.qualification_id
+    ):
         return {}
     return record
 
@@ -914,8 +1027,9 @@ def identities(sources: Characterization) -> dict[str, Any]:
     """The immutable identities of the characterization. Unread ones are null."""
     header = sources.header
     environment = _environment(sources)
-    freeze = _read_bytes(sources.root, FREEZE_RECORD)
-    qualification = _read_bytes(sources.root, QUALIFICATION_RECORD)
+    lineage = sources.lineage
+    freeze = _read_bytes(sources.root, lineage.freeze_record)
+    qualification = _read_bytes(sources.root, lineage.qualification_record)
     return {
         "executingCommit": header["executingCommit"],
         "desiredRevision": header["desiredRevision"],
@@ -933,14 +1047,14 @@ def identities(sources: Characterization) -> dict[str, Any]:
         if environment is None
         else environment_digest(environment),
         "qualification": {
-            "qualificationId": QUALIFICATION_ID,
-            "path": QUALIFICATION_RECORD,
+            "qualificationId": lineage.qualification_id,
+            "path": lineage.qualification_record,
             "contentSha256": None
             if qualification is None
             else lf_digest(qualification),
         },
         "freezeRecord": {
-            "path": FREEZE_RECORD,
+            "path": lineage.freeze_record,
             "contentSha256": None if freeze is None else lf_digest(freeze),
         },
     }
@@ -983,9 +1097,9 @@ def _working_tree_clean(sources: Characterization) -> Outcome:
 
 def _procedure_frozen(sources: Characterization) -> Outcome:
     header = sources.header
-    if header["freezeRecord"] != FREEZE_RECORD:
+    if header["freezeRecord"] not in FREEZE_RECORDS:
         return NOT_HELD, f"the driver names {header['freezeRecord']}"
-    data = _read_bytes(sources.root, FREEZE_RECORD)
+    data = _read_bytes(sources.root, header["freezeRecord"])
     if data is None:
         return NOT_OBSERVED, "the checkout holds no Q2 freeze record"
     if header["freezeRecordSha256"] != lf_digest(data):
@@ -1013,11 +1127,20 @@ def _desired_revision_known(sources: Characterization) -> Outcome:
 
 
 def _environment_qualified(sources: Characterization) -> Outcome:
+    lineage = sources.lineage
     if not sources.qualification.read:
         return _missing(sources.qualification)
     qualified = _qualified(sources)
     if not qualified:
-        return NOT_HELD, f"the record of {QUALIFICATION_ID} is not QUALIFIED"
+        return NOT_HELD, f"the record of {lineage.qualification_id} is not QUALIFIED"
+    if _dig(qualified, "collection", "freezeRecord") != (
+        lineage.qualification_freeze_record
+    ):
+        return (
+            NOT_HELD,
+            f"the record of {lineage.qualification_id} is not of "
+            f"{lineage.qualification_freeze_record}",
+        )
     if not sources.capacity.read:
         return _missing(sources.capacity)
     record = sources.capacity.value
@@ -1040,15 +1163,19 @@ def _environment_qualified(sources: Characterization) -> Outcome:
     if digest != qualified.get("environmentSha256"):
         return (
             NOT_HELD,
-            f"the environment {digest} is not the one {QUALIFICATION_ID} states",
+            f"the environment {digest} is not the one "
+            f"{lineage.qualification_id} states",
         )
-    return HELD, f"the environment {digest} of {QUALIFICATION_ID}"
+    return HELD, f"the environment {digest} of {lineage.qualification_id}"
 
 
 def _release_qualified(sources: Characterization) -> Outcome:
     qualified = _qualified(sources)
     if not qualified:
-        return NOT_OBSERVED, f"no QUALIFIED record of {QUALIFICATION_ID} was read"
+        return (
+            NOT_OBSERVED,
+            f"no QUALIFIED record of {sources.lineage.qualification_id} was read",
+        )
     if not sources.provenance.read:
         return _missing(sources.provenance)
     record = _provenance_record(sources)
@@ -1066,11 +1193,14 @@ def _release_qualified(sources: Characterization) -> Outcome:
         return NOT_HELD, f"the release key is not {TARGET_RELEASE_KEY}"
     release_id = _release_id(sources)
     if release_id is None or release_id != _dig(qualified, "identities", "releaseId"):
-        return NOT_HELD, f"the release is not the one {QUALIFICATION_ID} states"
+        return (
+            NOT_HELD,
+            f"the release is not the one {sources.lineage.qualification_id} states",
+        )
     # The API image is held to the digest that the phase up declared, and not
-    # to the one of q1-1: a build of the same inputs reports another digest. The
-    # inputs of the build are pinned by the Q1 record, which procedure-frozen
-    # holds unchanged.
+    # to the one of the qualification: a build of the same inputs reports another
+    # digest. The inputs of the build are pinned by the Q1 record, which
+    # procedure-frozen holds unchanged.
     digest = header["apiImageDigest"]
     if digest is None:
         return NOT_OBSERVED, "the phase up declared no API image digest"
@@ -1092,9 +1222,12 @@ def _release_qualified(sources: Characterization) -> Outcome:
     if _container_image(runtime[0], RUNTIME_CONTAINER) != [runtime_image]:
         return (
             NOT_HELD,
-            f"the runtime container runs another image than {QUALIFICATION_ID}",
+            f"the runtime container runs another image than {sources.lineage.qualification_id}",
         )
-    return HELD, f"release {release_id} with the images of {QUALIFICATION_ID}"
+    return (
+        HELD,
+        f"release {release_id} with the images of {sources.lineage.qualification_id}",
+    )
 
 
 def _topology_ready(sources: Characterization) -> Outcome:
@@ -1369,7 +1502,10 @@ def _ready_held(sources: Characterization) -> Outcome:
 def _model_verified(sources: Characterization) -> Outcome:
     image = _qualified_value(sources, "identities", "runtimeImage", "reference")
     if not _text(image, _IMAGE):
-        return NOT_OBSERVED, f"no runtime image of {QUALIFICATION_ID} was read"
+        return (
+            NOT_OBSERVED,
+            f"no runtime image of {sources.lineage.qualification_id} was read",
+        )
     digest = str(image).rsplit("@", 1)[1]
     for restart in sources.restarts:
         found = replacements(restart)
@@ -1408,7 +1544,7 @@ def _model_verified(sources: Characterization) -> Outcome:
                 )
     return (
         HELD,
-        f"each replacement verified the model and runs the image of {QUALIFICATION_ID}",
+        f"each replacement verified the model and runs the image of {sources.lineage.qualification_id}",
     )
 
 
@@ -1505,9 +1641,9 @@ _EVALUATORS: Final[dict[str, Callable[[Characterization], Outcome]]] = {
 def evaluate(
     sources: Characterization, rule_ids: Sequence[str] | None = None
 ) -> list[dict[str, str]]:
-    """The state of each rule, in the order of :data:`RULES`."""
+    """The state of each rule of the lineage, in the order of its rules."""
     findings = []
-    for rule in RULES:
+    for rule in sources.lineage.rules:
         if rule_ids is not None and rule.rule_id not in rule_ids:
             continue
         state, detail = _EVALUATORS[rule.rule_id](sources)
@@ -1627,7 +1763,8 @@ def preconditions(directory: Path, root: Path = REPO_ROOT) -> list[dict[str, str
     """The state of each precondition rule of a directory.
 
     The driver asks this before it requests a restart. It reads the header, the
-    capacity record, the provenance, the Deployments, and the record of q1-1.
+    capacity record, the provenance, the Deployments, and the record of the
+    qualification.
     """
     return evaluate(read_characterization(directory, root), PRECONDITION_RULES)
 

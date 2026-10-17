@@ -10,6 +10,23 @@ from `1.0.0`.
 
 ### Added
 
+- **The environment identity states the configuration, and memory is a capacity fact.**
+  `V2-S6-004-PR1` adds [ADR 0021](docs/architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md),
+  decided after `q3-1` was refused on a memory figure that changed at each observed start
+  of the engine's virtual machine. The stable environment identity, `identityRevision` 2,
+  is the provider, the server version, each node with its kubelet version and the CPU and
+  the pods that it allocates, and the CPU count of the engine. It holds no memory figure.
+  The capacity gate still decides memory for each reading, and a reading it refuses
+  refuses the run, whatever its identity. No tolerance, rounding, or mask is applied.
+  Three freeze revisions are registered before any run under them: Q1 revision 2 (the
+  stable identity; the seventeen criteria unchanged), Q2 revision 3, and Q3 revision 2
+  (each held to the next qualification, `q1-2`; the rule of G and the four Q4 formulas
+  unchanged). The Q1, Q2, and Q3 tools build each record under the revision that its
+  header names, so `q1-1`, `q2-1`, and `q3-1` are built again unchanged, and `q3-1` stays
+  `REFUSED`. The Q4 tool accepts the two new revisions and still refuses a pair of sources
+  of two lineages. See [the validation record](docs/proof/environment/v2-s6-004-pr1-validation.md).
+  Evidence level C0 for the decision and the tools. No qualification or characterization
+  ran, no G and no Q4 bound record exist, and `V2-S6-003` stays blocked.
 - **The first Q3 stable caller characterization ran, and it is `REFUSED` on the
   environment.** `V2-S6-002-PR2` ran the frozen driver under Q3 revision 1, at the commit
   `0307f7f`, on the docker-desktop provider: the phase `up` (exit 0, Application

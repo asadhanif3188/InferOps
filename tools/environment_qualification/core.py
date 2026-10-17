@@ -44,6 +44,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Final
 
 from tools.reliability_runner.core import RunnerError, read_record
@@ -63,8 +64,27 @@ QUALIFICATION: Final = "Q1"
 #: The experiment identifier that the driver gives the caller runner.
 EXPERIMENT_ID: Final = "v2-q1-environment-qualification"
 
-#: The freeze record that governs the driver and this module.
-FREEZE_RECORD: Final = "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+#: Revision 1 of the Q1 freeze record. Its records state the exact environment
+#: identity, which holds the memory figures of the node and of the container
+#: engine. It decided q1-1.
+FREEZE_RECORD_R1: Final = "docs/proof/experiments/v2-q1/freeze-r1.v1alpha1.json"
+
+#: The freeze record that governs the driver and this module. Revision 2
+#: supersedes revision 1: its records state the stable environment identity,
+#: which holds no memory figure. Memory is a capacity fact, and the capacity gate
+#: decides it for each reading. See ADR-0021.
+FREEZE_RECORD: Final = "docs/proof/experiments/v2-q1/freeze-r2.v1alpha1.json"
+
+#: Every revision of the Q1 freeze record that a header may name. A record is
+#: built again under the revision that its header names, with the identity of
+#: that revision, so a later revision leaves the records of earlier revisions as
+#: they were.
+FREEZE_RECORDS: Final = (FREEZE_RECORD_R1, FREEZE_RECORD)
+
+#: The member that names the revision of a stable environment identity, and its
+#: value. An exact environment identity, of revision 1, holds no such member.
+IDENTITY_REVISION_MEMBER: Final = "identityRevision"
+STABLE_IDENTITY_REVISION: Final = 2
 
 #: Where committed qualification directories are found.
 RUNS_PATTERN: Final = "docs/proof/experiments/v2-q1/runs/*"
@@ -371,8 +391,9 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
 )
 
-#: What no record establishes. Part of every record.
-DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
+#: What no record of revision 1 establishes. Part of every such record, as it was
+#: when q1-1 was decided.
+DOES_NOT_ESTABLISH_R1: Final[tuple[str, ...]] = (
     "A record does not establish behaviour under a fault, the replacement of a "
     "pod, or a recovery from either.",
     "A record does not establish a runtime start time, a caller gap, or any "
@@ -383,6 +404,38 @@ DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
     "A record does not establish that a later run uses the same environment. A "
     "later run must state its own environment identity. No tool compares two "
     "identities yet.",
+    "A record does not establish that a source record is what its collection "
+    "gives. The module reads the stored source records and does not build them "
+    "again. It checks the caller record with the runner's reader.",
+    "A record does not establish capacity beyond the stated requests and limits "
+    "on one node, or that a pod is scheduled in another state of the cluster.",
+    "A record does not establish production availability, high availability, a "
+    "service level, or resilience to the loss of a node, a zone, or a region.",
+    "A record does not establish anything about another provider, another node, "
+    "another Kubernetes version, or another release.",
+    "A record does not establish a representative workload. RP-1 is a fixed "
+    "reliability profile.",
+)
+
+#: What no record of the current revision establishes. Part of every such record.
+DOES_NOT_ESTABLISH: Final[tuple[str, ...]] = (
+    "A record does not establish behaviour under a fault, the replacement of a "
+    "pod, or a recovery from either.",
+    "A record does not establish a runtime start time, a caller gap, or any "
+    "bound that later work derives.",
+    "A record does not establish a latency, a throughput, a success rate, or the "
+    "reliability of the caller path. One completed request shows that the path "
+    "answered once.",
+    "A record does not establish that a later run uses the same environment. A "
+    "later run states its own environment identity, and the tool of that run "
+    "compares it with the one this record states.",
+    "A record does not establish the memory of a later environment of the same "
+    "identity. The stable environment identity holds no memory figure. Each "
+    "reading of an environment is held to the capacity gate, which decides "
+    "whether the declared limits fit.",
+    "A record does not establish that memory above the declared limits has no "
+    "effect on a later measurement, or why the container engine and the node "
+    "report other memory figures after each start of the virtual machine.",
     "A record does not establish that a source record is what its collection "
     "gives. The module reads the stored source records and does not build them "
     "again. It checks the caller record with the runner's reader.",
@@ -646,11 +699,14 @@ def _pins(
     """The pinned model and runtime image reference, read from the copies.
 
     Each copy must have the content that the freeze record of the checkout pins
-    for its file. The first member is the outcome of a copy that is absent or of
-    other content, and None when both copies are usable.
+    for its file: the revision that the header names. The first member is the
+    outcome of a copy that is absent or of other content, and None when both
+    copies are usable.
     """
     try:
-        record = json.loads((sources.root / FREEZE_RECORD).read_text(encoding="utf-8"))
+        record = json.loads(
+            (sources.root / _freeze_record(sources)).read_text(encoding="utf-8")
+        )
         pinned = {
             item["path"]: item["sha256"] for item in _sequence(record["pinnedInputs"])
         }
@@ -704,12 +760,49 @@ def _pins(
 
 
 def environment_identity(sources: Sources) -> dict[str, Any] | None:
-    """The environment that a record qualifies, read from the capacity record.
+    """The exact environment identity, revision 1, read from the capacity record.
 
     It is the provider, the server version, each node with its kubelet version
-    and what it allocates, and the container engine. It holds no address, no
-    context name, and no path. Nothing is stated when one part is not readable.
+    and what it allocates, and the container engine, with the memory figures of
+    the node and of the engine to the byte. It holds no address, no context name,
+    and no path. Nothing is stated when one part is not readable. The records of
+    revision 1 of the Q1 freeze record state it, and q1-1 is one of them.
     """
+    return _identity(
+        sources,
+        engine_members=("cpus", "memoryBytes"),
+        allocatable_members=("cpuMillis", "memoryBytes", "pods"),
+    )
+
+
+def stable_environment_identity(sources: Sources) -> dict[str, Any] | None:
+    """The stable environment identity, revision 2, read from the capacity record.
+
+    It is the provider, the server version, each node with its kubelet version
+    and the CPU and the pods that it allocates, and the CPU count of the container
+    engine: facts of the configuration of the environment, which a start of the
+    virtual machine does not change. It holds no memory figure. Memory is a
+    capacity fact: each reading states it, and the capacity gate decides for each
+    reading whether the declared limits fit. It holds no address, no context name,
+    and no path. Nothing is stated when one part is not readable.
+    """
+    identity = _identity(
+        sources,
+        engine_members=("cpus",),
+        allocatable_members=("cpuMillis", "pods"),
+    )
+    if identity is None:
+        return None
+    return {**identity, IDENTITY_REVISION_MEMBER: STABLE_IDENTITY_REVISION}
+
+
+def _identity(
+    sources: Sources,
+    *,
+    engine_members: tuple[str, ...],
+    allocatable_members: tuple[str, ...],
+) -> dict[str, Any] | None:
+    """The parts of an environment identity that name the given figures."""
     if not sources.capacity.read:
         return None
     record = sources.capacity.value
@@ -719,18 +812,13 @@ def environment_identity(sources: Sources) -> dict[str, Any] | None:
     engine = _mapping(environment.get("containerEngine"))
     if not _text(provider, _CATEGORY) or not _text(version, _VERSION):
         return None
-    engine_figures = {
-        name: _count(engine.get(name)) for name in ("cpus", "memoryBytes")
-    }
+    engine_figures = {name: _count(engine.get(name)) for name in engine_members}
     if None in engine_figures.values():
         return None
     nodes = []
     for node in _sequence(_dig(record, "nodes")):
         allocatable = _mapping(_dig(node, "allocatable"))
-        figures = {
-            name: _count(allocatable.get(name))
-            for name in ("cpuMillis", "memoryBytes", "pods")
-        }
+        figures = {name: _count(allocatable.get(name)) for name in allocatable_members}
         name = _dig(node, "name")
         kubelet = _dig(node, "kubeletVersion")
         if (
@@ -751,9 +839,55 @@ def environment_identity(sources: Sources) -> dict[str, Any] | None:
 
 
 def environment_digest(environment: Mapping[str, Any]) -> str:
-    """The SHA-256 of the canonical JSON text of an environment identity."""
+    """The SHA-256 of the canonical JSON text of an environment identity.
+
+    A stable identity holds the member ``identityRevision`` and an exact identity
+    holds the two memory figures, so no identity of one revision has the digest
+    of an identity of the other.
+    """
     text = json.dumps(environment, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
+class Revision:
+    """What one revision of the Q1 freeze record decides that another does not."""
+
+    freeze_record: str
+    identity: Callable[[Sources], dict[str, Any] | None]
+    does_not_establish: tuple[str, ...]
+
+
+#: Each revision of the Q1 freeze record that a header may name.
+REVISIONS: Final[Mapping[str, Revision]] = MappingProxyType(
+    {
+        FREEZE_RECORD_R1: Revision(
+            FREEZE_RECORD_R1, environment_identity, DOES_NOT_ESTABLISH_R1
+        ),
+        FREEZE_RECORD: Revision(
+            FREEZE_RECORD, stable_environment_identity, DOES_NOT_ESTABLISH
+        ),
+    }
+)
+
+
+def identity_of(freeze_record: str) -> Callable[[Sources], dict[str, Any] | None]:
+    """The environment identity that the records of a Q1 freeze revision state.
+
+    Raises:
+        KeyError: ``freeze_record`` is not a revision of the Q1 freeze record.
+    """
+    return REVISIONS[freeze_record].identity
+
+
+def _freeze_record(sources: Sources) -> str:
+    """The revision that the header names, or the current one when it names none."""
+    named = sources.header.get("freezeRecord")
+    return named if isinstance(named, str) and named in REVISIONS else FREEZE_RECORD
+
+
+def _revision(sources: Sources) -> Revision:
+    return REVISIONS[_freeze_record(sources)]
 
 
 def _bounded(value: object, pattern: re.Pattern[str]) -> object:
@@ -915,7 +1049,7 @@ def _context_unambiguous(sources: Sources) -> Outcome:
     ]
     if len(nodes) != 1:
         return NOT_HELD, f"the capacity record holds {len(nodes)} nodes, not 1"
-    if environment_identity(sources) is None:
+    if _revision(sources).identity(sources) is None:
         return NOT_HELD, "the capacity record states no readable environment identity"
     if not sources.model_cache.read:
         return _missing(sources.model_cache)
@@ -941,7 +1075,7 @@ def _working_tree_clean(sources: Sources) -> Outcome:
 
 def _procedure_frozen(sources: Sources) -> Outcome:
     header = sources.header
-    if header["freezeRecord"] != FREEZE_RECORD:
+    if header["freezeRecord"] not in FREEZE_RECORDS:
         return (
             NOT_HELD,
             f"the driver names {header['freezeRecord']}, not {FREEZE_RECORD}",
@@ -951,7 +1085,7 @@ def _procedure_frozen(sources: Sources) -> Outcome:
     if header["freezeChanges"] == "unread" or header["freezeRecordSha256"] is None:
         return NOT_OBSERVED, "the freeze check or the record digest was not read"
     try:
-        held = lf_digest((sources.root / FREEZE_RECORD).read_bytes())
+        held = lf_digest((sources.root / header["freezeRecord"]).read_bytes())
     except OSError:
         return NOT_OBSERVED, "the checkout holds no freeze record to compare"
     if held != header["freezeRecordSha256"]:
@@ -1362,7 +1496,8 @@ def build_record(directory: Path, root: Path = REPO_ROOT) -> dict[str, Any]:
         for category in CATEGORIES
         if any(item["category"] == category for item in refused)
     ]
-    environment = environment_identity(sources)
+    revision = _revision(sources)
+    environment = revision.identity(sources)
     return {
         "schema": RECORD_SCHEMA,
         "qualification": QUALIFICATION,
@@ -1385,7 +1520,7 @@ def build_record(directory: Path, root: Path = REPO_ROOT) -> dict[str, Any]:
         else environment_digest(environment),
         "files": _files(directory),
         "findings": findings,
-        "doesNotEstablish": list(DOES_NOT_ESTABLISH),
+        "doesNotEstablish": list(revision.does_not_establish),
     }
 
 
@@ -1428,12 +1563,16 @@ __all__ = [
     "COLLECTION_SCHEMA",
     "DEPLOYMENTS_FILE",
     "DOES_NOT_ESTABLISH",
+    "DOES_NOT_ESTABLISH_R1",
     "ENDPOINTS_RECORD",
     "EXPECTED_CONTEXT",
     "EXPERIMENT_ID",
     "FREEZE_RECORD",
+    "FREEZE_RECORDS",
+    "FREEZE_RECORD_R1",
     "HEADER_FILE",
     "HELD",
+    "IDENTITY_REVISION_MEMBER",
     "MINIMUM_RECONCILIATION_SAMPLES",
     "MODEL_CACHE_RECORD",
     "MODEL_CACHE_RULES",
@@ -1453,6 +1592,7 @@ __all__ = [
     "REFUSED_EXIT",
     "REPO_ROOT",
     "RESULT_STATES",
+    "REVISIONS",
     "RULES",
     "RULE_STATES",
     "RUNS_PATTERN",
@@ -1460,11 +1600,13 @@ __all__ = [
     "RUNTIME_PACKAGE_FILE",
     "SELECTED_PROVIDER",
     "SOURCE_FILES",
+    "STABLE_IDENTITY_REVISION",
     "TARGET_API_REPLICAS",
     "TARGET_RELEASE_KEY",
     "TARGET_RUNTIME_REPLICAS",
     "UP_REFUSALS",
     "CollectionRefused",
+    "Revision",
     "Rule",
     "Source",
     "Sources",
@@ -1475,9 +1617,11 @@ __all__ = [
     "environment_identity",
     "evaluate",
     "identities",
+    "identity_of",
     "lf_digest",
     "read_header",
     "read_sources",
     "record_text",
     "result_of",
+    "stable_environment_identity",
 ]

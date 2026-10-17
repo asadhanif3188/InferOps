@@ -163,7 +163,7 @@ Three decisions shape it:
 
 The design boundary, the request and deployment flows, the trust boundaries, and
 what is not defended at each are in
-[the system architecture](docs/architecture/system-architecture.md). The twenty
+[the system architecture](docs/architecture/system-architecture.md). The twenty-one
 decision records are indexed in [the architecture index](docs/architecture/README.md).
 One component of the design is still unbuilt end to end: since `V2-S2-001-PR1` the Helm
 values renderer derives release values from a validated contract, and since
@@ -296,8 +296,8 @@ identities, with the controller reconciled, both runtime replicas on the pinned 
 the caller runner completing real requests. The result is `QUALIFIED` or `REFUSED`. A
 refusal is kept, and no option weakens the target. Since `V2-S6-001-PR2` one qualification
 has run: [`q1-1`](docs/proof/experiments/v2-q1/runs/q1-1/result.md) is `QUALIFIED`, at
-C2, on the docker-desktop provider with one node, and its environment identity is the
-one environment that E02A and E02B must share. It qualifies that one environment and no
+C2, on the docker-desktop provider with one node, and until `V2-S6-004-PR1` its
+environment identity was the one environment that E02A and E02B must share. It qualifies that one environment and no
 other, and it is not a result of any reliability experiment. (Until then this
 paragraph said that no qualification had run.) Since `V2-S6-002-PR1` the
 [Q2 runtime startup characterization](docs/environment/runtime-startup-characterization.md)
@@ -316,7 +316,13 @@ the experiment bounds from S and G. The bounds are experiment bounds, not produc
 SLOs, and no claim cites them. One characterization has run:
 [`q3-1`](docs/proof/experiments/v2-q3/runs/q3-1/result.md) is `REFUSED`, because the
 engine's virtual machine had booted again and its memory figure no longer matched the
-environment of `q1-1`. No G and no bound has been stated.
+environment of `q1-1`. No G and no bound has been stated. Since `V2-S6-004-PR1`,
+[ADR 0021](docs/architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md)
+decides that the environment identity states the configuration and that memory is a
+capacity fact, which the capacity gate decides for each reading. New freeze revisions hold
+the next qualification, `q1-2`, and the next Q2 and Q3 characterizations to that stable
+identity. Nothing has run under them, `q1-1`, `q2-1`, and `q3-1` are unchanged, and no G
+and no bound exists.
 
 ## Prerequisites
 
@@ -603,7 +609,7 @@ intention reads as a capability:
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
 | Workload domain model | [docs/domain/workload-domain-model.md](docs/domain/workload-domain-model.md) | Typed domain objects, parsing, contract-version handling, and the seven-rule semantic validation pipeline implemented; the schema's profile conditions are not among its rules, and only the renderer input boundary applies them |
 | Workload template | [docs/scaffolding/workload-template.md](docs/scaffolding/workload-template.md) | Template, rendering library, and non-overwriting scaffolding command implemented and verified for mock and synchronous profiles; no generated workload is committed |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Twenty decisions: twelve accepted in part, six accepted, one accepted with a recorded exception, and one accepted and later amended. Every one names an accountable decision owner |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Twenty-one decisions: twelve accepted in part, seven accepted, one accepted with a recorded exception, and one accepted and later amended. Every one names an accountable decision owner |
 | V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; the platform domain, both adapters, the API, the chart, and the Terraform prerequisite layer are built and have been executed on `docker-desktop`; deployment rendering is not |
 | Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked. Terraform and Helm both exist and have been applied and installed on `docker-desktop`; twenty rows moved from `planned` to `implemented` and each cites the run that moved it |
 | Project boundaries | [docs/architecture/project-boundaries.md](docs/architecture/project-boundaries.md) | Accepted scope rule; two serving capabilities and no gateway or deep-serving work |
