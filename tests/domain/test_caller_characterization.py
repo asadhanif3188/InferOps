@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import copy
 import io
+import itertools
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -1368,9 +1370,9 @@ def test_the_committed_characterization_q3_1_is_refused_on_the_environment() -> 
     """V2-S6-002-PR2 ran q3-1 once under revision 1. Its record is what its
     directory gives. Only environment-qualified refused it: the memory of the engine
     and the node differed from q1-1 after the virtual machine booted again. No caller
-    ran, so the record states no caller and no G, and no bound record exists."""
+    ran, so the record states no caller and no G, and no bound record names it."""
     directory = ROOT / "docs/proof/experiments/v2-q3/runs/q3-1"
-    assert q3.committed_runs() == [directory]
+    assert directory in q3.committed_runs()
     record = json.loads((directory / q3.RECORD_FILE).read_text(encoding="utf-8"))
     assert record["result"] == q3.REFUSED
     states = {item["ruleId"]: item["state"] for item in record["findings"]}
@@ -1398,7 +1400,53 @@ def test_the_committed_characterization_q3_1_is_refused_on_the_environment() -> 
     for name in ("watch.jsonl", "caller-run.json", "caller.jsonl", "plan.json"):
         assert not (directory / name).exists(), name
     assert not (directory / "capacity/pods.json").exists()
-    assert q4.committed_records() == []
+    for path in q4.committed_records():
+        bound = json.loads(path.read_text(encoding="utf-8"))
+        assert bound["inputs"]["G"]["characterizationId"] != "q3-1"
+
+
+def test_the_committed_characterization_q3_2_states_g_under_revision_2() -> None:
+    """V2-S6-004-PR2 ran q3-2 once under revision 2, after q1-2 was QUALIFIED and
+    q2-2 was CHARACTERIZED. Its record is what its directory gives, each rule is
+    held, and G is the nearest-rank p99 of its gaps, recomputed here from the
+    committed caller record. It is bound to q1-2 and to the stable identity."""
+    runs = ROOT / "docs/proof/experiments/v2-q3/runs"
+    directory = runs / "q3-2"
+    assert q3.committed_runs() == [runs / "q3-1", directory]
+    record = json.loads((directory / q3.RECORD_FILE).read_text(encoding="utf-8"))
+    assert record["result"] == q3.CHARACTERIZED
+    assert {item["state"] for item in record["findings"]} == {q3.HELD}
+    assert record["collection"]["freezeRecord"] == q3.FREEZE_RECORD
+    assert record["identities"]["qualification"]["qualificationId"] == "q1-2"
+    assert record["identities"]["environmentSha256"] == (
+        "sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c"
+    )
+    assert record["caller"]["outcomes"]["success"] == record["caller"]["requests"]
+    assert record["caller"]["requests"] == 153
+    finished = sorted(
+        datetime.fromisoformat(line["finishedAt"].replace("Z", "+00:00"))
+        for line in map(
+            json.loads,
+            (directory / "caller.jsonl").read_text(encoding="utf-8").splitlines(),
+        )
+        if line.get("outcome") == "success"
+    )
+    gaps = sorted(
+        round((later - earlier).total_seconds() * 1000)
+        for earlier, later in itertools.pairwise(finished)
+    )
+    assert len(gaps) == 152
+    assert gaps[math.ceil(0.99 * len(gaps)) - 1] == 10_113
+    assert record["bound"] == {
+        **record["bound"],
+        "rule": "p99",
+        "percentileMeaningful": True,
+        "successes": 153,
+        "gaps": 152,
+        "valueMs": 10_113,
+    }
+    assert not (directory / "capacity/pods.json").exists()
+    assert q3.check_committed() == []
 
 
 # --------------------------------------------------------------------------
@@ -1427,7 +1475,9 @@ def test_the_lineages_name_q1_1_for_revision_1_and_q1_2_for_revision_2() -> None
     )
     assert r1.rules == q3.RULES_R1
     assert r2.rules == q3.RULES
-    assert not (ROOT / r2.qualification_record).exists()
+    # Since V2-S6-004-PR2 the record of q1-2 is committed. The revision does not pin
+    # it; each characterization states its digest.
+    assert (ROOT / r2.qualification_record).is_file()
 
 
 @pytest.mark.parametrize("memory", [10_429_960_192, 10_429_972_480, 10_429_956_096])

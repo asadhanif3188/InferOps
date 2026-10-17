@@ -65,9 +65,18 @@ characterization](#the-q3-stable-caller-characterization-and-the-q4-bounds), eac
 committed before any run under it. [ADR 0021](../../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md) decides that the environment
 identity states the configuration and that memory is a capacity fact. The three revisions
 hold the next qualification, `q1-2`, and the next Q2 and Q3 characterizations to the
-stable identity, and still hold each run to the capacity gate on its own reading. No run
-exists under any of them. `q1-1`, `q2-1`, and `q3-1` are built again unchanged under the
-revisions they name.
+stable identity, and still hold each run to the capacity gate on its own reading.
+`q1-1`, `q2-1`, and `q3-1` are built again unchanged under the revisions they name.
+**Three runs and one bound record added by `V2-S6-004-PR2`**, and no freeze record: one
+run under each of those revisions, once each and in order. [`q1-2`](v2-q1/runs/q1-2/result.md)
+is `QUALIFIED`, in the stable environment
+`sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`;
+[`q2-2`](v2-q2/runs/q2-2/result.md) is `CHARACTERIZED` with S = 11,000 ms; and
+[`q3-2`](v2-q3/runs/q3-2/result.md) is `CHARACTERIZED` with G = 10,113 ms. The Q4 tool
+built [`v2-q4/bounds-r1.v1alpha1.json`](v2-q4/bounds-r1.v1alpha1.json) from `q2-2` and
+`q3-2` ([see below](#the-committed-bound-record)). These are qualifications and
+experiment bounds, not results of a reliability experiment. (Until `V2-S6-004-PR2` this
+paragraph said that no run existed under any of the three revisions.)
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -81,11 +90,11 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | Sprint 5 integration validation, `s5-integration-validation` | 2 | [`v2-s5-integration/freeze-r2.v1alpha1.json`](v2-s5-integration/freeze-r2.v1alpha1.json) | One part, S5I, at C2 | Frozen. A run brings its own network policy. One attempt ran under it, [`integration-2`](v2-s5-integration/runs/integration-2/result.md), and PASSED under its criteria. Since `V2-S6-001-PR2`, three pinned inputs differ from their pins: the three files of `tools/experiment_evidence`, which that change edited after both attempts so that the layout check lists a Q1 qualification. A later attempt needs a revision that classifies them |
 | Q2 runtime startup characterization, `v2-q2-runtime-startup-characterization` | 1 | [`v2-q2/freeze-r1.v1alpha1.json`](v2-q2/freeze-r1.v1alpha1.json) | One part, Q2, at C2 | Superseded by revision 2 before any characterization, and kept unchanged: its precondition on the API image digest could not hold. No characterization ran under it |
 | Q2 runtime startup characterization, `v2-q2-runtime-startup-characterization` | 2 | [`v2-q2/freeze-r2.v1alpha1.json`](v2-q2/freeze-r2.v1alpha1.json) | One part, Q2, at C2 | Frozen before any characterization. One characterization ran under it, [`q2-1`](v2-q2/runs/q2-1/result.md), `CHARACTERIZED`, S = 11,000 ms. Not result-bearing: [see below](#the-q2-runtime-startup-characterization). Superseded by revision 3 on 2026-10-17, and kept unchanged. Six pinned inputs differ from its pins, which revision 3 classifies |
-| Q2 runtime startup characterization, `v2-q2-runtime-startup-characterization` | 3 | [`v2-q2/freeze-r3.v1alpha1.json`](v2-q2/freeze-r3.v1alpha1.json) | One part, Q2, at C2 | Frozen before any characterization. It holds a characterization to `q1-2` and to the stable environment identity. No characterization ran under it |
+| Q2 runtime startup characterization, `v2-q2-runtime-startup-characterization` | 3 | [`v2-q2/freeze-r3.v1alpha1.json`](v2-q2/freeze-r3.v1alpha1.json) | One part, Q2, at C2 | Frozen before any characterization. It holds a characterization to `q1-2` and to the stable environment identity. Since `V2-S6-004-PR2`, one characterization ran under it, [`q2-2`](v2-q2/runs/q2-2/result.md), `CHARACTERIZED`, S = 11,000 ms. (Until `V2-S6-004-PR2` this cell said that no characterization ran under it.) |
 | Q3 stable caller characterization, `v2-q3-stable-caller-characterization` | 1 | [`v2-q3/freeze-r1.v1alpha1.json`](v2-q3/freeze-r1.v1alpha1.json) | One part, Q3, at C2 | Frozen before any characterization. It fixes the rule of G and the four Q4 formulas. Not result-bearing: [see below](#the-q3-stable-caller-characterization-and-the-q4-bounds). One characterization ran under it, [`q3-1`](v2-q3/runs/q3-1/result.md), `REFUSED` on the environment; no caller ran, no G, no bound record. Superseded by revision 2 on 2026-10-17, and kept unchanged. Nine pinned inputs differ from its pins, which revision 2 classifies |
-| Q3 stable caller characterization, `v2-q3-stable-caller-characterization` | 2 | [`v2-q3/freeze-r2.v1alpha1.json`](v2-q3/freeze-r2.v1alpha1.json) | One part, Q3, at C2 | Frozen before any characterization. It holds a characterization to `q1-2` and to the stable environment identity, and keeps the rule of G and the four Q4 formulas. No characterization ran under it, and no bound record exists |
+| Q3 stable caller characterization, `v2-q3-stable-caller-characterization` | 2 | [`v2-q3/freeze-r2.v1alpha1.json`](v2-q3/freeze-r2.v1alpha1.json) | One part, Q3, at C2 | Frozen before any characterization. It holds a characterization to `q1-2` and to the stable environment identity, and keeps the rule of G and the four Q4 formulas. Since `V2-S6-004-PR2`, one characterization ran under it, [`q3-2`](v2-q3/runs/q3-2/result.md), `CHARACTERIZED`, G = 10,113 ms, and the bound record [`v2-q4/bounds-r1.v1alpha1.json`](v2-q4/bounds-r1.v1alpha1.json) exists. (Until `V2-S6-004-PR2` this cell said that no characterization ran under it and that no bound record exists.) |
 | Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). Since `V2-S6-001-PR2`, one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and it is `QUALIFIED`. (Until then this row said that no qualification ran under it.) Superseded by revision 2 on 2026-10-17, and kept unchanged. Three pinned inputs differ from its pins, which revision 2 classifies. (Until then this row said that no pinned input differs from its pin.) |
-| Q1 environment and identity qualification, `v2-q1-environment-qualification` | 2 | [`v2-q1/freeze-r2.v1alpha1.json`](v2-q1/freeze-r2.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification under it. Its records state the stable environment identity, which holds no memory figure. The seventeen criteria are those of revision 1. No qualification ran under it; the next identifier is `q1-2` |
+| Q1 environment and identity qualification, `v2-q1-environment-qualification` | 2 | [`v2-q1/freeze-r2.v1alpha1.json`](v2-q1/freeze-r2.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification under it. Its records state the stable environment identity, which holds no memory figure. The seventeen criteria are those of revision 1. Since `V2-S6-004-PR2`, one qualification ran under it, [`q1-2`](v2-q1/runs/q1-2/result.md), and it is `QUALIFIED`; the next identifier is `q1-3`. (Until `V2-S6-004-PR2` this cell said that no qualification ran under it and that the next identifier is `q1-2`.) |
 
 ## Why a freeze comes first
 
@@ -996,7 +1005,8 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
   tool compares two identities; the Q2 and Q3 tools compare them.)
 - **It has its own directory.** The freeze check holds one experiment in each directory.
   A qualification is committed under `v2-q1/runs/q1-N/` with its record, whatever it shows.
-- **One qualification has run, and it is `QUALIFIED`.** The record was registered by
+- **The first qualification is `QUALIFIED`.** (Until `V2-S6-004-PR2` this item began "One
+  qualification has run".) The record was registered by
   `V2-S6-001-PR1`. Under it, `V2-S6-001-PR2` ran [`q1-1`](v2-q1/runs/q1-1/result.md) on
   2026-10-15, at the commit `08b8914`, on the docker-desktop provider with one node, and
   each of the 17 criteria held. Its environment identity,
@@ -1006,6 +1016,11 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
   (Until `V2-S6-001-PR2` this item said that no qualification had run.) Since
   `V2-S6-004-PR1` it selects no environment: the selection passes to `q1-2` under
   revision 2, and only if `q1-2` is `QUALIFIED`.
+- **Since `V2-S6-004-PR2`, `q1-2` is `QUALIFIED` under revision 2.** It ran once, on
+  2026-10-17, at the commit `ed892a4`, and each of the 17 criteria held. Its stable
+  environment identity, `sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`,
+  is the selected environment of E02A and E02B. Its capacity reading stated 10,429,972,480
+  bytes of memory, and the gate accepted it. It is evidence at C2 of that one environment.
 - **The layout check lists a qualification and does not hold it to a manifest.** A
   qualification has no ExperimentRun manifest. Since `V2-S6-001-PR2`,
   `python -m tools.experiment_evidence repository` lists each directory of
@@ -1061,7 +1076,8 @@ each rule.
 - **Revision 1 could not be satisfied.** Revision 1 held the API Deployment to the API image manifest-list digest that the record of `q1-1` states. The phase `up` of the Q1 driver builds the API image again, and its build at the first commit of `V2-S6-002-PR1` reported another digest, `sha256:cf30eac7cc2a75f9a91dac62c8c09a6080de5b2725d2b37262c15bafe924120d`, than `q1-1` states, `sha256:5b4be2da31141bc43c0fa65133b4377ef002a3ff922278cda98ba247a244c7e1`, while the freeze tool listed no changed input of the Q1 record. So that precondition could not hold. No characterization ran under revision 1. Revision 2 holds the API Deployment to the digest that the phase `up` declared, as Q1 does, and changes no other rule, bound, or step.
 - **It has its own directory.** A characterization is committed under `v2-q2/runs/q2-N/`
   with its record, whatever it shows, and the layout check lists it as a qualification.
-- **One characterization has run, and it is `CHARACTERIZED`.** Under revision 2,
+- **The first characterization is `CHARACTERIZED`.** (Until `V2-S6-004-PR2` this item
+  began "One characterization has run".) Under revision 2,
   `V2-S6-002-PR1` ran [`q2-1`](v2-q2/runs/q2-1/result.md) on 2026-10-15, at the commit
   `65bd9bb`, on the docker-desktop provider with one node, in the environment of `q1-1`.
   Each of the 16 rules held. The six intervals were 10,000 ms once and 11,000 ms five
@@ -1074,7 +1090,10 @@ each rule.
   must still accept that reading. Three statements change, and no restart, measurement,
   or bound. The tool builds each record under the revision, the qualification, and the
   rules that its header names, so `q2-1` is built again unchanged. That closes the gap
-  that the Q2 page stated. No characterization ran under revision 3.
+  that the Q2 page stated. Since `V2-S6-004-PR2`, one characterization ran under revision
+  3, [`q2-2`](v2-q2/runs/q2-2/result.md), on 2026-10-17, at the commit `28d2534`: each of
+  the 16 rules held, the six intervals were each 11,000 ms, and S = 11,000 ms. (Until
+  `V2-S6-004-PR2` this item said that no characterization ran under revision 3.)
 
 ## The Q3 stable caller characterization and the Q4 bounds
 
@@ -1113,7 +1132,8 @@ describes each rule.
   page states for Q2.
 - **It has its own directory.** A characterization is committed under `v2-q3/runs/q3-N/`
   with its record, whatever it shows, and the layout check lists it as a qualification.
-- **One characterization has run, and it is `REFUSED`.** `V2-S6-002-PR2` ran
+- **The first characterization is `REFUSED`.** (Until `V2-S6-004-PR2` this item began
+  "One characterization has run".) `V2-S6-002-PR2` ran
   [`q3-1`](v2-q3/runs/q3-1/result.md) on 2026-10-16, at the commit `0307f7f`, on the
   docker-desktop provider. The phase `up` and the six other preconditions held, but the
   environment identity of the capacity reading had the digest
@@ -1132,4 +1152,27 @@ describes each rule.
   revision 2. It still requires the two sources to state the same provider, environment
   digest, release identifier, and qualification record, so `q2-1` is not combined with a
   characterization of `q1-2`. `q3-1` is built again under revision 1 and stays
-  `REFUSED`. No characterization ran under revision 2, and no bound record exists.
+  `REFUSED`. Since `V2-S6-004-PR2`, one characterization ran under revision 2,
+  [`q3-2`](v2-q3/runs/q3-2/result.md), on 2026-10-17, at the commit `0dbea91`: each of the
+  14 rules held, 153 of 153 requests succeeded in 362,958 ms, and G = 10,113 ms by the p99
+  rule over 152 gaps. (Until `V2-S6-004-PR2` this item said that no characterization ran
+  under revision 2 and that no bound record exists.)
+
+### The committed bound record
+
+Since `V2-S6-004-PR2`, [`v2-q4/bounds-r1.v1alpha1.json`](v2-q4/bounds-r1.v1alpha1.json) is
+the one committed bound record. `tools/experiment_bounds` built it from `q2-2` and `q3-2`,
+which state the same provider, environment, release, and qualification record, `q1-2`, and
+`--check` builds it again with the same bytes.
+
+| Bound | Formula | Value |
+|---|---|---|
+| `runtime_start_bound_ms` | `S` | 11,000 ms |
+| `caller_gap_reference_ms` | `G` | 10,113 ms |
+| `reversal_recovery_bound_ms` | `(2 * S) + 30000` | 52,000 ms |
+| `caller_total_unavailability_bound_ms` | `max(2 * G, 5000)` | 20,226 ms |
+
+These are experiment bounds of one environment. They are not service levels,
+availability targets, production thresholds, or a benchmark, and no claim cites them. A
+later freeze record of a reliability experiment cites them by the path and the digest of
+the record, SHA-256 `542b05dd9627b25330a4602071d99276218776cf1f78a5c34ac764fbb3188116`.

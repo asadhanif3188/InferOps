@@ -1,10 +1,14 @@
 # Q3: the stable caller characterization, and the Q4 bounds
 
-Status: **the Q3 workflow and the Q4 formulas are frozen. One characterization has run,
-[`q3-1`](../proof/experiments/v2-q3/runs/q3-1/result.md), and it is `REFUSED`: on
+Status: **the Q3 workflow and the Q4 formulas are frozen. Two characterizations have run.
+The first, [`q3-1`](../proof/experiments/v2-q3/runs/q3-1/result.md), is `REFUSED`: on
 2026-10-16, at the commit `0307f7f`, its capacity reading was not of the environment of
-`q1-1`, so the driver started no caller. No G has been measured, and no bound record
-exists.** The engine's virtual machine had booted again since `q2-1`, and the memory that
+`q1-1`, so the driver started no caller and it measured no G. The second,
+[`q3-2`](../proof/experiments/v2-q3/runs/q3-2/result.md), of the `q1-2` lineage, is
+`CHARACTERIZED` with G = 10,113 ms, and one bound record exists
+([below](#the-committed-bound-record)).** (Until `V2-S6-004-PR2` this paragraph said
+that one characterization had run, that no G had been measured, and that no bound record
+existed.) For `q3-1`, the engine's virtual machine had booted again since `q2-1`, and the memory that
 it reports differed from `q1-1` by 12,288 bytes; [the run page](../proof/experiments/v2-q3/runs/q3-1/result.md)
 states the reads. The synthetic directories of the suite show each refusal at C0.
 
@@ -13,7 +17,8 @@ Merging `V2-S6-002-PR2` keeps `q3-1` as a valid `REFUSED` attempt. It does not c
 open, and `V2-S6-003` is blocked until Sprint 6 change control decides the environment
 identity and a matching chain of Q1, Q2, Q3, and Q4 exists. [The validation
 record](../proof/environment/v2-s6-002-pr2-validation.md#merge-disposition) states the
-disposition.
+disposition. (Since `V2-S6-004-PR2`, the chain of `q1-2`, `q2-2`, `q3-2`, and
+`bounds-r1` exists; the next paragraphs state it.)
 
 **Since `V2-S6-004-PR1`, the environment identity is decided, and revision 2 holds the
 next characterization to `q1-2`.** [ADR 0021](../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md) decides that the identity states
@@ -21,15 +26,27 @@ the configuration and that memory is a capacity fact. [Revision 2](../proof/expe
 holds a characterization to the qualification `q1-2` of revision 2 of the Q1 freeze
 record, compares the stable identity of its capacity reading with the one `q1-2` states,
 and still requires the capacity gate to have accepted that reading. The rule of G and the
-four formulas of Q4 are unchanged. No characterization has run under it, `q1-2` has not
-run, G and the Q4 bounds are still absent, and `V2-S6-003` stays blocked. `q3-1` stays a
-`REFUSED` record of revision 1.
+four formulas of Q4 are unchanged. `q3-1` stays a `REFUSED` record of revision 1.
+
+**Since `V2-S6-004-PR2`, characterization [`q3-2`](../proof/experiments/v2-q3/runs/q3-2/result.md)
+is `CHARACTERIZED` under revision 2, and the first Q4 bound record exists.** On
+2026-10-17, at the commit `0dbea91`, after [`q1-2`](../proof/experiments/v2-q1/runs/q1-2/result.md)
+was `QUALIFIED` and [`q2-2`](../proof/experiments/v2-q2/runs/q2-2/result.md) was
+`CHARACTERIZED`, each of the 14 rules held: one RP-1 run of 362,958 ms completed 153 of
+153 requests, the same 4 pods stayed Ready, and **G = 10,113 ms** by the p99 rule over 152
+gaps. `tools/experiment_bounds` built
+[`bounds-r1.v1alpha1.json`](../proof/experiments/v2-q4/bounds-r1.v1alpha1.json) from `q2-2`
+and `q3-2` ([below](#the-committed-bound-record)), at C2 for the two sources and with the
+boundary that the record states. (Until `V2-S6-004-PR2` this paragraph said that no
+characterization had run under revision 2, that `q1-2` had not run, that G and the Q4
+bounds were absent, and that `V2-S6-003` stayed blocked.)
 
 Before a V2 reliability experiment runs, Q3 measures what the caller sees when the
 topology of the release is healthy and no fault is injected. It runs the [RP-1 caller runner](../serving/reliability-runner.md)
-once, for 360 s, against the API Service of the release that [the Q1 qualification
-`q1-1`](environment-qualification.md) qualified, in the environment that `q1-1`
-selected. It records the successful requests, the latency distribution, the gaps
+once, for 360 s, against the API Service of the release that the [Q1
+qualification](environment-qualification.md) of its revision's lineage qualified, in the
+environment that it states: `q1-1` for revision 1, and `q1-2` for revision 2. (Until
+`V2-S6-004-PR2` this sentence named only `q1-1`.) It records the successful requests, the latency distribution, the gaps
 between successive successes, and the canonical errors. **G is the p99 of those gaps.**
 When fewer than 100 requests succeeded, G is the maximum gap. The result is
 `CHARACTERIZED`, `INCONCLUSIVE`, or `REFUSED`.
@@ -52,7 +69,7 @@ cites it. **The Q4 bounds are experiment bounds, not production SLOs.**
 | Target | Under revision 2, the release that `q1-2` qualifies, in the stable environment identity that `q1-2` states: key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop`. Under revision 1, the release that `q1-1` qualified, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461` |
 | Caller | RP-1, revision 1: two closed-loop workers inside the cluster, one fixed request, to the API Service. Duration 360 s, request ceiling 2000 |
 | Runs | One: [`q3-1`](../proof/experiments/v2-q3/runs/q3-1/result.md), `REFUSED` on `environment-qualified`, no caller started. A characterization is committed under `docs/proof/experiments/v2-q3/runs/q3-N/` |
-| Bound records | None: no Q3 record is `CHARACTERIZED`. A bound record is committed as `docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json` |
+| Bound records | One: [`bounds-r1.v1alpha1.json`](../proof/experiments/v2-q4/bounds-r1.v1alpha1.json), from `q2-2` and `q3-2`. A bound record is committed as `docs/proof/experiments/v2-q4/bounds-rN.v1alpha1.json` |
 | Validation records | [`v2-s6-002-pr2-validation.md`](../proof/environment/v2-s6-002-pr2-validation.md); [`v2-s6-004-pr1-validation.md`](../proof/environment/v2-s6-004-pr1-validation.md), revision 2 |
 
 ## Healthy is a state of the topology
@@ -141,6 +158,39 @@ record that one names, fails the check.
 the maximum gap, as the freeze record of Q3 states, and the bound record
 states `percentileMeaningful: false` beside G. The Q4 tool does not refuse such a G. It
 states it, and a reader of the bound record sees it.
+
+## The committed bound record
+
+Since `V2-S6-004-PR2`, one bound record is committed:
+[`bounds-r1.v1alpha1.json`](../proof/experiments/v2-q4/bounds-r1.v1alpha1.json), SHA-256
+`542b05dd9627b25330a4602071d99276218776cf1f78a5c34ac764fbb3188116`. The tool built it
+from the two records below, and `python -m tools.experiment_bounds --check` builds it
+again with the same bytes.
+
+| Bound | Formula | Value |
+|---|---|---|
+| `runtime_start_bound_ms` | `S` | 11,000 ms |
+| `caller_gap_reference_ms` | `G` | 10,113 ms |
+| `reversal_recovery_bound_ms` | `(2 * S) + 30000` | 52,000 ms |
+| `caller_total_unavailability_bound_ms` | `max(2 * G, 5000)` | 20,226 ms |
+
+| Source | Record and its content SHA-256 | Freeze record and its content SHA-256 |
+|---|---|---|
+| S, `q2-2` | `docs/proof/experiments/v2-q2/runs/q2-2/record.v1alpha1.json`, `db0bd1579cdb93e0e8ede69e5c441006b54ed7ae7f7eee8d1f3c43ad34444531` | `v2-q2/freeze-r3.v1alpha1.json`, `421628933641f8b7c064913c7af0b82d5f8663582e3dd1155a4ac2d8a6dc19af` |
+| G, `q3-2` | `docs/proof/experiments/v2-q3/runs/q3-2/record.v1alpha1.json`, `0a978396b5d7f15a4a6b507dda288d16dff5d937828cde2e2782a73d504ca99a` | `v2-q3/freeze-r2.v1alpha1.json`, `f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff` |
+
+Both sources state the provider docker-desktop, the environment
+`sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`, the release
+`b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db`, and the qualification
+`q1-2` with the record digest `1141cbd1c0acd7eff839395a89eba3fe116a060dafb3941128bf23c440ec1b3d`.
+G rests on the percentile: 153 successes, `percentileMeaningful: true`. A test recomputes
+each value from the formulas written out, and the tool refuses `q2-1` with `q3-2` with
+`bounds-environment-differs`, because `q2-1` is of the `q1-1` lineage.
+
+The four values are experiment bounds of one environment, derived from one Q2 and one Q3
+characterization on one node. They are not service levels, availability targets, or
+production thresholds, they are not a benchmark, and they raise no claim. A later freeze
+record of a reliability experiment cites them by the path and the digest of this record.
 
 ## A refusal is a result
 

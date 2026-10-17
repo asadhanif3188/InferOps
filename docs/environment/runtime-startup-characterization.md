@@ -1,6 +1,7 @@
 # Q2: the runtime startup characterization
 
-Status: **the Q2 workflow is frozen, and one characterization has run. Since
+Status: **the Q2 workflow is frozen, and two characterizations have run (one until
+`V2-S6-004-PR2`; the second is below). Since
 `V2-S6-002-PR1`, characterization [`q2-1`](../proof/experiments/v2-q2/runs/q2-1/result.md) is `CHARACTERIZED`, at C2: on 2026-10-15, at the
 commit `65bd9bb`, under freeze revision 2, each of the 16 rules held on the docker-desktop
 provider with one node, in the environment of `q1-1`. S = 11,000 ms.** Its six intervals
@@ -13,15 +14,25 @@ stable environment identity.** [ADR 0021](../architecture/decisions/ADR-0021-env
 configuration and that memory is a capacity fact. [Revision 3](../proof/experiments/v2-q2/freeze-r3.v1alpha1.json)
 holds a characterization to the qualification `q1-2` of revision 2 of the Q1 freeze
 record, compares the stable identity of its capacity reading with the one `q1-2` states,
-and still requires the capacity gate to have accepted that reading. No characterization
-has run under it, and `q1-2` has not run. `q2-1` stays a record of revision 2, bound to
-`q1-1` and its exact identity, and it is not a source that can be combined with a
-characterization of `q1-2`.
+and still requires the capacity gate to have accepted that reading. `q2-1` stays a
+record of revision 2, bound to `q1-1` and its exact identity, and it is not a source that
+can be combined with a characterization of `q1-2`.
+
+**Since `V2-S6-004-PR2`, characterization [`q2-2`](../proof/experiments/v2-q2/runs/q2-2/result.md)
+is `CHARACTERIZED` under revision 3, at C2:** on 2026-10-17, at the commit `28d2534`, after
+[`q1-2`](../proof/experiments/v2-q1/runs/q1-2/result.md) was `QUALIFIED`, each of the 16
+rules held in the stable environment identity of `q1-2`, and the six intervals were each
+11,000 ms. **S = 11,000 ms.** It is the S of the Q4 bound record
+[`bounds-r1`](../proof/experiments/v2-q4/bounds-r1.v1alpha1.json). (Until `V2-S6-004-PR2`
+this paragraph said that no characterization had run under revision 3 and that `q1-2` had
+not run.)
 
 Before a V2 reliability experiment runs, Q2 measures how long a serving runtime pod of
 the qualified release takes from its creation to its first Ready condition, when the
 Deployment controller replaces it in a controlled restart. It runs in the environment
-that [the Q1 qualification `q1-1`](environment-qualification.md) selected. Every
+of the [Q1 qualification](environment-qualification.md) of its revision's lineage: `q1-1`
+for revision 2, and `q1-2` for revision 3. (Until `V2-S6-004-PR2` this sentence named
+only `q1-1`.) Every
 replacement pod is one observation, and **S is the maximum of the observations**. The
 result is `CHARACTERIZED`, `INCONCLUSIVE`, or `REFUSED`.
 
@@ -40,8 +51,8 @@ computes them from a Q2 record and a Q3 record.)
 | Tests | [`tests/domain/test_runtime_startup.py`](../../tests/domain/test_runtime_startup.py) |
 | Target | Under revision 3, the release that `q1-2` qualifies, in the stable environment identity that `q1-2` states: key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop`. Under revision 2, the release that `q1-1` qualified, environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461` |
 | Restarts | Three for each characterization, `r1`, `r2`, and `r3`, one at a time. Each replaces the 2 runtime pods, so a characterization has 6 observations |
-| Runs | One: [`q2-1`](../proof/experiments/v2-q2/runs/q2-1/result.md), `CHARACTERIZED`, S = 11,000 ms. A characterization is committed under `docs/proof/experiments/v2-q2/runs/q2-N/` |
-| Validation records | [`v2-s6-002-pr1-validation.md`](../proof/environment/v2-s6-002-pr1-validation.md); [`v2-s6-004-pr1-validation.md`](../proof/environment/v2-s6-004-pr1-validation.md), revision 3 |
+| Runs | Two: [`q2-1`](../proof/experiments/v2-q2/runs/q2-1/result.md), `CHARACTERIZED` under revision 2 for `q1-1`, S = 11,000 ms; and [`q2-2`](../proof/experiments/v2-q2/runs/q2-2/result.md), `CHARACTERIZED` under revision 3 for `q1-2`, S = 11,000 ms. A characterization is committed under `docs/proof/experiments/v2-q2/runs/q2-N/` |
+| Validation records | [`v2-s6-002-pr1-validation.md`](../proof/environment/v2-s6-002-pr1-validation.md); [`v2-s6-004-pr1-validation.md`](../proof/environment/v2-s6-004-pr1-validation.md), revision 3; [`v2-s6-004-pr2-validation.md`](../proof/environment/v2-s6-004-pr2-validation.md), `q2-2` |
 
 ## A restart, and not a fault
 

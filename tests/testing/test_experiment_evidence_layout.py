@@ -62,11 +62,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: added later is a visible change of this tuple.
 INTEGRATION_RUNS = ("integration-1", "integration-2")
 #: The qualifications that the proof tree holds: the Q1 qualification since
-#: V2-S6-001-PR2, and the Q2 characterization since V2-S6-002-PR1.
+#: V2-S6-001-PR2, the Q2 characterization since V2-S6-002-PR1, the Q3
+#: characterization since V2-S6-002-PR2, and the next Q1, Q2, and Q3 runs of
+#: the q1-2 lineage since V2-S6-004-PR2.
 QUALIFICATION_RUNS = (
     "docs/proof/experiments/v2-q1/runs/q1-1",
+    "docs/proof/experiments/v2-q1/runs/q1-2",
     "docs/proof/experiments/v2-q2/runs/q2-1",
+    "docs/proof/experiments/v2-q2/runs/q2-2",
     "docs/proof/experiments/v2-q3/runs/q3-1",
+    "docs/proof/experiments/v2-q3/runs/q3-2",
 )
 INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 LAYOUT_DOC = REPO_ROOT / "docs" / "testing" / "experiment-evidence-layout.md"

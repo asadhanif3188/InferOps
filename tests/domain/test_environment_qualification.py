@@ -1594,16 +1594,20 @@ def test_check_compares_each_committed_record_with_its_directory(
     ]
 
 
-def test_the_one_committed_qualification_is_what_its_directory_gives() -> None:
-    """V2-S6-001-PR2 committed q1-1. Its record is built again from the directory,
-    with the two pin copies of the directory and the registered freeze record."""
-    assert [path.name for path in q1.committed_runs()] == ["q1-1"]
+def test_the_committed_qualifications_are_what_their_directories_give() -> None:
+    """V2-S6-001-PR2 committed q1-1, and V2-S6-004-PR2 committed q1-2. Each record
+    is built again from its directory, with the two pin copies of the directory and
+    the freeze record that its header names."""
+    assert [path.name for path in q1.committed_runs()] == ["q1-1", "q1-2"]
     assert q1.check_committed() == []
     assert cli.main(["--check"]) == 0
 
 
-def test_the_committed_qualification_is_qualified_with_every_rule_held() -> None:
-    (run,) = q1.committed_runs()
+@pytest.mark.parametrize("name", ["q1-1", "q1-2"])
+def test_each_committed_qualification_is_qualified_with_every_rule_held(
+    name: str,
+) -> None:
+    run = ROOT / "docs/proof/experiments/v2-q1/runs" / name
     record = json.loads((run / q1.RECORD_FILE).read_text(encoding="utf-8"))
     assert record["result"] == "QUALIFIED"
     assert record["refusal"] == {"categories": [], "rules": []}
@@ -1701,9 +1705,12 @@ def test_the_freeze_record_freezes_the_q1_target_and_holds_no_result() -> None:
     (bounds,) = fields["derivedNumericBounds"]
     assert bounds["status"] == "not-applicable"
     # The result is in a qualification directory, not in the freeze record. Since
-    # V2-S6-001-PR2 the one directory is q1-1.
+    # V2-S6-001-PR2 the directories are q1-1 and, since V2-S6-004-PR2, q1-2.
     assert "result" not in record
-    assert [path.name for path in (FREEZE.parent / "runs").iterdir()] == ["q1-1"]
+    assert sorted(path.name for path in (FREEZE.parent / "runs").iterdir()) == [
+        "q1-1",
+        "q1-2",
+    ]
 
 
 def test_revision_2_supersedes_revision_1_and_changes_no_criterion() -> None:
@@ -1745,7 +1752,7 @@ def test_revision_1_can_no_longer_govern_a_new_qualification() -> None:
 def test_the_committed_q1_1_keeps_its_exact_identity_and_digest() -> None:
     """q1-1 was decided under revision 1. It is built again under revision 1,
     with the exact identity, its memory figures, and the digest it states."""
-    (run,) = q1.committed_runs()
+    run = ROOT / "docs/proof/experiments/v2-q1/runs/q1-1"
     record = json.loads((run / q1.RECORD_FILE).read_text(encoding="utf-8"))
     assert record["collection"]["freezeRecord"] == q1.FREEZE_RECORD_R1
     assert record["environment"]["containerEngine"]["memoryBytes"] == 10_429_960_192
@@ -1758,6 +1765,65 @@ def test_the_committed_q1_1_keeps_its_exact_identity_and_digest() -> None:
     )
     assert record["doesNotEstablish"] == list(q1.DOES_NOT_ESTABLISH_R1)
     assert q1.record_text(q1.build_record(run)) == record_text_of(run)
+
+
+def test_the_committed_q1_2_states_the_stable_identity_under_revision_2() -> None:
+    """V2-S6-004-PR2 ran q1-2 once under revision 2. Its record states the stable
+    identity, which holds no memory figure, and its digest. The capacity readings
+    of q1-1 and q3-1, which differ in memory, have the same stable identity, so
+    the drift that refused q3-1 does not move this digest. The memory of q1-2's
+    own reading is a capacity fact, which its capacity record states and the gate
+    accepted."""
+    run = ROOT / "docs/proof/experiments/v2-q1/runs/q1-2"
+    record = json.loads((run / q1.RECORD_FILE).read_text(encoding="utf-8"))
+    assert record["collection"]["freezeRecord"] == q1.FREEZE_RECORD
+    assert (
+        record["collection"]["executingCommit"]
+        == (record["collection"]["desiredRevision"])
+    )
+    assert record["environment"][q1.IDENTITY_REVISION_MEMBER] == 2
+    assert "memoryBytes" not in record["environment"]["containerEngine"]
+    assert "memoryBytes" not in record["environment"]["nodes"][0]["allocatable"]
+    assert record["environmentSha256"] == (
+        "sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c"
+    )
+    assert record["doesNotEstablish"] == list(q1.DOES_NOT_ESTABLISH)
+    assert q1.record_text(q1.build_record(run)) == record_text_of(run)
+    capacity = json.loads(
+        (run / "capacity/record.v1alpha1.json").read_text(encoding="utf-8")
+    )
+    assert capacity["result"] == "ACCEPTED"
+    assert capacity["environment"]["containerEngine"]["memoryBytes"] == (10_429_972_480)
+
+    def stable_identity(directory: str) -> object:
+        reading = json.loads(
+            (ROOT / directory / "capacity/record.v1alpha1.json").read_text("utf-8")
+        )
+        absent = q1.Source("", problem="absent")
+        identity = q1.stable_environment_identity(
+            q1.Sources(
+                header={},
+                capacity=q1.Source("capacity", value=reading),
+                provenance=absent,
+                reconciliation=absent,
+                deployments=absent,
+                endpoints=absent,
+                model_cache=absent,
+                plan=absent,
+                caller_text=None,
+                caller_refused=False,
+                root=ROOT,
+                directory=ROOT / directory,
+            )
+        )
+        assert identity is not None
+        return identity
+
+    for earlier in (
+        "docs/proof/experiments/v2-q1/runs/q1-1",
+        "docs/proof/experiments/v2-q3/runs/q3-1",
+    ):
+        assert stable_identity(earlier) == record["environment"]
 
 
 def record_text_of(run: Path) -> str:

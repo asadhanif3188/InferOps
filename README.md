@@ -321,8 +321,16 @@ environment of `q1-1`. No G and no bound has been stated. Since `V2-S6-004-PR1`,
 decides that the environment identity states the configuration and that memory is a
 capacity fact, which the capacity gate decides for each reading. New freeze revisions hold
 the next qualification, `q1-2`, and the next Q2 and Q3 characterizations to that stable
-identity. Nothing has run under them, `q1-1`, `q2-1`, and `q3-1` are unchanged, and no G
-and no bound exists.
+identity, and `q1-1`, `q2-1`, and `q3-1` are unchanged. Since `V2-S6-004-PR2` that chain
+has run once, in order, at C2:
+[`q1-2`](docs/proof/experiments/v2-q1/runs/q1-2/result.md) is `QUALIFIED`,
+[`q2-2`](docs/proof/experiments/v2-q2/runs/q2-2/result.md) is `CHARACTERIZED` with
+S = 11,000 ms, [`q3-2`](docs/proof/experiments/v2-q3/runs/q3-2/result.md) is
+`CHARACTERIZED` with G = 10,113 ms, and the first bound record,
+[`bounds-r1`](docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json), states the four
+experiment bounds of that one environment. They are not production SLOs, and no claim
+cites them. (Until `V2-S6-004-PR2` this paragraph ended: "Nothing has run under them,
+`q1-1`, `q2-1`, and `q3-1` are unchanged, and no G and no bound exists.")
 
 ## Prerequisites
 
