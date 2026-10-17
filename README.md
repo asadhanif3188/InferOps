@@ -294,29 +294,30 @@ is frozen before its first run: a driver collects and a tool decides whether one
 holds the target topology of two API replicas and two runtime replicas at its exact
 identities, with the controller reconciled, both runtime replicas on the pinned model, and
 the caller runner completing real requests. The result is `QUALIFIED` or `REFUSED`. A
-refusal is kept, and no option weakens the target. Since `V2-S6-001-PR2` one qualification
-has run: [`q1-1`](docs/proof/experiments/v2-q1/runs/q1-1/result.md) is `QUALIFIED`, at
+refusal is kept, and no option weakens the target. Since `V2-S6-001-PR2` the first qualification,
+[`q1-1`](docs/proof/experiments/v2-q1/runs/q1-1/result.md), is `QUALIFIED`, at
 C2, on the docker-desktop provider with one node, and until `V2-S6-004-PR1` its
 environment identity was the one environment that E02A and E02B must share. It qualifies that one environment and no
 other, and it is not a result of any reliability experiment. (Until then this
 paragraph said that no qualification had run.) Since `V2-S6-002-PR1` the
 [Q2 runtime startup characterization](docs/environment/runtime-startup-characterization.md)
-is frozen: in the environment that `q1-1` selected, a driver restarts the runtime
+is frozen: in the environment of a Q1 qualification (`q1-1`, and since `V2-S6-004-PR2`
+`q1-2`), a driver restarts the runtime
 Deployment three times, one at a time, and a tool states S, the maximum interval from
 the creation of a replacement runtime pod to its first Ready condition. A restart is not
-a fault, S is not a startup benchmark, and no claim cites it. One characterization has
-run: [`q2-1`](docs/proof/experiments/v2-q2/runs/q2-1/result.md) is `CHARACTERIZED`, at C2,
+a fault, S is not a startup benchmark, and no claim cites it. The first characterization,
+[`q2-1`](docs/proof/experiments/v2-q2/runs/q2-1/result.md), is `CHARACTERIZED`, at C2,
 with S = 11,000 ms over six replacement runtime pods in three rollout restarts on the
 docker-desktop provider. Since `V2-S6-002-PR2` the
 [Q3 stable caller characterization](docs/environment/stable-caller-characterization.md)
-is frozen: in the same environment, a driver runs the RP-1 caller once for six minutes
+is frozen: in the environment of a Q1 qualification, a driver runs the RP-1 caller once for six minutes
 while the topology is healthy, and a tool states G, the p99 of the gaps between
 successive successful requests. The same freeze fixes the four Q4 formulas that derive
 the experiment bounds from S and G. The bounds are experiment bounds, not production
-SLOs, and no claim cites them. One characterization has run:
-[`q3-1`](docs/proof/experiments/v2-q3/runs/q3-1/result.md) is `REFUSED`, because the
+SLOs, and no claim cites them. The first characterization,
+[`q3-1`](docs/proof/experiments/v2-q3/runs/q3-1/result.md), is `REFUSED`, because the
 engine's virtual machine had booted again and its memory figure no longer matched the
-environment of `q1-1`. No G and no bound has been stated. Since `V2-S6-004-PR1`,
+environment of `q1-1`; it stated no G and no bound. Since `V2-S6-004-PR1`,
 [ADR 0021](docs/architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md)
 decides that the environment identity states the configuration and that memory is a
 capacity fact, which the capacity gate decides for each reading. New freeze revisions hold
@@ -330,7 +331,9 @@ S = 11,000 ms, [`q3-2`](docs/proof/experiments/v2-q3/runs/q3-2/result.md) is
 [`bounds-r1`](docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json), states the four
 experiment bounds of that one environment. They are not production SLOs, and no claim
 cites them. (Until `V2-S6-004-PR2` this paragraph ended: "Nothing has run under them,
-`q1-1`, `q2-1`, and `q3-1` are unchanged, and no G and no bound exists.")
+`q1-1`, `q2-1`, and `q3-1` are unchanged, and no G and no bound exists." It also said
+that one qualification and one characterization of each kind had run, that Q2 and Q3 run
+in the environment that `q1-1` selected, and that no G and no bound had been stated.)
 
 ## Prerequisites
 

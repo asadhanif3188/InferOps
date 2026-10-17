@@ -190,6 +190,44 @@ a guard that named the committed runs by path or count: the four of the Q1 suite
 the Q2 suite, two of the Q3 suite, two of the layout suite, and the Argo CD guard. Each is
 closed by an edit named above.
 
+## What the independent review found
+
+Two independent reviews read the four commits before the push: one checked every figure
+of the run pages and of this record against the committed raw files, and one checked the
+suites, the links of the chain, the boundaries of the commits, and the diff for private
+content and host paths. The reviewers are automated sessions. Neither found a number, an
+instant, or a digest that the raw files contradict, a changed tool, driver, freeze
+record, or historical run, or private content. The second commit closes what they found.
+It changes no run directory and no bound record, so every figure above stands.
+
+**What the first commit got wrong, corrected in place:**
+
+| ID | Severity | Finding | What changed |
+|---|---|---|---|
+| M1 | medium | The Q1 section of the experiments index still ended an item on revision 2 with "No qualification ran under revision 2." in the present tense, while the next item said that `q1-2` ran under it | The item says that `q1-2` ran under revision 2, with a dated note |
+| M2 | medium | The root README kept, in the same paragraph as the new chain, "One characterization has run" twice, "one qualification has run", "in the environment that `q1-1` selected", and "No G and no bound has been stated", so the paragraph said "no G" and G = 10,113 ms at once. This record said that the "`q1-1` selected" wording was corrected on the Q2 and Q3 pages and in the architecture index; the README had been missed | The paragraph names the first run of each kind as the first, names the environment of a Q1 qualification, and its closing note states what it said until this change |
+| M3 | medium | The Q2 and Q3 sections of the experiments index still said that Q2 and Q3 measure "in the environment that `q1-1` selected" | Each names the qualification of each revision: `q1-1` for Q2 revision 2 and Q3 revision 1, `q1-2` for Q2 revision 3 and Q3 revision 2 |
+| L1 | low | The row of ADR 0021 in the architecture index said "No qualification ran under it" and, in the same cell, that `q1-2` ran under it | The first sentence reads "Until `V2-S6-004-PR2` no qualification ran under it" |
+| L2 | low | The test of `q3-1` had held that no bound record exists; the first commit turned that into a loop that passes for any record not naming `q3-1`, and that is vacuous when none exists | It holds that exactly one record exists, `bounds-r1`, and that it names `q3-2` |
+| L3 | low | The test of `q1-2` asserts that its executing commit is its desired revision, which its docstring did not say | The docstring says it: no tracked edit preceded the run |
+
+The reviewers also confirmed what the first commit did right: each run commit touches only
+its own directory; the executing commits in the headers are ancestors of the branch head;
+each source and freeze digest of the bound record matches its file; G, the gaps, and the
+latency figures recompute from the caller record; the 10 `MODIFIED` watch events of
+`q3-2` differ only in the host address and the managed fields; and the new tests compute
+S, G, the bounds, and the stable identity independently of the tool's output.
+
+After these corrections the edited suites ran again: the Q1 and Q3 suites, the document
+links, the security baseline, and the test inventory, 3,014 passed. ruff and the formatter
+were clean, and `git diff --check` was clean. The full default lane did not run again;
+the corrections change only Markdown and two tests.
+
+What the reviews could not check, and this record does not claim beyond the operator's
+statement: the SHA-256 and byte counts of the `capacity/pods.json` files left out, the
+lines with `/home/` in them, that the virtual machine booted once, and the counts of the
+default lane and of the tool suites.
+
 ## What is not established
 
 - That a later boot of the virtual machine keeps the memory figure, or that a later

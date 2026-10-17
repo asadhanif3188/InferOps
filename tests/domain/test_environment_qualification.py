@@ -1773,7 +1773,8 @@ def test_the_committed_q1_2_states_the_stable_identity_under_revision_2() -> Non
     of q1-1 and q3-1, which differ in memory, have the same stable identity, so
     the drift that refused q3-1 does not move this digest. The memory of q1-2's
     own reading is a capacity fact, which its capacity record states and the gate
-    accepted."""
+    accepted. It ran with no tracked edit on the branch, so its executing commit is
+    its desired revision, the merge it ran at."""
     run = ROOT / "docs/proof/experiments/v2-q1/runs/q1-2"
     record = json.loads((run / q1.RECORD_FILE).read_text(encoding="utf-8"))
     assert record["collection"]["freezeRecord"] == q1.FREEZE_RECORD

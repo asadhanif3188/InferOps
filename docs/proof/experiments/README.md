@@ -1044,14 +1044,17 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
   each reading, and `capacity-accepted` still requires `ACCEPTED`. [Revision
   2](v2-q1/freeze-r2.v1alpha1.json) changes the identity that a record states and no
   criterion. The tool builds each record under the revision that its header names, so
-  `q1-1` keeps its exact identity and its digest. No qualification ran under revision 2.
+  `q1-1` keeps its exact identity and its digest. Since `V2-S6-004-PR2`, `q1-2` ran under
+  revision 2 (below). (Until `V2-S6-004-PR2` this item said that no qualification ran under
+  revision 2.)
 
 ## The Q2 runtime startup characterization
 
 [`v2-q2/freeze-r2.v1alpha1.json`](v2-q2/freeze-r2.v1alpha1.json) fixes Q2 before any
 characterization runs. It supersedes [revision 1](v2-q2/freeze-r1.v1alpha1.json), under
-which no characterization ran. Q2 measures, in the environment that [`q1-1`](v2-q1/runs/q1-1/result.md)
-selected, the interval from the creation of each replacement runtime pod to its first Ready
+which no characterization ran. Q2 measures, under revision 2 in the environment that
+[`q1-1`](v2-q1/runs/q1-1/result.md) selected and under revision 3 in that of
+[`q1-2`](v2-q1/runs/q1-2/result.md), the interval from the creation of each replacement runtime pod to its first Ready
 condition, when the Deployment controller replaces it in a controlled restart. It runs
 three restarts of the runtime Deployment, one at a time, so one characterization has six
 observations. S is their maximum. The procedure is
@@ -1098,8 +1101,9 @@ each rule.
 ## The Q3 stable caller characterization and the Q4 bounds
 
 [`v2-q3/freeze-r1.v1alpha1.json`](v2-q3/freeze-r1.v1alpha1.json) fixes Q3 before any
-characterization runs. Q3 measures, in the environment that [`q1-1`](v2-q1/runs/q1-1/result.md)
-selected and with the target topology healthy, what one RP-1 caller run of 360 s sees
+characterization runs. Q3 measures, under revision 1 in the environment that
+[`q1-1`](v2-q1/runs/q1-1/result.md) selected and under revision 2 in that of
+[`q1-2`](v2-q1/runs/q1-2/result.md), and with the target topology healthy, what one RP-1 caller run of 360 s sees
 through the API Service: the successful requests, the latency distribution, the gaps
 between successive successes, and the canonical errors. G is the nearest-rank p99 of the
 gaps, or the maximum gap with fewer than 100 successes. The procedure is

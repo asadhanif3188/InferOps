@@ -1400,9 +1400,10 @@ def test_the_committed_characterization_q3_1_is_refused_on_the_environment() -> 
     for name in ("watch.jsonl", "caller-run.json", "caller.jsonl", "plan.json"):
         assert not (directory / name).exists(), name
     assert not (directory / "capacity/pods.json").exists()
-    for path in q4.committed_records():
-        bound = json.loads(path.read_text(encoding="utf-8"))
-        assert bound["inputs"]["G"]["characterizationId"] != "q3-1"
+    (path,) = q4.committed_records()
+    assert path.name == "bounds-r1.v1alpha1.json"
+    bound = json.loads(path.read_text(encoding="utf-8"))
+    assert bound["inputs"]["G"]["characterizationId"] == "q3-2"
 
 
 def test_the_committed_characterization_q3_2_states_g_under_revision_2() -> None:
