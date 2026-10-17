@@ -1,0 +1,9 @@
+{
+  "schema": "inferops.io/runtime-startup-restart/v1alpha1",
+  "restart": "r2",
+  "requestedAt": "2026-10-17T15:27:04.922Z",
+  "restartExit": 0,
+  "rolloutExit": 0,
+  "rolledOutAt": "2026-10-17T15:27:28.180Z",
+  "watchStoppedAt": "2026-10-17T15:27:39.109Z"
+}
