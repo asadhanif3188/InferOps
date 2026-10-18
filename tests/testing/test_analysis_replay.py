@@ -2672,7 +2672,7 @@ def test_the_aggregate_command_reads_the_executing_revision(
     assert tmp_path.name.encode() not in captured.err
 
 
-def test_no_committed_freeze_record_registers_an_exclusion_reason() -> None:
+def test_only_the_reliability_experiment_records_register_exclusion_reasons() -> None:
     """Three committed records are of E01, and E01 has no numerical aggregate. Two
     are the Sprint 5 integration validation, which computes no aggregate. One is the
     Q1 environment qualification, added by V2-S6-001-PR1, which computes none either.
@@ -2681,15 +2681,28 @@ def test_no_committed_freeze_record_registers_an_exclusion_reason() -> None:
     stable caller characterization, added by V2-S6-002-PR2, which states one
     percentile of one run and computes no aggregate over runs. Three more are Q1
     revision 2, Q2 revision 3, and Q3 revision 2, added by V2-S6-004-PR1, which
-    change the environment identity and compute no aggregate either.
+    change the environment identity and compute no aggregate either. None of
+    these twelve registers an exclusion reason.
 
-    This change edits none of them, and the freeze check does not read the
-    member. The member is read when an aggregate reads it.
+    The five records added by V2-S6-003-PR1, of V2-E02A, V2-E02B, V2-E02C,
+    V2-E04, and V2-E05, each register the reasons of their own experiment before
+    any run, in the form that the aggregate reads. The freeze check does not read
+    the member. The member is read when an aggregate reads it.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 12
+    assert len(records) == 17
+    reliability = {"v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05"}
+    registering = []
     for record in records:
-        assert core.EXCLUSION_REASONS_MEMBER not in _read_json(record)
+        document = _read_json(record)
+        if record.parent.name in reliability:
+            policy = document[core.EXCLUSION_REASONS_MEMBER]
+            assert analysis.core._reasons_problem(policy) is None
+            assert policy["experimentId"] == document["metadata"]["experiment"]
+            registering.append(record.parent.name)
+        else:
+            assert core.EXCLUSION_REASONS_MEMBER not in document
+    assert sorted(registering) == sorted(reliability)
     example = _read_json(EXAMPLE_ROOT / FREEZE_REF)
     assert core.EXCLUSION_REASONS_MEMBER not in example
 

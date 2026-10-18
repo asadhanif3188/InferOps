@@ -10,6 +10,23 @@ from `1.0.0`.
 
 ### Added
 
+- **The reliability experiments are frozen before any run.** `V2-S6-003-PR1` registers
+  five freeze records, revision 1 each: V2-E02A, the controlled single-runtime baseline
+  (2 API, 1 runtime, delete the one runtime pod, 3 runs); V2-E02B, multi-runtime pod
+  loss (2 API, 2 runtime, delete one runtime pod, 3 runs); V2-E02C, API pod loss (3
+  runs); V2-E04, bad release and Git reversal (2 runs); and V2-E05, drift reconciliation
+  (2 runs). Each names the qualification `q1-2` and its stable environment identity,
+  and the bound record `bounds-r1` with its four values, as shared experiment-reference
+  bounds derived on the target release. Each states its procedure, measurements,
+  criteria, exclusion reasons, abort conditions, cleanup, and intended level, C2. E02A
+  and E02B differ only in the runtime topology, and E02A is delivered by the same
+  Application after a preregistered Git switch. E05's bound is 210,000 ms: Argo CD's
+  documented reconciliation defaults plus 30 s, and not a guarantee. No driver exists:
+  the change that adds one registers a revision that pins it. The new read-only
+  check `python -m tools.experiment_preregistration --check`, 12 rules, holds each record
+  to the qualification, the bound record, and the baseline comparison that it names,
+  and to the others. Nothing ran: no cluster, no fault, and no commit to `main`. See
+  [the reliability experiment freezes](docs/proof/experiments/README.md#the-reliability-experiment-freezes).
 - **The requalified chain ran once, and the first Q4 bound record is committed.**
   `V2-S6-004-PR2` ran, once each and in order, on the docker-desktop provider: the Q1
   qualification [`q1-2`](docs/proof/experiments/v2-q1/runs/q1-2/result.md) under Q1

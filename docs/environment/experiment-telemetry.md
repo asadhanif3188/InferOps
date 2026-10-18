@@ -66,11 +66,13 @@ digest that the tool gives. So a stream names the queries that were asked. A
 change to a query changes the digest, and it takes another set name: a test
 pins the digest of this name.
 
-**No frozen record of an experiment names this set.** The evidence layout
-describes the role `telemetry` as readings of the metrics that the frozen record
-registers. No experiment that reads telemetry is frozen. Until one is, the set
-is what this tool registers, and a frozen record that uses it can pin the name
-and the digest.
+**Since `V2-S6-003-PR1` the freeze records of the reliability experiments name
+this set.** The evidence layout describes the role `telemetry` as readings of the
+metrics that the frozen record registers. Each of the
+[five records](../proof/experiments/README.md#the-reliability-experiment-freezes)
+names `experiment-run-queries-r1` and pins this tool, so a change to the set moves a
+pin of each. (Until `V2-S6-003-PR1` this paragraph said that no frozen record of an
+experiment names this set.)
 
 The `telemetry` stream:
 
@@ -531,7 +533,9 @@ answer.
 - Two run directories hold the streams, those of the two attempts, and neither
   is of a result-bearing run. (Until `V2-S5-006-PR1` this item said that no run
   directory holds a stream.)
-- No frozen record of an experiment names the query set.
+- No criterion of a frozen record reads a telemetry figure. The freeze records of
+  `V2-S6-003-PR1` name the query set as a measurement. (Until then this item said that
+  no frozen record of an experiment names the query set.)
 - No query reads the resource use of the serving runtime, of a container, or of
   a node.
 - The tool does not merge a stream with a caller record, and it computes no

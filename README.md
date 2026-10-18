@@ -335,6 +335,13 @@ cites them. (Until `V2-S6-004-PR2` this paragraph ended: "Nothing has run under 
 that one qualification and one characterization of each kind had run, that Q2 and Q3 run
 in the environment that `q1-1` selected, and that no G and no bound had been stated.)
 
+Since `V2-S6-003-PR1` the five reliability experiments are
+[frozen before any run](docs/proof/experiments/README.md#the-reliability-experiment-freezes): the controlled single-runtime baseline and the
+multi-runtime runtime-pod loss, which differ only in the runtime topology, the API pod
+loss, the bad release with its Git reversal, and the drift reconciliation. Each record
+names `q1-2` and `bounds-r1`, and a read-only check holds it to them and to the others.
+No run of any of them exists, and no driver exists yet.
+
 ## Prerequisites
 
 | Path | Needs | Where it is measured |

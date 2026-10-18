@@ -54,6 +54,9 @@ When fewer than 100 requests succeeded, G is the maximum gap. The result is
 Q4 then computes four bounds from S, which [Q2](runtime-startup-characterization.md)
 states, and from G, by formulas that this freeze fixes before any Q3 characterization
 runs. A later freeze record of a reliability experiment holds its runs to those bounds.
+Since `V2-S6-003-PR1` the [freeze records of the reliability
+experiments](../proof/experiments/README.md#the-reliability-experiment-freezes) name the
+bound record `bounds-r1`, and no run of them exists.
 
 Q3 is a qualification and not a reliability experiment. It injects no fault. G is not a
 throughput figure, a capacity figure, a latency target, or a service level, and no claim

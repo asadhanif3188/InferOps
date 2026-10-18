@@ -112,8 +112,10 @@ memory, 10,429,972,480 bytes for the engine and the node, is a capacity fact of 
 reading, which the gate accepted, and each later run is held to the gate on its own
 reading. (Until `V2-S6-004-PR2` this said that until `q1-2` is `QUALIFIED` no
 environment is selected.) No run of E02A or E02B exists, so no comparison of identities
-with one has been made. This is a rule of the freeze record. No freeze record of E02A or E02B
-exists. (Until `V2-S6-004-PR1` this paragraph also said that no tool compares two
+with one has been made. This is a rule of the freeze record. Since `V2-S6-003-PR1` the
+[freeze records of E02A and E02B](../proof/experiments/README.md#the-reliability-experiment-freezes)
+name `q1-2` and its stable identity. (Until then this paragraph said that no freeze record
+of E02A or E02B exists. Until `V2-S6-004-PR1` it also said that no tool compares two
 identities; the Q2 and Q3 tools compare them.) When the local environment is
 `REFUSED`, the refusal is retained, and a separate environment decision record
 precedes any other environment.

@@ -76,6 +76,11 @@ docs/proof/experiments/v2-q1/** text eol=lf
 docs/proof/experiments/v2-q2/** text eol=lf
 docs/proof/experiments/v2-q3/** text eol=lf
 docs/proof/experiments/v2-q4/** text eol=lf
+docs/proof/experiments/v2-e02a/** text eol=lf
+docs/proof/experiments/v2-e02b/** text eol=lf
+docs/proof/experiments/v2-e02c/** text eol=lf
+docs/proof/experiments/v2-e04/** text eol=lf
+docs/proof/experiments/v2-e05/** text eol=lf
 
 # The Git desired state holds generated releases, each compared byte for byte with
 # what its declared sources derive, and each release records the SHA-256 of its

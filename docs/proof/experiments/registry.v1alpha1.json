@@ -62,6 +62,31 @@
       "path": "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json",
       "contentSha256": "f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff",
       "registeredBy": "V2-S6-004-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json",
+      "contentSha256": "adfd951101ca5a40cc41c9b196b5394f9217eb82d3befc242671885ef3a0d1fc",
+      "registeredBy": "V2-S6-003-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json",
+      "contentSha256": "27c5934bb13b55c9ea2495e664f7f06f45886b1d8eacd1abffde293b08d156e5",
+      "registeredBy": "V2-S6-003-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02c/freeze-r1.v1alpha1.json",
+      "contentSha256": "b41a9a698301d3c0d4cc1242343d534e4bf63fe200020f2c65113b981dc62352",
+      "registeredBy": "V2-S6-003-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e04/freeze-r1.v1alpha1.json",
+      "contentSha256": "0dcc3b1c0cba1ee51acc962a083d78a82c42093a75fad72e41b193dde3124e5d",
+      "registeredBy": "V2-S6-003-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e05/freeze-r1.v1alpha1.json",
+      "contentSha256": "420255fda1b95e0d6c25ce1a262a68a656f1b621d3c7204b682d3298ede47492",
+      "registeredBy": "V2-S6-003-PR1"
     }
   ]
 }

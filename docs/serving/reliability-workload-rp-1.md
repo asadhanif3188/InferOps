@@ -190,9 +190,11 @@ To accept a changed V1 file, or to change a value of RP-1:
 profile and the registered digest together passes the check. The digest makes such
 a change visible in two files, and a reviewer reads both.
 
-No experiment freeze record selects RP-1 yet. A
-[freeze record](../proof/experiments/README.md) that selects it states the revision
-in its `callerProfileRevision` field.
+A [freeze record](../proof/experiments/README.md) that selects RP-1 states the revision
+in its `callerProfileRevision` field. Since `V2-S6-003-PR1` the
+[five reliability experiment freezes](../proof/experiments/README.md#the-reliability-experiment-freezes)
+select revision 1 by its content digest. (Until then this paragraph said that no
+experiment freeze record selects RP-1.)
 
 ## The rules
 

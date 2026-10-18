@@ -668,6 +668,21 @@ pins are pinned inputs of the Q3 freeze record, so the formulas cannot change wi
 new revision. [The Q3 page](docs/environment/stable-caller-characterization.md) states
 the rules, the formulas, and what a record does not establish.
 
+**The reliability experiments are frozen records and one check that reads files.** The
+freeze records of V2-E02A, V2-E02B, V2-E02C, V2-E04, and V2-E05 state each procedure in
+full, and no driver exists. The check holds each record to the qualification, the bound
+record, and the baseline comparison that it names, and to the others:
+
+```sh
+uv run --locked python -m tools.experiment_preregistration --check
+```
+
+A driver, a bad-release revision, or a drift injector is added under a later revision of
+its record, which pins it and merges before the first result-bearing run. Never change a
+criterion, a bound, a window, or an exclusion reason after a run's evidence is read.
+[The records' description](docs/proof/experiments/README.md#the-reliability-experiment-freezes)
+states each rule and what is not enforced.
+
 **The infrastructure timelines of an experiment run are captured by a script that changes
 nothing in the cluster and a tool that reads files.** The script samples the release a
 bounded number of times and writes a collection directory under `.artifacts/`. The tool
