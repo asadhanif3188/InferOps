@@ -126,13 +126,13 @@ E05_PIN = "420255fda1b95e0d6c25ce1a262a68a656f1b621d3c7204b682d3298ede47492"
 #: Revision 2 of four of them, registered by V2-S6-007-PR1 before any run: each
 #: states one clock policy and supersedes revision 1. V2-E04 has no revision 2.
 E02A_R2 = "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json"
-E02A_R2_PIN = "5a35408b07d5671732ac8f2e6643c7c61ec6878aeb5200b4c5bd9fdbed61e3d5"
+E02A_R2_PIN = "edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562"
 E02B_R2 = "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json"
-E02B_R2_PIN = "ac470a3eb5294c6f3f4b46a99ad71c1e8bbe5f7453bf30bd27a900f344e9d211"
+E02B_R2_PIN = "be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c"
 E02C_R2 = "docs/proof/experiments/v2-e02c/freeze-r2.v1alpha1.json"
-E02C_R2_PIN = "58b75d19126cdb2b2d9602c92b8ad387c1c990de3608ccebdac098704758375b"
+E02C_R2_PIN = "abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818"
 E05_R2 = "docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json"
-E05_R2_PIN = "b1d20b3fd5a71a835db3aa09f47aed08b529239184250d73489c3228cae8eba0"
+E05_R2_PIN = "f7e1da03503a29ac49de0c6dcaa3536f8640e51d10a53adaf5972821a2d895b2"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so

@@ -18,10 +18,12 @@ from `1.0.0`.
   clock with six instant sources and their resolutions, P8 as the measurement, revision
   1's bound formula word for word, an explicit offset-stability assumption, the rules for
   an unusable start or end reading with the new reason `clock-reading-missing`, one rule
-  for a verdict that is not judged, under which a clear FAILED is never made INCONCLUSIVE,
-  and one margin for orders and bound comparisons across the two clocks. Each criterion
-  declares the clock of each instant it orders or measures; E05's reconciliation bound
-  is on the host clock alone. No criterion, bound, window, fault, or repetition rule
+  for a verdict that is not judged, under which a FAILED state that the judged verdicts
+  decide is never made INCONCLUSIVE, and one margin for orders and bound comparisons
+  across the two clocks. Each criterion declares the clock of each instant it orders or
+  measures, or is listed as a criterion without clocks; E05's reconciliation bound is
+  on the host clock alone. The policy does not govern how the analysis cuts the window
+  or searches a stabilization span, and each record says so. No criterion, bound, window, fault, or repetition rule
   changes. `tools/experiment_preregistration` gains rule sets: revision 1 is read under
   rule set 1, as registered, rule set 2 adds five clock rules, and one rule refuses a
   record that states no known rule set, 18 rules in all. It now checks each superseded

@@ -90,22 +90,22 @@
     },
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json",
-      "contentSha256": "5a35408b07d5671732ac8f2e6643c7c61ec6878aeb5200b4c5bd9fdbed61e3d5",
+      "contentSha256": "edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562",
       "registeredBy": "V2-S6-007-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json",
-      "contentSha256": "ac470a3eb5294c6f3f4b46a99ad71c1e8bbe5f7453bf30bd27a900f344e9d211",
+      "contentSha256": "be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c",
       "registeredBy": "V2-S6-007-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e02c/freeze-r2.v1alpha1.json",
-      "contentSha256": "58b75d19126cdb2b2d9602c92b8ad387c1c990de3608ccebdac098704758375b",
+      "contentSha256": "abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818",
       "registeredBy": "V2-S6-007-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json",
-      "contentSha256": "b1d20b3fd5a71a835db3aa09f47aed08b529239184250d73489c3228cae8eba0",
+      "contentSha256": "f7e1da03503a29ac49de0c6dcaa3536f8640e51d10a53adaf5972821a2d895b2",
       "registeredBy": "V2-S6-007-PR1"
     }
   ]

@@ -139,7 +139,12 @@ second keeps a resolution of one second. A value with a fraction is cut to one
 millisecond and is not rounded, so a finer fraction is lost. Each such field
 states its `resolution`: `second` or `millisecond`.
 
-**The difference between the two clocks is not measured by a stream.** Since `V2-S6-007-PR1`, revision 2 of the freeze records of V2-E02A, V2-E02B, V2-E02C, and V2-E05 bounds that difference at two readings of each run, and states when a verdict may use the bound: see [the clock policy of rule set 2](../proof/experiments/README.md#the-clock-policy-of-rule-set-2). No stream reads that bound. The header of each
+**The difference between the two clocks is not measured by a stream.**
+Since `V2-S6-007-PR1`, revision 2 of the freeze records of V2-E02A, V2-E02B, V2-E02C,
+and V2-E05 bounds that difference at two readings of each run, and states when a verdict
+may use the bound: see [the clock policy of rule set
+2](../proof/experiments/README.md#the-clock-policy-of-rule-set-2). No stream reads that
+bound. The header of each
 stream states `skew` as `not-measured`. The end line of each stream states two
 observations that the collection supports:
 

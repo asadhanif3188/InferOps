@@ -1229,6 +1229,7 @@ CHANGED_MEMBERS = {
     "definition.window.clocks",
     "definition.clockPolicy",
     "definition.criterionClocks",
+    "definition.criteriaWithoutClocks",
     "definition.outcomeRules",
     "exclusionReasons.reasons",
     "fields.experimentIdVersion",
@@ -1329,8 +1330,9 @@ def test_revision_two_differs_from_revision_one_only_in_the_listed_members() -> 
         limitations_2 = two["definition"]["limitations"]
         index = limitations_1.index(R1_LIMITATION)
         assert limitations_2[:index] == limitations_1[:index]
-        assert limitations_2[index + 1 : -1] == limitations_1[index + 1 :]
-        assert len(limitations_2) == len(limitations_1) + 1
+        assert "tools/reliability_analysis" in limitations_2[index + 1]
+        assert limitations_2[index + 2 : -1] == limitations_1[index + 1 :]
+        assert len(limitations_2) == len(limitations_1) + 2
         assert two["definition"]["history"][:-1] == one["definition"]["history"]
         steps_1 = one["definition"]["preparation"]
         steps_2 = two["definition"]["preparation"]
@@ -1430,24 +1432,8 @@ def test_revision_one_text_is_what_the_clock_rules_refuse() -> None:
                 "definition.window.clocks",
                 "it states that the clock difference is not measured",
             ),
-            (
-                "definition.window.clocks",
-                "it states an ordering threshold that does not name the clock bound",
-            ),
+            ("definition.window.clocks", FIXED_ORDER),
         ], experiment
-
-
-def test_a_negation_hides_a_claim_from_the_scan() -> None:
-    """A known limit: the scan reads words, not meaning. A sentence that claims
-    synchronization and holds a negation elsewhere is not refused."""
-    document = {
-        "definition": {"limitations": ["The clocks are synchronized, not drifting."]}
-    }
-    assert list(core._contradiction_findings("x", document)) == []
-    document = {"definition": {"limitations": ["The clocks are synchronized."]}}
-    assert [f.detail for f in core._contradiction_findings("x", document)] == [
-        "it names synchronization or a guarantee with no negation"
-    ]
 
 
 CONTRADICTION = "prereg-clock-contradiction"
@@ -1456,7 +1442,9 @@ MEASUREMENT = "prereg-clock-measurement"
 INVENTORY = "prereg-clock-inventory"
 REASONS = "prereg-clock-reasons"
 NOT_MEASURED = "it states that the clock difference is not measured"
-FIXED_ORDER = "it states an ordering threshold that does not name the clock bound"
+FIXED_ORDER = (
+    "it states an ordering threshold that does not name the margin of rule set 2"
+)
 
 
 def _limitation(document: dict[str, Any]) -> None:
@@ -1471,7 +1459,7 @@ def _window(document: dict[str, Any]) -> None:
 def test_a_limitation_that_says_the_difference_is_not_measured_is_refused(
     root: Path,
 ) -> None:
-    """(a) The limitation of revision 1."""
+    """The limitation of revision 1."""
     edit_two(root, _limitation)
     assert found(root) == each(CONTRADICTION, "definition.limitations[2]", NOT_MEASURED)
 
@@ -1479,7 +1467,7 @@ def test_a_limitation_that_says_the_difference_is_not_measured_is_refused(
 def test_a_window_that_says_the_difference_is_not_measured_is_refused(
     root: Path,
 ) -> None:
-    """(a) and (e) The window text of revision 1: two contradictions."""
+    """The window text of revision 1: two contradictions."""
     edit_two(root, _window)
     assert found(root) == [
         finding
@@ -1492,7 +1480,6 @@ def test_a_window_that_says_the_difference_is_not_measured_is_refused(
 
 
 def test_a_record_without_p8_is_refused(root: Path) -> None:
-    """(b) P8 removed."""
 
     def change(document: dict[str, Any]) -> None:
         steps = document["definition"]["preparation"]
@@ -1531,14 +1518,12 @@ def test_a_record_without_p8_is_refused(root: Path) -> None:
 def test_a_measurement_without_its_end_reading_is_refused(
     root: Path, change: Callable[[dict[str, Any]], None], location: str, detail: str
 ) -> None:
-    """(b) One of the two readings removed."""
     edit_two(root, change)
     assert found(root) == each(MEASUREMENT, location, detail)
 
 
 @pytest.mark.parametrize("reason", ["clock-reading-missing", "clock-bound-reached"])
 def test_a_record_without_a_clock_reason_is_refused(root: Path, reason: str) -> None:
-    """(c) and (d) One clock reason removed."""
 
     def change(document: dict[str, Any]) -> None:
         reasons = document["exclusionReasons"]["reasons"]
@@ -1565,7 +1550,7 @@ def test_outcome_rules_that_name_one_clock_reason_are_refused(root: Path) -> Non
 def test_an_ordering_threshold_that_does_not_use_the_bound_is_refused(
     root: Path,
 ) -> None:
-    """(e) A fixed threshold of one second, as revision 1 stated it."""
+    """A fixed threshold of one second, as revision 1 stated it."""
 
     def change(document: dict[str, Any]) -> None:
         ordering = policy_of(document)["ordering"]
@@ -1587,7 +1572,7 @@ def test_an_ordering_threshold_that_does_not_use_the_bound_is_refused(
 def test_a_criterion_clock_that_the_inventory_does_not_hold_is_refused(
     root: Path,
 ) -> None:
-    """(f) The runner pod's clock, which revision 1 named as a clock of its own."""
+    """The runner pod's clock, which revision 1 named as a clock of its own."""
 
     def change(document: dict[str, Any]) -> None:
         document["definition"]["criterionClocks"][13]["instants"][0]["clock"] = (
@@ -1607,7 +1592,7 @@ def test_a_criterion_clock_that_the_inventory_does_not_hold_is_refused(
 
 
 def test_a_cross_clock_criterion_declared_same_clock_is_refused(root: Path) -> None:
-    """(g) stabilizedAt, on the node clock, against the observation limit, on the
+    """stabilizedAt, on the node clock, against the observation limit, on the
     host clock."""
 
     def change(document: dict[str, Any]) -> None:
@@ -1644,7 +1629,7 @@ def test_a_same_clock_criterion_declared_cross_clock_is_refused(root: Path) -> N
 
 
 def test_a_source_moved_to_the_other_clock_is_refused(root: Path) -> None:
-    """(g) A criterion cannot become same-clock by moving its source."""
+    """A criterion cannot become same-clock by moving its source."""
 
     def change(document: dict[str, Any]) -> None:
         entry = document["definition"]["criterionClocks"][7]
@@ -1688,15 +1673,21 @@ def test_a_bound_criterion_without_its_clocks_is_refused(root: Path) -> None:
             INVENTORY,
             E02C,
             "fields.acceptanceCriteria[0].value[9]",
+            "it declares no clocks and is not listed in "
+            "definition.criteriaWithoutClocks",
+        ),
+        (
+            INVENTORY,
+            E02C,
+            "fields.acceptanceCriteria[0].value[9]",
             "it names a bound and declares no clocks of its interval",
-        )
+        ),
     ]
 
 
 def test_clock_policies_of_the_baseline_and_the_target_that_differ_are_refused(
     root: Path,
 ) -> None:
-    """(h)"""
 
     def change(document: dict[str, Any]) -> None:
         policy_of(document)["statement"] += " The baseline reads it differently."
@@ -1753,7 +1744,7 @@ def test_a_clock_policy_of_e05_that_differs_is_refused(root: Path) -> None:
 def test_a_bound_formula_other_than_that_of_revision_one_is_refused(
     root: Path, change: Callable[[dict[str, Any]], None], location: str, detail: str
 ) -> None:
-    """(i) The formula without the time between the two host instants."""
+    """The formula without the time between the two host instants."""
     edit_two(root, change)
     assert found(root) == each(MEASUREMENT, location, detail)
 
@@ -1782,7 +1773,6 @@ def test_a_bound_formula_other_than_that_of_revision_one_is_refused(
 def test_wording_that_claims_synchronization_or_a_guarantee_is_refused(
     root: Path, change: Callable[[dict[str, Any]], None], location: str
 ) -> None:
-    """(j)"""
     edit_two(root, change)
     assert found(root) == each(
         CONTRADICTION,
@@ -1791,6 +1781,11 @@ def test_wording_that_claims_synchronization_or_a_guarantee_is_refused(
     )
 
 
+END_READING = (
+    "an unusable end reading does not leave the bound not computable, under "
+    "clock-reading-missing, with the state that definition.clockPolicy.notJudged "
+    "decides"
+)
 NOT_JUDGED = (
     "a verdict that is not judged does not follow the rule of rule set 2, in which "
     "a state that the judged verdicts decide stands"
@@ -1819,17 +1814,22 @@ NOT_JUDGED = (
 def test_an_end_reading_rule_that_excludes_every_run_is_refused(
     root: Path, change: Callable[[dict[str, Any]], None]
 ) -> None:
-    """(k) A clear FAILED is never turned into an exclusion."""
+    """A FAILED state that the judged verdicts decide is never made an exclusion."""
     edit_two(root, change)
-    assert found(root) == each(
-        CLOCK_RULES, "definition.clockPolicy.notJudged", NOT_JUDGED
+    # A rule that makes every run INCONCLUSIVE also states so in words.
+    every_run = "every run" in str(policy_of(load(E02C, root))["notJudged"]["rule"])
+    contradiction = each(
+        CONTRADICTION,
+        "definition.clockPolicy.notJudged.rule",
+        "it states that every run is INCONCLUSIVE",
     )
+    expected = each(CLOCK_RULES, "definition.clockPolicy.notJudged", NOT_JUDGED)
+    assert found(root) == (expected + contradiction if every_run else expected)
 
 
 def test_a_policy_without_the_offset_stability_assumption_is_refused(
     root: Path,
 ) -> None:
-    """(l)"""
     edit_two(root, lambda d: policy_of(d)["uncertainty"].pop("offsetStability"))
     assert found(root) == each(
         CLOCK_RULES,
@@ -1862,9 +1862,42 @@ def test_a_policy_without_the_offset_stability_assumption_is_refused(
                 "boundComputable", True
             ),
             "definition.clockPolicy.missingReadings.end",
-            "an unusable end reading does not leave the bound not computable, under "
-            "clock-reading-missing",
+            END_READING,
             id="end-bound-computable",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["missingReadings"]["end"].__setitem__(
+                "resultState", "INCONCLUSIVE"
+            ),
+            "definition.clockPolicy.missingReadings.end",
+            END_READING,
+            id="end-fixed-state",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["missingReadings"]["end"].__setitem__(
+                "statement",
+                "An unusable end reading makes the clock bound not computable, and the "
+                "run is INCONCLUSIVE.",
+            ),
+            "definition.clockPolicy.missingReadings.end",
+            END_READING,
+            id="end-statement",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["ordering"].__setitem__("sameClock", "Ordered."),
+            "definition.clockPolicy.ordering",
+            "it does not apply the margin of rule set 2 across the clocks, under "
+            "clock-bound-reached",
+            id="ordering-same-clock",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["boundComparison"].__setitem__(
+                "sameClock", "Compared."
+            ),
+            "definition.clockPolicy.boundComparison",
+            "it does not apply the margin of rule set 2 across the clocks, under "
+            "clock-bound-reached",
+            id="comparison-same-clock",
         ),
     ],
 )
@@ -1956,43 +1989,352 @@ def test_a_record_of_rule_set_two_without_a_clock_policy_is_refused(
     ]
 
 
+SOURCES = (
+    "the sources are not those of rule set 2, each once with its clock, its "
+    "resolution, and a statement"
+)
+MARGIN = (
+    "it does not apply the margin of rule set 2 across the clocks, under "
+    "clock-bound-reached"
+)
+MEASURED = (
+    "the measurement is not P8, with a start and an end reading of three instants, "
+    "each with its time"
+)
+FORMULA = (
+    "the bound is not the formula of revision 1 with the computation of rule set 2, "
+    "in milliseconds, with the reason that it is conservative"
+)
+
+
+def _criterion(index: int) -> Callable[[dict[str, Any]], None]:
+    return lambda d: value(d, "acceptanceCriteria")[index].__setitem__("id", ["x"])
+
+
 @pytest.mark.parametrize(
-    "change",
+    ("change", "expected"),
     [
-        pytest.param(lambda d: policy_of(d).__setitem__("sources", "x"), id="sources"),
-        pytest.param(lambda d: policy_of(d).__setitem__("clocks", [1]), id="clocks"),
         pytest.param(
-            lambda d: policy_of(d).__setitem__("measurement", []), id="measurement"
+            lambda d: policy_of(d).__setitem__("sources", "x"),
+            [(INVENTORY, "definition.clockPolicy.sources", SOURCES)],
+            id="sources",
         ),
         pytest.param(
-            lambda d: policy_of(d)["bound"].__setitem__("formula", 1), id="formula"
+            lambda d: policy_of(d)["sources"][0].__setitem__("id", ["x"]),
+            [(INVENTORY, "definition.clockPolicy.sources", SOURCES)],
+            id="source-id-a-list",
         ),
         pytest.param(
-            lambda d: policy_of(d).__setitem__("ordering", None), id="ordering"
+            lambda d: policy_of(d).__setitem__("clocks", [1]),
+            [
+                (
+                    INVENTORY,
+                    "definition.clockPolicy.clocks",
+                    "the inventory does not state the node clock and the host clock, "
+                    "each with a statement",
+                )
+            ],
+            id="clocks",
+        ),
+        pytest.param(
+            lambda d: policy_of(d).__setitem__("measurement", []),
+            [(MEASUREMENT, "definition.clockPolicy.measurement", MEASURED)],
+            id="measurement",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["bound"].__setitem__("formula", 1),
+            [(MEASUREMENT, "definition.clockPolicy.bound", FORMULA)],
+            id="formula",
+        ),
+        pytest.param(
+            lambda d: policy_of(d).__setitem__("ordering", None),
+            [(CLOCK_RULES, "definition.clockPolicy.ordering", MARGIN)],
+            id="ordering",
         ),
         pytest.param(
             lambda d: d["definition"]["criterionClocks"].__setitem__(0, "x"),
+            [
+                (
+                    INVENTORY,
+                    "definition.criterionClocks[0]",
+                    "the entry is not an object",
+                )
+            ],
             id="entry",
         ),
         pytest.param(
             lambda d: d["definition"]["criterionClocks"][0].__setitem__(
                 "instants", [1, 2]
             ),
+            [
+                (
+                    INVENTORY,
+                    "definition.criterionClocks[0]",
+                    "it does not state two instants, each with a source and a clock",
+                )
+            ],
             id="instants",
         ),
         pytest.param(
-            lambda d: d["exclusionReasons"]["reasons"].__setitem__(0, "x"),
-            id="reason",
+            lambda d: d["definition"]["criterionClocks"][0].__setitem__(
+                "criterion", ["x"]
+            ),
+            [
+                (
+                    INVENTORY,
+                    "definition.criterionClocks[0]",
+                    "it names no criterion of the record",
+                )
+            ],
+            id="entry-criterion-a-list",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["criterionClocks"][0].__setitem__(
+                "comparison", ["order"]
+            ),
+            [
+                (
+                    INVENTORY,
+                    "definition.criterionClocks[0]",
+                    "it states no comparison, order or interval, and no statement",
+                )
+            ],
+            id="comparison-a-list",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["criterionClocks"][13].__setitem__(
+                "bound", ["x"]
+            ),
+            [
+                (
+                    INVENTORY,
+                    "definition.criterionClocks[13]",
+                    "it names a bound and is not an interval of one criterion",
+                ),
+                (
+                    INVENTORY,
+                    "fields.acceptanceCriteria[0].value[9]",
+                    "it names a bound and declares no clocks of its interval",
+                ),
+            ],
+            id="entry-bound-a-list",
+        ),
+        pytest.param(
+            lambda d: d["definition"].__setitem__("criteriaWithoutClocks", [["x"]]),
+            [
+                (
+                    INVENTORY,
+                    "definition.criteriaWithoutClocks",
+                    "it is not a list of criterion identifiers, each once",
+                ),
+                (
+                    INVENTORY,
+                    "fields.acceptanceCriteria[0].value[6]",
+                    "it declares no clocks and is not listed in "
+                    "definition.criteriaWithoutClocks",
+                ),
+            ],
+            id="without-clocks-a-list",
+        ),
+        pytest.param(
+            lambda d: d["exclusionReasons"]["reasons"][8].__setitem__("id", ["x"]),
+            [
+                (
+                    "prereg-exclusion-reasons-unsupported",
+                    "exclusionReasons",
+                    "a reason has no identifier of its own",
+                ),
+                (
+                    REASONS,
+                    "exclusionReasons",
+                    "clock-reading-missing is not registered for INCONCLUSIVE",
+                ),
+            ],
+            id="reason-id-a-list",
+        ),
+        pytest.param(
+            lambda d: d["exclusionReasons"]["reasons"][8].__setitem__(
+                "resultState", ["INCONCLUSIVE"]
+            ),
+            [
+                (
+                    "prereg-exclusion-reasons-unsupported",
+                    "exclusionReasons",
+                    "a reason is registered for a result state that is counted",
+                ),
+                (
+                    REASONS,
+                    "exclusionReasons",
+                    "clock-reading-missing is not registered for INCONCLUSIVE",
+                ),
+            ],
+            id="reason-state-a-list",
         ),
     ],
 )
 def test_a_malformed_clock_policy_is_a_finding_and_not_an_error(
-    root: Path, change: Callable[[dict[str, Any]], None]
+    root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
 ) -> None:
+    """Each member that the clock rules read is held to its type. A list where a
+    string is read, such as an identifier, is a finding and never a TypeError."""
+
+    before = json.dumps(policy_of(load(E02C, root)), sort_keys=True)
     edit(root, E02C, change)
+    after = json.dumps(policy_of(load(E02C, root)), sort_keys=True)
+    # A policy that differs from that of V2-E02B is also a shared difference.
+    policy = [shared(E02C, "definition.clockPolicy")] if after != before else []
+    assert found(root) == policy + [
+        (rule, E02C, where, detail) for rule, where, detail in expected
+    ]
+
+
+def test_an_acceptance_criterion_identifier_that_is_a_list_is_a_finding(
+    root: Path,
+) -> None:
+    edit(root, E02C, _criterion(9))
     findings = found(root)
-    assert findings
+    assert (
+        INVENTORY,
+        E02C,
+        "fields.acceptanceCriteria[0].value[9]",
+        "it states no identifier",
+    ) in findings
     assert all(f[1] == E02C for f in findings)
+
+
+def test_a_criterion_with_no_clocks_and_not_listed_is_refused(root: Path) -> None:
+    """Each criterion either declares the clocks of its instants or is listed as a
+    criterion without clocks."""
+
+    def change(document: dict[str, Any]) -> None:
+        clocks = document["definition"]["criterionClocks"]
+        clocks[:] = [e for e in clocks if e["criterion"] != "E02C-AC9"]
+
+    edit(root, E02C, change)
+    assert found(root) == [
+        (
+            INVENTORY,
+            E02C,
+            "fields.acceptanceCriteria[0].value[8]",
+            "it declares no clocks and is not listed in "
+            "definition.criteriaWithoutClocks",
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("listed", "detail"),
+    [
+        pytest.param(
+            "E02C-AC9",
+            "E02C-AC9 is listed as without clocks and declares clocks",
+            id="listed-and-declared",
+        ),
+        pytest.param(
+            "E02C-AC99", "E02C-AC99 is not a criterion of the record", id="unknown"
+        ),
+    ],
+)
+def test_a_criterion_without_clocks_that_is_not_one_is_refused(
+    root: Path, listed: str, detail: str
+) -> None:
+    edit(root, E02C, lambda d: d["definition"]["criteriaWithoutClocks"].append(listed))
+    assert found(root) == [
+        (INVENTORY, E02C, "definition.criteriaWithoutClocks", detail)
+    ]
+
+
+def test_validity_clocks_of_the_baseline_and_the_target_that_differ_are_refused(
+    root: Path,
+) -> None:
+    """The two sides hold their validity criteria to the same instants."""
+
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["criterionClocks"][0]["statement"] += " Baseline."
+
+    edit(root, E02A, change)
+    assert found(root) == [shared(E02A, "definition.criterionClocks (validity)")]
+
+
+@pytest.mark.parametrize(
+    ("text", "detail"),
+    [
+        pytest.param(
+            "The clock offset was never measured.", NOT_MEASURED, id="never-measured"
+        ),
+        pytest.param(
+            "The clock difference has not been measured.",
+            NOT_MEASURED,
+            id="not-been-measured",
+        ),
+        pytest.param("Clock difference: not measured.", NOT_MEASURED, id="colon"),
+        pytest.param(
+            "There is no measurement of the clock offset.",
+            NOT_MEASURED,
+            id="no-measurement",
+        ),
+        pytest.param(
+            "Instants are ordered when they are four seconds apart.",
+            FIXED_ORDER,
+            id="four-seconds",
+        ),
+        pytest.param(
+            "Instants are ordered when they are one minute apart.",
+            FIXED_ORDER,
+            id="one-minute",
+        ),
+        pytest.param(
+            "Instants are ordered by one second, not by the clock bound.",
+            FIXED_ORDER,
+            id="names-the-bound-only",
+        ),
+        pytest.param(
+            "A precedes B when it is earlier by 2 s.", FIXED_ORDER, id="precedes"
+        ),
+        pytest.param(
+            "No run exists\nThe clocks are synchronized",
+            "it names synchronization or a guarantee with no negation",
+            id="newline",
+        ),
+        pytest.param(
+            "An unusable end reading makes every run INCONCLUSIVE.",
+            "it states that every run is INCONCLUSIVE",
+            id="every-run",
+        ),
+    ],
+)
+def test_a_paraphrase_that_the_scan_names_is_refused(text: str, detail: str) -> None:
+    document = {"definition": {"limitations": [text]}}
+    assert [
+        (f.location, f.detail) for f in core._contradiction_findings("x", document)
+    ] == [("definition.limitations[0]", detail)]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("The clocks are synchronized, and no run is lost.", id="negation"),
+        pytest.param("The two clocks agree to the millisecond.", id="agree"),
+        pytest.param("The clocks were never compared.", id="never-compared"),
+        pytest.param("Instants count as simultaneous within 1 s.", id="simultaneous"),
+    ],
+)
+def test_a_paraphrase_that_the_scan_does_not_name_is_not_refused(text: str) -> None:
+    """Known limits: the scan reads the phrases that it names, not meaning. Each of
+    these contradicts the policy and is not refused."""
+    document = {"definition": {"limitations": [text]}}
+    assert list(core._contradiction_findings("x", document)) == []
+
+
+def test_one_text_states_each_contradiction_once() -> None:
+    document = {
+        "definition": {
+            "limitations": ["The clocks are synchronized. The clocks are synchronized."]
+        }
+    }
+    assert len(list(core._contradiction_findings("x", document))) == 1
 
 
 def test_a_superseded_revision_is_checked_against_its_own_sources(

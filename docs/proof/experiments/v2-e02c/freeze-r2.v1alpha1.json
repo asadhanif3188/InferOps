@@ -33,6 +33,7 @@
       "One provider, one node, one Kubernetes version, one release of each side, one model, and one caller workload. A result is bounded to that execution.",
       "A stream reads a state at intervals of at least 2 s, so a state that lasts less than one interval can be missed. The analysis states an inner and an outer figure for each sampled interval, and neither is the exact time.",
       "The caller instants and the Kubernetes timestamps are on the node clock, and the readings and the events are on the host clock. P8 bounds the offset between the two clocks at a start and an end reading. definition.clockPolicy applies that bound between the readings only under its offset-stability assumption.",
+      "tools/reliability_analysis puts a request in the window by its completion instant, starts its search for a stabilized recovery at the fault-injection-finished event, and holds a span to the readings that overlap it. Each of these orders an instant of the node clock and an instant of the host clock with no margin, and so does the check of the stable pre-fault window. definition.clockPolicy does not govern them, and this record does not change them. A verdict that reads such a figure reads it as the analysis states it.",
       "The runner, the collectors, and the release run on the one node, and the capacity gate does not count the runner. The pods stream names no node: with one node, every pod is on it.",
       "The API image is built at each run and the build is not byte-reproducible, so each run records the digest it built.",
       "No driver for this experiment exists. The procedure is stated in this record. The change that adds the driver registers a later revision of this record before the first result-bearing run, and that revision pins the driver.",
@@ -94,7 +95,7 @@
       "clocks": "A caller instant and a Kubernetes timestamp are on the node clock. A reading and an event are on the host clock. definition.clockPolicy states the source and the resolution of each instant, the clock bound that P8 measures, and the margin inside which no order of an instant of the node clock and an instant of the host clock is stated."
     },
     "clockPolicy": {
-      "statement": "One clock policy governs each instant, order, and interval of this record. Each record of rule set 2 of tools/experiment_preregistration states the same policy.",
+      "statement": "This clock policy governs each verdict instant that definition.criterionClocks declares: each order of two instants and each interval that a criterion compares with a value. It does not govern how tools/reliability_analysis cuts the window, searches a stabilization span, or overlaps readings with a span, as definition.limitations states. Each record of rule set 2 of tools/experiment_preregistration states the same policy.",
       "clocks": [
         {
           "id": "node",
@@ -102,7 +103,7 @@
         },
         {
           "id": "host",
-          "statement": "The clock of the host that runs the control process. The procedure runs the control process, the timeline and telemetry collectors, the operator event log, and the P8 readings on that host, and each reads this clock."
+          "statement": "The clock of the host that runs the control process. The procedure runs the control process, the timeline and telemetry collection scripts, the operator event log, and the P8 readings on that host, and each reads this clock."
         }
       ],
       "sources": [
@@ -143,6 +144,7 @@
           "statement": "The node instant of each P8 reading: the UTC time that a pod of the node prints, to the millisecond."
         }
       ],
+      "otherInstants": "Three kinds of instant are on no source of this inventory, and no verdict of this record reads them: the evaluation and scrape instants of the in-cluster telemetry collector, on the node clock; the occurredAt instant of an operator event, on the clock that the event names, which can be a third clock such as that of the Git host; and the instants of the Application status other than those of an operation.",
       "measurement": {
         "step": "P8",
         "readings": [
@@ -158,16 +160,17 @@
           "node",
           "hostAfter"
         ],
-        "statement": "Each reading takes a host instant, the node instant, and a second host instant, in that sequence, as the integration validation took them. environment.txt states the three instants of each reading."
+        "statement": "Each reading takes a host instant, the node instant, and a second host instant, in that sequence, as the integration validation took them. environment.txt states the three instants of each reading. The integration validation read the node instant from the node container. A pod of the node reads the same kernel clock."
       },
       "bound": {
         "formula": "the largest of the two differences between the node instant and the nearer host instant, plus the time between the two host instants",
         "computation": "For each reading, d is the absolute difference between the node instant and the nearer of its two host instants, and w is the time from its first to its second host instant. The clock bound of the run is the larger d of the start and the end reading plus the larger w of the two readings, in milliseconds.",
         "unit": "ms",
-        "conservative": "The node instant was printed at a host instant between the two host instants of its reading. So at that reading the node clock less the host clock is between the node instant less the second host instant and the node instant less the first host instant. Its size is at most the larger of those two differences, and that is at most d plus w. The bound takes the larger d and the larger w of the two readings, so it is not smaller than the size of the offset at either reading."
+        "conservative": "The node instant was printed at a host instant between the two host instants of its reading. So at that reading the node clock less the host clock is between the node instant less the second host instant and the node instant less the first host instant. Its size is at most the larger of those two differences, and that is at most d plus w. The bound takes the larger d and the larger w of the two readings, so it is not smaller than the size of the offset at either reading, to the 1 ms resolution of the three instants. Each instant is cut to the millisecond, so the offset can exceed the bound by less than 1 ms. The margin adds the coarser resolution of the two sources, at least 1 ms, to the bound.",
+        "otherReading": "Revision 1 can also be read as the larger, over the two readings, of d plus w of one reading. That value is never larger than this bound, because the larger of d1 plus w1 and d2 plus w2 is at most the larger d plus the larger w."
       },
       "uncertainty": {
-        "offsetStability": "The clock bound is measured at the start reading and at the end reading only. To apply it to an instant between the two readings is an assumption: the offset between the node clock and the host clock stays inside the clock bound between them. This record makes that assumption explicitly, and no reading tests it.",
+        "offsetStability": "The clock bound is measured at the start reading and at the end reading only. To apply it to an instant between the two readings is an assumption: the offset between the node clock and the host clock stays inside the clock bound between them. Each record of rule set 2 makes that assumption explicitly, and no reading tests it.",
         "drift": "Drift of either clock between the two readings is not measured, and this record states no rate of drift.",
         "netChange": "The result page states the net change of the offset from the start reading to the end reading: the midpoint of the offset interval of the end reading less that of the start reading, in milliseconds. No verdict reads it, and a small net change does not show that the offset stayed inside the bound between the readings.",
         "notClaimed": "The procedure does not synchronize the clocks, and it does not guarantee the bound. A verdict that uses the bound holds only under the offset-stability assumption."
@@ -182,8 +185,8 @@
         },
         "end": {
           "boundComputable": false,
-          "resultState": "INCONCLUSIVE",
           "reason": "clock-reading-missing",
+          "stateDecidedBy": "definition.clockPolicy.notJudged",
           "statement": "An unusable end reading makes the clock bound not computable. Each verdict that depends on the bound is then not judged: each order of an instant of the node clock and an instant of the host clock, and each comparison of an interval between the two clocks with a bound. Each other verdict is judged. definition.clockPolicy.notJudged then decides the state, with the reason clock-reading-missing."
         }
       },
@@ -456,7 +459,7 @@
           }
         ],
         "crossClock": false,
-        "statement": "callerFailureEpisodeMs is the end less the start of an episode. Both instants are on the node clock, so it is compared with the bound directly."
+        "statement": "callerFailureEpisodeMs is the end less the start of a closed episode. Both instants are on the node clock, so the comparison is not inside the clock margin. Whether an episode near an edge of the window is in the window, and whether it is closed in it, follows the cut of the window by tools/reliability_analysis, which definition.limitations states."
       },
       {
         "criterion": "E02C-AC11",
@@ -494,6 +497,9 @@
         "crossClock": true,
         "statement": "The analysis states a stabilized recovery inside the observation limit. stabilizedAt is on the node clock, and the limit is on the host clock."
       }
+    ],
+    "criteriaWithoutClocks": [
+      "E02C-AC7"
     ],
     "analysisDeclaration": {
       "schema": "inferops.io/reliability-analysis-declaration/v1alpha1",
@@ -2065,7 +2071,7 @@
     },
     {
       "path": "tools/experiment_preregistration/core.py",
-      "sha256": "51154cc33d64dc405ecfd07318f8f6c988edc5b3037b6ae5ec0713b66c9d103e",
+      "sha256": "15a5b26070d8da7d1bc863ec79a73a019aa7373737c4d4f6ccecf8293c08d81c",
       "role": "a module of a tool that the procedure runs, or that it imports"
     },
     {
@@ -2282,7 +2288,7 @@
     {
       "path": "tools/experiment_preregistration/core.py",
       "from": "643ff00a6a38e1e875f8321708691fc65e230a5d52b70b8128b9944ac76e328d",
-      "to": "51154cc33d64dc405ecfd07318f8f6c988edc5b3037b6ae5ec0713b66c9d103e",
+      "to": "15a5b26070d8da7d1bc863ec79a73a019aa7373737c4d4f6ccecf8293c08d81c",
       "material": true,
       "reason": "The check adds rule set 2, which this record is registered under: it holds the record to its clock policy, to the clock of each instant of its criteria, and to text that does not contradict the policy. It reads each revision under its own rule set, so it still reads revision 1 under rule set 1. P1 runs it."
     }

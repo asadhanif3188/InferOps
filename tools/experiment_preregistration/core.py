@@ -59,14 +59,17 @@ Every later revision states its rule set in ``metadata.preregistrationRules``,
 and a record that states none, or one that this module does not know, is
 ``prereg-rule-set-unknown``. Rule set 2 adds the clock rules: a record of rule
 set 2 states ``definition.clockPolicy``, one policy for the node clock and the
-host clock, and ``definition.criterionClocks``, the clock of each instant that a
-criterion orders or measures. The policy holds the inventory of
+host clock, ``definition.criterionClocks``, the clock of each instant that a
+criterion orders or measures, and ``definition.criteriaWithoutClocks``, each
+criterion that orders no instant and measures no interval. The policy holds the
+inventory of
 :data:`CLOCK_SOURCES`, the P8 measurement, the bound formula of revision 1 word
 for word, the offset-stability assumption, the rules for an unusable reading and
 for a verdict that is not judged, and one margin for orders and bound
-comparisons across the two clocks. No text of such a record states that the
-clock difference is not measured, states an ordering threshold that does not use
-the clock bound, or claims synchronized clocks or a guarantee.
+comparisons across the two clocks, each word for word. No text of such a record
+states that the clock difference is not measured, orders instants by a time
+without the margin, claims synchronized clocks or a guarantee, or makes every run
+INCONCLUSIVE, in the phrases that this module names.
 
 **The latest revision is checked in full, and every earlier one alone.** The
 latest revision of each experiment is checked against every rule of its rule
@@ -74,15 +77,19 @@ set, and the records are compared with each other. A superseded revision is
 checked alone, against every rule of its own rule set that reads one record,
 except the two clauses that compare it with the present: that its bound record
 is the latest committed one, and that its qualified release is the release of
-the latest V2-E02B. :func:`check_records` checks any set of records in full, as
-:func:`check_repository` checks the latest ones.
+the latest V2-E02B. Those two clauses are the one narrowing of a revision-1 check,
+and it applies only once a revision is superseded. :func:`check_records` checks
+any set of records in full, as :func:`check_repository` checks the latest ones.
 
 **What this does not do.** It reads files and writes none. It runs no
 experiment, contacts no cluster, and reads no Git history. It does not judge
 whether a statement of a record is right: it checks that the values it compares
 agree, and it reads text only for the phrases that the clock rules name. A
 negation anywhere in a sentence hides a claim of synchronization or a guarantee
-from that reading. It does not compare the pins of a record with the files of
+from that reading, and a paraphrase that no phrase names is not refused. It does
+not check that a criterion that orders no instant is truly without clocks, and it
+does not read how ``tools.reliability_analysis`` cuts the window or searches a
+stabilization span across the two clocks. It does not compare the pins of a record with the files of
 the tree: the freeze tool's ``--changes`` command does that. It does not check
 that a run executes the latest revision of its experiment: P1 of each record
 states that, and the review of the run compares it.
@@ -113,9 +120,13 @@ __all__ = [
     "CLOCK_MARGIN",
     "CLOCK_RULE_SET",
     "CLOCK_SOURCES",
+    "COMPARISON_RULES",
+    "END_READING_RULE",
     "EXPERIMENTS",
+    "NOT_JUDGED_MEMBER",
     "NOT_JUDGED_RULE",
     "OFFSET_STABILITY",
+    "ORDERING_RULES",
     "PERMITTED_TOPOLOGY",
     "RECONCILIATION_COMPONENTS",
     "REPO_ROOT",
@@ -318,7 +329,8 @@ OFFSET_STABILITY: Final = (
     "The clock bound is measured at the start reading and at the end reading only. "
     "To apply it to an instant between the two readings is an assumption: the offset "
     "between the node clock and the host clock stays inside the clock bound between "
-    "them. This record makes that assumption explicitly, and no reading tests it."
+    "them. Each record of rule set 2 makes that assumption explicitly, and no "
+    "reading tests it."
 )
 
 #: The rule for a verdict that is not judged. The states are ordered PASSED, then
@@ -334,6 +346,45 @@ NOT_JUDGED_RULE: Final = (
     "never made INCONCLUSIVE."
 )
 
+#: The rule for an unusable end reading. The state is the one that the rule for a
+#: verdict that is not judged decides, not a fixed INCONCLUSIVE.
+END_READING_RULE: Final = (
+    "An unusable end reading makes the clock bound not computable. Each verdict that "
+    "depends on the bound is then not judged: each order of an instant of the node "
+    "clock and an instant of the host clock, and each comparison of an interval "
+    "between the two clocks with a bound. Each other verdict is judged. "
+    "definition.clockPolicy.notJudged then decides the state, with the reason "
+    "clock-reading-missing."
+)
+NOT_JUDGED_MEMBER: Final = "definition.clockPolicy.notJudged"
+
+#: The ordering rule and the bound-comparison rule, across the two clocks and on
+#: one clock, word for word.
+ORDERING_RULES: Final[Mapping[str, str]] = {
+    "crossClock": (
+        "No order is stated between an instant of the node clock and an instant of "
+        "the host clock when their difference is at most the clock bound of the run "
+        "plus the coarser resolution of their two sources. A verdict that needs that "
+        "order is not judged, for the reason clock-bound-reached."
+    ),
+    "sameClock": (
+        "Two instants of one clock are ordered to the coarser resolution of their two "
+        "sources. Two Kubernetes timestamps of the same second are not ordered."
+    ),
+}
+COMPARISON_RULES: Final[Mapping[str, str]] = {
+    "crossClock": (
+        "An interval from an instant of one clock to an instant of the other is "
+        "compared with a bound only when it differs from the bound by more than the "
+        "clock bound of the run plus the coarser resolution of its two sources. "
+        "Otherwise the comparison is not judged, for the reason clock-bound-reached."
+    ),
+    "sameClock": (
+        "An interval between two instants of one clock is compared with a bound "
+        "directly, as its sources state it."
+    ),
+}
+
 #: The two exclusion reasons of the clock rules.
 CLOCK_READING_MISSING: Final = "clock-reading-missing"
 CLOCK_BOUND_REACHED: Final = "clock-bound-reached"
@@ -344,26 +395,41 @@ CLOCK_COMPARISONS: Final = frozenset({"order", "interval"})
 
 #: Text that rule set 2 refuses. A sentence that states that the difference of
 #: the clocks is not measured contradicts P8. A sentence that orders instants by a
-#: fixed time and does not name the clock bound contradicts the ordering rule. A
-#: sentence that names synchronization or a guarantee and holds no negation claims
-#: one.
+#: time and does not name the margin of rule set 2 contradicts the ordering rule.
+#: A sentence that names synchronization or a guarantee and holds no negation
+#: claims one. A sentence that makes every run INCONCLUSIVE contradicts the rule
+#: for a verdict that is not judged. Each pattern reads words, so a paraphrase
+#: that it does not name is not refused.
 _NOT_MEASURED: Final = re.compile(
-    r"\b(?:differences?|offsets?|skews?)\b[^.;]*?\b(?:is|are)\s+not\s+measured\b"
-    r"|\bunmeasured\b",
+    r"\b(?:differences?|offsets?|skews?)\b[^.;\n]*?\b(?:not|never)\b[^.;\n]{0,20}?"
+    r"\bmeasured\b"
+    r"|\bunmeasured\b"
+    r"|\bno measurement of the (?:clock )?(?:differences?|offsets?|skews?)\b",
     re.IGNORECASE,
 )
-_ORDER_WORD: Final = re.compile(r"\border(?:ed|ing|s)?\b", re.IGNORECASE)
+_ORDER_WORD: Final = re.compile(
+    r"\border(?:ed|ing|s)?\b|\bprecede[sd]?\b", re.IGNORECASE
+)
 _TIME_QUANTITY: Final = re.compile(
-    r"\b(?:one|two|three|five|ten|\d[\d,]*(?:\.\d+)?)\s*"
-    r"(?:seconds?|s|ms|milliseconds?)\b",
+    r"\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|"
+    r"twenty|thirty|sixty|\d[\d,]*(?:\.\d+)?)\s*"
+    r"(?:seconds?|s|ms|milliseconds?|minutes?|min|hours?|h)\b",
     re.IGNORECASE,
 )
-_CLOCK_BOUND: Final = re.compile(r"\bclock bound\b", re.IGNORECASE)
+#: The margin of rule set 2 in a sentence. Naming the clock bound alone is not
+#: enough to exempt a sentence that orders instants by a time.
+_MARGIN_PHRASE: Final = re.compile(
+    r"\bthe clock bound of the run plus the coarser resolution\b", re.IGNORECASE
+)
+_EVERY_RUN_INCONCLUSIVE: Final = re.compile(
+    r"\b(?:every|each|any|all)\s+runs?\b[^.;\n]*\bINCONCLUSIVE\b"
+    r"|\balways\s+INCONCLUSIVE\b"
+)
 _CLAIM_WORD: Final = re.compile(r"\bsynchroni[sz]\w*|\bguarantee\w*", re.IGNORECASE)
 _NEGATION: Final = re.compile(
     r"\b(?:not|no|never|nothing|neither|nor|without)\b", re.IGNORECASE
 )
-_SENTENCE_END: Final = re.compile(r"(?<=[.;])\s+")
+_SENTENCE_END: Final = re.compile(r"(?<=[.;])\s+|\n+")
 
 
 @dataclass(frozen=True)
@@ -413,7 +479,8 @@ RULES: Final[Mapping[str, str]] = {
         "The five records state one environment, one caller profile, one intended "
         "level, and one bound record with its bounds. Every record of rule set 2 "
         "states one clock policy. V2-E02A and V2-E02B state every shared field, "
-        "definition, clock policy, validity criterion, and exclusion reason alike."
+        "definition, clock policy, validity criterion with its clocks, and exclusion "
+        "reason alike."
     ),
     "prereg-baseline-difference-unpermitted": (
         "The topology of V2-E02A differs from that of V2-E02B only in the permitted "
@@ -445,8 +512,10 @@ RULES: Final[Mapping[str, str]] = {
         "instant source with the clock and the resolution of rule set 2. Each "
         "criterion entry of definition.criterionClocks names a criterion of the "
         "record and two instants, each with a source and a clock of the inventory, "
-        "and is cross-clock exactly when its instants are on two clocks. Each "
-        "criterion that names a bound declares the clocks of its interval."
+        "and is cross-clock exactly when the inventory puts its sources on two "
+        "clocks. Each criterion declares clocks or is listed in "
+        "definition.criteriaWithoutClocks, and not both. Each criterion that names a "
+        "bound declares the clocks of its interval."
     ),
     "prereg-clock-measurement": (
         "A record of rule set 2 has a P8 that reads the clocks before the runner "
@@ -457,9 +526,10 @@ RULES: Final[Mapping[str, str]] = {
     "prereg-clock-rules": (
         "The clock policy of a record of rule set 2 states the offset-stability "
         "assumption, refuses a run with an unusable start reading before the fault, "
-        "leaves the bound not computable after an unusable end reading, applies the "
-        "rule of rule set 2 to a verdict that is not judged, and orders and compares "
-        "instants of two clocks with the margin of rule set 2."
+        "leaves the bound not computable after an unusable end reading with the state "
+        "that the rule for a verdict that is not judged decides, applies that rule of "
+        "rule set 2, and orders and compares instants of two clocks with the margin "
+        "and the words of rule set 2."
     ),
     "prereg-clock-reasons": (
         "A record of rule set 2 registers clock-reading-missing and "
@@ -467,8 +537,10 @@ RULES: Final[Mapping[str, str]] = {
     ),
     "prereg-clock-contradiction": (
         "No text of a record of rule set 2 states that the clock difference is not "
-        "measured, states an ordering threshold that does not name the clock bound, "
-        "or names synchronization or a guarantee in a sentence with no negation."
+        "measured, orders instants by a time in a sentence that does not name the "
+        "margin of rule set 2, names synchronization or a guarantee in a sentence "
+        "with no negation, or states that every run is INCONCLUSIVE, in the phrases "
+        "that this check names."
     ),
 }
 
@@ -662,8 +734,8 @@ def _shape_problem(document: Any, rule_set: int = RULE_SET_ONE) -> str | None:
 
     Every member that a later step indexes or compares is held to its type here,
     so a malformed record gives a finding and not an error. The clock rules read
-    the members of the clock policy with a type test each, so a member of the
-    wrong type is a finding of its rule.
+    the members of the clock policy with a type test each, and use only a string as
+    a key, so a member of the wrong type is a finding of its rule.
     """
     problem = _shape_one(document)
     if problem is not None or rule_set < CLOCK_RULE_SET:
@@ -1081,6 +1153,7 @@ def _clock_policy(document: Mapping[str, Any]) -> Mapping[str, Any]:
 def _inventory_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
     rule = "prereg-clock-inventory"
     policy = _clock_policy(document)
+    definition = document["definition"]
     clocks = policy.get("clocks")
     if not isinstance(clocks, list) or [
         c.get("id") if isinstance(c, Mapping) and _text(c.get("statement")) else None
@@ -1093,12 +1166,17 @@ def _inventory_findings(name: str, document: Mapping[str, Any]) -> Iterator[Find
             "the inventory does not state the node clock and the host clock, each "
             "with a statement",
         )
+    # Only a string is used as a key, so a member of another type is a finding.
     sources = policy.get("sources")
-    stated: dict[Any, tuple[Any, Any]] | None = None
+    stated: dict[str, tuple[str, Any]] | None = None
     if isinstance(sources, list) and all(
-        isinstance(s, Mapping) and _text(s.get("statement")) for s in sources
+        isinstance(s, Mapping)
+        and isinstance(s.get("id"), str)
+        and isinstance(s.get("clock"), str)
+        and _text(s.get("statement"))
+        for s in sources
     ):
-        stated = {s.get("id"): (s.get("clock"), s.get("resolutionMs")) for s in sources}
+        stated = {s["id"]: (s["clock"], s.get("resolutionMs")) for s in sources}
         if len(stated) != len(sources):
             stated = None
     if (
@@ -1113,23 +1191,60 @@ def _inventory_findings(name: str, document: Mapping[str, Any]) -> Iterator[Find
             "the sources are not those of rule set 2, each once with its clock, its "
             "resolution, and a statement",
         )
-    criteria = {
-        c.get("id"): c
-        for c in _value(document, "acceptanceCriteria")
-        if isinstance(c, Mapping)
+    criteria = _value(document, "acceptanceCriteria")
+    identifiers = {
+        c["id"] for c in criteria if isinstance(c.get("id"), str) and c.get("id")
     }
-    declared: set[tuple[Any, Any]] = set()
-    for index, entry in enumerate(document["definition"]["criterionClocks"]):
+    declared: set[tuple[str, str]] = set()
+    entered: set[str] = set()
+    for index, entry in enumerate(definition["criterionClocks"]):
         where = f"definition.criterionClocks[{index}]"
-        yield from _entry_findings(rule, name, where, entry, criteria, declared)
-    for index, criterion in enumerate(_value(document, "acceptanceCriteria")):
-        if not isinstance(criterion, Mapping) or "bound" not in criterion:
-            continue
-        if (criterion.get("id"), criterion["bound"]) not in declared:
+        yield from _entry_findings(rule, name, where, entry, identifiers, declared)
+        if isinstance(entry, Mapping) and isinstance(entry.get("criterion"), str):
+            entered.add(entry["criterion"])
+    without = definition.get("criteriaWithoutClocks")
+    if not _strings(without, empty=True) or len(set(without)) != len(without):
+        yield Finding(
+            rule,
+            name,
+            "definition.criteriaWithoutClocks",
+            "it is not a list of criterion identifiers, each once",
+        )
+        without = []
+    for listed in without:
+        if listed not in identifiers:
             yield Finding(
                 rule,
                 name,
-                f"fields.acceptanceCriteria[0].value[{index}]",
+                "definition.criteriaWithoutClocks",
+                f"{listed} is not a criterion of the record",
+            )
+        elif listed in entered:
+            yield Finding(
+                rule,
+                name,
+                "definition.criteriaWithoutClocks",
+                f"{listed} is listed as without clocks and declares clocks",
+            )
+    for index, criterion in enumerate(criteria):
+        where = f"fields.acceptanceCriteria[0].value[{index}]"
+        identifier = criterion.get("id")
+        if not isinstance(identifier, str) or not identifier:
+            yield Finding(rule, name, where, "it states no identifier")
+            continue
+        if identifier not in entered and identifier not in without:
+            yield Finding(
+                rule,
+                name,
+                where,
+                "it declares no clocks and is not listed in "
+                "definition.criteriaWithoutClocks",
+            )
+        if "bound" in criterion and (identifier, criterion["bound"]) not in declared:
+            yield Finding(
+                rule,
+                name,
+                where,
                 "it names a bound and declares no clocks of its interval",
             )
 
@@ -1139,17 +1254,21 @@ def _entry_findings(
     name: str,
     where: str,
     entry: Any,
-    criteria: Mapping[Any, Any],
-    declared: set[tuple[Any, Any]],
+    identifiers: set[str],
+    declared: set[tuple[str, str]],
 ) -> Iterator[Finding]:
     """The findings of one criterion clock entry. ``declared`` gains its bound."""
     if not isinstance(entry, Mapping):
         yield Finding(rule, name, where, "the entry is not an object")
         return
-    if entry.get("criterion") not in criteria:
+    criterion = entry.get("criterion")
+    if not isinstance(criterion, str) or criterion not in identifiers:
         yield Finding(rule, name, where, "it names no criterion of the record")
-    if entry.get("comparison") not in CLOCK_COMPARISONS or not _text(
-        entry.get("statement")
+    comparison = entry.get("comparison")
+    if (
+        not isinstance(comparison, str)
+        or comparison not in CLOCK_COMPARISONS
+        or not _text(entry.get("statement"))
     ):
         yield Finding(
             rule,
@@ -1176,7 +1295,7 @@ def _entry_findings(
         return
     # Whether an entry is cross-clock is read from the inventory clock of each
     # source, so a clock stated wrongly does not make an entry same-clock.
-    clocks: list[Any] = []
+    clocks: list[str] = []
     for instant in instants:
         clock, source = instant["clock"], instant["source"]
         clocks.append(CLOCK_SOURCES[source][0] if source in CLOCK_SOURCES else clock)
@@ -1222,8 +1341,20 @@ def _entry_findings(
             where,
             "it is declared same-clock, and its instants are on two clocks",
         )
-    if entry.get("comparison") == "interval" and "bound" in entry:
-        declared.add((entry.get("criterion"), entry.get("bound")))
+    bound = entry.get("bound")
+    if (
+        comparison == "interval"
+        and isinstance(criterion, str)
+        and isinstance(bound, str)
+    ):
+        declared.add((criterion, bound))
+    elif "bound" in entry:
+        yield Finding(
+            rule,
+            name,
+            where,
+            "it names a bound and is not an interval of one criterion",
+        )
 
 
 def _measurement_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
@@ -1322,18 +1453,21 @@ def _rule_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
             "definition.clockPolicy.missingReadings.start",
             "an unusable start reading does not refuse the run before the fault",
         )
-    if not (
-        end.get("boundComputable") is False
-        and end.get("resultState") == INCONCLUSIVE
-        and end.get("reason") == CLOCK_READING_MISSING
-        and _text(end.get("statement"))
+    # The end reading names no state of its own: the rule for a verdict that is
+    # not judged decides it.
+    if (
+        end.get("boundComputable") is not False
+        or end.get("reason") != CLOCK_READING_MISSING
+        or end.get("stateDecidedBy") != NOT_JUDGED_MEMBER
+        or end.get("statement") != END_READING_RULE
+        or "resultState" in end
     ):
         yield Finding(
             rule,
             name,
             "definition.clockPolicy.missingReadings.end",
             "an unusable end reading does not leave the bound not computable, under "
-            f"{CLOCK_READING_MISSING}",
+            f"{CLOCK_READING_MISSING}, with the state that {NOT_JUDGED_MEMBER} decides",
         )
     not_judged = _member(policy, "notJudged")
     if (
@@ -1347,14 +1481,15 @@ def _rule_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
             "a verdict that is not judged does not follow the rule of rule set 2, in "
             "which a state that the judged verdicts decide stands",
         )
-    for member in ("ordering", "boundComparison"):
+    for member, rules in (
+        ("ordering", ORDERING_RULES),
+        ("boundComparison", COMPARISON_RULES),
+    ):
         stated = _member(policy, member)
         if (
             stated.get("margin") != CLOCK_MARGIN
             or stated.get("reason") != CLOCK_BOUND_REACHED
-            or not _text(stated.get("sameClock"))
-            or not isinstance(stated.get("crossClock"), str)
-            or _CLOCK_BOUND.search(stated["crossClock"]) is None
+            or any(stated.get(key) != text for key, text in rules.items())
         ):
             yield Finding(
                 rule,
@@ -1368,9 +1503,11 @@ def _rule_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
 def _reason_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
     rule = "prereg-clock-reasons"
     registered = {
-        (r.get("id"), r.get("resultState"))
+        (r["id"], r["resultState"])
         for r in document["exclusionReasons"]["reasons"]
         if isinstance(r, Mapping)
+        and isinstance(r.get("id"), str)
+        and isinstance(r.get("resultState"), str)
     }
     outcome = " ".join(document["definition"]["outcomeRules"])
     for reason in (CLOCK_READING_MISSING, CLOCK_BOUND_REACHED):
@@ -1402,38 +1539,36 @@ def _strings_in(value: Any, location: str) -> Iterator[tuple[str, str]]:
             yield from _strings_in(item, f"{location}[{index}]")
 
 
+def _contradictions(text: str) -> Iterator[str]:
+    """The detail of each contradiction that one text states, once each."""
+    found: list[str] = []
+    if _NOT_MEASURED.search(text):
+        found.append("it states that the clock difference is not measured")
+    for sentence in _SENTENCE_END.split(text):
+        if (
+            _ORDER_WORD.search(sentence)
+            and _TIME_QUANTITY.search(sentence)
+            and not _MARGIN_PHRASE.search(sentence)
+        ):
+            found.append(
+                "it states an ordering threshold that does not name the margin of "
+                "rule set 2"
+            )
+        if _CLAIM_WORD.search(sentence) and not _NEGATION.search(sentence):
+            found.append("it names synchronization or a guarantee with no negation")
+        if _EVERY_RUN_INCONCLUSIVE.search(sentence):
+            found.append("it states that every run is INCONCLUSIVE")
+    yield from dict.fromkeys(found)
+
+
 def _contradiction_findings(
     name: str, document: Mapping[str, Any]
 ) -> Iterator[Finding]:
     rule = "prereg-clock-contradiction"
     scanned = {k: v for k, v in document.items() if k != "pinnedInputs"}
     for location, text in _strings_in(scanned, ""):
-        if _NOT_MEASURED.search(text):
-            yield Finding(
-                rule,
-                name,
-                location,
-                "it states that the clock difference is not measured",
-            )
-        for sentence in _SENTENCE_END.split(text):
-            if (
-                _ORDER_WORD.search(sentence)
-                and _TIME_QUANTITY.search(sentence)
-                and not _CLOCK_BOUND.search(sentence)
-            ):
-                yield Finding(
-                    rule,
-                    name,
-                    location,
-                    "it states an ordering threshold that does not name the clock bound",
-                )
-            if _CLAIM_WORD.search(sentence) and not _NEGATION.search(sentence):
-                yield Finding(
-                    rule,
-                    name,
-                    location,
-                    "it names synchronization or a guarantee with no negation",
-                )
+        for detail in _contradictions(text):
+            yield Finding(rule, name, location, detail)
 
 
 def _clock_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
@@ -1529,6 +1664,15 @@ def _shared_findings(
                 target["definition"].get(member),
             )
         )
+    # The two sides state the clocks of their validity criteria alike.
+    if min(rule_sets.get(BASELINE, 1), rule_sets.get(TARGET, 1)) >= CLOCK_RULE_SET:
+        pairs.append(
+            (
+                "definition.criterionClocks (validity)",
+                _validity_clocks(baseline),
+                _validity_clocks(target),
+            )
+        )
     # The two sides state one clock policy. When both are of rule set 2 the policy
     # findings above compare them. A side of rule set 1 states no policy, so a
     # side of rule set 2 beside one of rule set 1 differs from it here.
@@ -1562,6 +1706,31 @@ def _shared_findings(
             _normalised(right, by_id[TARGET])
         ):
             yield Finding(rule, path, location, f"it differs from {TARGET}")
+
+
+def _validity_clocks(document: Mapping[str, Any]) -> dict[str, Any]:
+    """The clock entries of the validity criteria of a record of rule set 2, and the
+    validity criteria that it lists as without clocks. Each criterion is named by
+    the part of its identifier after the experiment part, such as ``AC3``."""
+    validity = {
+        str(c.get("id")): str(c.get("id")).split("-", 1)[-1]
+        for c in _value(document, "acceptanceCriteria")
+        if isinstance(c, Mapping) and c.get("kind") == "validity"
+    }
+    entries = [
+        {**e, "criterion": validity[e["criterion"]]}
+        for e in document["definition"]["criterionClocks"]
+        if isinstance(e, Mapping)
+        and isinstance(e.get("criterion"), str)
+        and e["criterion"] in validity
+    ]
+    without = document["definition"].get("criteriaWithoutClocks")
+    listed = [
+        validity[c]
+        for c in (without if isinstance(without, list) else [])
+        if isinstance(c, str) and c in validity
+    ]
+    return {"entries": entries, "withoutClocks": listed}
 
 
 def _validity(document: Mapping[str, Any]) -> list[Any] | None:
