@@ -87,6 +87,26 @@
       "path": "docs/proof/experiments/v2-e05/freeze-r1.v1alpha1.json",
       "contentSha256": "420255fda1b95e0d6c25ce1a262a68a656f1b621d3c7204b682d3298ede47492",
       "registeredBy": "V2-S6-003-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json",
+      "contentSha256": "5a35408b07d5671732ac8f2e6643c7c61ec6878aeb5200b4c5bd9fdbed61e3d5",
+      "registeredBy": "V2-S6-007-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json",
+      "contentSha256": "ac470a3eb5294c6f3f4b46a99ad71c1e8bbe5f7453bf30bd27a900f344e9d211",
+      "registeredBy": "V2-S6-007-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02c/freeze-r2.v1alpha1.json",
+      "contentSha256": "58b75d19126cdb2b2d9602c92b8ad387c1c990de3608ccebdac098704758375b",
+      "registeredBy": "V2-S6-007-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json",
+      "contentSha256": "b1d20b3fd5a71a835db3aa09f47aed08b529239184250d73489c3228cae8eba0",
+      "registeredBy": "V2-S6-007-PR1"
     }
   ]
 }

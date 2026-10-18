@@ -6,10 +6,11 @@
 suite uses it to plant defects without touching the committed files.
 
 ``--check`` reads the latest freeze record of V2-E02A, V2-E02B, V2-E02C, V2-E04,
-and V2-E05, and compares each with the qualification, the bound record, and the
-baseline comparison that it names, and with the other records. Exit status is 0
-when every rule holds and 1 when one does not, so the command is usable as a
-precondition of a run.
+and V2-E05, each under its own rule set, and compares each with the
+qualification, the bound record, and the baseline comparison that it names, and
+with the other records. It also checks each superseded revision alone, under its
+own rule set. Exit status is 0 when every rule holds and 1 when one does not, so
+the command is usable as a precondition of a run.
 
 **It reads files only.** It writes no file, runs no experiment, and contacts no
 cluster, registry, or network. See docs/proof/experiments/README.md.
@@ -22,7 +23,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from .core import EXPERIMENTS, REPO_ROOT, RULES, check_repository
+from .core import EXPERIMENTS, REPO_ROOT, RULES, check_repository, superseded_count
 
 
 def _check(root: Path) -> int:
@@ -36,7 +37,10 @@ def _check(root: Path) -> int:
             f"FAILED: {len(findings)} finding(s) across {len(EXPERIMENTS)} experiment(s)"
         )
         return 1
-    print(f"PASSED: {len(EXPERIMENTS)} experiment record(s), every rule held")
+    print(
+        f"PASSED: {len(EXPERIMENTS)} experiment record(s) and "
+        f"{superseded_count(root)} superseded revision(s), every rule held"
+    )
     return 0
 
 

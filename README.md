@@ -340,6 +340,11 @@ Since `V2-S6-003-PR1` the five reliability experiments are
 multi-runtime runtime-pod loss, which differ only in the runtime topology, the API pod
 loss, the bad release with its Git reversal, and the drift reconciliation. Each record
 names `q1-2` and `bounds-r1`, and a read-only check holds it to them and to the others.
+Since `V2-S6-007-PR1` the records of the baseline, the runtime-pod loss, the API pod loss,
+and the drift reconciliation are at revision 2, which states
+[one clock policy](docs/proof/experiments/README.md#the-clock-policy-of-rule-set-2) for
+the node clock and the host clock. The bad-release record stays at revision 1 until its
+own correction.
 No run of any of them exists, and no driver exists yet.
 
 ## Prerequisites

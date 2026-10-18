@@ -1,15 +1,19 @@
 """The freeze records of the reliability experiments, held to their sources.
 
-V2-S6-003-PR1 registers one freeze record for each of V2-E02A, V2-E02B, V2-E02C,
-V2-E04, and V2-E05, before any run. ``tools.experiment_freeze`` checks that each
-answers every freeze field. ``tools.experiment_preregistration`` reads the
-answers: the qualification, the bound record, and the baseline comparison that
-each record names, and the records against each other.
+V2-S6-003-PR1 registered one freeze record for each of V2-E02A, V2-E02B, V2-E02C,
+V2-E04, and V2-E05, before any run. V2-S6-007-PR1 registered revision 2 of the
+records of V2-E02A, V2-E02B, V2-E02C, and V2-E05, under rule set 2 and its one
+clock policy. Revision 1 of each stays unchanged, and V2-E04 stays at revision 1.
+``tools.experiment_freeze`` checks that each record answers every freeze field.
+``tools.experiment_preregistration`` reads the answers: the qualification, the
+bound record, and the baseline comparison that each record names, the clock
+policy of a record of rule set 2, and the records against each other.
 
 The first part holds the committed records, with their identities written out so
-that a change to one is visible in review. The second part plants each defect
-that the check refuses in a copy of the files it reads, and asserts the exact
-findings. No test runs an experiment or contacts a cluster.
+that a change to one is visible in review. The second and the third part plant
+each defect that the check refuses in a copy of the files it reads, and assert
+the exact findings. The fourth part does the same for the clock rules. No test
+runs an experiment or contacts a cluster.
 """
 
 from __future__ import annotations
@@ -26,6 +30,7 @@ import pytest
 
 from tools.experiment_freeze.core import (
     FROZEN_RECORDS,
+    changed_inputs,
     content_digest,
     material_files,
 )
@@ -38,6 +43,7 @@ from tools.experiment_preregistration import (
     PERMITTED_TOPOLOGY,
     RULES,
     TARGET,
+    check_records,
     check_repository,
     core,
     latest_records,
@@ -48,11 +54,28 @@ pytestmark = pytest.mark.docs
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = REPO_ROOT / "docs" / "proof" / "experiments" / "README.md"
 
-E02A = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"
-E02B = "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json"
-E02C = "docs/proof/experiments/v2-e02c/freeze-r1.v1alpha1.json"
+#: The latest revision of each experiment: revision 2, except for V2-E04.
+E02A = "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json"
+E02B = "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json"
+E02C = "docs/proof/experiments/v2-e02c/freeze-r2.v1alpha1.json"
 E04 = "docs/proof/experiments/v2-e04/freeze-r1.v1alpha1.json"
-E05 = "docs/proof/experiments/v2-e05/freeze-r1.v1alpha1.json"
+E05 = "docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json"
+#: Revision 1 of each experiment. Revision 2 supersedes it, except for V2-E04.
+E02A_R1 = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"
+E02B_R1 = "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json"
+E02C_R1 = "docs/proof/experiments/v2-e02c/freeze-r1.v1alpha1.json"
+E05_R1 = "docs/proof/experiments/v2-e05/freeze-r1.v1alpha1.json"
+REVISION_ONE = {
+    "V2-E02A": E02A_R1,
+    "V2-E02B": E02B_R1,
+    "V2-E02C": E02C_R1,
+    "V2-E04": E04,
+    "V2-E05": E05_R1,
+}
+#: The four records of rule set 2.
+REVISION_TWO = {"V2-E02A": E02A, "V2-E02B": E02B, "V2-E02C": E02C, "V2-E05": E05}
+#: Every committed record of the five experiments.
+ALL_RECORDS = sorted(set(REVISION_ONE.values()) | set(REVISION_TWO.values()))
 RECORDS = {
     "V2-E02A": E02A,
     "V2-E02B": E02B,
@@ -118,30 +141,47 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout.strip() == "PASSED: 5 experiment record(s), every rule held"
+    assert result.stdout.strip() == (
+        "PASSED: 5 experiment record(s) and 4 superseded revision(s), every rule held"
+    )
 
 
-def test_each_record_is_revision_one_registered_by_this_change() -> None:
-    assert {k: path for k, (path, _) in latest_records().items()} == RECORDS
-    for experiment, path in RECORDS.items():
+def test_each_revision_one_record_is_registered_by_v2_s6_003_and_unchanged() -> None:
+    for experiment, path in REVISION_ONE.items():
         document = load(path)
         assert document["metadata"]["experiment"] == experiment
         assert document["metadata"]["revision"] == 1
         assert document["metadata"]["supersedes"] is None
         assert document["metadata"]["registeredBy"] == "V2-S6-003-PR1"
+        assert "preregistrationRules" not in document["metadata"]
         assert FROZEN_RECORDS[path] == content_digest((REPO_ROOT / path).read_bytes())
     assert check_freezes() == []
 
 
+def test_the_latest_records_are_revision_two_and_e04_revision_one() -> None:
+    assert {k: path for k, (path, _) in latest_records().items()} == RECORDS
+    for experiment, path in REVISION_TWO.items():
+        metadata = load(path)["metadata"]
+        assert metadata["experiment"] == experiment
+        assert metadata["revision"] == 2
+        assert metadata["registeredBy"] == "V2-S6-007-PR1"
+        assert metadata["preregistrationRules"] == 2
+        assert metadata["supersedes"] == {
+            "path": REVISION_ONE[experiment],
+            "contentSha256": FROZEN_RECORDS[REVISION_ONE[experiment]],
+        }
+        assert FROZEN_RECORDS[path] == content_digest((REPO_ROOT / path).read_bytes())
+
+
 def test_no_field_is_pending_or_not_applicable() -> None:
     """No placeholder: every freeze field of every record is answered with a value."""
-    for path in RECORDS.values():
+    for path in ALL_RECORDS:
         for field, entries in load(path)["fields"].items():
             assert [e["status"] for e in entries] == ["value"], (path, field)
 
 
 def test_each_record_names_the_q1_2_lineage_and_the_bound_record() -> None:
-    for path in RECORDS.values():
+    for path in ALL_RECORDS:
         document = load(path)
         environment = value(document, "environmentIdentity")
         assert environment["environmentSha256"] == ENVIRONMENT_SHA256
@@ -166,7 +206,7 @@ def test_each_record_names_the_q1_2_lineage_and_the_bound_record() -> None:
 def test_the_q3_1_refusal_is_kept_and_named_as_history() -> None:
     record = load("docs/proof/experiments/v2-q3/runs/q3-1/record.v1alpha1.json")
     assert record["result"] == "REFUSED"
-    for path in RECORDS.values():
+    for path in ALL_RECORDS:
         assert any(
             "q3-1 REFUSED" in line for line in load(path)["definition"]["history"]
         )
@@ -238,16 +278,19 @@ def test_no_run_and_no_driver_exists_for_any_experiment() -> None:
     one registers a later revision, and its file is listed as added until then."""
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
-        assert sorted(p.name for p in directory.iterdir()) == [
-            "freeze-r1.v1alpha1.json"
-        ]
+        assert sorted(p.name for p in directory.iterdir()) == (
+            ["freeze-r1.v1alpha1.json"]
+            if experiment.experiment_id == "V2-E04"
+            else ["freeze-r1.v1alpha1.json", "freeze-r2.v1alpha1.json"]
+        )
 
 
 def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
     """A tripwire: a file added to or removed from a scope moves this set. Such a
     change owes a later revision of the record before any run, and the
-    ``--changes`` command of the freeze tool lists the file until then."""
-    for path in RECORDS.values():
+    ``--changes`` command of the freeze tool lists the file until then. Revision 1
+    pins the same files as revision 2, with other digests of this check."""
+    for path in ALL_RECORDS:
         document = load(path)
         pinned = {item["path"] for item in document["pinnedInputs"]}
         assert material_files(document["materialScope"], REPO_ROOT) == pinned, path
@@ -257,7 +300,7 @@ def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
 
 
 def test_every_rule_is_published() -> None:
-    assert len(RULES) == 12
+    assert len(RULES) == 18
     text = README.read_text(encoding="utf-8")
     for rule, statement in RULES.items():
         assert f"| `{rule}` | {statement} |" in text, rule
@@ -275,7 +318,7 @@ def root(tmp_path: Path) -> Path:
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(REPO_ROOT / relative, target)
-    for path in RECORDS.values():
+    for path in ALL_RECORDS:
         target = tmp_path / path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(REPO_ROOT / path, target)
@@ -480,7 +523,8 @@ def test_an_edited_bound_record_is_refused(root: Path) -> None:
     edit(root, BOUNDS, change)
     findings = found(root)
     assert {f[0] for f in findings} == {"prereg-bounds-stale"}
-    assert sorted({f[1] for f in findings}) == sorted(RECORDS.values())
+    # A superseded revision is held to the digest of the bound record it names.
+    assert sorted({f[1] for f in findings}) == ALL_RECORDS
     assert {f[3] for f in findings} == {
         "the bound record has another digest",
         "the bounds differ from those of the bound record",
@@ -1046,7 +1090,8 @@ def test_a_qualification_path_outside_the_root_is_not_read(root: Path) -> None:
 def test_the_check_does_not_change_when_every_qualification_is_refused(
     root: Path,
 ) -> None:
-    """The exact findings when the qualification record says REFUSED."""
+    """The exact findings when the qualification record says REFUSED. A superseded
+    revision is held to the qualification that it names, as the latest one is."""
 
     def change(document: dict[str, Any]) -> None:
         document["result"] = "REFUSED"
@@ -1054,7 +1099,7 @@ def test_the_check_does_not_change_when_every_qualification_is_refused(
     edit(root, QUALIFICATION, change)
     assert found(root) == [
         finding
-        for path in sorted(RECORDS.values())
+        for path in ALL_RECORDS
         for finding in (
             (
                 "prereg-qualification-incompatible",
@@ -1123,7 +1168,13 @@ def test_a_criterion_that_names_an_unknown_bound_is_refused(root: Path) -> None:
             E02C,
             "fields.acceptanceCriteria[0].value[9]",
             "it names no bound of the record",
-        )
+        ),
+        (
+            "prereg-clock-inventory",
+            E02C,
+            "fields.acceptanceCriteria[0].value[9]",
+            "it names a bound and declares no clocks of its interval",
+        ),
     ]
 
 
@@ -1142,3 +1193,852 @@ def test_the_comparison_reads_identifiers_only_as_whole_tokens() -> None:
     assert core._normalised({"a": "xe02a-1 V2-E02AB"}, baseline) == {
         "a": "xe02a-1 V2-E02AB"
     }
+
+
+# --------------------------------------------------------------------------
+# 4. The clock policy of rule set 2
+# --------------------------------------------------------------------------
+
+#: The text of revision 1 that the first Sprint 6 review found to contradict P8.
+R1_LIMITATION = (
+    "The caller instants, the readings, and the events are on three clocks whose "
+    "differences are not measured."
+)
+R1_WINDOW_CLOCKS = (
+    "A caller instant is on the clock of the runner pod. A reading is on the clock "
+    "of the collecting host, and an event on the clock of the recording host. The "
+    "difference between the clocks is not measured, and no order of two instants of "
+    "two clocks that are less than one second apart is stated."
+)
+R1_CLOCK_RULE = (
+    "A criterion that compares an interval between instants of two clocks with a "
+    "bound is not held and not failed when the interval lies within the clock bound "
+    "of P8 of that bound. The run is then INCONCLUSIVE for the reason "
+    "clock-bound-reached."
+)
+
+#: The members in which a revision 2 differs from its revision 1, and nothing else.
+CHANGED_MEMBERS = {
+    "metadata.revision",
+    "metadata.registeredBy",
+    "metadata.supersedes",
+    "metadata.preregistrationRules",
+    "definition.limitations",
+    "definition.history",
+    "definition.preparation",
+    "definition.window.clocks",
+    "definition.clockPolicy",
+    "definition.criterionClocks",
+    "definition.outcomeRules",
+    "exclusionReasons.reasons",
+    "fields.experimentIdVersion",
+    "fields.gitRevision",
+    "pinnedInputs",
+    "inputChanges",
+}
+E05_CHANGED_MEMBERS = {
+    "definition.reconciliationTiming.start",
+    "definition.reconciliationTiming.end",
+    "definition.reconciliationTiming.clocks",
+}
+#: The three files of this check, which every record pins. An edit to one moves the
+#: pins of every record, and of revision 1 too.
+CHECK_FILES = [
+    "tools/experiment_preregistration/__init__.py",
+    "tools/experiment_preregistration/__main__.py",
+    "tools/experiment_preregistration/core.py",
+]
+
+
+def policy_of(document: dict[str, Any]) -> dict[str, Any]:
+    result = document["definition"]["clockPolicy"]
+    assert isinstance(result, dict)
+    return result
+
+
+def edit_two(root: Path, change: Callable[[dict[str, Any]], None]) -> None:
+    """Plant one change in each record of rule set 2, so that they stay alike."""
+    for path in REVISION_TWO.values():
+        edit(root, path, change)
+
+
+def each(rule: str, location: str, detail: str) -> list[tuple[str, str, str, str]]:
+    return [(rule, path, location, detail) for path in sorted(REVISION_TWO.values())]
+
+
+def differences(left: Any, right: Any, prefix: str = "") -> set[str]:
+    """The paths of the members in which two values differ. A list is one member."""
+    if isinstance(left, dict) and isinstance(right, dict):
+        found: set[str] = set()
+        for key in set(left) | set(right):
+            path = f"{prefix}.{key}" if prefix else key
+            if key not in left or key not in right:
+                found.add(path)
+            else:
+                found |= differences(left[key], right[key], path)
+        return found
+    return set() if left == right else {prefix}
+
+
+def test_every_record_of_rule_set_two_states_one_clock_policy() -> None:
+    policies = {path: policy_of(load(path)) for path in REVISION_TWO.values()}
+    assert policy_of(load(E02A)) == policy_of(load(E02B))
+    assert len({json.dumps(p, sort_keys=True) for p in policies.values()}) == 1
+    policy = policies[E02B]
+    assert [c["id"] for c in policy["clocks"]] == ["node", "host"]
+    assert {s["id"]: (s["clock"], s["resolutionMs"]) for s in policy["sources"]} == {
+        "caller-record": ("node", 1),
+        "kubernetes-timestamp": ("node", 1000),
+        "collector-reading": ("host", 1),
+        "operator-event": ("host", 1),
+        "clock-reading-host": ("host", 1),
+        "clock-reading-node": ("node", 1),
+    }
+    assert policy["measurement"]["readings"] == ["start", "end"]
+    assert policy["missingReadings"]["end"]["reason"] == "clock-reading-missing"
+    assert policy["notJudged"]["decidedStateStands"] is True
+    assert "the clock bound" in policy["ordering"]["margin"]
+    assert policy["ordering"]["margin"] == policy["boundComparison"]["margin"]
+
+
+def test_the_bound_is_the_formula_of_revision_one_word_for_word() -> None:
+    for experiment, path in REVISION_TWO.items():
+        (step_1,) = [
+            s
+            for s in load(REVISION_ONE[experiment])["definition"]["preparation"]
+            if s.startswith("P8. ")
+        ]
+        (step_2,) = [
+            s for s in load(path)["definition"]["preparation"] if s.startswith("P8. ")
+        ]
+        assert core.CLOCK_BOUND_FORMULA in step_1
+        assert core.CLOCK_BOUND_FORMULA in step_2
+        assert step_2.startswith(step_1)
+        assert policy_of(load(path))["bound"]["formula"] == core.CLOCK_BOUND_FORMULA
+
+
+def test_revision_two_differs_from_revision_one_only_in_the_listed_members() -> None:
+    """A tripwire: every other member keeps its revision-1 value byte for byte."""
+    for experiment, path in REVISION_TWO.items():
+        one, two = load(REVISION_ONE[experiment]), load(path)
+        expected = CHANGED_MEMBERS | (
+            E05_CHANGED_MEMBERS if experiment == "V2-E05" else set()
+        )
+        assert differences(one, two) == expected, experiment
+        limitations_1 = one["definition"]["limitations"]
+        limitations_2 = two["definition"]["limitations"]
+        index = limitations_1.index(R1_LIMITATION)
+        assert limitations_2[:index] == limitations_1[:index]
+        assert limitations_2[index + 1 : -1] == limitations_1[index + 1 :]
+        assert len(limitations_2) == len(limitations_1) + 1
+        assert two["definition"]["history"][:-1] == one["definition"]["history"]
+        steps_1 = one["definition"]["preparation"]
+        steps_2 = two["definition"]["preparation"]
+        assert steps_2[1:7] == steps_1[1:7]
+        assert steps_2[0].startswith(steps_1[0])
+        assert "latest revision of its experiment" in steps_2[0]
+        rules_1 = one["definition"]["outcomeRules"]
+        rules_2 = two["definition"]["outcomeRules"]
+        assert rules_1[5] == R1_CLOCK_RULE
+        assert rules_2[:5] + rules_2[6:] == rules_1[:5] + rules_1[6:]
+        reasons_1 = {r["id"]: r for r in one["exclusionReasons"]["reasons"]}
+        reasons_2 = {r["id"]: r for r in two["exclusionReasons"]["reasons"]}
+        assert set(reasons_2) - set(reasons_1) == {"clock-reading-missing"}
+        for reason, entry in reasons_1.items():
+            if reason != "clock-bound-reached":
+                assert reasons_2[reason] == entry
+        assert len(reasons_2) == 10
+        moved = {p["path"] for p in one["pinnedInputs"] if p not in two["pinnedInputs"]}
+        assert sorted(moved) == CHECK_FILES
+        assert [c["path"] for c in two["inputChanges"]] == CHECK_FILES
+        assert [c["material"] for c in two["inputChanges"]] == [False, False, True]
+
+
+def test_each_revision_one_record_still_passes_under_its_own_rules() -> None:
+    """The full rule set 1, with the cross-record rules, over the five revision-1
+    records, as V2-S6-003-PR1 checked them."""
+    records = {
+        experiment: (path, load(path)) for experiment, path in REVISION_ONE.items()
+    }
+    assert check_records(records) == []
+
+
+def test_the_moved_pins_of_each_revision_one_record_are_this_check_alone() -> None:
+    """Revision 2 classifies them. V2-E04 has no revision 2 yet, so its revision 1
+    lists them as changed until a later revision of it supersedes it."""
+    for path in REVISION_ONE.values():
+        changes = changed_inputs(load(path), REPO_ROOT)
+        assert [(c.path, c.kind) for c in changes] == [
+            (file, "changed") for file in CHECK_FILES
+        ], path
+    for path in REVISION_TWO.values():
+        assert changed_inputs(load(path), REPO_ROOT) == [], path
+
+
+def test_the_reconciliation_bound_of_e05_is_on_the_host_clock_alone() -> None:
+    document = load(E05)
+    (entry,) = [
+        e
+        for e in document["definition"]["criterionClocks"]
+        if e["criterion"] == "E05-AC9"
+    ]
+    assert entry["bound"] == "reconciliation_bound_ms"
+    assert [i["clock"] for i in entry["instants"]] == ["host", "host"]
+    assert entry["crossClock"] is False
+    assert "host clock" in document["definition"]["reconciliationTiming"]["clocks"]
+
+
+def test_the_caller_bound_of_e02c_is_on_the_node_clock_alone() -> None:
+    (entry,) = [
+        e
+        for e in load(E02C)["definition"]["criterionClocks"]
+        if e["criterion"] == "E02C-AC10"
+    ]
+    assert entry["bound"] == "caller_total_unavailability_bound_ms"
+    assert [i["source"] for i in entry["instants"]] == ["caller-record"] * 2
+    assert entry["crossClock"] is False
+
+
+def test_each_criterion_clock_entry_is_cross_clock_exactly_when_its_clocks_differ() -> (
+    None
+):
+    for path in REVISION_TWO.values():
+        for entry in load(path)["definition"]["criterionClocks"]:
+            clocks = [core.CLOCK_SOURCES[i["source"]][0] for i in entry["instants"]]
+            assert [i["clock"] for i in entry["instants"]] == clocks
+            assert entry["crossClock"] is (clocks[0] != clocks[1])
+
+
+def test_no_text_of_a_record_of_rule_set_two_contradicts_the_policy() -> None:
+    for path in REVISION_TWO.values():
+        assert list(core._contradiction_findings(path, load(path))) == []
+
+
+def test_revision_one_text_is_what_the_clock_rules_refuse() -> None:
+    """The scan finds the contradictions that the review named in revision 1, and
+    nothing else."""
+    for experiment, path in REVISION_ONE.items():
+        assert [
+            (f.location, f.detail)
+            for f in core._contradiction_findings(path, load(path))
+        ] == [
+            (
+                "definition.limitations[2]",
+                "it states that the clock difference is not measured",
+            ),
+            (
+                "definition.window.clocks",
+                "it states that the clock difference is not measured",
+            ),
+            (
+                "definition.window.clocks",
+                "it states an ordering threshold that does not name the clock bound",
+            ),
+        ], experiment
+
+
+def test_a_negation_hides_a_claim_from_the_scan() -> None:
+    """A known limit: the scan reads words, not meaning. A sentence that claims
+    synchronization and holds a negation elsewhere is not refused."""
+    document = {
+        "definition": {"limitations": ["The clocks are synchronized, not drifting."]}
+    }
+    assert list(core._contradiction_findings("x", document)) == []
+    document = {"definition": {"limitations": ["The clocks are synchronized."]}}
+    assert [f.detail for f in core._contradiction_findings("x", document)] == [
+        "it names synchronization or a guarantee with no negation"
+    ]
+
+
+CONTRADICTION = "prereg-clock-contradiction"
+CLOCK_RULES = "prereg-clock-rules"
+MEASUREMENT = "prereg-clock-measurement"
+INVENTORY = "prereg-clock-inventory"
+REASONS = "prereg-clock-reasons"
+NOT_MEASURED = "it states that the clock difference is not measured"
+FIXED_ORDER = "it states an ordering threshold that does not name the clock bound"
+
+
+def _limitation(document: dict[str, Any]) -> None:
+    limitations = document["definition"]["limitations"]
+    limitations[2] = R1_LIMITATION
+
+
+def _window(document: dict[str, Any]) -> None:
+    document["definition"]["window"]["clocks"] = R1_WINDOW_CLOCKS
+
+
+def test_a_limitation_that_says_the_difference_is_not_measured_is_refused(
+    root: Path,
+) -> None:
+    """(a) The limitation of revision 1."""
+    edit_two(root, _limitation)
+    assert found(root) == each(CONTRADICTION, "definition.limitations[2]", NOT_MEASURED)
+
+
+def test_a_window_that_says_the_difference_is_not_measured_is_refused(
+    root: Path,
+) -> None:
+    """(a) and (e) The window text of revision 1: two contradictions."""
+    edit_two(root, _window)
+    assert found(root) == [
+        finding
+        for path in sorted(REVISION_TWO.values())
+        for finding in (
+            (CONTRADICTION, path, "definition.window.clocks", NOT_MEASURED),
+            (CONTRADICTION, path, "definition.window.clocks", FIXED_ORDER),
+        )
+    ]
+
+
+def test_a_record_without_p8_is_refused(root: Path) -> None:
+    """(b) P8 removed."""
+
+    def change(document: dict[str, Any]) -> None:
+        steps = document["definition"]["preparation"]
+        steps[:] = [s for s in steps if not s.startswith("P8. ")]
+
+    edit_two(root, change)
+    assert found(root) == each(
+        MEASUREMENT, "definition.preparation", "the preparation has no one step P8"
+    )
+
+
+@pytest.mark.parametrize(
+    ("change", "location", "detail"),
+    [
+        pytest.param(
+            lambda d: d["definition"]["preparation"].__setitem__(
+                7,
+                d["definition"]["preparation"][7].replace(
+                    " and again after the window ends", ""
+                ),
+            ),
+            "definition.preparation",
+            "P8 does not read the clocks before the runner starts and after the "
+            "window ends",
+            id="p8-text",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["measurement"].__setitem__("readings", ["start"]),
+            "definition.clockPolicy.measurement",
+            "the measurement is not P8, with a start and an end reading of three "
+            "instants, each with its time",
+            id="policy-readings",
+        ),
+    ],
+)
+def test_a_measurement_without_its_end_reading_is_refused(
+    root: Path, change: Callable[[dict[str, Any]], None], location: str, detail: str
+) -> None:
+    """(b) One of the two readings removed."""
+    edit_two(root, change)
+    assert found(root) == each(MEASUREMENT, location, detail)
+
+
+@pytest.mark.parametrize("reason", ["clock-reading-missing", "clock-bound-reached"])
+def test_a_record_without_a_clock_reason_is_refused(root: Path, reason: str) -> None:
+    """(c) and (d) One clock reason removed."""
+
+    def change(document: dict[str, Any]) -> None:
+        reasons = document["exclusionReasons"]["reasons"]
+        reasons[:] = [r for r in reasons if r["id"] != reason]
+
+    edit_two(root, change)
+    assert found(root) == each(
+        REASONS, "exclusionReasons", f"{reason} is not registered for INCONCLUSIVE"
+    )
+
+
+def test_outcome_rules_that_name_one_clock_reason_are_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["outcomeRules"][5] = R1_CLOCK_RULE
+
+    edit_two(root, change)
+    assert found(root) == each(
+        REASONS,
+        "definition.outcomeRules",
+        "the outcome rules do not name clock-reading-missing",
+    )
+
+
+def test_an_ordering_threshold_that_does_not_use_the_bound_is_refused(
+    root: Path,
+) -> None:
+    """(e) A fixed threshold of one second, as revision 1 stated it."""
+
+    def change(document: dict[str, Any]) -> None:
+        ordering = policy_of(document)["ordering"]
+        ordering["crossClock"] = (
+            "No order is stated between two instants of two clocks that are less "
+            "than one second apart."
+        )
+        ordering["margin"] = "1,000 ms"
+
+    edit_two(root, change)
+    assert found(root) == each(
+        CLOCK_RULES,
+        "definition.clockPolicy.ordering",
+        "it does not apply the margin of rule set 2 across the clocks, under "
+        "clock-bound-reached",
+    ) + each(CONTRADICTION, "definition.clockPolicy.ordering.crossClock", FIXED_ORDER)
+
+
+def test_a_criterion_clock_that_the_inventory_does_not_hold_is_refused(
+    root: Path,
+) -> None:
+    """(f) The runner pod's clock, which revision 1 named as a clock of its own."""
+
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["criterionClocks"][13]["instants"][0]["clock"] = (
+            "runner-pod"
+        )
+
+    edit(root, E02C, change)
+    where = "definition.criterionClocks[13]"
+    assert found(root) == [
+        (
+            INVENTORY,
+            E02C,
+            where,
+            "it names the clock runner-pod, which the inventory does not hold",
+        ),
+    ]
+
+
+def test_a_cross_clock_criterion_declared_same_clock_is_refused(root: Path) -> None:
+    """(g) stabilizedAt, on the node clock, against the observation limit, on the
+    host clock."""
+
+    def change(document: dict[str, Any]) -> None:
+        entry = document["definition"]["criterionClocks"][7]
+        assert [i["clock"] for i in entry["instants"]] == ["node", "host"]
+        entry["crossClock"] = False
+
+    edit(root, E02C, change)
+    assert found(root) == [
+        (
+            INVENTORY,
+            E02C,
+            "definition.criterionClocks[7]",
+            "it is declared same-clock, and its instants are on two clocks",
+        )
+    ]
+
+
+def test_a_same_clock_criterion_declared_cross_clock_is_refused(root: Path) -> None:
+    """callerFailureEpisodeMs: two caller completions, on the node clock."""
+
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["criterionClocks"][13]["crossClock"] = True
+
+    edit(root, E02C, change)
+    assert found(root) == [
+        (
+            INVENTORY,
+            E02C,
+            "definition.criterionClocks[13]",
+            "it is declared cross-clock, and its instants are on one clock",
+        )
+    ]
+
+
+def test_a_source_moved_to_the_other_clock_is_refused(root: Path) -> None:
+    """(g) A criterion cannot become same-clock by moving its source."""
+
+    def change(document: dict[str, Any]) -> None:
+        entry = document["definition"]["criterionClocks"][7]
+        entry["instants"][0]["clock"] = "host"
+
+    edit(root, E02C, change)
+    where = "definition.criterionClocks[7]"
+    assert found(root) == [
+        (
+            INVENTORY,
+            E02C,
+            where,
+            "it puts the source caller-record on the host clock, and the inventory "
+            "puts it on the node clock",
+        )
+    ]
+
+
+def test_an_inventory_that_moves_the_caller_to_the_host_clock_is_refused(
+    root: Path,
+) -> None:
+    def change(document: dict[str, Any]) -> None:
+        policy_of(document)["sources"][0]["clock"] = "host"
+
+    edit_two(root, change)
+    assert found(root) == each(
+        INVENTORY,
+        "definition.clockPolicy.sources",
+        "the sources are not those of rule set 2, each once with its clock, its "
+        "resolution, and a statement",
+    )
+
+
+def test_a_bound_criterion_without_its_clocks_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        del document["definition"]["criterionClocks"][13]
+
+    edit(root, E02C, change)
+    assert found(root) == [
+        (
+            INVENTORY,
+            E02C,
+            "fields.acceptanceCriteria[0].value[9]",
+            "it names a bound and declares no clocks of its interval",
+        )
+    ]
+
+
+def test_clock_policies_of_the_baseline_and_the_target_that_differ_are_refused(
+    root: Path,
+) -> None:
+    """(h)"""
+
+    def change(document: dict[str, Any]) -> None:
+        policy_of(document)["statement"] += " The baseline reads it differently."
+
+    edit(root, E02A, change)
+    assert found(root) == [shared(E02A, "definition.clockPolicy")]
+
+
+def test_a_clock_policy_of_e05_that_differs_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        policy_of(document)["clocks"][1]["statement"] += " Another host."
+
+    edit(root, E05, change)
+    assert found(root) == [shared(E05, "definition.clockPolicy")]
+
+
+@pytest.mark.parametrize(
+    ("change", "location", "detail"),
+    [
+        pytest.param(
+            lambda d: policy_of(d)["bound"].__setitem__(
+                "formula", core.CLOCK_BOUND_FORMULA.split(", plus")[0]
+            ),
+            "definition.clockPolicy.bound",
+            "the bound is not the formula of revision 1 with the computation of rule "
+            "set 2, in milliseconds, with the reason that it is conservative",
+            id="policy-formula",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["bound"].__setitem__(
+                "computation",
+                core.CLOCK_BOUND_COMPUTATION.replace(
+                    " plus the larger w of the two readings", ""
+                ),
+            ),
+            "definition.clockPolicy.bound",
+            "the bound is not the formula of revision 1 with the computation of rule "
+            "set 2, in milliseconds, with the reason that it is conservative",
+            id="policy-computation",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["preparation"].__setitem__(
+                7,
+                d["definition"]["preparation"][7].replace(
+                    ", plus the time between the two host instants", ""
+                ),
+            ),
+            "definition.preparation",
+            "P8 does not state the bound formula of revision 1",
+            id="p8-formula",
+        ),
+    ],
+)
+def test_a_bound_formula_other_than_that_of_revision_one_is_refused(
+    root: Path, change: Callable[[dict[str, Any]], None], location: str, detail: str
+) -> None:
+    """(i) The formula without the time between the two host instants."""
+    edit_two(root, change)
+    assert found(root) == each(MEASUREMENT, location, detail)
+
+
+@pytest.mark.parametrize(
+    ("change", "location"),
+    [
+        pytest.param(
+            lambda d: policy_of(d)["uncertainty"].__setitem__(
+                "notClaimed", "The host synchronizes the clocks, so the bound holds."
+            ),
+            "definition.clockPolicy.uncertainty.notClaimed",
+            id="synchronized",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["window"].__setitem__(
+                "clocks",
+                d["definition"]["window"]["clocks"]
+                + " The clock bound is guaranteed between the two readings.",
+            ),
+            "definition.window.clocks",
+            id="guaranteed",
+        ),
+    ],
+)
+def test_wording_that_claims_synchronization_or_a_guarantee_is_refused(
+    root: Path, change: Callable[[dict[str, Any]], None], location: str
+) -> None:
+    """(j)"""
+    edit_two(root, change)
+    assert found(root) == each(
+        CONTRADICTION,
+        location,
+        "it names synchronization or a guarantee with no negation",
+    )
+
+
+NOT_JUDGED = (
+    "a verdict that is not judged does not follow the rule of rule set 2, in which "
+    "a state that the judged verdicts decide stands"
+)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(
+            lambda d: policy_of(d)["notJudged"].__setitem__(
+                "rule",
+                "An unusable end reading makes every run INCONCLUSIVE for the reason "
+                "clock-reading-missing.",
+            ),
+            id="every-run-inconclusive",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["notJudged"].__setitem__(
+                "decidedStateStands", False
+            ),
+            id="decided-state-does-not-stand",
+        ),
+    ],
+)
+def test_an_end_reading_rule_that_excludes_every_run_is_refused(
+    root: Path, change: Callable[[dict[str, Any]], None]
+) -> None:
+    """(k) A clear FAILED is never turned into an exclusion."""
+    edit_two(root, change)
+    assert found(root) == each(
+        CLOCK_RULES, "definition.clockPolicy.notJudged", NOT_JUDGED
+    )
+
+
+def test_a_policy_without_the_offset_stability_assumption_is_refused(
+    root: Path,
+) -> None:
+    """(l)"""
+    edit_two(root, lambda d: policy_of(d)["uncertainty"].pop("offsetStability"))
+    assert found(root) == each(
+        CLOCK_RULES,
+        "definition.clockPolicy.uncertainty",
+        "it does not state the offset-stability assumption of rule set 2",
+    )
+
+
+@pytest.mark.parametrize(
+    ("change", "location", "detail"),
+    [
+        pytest.param(
+            lambda d: policy_of(d)["missingReadings"]["start"].__setitem__(
+                "resultState", "INCONCLUSIVE"
+            ),
+            "definition.clockPolicy.missingReadings.start",
+            "an unusable start reading does not refuse the run before the fault",
+            id="start-inconclusive",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["missingReadings"]["start"].__setitem__(
+                "faultInjected", True
+            ),
+            "definition.clockPolicy.missingReadings.start",
+            "an unusable start reading does not refuse the run before the fault",
+            id="start-fault-injected",
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["missingReadings"]["end"].__setitem__(
+                "boundComputable", True
+            ),
+            "definition.clockPolicy.missingReadings.end",
+            "an unusable end reading does not leave the bound not computable, under "
+            "clock-reading-missing",
+            id="end-bound-computable",
+        ),
+    ],
+)
+def test_a_missing_reading_rule_other_than_that_of_rule_set_two_is_refused(
+    root: Path, change: Callable[[dict[str, Any]], None], location: str, detail: str
+) -> None:
+    edit_two(root, change)
+    assert found(root) == each(CLOCK_RULES, location, detail)
+
+
+@pytest.mark.parametrize(
+    ("path", "stated", "detail"),
+    [
+        pytest.param(
+            E05,
+            None,
+            "the record states no rule set of 2 or later that this check knows",
+            id="revision-two-states-none",
+        ),
+        pytest.param(
+            E05,
+            3,
+            "the record states no rule set of 2 or later that this check knows",
+            id="unknown-rule-set",
+        ),
+        pytest.param(
+            E05,
+            1,
+            "the record states no rule set of 2 or later that this check knows",
+            id="later-revision-under-rule-set-one",
+        ),
+        pytest.param(
+            E05,
+            True,
+            "the record states no rule set of 2 or later that this check knows",
+            id="rule-set-a-boolean",
+        ),
+        pytest.param(
+            E04,
+            2,
+            "a revision-1 record of rule set 1 states no rule set",
+            id="revision-one-states-one",
+        ),
+    ],
+)
+def test_a_record_with_no_known_rule_set_is_refused(
+    root: Path, path: str, stated: Any, detail: str
+) -> None:
+    """A revision cannot leave the clock rules by stating no rule set."""
+
+    def change(document: dict[str, Any]) -> None:
+        if stated is None:
+            del document["metadata"]["preregistrationRules"]
+        else:
+            document["metadata"]["preregistrationRules"] = stated
+
+    edit(root, path, change)
+    assert found(root) == [
+        ("prereg-rule-set-unknown", path, "metadata.preregistrationRules", detail)
+    ]
+
+
+def test_a_superseded_revision_with_a_rule_set_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        document["metadata"]["preregistrationRules"] = 2
+
+    edit(root, E02C_R1, change)
+    assert found(root) == [
+        (
+            "prereg-rule-set-unknown",
+            E02C_R1,
+            "metadata.preregistrationRules",
+            "a revision-1 record of rule set 1 states no rule set",
+        )
+    ]
+
+
+def test_a_record_of_rule_set_two_without_a_clock_policy_is_refused(
+    root: Path,
+) -> None:
+    edit(root, E02C, lambda d: d["definition"].pop("clockPolicy"))
+    assert found(root) == [
+        (
+            "prereg-record-shape",
+            E02C,
+            "$",
+            "definition states no clock policy and no criterion clocks",
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(lambda d: policy_of(d).__setitem__("sources", "x"), id="sources"),
+        pytest.param(lambda d: policy_of(d).__setitem__("clocks", [1]), id="clocks"),
+        pytest.param(
+            lambda d: policy_of(d).__setitem__("measurement", []), id="measurement"
+        ),
+        pytest.param(
+            lambda d: policy_of(d)["bound"].__setitem__("formula", 1), id="formula"
+        ),
+        pytest.param(
+            lambda d: policy_of(d).__setitem__("ordering", None), id="ordering"
+        ),
+        pytest.param(
+            lambda d: d["definition"]["criterionClocks"].__setitem__(0, "x"),
+            id="entry",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["criterionClocks"][0].__setitem__(
+                "instants", [1, 2]
+            ),
+            id="instants",
+        ),
+        pytest.param(
+            lambda d: d["exclusionReasons"]["reasons"].__setitem__(0, "x"),
+            id="reason",
+        ),
+    ],
+)
+def test_a_malformed_clock_policy_is_a_finding_and_not_an_error(
+    root: Path, change: Callable[[dict[str, Any]], None]
+) -> None:
+    edit(root, E02C, change)
+    findings = found(root)
+    assert findings
+    assert all(f[1] == E02C for f in findings)
+
+
+def test_a_superseded_revision_is_checked_against_its_own_sources(
+    root: Path,
+) -> None:
+    """History is checked alone: its rules that read one record still apply."""
+
+    def change(document: dict[str, Any]) -> None:
+        value(document, "derivedNumericBounds")["bounds"][3]["valueMs"] = 20_000
+
+    edit(root, E02C_R1, change)
+    assert found(root) == [
+        (
+            "prereg-bounds-stale",
+            E02C_R1,
+            "fields.derivedNumericBounds",
+            "the bounds differ from those of the bound record",
+        ),
+        (
+            "prereg-criterion-bound-unknown",
+            E02C_R1,
+            "fields.acceptanceCriteria[0].value[9]",
+            "its statement does not state 20,000 ms",
+        ),
+    ]
+
+
+def test_a_later_bound_record_leaves_the_superseded_revisions_alone(
+    root: Path,
+) -> None:
+    """A superseded revision is not run, so it is not held to the latest bounds."""
+    shutil.copyfile(
+        root / BOUNDS, root / "docs/proof/experiments/v2-q4/bounds-r2.v1alpha1.json"
+    )
+    assert {f[1] for f in found(root)} == set(RECORDS.values())
+
+
+def test_the_rule_sets_are_published() -> None:
+    assert sorted(core.RULE_SETS) == [1, 2]
+    assert frozenset(REVISION_ONE.values()) == core.REVISION_ONE_RECORDS
+    text = README.read_text(encoding="utf-8")
+    for constant in (
+        core.CLOCK_BOUND_FORMULA,
+        core.CLOCK_BOUND_COMPUTATION,
+        core.CLOCK_MARGIN,
+        core.OFFSET_STABILITY,
+        core.NOT_JUDGED_RULE,
+    ):
+        assert constant in " ".join(text.split()), constant[:40]
