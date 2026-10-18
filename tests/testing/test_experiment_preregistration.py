@@ -39,6 +39,7 @@ from tools.experiment_preregistration import (
     RULES,
     TARGET,
     check_repository,
+    core,
     latest_records,
 )
 
@@ -445,7 +446,7 @@ def test_a_stale_bound_value_is_refused(root: Path) -> None:
         (
             "prereg-criterion-bound-unknown",
             E02C,
-            "fields.acceptanceCriteria[0].value[8]",
+            "fields.acceptanceCriteria[0].value[9]",
             "its statement does not state 20,000 ms",
         ),
         (
@@ -588,7 +589,7 @@ def test_a_reconciliation_bound_that_is_not_the_registered_sum_is_refused(
         (
             "prereg-criterion-bound-unknown",
             E05,
-            "fields.acceptanceCriteria[0].value[5]",
+            "fields.acceptanceCriteria[0].value[8]",
             "its statement does not state 200,000 ms",
         ),
         (
@@ -698,3 +699,446 @@ def test_the_command_exits_1_on_a_planted_defect(root: Path) -> None:
 
 def test_baseline_and_target_are_the_two_sides() -> None:
     assert (BASELINE, TARGET) == ("V2-E02A", "V2-E02B")
+
+
+# --------------------------------------------------------------------------
+# 3. Defects that the independent review of the first commit planted
+# --------------------------------------------------------------------------
+
+ENV = "fields.environmentIdentity"
+BOUND = "fields.derivedNumericBounds"
+
+
+def shared(path: str, location: str) -> tuple[str, str, str, str]:
+    return ("prereg-shared-differs", path, location, f"it differs from {TARGET}")
+
+
+@pytest.mark.parametrize(
+    ("change", "problem"),
+    [
+        pytest.param(
+            lambda d: d.__setitem__("fields", []),
+            "the record states no fields object and no metadata object",
+            id="fields-a-list",
+        ),
+        pytest.param(
+            lambda d: d["definition"].__setitem__("executables", []),
+            "definition lists no executables",
+            id="no-executables",
+        ),
+        pytest.param(
+            lambda d: d["definition"].__setitem__("executables", [["tools"]]),
+            "definition lists no executables",
+            id="executable-not-a-path",
+        ),
+        pytest.param(
+            lambda d: value(d, "acceptanceCriteria")[9].__setitem__("bound", ["x"]),
+            "acceptanceCriteria is not a list of criteria",
+            id="bound-a-list",
+        ),
+        pytest.param(
+            lambda d: value(d, "environmentIdentity").__setitem__("nodeCount", None),
+            "environmentIdentity states no environment in the form read here",
+            id="node-count-null",
+        ),
+        pytest.param(
+            lambda d: value(d, "derivedNumericBounds")["bounds"].pop(),
+            "derivedNumericBounds names no bound record and no four bounds",
+            id="three-bounds",
+        ),
+        pytest.param(
+            lambda d: d.__setitem__("exclusionReasons", "none"),
+            "the record registers no exclusion reasons",
+            id="reasons-a-string",
+        ),
+        pytest.param(
+            lambda d: topology_of(d).__setitem__("runtimeDisruptionBudget", "none"),
+            "topology states no replica counts and disruption budgets in the form "
+            "read here",
+            id="budget-a-string",
+        ),
+    ],
+)
+def test_a_malformed_record_is_a_finding_and_not_an_error(
+    root: Path, change: Callable[[dict[str, Any]], None], problem: str
+) -> None:
+    edit(root, E02C, change)
+    assert found(root) == [("prereg-record-shape", E02C, "$", problem)]
+
+
+def test_a_record_of_another_experiment_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        document["metadata"]["experiment"] = "V2-E99"
+
+    edit(root, E04, change)
+    assert found(root) == [
+        (
+            "prereg-record-missing",
+            E04,
+            "metadata.experiment",
+            "the record does not name V2-E04",
+        )
+    ]
+
+
+def test_an_executable_without_its_entry_module_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        document["materialScope"]["entryModules"].remove(
+            "tools.experiment_events.__main__"
+        )
+
+    edit(root, E02C, change)
+    assert found(root) == [
+        (
+            "prereg-executable-unpinned",
+            E02C,
+            "materialScope.entryModules",
+            "the scope names no entry module for tools/experiment_events/__main__.py",
+        )
+    ]
+
+
+def test_a_missing_pin_of_the_baseline_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        document["pinnedInputs"] = [
+            item
+            for item in document["pinnedInputs"]
+            if item["path"] != "tools/baseline_profile/__main__.py"
+        ]
+
+    edit(root, E02A, change)
+    assert found(root) == [
+        (
+            "prereg-executable-unpinned",
+            E02A,
+            "definition.executables",
+            "tools/baseline_profile/__main__.py is not pinned",
+        )
+    ]
+
+
+def test_a_baseline_budget_that_the_chart_does_not_render_is_refused(
+    root: Path,
+) -> None:
+    def change(document: dict[str, Any]) -> None:
+        topology_of(document)["runtimeDisruptionBudget"] = {
+            "rendered": True,
+            "minAvailable": 1,
+            "statement": "A budget.",
+        }
+
+    edit(root, E02A, change)
+    assert found(root) == [
+        (
+            "prereg-baseline-difference-unpermitted",
+            E02A,
+            "fields.topology.runtimeDisruptionBudget",
+            "it is not the budget that the chart renders for the replica count",
+        )
+    ]
+
+
+def test_a_baseline_replica_count_other_than_the_comparison_is_refused(
+    root: Path,
+) -> None:
+    def change(document: dict[str, Any]) -> None:
+        topology_of(document)["runtimeReplicas"] = 3
+
+    edit(root, E02A, change)
+    assert found(root) == [
+        (
+            "prereg-baseline-difference-unpermitted",
+            E02A,
+            "fields.topology.release (baseline)",
+            "runtimeReplicas is not the one of the comparison",
+        ),
+        (
+            "prereg-baseline-difference-unpermitted",
+            E02A,
+            "fields.topology.runtimeDisruptionBudget",
+            "it is not the budget that the chart renders for the replica count",
+        ),
+    ]
+
+
+def test_a_target_release_other_than_the_comparison_is_refused_on_the_target(
+    root: Path,
+) -> None:
+    def change(document: dict[str, Any]) -> None:
+        topology_of(document)["release"]["workloadVersion"] = "0.9.0"
+
+    edit(root, E02B, change)
+    assert found(root) == [
+        (
+            "prereg-baseline-difference-unpermitted",
+            E02B,
+            "fields.topology.release (target)",
+            "workloadVersion is not the one of the comparison",
+        ),
+        *[
+            (
+                "prereg-target-topology-differs",
+                path,
+                "fields.topology",
+                f"it differs from {TARGET}",
+            )
+            for path in sorted((E02C, E04, E05))
+        ],
+    ]
+
+
+def test_permitted_differences_that_drift_from_the_comparison_are_refused(
+    root: Path,
+) -> None:
+    def change(document: dict[str, Any]) -> None:
+        topology_of(document)["comparison"]["permittedDifferences"]["values"] = {}
+
+    edit(root, E02A, change)
+    assert found(root) == [
+        (
+            "prereg-baseline-difference-unpermitted",
+            E02A,
+            "fields.topology.comparison",
+            "it is not a permitted difference",
+        ),
+        (
+            "prereg-baseline-difference-unpermitted",
+            E02A,
+            "fields.topology.comparison",
+            "the permitted differences are not those of the comparison",
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("member", "changed", "bounds"),
+    [
+        pytest.param("provider", "kind", ["provider differs"], id="provider"),
+        pytest.param("identityRevision", 1, [], id="identity-revision"),
+        pytest.param("kubernetesServerVersion", "v1.35.0", [], id="server-version"),
+        pytest.param("nodeCount", 2, [], id="node-count"),
+    ],
+)
+def test_each_identity_member_is_compared_with_the_qualification(
+    root: Path, member: str, changed: object, bounds: list[str]
+) -> None:
+    def change(document: dict[str, Any]) -> None:
+        value(document, "environmentIdentity")[member] = changed
+
+    edit(root, E04, change)
+    assert found(root) == [
+        (
+            "prereg-qualification-incompatible",
+            E04,
+            ENV,
+            f"{member} differs from the qualification",
+        ),
+        *[("prereg-bounds-incompatible", E04, BOUND, detail) for detail in bounds],
+        shared(E04, ENV),
+    ]
+
+
+def test_a_qualification_freeze_record_that_is_not_registered_is_refused(
+    root: Path,
+) -> None:
+    def change(document: dict[str, Any]) -> None:
+        freeze = value(document, "environmentIdentity")["qualificationFreezeRecord"]
+        freeze["contentSha256"] = "3" * 64
+
+    edit(root, E02C, change)
+    assert found(root) == [
+        (
+            "prereg-qualification-incompatible",
+            E02C,
+            ENV,
+            "the freeze record differs from the qualification",
+        ),
+        (
+            "prereg-qualification-incompatible",
+            E02C,
+            ENV,
+            "the qualification freeze record is not registered",
+        ),
+        shared(E02C, ENV),
+    ]
+
+
+def test_a_qualified_release_other_than_the_target_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        value(document, "environmentIdentity")["qualifiedRelease"] = "4" * 64
+
+    edit(root, E02C, change)
+    assert found(root) == [
+        (
+            "prereg-qualification-incompatible",
+            E02C,
+            ENV,
+            "the qualified release differs from the qualification",
+        ),
+        (
+            "prereg-qualification-incompatible",
+            E02C,
+            ENV,
+            "the qualified release is not the target release",
+        ),
+        ("prereg-bounds-incompatible", E02C, BOUND, "the release differs"),
+        ("prereg-bounds-incompatible", E02C, BOUND, "the source release differs"),
+        shared(E02C, ENV),
+    ]
+
+
+def test_a_stated_result_other_than_qualified_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        value(document, "environmentIdentity")["qualification"]["result"] = "REFUSED"
+
+    edit(root, E04, change)
+    assert found(root) == [
+        (
+            "prereg-qualification-incompatible",
+            E04,
+            ENV,
+            "the stated result differs from the qualification",
+        ),
+        shared(E04, ENV),
+    ]
+
+
+def test_a_qualification_that_is_not_committed_is_refused(root: Path) -> None:
+    absent = "docs/proof/experiments/v2-q1/runs/q1-9/record.v1alpha1.json"
+
+    def change(document: dict[str, Any]) -> None:
+        value(document, "environmentIdentity")["qualification"]["path"] = absent
+
+    edit(root, E05, change)
+    assert found(root) == [
+        (
+            "prereg-qualification-incompatible",
+            E05,
+            ENV,
+            "the qualification is not committed",
+        ),
+        ("prereg-bounds-incompatible", E05, BOUND, "the qualification differs"),
+        shared(E05, ENV),
+        (
+            "prereg-executable-unpinned",
+            E05,
+            "materialScope.paths",
+            f"the scope does not name {absent}",
+        ),
+    ]
+
+
+def test_a_qualification_path_outside_the_root_is_not_read(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        value(document, "environmentIdentity")["qualification"]["path"] = (
+            "../" + QUALIFICATION
+        )
+
+    edit(root, E05, change)
+    assert (
+        "prereg-qualification-incompatible",
+        E05,
+        ENV,
+        "the qualification is not committed",
+    ) in found(root)
+
+
+def test_the_check_does_not_change_when_every_qualification_is_refused(
+    root: Path,
+) -> None:
+    """The exact findings when the qualification record says REFUSED."""
+
+    def change(document: dict[str, Any]) -> None:
+        document["result"] = "REFUSED"
+
+    edit(root, QUALIFICATION, change)
+    assert found(root) == [
+        finding
+        for path in sorted(RECORDS.values())
+        for finding in (
+            (
+                "prereg-qualification-incompatible",
+                path,
+                ENV,
+                "the qualification has another digest",
+            ),
+            (
+                "prereg-qualification-incompatible",
+                path,
+                ENV,
+                "result differs from the qualification",
+            ),
+        )
+    ]
+
+
+def test_a_reconciliation_bound_outside_v2_e05_is_refused(root: Path) -> None:
+    reconciliation = value(load(E05, root), "derivedNumericBounds")[
+        "reconciliationBound"
+    ]
+
+    def change(document: dict[str, Any]) -> None:
+        value(document, "derivedNumericBounds")["reconciliationBound"] = reconciliation
+
+    edit(root, E04, change)
+    assert found(root) == [
+        (
+            "prereg-reconciliation-bound-differs",
+            E04,
+            "fields.derivedNumericBounds.reconciliationBound",
+            "only V2-E05 states a reconciliation bound",
+        )
+    ]
+
+
+def test_v2_e05_without_its_reconciliation_bound_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        del value(document, "derivedNumericBounds")["reconciliationBound"]
+
+    edit(root, E05, change)
+    assert found(root) == [
+        (
+            "prereg-criterion-bound-unknown",
+            E05,
+            "fields.acceptanceCriteria[0].value[8]",
+            "it names no bound of the record",
+        ),
+        (
+            "prereg-reconciliation-bound-differs",
+            E05,
+            "fields.derivedNumericBounds.reconciliationBound",
+            "V2-E05 states no reconciliation bound",
+        ),
+    ]
+
+
+def test_a_criterion_that_names_an_unknown_bound_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        value(document, "acceptanceCriteria")[9]["bound"] = "no_such_bound_ms"
+
+    edit(root, E02C, change)
+    assert found(root) == [
+        (
+            "prereg-criterion-bound-unknown",
+            E02C,
+            "fields.acceptanceCriteria[0].value[9]",
+            "it names no bound of the record",
+        )
+    ]
+
+
+def test_a_bound_figure_inside_a_larger_one_is_not_its_statement() -> None:
+    assert core._states("at most 20,000 ms.", 20_000)
+    assert not core._states("at most 120,000 ms.", 20_000)
+    assert not core._states("at most 1,20,000 ms.", 20_000)
+    assert not core._states("at most 20,0000 ms.", 20_000)
+
+
+def test_the_comparison_reads_identifiers_only_as_whole_tokens() -> None:
+    (baseline,) = [e for e in EXPERIMENTS if e.experiment_id == BASELINE]
+    assert core._normalised(
+        {"a": "run e02a-1 of V2-E02A in docs/proof/experiments/v2-e02a/runs"}, baseline
+    ) == {"a": "run <run>-1 of <experiment> in <directory>/runs"}
+    assert core._normalised({"a": "xe02a-1 V2-E02AB"}, baseline) == {
+        "a": "xe02a-1 V2-E02AB"
+    }

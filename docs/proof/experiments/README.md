@@ -1208,7 +1208,7 @@ in that change**: no Git switch, no commit to `main`, no fault, and no cluster r
 | V2-E02A, controlled single-runtime baseline | [`v2-e02a/freeze-r1.v1alpha1.json`](v2-e02a/freeze-r1.v1alpha1.json) | 2 API, 1 runtime: the baseline release `ecc4b9cf…` | Delete the one runtime pod | 3 | None | C2 |
 | V2-E02B, multi-runtime pod loss | [`v2-e02b/freeze-r1.v1alpha1.json`](v2-e02b/freeze-r1.v1alpha1.json) | 2 API, 2 runtime: the qualified release `b5457f49…` | Delete one of two runtime pods | 3 | None. The caller bound is an observation | C2 |
 | V2-E02C, API pod loss | [`v2-e02c/freeze-r1.v1alpha1.json`](v2-e02c/freeze-r1.v1alpha1.json) | As V2-E02B | Delete one of two API pods | 3 | `caller_total_unavailability_bound_ms` | C2 |
-| V2-E04, bad release and Git reversal | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | As V2-E02B | Accept a bad runtime release into `main`, then revert it | 2, and a third when the two differ in a verdict | `caller_total_unavailability_bound_ms`, `reversal_recovery_bound_ms` | C2 |
+| V2-E04, bad release and Git reversal | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | As V2-E02B | Accept a bad runtime release into `main`, then revert it | 2, and a third when the two differ in their causal signature | `caller_total_unavailability_bound_ms`, `reversal_recovery_bound_ms` | C2 |
 | V2-E05, drift reconciliation | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | As V2-E02B | Scale the live runtime Deployment from 2 to 1, with Git unchanged | 2 | `reconciliation_bound_ms`, 210,000 ms | C2 |
 
 A record is not evidence. It states what a run must do and what counts as a pass. Each
@@ -1268,10 +1268,11 @@ authorization of the repository owner.
 ### The procedure, without a driver
 
 **No driver exists for any of the five.** Each record states its procedure in full: the
-preparation P1 to P7, the caller run, the collection, the stable pre-fault window, the
+preparation P1 to P8, with a reading of the node clock against the host clock before and
+after each run, the caller run, the collection, the stable pre-fault window, the
 fault steps, the observation limit, the window of the analysis, the post-recovery window,
 the declaration rule of the analysis, and the cleanup C1 to C5. The material scope of each
-record names its own `procedure/` directory, which holds no file. A driver added there is
+record names its own `procedure/` directory, which does not exist at registration. A driver added there is
 listed as `added` by `--changes`, so the change that adds it registers a later revision
 that pins the driver and its dependencies, and that revision merges before the first
 result-bearing run. A change to the caller profile, the topology, the fault, a measurement,
@@ -1279,14 +1280,20 @@ a window, a bound, an outcome rule, an exclusion reason, an abort condition, the
 a criterion is material, and it is a later revision too.
 
 - **Outcomes.** `REFUSED` when a precondition did not hold and no fault was injected;
-  `ABORTED` when an abort condition was crossed; `INCONCLUSIVE` when a validity criterion did
-  not hold; `FAILED` when every validity criterion held and a pass criterion did not; and
-  `PASSED` when every criterion held. V2-E02A has validity criteria only, so it is a
-  characterization: a run of it is never `FAILED`.
+  `ABORTED` when an abort condition was crossed, recorded with the code of that condition;
+  `INCONCLUSIVE` when a validity criterion did not hold; `FAILED` when every validity
+  criterion held and a pass criterion did not; and `PASSED` when every criterion held. Each
+  record has a validity criterion for each stream that its criteria read, for the caller
+  record, for the post-recovery window, for an unrelated failure, and for the evidence.
+  V2-E02A has validity criteria only, so it is a characterization: a run of it is never
+  `FAILED`.
+- **Two clocks.** An interval between instants of two clocks that lies within the clock
+  bound of the run of a bound is neither held nor failed: the run is `INCONCLUSIVE` for the
+  reason `clock-bound-reached`.
 - **Repetitions.** A `PASSED` or `FAILED` run is counted and never repeated, replaced, or
-  left out. A `REFUSED`, `INCONCLUSIVE`, or `ABORTED` run is kept, for one of eight
+  left out. A `REFUSED`, `INCONCLUSIVE`, or `ABORTED` run is kept, for one of nine
   registered exclusion reasons, and the next run takes the next identifier, up to six runs
-  for E02 and four for E04 and E05.
+  for E02, five for E04, and four for E05.
 - **The caller is the reference.** No stream, readiness state, endpoint count, replica
   count, sync state, health state, or scrape state changes a caller figure.
 
@@ -1300,6 +1307,14 @@ a criterion is material, and it is a later revision too.
   was resolved. The record states this choice and states that it was made with the
   analysis definition known and before any run. The operator decision time and the time
   for the controller to discover the reversal commit are recorded apart from the recovery.
+- **V2-E04 needs a third run only for a different causal signature**: whether a container of
+  a bad pod started, whether the runtime Service fell to one Ready endpoint, whether the API
+  Deployment rolled out, and whether a caller failure episode started after the fault. A
+  difference in a duration, or in a verdict against a bound, alone does not.
+- **V2-E04's operator interval holds the discovery of the reversal.** `reversalStart` is when
+  the controller can first have resolved the reversal commit, so the time from its
+  acceptance into `main` to that instant is in the operator interval and not in the
+  recovery. The record states both parts.
 - **V2-E04's bad release is not implemented.** The record fixes the preferred fault: the
   same runtime image started with a model file path that does not exist. The change that
   implements it registers a later revision that pins it. When an accepted validation rule
@@ -1316,7 +1331,9 @@ a criterion is material, and it is a later revision too.
 - **V2-E05's restoration is read from the controller's streams.** It starts at the
   `fault-injection-started` event and ends at the finish of the first deployments reading
   that reports `specReplicas` 2 at a later generation, both on the clock of the collecting
-  host. No caller figure changes that verdict.
+  host. A pass criterion also requires an operation of the controller that started after
+  the drift. No caller figure changes those verdicts. Each run keeps the two live
+  ConfigMaps that the precondition read.
 
 ### The check
 
@@ -1335,16 +1352,16 @@ runs it and plants each defect below in a copy.
 | Rule | Statement |
 |---|---|
 | `prereg-record-missing` | Each of the five experiments has a committed freeze record in its directory, and the record names that experiment. |
-| `prereg-record-shape` | A record answers each field that this check reads with one value, in the form that the check reads. |
+| `prereg-record-shape` | A record answers each field that this check reads with one value, and each member that it reads has the type that the check reads. |
 | `prereg-qualification-incompatible` | The qualification that a record names is committed with the stated digest, is QUALIFIED, and states the provider, the environment digest, the identity revision, the server version, the node count, the freeze record, and the release that the record states. |
 | `prereg-bounds-stale` | The bound record that a record names is the latest committed one, has the stated digest, and states the four bounds of the record with the same names, formulas, and values. |
 | `prereg-bounds-incompatible` | The bound record states the environment, the qualification, and the release that the record states. |
-| `prereg-criterion-bound-unknown` | A criterion that names a bound names a bound of the record and states its value in milliseconds. |
+| `prereg-criterion-bound-unknown` | A criterion that names a bound names a bound of the record and states its value as a whole figure in milliseconds. |
 | `prereg-reconciliation-bound-differs` | The reconciliation bound of V2-E05 is the sum of its three registered components. |
-| `prereg-shared-differs` | The five records state one environment, one caller profile, and one intended level, and V2-E02A and V2-E02B state every shared field and definition alike. |
-| `prereg-baseline-difference-unpermitted` | The topology of V2-E02A differs from that of V2-E02B only in the permitted members, and their values are those of the committed COMPARABLE baseline comparison and of the pinned desired-state files. |
+| `prereg-shared-differs` | The five records state one environment, one caller profile, one intended level, and one bound record with its bounds, and V2-E02A and V2-E02B state every shared field, definition, validity criterion, and exclusion reason alike. |
+| `prereg-baseline-difference-unpermitted` | The topology of V2-E02A differs from that of V2-E02B only in the permitted members. The replica counts and the release of each side are those of the committed COMPARABLE baseline comparison and of the pinned desired-state files, and each disruption budget is the one the chart renders for its replica count. |
 | `prereg-target-topology-differs` | V2-E02C, V2-E04, and V2-E05 state the topology of V2-E02B. |
-| `prereg-executable-unpinned` | Each executable that a record lists is a pinned input, and the material scope names this check, the record's procedure directory, the qualification, and the bound record. |
+| `prereg-executable-unpinned` | A record lists at least one executable, each is a pinned input, the entry file of a tool has its entry module in the material scope, and the scope names this check, the record's procedure directory, the qualification, and the bound record. |
 | `prereg-exclusion-reasons-unsupported` | A record registers exclusion reasons for its own experiment, in the form that the aggregate reads. |
 
 ### What is enforced, and what is not
@@ -1363,4 +1380,8 @@ the committed records. Not enforced:
   at registration. A file added to a scope later moves that test, and the change owes a
   revision.
 - **That a statement of a record is right.** The check compares values. It does not judge
-  a procedure, a criterion, or a limitation.
+  a procedure, a criterion, or a limitation. The `statement` member of a topology is free
+  text that it compares with nothing, and a criterion that names a bound is held to state
+  the figure, not to say what it says about it.
+- **That an abort code or a fault code is recorded.** The records register the codes. No
+  check compares a recorded code with them.

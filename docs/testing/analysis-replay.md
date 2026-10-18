@@ -435,8 +435,11 @@ state leaves no run out.
 - **No committed freeze record states the member.** The three committed records
   are of E01, which has no numerical aggregate, and this change edits none of
   them. (Since `V2-S5-006-PR1` two records of a non-result integration validation
-  are also committed, and neither states the member.) No experiment has registered an exclusion reason, and no run was left
-  out of an aggregate of real runs.
+  are also committed, and neither states the member.) Since `V2-S6-003-PR1` the
+  [five reliability experiment freezes](../proof/experiments/README.md#the-reliability-experiment-freezes)
+  each state the member for their own experiment, before any run. No run was left out
+  of an aggregate of real runs. (Until then this item said that no experiment had
+  registered an exclusion reason.)
 
 An aggregate document lists, for each run, the digest of the manifest, how the
 manifest names its freeze record, the raw
@@ -664,8 +667,10 @@ it printed three `pre-schema` lines only.)
   record of its manifest, as the executing revision of the run holds it. It
   does not decide that the reason is true of the run or that the run executed
   that commit, it does not read Git for the history of a manifest, and it has
-  no rule for runs of two revisions with a run left out. No committed
-  freeze record registers an exclusion reason.
+  no rule for runs of two revisions with a run left out. Since `V2-S6-003-PR1`
+  the five reliability experiment freezes register exclusion reasons, and no run
+  of them exists. (Until then this item said that no committed freeze record
+  registers one.)
 - The freeze check does not read the `exclusionReasons` member of a record.
 - The replay reads no correction. A correction that adds a caller record or a
   run analysis is not replayed.

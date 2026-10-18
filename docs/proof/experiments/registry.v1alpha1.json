@@ -65,27 +65,27 @@
     },
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json",
-      "contentSha256": "18cf59be8e3cdcf998fc52ba869f9d519ecc3c79e5384e3a5ba69797c8f444de",
+      "contentSha256": "adfd951101ca5a40cc41c9b196b5394f9217eb82d3befc242671885ef3a0d1fc",
       "registeredBy": "V2-S6-003-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json",
-      "contentSha256": "293a7b5b0045d02e9f588c80fdb75df42874a042e081ee94843b6a67749a812a",
+      "contentSha256": "27c5934bb13b55c9ea2495e664f7f06f45886b1d8eacd1abffde293b08d156e5",
       "registeredBy": "V2-S6-003-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e02c/freeze-r1.v1alpha1.json",
-      "contentSha256": "95ef24dead2ca6eb76d607c17e0e14d61e1b9248d3433480003797a9c2b10e40",
+      "contentSha256": "b41a9a698301d3c0d4cc1242343d534e4bf63fe200020f2c65113b981dc62352",
       "registeredBy": "V2-S6-003-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e04/freeze-r1.v1alpha1.json",
-      "contentSha256": "ad70cef009945f0dc545e5e5f41a93cc1d081600e734209adadb0d210eb3b2b0",
+      "contentSha256": "0dcc3b1c0cba1ee51acc962a083d78a82c42093a75fad72e41b193dde3124e5d",
       "registeredBy": "V2-S6-003-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e05/freeze-r1.v1alpha1.json",
-      "contentSha256": "a33f69c20e6e804f26d7630c3a512cb7cf1bc3418e1c41245f26804c68676722",
+      "contentSha256": "420255fda1b95e0d6c25ce1a262a68a656f1b621d3c7204b682d3298ede47492",
       "registeredBy": "V2-S6-003-PR1"
     }
   ]

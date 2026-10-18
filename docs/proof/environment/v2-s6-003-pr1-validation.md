@@ -64,7 +64,8 @@ Decisions taken in writing the records, before any run, and stated in them:
   fault + 720 s, 1,500 s, and pauses of 2 s and 15 s for E02 and E05, and 1,680 s,
   fault + 1,800 s, and 2,700 s for E04.
 - **Repetitions.** A counted run is never replaced. An excluded run is kept, at most six
-  runs start for an E02 experiment and four for E04 and E05.
+  runs start for an E02 experiment, five for E04, and four for E05. (Until the second
+  commit this said four for E04.)
 
 ## Validation
 
@@ -81,6 +82,94 @@ written. This section is the one file that changed after the lane.
 | Types | `mypy tools tests/testing/test_experiment_preregistration.py`, and with `--platform linux` | No issues in 189 source files, both |
 | Whitespace | `git diff --cached --check` | Clean |
 | Default lane | `python -m pytest -q` | 22,867 passed, 42 skipped, 14 deselected, in 55 min |
+| Default lane, second commit | `python -m pytest -q`, on the staged tree of the second commit, before this row was written | 22,897 passed, 42 skipped, 14 deselected, in 42 min. The 30 more are the tests that the review added. The freeze check, the preregistration check, ruff, the formatter, mypy on both platforms, the `--changes` command of each new record, and `git diff --check` passed again on that tree |
+
+## Independent review of the first commit
+
+Two independent reviews read the first commit, `9a9f064`: one of the check and its suite,
+one of the records and the pages against the experiment definitions and the repository.
+Neither found a critical defect. The second commit corrects every finding below. The five
+records were regenerated and registered again before this change merged, so their
+registered digests are not those of the first commit:
+
+| Record | Registered content digest |
+|---|---|
+| `v2-e01` | `fcb19502d1d8350395b88293f4e3e2bf92076591e3fa8ecfc814defa46267fa9` |
+| `v2-e01` | `198f60b5133338e445b1c0fef9f9171ad3e58fe3bde66ac1e7a8d1d674730ac8` |
+| `v2-e01` | `b4aa013dc482a8f536395c094ab76dc2b753e04d7c139a4b0cadf17c672da739` |
+| `v2-e02a` | `adfd951101ca5a40cc41c9b196b5394f9217eb82d3befc242671885ef3a0d1fc` |
+| `v2-e02b` | `27c5934bb13b55c9ea2495e664f7f06f45886b1d8eacd1abffde293b08d156e5` |
+| `v2-e02c` | `b41a9a698301d3c0d4cc1242343d534e4bf63fe200020f2c65113b981dc62352` |
+| `v2-e04` | `0dcc3b1c0cba1ee51acc962a083d78a82c42093a75fad72e41b193dde3124e5d` |
+| `v2-e05` | `420255fda1b95e0d6c25ce1a262a68a656f1b621d3c7204b682d3298ede47492` |
+
+**What the first commit got wrong, in the check:**
+
+- A malformed record raised a Python error instead of a finding: a `fields` list, a
+  `metadata` string, an `exclusionReasons` string, a list as an executable or as a bound
+  name, and a bound record with no list of bounds. The shape rule now holds every member
+  that a later step reads to its type, and eight malformed kinds are tested.
+- An empty `definition.executables` passed the rule against missing pins. A record now
+  lists at least one executable, and the entry file of a tool must have its entry module
+  in the scope.
+- The rule of the baseline difference said that the permitted members are anchored to
+  the comparison. Two of them were not: the runtime disruption budget and the statement.
+  The budget is now structured and held to the replica count, and the statement is stated
+  as free text.
+- A criterion's bound figure was found as a substring, so 20,000 ms matched 120,000 ms.
+  The figure is now matched whole.
+- The identifiers of the two sides were replaced as plain substrings. They are now
+  replaced as whole tokens.
+- A null identity member passed when the qualification also lacked it. Each member is
+  now held to its type.
+- Several branches had no test, and two tests asserted membership instead of the exact
+  findings. 30 tests were added, and the loose test is exact.
+- A finding about the target side named the baseline's record. It now names its own.
+
+**What the first commit got wrong, in the records and the pages:**
+
+- Four public pages still said that no frozen record names the baseline, RP-1, or an
+  exclusion reason: the baseline profile page, the RP-1 page, the replay page, and the
+  replay suite's inventory note. Each now has a dated note.
+- E04's third-run rule required a third run when the two runs differ in a verdict. A
+  verdict against a bound differs with a duration alone, so the rule contradicted its own
+  next sentence. It is now a causal signature of four facts, and the run ceiling is five.
+- An `INCONCLUSIVE` reason had no validity criterion behind it: the outcome rules make a
+  run `INCONCLUSIVE` only through a validity criterion, and E02C-AC8 assigned the state
+  itself. Each record now has a validity criterion for every stream that its criteria
+  read, for an unrelated failure, and for the post-recovery window.
+- Instants of two clocks were compared with a bound, and no clock was read. The
+  preparation now reads the node clock against the host clock before and after a run, and
+  an interval within that bound of a bound is `INCONCLUSIVE` for the new reason
+  `clock-bound-reached`.
+- E05 reused E02C's unrelated-failure text, which named the pods that its own fault
+  removes. It has its own text now. E05 also gains a pass criterion that the controller's
+  operation started after the drift, and it keeps the two live ConfigMaps.
+- The abort conditions had no codes, while the event log needs one. Each has a code, and
+  a manual action has the code `operator-intervention`.
+- The latency percentiles were p50, p90, and p99. They are p50, p95, and p99, stated only
+  with at least 100 successes.
+- The E02A eligibility rule named the aggregate command, which states neither figure that
+  the rule reads. It now reads each run analysis.
+- The validation record left its validation section to be completed. It was completed
+  before the first commit, and this section was added in the second.
+
+Smaller corrections: E05-AC10 and E02C-AC12 name the observation limit and `commands.txt`;
+the caller validity criterion refuses a window that starts inside an episode; P4 states
+where the capacity gate takes its footprint; the cleanup verifies caller success; the
+pods stream's missing node name is a limitation; ADR 0021 R4 keeps its earlier status.
+
+**Choices that the records state and this record did not list in the first commit:**
+E02B-AC12, a stabilized recovery inside the limit, is a pass criterion, so a run that
+does not stabilize is `FAILED`; E04's `reversalStart` is the controller's first possible
+resolution of the reversal, so the discovery time is in the operator interval; and the
+unrelated-failure validity criterion, which makes a runtime replacement in E02C
+`INCONCLUSIVE`.
+
+**Kept on purpose:** the check imports `_reasons_problem`, a private function of the
+analysis tool, so that it reads exclusion reasons as the aggregate does. A change to that
+function moves a pin of each record. The tripwire test that compares each pin list with
+its scope stays: a file added to a scope moves it.
 
 ## What this does not establish
 

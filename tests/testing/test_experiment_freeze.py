@@ -114,15 +114,15 @@ Q3_R2_PIN = "f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff"
 #: run: each names q1-2, bounds-r1, and its procedure. Their pins are written out for
 #: the same reason.
 E02A = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"
-E02A_PIN = "18cf59be8e3cdcf998fc52ba869f9d519ecc3c79e5384e3a5ba69797c8f444de"
+E02A_PIN = "adfd951101ca5a40cc41c9b196b5394f9217eb82d3befc242671885ef3a0d1fc"
 E02B = "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json"
-E02B_PIN = "293a7b5b0045d02e9f588c80fdb75df42874a042e081ee94843b6a67749a812a"
+E02B_PIN = "27c5934bb13b55c9ea2495e664f7f06f45886b1d8eacd1abffde293b08d156e5"
 E02C = "docs/proof/experiments/v2-e02c/freeze-r1.v1alpha1.json"
-E02C_PIN = "95ef24dead2ca6eb76d607c17e0e14d61e1b9248d3433480003797a9c2b10e40"
+E02C_PIN = "b41a9a698301d3c0d4cc1242343d534e4bf63fe200020f2c65113b981dc62352"
 E04 = "docs/proof/experiments/v2-e04/freeze-r1.v1alpha1.json"
-E04_PIN = "ad70cef009945f0dc545e5e5f41a93cc1d081600e734209adadb0d210eb3b2b0"
+E04_PIN = "0dcc3b1c0cba1ee51acc962a083d78a82c42093a75fad72e41b193dde3124e5d"
 E05 = "docs/proof/experiments/v2-e05/freeze-r1.v1alpha1.json"
-E05_PIN = "a33f69c20e6e804f26d7630c3a512cb7cf1bc3418e1c41245f26804c68676722"
+E05_PIN = "420255fda1b95e0d6c25ce1a262a68a656f1b621d3c7204b682d3298ede47492"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so

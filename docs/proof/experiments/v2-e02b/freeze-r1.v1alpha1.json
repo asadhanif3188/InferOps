@@ -26,7 +26,8 @@
     ],
     "setRules": [
       "Material improvement, computed only when V2-E02A is eligible. B_failures and T_failures are the medians of requests-failed-since-fault over the three counted runs of V2-E02A and of V2-E02B. B_episode and T_episode are the medians of caller-failure-episode-ms. Material improvement holds when T_failures <= 0.50 * B_failures and T_episode <= 0.50 * B_episode. When B_failures > 0 and T_failures = 0, the failure-count part holds, and when B_episode > 0 and T_episode = 0, the episode part holds. No percentage is computed over a zero baseline.",
-      "A median that the aggregate does not state, because a counted run has no value, is not a value, and the improvement is then not computed.",
+      "A median that the aggregate does not state, because a counted run has no value, is not a value, and the improvement is then not computed. A baseline run that never stabilizes has no requests-failed-since-fault, so its set gives no B_failures.",
+      "When the improvement is not computed or does not hold, no improvement is stated. The public statement of V2-E02B is then the verdicts of its pass criteria and the measured values of each run, and it names the reason.",
       "Caller boundedness observation, for each run: the longest closed failure episode is compared with caller_total_unavailability_bound_ms = 20,226 ms. An open episode is not within the bound. A run within the bound permits the statement that, under the declared V2 experiment profile, the caller-total unavailability stayed within the preregistered experiment bound. It does not permit a production SLO or a general availability statement. It is an observation and not a pass criterion.",
       "Three runs give a median and individual values. No confidence interval and no statistical significance are stated."
     ],
@@ -40,7 +41,7 @@
       "One provider, one node, one Kubernetes version, one release of each side, one model, and one caller workload. A result is bounded to that execution.",
       "A stream reads a state at intervals of at least 2 s, so a state that lasts less than one interval can be missed. The analysis states an inner and an outer figure for each sampled interval, and neither is the exact time.",
       "The caller instants, the readings, and the events are on three clocks whose differences are not measured.",
-      "The runner, the collectors, and the release run on the one node, and the capacity gate does not count the runner.",
+      "The runner, the collectors, and the release run on the one node, and the capacity gate does not count the runner. The pods stream names no node: with one node, every pod is on it.",
       "The API image is built at each run and the build is not byte-reproducible, so each run records the digest it built.",
       "No driver for this experiment exists. The procedure is stated in this record. The change that adds the driver registers a later revision of this record before the first result-bearing run, and that revision pins the driver.",
       "No code holds a declaration of the analysis to definition.analysisDeclaration. The review of each run compares them.",
@@ -64,10 +65,11 @@
       "P1. Check out a commit of main that holds this record with the content digest that the freeze registry pins, with a clean working tree. That commit is the executing revision. python -m tools.experiment_freeze --check, python -m tools.experiment_preregistration --check, python -m tools.environment_qualification --check, and python -m tools.experiment_bounds --check each pass, and python -m tools.experiment_freeze --changes for this record lists no file, or only files that a merged later revision of this record classifies. Otherwise the run is REFUSED.",
       "P2. Read the remote main as the desired revision. The chart, the desired-state tree, and the controller manifests of the executing revision equal those of the desired revision. The two files at topology.desiredStatePath of the desired revision have the content digests that topology.release.desiredStateFiles states. Otherwise the run is REFUSED.",
       "P3. Run the target check of the operating procedures. It selects the docker-desktop provider and refuses every other. The cluster holds no release of the release key and no delivery controller. Otherwise the run is REFUSED.",
-      "P4. Read capacity with scripts/environment/capacity-preflight.sh before the Application is applied. The gate accepts the reading, and its stable environment identity has the environmentSha256 of environmentIdentity. Otherwise the run is REFUSED.",
+      "P4. Read capacity with scripts/environment/capacity-preflight.sh before the Application is applied. The gate derives the footprint from the committed Application and the generated values at topology.desiredStatePath of the executing revision. It accepts the reading, and its stable environment identity has the environmentSha256 of environmentIdentity. Otherwise the run is REFUSED.",
       "P5. Prepare the release as the qualification q1-2 did: apply the Terraform prerequisite layer with scripts/environment/terraform-prerequisites.sh, fill the model cache claim from the local seed image of scripts/environment/model-seed-image.sh through one preparation Helm release that is uninstalled before the Application is applied, install the delivery controller with scripts/environment/argocd-bootstrap.sh, build the API image at the executing revision with scripts/environment/api-image.sh, and apply the Application with scripts/environment/argocd-application.sh apply and the digest of that image. A step that fails ends the run as REFUSED, and nothing is changed to fit.",
       "P6. Wait at most 1,800 s for the topology: both Deployments report the replica counts of topology as readyReplicas, both Services report as many Ready endpoints, and the Application reports Synced and Healthy at the desired revision. scripts/environment/argocd-application.sh verify finds the live Application and project equal to the committed manifests. Otherwise the run is REFUSED.",
-      "P7. Resolve the provenance of the release key at the desired revision with tools/desired_state_provenance. Its release identifier is topology.release.releaseId. Each runtime pod reports, in its model verification log, the model file SHA-256 of topology.model. Otherwise the run is REFUSED."
+      "P7. Resolve the provenance of the release key at the desired revision with tools/desired_state_provenance. Its release identifier is topology.release.releaseId. Each runtime pod reports, in its model verification log, the model file SHA-256 of topology.model. Otherwise the run is REFUSED.",
+      "P8. Read the clocks before the runner starts and again after the window ends: a host instant, the UTC time that a pod of the node prints, and a second host instant, as the integration validation read them. environment.txt states the three instants of each reading. The clock bound of the run is the largest of the two differences between the node instant and the nearer host instant, plus the time between the two host instants."
     ],
     "callerRun": {
       "command": "scripts/environment/reliability-runner.sh start --experiment-id <experiment> --run-id <run> --duration-seconds 1500 --request-ceiling 10000 --release-id <topology.release.releaseId>",
@@ -167,7 +169,7 @@
     },
     "measurements": [
       "The caller figures of the run analysis: requests completed, successful, and failed in the window; each failure episode, and callerFailureEpisodeMs; maxSuccessGap; the first caller impact; and the stabilized recovery, with requestsFailedSinceFault and the time from each fault instant.",
-      "From the caller record, on the result page: requests started and completed, the count of each HTTP status and of each canonical error code and condition, the nearest-rank p50, p90, and p99 and the minimum and maximum of the latency of the successful requests, the longest run of failed completions with no success between them, and the time from the fault-injection-finished event to the first successful completion after the first failure.",
+      "From the caller record, on the result page: requests started and completed, the count of each HTTP status and of each canonical error code and condition, the nearest-rank p50, p95, and p99 and the minimum and maximum of the latency of the successful requests when at least 100 requests succeeded, and the minimum and maximum alone otherwise, the longest run of failed completions with no success between them, and the time from the fault-injection-started event to the first successful completion after the first failure.",
       "The zero-Ready-endpoint intervals of both tiers, with the inner and the outer figure of each, from the endpoints stream.",
       "The state of each API pod and runtime pod at each reading: its UID, template hash, revision, phase, Ready condition, restart counts, creation instant, and deletion timestamp.",
       "The Deployment counts of both tiers at each reading: generation, observedGeneration, specReplicas, replicas, updatedReplicas, readyReplicas, availableReplicas, and unavailableReplicas.",
@@ -182,9 +184,10 @@
       "INCONCLUSIVE: no abort condition was crossed, and a criterion of kind validity did not hold.",
       "FAILED: every criterion of kind validity held, and a criterion of kind pass did not.",
       "PASSED: every criterion held.",
+      "A criterion that compares an interval between instants of two clocks with a bound is not held and not failed when the interval lies within the clock bound of P8 of that bound. The run is then INCONCLUSIVE for the reason clock-bound-reached.",
       "A run has exactly one state. The result page states each criterion, its kind, the evidence it was judged from, and the verdict. The run analysis states the figures, and the result page states the state."
     ],
-    "repetitionRule": "3 counted runs. A run is counted when its state is PASSED or FAILED. A counted run is never repeated, replaced, or left out of an aggregate. A run that is REFUSED, INCONCLUSIVE, or ABORTED for a registered exclusion reason is kept, and the next run takes the next identifier. At most 6 runs start under one revision. When fewer than 3 runs are counted after 6, the set is INCONCLUSIVE, and a further run needs a later revision of this record. Each run begins with the preparation P1 to P7 and ends with the cleanup.",
+    "repetitionRule": "3 counted runs. A run is counted when its state is PASSED or FAILED. A counted run is never repeated, replaced, or left out of an aggregate. A run that is REFUSED, INCONCLUSIVE, or ABORTED for a registered exclusion reason is kept, and the next run takes the next identifier. At most 6 runs start under one revision. When fewer than the required number of runs are counted after 6, the set is INCONCLUSIVE, and a further run needs a later revision of this record. Each run begins with the preparation P1 to P8 and ends with the cleanup.",
     "executables": [
       "scripts/environment/lib.sh",
       "scripts/environment/capacity-preflight.sh",
@@ -242,7 +245,7 @@
         ],
         "status": "value",
         "value": {
-          "preparedFrom": "710e4c399456d42181ed4adaca2966f8ee26090f",
+          "preparedFrom": "9a9f064ee71e99b28b0b612d6bccfcafac9e4cf3",
           "pinnedInputs": "Every file in materialScope is pinned by its content digest in pinnedInputs. A record cannot name the commit that adds it, so the pins freeze the files and not a commit.",
           "executingRevision": "Each run executes at a merged commit of main that holds this record with its registered digest, with a clean working tree. The manifest names that commit as executingRevision."
         }
@@ -363,8 +366,16 @@
             "sha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
             "sizeBytes": 1834426016
           },
-          "apiDisruptionBudget": "The chart renders one PodDisruptionBudget with minAvailable 1 for the API tier.",
-          "runtimeDisruptionBudget": "The chart renders one PodDisruptionBudget with minAvailable 1 for the runtime tier.",
+          "apiDisruptionBudget": {
+            "rendered": true,
+            "minAvailable": 1,
+            "statement": "The chart renders one PodDisruptionBudget with minAvailable 1 for the API tier."
+          },
+          "runtimeDisruptionBudget": {
+            "rendered": true,
+            "minAvailable": 1,
+            "statement": "The chart renders one PodDisruptionBudget with minAvailable 1 for the runtime tier."
+          },
           "comparison": {
             "path": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison.v1alpha1.json",
             "contentSha256": "c17b7136d4e8268b2b04a7f282495c62d3a4003727113ac260949326faf5c334",
@@ -442,12 +453,12 @@
           {
             "id": "E02B-AC2",
             "kind": "validity",
-            "statement": "The endpoints stream is accepted by its reader, states a Ready endpoint count of both tiers in its first and its last reading inside the window, and has at most 10 s between two consecutive readings with a count inside the window."
+            "statement": "The endpoints, pods, deployments, and argo streams are each accepted by their reader, each states a value in its first and its last reading inside the window, and each has at most 10 s between two consecutive readings with a value inside the window."
           },
           {
             "id": "E02B-AC3",
             "kind": "validity",
-            "statement": "The caller record is accepted by its reader with the plan, in the mode in-cluster, with the API Service as its target and the end state duration. It covers the window, and at least one request completes inside the window after the fault-injection-finished event."
+            "statement": "The caller record is accepted by its reader with the plan, in the mode in-cluster, with the API Service as its target and the end state duration. It covers the window, its last completion before the window succeeded, so the window does not start inside a failure episode, and at least one request completes inside the window after the fault-injection-finished event."
           },
           {
             "id": "E02B-AC4",
@@ -462,30 +473,35 @@
           {
             "id": "E02B-AC6",
             "kind": "validity",
-            "statement": "Every file that evidencePaths lists is present and named by the manifest, the operator event log is closed, python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis."
+            "statement": "No unrelated failure occurs inside the window: no container of a pod that the fault did not target restarts, no pod that the fault did not target is replaced, and the node stays Ready."
           },
           {
             "id": "E02B-AC7",
-            "kind": "pass",
-            "statement": "The runtime Service never has fewer than 1 Ready endpoint after the fault: no endpoints reading that starts at or after the fault-injection-started event and finishes inside the window states a runtime Ready count of 0, and the analysis states no zero-Ready-endpoint interval of the runtime tier after that event."
+            "kind": "validity",
+            "statement": "Every file that evidencePaths lists is present and named by the manifest, the operator event log is closed, python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis."
           },
           {
             "id": "E02B-AC8",
             "kind": "pass",
-            "statement": "The runtime pod that the fault did not select is Ready in every pods reading from the fault-injection-started event to the first reading in which a replacement runtime pod is Ready."
+            "statement": "The runtime Service never has fewer than 1 Ready endpoint after the fault: no endpoints reading that starts at or after the fault-injection-started event and finishes inside the window states a runtime Ready count of 0, and the analysis states no zero-Ready-endpoint interval of the runtime tier after that event."
           },
           {
             "id": "E02B-AC9",
             "kind": "pass",
-            "statement": "The deleted runtime pod is replaced under the Deployment controller: a runtime pod with a new UID, of the template hash that the runtime pods had before the fault, is Ready inside the observation limit."
+            "statement": "The runtime pod that the fault did not select is Ready in every pods reading from the fault-injection-started event to the first reading in which a replacement runtime pod is Ready."
           },
           {
             "id": "E02B-AC10",
             "kind": "pass",
-            "statement": "No manual mutating action occurs between the fault and the stabilized recovery: the operator event log holds no manual-action event, and commands.txt holds no mutating command after the delete command other than an abort action."
+            "statement": "The deleted runtime pod is replaced under the Deployment controller: a runtime pod with a new UID, of the template hash that the runtime pods had before the fault, is Ready inside the observation limit."
           },
           {
             "id": "E02B-AC11",
+            "kind": "pass",
+            "statement": "No manual mutating action occurs between the fault and the stabilized recovery: the operator event log holds no manual-action event, and commands.txt holds no mutating command after the delete command other than an abort action."
+          },
+          {
+            "id": "E02B-AC12",
             "kind": "pass",
             "statement": "The analysis states a stabilized recovery inside the observation limit, with readyReplicas 2 and 2 and two Ready runtime endpoints."
           }
@@ -583,17 +599,44 @@
         ],
         "status": "value",
         "value": [
-          "The target check verifies a provider other than docker-desktop, or a command reaches another cluster than the one that it verified.",
-          "The control or a person changes an object or a field other than the declared fault target, or injects the fault twice.",
-          "The runner pod is deleted, evicted, or restarted, or its Job fails, before the window ends, so the caller stream is lost.",
-          "The delivery controller reports a resolved revision that is not a commit that the procedure names.",
-          "The model cache claim or its volume is deleted, or a runtime pod reports a model file SHA-256 other than that of topology.model.",
-          "The node is not Ready, or the Kubernetes API does not answer, for more than 60 s.",
-          "A tracked file of the checkout of the run changes while the run executes.",
-          "A namespace or a custom resource definition appears or disappears that the preparation does not create.",
-          "A cleanup step cannot be executed without deleting an object that the run did not create."
+          {
+            "code": "abort-wrong-target",
+            "condition": "The target check verifies a provider other than docker-desktop, or a command reaches another cluster than the one that it verified."
+          },
+          {
+            "code": "abort-fault-differs",
+            "condition": "The control or a person changes an object or a field other than the declared fault target, or injects the fault twice."
+          },
+          {
+            "code": "abort-caller-lost",
+            "condition": "The runner pod is deleted, evicted, or restarted, or its Job fails, before the window ends, so the caller stream is lost."
+          },
+          {
+            "code": "abort-revision-unknown",
+            "condition": "The delivery controller reports a resolved revision that is not a commit that the procedure names."
+          },
+          {
+            "code": "abort-model-risk",
+            "condition": "The model cache claim or its volume is deleted, or a runtime pod reports a model file SHA-256 other than that of topology.model."
+          },
+          {
+            "code": "abort-cluster-incident",
+            "condition": "The node is not Ready, or the Kubernetes API does not answer, for more than 60 s."
+          },
+          {
+            "code": "abort-checkout-changed",
+            "condition": "A tracked file of the checkout of the run changes while the run executes."
+          },
+          {
+            "code": "abort-unrelated-change",
+            "condition": "A namespace or a custom resource definition appears or disappears that the preparation does not create."
+          },
+          {
+            "code": "abort-cleanup-unsafe",
+            "condition": "A cleanup step cannot be executed without deleting an object that the run did not create."
+          }
         ],
-        "note": "An abort is recorded with the event run-aborted and the code of the condition. The run is kept as ABORTED, and its cleanup is recorded. Abort is an outcome, not something to repeat away."
+        "note": "An abort is recorded with the event run-aborted and the code of its condition. The run is kept as ABORTED, and its cleanup is recorded. Abort is an outcome, not something to repeat away. A manual action outside the procedure is recorded with the event manual-action and the code operator-intervention, and it fails the criterion against manual action."
       }
     ],
     "cleanupProcedure": [
@@ -605,7 +648,7 @@
         "value": [
           "C1. After the window ends and the runner Job has ended: collect the caller record with scripts/environment/reliability-runner.sh collect, then remove the run's objects with its cleanup action, and read the objects that carry the run's label.",
           "C2. After the collectors have taken their samples: close the operator event log, and write the streams with tools/experiment_timeline stream and tools/experiment_telemetry stream.",
-          "C3. Verify the desired state before removal: scripts/environment/argocd-application.sh verify finds the live Application and project equal to the committed manifests, both Deployments report spec.replicas and readyReplicas of topology, and the Application reports Synced at the desired revision. A difference is recorded as remaining drift.",
+          "C3. Verify the desired state before removal: scripts/environment/argocd-application.sh verify finds the live Application and project equal to the committed manifests, both Deployments report spec.replicas and readyReplicas of topology, the Application reports Synced at the desired revision, and the caller record holds successful completions in the last 60 s of the window. A difference is recorded as remaining drift or as a caller that did not recover.",
           "C4. Remove the Application, the delivery controller, and the prerequisite layer as the phase down of the qualification did, and compare the namespaces and the custom resource definitions with those read before P5.",
           "C5. Keep the collections and the runner directory under .artifacts/ until the run directory is assembled, and preserve the evidence before any ephemeral telemetry is removed."
         ]
@@ -661,6 +704,11 @@
         "reason": "A file of the evidence paths is absent, the layout check refuses the run directory, or the run analysis is not reproduced."
       },
       {
+        "id": "clock-bound-reached",
+        "resultState": "INCONCLUSIVE",
+        "reason": "An interval that a criterion compares with a bound lies within the clock bound of the run of that bound."
+      },
+      {
         "id": "abort-condition",
         "resultState": "ABORTED",
         "reason": "The run crossed an abort condition of the freeze record, and the run-aborted event records which."
@@ -668,7 +716,7 @@
     ]
   },
   "materialScope": {
-    "description": "The path of one run: the import closure of the tools that the procedure runs, this record's procedure directory, which holds no file at registration so that a driver added there is listed as added, the qualification and the bound record that the record names, the scripts that the procedure calls, the RP-1 profile and the V1 load profile that it reads, the contract and the binding of the release, the chart, the desired-state tree, the controller manifests, the Terraform prerequisite layer, the image build files, the inferops package that the API image copies, the model source record, and the dependency lock. For the controlled comparison it also holds the baseline contract and the single-runtime baseline profile with its comparison record.",
+    "description": "The path of one run: the import closure of the tools that the procedure runs, this record's procedure directory, which does not exist at registration, so that a driver added there is listed as added, the qualification and the bound record that the record names, the scripts that the procedure calls, the RP-1 profile and the V1 load profile that it reads, the contract and the binding of the release, the chart, the desired-state tree, the controller manifests, the Terraform prerequisite layer, the image build files, the inferops package that the API image copies, the model source record, and the dependency lock. For the controlled comparison it also holds the baseline contract and the single-runtime baseline profile with its comparison record.",
     "entryModules": [
       "tools.reliability_runner.__main__",
       "tools.experiment_timeline.__main__",
@@ -1666,7 +1714,7 @@
     },
     {
       "path": "tools/experiment_preregistration/core.py",
-      "sha256": "fdc3df7945404250bac717c9e7001155d827e45f0bcd7e1eefc58e857c5a7397",
+      "sha256": "643ff00a6a38e1e875f8321708691fc65e230a5d52b70b8128b9944ac76e328d",
       "role": "a module of a tool that the procedure runs, or that it imports"
     },
     {

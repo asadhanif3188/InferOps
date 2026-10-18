@@ -18,23 +18,39 @@ path and content digest, and states its four bounds. The bound record must be
 the latest one committed, with that digest, and state the same four names,
 formulas, and values. Its environment must be the record's, its qualification
 the record's qualification, and its release the release that the qualification
-qualified. A criterion that names a bound states the value of that bound.
+qualified. A criterion that names a bound states the value of that bound as a
+whole figure in milliseconds; what the statement says about the figure is not
+read.
 
 **The controlled comparison differs in the runtime topology alone.** V2-E02A
 and V2-E02B must state the same environment, caller profile, fault, repetition
 count, collection, window, measurements, outcome rules, exclusion reasons,
 abort conditions, cleanup, evidence layout, and intended level. Their
 topologies may differ only in the members that :data:`PERMITTED_TOPOLOGY`
-names. The values of those members must be what the committed baseline
-comparison record states for its two sides, and that record must be
-``COMPARABLE`` and have the content digest that both records state. V2-E02C,
+names: the runtime replica count, the release, the runtime disruption budget, and
+the statement. The replica counts and the release of each side, its identifier,
+workload version, contract, values digest, and desired-state files, must be what
+the committed baseline comparison record states for that side and what the record
+pins. The comparison record must be ``COMPARABLE``, have the content digest that
+both records state, and list the permitted differences that they copy. Each
+disruption budget must be the one that the chart renders for the replica count of
+its tier. The statement is free text and is compared with nothing. V2-E02C,
 V2-E04, and V2-E05 state the topology of V2-E02B.
 
-**Every executable that a procedure names is pinned.** Each file that a record
-lists in ``definition.executables`` must be a pinned input of the record, and
-the material scope must name the record's ``procedure/`` directory. So a driver
-that a later change adds there is listed as added by
-``python -m tools.experiment_freeze --changes``.
+**Every executable that a record lists is pinned.** ``definition.executables`` is
+a list of at least one file. Each must be a pinned input of the record, and the
+entry file of a tool must have its entry module in the material scope. The scope
+must name this check, the record's ``procedure/`` directory, the qualification,
+and the bound record. So a driver that a later change adds to that directory is
+listed as added by ``python -m tools.experiment_freeze --changes``. Whether a
+pinned file exists, and has its pinned content, is that command's.
+
+**A malformed record is a finding.** Every member that a step indexes is held to
+its type first, and a record that does not have it is ``prereg-record-shape``.
+
+**It imports one private function**, ``_reasons_problem`` of
+``tools.reliability_analysis``, so that it reads exclusion reasons as the
+aggregate reads them. A change to that function moves a pin of each record.
 
 **What this does not do.** It reads files and writes none. It runs no
 experiment, contacts no cluster, and reads no Git history. It checks only the
@@ -180,6 +196,14 @@ RECONCILIATION_COMPONENTS: Final[Mapping[str, int]] = {
 RECONCILIATION_BOUND: Final = "reconciliation_bound_ms"
 RECONCILIATION_EXPERIMENT: Final = "V2-E05"
 
+#: The chart renders a PodDisruptionBudget with minAvailable 1 for a tier of at
+#: least two replicas, and none for one replica.
+_BUDGET_REPLICAS: Final = 2
+_BUDGET_MINIMUM: Final = 1
+
+#: The entry file of a tool that a procedure runs, and its package.
+_ENTRY_FILE: Final = re.compile(r"tools/([a-z_][a-z0-9_]*)/__main__\.py")
+
 #: The entry module of this tool, which each record pins.
 ENTRY_MODULE: Final = "tools.experiment_preregistration.__main__"
 
@@ -201,8 +225,8 @@ RULES: Final[Mapping[str, str]] = {
         "and the record names that experiment."
     ),
     "prereg-record-shape": (
-        "A record answers each field that this check reads with one value, in the "
-        "form that the check reads."
+        "A record answers each field that this check reads with one value, and each "
+        "member that it reads has the type that the check reads."
     ),
     "prereg-qualification-incompatible": (
         "The qualification that a record names is committed with the stated digest, "
@@ -221,29 +245,33 @@ RULES: Final[Mapping[str, str]] = {
     ),
     "prereg-criterion-bound-unknown": (
         "A criterion that names a bound names a bound of the record and states its "
-        "value in milliseconds."
+        "value as a whole figure in milliseconds."
     ),
     "prereg-reconciliation-bound-differs": (
         "The reconciliation bound of V2-E05 is the sum of its three registered "
         "components."
     ),
     "prereg-shared-differs": (
-        "The five records state one environment, one caller profile, and one "
-        "intended level, and V2-E02A and V2-E02B state every shared field and "
-        "definition alike."
+        "The five records state one environment, one caller profile, one intended "
+        "level, and one bound record with its bounds, and V2-E02A and V2-E02B state "
+        "every shared field, definition, validity criterion, and exclusion reason "
+        "alike."
     ),
     "prereg-baseline-difference-unpermitted": (
         "The topology of V2-E02A differs from that of V2-E02B only in the permitted "
-        "members, and their values are those of the committed COMPARABLE baseline "
-        "comparison and of the pinned desired-state files."
+        "members. The replica counts and the release of each side are those of the "
+        "committed COMPARABLE baseline comparison and of the pinned desired-state "
+        "files, and each disruption budget is the one the chart renders for its "
+        "replica count."
     ),
     "prereg-target-topology-differs": (
         "V2-E02C, V2-E04, and V2-E05 state the topology of V2-E02B."
     ),
     "prereg-executable-unpinned": (
-        "Each executable that a record lists is a pinned input, and the material "
-        "scope names this check, the record's procedure directory, the "
-        "qualification, and the bound record."
+        "A record lists at least one executable, each is a pinned input, the entry "
+        "file of a tool has its entry module in the material scope, and the scope "
+        "names this check, the record's procedure directory, the qualification, and "
+        "the bound record."
     ),
     "prereg-exclusion-reasons-unsupported": (
         "A record registers exclusion reasons for its own experiment, in the form "
@@ -257,9 +285,26 @@ RULES: Final[Mapping[str, str]] = {
 # --------------------------------------------------------------------------
 
 
-def _read(root: Path, path: str) -> tuple[bytes, Any] | None:
-    """The bytes and the JSON value of a committed file, or None."""
-    target = root / path
+def _contained(path: object) -> bool:
+    """A relative POSIX repository path with no parent part and no backslash."""
+    return (
+        isinstance(path, str)
+        and bool(path)
+        and not PurePosixPath(path).is_absolute()
+        and ".." not in PurePosixPath(path).parts
+        and "\\" not in path
+        and ":" not in path
+    )
+
+
+def _read(root: Path, path: object) -> tuple[bytes, Any] | None:
+    """The bytes and the JSON value of a committed file, or None.
+
+    A path that is not a relative repository path inside ``root`` is not read.
+    """
+    if not _contained(path):
+        return None
+    target = root / str(path)
     if not target.is_file():
         return None
     data = target.read_bytes()
@@ -296,7 +341,7 @@ def latest_records(root: Path = REPO_ROOT) -> dict[str, tuple[str, Any]]:
 
 def _value(document: Mapping[str, Any], field: str) -> Any:
     """The value of the one entry of a field, or None when it has no such entry."""
-    entries = document.get("fields", {}).get(field)
+    entries = _member(document, "fields").get(field)
     if not isinstance(entries, list) or len(entries) != 1:
         return None
     entry = entries[0]
@@ -321,15 +366,23 @@ def _normalised(value: Any, experiment: Experiment) -> Any:
     """``value`` with the identifiers of its experiment replaced by fixed words.
 
     Two records of one comparison name their own directory, experiment, and run
-    identifiers. The comparison reads every other character.
+    identifiers. Each is replaced where it is a whole token: not after a letter, a
+    digit, or a hyphen, and, for an experiment or a directory, not before a letter
+    or a digit. The comparison reads every other character. A text that names
+    both experiments of the comparison is normalised for its own record only, so
+    it reads as a difference: no shared text of the records does so.
     """
     text = _canonical(value)
     for actual, word in (
         (experiment.directory, "<directory>"),
         (experiment.experiment_id, "<experiment>"),
-        (f"{experiment.run_prefix}-", "<run>-"),
     ):
-        text = text.replace(actual, word)
+        text = re.sub(
+            rf"(?<![A-Za-z0-9-]){re.escape(actual)}(?![A-Za-z0-9])", word, text
+        )
+    text = re.sub(
+        rf"(?<![A-Za-z0-9-]){re.escape(experiment.run_prefix)}-", "<run>-", text
+    )
     return json.loads(text)
 
 
@@ -351,66 +404,133 @@ def _pins(document: Mapping[str, Any]) -> dict[str, str]:
 # --------------------------------------------------------------------------
 
 
-_ENVIRONMENT_MEMBERS: Final = frozenset(
-    {
-        "provider",
-        "environmentSha256",
-        "identityRevision",
-        "kubernetesServerVersion",
-        "nodeCount",
-        "qualification",
-        "qualificationFreezeRecord",
-        "qualifiedRelease",
-    }
-)
+#: The members of an environment that this check reads, with the type of each.
+_ENVIRONMENT_TYPES: Final[Mapping[str, type]] = {
+    "provider": str,
+    "environmentSha256": str,
+    "identityRevision": int,
+    "kubernetesServerVersion": str,
+    "nodeCount": int,
+    "qualification": dict,
+    "qualificationFreezeRecord": dict,
+    "qualifiedRelease": str,
+}
+_QUALIFICATION_MEMBERS: Final = ("qualificationId", "path", "contentSha256", "result")
 _REFERENCE_MEMBERS: Final = frozenset({"path", "contentSha256"})
+_BOUND_TYPES: Final[Mapping[str, type]] = {"name": str, "formula": str, "valueMs": int}
+_BOUND_COUNT: Final = 4
+#: The members of a release that are objects. The others are strings.
+_RELEASE_OBJECTS: Final = frozenset({"contract", "desiredStateFiles"})
+
+
+def _typed(value: Any, kind: type) -> bool:
+    """``value`` is of ``kind``. A bool is not an int, and an object is a Mapping."""
+    if kind is int:
+        return type(value) is int
+    if kind is dict:
+        return isinstance(value, Mapping)
+    return isinstance(value, kind)
+
+
+def _reference(value: Any) -> bool:
+    return isinstance(value, Mapping) and all(
+        isinstance(value.get(member), str) and value.get(member)
+        for member in _REFERENCE_MEMBERS
+    )
+
+
+def _strings(value: Any, *, empty: bool = False) -> bool:
+    """``value`` is a list of non-empty strings, and not empty unless permitted."""
+    return (
+        isinstance(value, list)
+        and (empty or bool(value))
+        and all(isinstance(item, str) and item for item in value)
+    )
+
+
+def _budget(value: Any) -> bool:
+    if not isinstance(value, Mapping) or type(value.get("rendered")) is not bool:
+        return False
+    return not value["rendered"] or type(value.get("minAvailable")) is int
 
 
 def _shape_problem(document: Any) -> str | None:
-    """Why a record cannot be read by this check, or None."""
+    """Why a record cannot be read by this check, or None.
+
+    Every member that a later step indexes or compares is held to its type here,
+    so a malformed record gives a finding and not an error.
+    """
     if not isinstance(document, Mapping):
         return "the record is not one JSON object"
+    if not isinstance(document.get("fields"), Mapping) or not isinstance(
+        document.get("metadata"), Mapping
+    ):
+        return "the record states no fields object and no metadata object"
     environment = _value(document, "environmentIdentity")
-    if (
-        not isinstance(environment, Mapping)
-        or not set(environment) >= _ENVIRONMENT_MEMBERS
+    if not isinstance(environment, Mapping) or not all(
+        _typed(environment.get(member), kind)
+        for member, kind in _ENVIRONMENT_TYPES.items()
     ):
         return "environmentIdentity states no environment in the form read here"
-    qualification = environment["qualification"]
-    if not isinstance(qualification, Mapping) or not {
-        "qualificationId",
-        "path",
-        "contentSha256",
-        "result",
-    } <= set(qualification):
+    if not all(
+        isinstance(environment["qualification"].get(member), str)
+        for member in _QUALIFICATION_MEMBERS
+    ) or not _reference(environment["qualificationFreezeRecord"]):
         return "the qualification is not named by identifier, path, digest, and result"
     bounds = _value(document, "derivedNumericBounds")
     if (
         not isinstance(bounds, Mapping)
-        or not isinstance(bounds.get("boundRecord"), Mapping)
-        or not set(bounds["boundRecord"]) >= _REFERENCE_MEMBERS
+        or not _reference(bounds.get("boundRecord"))
         or not isinstance(bounds.get("bounds"), list)
+        or len(bounds["bounds"]) != _BOUND_COUNT
         or not all(
-            isinstance(b, Mapping) and {"name", "formula", "valueMs"} <= set(b)
+            isinstance(b, Mapping)
+            and all(_typed(b.get(m), kind) for m, kind in _BOUND_TYPES.items())
             for b in bounds["bounds"]
         )
     ):
         return "derivedNumericBounds names no bound record and no four bounds"
     topology = _value(document, "topology")
+    release = _member(topology, "release")
     if (
-        not isinstance(topology, Mapping)
-        or not isinstance(topology.get("release"), Mapping)
-        or not set(topology["release"]) >= RELEASE_MEMBERS
+        set(release) != RELEASE_MEMBERS
+        or not all(
+            isinstance(release[m], str) for m in RELEASE_MEMBERS - _RELEASE_OBJECTS
+        )
+        or not _reference(release["contract"])
+        or not isinstance(release["desiredStateFiles"], Mapping)
+        or not all(
+            isinstance(k, str) and isinstance(v, str)
+            for k, v in release["desiredStateFiles"].items()
+        )
     ):
         return "topology states no release in the form read here"
+    if (
+        type(topology.get("apiReplicas")) is not int
+        or type(topology.get("runtimeReplicas")) is not int
+        or not _budget(topology.get("apiDisruptionBudget"))
+        or not _budget(topology.get("runtimeDisruptionBudget"))
+    ):
+        return "topology states no replica counts and disruption budgets in the form read here"
     definition = document.get("definition")
-    if not isinstance(definition, Mapping) or not isinstance(
-        definition.get("executables"), list
+    if not isinstance(definition, Mapping) or not _strings(
+        definition.get("executables")
     ):
         return "definition lists no executables"
     criteria = _value(document, "acceptanceCriteria")
-    if not isinstance(criteria, list):
+    if not isinstance(criteria, list) or not all(
+        isinstance(c, Mapping) and isinstance(c.get("bound", ""), str) for c in criteria
+    ):
         return "acceptanceCriteria is not a list of criteria"
+    scope = document.get("materialScope")
+    if (
+        not isinstance(scope, Mapping)
+        or not _strings(scope.get("paths"))
+        or not _strings(scope.get("entryModules"))
+    ):
+        return "materialScope names no paths and no entry modules"
+    if not isinstance(document.get("exclusionReasons"), Mapping):
+        return "the record registers no exclusion reasons"
     return None
 
 
@@ -534,7 +654,9 @@ def _bound_findings(
     stated = [(b["name"], b["formula"], b["valueMs"]) for b in value["bounds"]]
     committed = [
         (b.get("name"), b.get("formula"), b.get("valueMs"))
-        for b in record.get("bounds", [])
+        for b in (
+            record.get("bounds") if isinstance(record.get("bounds"), list) else []
+        )
         if isinstance(b, Mapping)
     ]
     if _canonical(stated) != _canonical(committed):
@@ -601,6 +723,16 @@ def _bound_values(document: Mapping[str, Any]) -> dict[str, int]:
     return values
 
 
+def _states(statement: str, value: int) -> bool:
+    """``statement`` states ``value`` as a whole figure in milliseconds, with commas.
+
+    A figure inside a larger one, such as 20,000 ms inside 120,000 ms, is not it.
+    The check does not read what the statement says about the figure.
+    """
+    figure = re.escape(f"{value:,} ms")
+    return re.search(rf"(?<![0-9,]){figure}", statement) is not None
+
+
 def _criterion_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
     values = _bound_values(document)
     for index, criterion in enumerate(_value(document, "acceptanceCriteria")):
@@ -615,7 +747,7 @@ def _criterion_findings(name: str, document: Mapping[str, Any]) -> Iterator[Find
                 where,
                 "it names no bound of the record",
             )
-        elif f"{values[bound]:,} ms" not in str(criterion.get("statement")):
+        elif not _states(str(criterion.get("statement")), values[bound]):
             yield Finding(
                 "prereg-criterion-bound-unknown",
                 name,
@@ -655,15 +787,20 @@ def _executable_findings(
 ) -> Iterator[Finding]:
     rule = "prereg-executable-unpinned"
     pins = _pins(document)
+    scope = _member(document, "materialScope")
+    paths: list[Any] = list(scope.get("paths", []))
+    modules: list[Any] = list(scope.get("entryModules", []))
     for path in document["definition"]["executables"]:
         if path not in pins:
             yield Finding(rule, name, "definition.executables", f"{path} is not pinned")
-    scope = document.get("materialScope")
-    scope = scope if isinstance(scope, Mapping) else {}
-    listed = scope.get("paths")
-    paths: list[Any] = listed if isinstance(listed, list) else []
-    modules = scope.get("entryModules")
-    modules = modules if isinstance(modules, list) else []
+        entry = _ENTRY_FILE.fullmatch(path)
+        if entry is not None and f"tools.{entry.group(1)}.__main__" not in modules:
+            yield Finding(
+                rule,
+                name,
+                "materialScope.entryModules",
+                f"the scope names no entry module for {path}",
+            )
     environment = _value(document, "environmentIdentity")
     bounds = _value(document, "derivedNumericBounds")
     for required in (
@@ -760,8 +897,8 @@ def _shared_findings(
     pairs.append(
         (
             "exclusionReasons.reasons",
-            (baseline.get("exclusionReasons") or {}).get("reasons"),
-            (target.get("exclusionReasons") or {}).get("reasons"),
+            _member(baseline, "exclusionReasons").get("reasons"),
+            _member(target, "exclusionReasons").get("reasons"),
         )
     )
     for location, left, right in pairs:
@@ -800,6 +937,8 @@ def _comparison_findings(
         return
     path, baseline = records[BASELINE]
     target = records[TARGET][1]
+    # A finding about one side names the record of that side.
+    owners = {"baseline": path, "target": records[TARGET][0]}
     sides = {
         "baseline": _value(baseline, "topology"),
         "target": _value(target, "topology"),
@@ -817,11 +956,21 @@ def _comparison_findings(
                 "it is not a permitted difference",
             )
     for side in ("baseline", "target"):
-        release = sides[side]["release"]
-        if set(release) != RELEASE_MEMBERS:
-            yield Finding(
-                rule, path, f"fields.topology.release ({side})", "it has other members"
-            )
+        topology = sides[side]
+        for tier, count in (
+            ("apiDisruptionBudget", topology["apiReplicas"]),
+            ("runtimeDisruptionBudget", topology["runtimeReplicas"]),
+        ):
+            budget = topology[tier]
+            if budget["rendered"] != (count >= _BUDGET_REPLICAS) or (
+                budget["rendered"] and budget.get("minAvailable") != _BUDGET_MINIMUM
+            ):
+                yield Finding(
+                    rule,
+                    owners[side],
+                    f"fields.topology.{tier}",
+                    "it is not the budget that the chart renders for the replica count",
+                )
     reference = sides["baseline"].get("comparison")
     if not isinstance(reference, Mapping) or not set(reference) >= _REFERENCE_MEMBERS:
         yield Finding(
@@ -896,7 +1045,7 @@ def _comparison_findings(
             if actual is None or _canonical(actual) != _canonical(expected):
                 yield Finding(
                     rule,
-                    path,
+                    owners[side],
                     f"fields.topology.release ({side})",
                     f"{label} is not the one of the comparison",
                 )
@@ -904,7 +1053,7 @@ def _comparison_findings(
             if pins.get(f"{directory}/{file_name}") != digest:
                 yield Finding(
                     rule,
-                    path,
+                    owners[side],
                     f"fields.topology.release ({side})",
                     f"{file_name} is not pinned with the stated digest",
                 )
@@ -952,7 +1101,7 @@ def check_repository(root: Path = REPO_ROOT) -> list[Finding]:
         path, document = found[experiment.experiment_id]
         if (
             not isinstance(document, Mapping)
-            or document.get("metadata", {}).get("experiment")
+            or _member(document, "metadata").get("experiment")
             != experiment.experiment_id
         ):
             findings.append(
