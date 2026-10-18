@@ -28,8 +28,11 @@ value states one of 17 reasons, and the document lists each such metric in
 
 **It is not the result of a run.** The result state of a run is a member of its
 [ExperimentRun manifest](../contracts/experiment-run.md), and the criteria are
-those of a frozen record of the experiment. No frozen record states a bound for
-one of these figures yet. A figure here is an input to that decision.
+those of a frozen record of the experiment. Since `V2-S6-003-PR1` the
+[freeze records of the reliability experiments](../proof/experiments/README.md#the-reliability-experiment-freezes)
+state the bounds that some of these figures are compared with, and no run of them
+exists. A figure here is an input to that decision. (Until then this paragraph said
+that no frozen record states a bound for one of these figures.)
 
 **It is not a measurement of a cluster.** The analysis reads files. It contacts
 no cluster and no caller, and it writes no file.
@@ -103,9 +106,12 @@ observation window, the expected state, and the signals. Its schema name is
   `problemBelow` count or the `healthyValues` of each signal are values of the
   declaration. The tool registers the sources that it can read, and the figures
   of the stabilization rule.
-- **The declaration is not held to a frozen record.** A frozen record of an
-  experiment is the place for these values, and none states them yet. Until
-  one does, a person writes the declaration. A declaration that is written
+- **The declaration is not held to a frozen record by code.** A frozen record of
+  an experiment is the place for these values. Since `V2-S6-003-PR1` the freeze
+  records of the reliability experiments state them as a rule, which a person
+  applies before the evidence is read, and the review of a run compares them. (Until
+  then this item said that no frozen record states them.) A person writes the
+  declaration. A declaration that is written
   after the evidence is read can move a figure. The document repeats the
   window, the expected state, and what each signal declared, so a reader can
   see each value that was used.
@@ -598,8 +604,10 @@ Both commands print one JSON document with sorted members and LF line endings.
   files of a run. A later change owns both. (Since `V2-S5-004-PR2`
   [the replay tool](analysis-replay.md) does both, in a document of its own.
   The document of this tool is unchanged.)
-- No frozen record of an experiment states a window, an expected state, a
-  signal, or a bound, so no check holds a declaration to one.
+- No check holds a declaration to a frozen record. Since `V2-S6-003-PR1` the
+  freeze records of the reliability experiments state the window, the expected state,
+  the signals, and the bounds, and the review of a run compares them. (Until then this
+  item said that no frozen record of an experiment states them.)
 - No signal is read from a telemetry stream. A rate of errors and the
   reachability of a scrape target have no source here.
 - A Deployment count of zero is not read as zero, because the timeline stream

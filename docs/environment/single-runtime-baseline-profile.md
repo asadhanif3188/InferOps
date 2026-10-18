@@ -12,8 +12,12 @@ install input, and it is not an observed runtime identity.**
 The desired-state release declares two platform API replicas and two serving
 runtime replicas. The baseline exists so that the loss of one runtime pod under
 that topology can be compared with the loss of the one runtime pod of a release
-with one. No experiment that makes that comparison is defined in this
-repository. Such a comparison means something only while the runtime replica
+with one. Since `V2-S6-003-PR1` the [freeze records of V2-E02A and
+V2-E02B](../proof/experiments/README.md#the-reliability-experiment-freezes) define that
+comparison, pin this profile and its comparison record, and preregister the Git switch
+that delivers the baseline through the target's Application. No run of either exists.
+(Until then this paragraph said that no experiment that makes the comparison is
+defined.) Such a comparison means something only while the runtime replica
 count is the one variable that differs. This page describes the baseline, each difference that it
 is permitted to have, the check that refuses any other difference, and what a
 comparison record does not establish.
@@ -29,7 +33,7 @@ comparison record does not establish.
 | Tool | [`tools/baseline_profile`](../../tools/baseline_profile/core.py): `python -m tools.baseline_profile --check`, `--record`, and `--write` |
 | Tests | [`tests/domain/test_baseline_profile.py`](../../tests/domain/test_baseline_profile.py), and three render tests in [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py) |
 | Validation records | [`v2-s4-003-pr2-validation.md`](../proof/environment/v2-s4-003-pr2-validation.md), [`v2-s4-005-pr1-validation.md`](../proof/environment/v2-s4-005-pr1-validation.md) for the install and readiness inputs, and [`v2-s4-006-pr1-validation.md`](../proof/environment/v2-s4-006-pr1-validation.md) for the API image digest |
-| Read by | No Application and no procedure. The two suites read the files |
+| Read by | No Application and no procedure that runs. The two suites read the files, the freeze records of V2-E02A and V2-E02B pin them, and `tools.experiment_preregistration` reads the comparison record. (Until `V2-S6-003-PR1` this cell said that the two suites alone read them) |
 
 ## How the baseline is declared
 

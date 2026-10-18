@@ -640,8 +640,11 @@ it printed three `pre-schema` lines only.)
   the suite. The two run analyses of the proof tree are of the attempts of a
   non-result integration validation, and no figure of either is compared with a
   bound. (Until `V2-S5-006-PR1` this item said that no run was analysed.)
-- No frozen record of an experiment states a window, an expected state, or a
-  signal, so no check holds a declaration to one. The tool does not compare the
+- No check holds a declaration to a frozen record. Since `V2-S6-003-PR1` the
+  [freeze records of the reliability experiments](../proof/experiments/README.md#the-reliability-experiment-freezes)
+  state the window, the expected state, and the signals of a declaration as a rule, and
+  the review of a run compares them. (Until then this item said that no frozen record
+  of an experiment states a window, an expected state, or a signal.) The tool does not compare the
   declaration with the manifest, except for the two identifiers.
 - The layout check does not call this tool. A run directory with a run analysis
   that does not replay conforms to the layout. The `verify` command, the

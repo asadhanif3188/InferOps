@@ -110,6 +110,19 @@ Q2_R3 = "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json"
 Q2_R3_PIN = "421628933641f8b7c064913c7af0b82d5f8663582e3dd1155a4ac2d8a6dc19af"
 Q3_R2 = "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json"
 Q3_R2_PIN = "f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff"
+#: The five reliability experiment records, registered by V2-S6-003-PR1 before any
+#: run: each names q1-2, bounds-r1, and its procedure. Their pins are written out for
+#: the same reason.
+E02A = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"
+E02A_PIN = "18cf59be8e3cdcf998fc52ba869f9d519ecc3c79e5384e3a5ba69797c8f444de"
+E02B = "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json"
+E02B_PIN = "293a7b5b0045d02e9f588c80fdb75df42874a042e081ee94843b6a67749a812a"
+E02C = "docs/proof/experiments/v2-e02c/freeze-r1.v1alpha1.json"
+E02C_PIN = "95ef24dead2ca6eb76d607c17e0e14d61e1b9248d3433480003797a9c2b10e40"
+E04 = "docs/proof/experiments/v2-e04/freeze-r1.v1alpha1.json"
+E04_PIN = "ad70cef009945f0dc545e5e5f41a93cc1d081600e734209adadb0d210eb3b2b0"
+E05 = "docs/proof/experiments/v2-e05/freeze-r1.v1alpha1.json"
+E05_PIN = "a33f69c20e6e804f26d7630c3a512cb7cf1bc3418e1c41245f26804c68676722"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so
@@ -147,7 +160,10 @@ def test_the_committed_records_are_the_pinned_ones() -> None:
     assert (
         record_paths()
         == sorted(FROZEN_RECORDS)
-        == [R1, R2, R3, Q1, Q1_R2, Q2, Q2_R2, Q2_R3, Q3, Q3_R2, S5I, S5I_R2]
+        == [
+            *(R1, R2, R3, E02A, E02B, E02C, E04, E05),
+            *(Q1, Q1_R2, Q2, Q2_R2, Q2_R3, Q3, Q3_R2, S5I, S5I_R2),
+        ]
     )
     assert load_registry() == dict(FROZEN_RECORDS)
 
@@ -170,7 +186,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "PASSED: 12 freeze record(s)" in result.stdout
+    assert "PASSED: 17 freeze record(s)" in result.stdout
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
@@ -740,6 +756,11 @@ def test_every_registered_record_keeps_the_pin_it_was_registered_with() -> None:
         Q2_R3: Q2_R3_PIN,
         Q3: Q3_PIN,
         Q3_R2: Q3_R2_PIN,
+        E02A: E02A_PIN,
+        E02B: E02B_PIN,
+        E02C: E02C_PIN,
+        E04: E04_PIN,
+        E05: E05_PIN,
     }
 
 

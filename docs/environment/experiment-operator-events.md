@@ -275,8 +275,10 @@ log that takes one more event has another digest.
   opens the log, records the fault injection, and closes the log. No procedure
   records an event of an operator. (Until `V2-S5-006-PR1` this item said that no
   procedure calls the tool.)
-- No frozen record of an experiment registers a code, so no check holds a code
-  to a registered set.
+- No check holds a code to a registered set. Since `V2-S6-003-PR1` the
+  [freeze records of the reliability experiments](../proof/experiments/README.md#the-reliability-experiment-freezes)
+  name one fault code each, and nothing compares a recorded code with them. (Until
+  then this item said that no frozen record of an experiment registers a code.)
 - Nothing checks the order of the kinds: a `fault-injection-finished` with no
   `fault-injection-started` before it is accepted.
 - Nothing compares a commit identifier with a repository, or an `occurredAt`

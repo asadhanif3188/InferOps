@@ -77,6 +77,12 @@ built [`v2-q4/bounds-r1.v1alpha1.json`](v2-q4/bounds-r1.v1alpha1.json) from `q2-
 `q3-2` ([see below](#the-committed-bound-record)). These are qualifications and
 experiment bounds, not results of a reliability experiment. (Until `V2-S6-004-PR2` this
 paragraph said that no run existed under any of the three revisions.)
+**Five records added by `V2-S6-003-PR1`**: [the reliability experiment
+freezes](#the-reliability-experiment-freezes) of V2-E02A, V2-E02B, V2-E02C, V2-E04, and
+V2-E05, revision 1 each, in their own directories, committed before any run. Each names
+`q1-2` and `bounds-r1`, and [`tools/experiment_preregistration`](../../../tools/experiment_preregistration/core.py)
+holds each to them and to the others. No run of any of them exists, and nothing ran in
+that change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -95,6 +101,11 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | Q3 stable caller characterization, `v2-q3-stable-caller-characterization` | 2 | [`v2-q3/freeze-r2.v1alpha1.json`](v2-q3/freeze-r2.v1alpha1.json) | One part, Q3, at C2 | Frozen before any characterization. It holds a characterization to `q1-2` and to the stable environment identity, and keeps the rule of G and the four Q4 formulas. Since `V2-S6-004-PR2`, one characterization ran under it, [`q3-2`](v2-q3/runs/q3-2/result.md), `CHARACTERIZED`, G = 10,113 ms, and the bound record [`v2-q4/bounds-r1.v1alpha1.json`](v2-q4/bounds-r1.v1alpha1.json) exists. (Until `V2-S6-004-PR2` this cell said that no characterization ran under it and that no bound record exists.) |
 | Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). Since `V2-S6-001-PR2`, one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and it is `QUALIFIED`. (Until then this row said that no qualification ran under it.) Superseded by revision 2 on 2026-10-17, and kept unchanged. Three pinned inputs differ from its pins, which revision 2 classifies. (Until then this row said that no pinned input differs from its pin.) |
 | Q1 environment and identity qualification, `v2-q1-environment-qualification` | 2 | [`v2-q1/freeze-r2.v1alpha1.json`](v2-q1/freeze-r2.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification under it. Its records state the stable environment identity, which holds no memory figure. The seventeen criteria are those of revision 1. Since `V2-S6-004-PR2`, one qualification ran under it, [`q1-2`](v2-q1/runs/q1-2/result.md), and it is `QUALIFIED`; the next identifier is `q1-3`. (Until `V2-S6-004-PR2` this cell said that no qualification ran under it and that the next identifier is `q1-2`.) |
+| V2-E02A, controlled single-runtime baseline | 1 | [`v2-e02a/freeze-r1.v1alpha1.json`](v2-e02a/freeze-r1.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
+| V2-E02B, multi-runtime pod loss | 1 | [`v2-e02b/freeze-r1.v1alpha1.json`](v2-e02b/freeze-r1.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
+| V2-E02C, API pod loss | 1 | [`v2-e02c/freeze-r1.v1alpha1.json`](v2-e02c/freeze-r1.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
+| V2-E04, bad release and Git reversal | 1 | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | One part, E04, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
+| V2-E05, drift reconciliation | 1 | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | One part, E05, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
 
 ## Why a freeze comes first
 
@@ -1000,9 +1011,11 @@ Both are pinned inputs of the record. The record states seventeen acceptance cri
   `QUALIFIED`.
 - **It selects one environment.** A `QUALIFIED` record states the environment identity
   and its digest. E02A and E02B execute in that one environment, and a run whose identity
-  differs is not a run of the controlled comparison. This is a rule of the record, and no
-  freeze record of E02A or E02B exists. (Until `V2-S6-004-PR1` this item also said that no
-  tool compares two identities; the Q2 and Q3 tools compare them.)
+  differs is not a run of the controlled comparison. This is a rule of the record. Since
+  `V2-S6-003-PR1` the [freeze records of E02A and E02B](#the-reliability-experiment-freezes)
+  name `q1-2` and its stable identity. (Until then this item said that no freeze record of
+  E02A or E02B exists. Until `V2-S6-004-PR1` it also said that no tool compares two
+  identities; the Q2 and Q3 tools compare them.)
 - **It has its own directory.** The freeze check holds one experiment in each directory.
   A qualification is committed under `v2-q1/runs/q1-N/` with its record, whatever it shows.
 - **The first qualification is `QUALIFIED`.** (Until `V2-S6-004-PR2` this item began "One
@@ -1180,3 +1193,174 @@ These are experiment bounds of one environment. They are not service levels,
 availability targets, production thresholds, or a benchmark, and no claim cites them. A
 later freeze record of a reliability experiment cites them by the path and the digest of
 the record, SHA-256 `542b05dd9627b25330a4602071d99276218776cf1f78a5c34ac764fbb3188116`.
+Since `V2-S6-003-PR1` the [five reliability experiment
+freezes](#the-reliability-experiment-freezes) cite them so.
+
+## The reliability experiment freezes
+
+`V2-S6-003-PR1` registered five freeze records on 2026-10-18, revision 1 each, one
+for each reliability experiment, in its own directory. They fix each experiment
+before its first result-bearing run. **No run of any of them exists, and nothing ran
+in that change**: no Git switch, no commit to `main`, no fault, and no cluster read.
+
+| Experiment | Record | Topology | Fault | Counted runs | Bounds in a criterion | Level |
+|---|---|---|---|---|---|---|
+| V2-E02A, controlled single-runtime baseline | [`v2-e02a/freeze-r1.v1alpha1.json`](v2-e02a/freeze-r1.v1alpha1.json) | 2 API, 1 runtime: the baseline release `ecc4b9cf…` | Delete the one runtime pod | 3 | None | C2 |
+| V2-E02B, multi-runtime pod loss | [`v2-e02b/freeze-r1.v1alpha1.json`](v2-e02b/freeze-r1.v1alpha1.json) | 2 API, 2 runtime: the qualified release `b5457f49…` | Delete one of two runtime pods | 3 | None. The caller bound is an observation | C2 |
+| V2-E02C, API pod loss | [`v2-e02c/freeze-r1.v1alpha1.json`](v2-e02c/freeze-r1.v1alpha1.json) | As V2-E02B | Delete one of two API pods | 3 | `caller_total_unavailability_bound_ms` | C2 |
+| V2-E04, bad release and Git reversal | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | As V2-E02B | Accept a bad runtime release into `main`, then revert it | 2, and a third when the two differ in a verdict | `caller_total_unavailability_bound_ms`, `reversal_recovery_bound_ms` | C2 |
+| V2-E05, drift reconciliation | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | As V2-E02B | Scale the live runtime Deployment from 2 to 1, with Git unchanged | 2 | `reconciliation_bound_ms`, 210,000 ms | C2 |
+
+A record is not evidence. It states what a run must do and what counts as a pass. Each
+record states its procedure, its measurements, its criteria, each marked `validity` or
+`pass`, its exclusion reasons, its abort conditions, its cleanup, its limitations, what it
+does not establish, and what was known when it was written.
+
+### One lineage, and the role of the bounds
+
+- **The environment is that of `q1-2`.** Each record names
+  [`q1-2`](v2-q1/runs/q1-2/record.v1alpha1.json) by path and digest, `QUALIFIED`, and its
+  stable environment identity,
+  `sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`. Each run is
+  held to the capacity gate on its own reading, and its stable identity must have that
+  digest. A run on another provider, node, or identity is not a run of these records.
+- **The bounds are those of `bounds-r1`.** Each record names
+  [`v2-q4/bounds-r1.v1alpha1.json`](v2-q4/bounds-r1.v1alpha1.json) by path and digest and
+  states its four values: 11,000 ms, 10,113 ms, 52,000 ms, and 20,226 ms. They were derived
+  from `q2-2` and `q3-2`, which ran on the qualified target release `b5457f49…`. The
+  records state them as preregistered, shared experiment-reference bounds. They are not
+  bounds of the baseline release: no characterization of the baseline exists, and no
+  criterion of V2-E02A uses a bound. They are not service levels.
+- **No baseline qualification is required.** The qualification and the two
+  characterizations are of the target topology, and V2-E02A uses no bound. V2-E02A
+  executes in the one environment that `q1-2` selected, as V2-E02B does, and its capacity
+  gate decides each reading.
+- **`q1-1`, `q2-1`, and `q3-1` are unchanged.** `q3-1` stays `REFUSED`, and each record
+  names it in what was known.
+
+### The controlled comparison
+
+V2-E02A and V2-E02B state the same environment, caller profile and caller run, fault rule
+and mechanism, collection, window, declaration rule, measurements, validity criteria,
+outcome rules, exclusion reasons, repetition rule, abort conditions, cleanup, and evidence
+layout. Their topologies differ only in four members: the runtime replica count, the
+release that follows it, the runtime disruption budget, which the chart renders for two
+replicas and not for one, and the statement. The release differs in the contract, `0.1.0`
+and `0.2.0`, the workload version, the contract and values digests, and the release
+identifier. The committed [baseline comparison record](../../environment/single-runtime-baseline-profile.md)
+is `COMPARABLE` and lists those as its permitted differences. Its tool compared every other
+claim-relevant input of the two sides, and both records pin it by digest.
+
+**One Application delivers both.** The baseline is not given a second Application or a
+second path. `definition.gitTransitions` of V2-E02A preregisters the switch:
+
+1. Before the first V2-E02A run, one change merged into `main` replaces the two files of
+   the desired-state path with the two files of the baseline profile, byte for byte, and
+   changes no other file of the delivery path. That change registers revision 2 of the
+   V2-E02A record, which classifies each moved pin, before the first run.
+2. Each V2-E02A run executes at a commit whose two files have the baseline digests.
+3. After the last V2-E02A run, one change restores the two files to the target digests,
+   before the first V2-E02B run.
+
+No switch is authorized by the records. Each is a commit to `main` that needs the explicit
+authorization of the repository owner.
+
+### The procedure, without a driver
+
+**No driver exists for any of the five.** Each record states its procedure in full: the
+preparation P1 to P7, the caller run, the collection, the stable pre-fault window, the
+fault steps, the observation limit, the window of the analysis, the post-recovery window,
+the declaration rule of the analysis, and the cleanup C1 to C5. The material scope of each
+record names its own `procedure/` directory, which holds no file. A driver added there is
+listed as `added` by `--changes`, so the change that adds it registers a later revision
+that pins the driver and its dependencies, and that revision merges before the first
+result-bearing run. A change to the caller profile, the topology, the fault, a measurement,
+a window, a bound, an outcome rule, an exclusion reason, an abort condition, the cleanup, or
+a criterion is material, and it is a later revision too.
+
+- **Outcomes.** `REFUSED` when a precondition did not hold and no fault was injected;
+  `ABORTED` when an abort condition was crossed; `INCONCLUSIVE` when a validity criterion did
+  not hold; `FAILED` when every validity criterion held and a pass criterion did not; and
+  `PASSED` when every criterion held. V2-E02A has validity criteria only, so it is a
+  characterization: a run of it is never `FAILED`.
+- **Repetitions.** A `PASSED` or `FAILED` run is counted and never repeated, replaced, or
+  left out. A `REFUSED`, `INCONCLUSIVE`, or `ABORTED` run is kept, for one of eight
+  registered exclusion reasons, and the next run takes the next identifier, up to six runs
+  for E02 and four for E04 and E05.
+- **The caller is the reference.** No stream, readiness state, endpoint count, replica
+  count, sync state, health state, or scrape state changes a caller figure.
+
+### What V2-E04 and V2-E05 decide before any run
+
+- **V2-E04 measures the recovery from the start of the stabilization span.** The analysis
+  states `stabilizedAt` at the end of a span of at least 10 successes and 60 s. A recovery
+  measured to that instant could never be within `reversal_recovery_bound_ms`, 52,000 ms.
+  So `recoveryEnd` is the completion of the first request of that span, and
+  `reversalStart` is the start of the last controller reading before the reversal commit
+  was resolved. The record states this choice and states that it was made with the
+  analysis definition known and before any run. The operator decision time and the time
+  for the controller to discover the reversal commit are recorded apart from the recovery.
+- **V2-E04's bad release is not implemented.** The record fixes the preferred fault: the
+  same runtime image started with a model file path that does not exist. The change that
+  implements it registers a later revision that pins it. When an accepted validation rule
+  refuses that release before deployment, the rule is not weakened: a later revision
+  selects another safe fault before any run.
+- **V2-E05's bound is 210,000 ms.** It is a conservatively selected experiment threshold:
+  the documented default reconciliation timeout of Argo CD, two minutes, plus its
+  documented maximum jitter, one minute, plus 30 s. The pinned install sets neither key, and
+  a precondition refuses a run when the live configuration sets one. Argo CD does not
+  guarantee a recovery within 210,000 ms, and the record does not state that periodic Git
+  polling is what restores a live drift. The earlier observation that a manual replica
+  change was reverted within 2 to 4 s was known when the bound was chosen. It is stated as
+  history, apart from the bound and from the result of any run.
+- **V2-E05's restoration is read from the controller's streams.** It starts at the
+  `fault-injection-started` event and ends at the finish of the first deployments reading
+  that reports `specReplicas` 2 at a later generation, both on the clock of the collecting
+  host. No caller figure changes that verdict.
+
+### The check
+
+```sh
+uv run --locked python -m tools.experiment_preregistration --check
+```
+
+[`tools/experiment_preregistration`](../../../tools/experiment_preregistration/core.py)
+reads the latest record of each of the five experiments and compares it with the
+qualification, the bound record, and the baseline comparison that it names, and with the
+other records. It exits 0 when every rule holds and 1 when one does not, so a run can use
+it as a precondition. It reads files and writes none. Each record pins it. The default-lane
+suite [`tests/testing/test_experiment_preregistration.py`](../../../tests/testing/test_experiment_preregistration.py)
+runs it and plants each defect below in a copy.
+
+| Rule | Statement |
+|---|---|
+| `prereg-record-missing` | Each of the five experiments has a committed freeze record in its directory, and the record names that experiment. |
+| `prereg-record-shape` | A record answers each field that this check reads with one value, in the form that the check reads. |
+| `prereg-qualification-incompatible` | The qualification that a record names is committed with the stated digest, is QUALIFIED, and states the provider, the environment digest, the identity revision, the server version, the node count, the freeze record, and the release that the record states. |
+| `prereg-bounds-stale` | The bound record that a record names is the latest committed one, has the stated digest, and states the four bounds of the record with the same names, formulas, and values. |
+| `prereg-bounds-incompatible` | The bound record states the environment, the qualification, and the release that the record states. |
+| `prereg-criterion-bound-unknown` | A criterion that names a bound names a bound of the record and states its value in milliseconds. |
+| `prereg-reconciliation-bound-differs` | The reconciliation bound of V2-E05 is the sum of its three registered components. |
+| `prereg-shared-differs` | The five records state one environment, one caller profile, and one intended level, and V2-E02A and V2-E02B state every shared field and definition alike. |
+| `prereg-baseline-difference-unpermitted` | The topology of V2-E02A differs from that of V2-E02B only in the permitted members, and their values are those of the committed COMPARABLE baseline comparison and of the pinned desired-state files. |
+| `prereg-target-topology-differs` | V2-E02C, V2-E04, and V2-E05 state the topology of V2-E02B. |
+| `prereg-executable-unpinned` | Each executable that a record lists is a pinned input, and the material scope names this check, the record's procedure directory, the qualification, and the bound record. |
+| `prereg-exclusion-reasons-unsupported` | A record registers exclusion reasons for its own experiment, in the form that the aggregate reads. |
+
+### What is enforced, and what is not
+
+Enforced in the default lane: every rule above and every rule of the freeze check, over
+the committed records. Not enforced:
+
+- **That a run follows the procedure.** No driver exists, and no code computes a verdict
+  or holds a declaration to the rule of its record. The review of each run compares them.
+- **That a pinned input is unchanged.** As for every record, `--changes` lists a moved
+  input, and the run refuses to start until a merged revision classifies it.
+- **That the comparison record stays as pinned.** When a change regenerates it, the check
+  refuses until revisions of V2-E02A and V2-E02B name the new digest. This is deliberate:
+  the comparison rests on that record.
+- **That the scope is complete.** A test holds each pin list equal to its material scope
+  at registration. A file added to a scope later moves that test, and the change owes a
+  revision.
+- **That a statement of a record is right.** The check compares values. It does not judge
+  a procedure, a criterion, or a limitation.
