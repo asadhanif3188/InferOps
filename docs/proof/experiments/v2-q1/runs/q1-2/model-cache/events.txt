@@ -1,0 +1,55 @@
+inferops-inferops-llm-56d47dfdc5-jjl4s	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-56d47dfdc5-jjl4s to desktop-control-plane
+inferops-inferops-llm-56d47dfdc5-jjl4s	Pulled	1	2026-10-17T15:02:44Z	2026-10-17T15:02:44Z	Container image "localhost/inferops-api@sha256:f10c9e9bcd2d085c911f44724196baac344e10f65a4cd3a8400e38fd48400fcc" already present on machine and can be accessed by the pod
+inferops-inferops-llm-56d47dfdc5-jjl4s	Created	1	2026-10-17T15:02:44Z	2026-10-17T15:02:44Z	Container created
+inferops-inferops-llm-56d47dfdc5-jjl4s	Started	1	2026-10-17T15:02:45Z	2026-10-17T15:02:45Z	Container started
+inferops-inferops-llm-56d47dfdc5-jjl4s	Killing	1	2026-10-17T15:02:54Z	2026-10-17T15:02:54Z	Stopping container api
+inferops-inferops-llm-56d47dfdc5-jjl4s	Unhealthy	2	2026-10-17T15:03:03Z	2026-10-17T15:03:13Z	Readiness probe failed: Get "http://10.244.0.7:8090/health/ready": dial tcp 10.244.0.7:8090: connect: connection refused
+inferops-inferops-llm-collector-7c6d4cf598-p2psr	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-collector-7c6d4cf598-p2psr to desktop-control-plane
+inferops-inferops-llm-collector-7c6d4cf598-p2psr	Pulled	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container image "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996" already present on machine and can be accessed by the pod
+inferops-inferops-llm-collector-7c6d4cf598-p2psr	Created	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container created
+inferops-inferops-llm-collector-7c6d4cf598-p2psr	Started	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container started
+inferops-inferops-llm-collector-f86bcbf84-sfv6m	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-collector-f86bcbf84-sfv6m to desktop-control-plane
+inferops-inferops-llm-collector-f86bcbf84-sfv6m	Pulled	1	2026-10-17T15:02:44Z	2026-10-17T15:02:44Z	Container image "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996" already present on machine and can be accessed by the pod
+inferops-inferops-llm-collector-f86bcbf84-sfv6m	Created	1	2026-10-17T15:02:44Z	2026-10-17T15:02:44Z	Container created
+inferops-inferops-llm-collector-f86bcbf84-sfv6m	Started	1	2026-10-17T15:02:45Z	2026-10-17T15:02:45Z	Container started
+inferops-inferops-llm-collector-f86bcbf84-sfv6m	Killing	1	2026-10-17T15:02:54Z	2026-10-17T15:02:54Z	Stopping container collector
+inferops-inferops-llm-f7d97fcb-b7v6g	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-f7d97fcb-b7v6g to desktop-control-plane
+inferops-inferops-llm-f7d97fcb-b7v6g	Pulled	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container image "localhost/inferops-api@sha256:f10c9e9bcd2d085c911f44724196baac344e10f65a4cd3a8400e38fd48400fcc" already present on machine and can be accessed by the pod
+inferops-inferops-llm-f7d97fcb-b7v6g	Created	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container created
+inferops-inferops-llm-f7d97fcb-b7v6g	Started	1	2026-10-17T15:04:54Z	2026-10-17T15:04:54Z	Container started
+inferops-inferops-llm-f7d97fcb-j6k9d	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-f7d97fcb-j6k9d to desktop-control-plane
+inferops-inferops-llm-f7d97fcb-j6k9d	Pulled	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container image "localhost/inferops-api@sha256:f10c9e9bcd2d085c911f44724196baac344e10f65a4cd3a8400e38fd48400fcc" already present on machine and can be accessed by the pod
+inferops-inferops-llm-f7d97fcb-j6k9d	Created	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container created
+inferops-inferops-llm-f7d97fcb-j6k9d	Started	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container started
+inferops-inferops-llm-model-acquisition-k2bbv	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-model-acquisition-k2bbv to desktop-control-plane
+inferops-inferops-llm-model-acquisition-k2bbv	Pulled	1	2026-10-17T15:02:24Z	2026-10-17T15:02:24Z	Container image "localhost/inferops-model-seed@sha256:bec789448cf728c46b8dc3a43252dc97e37f858c5787c6500adc38c310d3cb36" already present on machine and can be accessed by the pod
+inferops-inferops-llm-model-acquisition-k2bbv	Created	1	2026-10-17T15:02:24Z	2026-10-17T15:02:24Z	Container created
+inferops-inferops-llm-model-acquisition-k2bbv	Started	1	2026-10-17T15:02:25Z	2026-10-17T15:02:25Z	Container started
+inferops-inferops-llm-model-acquisition-rs2bg	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-model-acquisition-rs2bg to desktop-control-plane
+inferops-inferops-llm-model-acquisition-rs2bg	Pulled	1	2026-10-17T15:04:46Z	2026-10-17T15:04:46Z	Container image "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0" already present on machine and can be accessed by the pod
+inferops-inferops-llm-model-acquisition-rs2bg	Created	1	2026-10-17T15:04:46Z	2026-10-17T15:04:46Z	Container created
+inferops-inferops-llm-model-acquisition-rs2bg	Started	1	2026-10-17T15:04:46Z	2026-10-17T15:04:46Z	Container started
+inferops-inferops-llm-runtime-77dc4cbd7-lcd76	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-runtime-77dc4cbd7-lcd76 to desktop-control-plane
+inferops-inferops-llm-runtime-77dc4cbd7-lcd76	Pulled	1	2026-10-17T15:02:44Z	2026-10-17T15:02:44Z	Container image "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-77dc4cbd7-lcd76	Created	1	2026-10-17T15:02:44Z	2026-10-17T15:02:44Z	Container created
+inferops-inferops-llm-runtime-77dc4cbd7-lcd76	Started	1	2026-10-17T15:02:45Z	2026-10-17T15:02:45Z	Container started
+inferops-inferops-llm-runtime-77dc4cbd7-lcd76	Pulled	1	2026-10-17T15:02:48Z	2026-10-17T15:02:48Z	Container image "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-77dc4cbd7-lcd76	Created	1	2026-10-17T15:02:48Z	2026-10-17T15:02:48Z	Container created
+inferops-inferops-llm-runtime-77dc4cbd7-lcd76	Started	1	2026-10-17T15:02:48Z	2026-10-17T15:02:48Z	Container started
+inferops-inferops-llm-runtime-77dc4cbd7-lcd76	Killing	1	2026-10-17T15:02:56Z	2026-10-17T15:02:56Z	Stopping container runtime
+inferops-inferops-llm-runtime-79846f98f6-gwm4p	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-runtime-79846f98f6-gwm4p to desktop-control-plane
+inferops-inferops-llm-runtime-79846f98f6-gwm4p	Pulled	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container image "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-79846f98f6-gwm4p	Created	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container created
+inferops-inferops-llm-runtime-79846f98f6-gwm4p	Started	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container started
+inferops-inferops-llm-runtime-79846f98f6-gwm4p	Pulled	1	2026-10-17T15:04:56Z	2026-10-17T15:04:56Z	Container image "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-79846f98f6-gwm4p	Created	1	2026-10-17T15:04:56Z	2026-10-17T15:04:56Z	Container created
+inferops-inferops-llm-runtime-79846f98f6-gwm4p	Started	1	2026-10-17T15:04:56Z	2026-10-17T15:04:56Z	Container started
+inferops-inferops-llm-runtime-79846f98f6-gwm4p	Unhealthy	2	2026-10-17T15:05:03Z	2026-10-17T15:05:13Z	Startup probe failed: HTTP probe failed with statuscode: 503
+inferops-inferops-llm-runtime-79846f98f6-m8hkg	Scheduled		null	null	Successfully assigned inferops-release/inferops-inferops-llm-runtime-79846f98f6-m8hkg to desktop-control-plane
+inferops-inferops-llm-runtime-79846f98f6-m8hkg	Pulled	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container image "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-79846f98f6-m8hkg	Created	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container created
+inferops-inferops-llm-runtime-79846f98f6-m8hkg	Started	1	2026-10-17T15:04:53Z	2026-10-17T15:04:53Z	Container started
+inferops-inferops-llm-runtime-79846f98f6-m8hkg	Pulled	1	2026-10-17T15:04:56Z	2026-10-17T15:04:56Z	Container image "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384" already present on machine and can be accessed by the pod
+inferops-inferops-llm-runtime-79846f98f6-m8hkg	Created	1	2026-10-17T15:04:56Z	2026-10-17T15:04:56Z	Container created
+inferops-inferops-llm-runtime-79846f98f6-m8hkg	Started	1	2026-10-17T15:04:56Z	2026-10-17T15:04:56Z	Container started
+inferops-inferops-llm-runtime-79846f98f6-m8hkg	Unhealthy	2	2026-10-17T15:05:03Z	2026-10-17T15:05:13Z	Startup probe failed: HTTP probe failed with statuscode: 503

@@ -129,6 +129,12 @@ ARGOCD_RESOURCE_EVIDENCE = (
         f"docs/proof/experiments/v2-q1/runs/q1-1/reconciliation/sample-00{n}.application.json"
         for n in range(1, 6)
     ),
+    # The five reconciliation samples of the qualification q1-2, added by
+    # V2-S6-004-PR2.
+    *(
+        f"docs/proof/experiments/v2-q1/runs/q1-2/reconciliation/sample-00{n}.application.json"
+        for n in range(1, 6)
+    ),
 )
 
 CLUSTER_SCOPED_KINDS = frozenset(

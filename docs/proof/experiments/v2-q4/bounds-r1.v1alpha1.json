@@ -1,0 +1,75 @@
+{
+  "boundary": "These are experiment bounds derived from two qualifications on one node. They are not service levels, availability targets, or production thresholds, and no figure of them is portable to another environment.",
+  "bounds": [
+    {
+      "formula": "S",
+      "name": "runtime_start_bound_ms",
+      "valueMs": 11000
+    },
+    {
+      "formula": "G",
+      "name": "caller_gap_reference_ms",
+      "valueMs": 10113
+    },
+    {
+      "formula": "(2 * S) + 30000",
+      "name": "reversal_recovery_bound_ms",
+      "valueMs": 52000
+    },
+    {
+      "formula": "max(2 * G, 5000)",
+      "name": "caller_total_unavailability_bound_ms",
+      "valueMs": 20226
+    }
+  ],
+  "doesNotEstablish": [
+    "A record does not establish a production SLO, an availability, or a service level.",
+    "A record does not establish that a reliability experiment passes or fails. It states the bounds that a later freeze record holds a run to.",
+    "A record does not establish that the formulas are right for another workload. The formulas are fixed, and the values are of one environment.",
+    "A record does not establish that a source record is what its directory gives. The commands of the two characterization tools check that.",
+    "A record does not establish anything about another provider, another node, another Kubernetes version, another release, or another model."
+  ],
+  "environment": {
+    "environmentSha256": "sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c",
+    "provider": "docker-desktop",
+    "qualification": {
+      "contentSha256": "1141cbd1c0acd7eff839395a89eba3fe116a060dafb3941128bf23c440ec1b3d",
+      "path": "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+      "qualificationId": "q1-2"
+    },
+    "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db"
+  },
+  "inputs": {
+    "G": {
+      "characterizationId": "q3-2",
+      "executingCommit": "0dbea911050395b400a1c03bf76e0579bb1c152b",
+      "freezeRecord": {
+        "contentSha256": "f1ebcc296ebc81f0257e6b352f707dad6e635c46dbbd046dfc893eb8fc3f77ff",
+        "path": "docs/proof/experiments/v2-q3/freeze-r2.v1alpha1.json"
+      },
+      "percentileMeaningful": true,
+      "record": {
+        "contentSha256": "0a978396b5d7f15a4a6b507dda288d16dff5d937828cde2e2782a73d504ca99a",
+        "path": "docs/proof/experiments/v2-q3/runs/q3-2/record.v1alpha1.json"
+      },
+      "rule": "p99",
+      "successes": 153,
+      "valueMs": 10113
+    },
+    "S": {
+      "characterizationId": "q2-2",
+      "executingCommit": "28d253439d1a4cff6fe6db579ffbbab77b256a54",
+      "freezeRecord": {
+        "contentSha256": "421628933641f8b7c064913c7af0b82d5f8663582e3dd1155a4ac2d8a6dc19af",
+        "path": "docs/proof/experiments/v2-q2/freeze-r3.v1alpha1.json"
+      },
+      "record": {
+        "contentSha256": "db0bd1579cdb93e0e8ede69e5c441006b54ed7ae7f7eee8d1f3c43ad34444531",
+        "path": "docs/proof/experiments/v2-q2/runs/q2-2/record.v1alpha1.json"
+      },
+      "rule": "the maximum startToReadyMs of every observation",
+      "valueMs": 11000
+    }
+  },
+  "schema": "inferops.io/experiment-bounds/v1alpha1"
+}

@@ -1,6 +1,7 @@
 # Q1: the environment and identity qualification
 
-Status: **the Q1 workflow is frozen, and one qualification has run. Since
+Status: **the Q1 workflow is frozen, and two qualifications have run (one until
+`V2-S6-004-PR2`; the second, `q1-2`, is below). Since
 `V2-S6-001-PR2`, [qualification `q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md)
 is `QUALIFIED`, at C2: on 2026-10-15, at the commit `08b8914`, every one of the 17
 rules held on the docker-desktop provider with one node. Its environment identity was
@@ -13,11 +14,19 @@ qualification had run.)
 is a capacity fact.** [ADR 0021](../architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md) decides it, after the exact identity of `q1-1`
 did not hold across a start of the virtual machine ([below](#the-selected-environment)).
 [Revision 2 of the freeze record](../proof/experiments/v2-q1/freeze-r2.v1alpha1.json)
-records the stable identity, and the next qualification, `q1-2`, runs under it. No
-qualification has run under revision 2. `q1-1` stays a record of revision 1, with its
-exact identity and its digest. The Q2 and Q3 revisions registered by the same change
-hold the next characterizations to `q1-2`, so a later freeze record of E02A and E02B
-names the stable identity of `q1-2`, when `q1-2` is `QUALIFIED`.
+records the stable identity, and the next qualification, `q1-2`, runs under it.
+`q1-1` stays a record of revision 1, with its exact identity and its digest. The Q2 and
+Q3 revisions registered by the same change hold the next characterizations to `q1-2`.
+
+**Since `V2-S6-004-PR2`, [qualification `q1-2`](../proof/experiments/v2-q1/runs/q1-2/result.md)
+is `QUALIFIED` under revision 2, at C2:** on 2026-10-17, at the commit `ed892a4`, every one
+of the 17 rules held, in the stable environment identity
+`sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`. It is the
+selected environment of E02A and E02B: a later freeze record of either names this digest.
+The Q2 characterization `q2-2` and the Q3 characterization `q3-2` of the same lineage are
+`CHARACTERIZED`. (Until `V2-S6-004-PR2` this paragraph said that no qualification had run
+under revision 2, and that the freeze record of E02A and E02B would name the identity of
+`q1-2` when `q1-2` is `QUALIFIED`.)
 
 Before a V2 reliability experiment runs, Q1 decides whether one local
 environment holds the target topology of the desired-state release: two
@@ -33,8 +42,8 @@ Service. The result is `QUALIFIED` or `REFUSED`. There is no third result.
 | Tool | [`tools/environment_qualification`](../../tools/environment_qualification/core.py): `python -m tools.environment_qualification DIRECTORY` and `--check` |
 | Tests | [`tests/domain/test_environment_qualification.py`](../../tests/domain/test_environment_qualification.py) |
 | Target | Release key `local-docker-desktop/support-assistant`, 2 API replicas, 2 runtime replicas, provider `docker-desktop` |
-| Runs | One: [`q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md), `QUALIFIED` under revision 1, exact environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`. None under revision 2; the next identifier is `q1-2`. A qualification is committed under `docs/proof/experiments/v2-q1/runs/q1-N/` |
-| Validation records | [`v2-s6-001-pr1-validation.md`](../proof/environment/v2-s6-001-pr1-validation.md), the frozen workflow; [`v2-s6-001-pr2-validation.md`](../proof/environment/v2-s6-001-pr2-validation.md), the first qualification; [`v2-s6-004-pr1-validation.md`](../proof/environment/v2-s6-004-pr1-validation.md), the stable identity and revision 2 |
+| Runs | Two: [`q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md), `QUALIFIED` under revision 1, exact environment `sha256:23db293eeac80960eb77eac228188ceb5ac2cd1c11a925636aa61f1318866461`; and [`q1-2`](../proof/experiments/v2-q1/runs/q1-2/result.md), `QUALIFIED` under revision 2, stable environment `sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`. The next identifier is `q1-3`. A qualification is committed under `docs/proof/experiments/v2-q1/runs/q1-N/` |
+| Validation records | [`v2-s6-001-pr1-validation.md`](../proof/environment/v2-s6-001-pr1-validation.md), the frozen workflow; [`v2-s6-001-pr2-validation.md`](../proof/environment/v2-s6-001-pr2-validation.md), the first qualification; [`v2-s6-004-pr1-validation.md`](../proof/environment/v2-s6-004-pr1-validation.md), the stable identity and revision 2; [`v2-s6-004-pr2-validation.md`](../proof/environment/v2-s6-004-pr2-validation.md), the qualification `q1-2` and its lineage |
 
 ## A refusal is a result
 
@@ -94,9 +103,16 @@ Since `V2-S6-004-PR1`, `q1-1` stays a `QUALIFIED` record of revision 1 and selec
 environment: its exact identity cannot be met again after a start of the virtual
 machine, and the Q2 and Q3 revisions of the next lineage hold their characterizations
 to `q1-2`. The selection passes to `q1-2`, a qualification under revision 2, and only
-if it is `QUALIFIED`; until then no environment is selected for E02A and E02B.
-No run of E02A or E02B exists, so no comparison of identities has
-been made. This is a rule of the freeze record. No freeze record of E02A or E02B
+if it is `QUALIFIED`. Since `V2-S6-004-PR2`, `q1-2` is `QUALIFIED`, and the selected
+environment of E02A and E02B is its stable identity: the docker-desktop provider,
+Kubernetes server `v1.36.1`, one node `desktop-control-plane` with kubelet `v1.36.1`
+allocating 12,000 millicores and 110 pods, and a container engine of 12 CPUs, with the
+digest `sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`. Its
+memory, 10,429,972,480 bytes for the engine and the node, is a capacity fact of its
+reading, which the gate accepted, and each later run is held to the gate on its own
+reading. (Until `V2-S6-004-PR2` this said that until `q1-2` is `QUALIFIED` no
+environment is selected.) No run of E02A or E02B exists, so no comparison of identities
+with one has been made. This is a rule of the freeze record. No freeze record of E02A or E02B
 exists. (Until `V2-S6-004-PR1` this paragraph also said that no tool compares two
 identities; the Q2 and Q3 tools compare them.) When the local environment is
 `REFUSED`, the refusal is retained, and a separate environment decision record

@@ -10,6 +10,25 @@ from `1.0.0`.
 
 ### Added
 
+- **The requalified chain ran once, and the first Q4 bound record is committed.**
+  `V2-S6-004-PR2` ran, once each and in order, on the docker-desktop provider: the Q1
+  qualification [`q1-2`](docs/proof/experiments/v2-q1/runs/q1-2/result.md) under Q1
+  revision 2 at `ed892a4`, `QUALIFIED` with each of its 17 rules held, in the stable
+  environment `sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`;
+  the Q2 characterization [`q2-2`](docs/proof/experiments/v2-q2/runs/q2-2/result.md) under
+  Q2 revision 3, `CHARACTERIZED`, six intervals of 11,000 ms, S = 11,000 ms; and the Q3
+  characterization [`q3-2`](docs/proof/experiments/v2-q3/runs/q3-2/result.md) under Q3
+  revision 2, `CHARACTERIZED`, 153 of 153 requests in 362,958 ms, G = 10,113 ms by the p99
+  rule. `tools/experiment_bounds` built
+  [`v2-q4/bounds-r1.v1alpha1.json`](docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json)
+  from `q2-2` and `q3-2`: runtime start 11,000 ms, caller gap reference 10,113 ms,
+  reversal recovery 52,000 ms, and caller total unavailability 20,226 ms. Each phase's
+  cleanup returned the cluster to the namespaces and custom resource definitions it held
+  before. No tool, driver, or freeze record changed; the suites and pages name the new
+  records. Evidence level C2 for the three runs, of one environment. The bounds are
+  experiment bounds, not production SLOs, and no claim cites them. `q1-1`, `q2-1`, and
+  `q3-1` are unchanged. `V2-S6-003` is unblocked by this record and is not started. See
+  [the validation record](docs/proof/environment/v2-s6-004-pr2-validation.md).
 - **The environment identity states the configuration, and memory is a capacity fact.**
   `V2-S6-004-PR1` adds [ADR 0021](docs/architecture/decisions/ADR-0021-environment-identity-is-configuration-memory-is-capacity.md),
   decided after `q3-1` was refused on a memory figure that changed at each observed start
