@@ -86,7 +86,11 @@ that change.
 **Four records added by `V2-S6-007-PR1`**: revision 2 of the records of V2-E02A, V2-E02B,
 V2-E02C, and V2-E05, which supersede revision 1 with [one clock
 policy](#the-clock-policy-of-rule-set-2). Revision 1 of each is kept unchanged, and V2-E04
-stays at revision 1. No run exists, and nothing ran in that change.
+stayed at revision 1 in that change. No run exists, and nothing ran in that change.
+**One record added by `V2-S6-005-PR1`**: revision 2 of the record of V2-E04, under rule
+set 3, which supersedes revision 1 with the same clock policy and [the reversal timing as
+the repository owner amended it](#the-reversal-timing-of-v2-e04-and-rule-set-3). Revision
+1 is kept unchanged. No run exists, and nothing ran in that change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -108,12 +112,13 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E02A, controlled single-runtime baseline | 1 | [`v2-e02a/freeze-r1.v1alpha1.json`](v2-e02a/freeze-r1.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
 | V2-E02B, multi-runtime pod loss | 1 | [`v2-e02b/freeze-r1.v1alpha1.json`](v2-e02b/freeze-r1.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
 | V2-E02C, API pod loss | 1 | [`v2-e02c/freeze-r1.v1alpha1.json`](v2-e02c/freeze-r1.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
-| V2-E04, bad release and Git reversal | 1 | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | One part, E04, at C2 | Frozen before any run. No run exists. It is the latest V2-E04 record, read under rule set 1, and its clock statements still contradict its P8. Since `V2-S6-007-PR1` the three files of `tools/experiment_preregistration` differ from its pins and no revision classifies them, so a run refuses to start until a later revision supersedes it. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E04, bad release and Git reversal | 1 | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | One part, E04, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-19, and kept unchanged: its clock statements contradicted its P8, and its recovery interval started at a controller observation and counted the discovery of the reversal as operator time. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-005-PR1` this cell said that it is the latest V2-E04 record and that no revision classifies the three files.) [See below](#the-reversal-timing-of-v2-e04-and-rule-set-3) |
 | V2-E05, drift reconciliation | 1 | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | One part, E05, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
-| V2-E02A, controlled single-runtime baseline | 2 | [`v2-e02a/freeze-r2.v1alpha1.json`](v2-e02a/freeze-r2.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. [See below](#the-clock-policy-of-rule-set-2) |
-| V2-E02B, multi-runtime pod loss | 2 | [`v2-e02b/freeze-r2.v1alpha1.json`](v2-e02b/freeze-r2.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. [See below](#the-clock-policy-of-rule-set-2) |
-| V2-E02C, API pod loss | 2 | [`v2-e02c/freeze-r2.v1alpha1.json`](v2-e02c/freeze-r2.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. [See below](#the-clock-policy-of-rule-set-2) |
-| V2-E05, drift reconciliation | 2 | [`v2-e05/freeze-r2.v1alpha1.json`](v2-e05/freeze-r2.v1alpha1.json) | One part, E05, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E02A, controlled single-runtime baseline | 2 | [`v2-e02a/freeze-r2.v1alpha1.json`](v2-e02a/freeze-r2.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E02B, multi-runtime pod loss | 2 | [`v2-e02b/freeze-r2.v1alpha1.json`](v2-e02b/freeze-r2.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E02C, API pod loss | 2 | [`v2-e02c/freeze-r2.v1alpha1.json`](v2-e02c/freeze-r2.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E04, bad release and Git reversal | 2 | [`v2-e04/freeze-r2.v1alpha1.json`](v2-e04/freeze-r2.v1alpha1.json) | One part, E04, at C2 | Frozen before any run, under rule set 3. It supersedes revision 1 with the clock policy of rule set 2 and the reversal timing as the repository owner amended it: E04-AC12 judges the recovery from Git visibility to the onset of the stabilization span against the unchanged 52,000 ms, and E04-AC8 ends its window when the desired state is restored. No run exists. [See below](#the-reversal-timing-of-v2-e04-and-rule-set-3) |
+| V2-E05, drift reconciliation | 2 | [`v2-e05/freeze-r2.v1alpha1.json`](v2-e05/freeze-r2.v1alpha1.json) | One part, E05, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
 
 ## Why a freeze comes first
 
@@ -1220,10 +1225,12 @@ in that change**: no Git switch, no commit to `main`, no fault, and no cluster r
 | V2-E05, drift reconciliation | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | As V2-E02B | Scale the live runtime Deployment from 2 to 1, with Git unchanged | 2 | `reconciliation_bound_ms`, 210,000 ms | C2 |
 
 Since `V2-S6-007-PR1` the latest record of V2-E02A, V2-E02B, V2-E02C, and V2-E05 is
-revision 2, and the latest record of V2-E04 is revision 1. Each revision 2 differs from
-its revision 1 only in [its clock policy and the members that it
-lists](#the-clock-policy-of-rule-set-2). The topologies, faults, counted runs, bounds,
-and levels of the table are unchanged.
+revision 2, and since `V2-S6-005-PR1` the latest record of V2-E04 is revision 2 as well.
+Each revision 2 of the four differs from its revision 1 only in [its clock policy and the
+members that it lists](#the-clock-policy-of-rule-set-2), and revision 2 of V2-E04 also in
+[its reversal timing](#the-reversal-timing-of-v2-e04-and-rule-set-3). The topologies,
+faults, counted runs, bounds, and levels of the table are unchanged. (Until
+`V2-S6-005-PR1` this paragraph said that the latest record of V2-E04 is revision 1.)
 
 A record is not evidence. It states what a run must do and what counts as a pass. Each
 record states its procedure, its measurements, its criteria, each marked `validity` or
@@ -1304,33 +1311,39 @@ a criterion is material, and it is a later revision too.
 - **Two clocks.** Under revision 1, an interval between instants of two clocks that lies
   within the clock bound of the run of a bound is neither held nor failed: the run is
   `INCONCLUSIVE` for the reason `clock-bound-reached`. Revision 2 of V2-E02A, V2-E02B,
-  V2-E02C, and V2-E05 replaces that rule with [the clock policy of rule
-  set 2](#the-clock-policy-of-rule-set-2).
+  V2-E02C, and V2-E05, and since `V2-S6-005-PR1` revision 2 of V2-E04, replaces that rule
+  with [the clock policy of rule set 2](#the-clock-policy-of-rule-set-2).
 - **Repetitions.** A `PASSED` or `FAILED` run is counted and never repeated, replaced, or
   left out. A `REFUSED`, `INCONCLUSIVE`, or `ABORTED` run is kept, for one of nine
-  registered exclusion reasons under revision 1, or of ten under revision 2, and the next run takes the next identifier, up to six runs
+  registered exclusion reasons under revision 1, or of ten under revision 2, or of twelve under revision 2 of V2-E04, and the next run takes the next identifier, up to six runs
   for E02, five for E04, and four for E05.
 - **The caller is the reference.** No stream, readiness state, endpoint count, replica
   count, sync state, health state, or scrape state changes a caller figure.
 
 ### What V2-E04 and V2-E05 decide before any run
 
-- **V2-E04 measures the recovery from the start of the stabilization span.** The analysis
-  states `stabilizedAt` at the end of a span of at least 10 successes and 60 s. A recovery
-  measured to that instant could never be within `reversal_recovery_bound_ms`, 52,000 ms.
-  So `recoveryEnd` is the completion of the first request of that span, and
-  `reversalStart` is the start of the last controller reading before the reversal commit
-  was resolved. The record states this choice and states that it was made with the
-  analysis definition known and before any run. The operator decision time and the time
-  for the controller to discover the reversal commit are recorded apart from the recovery.
+- **V2-E04 measures the recovery from Git visibility to the onset of the stabilization
+  span.** The analysis states `stabilizedAt` at the end of a span of at least 10 successes
+  and 60 s. A recovery measured to that instant could never be within
+  `reversal_recovery_bound_ms`, 52,000 ms. So `recoveryEnd` is the completion of the first
+  request of the first span that then completes. Under revision 2, `reversalStart` is the
+  instant at which the reversal commit is visible on the remote that the controller reads,
+  judged at the earlier end of its bracket. Revision 1 started the interval at the last
+  controller reading before the reversal commit was resolved, a choice made after the Q4
+  values were known and governed by no change control. [The reversal timing of revision
+  2](#the-reversal-timing-of-v2-e04-and-rule-set-3) states each instant. (Until
+  `V2-S6-005-PR1` this bullet described revision 1 alone.)
 - **V2-E04 needs a third run only for a different causal signature**: whether a container of
   a bad pod started, whether the runtime Service fell to one Ready endpoint, whether the API
   Deployment rolled out, and whether a caller failure episode started after the fault. A
   difference in a duration, or in a verdict against a bound, alone does not.
-- **V2-E04's operator interval holds the discovery of the reversal.** `reversalStart` is when
-  the controller can first have resolved the reversal commit, so the time from its
-  acceptance into `main` to that instant is in the operator interval and not in the
-  recovery. The record states both parts.
+- **V2-E04's recovery holds the discovery of the reversal.** Under revision 2 the periodic
+  discovery and the reconciliation of the reversal commit by the controller are system
+  recovery: they are inside `recoveryMs`, and `gitopsDiscoveryMs` also reports them on
+  their own. The operator interval ends at `reversalStart` and holds none of them.
+  Revision 1 put the discovery in the operator interval. The record states before any run
+  that most runs are not expected to meet E04-AC12. (Until `V2-S6-005-PR1` this bullet
+  said that the operator interval holds the discovery.)
 - **V2-E04's bad release is not implemented.** The record fixes the preferred fault: the
   same runtime image started with a model file path that does not exist. The change that
   implements it registers a later revision that pins it. When an accepted validation rule
@@ -1362,8 +1375,8 @@ the clocks as three clocks whose difference is not read, and stated a fixed orde
 threshold of one second. Revision 2 replaces those statements with one clock policy,
 `definition.clockPolicy`, which is the same in each of the four records. Revision 1 of
 each is kept unchanged. **No run exists under either revision, and nothing ran in that
-change.** V2-E04 stays at revision 1 until a later revision supersedes it with the same
-policy.
+change.** V2-E04 stayed at revision 1 in that change. `V2-S6-005-PR1` superseded it with
+the same policy, [below](#the-reversal-timing-of-v2-e04-and-rule-set-3).
 
 **What the policy governs.** It governs each verdict instant that
 `definition.criterionClocks` declares: each order of two instants and each interval that
@@ -1519,10 +1532,111 @@ rule, abort condition, cleanup step, and evidence path is that of revision 1. Th
 [baseline comparison record](../../environment/single-runtime-baseline-profile.md) is
 unchanged: it names no freeze record, and both revisions 2 state its digest.
 
-**V2-E04 until its revision 2.** V2-E04 revision 1 is the latest V2-E04 record, and the
-check reads it under rule set 1. Its clock statements still contradict its P8. The three
-files of the check differ from its pins and no revision classifies them, so `--changes`
-lists them and its P1 refuses a run. No run of V2-E04 is authorized.
+**V2-E04 revision 1.** Until `V2-S6-005-PR1` it was the latest V2-E04 record, read under
+rule set 1, with clock statements that contradict its P8. Revision 2 supersedes it and
+classifies the three files of the check that differ from its pins. (Until
+`V2-S6-005-PR1` this paragraph said that no revision classifies them.)
+
+**These four records since `V2-S6-005-PR1`.** That change edited `core.py` of the check
+again, to add rule set 3, after these four records had pinned it. `--changes` lists it as
+changed for each of them, no revision classifies it, and the P1 of each refuses a run
+until a later revision of it classifies the file. Rule set 2 itself is not edited, so the
+check reads each of them as before. No run of any of them is authorized yet.
+
+### The reversal timing of V2-E04, and rule set 3
+
+`V2-S6-005-PR1` registered revision 2 of the record of V2-E04 on 2026-10-19, before any
+run. A review of the Sprint 6 records found that revision 1 started its recovery interval
+at a controller observation, counted the discovery of the reversal commit by the
+controller as operator time, and ended the interval at the start of the stabilization
+span. Revision 1 made those choices after the Q4 values were known, and no change control
+governed them. The repository owner amended the definition of the reversal timing by
+change control on 2026-10-18, also after the Q4 values were known and before any run of
+V2-E04. Revision 2 applies it, with the clock policy of rule set 2 byte for byte.
+Revision 1 is kept unchanged. **No run exists under either revision, and nothing ran in
+that change.**
+
+**The instants.** Each names its source and its clock in the inventory of the policy.
+
+| Instant | Source and clock | What it is |
+|---|---|---|
+| `reversalStart` | operator event, host | The instant at which the reversal commit is visible as the head of `main` on the remote that the controller reads. Its bracket runs from the record of `reversal-created`, which the operator takes immediately before the push, to the first read of that remote that reports the commit, after which the operator records `reversal-accepted`. It is judged at the earlier end, so the recovery is not understated. It is not a controller observation. |
+| `controllerObserved` | collector reading, host | The first argo reading that reports the reversal commit as `resolvedRevision`. Its earliest instant is the start of the last argo reading that reports another revision, and its latest is its own finish. |
+| `desiredStateRestored` | collector reading, host | The finish of the first argo reading that reports the reversal commit as `resolvedRevision` and `Synced`. The deployments stream states no pod template, so the known-good template is read from the controller's `Synced` report at a commit whose files are the known-good ones. |
+| `stabilizationOnset` | caller record, node | `stabilizedRecovery.span.first.finishedAt` of the run analysis: the completion of the first request of the first stabilization span that is then observed complete without interruption. `recoveryEnd` is this instant. |
+| `stabilizedAt` | caller record, node | `stabilizedRecovery.stabilizedAt`: the completion of the request that completes that span. A recovery counts only when it lies inside the observation limit, and the post-recovery window that E04-AC5 judges follows it. |
+
+**The intervals.** Each names its start and its end.
+
+| Interval | From | To | Use |
+|---|---|---|---|
+| `recoveryMs` | `reversalStart` | `stabilizationOnset` | Judged by E04-AC12. System recovery, with the discovery and the reconciliation by the controller in it. From the host clock to the node clock. |
+| `gitopsDiscoveryMs` | `reversalStart` | `controllerObserved` | Reported, with an inner and an outer figure. It is inside `recoveryMs`. Host clock. |
+| `operatorDecisionMs` | `detection-reviewed` | `reversalStart` | Reported. The human interval, with no discovery, reconciliation, or stabilization in it. Host clock. |
+
+The four operator events of the reversal, `detection-reviewed`, `reversal-decided`,
+`reversal-created`, and `reversal-accepted`, keep their own instants.
+
+**The criteria.** E04-AC12 judges `recoveryMs` against `reversal_recovery_bound_ms`,
+52,000 ms, the value of the formula `(2 * S) + 30000` in `bounds-r1`, and it states the
+value, the formula, and the bound record with its digest. No Q4 formula, value, source, or
+digest changes. The interval runs between the two clocks, so the comparison follows the
+policy: inside its margin it is not judged, for `clock-bound-reached`. E04-AC8 ended its
+window at `reversalStart` under revision 1. Revision 2 moves `reversalStart` earlier, so
+E04-AC8 now ends its window at `desiredStateRestored`, or at the end of the window when
+that is not established. The argo reading that establishes it finishes after the instant
+at which revision 1 ended the window, so no containment window is shorter than under
+revision 1.
+
+**When an instant is not established.**
+
+- No span completes, or `stabilizedAt` lies outside the observation limit: recovery is
+  not established, and E04-AC12 is not met. An interrupted span establishes no recovery,
+  because the analysis states only a span that completed.
+- No read of the remote reports the reversal commit: `reversalStart` is not established,
+  and E04-AC12 is not judged, for the new reason `reversal-start-unconfirmed`.
+- The span of the analysis does not start after `reversalStart`. The analysis searches
+  from the `fault-injection-finished` event, so the requests between the last argo reading
+  of another revision and `reversalStart` can start a span. No figure then states the
+  recovery that E04-AC12 judges, and it is not judged, for the new reason
+  `recovery-onset-not-after-reversal`.
+
+When E04-AC12 is not judged, the rule of the policy for a verdict that is not judged
+decides the state, so a `FAILED` state that the judged containment criteria decide stands.
+
+**The detection rule.** Its threshold, 22,000 ms, is unchanged. The age that it reads
+runs from a Kubernetes timestamp, on the node clock to the second, to a reading, on the
+host clock. It is an operator rule and not a verdict, and the record states how the
+margin of the policy applies to it: during the run the margin is known from the start
+reading of P8 alone, and the result page states the margin of the run.
+
+**What else changes.** The hypothesis no longer calls the bound an expected observation.
+T3 states when the operator records `reversal-created` and `reversal-accepted` around the
+push and the confirming read. The limitation that put the discovery in the operator
+interval is replaced, and three limitations are added. The history gains four entries,
+and one measurement and one outcome rule are added. The exclusion reasons gain
+`clock-reading-missing`, `reversal-start-unconfirmed`, and
+`recovery-onset-not-after-reversal`, twelve in all. Every other member is that of revision
+1: the fault, the topology, the containment criteria E04-AC9 to E04-AC11 and E04-AC13, the
+repetitions, the third-run signature, the windows, the abort conditions, the cleanup, and
+the evidence paths. The pins moved for the three files of the check alone, and revision 2
+classifies `core.py` as material and the other two as not.
+
+**The expected consequence, stated before any run.** A span cannot hold the reversal
+commit before the controller reports it, and the procedure permits no manual refresh. So
+`recoveryMs` holds the periodic discovery of the controller, whose documented default
+basis, as revision 2 of V2-E05 takes it, is a 120,000 ms timeout plus up to 60,000 ms of
+jitter. Most runs are not expected to meet E04-AC12. Such a run is `FAILED`, counted, and
+kept, and `gitopsDiscoveryMs` states why. The bound is not relaxed because of an expected
+or an observed failure.
+
+**Rule set 3.** Revision 2 states rule set 3. Rule set 3 holds every rule of rule set 2,
+unchanged, so the clock policy of revision 2 is held exactly as in the four records of
+rule set 2, and its text is theirs byte for byte. Where that text names rule set 2, it
+names the rules that a record of rule set 3 also holds. Rule set 3 adds four rules that
+read a V2-E04 record, and a V2-E04 record after revision 1 must state rule set 3 or later,
+so a later revision cannot leave the timing rules by stating rule set 2. Rule set 2 is not
+edited: each record registered under it reads as before.
 
 ### The check
 
@@ -1537,11 +1651,13 @@ other records. It reads each record under its own rule set: a revision-1 record 
 `V2-S6-003-PR1` states none and is read under rule set 1, the first twelve rules below,
 and every later revision states its rule set in `metadata.preregistrationRules`. Rule set
 2 adds the five clock rules, and `prereg-rule-set-unknown` refuses a record that states
-no known rule set. It also checks each superseded revision alone, under its own
+no known rule set. Rule set 3 holds rule set 2 and adds the four reversal-timing rules,
+which read a V2-E04 record, and a V2-E04 record after revision 1 must state rule set 3 or
+later. (Until `V2-S6-005-PR1` there were two rule sets and eighteen rules.) It also checks each superseded revision alone, under its own
 rule set, except for the two clauses that compare a record with the present: that its
 bound record is the latest committed, and that its qualified release is that of the latest
 V2-E02B. Those two clauses are the one narrowing of a revision-1 check, and it applies
-only to a superseded revision. Today it prints `PASSED: 5 experiment record(s) and 4 superseded revision(s),
+only to a superseded revision. Today it prints `PASSED: 5 experiment record(s) and 5 superseded revision(s),
 every rule held`. It exits 0 when every rule holds and 1 when one does not, so a run can use
 it as a precondition. It reads files and writes none. Each record pins it. The default-lane
 suite [`tests/testing/test_experiment_preregistration.py`](../../../tests/testing/test_experiment_preregistration.py)
@@ -1561,12 +1677,16 @@ runs it and plants each defect below in a copy.
 | `prereg-target-topology-differs` | V2-E02C, V2-E04, and V2-E05 state the topology of V2-E02B. |
 | `prereg-executable-unpinned` | A record lists at least one executable, each is a pinned input, the entry file of a tool has its entry module in the material scope, and the scope names this check, the record's procedure directory, the qualification, and the bound record. |
 | `prereg-exclusion-reasons-unsupported` | A record registers exclusion reasons for its own experiment, in the form that the aggregate reads. |
-| `prereg-rule-set-unknown` | A revision-1 record of V2-S6-003-PR1 states no rule set and is read under rule set 1. Every other record states a rule set of 2 or later that this check knows. |
+| `prereg-rule-set-unknown` | A revision-1 record of V2-S6-003-PR1 states no rule set and is read under rule set 1. Every other record states a rule set of 2 or later that this check knows, and a V2-E04 record after revision 1 states rule set 3 or later. |
 | `prereg-clock-inventory` | A record of rule set 2 states the node clock and the host clock, and each instant source with the clock and the resolution of rule set 2. Each criterion entry of definition.criterionClocks names a criterion of the record and two instants, each with a source and a clock of the inventory, and is cross-clock exactly when the inventory puts its sources on two clocks. Each criterion declares clocks or is listed in definition.criteriaWithoutClocks, and not both. Each criterion that names a bound declares the clocks of its interval. |
 | `prereg-clock-measurement` | A record of rule set 2 has a P8 that reads the clocks before the runner starts and after the window ends and states the bound formula of revision 1, and its clock policy measures with P8, a start and an end reading of three instants, and the bound formula and the computation of rule set 2. |
 | `prereg-clock-rules` | The clock policy of a record of rule set 2 states the offset-stability assumption, refuses a run with an unusable start reading before the fault, leaves the bound not computable after an unusable end reading with the state that the rule for a verdict that is not judged decides, applies that rule of rule set 2, and orders and compares instants of two clocks with the margin and the words of rule set 2. |
 | `prereg-clock-reasons` | A record of rule set 2 registers clock-reading-missing and clock-bound-reached for INCONCLUSIVE, and its outcome rules name both. |
 | `prereg-clock-contradiction` | No text of a record of rule set 2 states that the clock difference is not measured, orders instants by a time in a sentence that does not name the margin of rule set 2, names synchronization or a guarantee in a sentence with no negation, or states that every run is INCONCLUSIVE, in the phrases that this check names. |
+| `prereg-reversal-instants` | A V2-E04 record of rule set 3 names reversalStart, controllerObserved, desiredStateRestored, stabilizationOnset, and stabilizedAt, each with its source and clock. reversalStart is the Git-visibility instant of an operator event, bracketed and judged at the earlier end, and it leaves E04-AC12 not judged when it is not established. stabilizationOnset is read from stabilizedRecovery.span.first.finishedAt of a span that completed, and follows reversalStart. stabilizedAt is read from stabilizedRecovery.stabilizedAt inside the observation limit. recoveryEnd is stabilizationOnset. |
+| `prereg-reversal-intervals` | A V2-E04 record of rule set 3 states recoveryMs from reversalStart to stabilizationOnset, judged by E04-AC12, gitopsDiscoveryMs from reversalStart to controllerObserved, and operatorDecisionMs from detection-reviewed to reversalStart, each reported, and keeps the instants of the four operator events of the reversal. |
+| `prereg-reversal-criteria` | In a V2-E04 record of rule set 3, E04-AC12 judges recoveryMs against reversal_recovery_bound_ms with the value, the formula, and the bound record of derivedNumericBounds, and declares that interval cross-clock, from reversalStart on the host clock to stabilizationOnset on the node clock. E04-AC8 ends its window at desiredStateRestored. |
+| `prereg-reversal-reasons` | A V2-E04 record of rule set 3 registers reversal-start-unconfirmed and recovery-onset-not-after-reversal for INCONCLUSIVE, and its outcome rules name both. |
 
 ### What is enforced, and what is not
 
@@ -1606,4 +1726,22 @@ the committed records. Not enforced:
   search, and the span overlap of `tools/reliability_analysis` order instants of the two
   clocks with no margin. The policy does not govern them, and each record says so.
 - **V2-E04 revision 1 is read under rule set 1.** Its clock statements still contradict
-  its P8 until a later revision supersedes it.
+  its P8, and its timing is the one that the repository owner amended. Revision 2
+  supersedes it, and no run uses it. (Until `V2-S6-005-PR1` this bullet said that its
+  statements contradict P8 until a later revision supersedes it.)
+- **That a run computes the reversal timing as the record states it.** The timing rules
+  read the structure of a record: its instants and their sources, its intervals and their
+  ends, E04-AC8, E04-AC12, and the reasons. No tool computes `reversalStart`,
+  `controllerObserved`, `desiredStateRestored`, or the three intervals, and no rule reads
+  whether the prose of an instant says what its structure says. The review of each run
+  computes them from the evidence.
+- **That the operator records `reversal-created` immediately before the push.** The
+  record states it. The event log does not check it, and no reading compares the record
+  with the push. The time between them is inside `recoveryMs`, so it can lengthen the
+  interval and cannot shorten it.
+- **That `desiredStateRestored` reads the template of the Deployment.** It reads the
+  `Synced` report of the controller at the reversal commit. No stream states a pod
+  template of a Deployment.
+- **That the four records of rule set 2 can be run.** Since `V2-S6-005-PR1`, `core.py`
+  differs from the pin of each, and its P1 refuses a run until a later revision of it
+  classifies the file.
