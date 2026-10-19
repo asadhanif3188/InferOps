@@ -10,6 +10,29 @@ from `1.0.0`.
 
 ### Added
 
+- **The governed reversal timing of V2-E04.** `V2-S6-005-PR1` registers revision 2 of the
+  V2-E04 record, which supersedes revision 1. Revision 1 started its recovery interval at
+  a controller observation, counted the discovery of the reversal commit as operator
+  time, and chose its onset after the Q4 values were known, with no change control. The
+  repository owner amended the definition on 2026-10-18, also after the Q4 values were
+  known and before any run, and revision 2 applies it: `reversalStart` is the instant at which the reversal commit is visible on
+  the remote that the controller reads, judged at the earlier end of its bracket;
+  `recoveryEnd` is the onset of the first stabilization span that then completes, read
+  from `stabilizedRecovery.span.first.finishedAt`; `gitopsDiscoveryMs` reports the
+  discovery inside the recovery, and `operatorDecisionMs` ends at `reversalStart`.
+  E04-AC12 judges the recovery against the unchanged `reversal_recovery_bound_ms`,
+  52,000 ms, cross-clock, and E04-AC8 ends its window at `desiredStateRestored`, so no
+  containment window is shorter. Two new reasons leave E04-AC12 not judged when an
+  instant is not established; one of them, for a span of the analysis that starts
+  before `reversalStart`, is a rule of the record beyond the amendment, and it is
+  disclosed. Detection now waits for the clock margin past 22,000 ms. The record states the clock policy of revision 2 of the
+  other four byte for byte, and states before any run that most runs are not expected to
+  meet the bound. `tools/experiment_preregistration` gains rule set 3: rule set 2,
+  unchanged, and four reversal-timing rules, 22 rules in all, and a V2-E04 record after
+  revision 1 must state rule set 3 or later. That edit moves the `core.py` pin of the four
+  revision-2 records of rule set 2, and no revision classifies it yet, so each refuses a
+  run until a later revision does. Nothing ran. See
+  [the reversal timing of V2-E04](docs/proof/experiments/README.md#the-reversal-timing-of-v2-e04-and-rule-set-3).
 - **One clock policy for the reliability experiment freezes.** `V2-S6-007-PR1` registers
   revision 2 of the records of V2-E02A, V2-E02B, V2-E02C, and V2-E05, which supersede
   revision 1. Each revision 1 stated that the clock difference is not measured and used a

@@ -3,31 +3,38 @@
 V2-S6-003-PR1 registered one freeze record for each of V2-E02A, V2-E02B, V2-E02C,
 V2-E04, and V2-E05, before any run. V2-S6-007-PR1 registered revision 2 of the
 records of V2-E02A, V2-E02B, V2-E02C, and V2-E05, under rule set 2 and its one
-clock policy. Revision 1 of each stays unchanged, and V2-E04 stays at revision 1.
+clock policy. V2-S6-005-PR1 registered revision 2 of the record of V2-E04, under
+the same policy and the reversal timing as the repository owner amended it.
+Revision 1 of each stays unchanged.
 ``tools.experiment_freeze`` checks that each record answers every freeze field.
 ``tools.experiment_preregistration`` reads the answers: the qualification, the
 bound record, and the baseline comparison that each record names, the clock
-policy of a record of rule set 2, and the records against each other.
+policy of a record of rule set 2, the reversal timing of V2-E04, and the records
+against each other.
 
 The first part holds the committed records, with their identities written out so
 that a change to one is visible in review. The second and the third part plant
 each defect that the check refuses in a copy of the files it reads, and assert
-the exact findings. The fourth part does the same for the clock rules. No test
+the exact findings. The fourth part does the same for the clock rules, and the fifth for
+the reversal-timing rules of V2-E04. No test
 runs an experiment or contacts a cluster.
 """
 
 from __future__ import annotations
 
+import copy
 import json
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from tools import reliability_analysis as analysis
 from tools.experiment_freeze.core import (
     FROZEN_RECORDS,
     changed_inputs,
@@ -54,26 +61,41 @@ pytestmark = pytest.mark.docs
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = REPO_ROOT / "docs" / "proof" / "experiments" / "README.md"
 
-#: The latest revision of each experiment: revision 2, except for V2-E04.
+#: The latest revision of each experiment: revision 2.
 E02A = "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json"
 E02B = "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json"
 E02C = "docs/proof/experiments/v2-e02c/freeze-r2.v1alpha1.json"
-E04 = "docs/proof/experiments/v2-e04/freeze-r1.v1alpha1.json"
+E04 = "docs/proof/experiments/v2-e04/freeze-r2.v1alpha1.json"
 E05 = "docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json"
-#: Revision 1 of each experiment. Revision 2 supersedes it, except for V2-E04.
+#: Revision 1 of each experiment. Revision 2 supersedes it.
 E02A_R1 = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"
 E02B_R1 = "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json"
 E02C_R1 = "docs/proof/experiments/v2-e02c/freeze-r1.v1alpha1.json"
+E04_R1 = "docs/proof/experiments/v2-e04/freeze-r1.v1alpha1.json"
 E05_R1 = "docs/proof/experiments/v2-e05/freeze-r1.v1alpha1.json"
 REVISION_ONE = {
     "V2-E02A": E02A_R1,
     "V2-E02B": E02B_R1,
     "V2-E02C": E02C_R1,
-    "V2-E04": E04,
+    "V2-E04": E04_R1,
     "V2-E05": E05_R1,
 }
-#: The four records of rule set 2.
-REVISION_TWO = {"V2-E02A": E02A, "V2-E02B": E02B, "V2-E02C": E02C, "V2-E05": E05}
+#: The five revisions 2: four of rule set 2, and V2-E04, of rule set 3, which holds
+#: every rule of rule set 2 and adds the reversal-timing rules.
+REVISION_TWO = {
+    "V2-E02A": E02A,
+    "V2-E02B": E02B,
+    "V2-E02C": E02C,
+    "V2-E04": E04,
+    "V2-E05": E05,
+}
+#: The four of them that V2-S6-007-PR1 registered, and the one of V2-S6-005-PR1.
+CLOCK_REVISIONS = {k: v for k, v in REVISION_TWO.items() if k != "V2-E04"}
+REGISTERED_BY = {
+    **dict.fromkeys(CLOCK_REVISIONS, "V2-S6-007-PR1"),
+    "V2-E04": "V2-S6-005-PR1",
+}
+RULE_SET_OF = {**dict.fromkeys(CLOCK_REVISIONS, 2), "V2-E04": 3}
 #: Every committed record of the five experiments.
 ALL_RECORDS = sorted(set(REVISION_ONE.values()) | set(REVISION_TWO.values()))
 RECORDS = {
@@ -142,7 +164,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout.strip() == (
-        "PASSED: 5 experiment record(s) and 4 superseded revision(s), every rule held"
+        "PASSED: 5 experiment record(s) and 5 superseded revision(s), every rule held"
     )
 
 
@@ -158,14 +180,14 @@ def test_each_revision_one_record_is_registered_by_v2_s6_003_and_unchanged() -> 
     assert check_freezes() == []
 
 
-def test_the_latest_records_are_revision_two_and_e04_revision_one() -> None:
+def test_the_latest_records_are_revision_two() -> None:
     assert {k: path for k, (path, _) in latest_records().items()} == RECORDS
     for experiment, path in REVISION_TWO.items():
         metadata = load(path)["metadata"]
         assert metadata["experiment"] == experiment
         assert metadata["revision"] == 2
-        assert metadata["registeredBy"] == "V2-S6-007-PR1"
-        assert metadata["preregistrationRules"] == 2
+        assert metadata["registeredBy"] == REGISTERED_BY[experiment]
+        assert metadata["preregistrationRules"] == RULE_SET_OF[experiment]
         assert metadata["supersedes"] == {
             "path": REVISION_ONE[experiment],
             "contentSha256": FROZEN_RECORDS[REVISION_ONE[experiment]],
@@ -278,11 +300,10 @@ def test_no_run_and_no_driver_exists_for_any_experiment() -> None:
     one registers a later revision, and its file is listed as added until then."""
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
-        assert sorted(p.name for p in directory.iterdir()) == (
-            ["freeze-r1.v1alpha1.json"]
-            if experiment.experiment_id == "V2-E04"
-            else ["freeze-r1.v1alpha1.json", "freeze-r2.v1alpha1.json"]
-        )
+        assert sorted(p.name for p in directory.iterdir()) == [
+            "freeze-r1.v1alpha1.json",
+            "freeze-r2.v1alpha1.json",
+        ]
 
 
 def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
@@ -300,7 +321,7 @@ def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
 
 
 def test_every_rule_is_published() -> None:
-    assert len(RULES) == 18
+    assert len(RULES) == 22
     text = README.read_text(encoding="utf-8")
     for rule, statement in RULES.items():
         assert f"| `{rule}` | {statement} |" in text, rule
@@ -1319,8 +1340,9 @@ def test_the_bound_is_the_formula_of_revision_one_word_for_word() -> None:
 
 
 def test_revision_two_differs_from_revision_one_only_in_the_listed_members() -> None:
-    """A tripwire: every other member keeps its revision-1 value byte for byte."""
-    for experiment, path in REVISION_TWO.items():
+    """A tripwire: every other member keeps its revision-1 value byte for byte.
+    V2-E04 changes more members, and the fifth part holds them."""
+    for experiment, path in CLOCK_REVISIONS.items():
         one, two = load(REVISION_ONE[experiment]), load(path)
         expected = CHANGED_MEMBERS | (
             E05_CHANGED_MEMBERS if experiment == "V2-E05" else set()
@@ -1365,16 +1387,23 @@ def test_each_revision_one_record_still_passes_under_its_own_rules() -> None:
     assert check_records(records) == []
 
 
-def test_the_moved_pins_of_each_revision_one_record_are_this_check_alone() -> None:
-    """Revision 2 classifies them. V2-E04 has no revision 2 yet, so its revision 1
-    lists them as changed until a later revision of it supersedes it."""
+def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
+    """A tripwire. Revision 2 classifies the moves since each revision 1. The
+    reversal-timing rules of V2-S6-005-PR1 moved core.py once more, after the four
+    revisions 2 of V2-S6-007-PR1 pinned it, and no revision classifies that move:
+    each of the four lists it as changed, and its P1 refuses a run, until a later
+    revision of it classifies it. V2-E04 revision 2 pins the present file."""
     for path in REVISION_ONE.values():
         changes = changed_inputs(load(path), REPO_ROOT)
         assert [(c.path, c.kind) for c in changes] == [
             (file, "changed") for file in CHECK_FILES
         ], path
-    for path in REVISION_TWO.values():
-        assert changed_inputs(load(path), REPO_ROOT) == [], path
+    for path in CLOCK_REVISIONS.values():
+        changes = changed_inputs(load(path), REPO_ROOT)
+        assert [(c.path, c.kind) for c in changes] == [
+            ("tools/experiment_preregistration/core.py", "changed")
+        ], path
+    assert changed_inputs(load(E04), REPO_ROOT) == []
 
 
 def test_the_reconciliation_bound_of_e05_is_on_the_host_clock_alone() -> None:
@@ -1919,9 +1948,23 @@ def test_a_missing_reading_rule_other_than_that_of_rule_set_two_is_refused(
         ),
         pytest.param(
             E05,
-            3,
+            4,
             "the record states no rule set of 2 or later that this check knows",
             id="unknown-rule-set",
+        ),
+        pytest.param(
+            E04,
+            2,
+            "a V2-E04 record after revision 1 states no rule set of 3 or later that "
+            "this check knows",
+            id="e04-revision-two-under-rule-set-two",
+        ),
+        pytest.param(
+            E04,
+            None,
+            "a V2-E04 record after revision 1 states no rule set of 3 or later that "
+            "this check knows",
+            id="e04-revision-two-states-none",
         ),
         pytest.param(
             E05,
@@ -1936,7 +1979,7 @@ def test_a_missing_reading_rule_other_than_that_of_rule_set_two_is_refused(
             id="rule-set-a-boolean",
         ),
         pytest.param(
-            E04,
+            E04_R1,
             2,
             "a revision-1 record of rule set 1 states no rule set",
             id="revision-one-states-one",
@@ -2373,7 +2416,7 @@ def test_a_later_bound_record_leaves_the_superseded_revisions_alone(
 
 
 def test_the_rule_sets_are_published() -> None:
-    assert sorted(core.RULE_SETS) == [1, 2]
+    assert sorted(core.RULE_SETS) == [1, 2, 3]
     assert frozenset(REVISION_ONE.values()) == core.REVISION_ONE_RECORDS
     text = README.read_text(encoding="utf-8")
     for constant in (
@@ -2384,3 +2427,1084 @@ def test_the_rule_sets_are_published() -> None:
         core.NOT_JUDGED_RULE,
     ):
         assert constant in " ".join(text.split()), constant[:40]
+
+
+# --------------------------------------------------------------------------
+# 5. The reversal timing of V2-E04
+# --------------------------------------------------------------------------
+
+E04_R1_PIN = "0dcc3b1c0cba1ee51acc962a083d78a82c42093a75fad72e41b193dde3124e5d"
+INSTANTS_RULE = "prereg-reversal-instants"
+INTERVALS_RULE = "prereg-reversal-intervals"
+CRITERIA_RULE = "prereg-reversal-criteria"
+TIMING_REASONS = "prereg-reversal-reasons"
+TIMING = "definition.reversalTiming"
+#: Where E04-AC8 and E04-AC12 are in the list of criteria.
+AC8 = "fields.acceptanceCriteria[0].value[7]"
+AC12 = "fields.acceptanceCriteria[0].value[11]"
+
+#: The members in which V2-E04 revision 2 differs from its revision 1. A list is
+#: one member, so a changed criterion or limitation moves its whole list.
+E04_CHANGED_MEMBERS = {
+    "metadata.revision",
+    "metadata.registered",
+    "metadata.registeredBy",
+    "metadata.supersedes",
+    "metadata.preregistrationRules",
+    "definition.hypothesis",
+    "definition.gitTransitions",
+    "definition.detectionRule",
+    "definition.reversalTiming.reversalStart",
+    "definition.reversalTiming.recoveryEnd",
+    "definition.reversalTiming.operatorDecisionMs",
+    "definition.reversalTiming.split",
+    "definition.reversalTiming.statement",
+    "definition.reversalTiming.instants",
+    "definition.reversalTiming.intervals",
+    "definition.reversalTiming.operatorEvents",
+    "definition.reversalTiming.events",
+    "definition.limitations",
+    "definition.history",
+    "definition.preparation",
+    "definition.window.clocks",
+    "definition.clockPolicy",
+    "definition.criterionClocks",
+    "definition.criteriaWithoutClocks",
+    "definition.measurements",
+    "definition.outcomeRules",
+    "exclusionReasons.reasons",
+    "fields.experimentIdVersion",
+    "fields.gitRevision",
+    "fields.acceptanceCriteria",
+    "pinnedInputs",
+    "inputChanges",
+}
+#: The revision-1 sentence that put the discovery of the reversal commit in the
+#: operator interval.
+R1_DISCOVERY = (
+    "The controller discovers a commit of main by its periodic reconciliation, so the "
+    "time from reversal-accepted to reversalStart depends on its interval, and it is "
+    "stated in the operator interval."
+)
+
+
+def timing_of(document: dict[str, Any]) -> dict[str, Any]:
+    result = document["definition"]["reversalTiming"]
+    assert isinstance(result, dict)
+    return result
+
+
+def criterion_of(document: dict[str, Any], identifier: str) -> dict[str, Any]:
+    (result,) = [
+        c for c in value(document, "acceptanceCriteria") if c["id"] == identifier
+    ]
+    assert isinstance(result, dict)
+    return result
+
+
+def test_revision_two_of_e04_names_each_instant_with_its_source_and_clock() -> None:
+    timing = timing_of(load(E04))
+    instants = timing["instants"]
+    assert {k: (v["source"], v["clock"]) for k, v in instants.items()} == {
+        "reversalStart": ("operator-event", "host"),
+        "controllerObserved": ("collector-reading", "host"),
+        "desiredStateRestored": ("collector-reading", "host"),
+        "stabilizationOnset": ("caller-record", "node"),
+        "stabilizedAt": ("caller-record", "node"),
+    }
+    start = instants["reversalStart"]
+    assert (start["kind"], start["judgedAt"]) == ("git-visibility", "earlier")
+    assert "not a controller observation" in start["definition"]
+    assert "remote that the controller reads" in start["definition"]
+    assert "reversal-created" in start["bracket"]["earlier"]["instant"]
+    assert "immediately before the push" in start["bracket"]["earlier"]["instant"]
+    assert "first read of main" in start["bracket"]["later"]["instant"]
+    assert start["notEstablished"]["reason"] == "reversal-start-unconfirmed"
+    onset = instants["stabilizationOnset"]
+    assert onset["analysisMember"] == "stabilizedRecovery.span.first.finishedAt"
+    assert onset["completedSpanOnly"] is True
+    assert onset["after"] == "reversalStart"
+    settled = instants["stabilizedAt"]
+    assert settled["analysisMember"] == "stabilizedRecovery.stabilizedAt"
+    assert settled["insideObservationLimit"] is True
+    assert timing["recoveryEnd"] == "stabilizationOnset"
+    assert "Synced" in instants["desiredStateRestored"]["definition"]
+
+
+def test_revision_two_of_e04_names_each_interval_with_its_two_ends() -> None:
+    timing = timing_of(load(E04))
+    assert {
+        name: (i["start"], i["end"], i["judged"], i["criterion"])
+        for name, i in timing["intervals"].items()
+    } == {
+        "recoveryMs": ("reversalStart", "stabilizationOnset", True, "E04-AC12"),
+        "gitopsDiscoveryMs": ("reversalStart", "controllerObserved", False, None),
+        "operatorDecisionMs": ("detection-reviewed", "reversalStart", False, None),
+    }
+    assert timing["operatorEvents"] == [
+        "detection-reviewed",
+        "reversal-decided",
+        "reversal-created",
+        "reversal-accepted",
+    ]
+    operator = timing["intervals"]["operatorDecisionMs"]["statement"]
+    assert "holds no discovery, reconciliation, or stabilization" in operator
+
+
+def test_e04_ac12_judges_recovery_against_the_unchanged_q4_bound() -> None:
+    document = load(E04)
+    criterion = criterion_of(document, "E04-AC12")
+    assert criterion["bound"] == "reversal_recovery_bound_ms"
+    assert criterion["interval"] == "recoveryMs"
+    assert criterion["boundValueMs"] == BOUND_VALUES["reversal_recovery_bound_ms"]
+    assert criterion["boundFormula"] == "(2 * S) + 30000"
+    assert criterion["boundRecord"] == {"path": BOUNDS, "contentSha256": BOUNDS_SHA256}
+    (committed,) = [
+        b for b in load(BOUNDS)["bounds"] if b["name"] == "reversal_recovery_bound_ms"
+    ]
+    assert (committed["formula"], committed["valueMs"]) == ("(2 * S) + 30000", 52_000)
+    assert value(document, "derivedNumericBounds") == value(
+        load(E04_R1), "derivedNumericBounds"
+    )
+    (entry,) = [
+        e
+        for e in document["definition"]["criterionClocks"]
+        if e["criterion"] == "E04-AC12" and e["comparison"] == "interval"
+    ]
+    assert entry["bound"] == "reversal_recovery_bound_ms"
+    assert [(i["source"], i["clock"]) for i in entry["instants"]] == [
+        ("operator-event", "host"),
+        ("caller-record", "node"),
+    ]
+    assert entry["crossClock"] is True
+
+
+def test_the_q4_bound_record_is_the_only_one_and_unchanged() -> None:
+    assert sorted(p.name for p in (REPO_ROOT / BOUNDS).parent.iterdir()) == [
+        "bounds-r1.v1alpha1.json"
+    ]
+    assert content_digest((REPO_ROOT / BOUNDS).read_bytes()) == BOUNDS_SHA256
+
+
+def test_e04_ac8_ends_its_window_at_desired_state_restoration() -> None:
+    """Revision 1 ended the window at its reversalStart, the start of the last
+    controller reading before the reversal commit was resolved. Revision 2 moves
+    reversalStart earlier, to Git visibility, so the window ends later instead,
+    when the desired state is restored."""
+    one = criterion_of(load(E04_R1), "E04-AC8")
+    two = criterion_of(load(E04), "E04-AC8")
+    assert one["statement"].endswith(
+        "from the fault-injection-started event to reversalStart."
+    )
+    assert two["window"] == {
+        "from": "fault-injection-started",
+        "to": "desiredStateRestored",
+    }
+    assert "to desiredStateRestored" in two["statement"]
+    assert "reversalStart" not in two["statement"]
+    assert two["statement"].startswith(one["statement"].split(" to reversalStart.")[0])
+
+
+def test_revision_two_of_e04_differs_from_revision_one_only_in_the_listed_members() -> (
+    None
+):
+    """A tripwire: every other member keeps its revision-1 value byte for byte."""
+    one, two = load(E04_R1), load(E04)
+    assert differences(one, two) == E04_CHANGED_MEMBERS
+    criteria_1 = value(one, "acceptanceCriteria")
+    criteria_2 = value(two, "acceptanceCriteria")
+    assert [c["id"] for c in criteria_1] == [c["id"] for c in criteria_2]
+    assert [
+        c1["id"] for c1, c2 in zip(criteria_1, criteria_2, strict=True) if c1 != c2
+    ] == ["E04-AC8", "E04-AC12"]
+    definition_1, definition_2 = one["definition"], two["definition"]
+    assert definition_2["detectionRule"]["rule"] == definition_1["detectionRule"]
+    assert "22,000 ms" in definition_2["detectionRule"]["rule"]
+    assert "22,000 ms" in definition_2["detectionRule"]["clocks"]
+    transitions_1 = definition_1["gitTransitions"]
+    transitions_2 = definition_2["gitTransitions"]
+    assert (
+        transitions_2[:2] + transitions_2[3:] == transitions_1[:2] + transitions_1[3:]
+    )
+    assert transitions_2[2].startswith("T3. ")
+    assert definition_2["history"][:5] == definition_1["history"]
+    assert len(definition_2["history"]) == 9
+    limitations_1 = definition_1["limitations"]
+    limitations_2 = definition_2["limitations"]
+    assert limitations_1[2] == R1_LIMITATION
+    assert limitations_1[-1] == R1_DISCOVERY
+    assert limitations_2[:2] == limitations_1[:2]
+    assert limitations_2[4:9] == limitations_1[3:8]
+    assert R1_DISCOVERY not in limitations_2
+    assert "inside recoveryMs" in limitations_2[9]
+    assert len(limitations_2) == 15
+    assert definition_2["measurements"][:-1] == definition_1["measurements"]
+    rules_1 = definition_1["outcomeRules"]
+    rules_2 = definition_2["outcomeRules"]
+    assert rules_1[5] == R1_CLOCK_RULE
+    assert rules_2[:5] + rules_2[7:] == rules_1[:5] + rules_1[6:]
+    steps_1, steps_2 = definition_1["preparation"], definition_2["preparation"]
+    assert steps_2[1:7] == steps_1[1:7]
+    assert steps_2[0].startswith(steps_1[0])
+    assert steps_2[0] == load(E02B)["definition"]["preparation"][0]
+    assert "latest revision of its experiment" in steps_2[0]
+    reasons_1 = {r["id"]: r for r in one["exclusionReasons"]["reasons"]}
+    reasons_2 = {r["id"]: r for r in two["exclusionReasons"]["reasons"]}
+    assert set(reasons_2) - set(reasons_1) == {
+        "clock-reading-missing",
+        "reversal-start-unconfirmed",
+        "recovery-onset-not-after-reversal",
+    }
+    for reason, entry in reasons_1.items():
+        if reason != "clock-bound-reached":
+            assert reasons_2[reason] == entry
+    assert len(reasons_2) == 12
+    moved = {p["path"] for p in one["pinnedInputs"] if p not in two["pinnedInputs"]}
+    assert sorted(moved) == CHECK_FILES
+    assert [c["path"] for c in two["inputChanges"]] == CHECK_FILES
+    assert [c["material"] for c in two["inputChanges"]] == [False, False, True]
+    for field in ("fault", "topology", "repetitionCount", "abortConditions"):
+        assert value(one, field) == value(two, field), field
+    for member in ("setRules", "observation", "postRecoveryWindow"):
+        assert definition_1[member] == definition_2[member], member
+
+
+def test_no_text_of_revision_two_of_e04_puts_discovery_in_the_operator_interval() -> (
+    None
+):
+    texts = [text for _, text in core._strings_in(load(E04), "")]
+    assert not any("in the operator interval" in text for text in texts)
+    assert "split" not in timing_of(load(E04))
+    assert "split" in timing_of(load(E04_R1))
+
+
+def test_the_history_of_e04_states_when_the_timing_was_chosen_and_amended() -> None:
+    history = load(E04)["definition"]["history"]
+    chosen, amended, consequence = history[6], history[7], history[8]
+    assert "after the Q4 values were known" in chosen
+    assert "no change control governed those choices" in chosen
+    assert "change control on 2026-10-18" in amended
+    assert "before any run of V2-E04" in amended
+    assert "also after the Q4 values were known" in amended
+    assert "stays 52,000 ms" in amended
+    assert "Most runs are not expected to meet E04-AC12" in consequence
+
+
+def test_revision_one_of_e04_is_kept_byte_for_byte() -> None:
+    assert FROZEN_RECORDS[E04_R1] == E04_R1_PIN
+    assert content_digest((REPO_ROOT / E04_R1).read_bytes()) == E04_R1_PIN
+    rows = {row["path"]: row for row in load(REGISTRY)["records"]}
+    assert rows[E04_R1] == {
+        "path": E04_R1,
+        "contentSha256": E04_R1_PIN,
+        "registeredBy": "V2-S6-003-PR1",
+    }
+    assert rows[E04] == {
+        "path": E04,
+        "contentSha256": FROZEN_RECORDS[E04],
+        "registeredBy": "V2-S6-005-PR1",
+    }
+
+
+def test_revision_one_of_e04_is_not_held_to_the_reversal_timing_rules(
+    root: Path,
+) -> None:
+    """Rule set 1 reads no reversal timing, so a revision 1 without it still passes
+    this check. The freeze check refuses the edit itself."""
+    edit(root, E04_R1, lambda d: d["definition"].pop("reversalTiming"))
+    assert found(root) == []
+
+
+def _set(path: list[str], member: str, new: Any) -> Callable[[dict[str, Any]], None]:
+    """A change that sets ``member`` of the object at ``path`` of the definition."""
+
+    def change(document: dict[str, Any]) -> None:
+        target: Any = document["definition"]
+        for step in path:
+            target = target[step]
+        target[member] = new
+
+    return change
+
+
+def _drop(path: list[str], member: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        target: Any = document["definition"]
+        for step in path:
+            target = target[step]
+        del target[member]
+
+    return change
+
+
+def _both(
+    *changes: Callable[[dict[str, Any]], None],
+) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        for one in changes:
+            one(document)
+
+    return change
+
+
+def _criterion_member(
+    identifier: str, member: str, new: Any
+) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        criterion_of(document, identifier)[member] = new
+
+    return change
+
+
+def _ac12_clocks(
+    change: Callable[[dict[str, Any]], None],
+) -> Callable[[dict[str, Any]], None]:
+    def wrapped(document: dict[str, Any]) -> None:
+        (entry,) = [
+            e
+            for e in document["definition"]["criterionClocks"]
+            if e["criterion"] == "E04-AC12" and e["comparison"] == "interval"
+        ]
+        change(entry)
+
+    return wrapped
+
+
+def _same_clock(entry: dict[str, Any]) -> None:
+    """Both ends on the caller record, so the inventory reads it as same-clock."""
+    entry["instants"][0].update(source="caller-record", clock="node")
+    entry["crossClock"] = False
+
+
+def _ac8_to_reversal_start(document: dict[str, Any]) -> None:
+    criterion = criterion_of(document, "E04-AC8")
+    criterion["window"] = {"from": "fault-injection-started", "to": "reversalStart"}
+    criterion["statement"] = criterion_of(load(E04_R1), "E04-AC8")["statement"]
+
+
+def _drop_reason(reason: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        reasons = document["exclusionReasons"]["reasons"]
+        reasons[:] = [r for r in reasons if r["id"] != reason]
+
+    return change
+
+
+START = ["reversalTiming", "instants", "reversalStart"]
+ONSET = ["reversalTiming", "instants", "stabilizationOnset"]
+INTERVALS = ["reversalTiming", "intervals"]
+START_AT = f"{TIMING}.instants.reversalStart"
+ONSET_AT = f"{TIMING}.instants.stabilizationOnset"
+AC12_CLOCKS = (
+    "E04-AC12 does not declare one cross-clock interval of reversal_recovery_bound_ms, "
+    "from reversalStart on the host clock to stabilizationOnset on the node clock"
+)
+
+
+@pytest.mark.parametrize(
+    ("change", "expected"),
+    [
+        pytest.param(
+            _both(
+                _set(START, "kind", "controller-observation"),
+                _set(START, "source", "collector-reading"),
+            ),
+            [
+                (
+                    INSTANTS_RULE,
+                    START_AT,
+                    "reversalStart is not stated with its definition, the source "
+                    "operator-event, and the host clock",
+                ),
+                (
+                    INSTANTS_RULE,
+                    START_AT,
+                    "reversalStart is not the Git-visibility instant: it is not stated "
+                    "as git-visibility",
+                ),
+            ],
+            id="reversal-start-is-a-controller-observation",
+        ),
+        pytest.param(
+            _set(START, "judgedAt", "later"),
+            [
+                (
+                    INSTANTS_RULE,
+                    START_AT,
+                    "reversalStart is not bracketed by two operator-event instants and "
+                    "judged at the earlier end",
+                )
+            ],
+            id="reversal-start-at-the-later-end",
+        ),
+        pytest.param(
+            _set(["reversalTiming"], "recoveryEnd", "stabilizedAt"),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.recoveryEnd",
+                    "recoveryEnd is not stabilizationOnset, the onset of the span",
+                )
+            ],
+            id="recovery-end-is-stabilized-at",
+        ),
+        pytest.param(
+            _set(ONSET, "completedSpanOnly", False),
+            [
+                (
+                    INSTANTS_RULE,
+                    ONSET_AT,
+                    "stabilizationOnset is not held to a span that completed: an "
+                    "interrupted span could establish a recovery",
+                )
+            ],
+            id="recovery-end-from-a-span-that-did-not-complete",
+        ),
+        pytest.param(
+            _set([*INTERVALS, "operatorDecisionMs"], "end", "controllerObserved"),
+            [
+                (
+                    INTERVALS_RULE,
+                    f"{TIMING}.intervals.operatorDecisionMs",
+                    "operatorDecisionMs is not stated from detection-reviewed to "
+                    "reversalStart, reported",
+                )
+            ],
+            id="operator-interval-ends-at-controller-observed",
+        ),
+        pytest.param(
+            _drop(INTERVALS, "gitopsDiscoveryMs"),
+            [
+                (
+                    INTERVALS_RULE,
+                    f"{TIMING}.intervals.gitopsDiscoveryMs",
+                    "gitopsDiscoveryMs is not stated from reversalStart to "
+                    "controllerObserved, reported",
+                )
+            ],
+            id="gitops-discovery-removed",
+        ),
+        pytest.param(
+            _drop(["reversalTiming", "instants"], "desiredStateRestored"),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.desiredStateRestored",
+                    "desiredStateRestored is not stated with its definition, the "
+                    "source collector-reading, and the host clock",
+                )
+            ],
+            id="desired-state-restored-removed",
+        ),
+        pytest.param(
+            _criterion_member("E04-AC12", "boundValueMs", 60_000),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 states another value of reversal_recovery_bound_ms than "
+                    "derivedNumericBounds",
+                )
+            ],
+            id="bound-value",
+        ),
+        pytest.param(
+            _criterion_member("E04-AC12", "boundFormula", "(2 * S) + 40000"),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 states another formula of reversal_recovery_bound_ms "
+                    "than derivedNumericBounds",
+                )
+            ],
+            id="bound-formula",
+        ),
+        pytest.param(
+            _criterion_member(
+                "E04-AC12", "boundRecord", {"path": BOUNDS, "contentSha256": "0" * 64}
+            ),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 states another bound record of "
+                    "reversal_recovery_bound_ms than derivedNumericBounds",
+                )
+            ],
+            id="bound-record-digest",
+        ),
+        pytest.param(
+            _ac12_clocks(lambda e: e.__setitem__("crossClock", False)),
+            [
+                (
+                    INVENTORY,
+                    "definition.criterionClocks[16]",
+                    "it is declared same-clock, and its instants are on two clocks",
+                ),
+                (CRITERIA_RULE, "definition.criterionClocks", AC12_CLOCKS),
+            ],
+            id="declared-same-clock",
+        ),
+        pytest.param(
+            _ac12_clocks(_same_clock),
+            [(CRITERIA_RULE, "definition.criterionClocks", AC12_CLOCKS)],
+            id="moved-to-one-clock",
+        ),
+        pytest.param(
+            _ac8_to_reversal_start,
+            [
+                (
+                    CRITERIA_RULE,
+                    AC8,
+                    "E04-AC8 does not end its window at desiredStateRestored",
+                )
+            ],
+            id="containment-window-ends-at-reversal-start",
+        ),
+        pytest.param(
+            _drop_reason("reversal-start-unconfirmed"),
+            [
+                (
+                    TIMING_REASONS,
+                    "exclusionReasons",
+                    "reversal-start-unconfirmed is not registered for INCONCLUSIVE",
+                )
+            ],
+            id="missing-confirmation-reason-removed",
+        ),
+        pytest.param(
+            _drop(START, "notEstablished"),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{START_AT}.notEstablished",
+                    "a reversalStart that is not established does not leave E04-AC12 "
+                    "not judged, for reversal-start-unconfirmed",
+                )
+            ],
+            id="missing-confirmation-rule-removed",
+        ),
+        pytest.param(
+            _drop_reason("recovery-onset-not-after-reversal"),
+            [
+                (
+                    TIMING_REASONS,
+                    "exclusionReasons",
+                    "recovery-onset-not-after-reversal is not registered for "
+                    "INCONCLUSIVE",
+                )
+            ],
+            id="onset-reason-removed",
+        ),
+        pytest.param(
+            _set(ONSET, "analysisMember", "stabilizedRecovery.stabilizedAt"),
+            [
+                (
+                    INSTANTS_RULE,
+                    ONSET_AT,
+                    "stabilizationOnset is not read from "
+                    "stabilizedRecovery.span.first.finishedAt",
+                )
+            ],
+            id="onset-read-from-stabilized-at",
+        ),
+        pytest.param(
+            _drop(ONSET, "after"),
+            [
+                (
+                    INSTANTS_RULE,
+                    ONSET_AT,
+                    "stabilizationOnset is not held to follow reversalStart, with "
+                    "E04-AC12 not judged for recovery-onset-not-after-reversal "
+                    "otherwise",
+                )
+            ],
+            id="onset-not-held-after-reversal-start",
+        ),
+        pytest.param(
+            _set(
+                ["reversalTiming", "instants", "stabilizedAt"],
+                "insideObservationLimit",
+                False,
+            ),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.stabilizedAt",
+                    "stabilizedAt is not read from stabilizedRecovery.stabilizedAt and "
+                    "held inside the observation limit",
+                )
+            ],
+            id="stabilized-at-outside-the-limit",
+        ),
+        pytest.param(
+            _set([*INTERVALS, "recoveryMs"], "judged", False),
+            [
+                (
+                    INTERVALS_RULE,
+                    f"{TIMING}.intervals.recoveryMs",
+                    "recoveryMs is not stated from reversalStart to stabilizationOnset, "
+                    "judged by E04-AC12",
+                )
+            ],
+            id="recovery-not-judged",
+        ),
+        pytest.param(
+            _set(["reversalTiming"], "operatorEvents", ["detection-reviewed"]),
+            [
+                (
+                    INTERVALS_RULE,
+                    f"{TIMING}.operatorEvents",
+                    "the four operator events of the reversal are not kept with their "
+                    "own instants",
+                )
+            ],
+            id="operator-events",
+        ),
+    ],
+)
+def test_each_reversal_timing_defect_is_refused(
+    root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
+) -> None:
+    edit(root, E04, change)
+    assert found(root) == [
+        (rule, E04, where, detail) for rule, where, detail in expected
+    ]
+
+
+def test_a_clock_policy_of_e04_that_differs_is_refused(root: Path) -> None:
+    def change(document: dict[str, Any]) -> None:
+        policy_of(document)["statement"] += " E04 reads it differently."
+
+    edit(root, E04, change)
+    assert found(root) == [shared(E04, "definition.clockPolicy")]
+
+
+def test_an_e04_of_rule_set_two_without_a_reversal_timing_is_refused(
+    root: Path,
+) -> None:
+    edit(root, E04, lambda d: d["definition"].__setitem__("reversalTiming", "x"))
+    assert found(root) == [
+        ("prereg-record-shape", E04, "$", "definition states no reversal timing")
+    ]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(_set(["reversalTiming"], "instants", []), id="instants-a-list"),
+        pytest.param(_set(["reversalTiming"], "intervals", "x"), id="intervals-text"),
+        pytest.param(_set(START, "bracket", [1, 2]), id="bracket-a-list"),
+        pytest.param(_set(START, "notEstablished", ["x"]), id="rule-a-list"),
+        pytest.param(_set(START, "kind", ["git-visibility"]), id="kind-a-list"),
+        pytest.param(_criterion_member("E04-AC12", "boundRecord", [1]), id="record"),
+        pytest.param(_criterion_member("E04-AC12", "bound", ["x"]), id="bound"),
+        pytest.param(_criterion_member("E04-AC8", "window", ["x"]), id="window"),
+        pytest.param(_criterion_member("E04-AC8", "statement", ["x"]), id="statement"),
+        pytest.param(
+            _ac12_clocks(lambda e: e.__setitem__("instants", [1, 2])), id="ends"
+        ),
+    ],
+)
+def test_a_malformed_reversal_timing_is_a_finding_and_not_an_error(
+    root: Path, change: Callable[[dict[str, Any]], None]
+) -> None:
+    edit(root, E04, change)
+    findings = found(root)
+    assert findings
+    assert {f[1] for f in findings} == {E04}
+    # Each finding is of a rule that reads the member, never another rule. A bound
+    # that is not a string is refused by the shape rule before any rule reads it.
+    assert {f[0] for f in findings} <= {
+        "prereg-record-shape",
+        INSTANTS_RULE,
+        INTERVALS_RULE,
+        CRITERIA_RULE,
+        INVENTORY,
+        "prereg-criterion-bound-unknown",
+    }
+
+
+# The analysis semantics that revision 2 names, on a synthetic run of
+# tools/reliability_analysis: the committed zero-failure case of its suite.
+
+ANALYSIS_CASE = (
+    REPO_ROOT
+    / "tests"
+    / "domain"
+    / "fixtures"
+    / "reliability-analysis"
+    / "zero-failure"
+)
+
+
+def _analysis_inputs() -> tuple[str, dict[str, str | None]]:
+    declaration = (ANALYSIS_CASE / "declaration.json").read_text(encoding="utf-8")
+    texts: dict[str, str | None] = {}
+    for name in analysis.INPUTS:
+        path = ANALYSIS_CASE / f"{name}.jsonl"
+        texts[name] = path.read_text(encoding="utf-8") if path.is_file() else None
+    return declaration, texts
+
+
+def _at(document: Any, dotted: str) -> Any:
+    """The member of a run analysis that a dotted path names, or None."""
+    for step in dotted.split("."):
+        if not isinstance(document, dict):
+            return None
+        document = document.get(step)
+    return document
+
+
+def _ms(instant: str) -> int:
+    parsed = datetime.strptime(instant, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
+    return int(parsed.timestamp() * 1000)
+
+
+def test_the_onset_that_revision_two_names_is_the_start_of_a_completed_span() -> None:
+    """stabilizationOnset is the completion of the first request of the span, and
+    stabilizedAt that of the last. They differ by the length of the span, at least
+    60 s, so the one cannot be read for the other."""
+    instants = timing_of(load(E04))["instants"]
+    onset_member = instants["stabilizationOnset"]["analysisMember"]
+    settled_member = instants["stabilizedAt"]["analysisMember"]
+    declaration, texts = _analysis_inputs()
+    document = analysis.analyze(declaration, texts)
+    recovery = document["stabilizedRecovery"]
+    assert recovery["stabilized"] is True
+    onset, settled = _at(document, onset_member), _at(document, settled_member)
+    assert onset == recovery["span"]["first"]["finishedAt"]
+    assert onset == "2026-10-12T08:00:51.000Z"
+    assert settled == recovery["stabilizedAt"] == "2026-10-12T08:01:51.000Z"
+    assert _ms(settled) - _ms(onset) == recovery["span"]["ms"] == 60_000
+    assert recovery["span"]["successes"] >= 10
+
+
+def test_an_interrupted_candidate_span_yields_no_recovery() -> None:
+    """One failed completion inside the span of the committed case. The span that
+    had started is interrupted, no later span completes inside the window, and the
+    members that revision 2 names state no instant."""
+    instants = timing_of(load(E04))["instants"]
+    declaration, texts = _analysis_inputs()
+    caller = texts["caller"]
+    assert caller is not None
+    lines = [json.loads(line) for line in caller.splitlines()]
+    (failed,) = [
+        line
+        for line in lines
+        if line.get("record") == "request"
+        and line["finishedAt"] == "2026-10-12T08:01:30.000Z"
+    ]
+    failed.update(
+        success=False,
+        outcome="http-error",
+        httpStatus=503,
+        errorCode="adapter-unavailable",
+        errorCondition="runtime-unreachable",
+        finishReason=None,
+        inputTokens=None,
+        outputTokens=None,
+    )
+    (end,) = [line for line in lines if line.get("record") == "end"]
+    end["outcomes"]["success"] -= 1
+    end["outcomes"]["http-error"] += 1
+    texts["caller"] = "".join(
+        json.dumps(line, separators=(",", ":"), sort_keys=True) + "\n" for line in lines
+    )
+    document = analysis.analyze(declaration, texts)
+    recovery = document["stabilizedRecovery"]
+    assert (recovery["state"], recovery["stabilized"]) == ("computed", False)
+    assert recovery["span"] is None
+    assert recovery["stabilizedAt"] is None
+    assert _at(document, instants["stabilizationOnset"]["analysisMember"]) is None
+    assert _at(document, instants["stabilizedAt"]["analysisMember"]) is None
+
+
+def test_rule_set_two_is_not_edited() -> None:
+    """A tripwire: the four records of V2-S6-007-PR1 are read under rule set 2, so
+    its statement and its rules stay as registered. Rule set 3 adds the reversal
+    timing beside it."""
+    assert core.RULE_SETS[2] == (
+        "Rule set 1 and the clock rules: one clock policy for the node clock and the "
+        "host clock, the clock of each instant that a criterion orders or measures, "
+        "and no text that contradicts the policy."
+    )
+    for path in CLOCK_REVISIONS.values():
+        document = load(path)
+        assert document["metadata"]["preregistrationRules"] == 2
+        # The rules would refuse each of them, and rule set 2 does not apply them.
+        assert list(core._reversal_findings(path, document)) != []
+    assert check_records({e: (p, load(p)) for e, p in RECORDS.items()}) == []
+
+
+def test_a_record_of_another_experiment_under_rule_set_three_reads_as_rule_set_two(
+    root: Path,
+) -> None:
+    """The reversal-timing rules read a V2-E04 record alone. The freeze check
+    refuses the edit itself."""
+    edit(root, E05, lambda d: d["metadata"].__setitem__("preregistrationRules", 3))
+    assert found(root) == []
+
+
+# The defects that the independent review of the first commit planted, and the
+# clauses that its first suite left without a negative test.
+
+
+def _duplicate(
+    identifier: str, member: str, new: Any
+) -> Callable[[dict[str, Any]], None]:
+    """A defective criterion, with a conforming copy of it after it."""
+
+    def change(document: dict[str, Any]) -> None:
+        criteria = value(document, "acceptanceCriteria")
+        conforming = copy.deepcopy(criterion_of(document, identifier))
+        criterion_of(document, identifier)[member] = new
+        criteria.append(conforming)
+
+    return change
+
+
+def _swap_bracket(document: dict[str, Any]) -> None:
+    bracket = document["definition"]["reversalTiming"]["instants"]["reversalStart"][
+        "bracket"
+    ]
+    earlier, later = bracket["earlier"]["instant"], bracket["later"]["instant"]
+    bracket["earlier"]["instant"], bracket["later"]["instant"] = later, earlier
+
+
+def _duplicate_ac12_clocks(document: dict[str, Any]) -> None:
+    clocks = document["definition"]["criterionClocks"]
+    (entry,) = [
+        e
+        for e in clocks
+        if e["criterion"] == "E04-AC12" and e["comparison"] == "interval"
+    ]
+    clocks.append(copy.deepcopy(entry))
+
+
+def _drop_ac12_clocks(document: dict[str, Any]) -> None:
+    clocks = document["definition"]["criterionClocks"]
+    clocks[:] = [
+        e
+        for e in clocks
+        if not (e["criterion"] == "E04-AC12" and e["comparison"] == "interval")
+    ]
+
+
+def _outcome_without(reason: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        rules = document["definition"]["outcomeRules"]
+        rules[:] = [r.replace(reason, "a reason") for r in rules]
+
+    return change
+
+
+CRITERIA = "fields.acceptanceCriteria"
+PHRASES = "it does not hold the phrases "
+
+
+@pytest.mark.parametrize(
+    ("change", "expected"),
+    [
+        pytest.param(
+            _duplicate("E04-AC12", "boundValueMs", 1),
+            [
+                (CRITERIA_RULE, CRITERIA, "E04-AC12 is stated 2 times, and not once"),
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 states another value of reversal_recovery_bound_ms than "
+                    "derivedNumericBounds",
+                ),
+            ],
+            id="a-defective-recovery-criterion-before-a-conforming-copy",
+        ),
+        pytest.param(
+            _duplicate("E04-AC8", "window", {"from": "x", "to": "reversalStart"}),
+            [
+                (CRITERIA_RULE, CRITERIA, "E04-AC8 is stated 2 times, and not once"),
+                (
+                    CRITERIA_RULE,
+                    AC8,
+                    "E04-AC8 does not end its window at desiredStateRestored",
+                ),
+            ],
+            id="a-defective-containment-criterion-before-a-conforming-copy",
+        ),
+        pytest.param(
+            _swap_bracket,
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{START_AT}.bracket.earlier.instant",
+                    PHRASES + "'reversal-created', 'immediately before the push'",
+                ),
+                (
+                    INSTANTS_RULE,
+                    f"{START_AT}.bracket.later.instant",
+                    PHRASES + "'first read of main', 'reversal-accepted'",
+                ),
+            ],
+            id="the-two-bracket-ends-swapped",
+        ),
+        pytest.param(
+            _set(ONSET, "definition", "The stabilizedAt instant of the analysis."),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{ONSET_AT}.definition",
+                    PHRASES + "'first request', 'starts after reversalStart', "
+                    "'observed complete without interruption'",
+                )
+            ],
+            id="an-onset-defined-as-stabilized-at",
+        ),
+        pytest.param(
+            _set(
+                START,
+                "definition",
+                "The first argo reading that resolves the reversal commit.",
+            ),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{START_AT}.definition",
+                    PHRASES + "'remote that the controller reads', "
+                    "'not a controller observation'",
+                )
+            ],
+            id="a-reversal-start-defined-as-a-controller-reading",
+        ),
+        pytest.param(
+            _set(
+                ["reversalTiming", "instants", "controllerObserved"],
+                "source",
+                "operator-event",
+            ),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.controllerObserved",
+                    "controllerObserved is not stated with its definition, the source "
+                    "collector-reading, and the host clock",
+                )
+            ],
+            id="controller-observed-on-another-source",
+        ),
+        pytest.param(
+            _set(["reversalTiming", "instants", "stabilizedAt"], "clock", "host"),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.stabilizedAt",
+                    "stabilizedAt is not stated with its definition, the source "
+                    "caller-record, and the node clock",
+                )
+            ],
+            id="stabilized-at-on-the-host-clock",
+        ),
+        pytest.param(
+            _set([*ONSET, "notAfterReversalStart"], "reason", "clock-bound-reached"),
+            [
+                (
+                    INSTANTS_RULE,
+                    ONSET_AT,
+                    "stabilizationOnset is not held to follow reversalStart, with "
+                    "E04-AC12 not judged for recovery-onset-not-after-reversal "
+                    "otherwise",
+                )
+            ],
+            id="onset-rule-with-another-reason",
+        ),
+        pytest.param(
+            _set(ONSET, "after", "controllerObserved"),
+            [
+                (
+                    INSTANTS_RULE,
+                    ONSET_AT,
+                    "stabilizationOnset is not held to follow reversalStart, with "
+                    "E04-AC12 not judged for recovery-onset-not-after-reversal "
+                    "otherwise",
+                )
+            ],
+            id="onset-after-another-instant",
+        ),
+        pytest.param(
+            _criterion_member("E04-AC12", "interval", "gitopsDiscoveryMs"),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 does not judge recoveryMs against "
+                    "reversal_recovery_bound_ms",
+                )
+            ],
+            id="recovery-criterion-judges-another-interval",
+        ),
+        pytest.param(
+            _criterion_member(
+                "E04-AC8",
+                "statement",
+                "Every endpoints reading from the fault-injection-started event to "
+                "reversalStart, and not to desiredStateRestored.",
+            ),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC8,
+                    "E04-AC8 does not end its window at desiredStateRestored",
+                )
+            ],
+            id="containment-statement-names-reversal-start",
+        ),
+        pytest.param(
+            _outcome_without("reversal-start-unconfirmed"),
+            [
+                (
+                    TIMING_REASONS,
+                    "definition.outcomeRules",
+                    "the outcome rules do not name reversal-start-unconfirmed",
+                )
+            ],
+            id="outcome-rules-without-the-confirmation-reason",
+        ),
+        pytest.param(
+            _duplicate_ac12_clocks,
+            [(CRITERIA_RULE, "definition.criterionClocks", AC12_CLOCKS)],
+            id="recovery-interval-declared-twice",
+        ),
+        pytest.param(
+            _drop_ac12_clocks,
+            [
+                (
+                    INVENTORY,
+                    AC12,
+                    "it names a bound and declares no clocks of its interval",
+                ),
+                (CRITERIA_RULE, "definition.criterionClocks", AC12_CLOCKS),
+            ],
+            id="recovery-interval-not-declared",
+        ),
+    ],
+)
+def test_each_reversal_timing_defect_of_the_review_is_refused(
+    root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
+) -> None:
+    edit(root, E04, change)
+    assert found(root) == [
+        (rule, E04, where, detail) for rule, where, detail in expected
+    ]
+
+
+def test_each_record_is_read_under_the_rule_set_it_was_registered_under() -> None:
+    """A tripwire: rule set 3 changes the rule set of no registered record."""
+    for path in REVISION_ONE.values():
+        assert core._rule_set(path, load(path)) == 1, path
+    for path in CLOCK_REVISIONS.values():
+        assert core._rule_set(path, load(path)) == 2, path
+    assert core._rule_set(E04, load(E04)) == 3

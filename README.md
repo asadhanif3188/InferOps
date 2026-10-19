@@ -343,8 +343,12 @@ names `q1-2` and `bounds-r1`, and a read-only check holds it to them and to the 
 Since `V2-S6-007-PR1` the records of the baseline, the runtime-pod loss, the API pod loss,
 and the drift reconciliation are at revision 2, which states
 [one clock policy](docs/proof/experiments/README.md#the-clock-policy-of-rule-set-2) for
-the node clock and the host clock. The bad-release record stays at revision 1 until its
-own correction.
+the node clock and the host clock. Since `V2-S6-005-PR1` the bad-release record is at
+revision 2 too: it states the same policy and
+[the reversal timing as the repository owner amended it](docs/proof/experiments/README.md#the-reversal-timing-of-v2-e04-and-rule-set-3),
+from the instant at which the reversal commit is visible in Git to the onset of the
+stabilization span, judged against the unchanged 52,000 ms bound. The record states
+before any run that most runs are not expected to meet that bound.
 No run of any of them exists, and no driver exists yet.
 
 ## Prerequisites

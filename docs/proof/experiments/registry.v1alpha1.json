@@ -107,6 +107,11 @@
       "path": "docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json",
       "contentSha256": "f7e1da03503a29ac49de0c6dcaa3536f8640e51d10a53adaf5972821a2d895b2",
       "registeredBy": "V2-S6-007-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e04/freeze-r2.v1alpha1.json",
+      "contentSha256": "fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619",
+      "registeredBy": "V2-S6-005-PR1"
     }
   ]
 }
