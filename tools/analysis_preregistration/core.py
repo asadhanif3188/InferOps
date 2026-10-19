@@ -169,6 +169,17 @@ CANDIDATE_PHRASES: Final[Mapping[str, tuple[str, ...]]] = {
     "statement": ("not a predetermined ranking winner",),
 }
 
+#: The members that would name a winner of the ranking.
+WINNER_MEMBERS: Final = frozenset({"winner", "predeterminedWinner"})
+
+#: The phrases of the rules that a later revision states, read in any letter case.
+CODE_PHRASES: Final = ("before any", "later revision of this record")
+LATER_REVISION_PHRASES: Final = ("later revision of this record", "--changes")
+CLOUD_PHRASES: Final = ("later revision of this record",)
+
+#: The members that a local cost basis never states.
+PRICE_MEMBERS: Final = frozenset({"price", "charge", "currency", "amount"})
+
 #: How each failed caller outcome states a canonical error code. The runner keeps
 #: ``errorCode`` for an HTTP error answer alone.
 WHEN_STATED: Final = "when-stated"
@@ -234,6 +245,7 @@ E06_METRICS: Final = (
     "rollout-headroom",
 )
 UTILIZATION_QUERY: Final = "api-cpu-seconds"
+UTILIZATION: Final = "utilization"
 LOCAL: Final = "local"
 EVIDENCE_TARGET: Final[Mapping[str, str]] = {"allocation": "C0", "runDerived": "C2"}
 
@@ -292,10 +304,11 @@ def _rules(prefix: str, name: str) -> dict[str, str]:
             "that tools.experiment_preregistration names."
         ),
         f"{prefix}-analysis-code": (
-            "The record states that the code that computes its figures is pinned by "
-            "a later revision before any figure is computed. Its material scope "
-            "names this check, its empty procedure directory, and every revision "
-            "file of each source, and each executable that it lists is pinned."
+            "The analysis-code rule of the record names its procedure directory and "
+            "holds the phrases that this check names, and no other prose of it is "
+            "read. The material scope names this check, the procedure directory, and "
+            "every revision file of each source, and each executable that the record "
+            "lists is pinned. Whether the procedure directory exists is not read."
         ),
     }
 
@@ -308,12 +321,14 @@ RULES: Final[Mapping[str, str]] = {
         "The initial population is the counted runs of V2-E02A, V2-E02B, and "
         "V2-E02C. The extension is the counted runs of V2-E04. V2-E05 is excluded "
         "from the ranking with a reason. No experiment is in two of them, and the "
-        "record states that a later source revision needs a later revision of it."
+        "later-source-revision rule holds the phrases that this check names. No "
+        "other prose of it is read."
     ),
     "e03-signal-set": (
         "The preregistered signals are the ten of the record, numbered 1 to 10, "
         "each with its identifier. Signal 1 is the caller reference and is not a "
-        "candidate. A further signal is labeled exploratory and is not ranked."
+        "candidate. A further signal is labeled exploratory, is a candidate with a "
+        "number above 10, and is not ranked."
     ),
     "e03-signal-streams": (
         "Each signal reads the stream of its number. Every bound source collects "
@@ -327,7 +342,8 @@ RULES: Final[Mapping[str, str]] = {
         "The operational signal candidate is signal 2, the API error rate. Its "
         "role is the comparator, it has no ranking preference, it is not declared "
         "a winner, and its statements hold the phrases that this check names. No "
-        "signal is declared a winner."
+        "member of the definition named winner or predeterminedWinner is other "
+        "than false, and none named rankingPreference is other than none."
     ),
     "e03-ranking": (
         "The ranking rule states the earliest change, the most caller-truthful "
@@ -337,14 +353,15 @@ RULES: Final[Mapping[str, str]] = {
     ),
     "e03-caller-failures": (
         "The record states, for each failed caller outcome, how the caller record "
-        "identifies it and whether it states a canonical error code, that the "
-        "false-healthy time of a signal counts every failed completion, and the "
+        "identifies it and whether it states a canonical error code, a "
+        "false-healthy rule that holds the phrase that this check names, and the "
         "two figures that it reports for each run."
     ),
     "e03-computations": (
-        "The record states each computation, that a signal that is not observed "
-        "is never healthy, and an ordering rule that names the margin of the "
-        "source clock policy and states no lead or lag inside it."
+        "The record states each computation. Its not-observed computation holds "
+        "the phrase never healthy, and its ordering rule holds the margin of the "
+        "source clock policy and the phrase no lead or lag. No other prose of them "
+        "is read."
     ),
     **_rules("e06", "V2-E06"),
     "e06-views": (
@@ -353,9 +370,12 @@ RULES: Final[Mapping[str, str]] = {
         "arithmetic, with the two and two of V2-E02B."
     ),
     "e06-labels": (
-        "Each view and each metric has one label of the three. A view or a metric "
-        "that reads only configuration is not labeled measured, and a measured one "
-        "reads a run stream."
+        "Each view and each metric has one label of the three and reads only "
+        "registered reads. A view or a metric that reads only configuration is not "
+        "labeled measured, a measured one reads a run stream, and a static "
+        "allocation reads configuration alone. The utilization "
+        "metric is labeled measured or unavailable, and no other view or metric is "
+        "labeled measured."
     ),
     "e06-metrics": (
         "The record states the six metrics, each with what it reads and a "
@@ -366,8 +386,9 @@ RULES: Final[Mapping[str, str]] = {
         "source runs, its aggregate, and its no-series rule are stated."
     ),
     "e06-cost-basis": (
-        "The cost basis is local, no cloud provider is used, and a later revision "
-        "precedes any figure from one."
+        "The cost basis is local, no cloud provider is used, its cloud rule holds "
+        "the phrase that this check names, and no member of the cost basis is named "
+        "price, charge, currency, or amount."
     ),
     "e06-evidence-target": (
         "The evidence target is C0 for the allocation arithmetic and C2 for the "
@@ -445,6 +466,32 @@ def _value(document: Mapping[str, Any], field: str) -> Any:
     return entry.get("value")
 
 
+def _strings(value: Any) -> list[str] | None:
+    """``value`` when it is a list of strings, and None otherwise.
+
+    A list that holds a list or an object is None, so no set is built from an
+    unhashable member.
+    """
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        return None
+    return value
+
+
+def _named_members(
+    value: Any, names: frozenset[str], location: str
+) -> Iterator[tuple[str, Any]]:
+    """The location and the value of each member of ``value`` with one of ``names``."""
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            where = f"{location}.{key}"
+            if key in names:
+                yield where, item
+            yield from _named_members(item, names, where)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from _named_members(item, names, f"{location}[{index}]")
+
+
 def _phrases(text: Any, phrases: Sequence[str]) -> list[str]:
     """The phrases of ``phrases`` that ``text`` does not hold, in any letter case."""
     if not isinstance(text, str):
@@ -486,7 +533,19 @@ def _field_findings(
     name: str, document: Mapping[str, Any], experiment: AnalysisExperiment
 ) -> Iterator[Finding]:
     rule = f"{experiment.prefix}-fields-unanswered"
-    for finding in check_record(document, name):
+    try:
+        checked = check_record(document, name)
+    except (TypeError, AttributeError, ValueError) as error:
+        # tools.experiment_freeze raises on some malformed members. It is not
+        # edited here, because earlier records pin it.
+        yield Finding(
+            rule,
+            name,
+            "fields",
+            f"the freeze check cannot read it: {type(error).__name__}",
+        )
+        checked = []
+    for finding in checked:
         if finding.rule_id.startswith(
             ("freeze-field", "freeze-criteria", "freeze-evi")
         ):
@@ -512,8 +571,8 @@ def _binding_findings(
 ) -> Iterator[tuple[Finding | None, str, Mapping[str, Any]]]:
     """Each finding of the source bindings, and each source that it read.
 
-    Yields ``(finding, experiment, None)`` for a finding and ``(None, experiment,
-    source)`` for each bound source that holds every clause.
+    Yields ``(finding, "", {})`` for a finding and ``(None, experiment, source)``
+    for each bound source that holds every clause.
     """
     rule = f"{experiment.prefix}-sources-stale"
     sources = _member(document, "definition").get("sources")
@@ -725,7 +784,7 @@ def _code_findings(
     code = _member(definition, "analysisCode")
     procedure = f"{experiment.directory}/procedure"
     if code.get("procedureDirectory") != procedure or _phrases(
-        code.get("rule"), ("before any",)
+        code.get("rule"), CODE_PHRASES
     ):
         yield Finding(
             rule,
@@ -746,9 +805,9 @@ def _code_findings(
             yield Finding(rule, name, "materialScope.paths", f"names {pattern}")
     pinned = document.get("pinnedInputs")
     pins = {
-        item.get("path")
+        item["path"]
         for item in (pinned if isinstance(pinned, list) else [])
-        if isinstance(item, Mapping)
+        if isinstance(item, Mapping) and isinstance(item.get("path"), str)
     }
     executables = definition.get("executables")
     if not isinstance(executables, list) or not executables:
@@ -839,7 +898,7 @@ def _population_findings(name: str, document: Mapping[str, Any]) -> Iterator[Fin
             yield Finding(
                 rule, name, f"definition.population.{member}.runs", "which runs"
             )
-    if not _text(population.get("laterSourceRevision")):
+    if _phrases(population.get("laterSourceRevision"), LATER_REVISION_PHRASES):
         yield Finding(
             rule,
             name,
@@ -869,6 +928,19 @@ def _signal_set_findings(name: str, document: Mapping[str, Any]) -> Iterator[Fin
             if signal.get("ranked") is not False:
                 yield Finding(
                     rule, name, f"{where}.ranked", "an exploratory signal is not ranked"
+                )
+            number = signal.get("number")
+            if (
+                not isinstance(number, int)
+                or isinstance(number, bool)
+                or number <= len(E03_SIGNALS)
+            ):
+                yield Finding(
+                    rule, name, f"{where}.number", "an exploratory signal is above 10"
+                )
+            if signal.get("role") != CANDIDATE:
+                yield Finding(
+                    rule, name, f"{where}.role", "an exploratory signal is a candidate"
                 )
             continue
         if "exploratory" in signal and signal.get("exploratory") is not False:
@@ -916,7 +988,7 @@ def _signal_stream_findings(
             yield Finding(rule, name, f"{where}.stream", expected[1])
         sampling = _member(signal, "sampling")
         for source, streams in sorted(collected.items()):
-            if stream not in streams:
+            if not isinstance(stream, str) or stream not in streams:
                 yield Finding(
                     rule,
                     name,
@@ -951,11 +1023,8 @@ def _signal_stream_findings(
                     f"{where}.derivation.querySet",
                     f"{QUERY_SET}, which each source names",
                 )
-            if (
-                not isinstance(queries, list)
-                or not queries
-                or not set(queries) <= telemetry_queries
-            ):
+            strings = _strings(queries)
+            if not strings or not set(strings) <= telemetry_queries:
                 yield Finding(
                     rule,
                     name,
@@ -1006,13 +1075,15 @@ def _candidate_findings(name: str, document: Mapping[str, Any]) -> Iterator[Find
         missing = _phrases(candidate.get(member), phrases)
         if missing:
             yield Finding(rule, name, f"{where}.{member}", f"holds {missing}")
-    for index, signal in enumerate(_signals(document)):
-        if isinstance(signal, Mapping) and signal.get("winner") not in (None, False):
+    for location, value in _named_members(definition, WINNER_MEMBERS, "definition"):
+        if value is not False:
+            yield Finding(rule, name, location, "false: no signal is a winner")
+    for location, value in _named_members(
+        definition, frozenset({"rankingPreference"}), "definition"
+    ):
+        if value != NO_PREFERENCE and location != f"{where}.rankingPreference":
             yield Finding(
-                rule,
-                name,
-                f"definition.signals[{index}].winner",
-                "no signal is a winner",
+                rule, name, location, f"{NO_PREFERENCE}: no ranking preference"
             )
 
 
@@ -1114,7 +1185,11 @@ def _view_findings(
     if set(E06_SOURCES) - set(sources):
         # A source that is not bound has its own finding, and no side is read.
         return
-    by_id = {v.get("id"): v for v in views if isinstance(v, Mapping)}
+    by_id = {
+        v["id"]: v
+        for v in views
+        if isinstance(v, Mapping) and isinstance(v.get("id"), str)
+    }
     if [v.get("id") if isinstance(v, Mapping) else None for v in views] != [
         VIEW_A,
         VIEW_B,
@@ -1175,15 +1250,24 @@ def _label_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]
             if not isinstance(item, Mapping):
                 continue
             label = item.get("label")
-            reads = item.get("reads")
+            reads = _strings(item.get("reads"))
             if label not in LABELS:
                 yield Finding(rule, name, f"{where}.label", f"one of {list(LABELS)}")
                 continue
-            if (
-                not isinstance(reads, list)
-                or not reads
-                or not set(reads) <= CONFIGURATION_READS | RUN_READS
-            ):
+            utilization = member == "metrics" and item.get("id") == UTILIZATION
+            if utilization and label not in (MEASURED, UNAVAILABLE):
+                yield Finding(
+                    rule,
+                    name,
+                    f"{where}.label",
+                    "the utilization is measured or unavailable",
+                )
+            elif not utilization and label == MEASURED:
+                yield Finding(
+                    rule, name, f"{where}.label", "only the utilization is measured"
+                )
+                continue
+            if not reads or not set(reads) <= CONFIGURATION_READS | RUN_READS:
                 yield Finding(
                     rule,
                     name,
@@ -1197,6 +1281,13 @@ def _label_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]
                     name,
                     f"{where}.label",
                     f"it reads only {sorted(reads)}, so it is not measured",
+                )
+            if label == STATIC and not set(reads) <= CONFIGURATION_READS:
+                yield Finding(
+                    rule,
+                    name,
+                    f"{where}.label",
+                    "a static allocation reads configuration alone",
                 )
 
 
@@ -1236,9 +1327,9 @@ def _utilization_findings(name: str, document: Mapping[str, Any]) -> Iterator[Fi
         yield Finding(rule, name, f"{where}.stream", RESOURCES)
     if utilization.get("querySet") != QUERY_SET:
         yield Finding(rule, name, f"{where}.querySet", QUERY_SET)
-    queries = utilization.get("queries")
+    queries = _strings(utilization.get("queries"))
     if (
-        not isinstance(queries, list)
+        queries is None
         or UTILIZATION_QUERY not in queries
         or not set(queries) <= resource_queries
     ):
@@ -1268,12 +1359,14 @@ def _cost_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
     if basis.get("basis") != LOCAL:
         yield Finding(rule, name, f"{where}.basis", LOCAL)
     cloud = _member(basis, "cloud")
-    if cloud.get("used") is not False or not _text(cloud.get("rule")):
+    if cloud.get("used") is not False or _phrases(cloud.get("rule"), CLOUD_PHRASES):
         yield Finding(
             rule, name, f"{where}.cloud", "not used, with the rule for a later use"
         )
     if not _text(basis.get("statement")):
         yield Finding(rule, name, f"{where}.statement", "a statement")
+    for location, _ in _named_members(basis, PRICE_MEMBERS, where):
+        yield Finding(rule, name, location, "no price, charge, currency, or amount")
 
 
 def _target_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
@@ -1302,10 +1395,12 @@ def _record_findings(
     *,
     latest: bool,
 ) -> list[Finding]:
+    if experiment not in EXPERIMENTS:
+        raise ValueError(f"{experiment.experiment_id} is not an analysis experiment")
     problem = _shape_problem(document, experiment)
     if problem is not None:
         return [Finding(f"{experiment.prefix}-record-shape", name, "$", problem)]
-    roles = E03_SOURCES if experiment is E03 else E06_SOURCES
+    roles = E03_SOURCES if experiment == E03 else E06_SOURCES
     findings: list[Finding] = list(_field_findings(name, document, experiment))
     sources: dict[str, Mapping[str, Any]] = {}
     for finding, source, record in _binding_findings(
@@ -1318,7 +1413,7 @@ def _record_findings(
     findings.extend(_source_field_findings(name, document, experiment, sources))
     findings.extend(_contradiction_findings(name, document, experiment))
     findings.extend(_code_findings(name, document, experiment, roles))
-    if experiment is E03:
+    if experiment == E03:
         findings.extend(_population_findings(name, document))
         findings.extend(_signal_set_findings(name, document))
         findings.extend(_signal_stream_findings(name, document, sources))
@@ -1347,8 +1442,8 @@ def check_records(
     """Every finding of the committed records of ``experiments``.
 
     The latest revision of each is checked in full. A superseded revision is
-    checked against every rule except that its sources are the latest ones: it
-    binds the sources that were the latest when it was registered.
+    checked against every rule except that its sources are the latest ones. No
+    rule reads which source revisions were the latest when it was registered.
     """
     try:
         registry: Mapping[str, str] = load_registry(root)

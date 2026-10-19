@@ -141,9 +141,9 @@ E04_R2_PIN = "fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619"
 #: source run: each binds the latest freeze records of the experiments whose runs it
 #: reads. Their pins are written out for the same reason.
 E03 = "docs/proof/experiments/v2-e03/freeze-r1.v1alpha1.json"
-E03_PIN = "8efdb239bb1b3ad5901d31b8cc7c7d45edd7059366bc7e7ad7fcd389b004117a"
+E03_PIN = "e0aeb1d228df5dfe28adede301fd038c2445f505a196a73b3dbae6461c4e0bca"
 E06 = "docs/proof/experiments/v2-e06/freeze-r1.v1alpha1.json"
-E06_PIN = "10e28991745dd5ad32ba3b6c55ef8aeefae26bb7f99c47302b7dcb6bb497f82f"
+E06_PIN = "e774e5f1d46f7c544a65d449ec7f512b6aca8f004ddbbf8298a2ac1d7375b468"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so

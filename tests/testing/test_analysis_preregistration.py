@@ -40,6 +40,7 @@ from tools.analysis_preregistration import (
 from tools.experiment_freeze.core import (
     FROZEN_RECORDS,
     changed_inputs,
+    check_record,
     content_digest,
     material_files,
 )
@@ -58,8 +59,8 @@ REGISTRY = "docs/proof/experiments/registry.v1alpha1.json"
 E03_RECORD = "docs/proof/experiments/v2-e03/freeze-r1.v1alpha1.json"
 E06_RECORD = "docs/proof/experiments/v2-e06/freeze-r1.v1alpha1.json"
 #: The registered pins of the two records, written out so that a change is visible.
-E03_PIN = "8efdb239bb1b3ad5901d31b8cc7c7d45edd7059366bc7e7ad7fcd389b004117a"
-E06_PIN = "10e28991745dd5ad32ba3b6c55ef8aeefae26bb7f99c47302b7dcb6bb497f82f"
+E03_PIN = "e0aeb1d228df5dfe28adede301fd038c2445f505a196a73b3dbae6461c4e0bca"
+E06_PIN = "e774e5f1d46f7c544a65d449ec7f512b6aca8f004ddbbf8298a2ac1d7375b468"
 
 #: The latest freeze record of each source, which both records bind.
 SOURCE_RECORDS = {
@@ -843,3 +844,299 @@ def test_the_command_refuses_a_planted_defect(root: Path) -> None:
     assert result.returncode == 1
     assert "e06-cost-basis" in result.stdout
     assert "FAILED: 1 finding(s) across 2 analysis experiment(s)" in result.stdout
+
+
+# --------------------------------------------------------------------------
+# 4. What the independent review of the first commit found
+# --------------------------------------------------------------------------
+
+
+def _set(*path: Any, value: Any) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        target: Any = document
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = value
+
+    return change
+
+
+def _append(*path: Any, value: Any) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        target: Any = document
+        for key in path:
+            target = target[key]
+        target.append(value)
+
+    return change
+
+
+@pytest.mark.parametrize(
+    ("path", "change"),
+    [
+        (E03_RECORD, _set("definition", "signals", 2, "stream", value=["x"])),
+        (
+            E03_RECORD,
+            _append(
+                "definition",
+                "signals",
+                value={
+                    "number": 11,
+                    "exploratory": True,
+                    "ranked": False,
+                    "stream": ["x"],
+                },
+            ),
+        ),
+        (
+            E03_RECORD,
+            _set("definition", "signals", 1, "derivation", "queries", value=[[]]),
+        ),
+        (E03_RECORD, _set("fields", "fault", 0, "parts", value={"a": 1})),
+        (
+            E03_RECORD,
+            _set("fields", "acceptanceCriteria", 0, "value", 0, "id", value=["x"]),
+        ),
+        (E06_RECORD, _append("definition", "views", value={"id": ["x"]})),
+        (E06_RECORD, _set("definition", "views", 0, "id", value={"a": 1})),
+        (E06_RECORD, _set("definition", "metrics", 0, "reads", value=[[]])),
+        (
+            E06_RECORD,
+            _set("definition", "utilization", "queries", value=["api-cpu-seconds", []]),
+        ),
+        (E06_RECORD, _set("fields", "topology", 0, "parts", value={"a": 1})),
+    ],
+)
+def test_an_unhashable_or_malformed_member_is_a_finding_and_never_raises(
+    root: Path, path: str, change: Callable[[dict[str, Any]], None]
+) -> None:
+    """Each of these raised a TypeError in the first commit."""
+    edit(root, path, change)
+    experiment = E03 if path == E03_RECORD else E06
+    findings = core.check_records(root, [experiment])
+    assert findings
+    assert all(f.rule_id.startswith(f"{experiment.prefix}-") for f in findings)
+
+
+def test_a_malformed_pin_path_never_raises_and_is_the_freeze_check_finding(
+    root: Path,
+) -> None:
+    """The pins are the freeze check's to refuse. This check reads only their paths."""
+    edit(root, E03_RECORD, _append("pinnedInputs", value={"path": ["x"]}))
+    assert core.check_records(root, [E03]) == []
+    rules = {f.rule_id for f in check_record(load(E03_RECORD, root), E03_RECORD)}
+    assert rules == {"freeze-pinned-input-malformed"}
+
+
+def test_a_freeze_field_that_the_freeze_check_cannot_read_is_unanswered(
+    root: Path,
+) -> None:
+    """tools.experiment_freeze raises on an identifier that is a list. It is not
+    edited, because earlier records pin it, so this check reports the field."""
+    edit(
+        root,
+        E06_RECORD,
+        _set("fields", "acceptanceCriteria", 0, "value", 0, "id", value=["x"]),
+    )
+    assert e06_findings(root) == {("e06-fields-unanswered", "fields")}
+
+
+@pytest.mark.parametrize(
+    ("change", "location"),
+    [
+        (
+            _set("definition", "signals", 3, "winner", value=0),
+            "definition.signals[3].winner",
+        ),
+        (
+            _set("definition", "signals", 3, "predeterminedWinner", value=True),
+            "definition.signals[3].predeterminedWinner",
+        ),
+        (
+            _set("definition", "ranking", "winner", value="api-error-rate"),
+            "definition.ranking.winner",
+        ),
+        (
+            _set("definition", "operationalCandidate", "winner", value=True),
+            "definition.operationalCandidate.winner",
+        ),
+        (
+            _set("definition", "signals", 1, "rankingPreference", value="first"),
+            "definition.signals[1].rankingPreference",
+        ),
+    ],
+)
+def test_e03_refuses_a_winner_or_a_preference_anywhere_in_the_definition(
+    root: Path, change: Callable[[dict[str, Any]], None], location: str
+) -> None:
+    edit(root, E03_RECORD, change)
+    assert e03_findings(root) == {("e03-candidate", location)}
+
+
+def test_e03_refuses_an_exploratory_second_reference(root: Path) -> None:
+    def add(document: dict[str, Any]) -> None:
+        extra = copy.deepcopy(document["definition"]["signals"][6])
+        extra.update(number=1, exploratory=True, ranked=False, role="reference")
+        document["definition"]["signals"].append(extra)
+
+    edit(root, E03_RECORD, add)
+    assert e03_findings(root) == {
+        ("e03-signal-set", "definition.signals[10].number"),
+        ("e03-signal-set", "definition.signals[10].role"),
+    }
+
+
+def test_e03_refuses_a_duplicated_signal(root: Path) -> None:
+    edit(
+        root,
+        E03_RECORD,
+        lambda d: d["definition"]["signals"].insert(
+            4, copy.deepcopy(d["definition"]["signals"][3])
+        ),
+    )
+    assert e03_findings(root) == {("e03-signal-set", "definition.signals")}
+
+
+def test_e03_refuses_a_source_in_another_role_or_bound_twice(root: Path) -> None:
+    edit(root, E03_RECORD, _set("definition", "sources", 3, "role", value="initial"))
+    assert e03_findings(root) == {("e03-sources-stale", "definition.sources[3].role")}
+    edit(root, E03_RECORD, _set("definition", "sources", 3, "role", value="extension"))
+    edit(
+        root,
+        E03_RECORD,
+        lambda d: d["definition"]["sources"].append(
+            copy.deepcopy(d["definition"]["sources"][0])
+        ),
+    )
+    assert e03_findings(root) == {("e03-sources-stale", "definition.sources")}
+
+
+@pytest.mark.parametrize(
+    ("change", "location"),
+    [
+        (
+            _set(
+                "definition",
+                "callerFailures",
+                "falseHealthy",
+                value="Each failure counts.",
+            ),
+            "definition.callerFailures.falseHealthy",
+        ),
+        (
+            _set("definition", "population", "laterSourceRevision", value="x"),
+            "definition.population.laterSourceRevision",
+        ),
+        (
+            _set(
+                "definition", "analysisCode", "rule", value="Pinned before any figure."
+            ),
+            "definition.analysisCode",
+        ),
+    ],
+)
+def test_e03_refuses_a_rule_text_without_its_named_phrases(
+    root: Path, change: Callable[[dict[str, Any]], None], location: str
+) -> None:
+    edit(root, E03_RECORD, change)
+    assert {loc for _, loc in e03_findings(root)} == {location}
+
+
+def test_e03_reads_only_the_phrases_it_names(root: Path) -> None:
+    """A known gap: a text that holds the phrases and then says otherwise passes."""
+    edit(
+        root,
+        E03_RECORD,
+        _set(
+            "definition",
+            "computations",
+            "notObserved",
+            value="A signal is not never healthy; it counts as healthy.",
+        ),
+    )
+    assert e03_findings(root) == set()
+
+
+@pytest.mark.parametrize(
+    ("changes", "location"),
+    [
+        (
+            [_set("definition", "metrics", 3, "label", value="static-allocation")],
+            "definition.metrics[3].label",
+        ),
+        (
+            [
+                _set("definition", "metrics", 0, "label", value="measured"),
+                _set(
+                    "definition",
+                    "metrics",
+                    0,
+                    "reads",
+                    value=["requests", "resources-stream"],
+                ),
+            ],
+            "definition.metrics[0].label",
+        ),
+        (
+            [_set("definition", "views", 0, "reads", value=["resources-stream"])],
+            "definition.views[0].label",
+        ),
+    ],
+)
+def test_e06_refuses_a_label_that_contradicts_what_it_reads(
+    root: Path, changes: list[Callable[[dict[str, Any]], None]], location: str
+) -> None:
+    """Only the utilization is measured, and a static allocation reads configuration."""
+    for change in changes:
+        edit(root, E06_RECORD, change)
+    assert e06_findings(root) == {("e06-labels", location)}
+
+
+def test_e06_refuses_a_price_or_a_cloud_rule_without_its_phrase(root: Path) -> None:
+    edit(root, E06_RECORD, _set("definition", "costBasis", "price", value=0.5))
+    assert e06_findings(root) == {("e06-cost-basis", "definition.costBasis.price")}
+    edit(root, E06_RECORD, lambda d: d["definition"]["costBasis"].pop("price"))
+    edit(root, E06_RECORD, _set("definition", "costBasis", "cloud", "rule", value="x"))
+    assert e06_findings(root) == {("e06-cost-basis", "definition.costBasis.cloud")}
+
+
+def test_a_superseded_revision_is_not_held_to_the_latest_sources(root: Path) -> None:
+    """Revision 1 becomes superseded by a planted revision 2. Once a later source
+    revision is registered, only the latest revision is stale."""
+    revision_2 = "docs/proof/experiments/v2-e03/freeze-r2.v1alpha1.json"
+    document = load(E03_RECORD, root)
+    document["metadata"].update(
+        revision=2, supersedes={"path": E03_RECORD, "contentSha256": E03_PIN}
+    )
+    (root / revision_2).write_text(
+        json.dumps(document, indent=2) + "\n", encoding="utf-8"
+    )
+    assert e03_findings(root) == set()
+    later = "docs/proof/experiments/v2-e02c/freeze-r3.v1alpha1.json"
+    source = load(SOURCE_RECORDS["V2-E02C"], root)
+    source["metadata"]["revision"] = 3
+    text = json.dumps(source, indent=2) + "\n"
+    (root / later).write_text(text, encoding="utf-8")
+    registry = load(REGISTRY, root)
+    registry["records"].append(
+        {
+            "path": later,
+            "contentSha256": content_digest(text.encode()),
+            "registeredBy": "x",
+        }
+    )
+    (root / REGISTRY).write_text(
+        json.dumps(registry, indent=2) + "\n", encoding="utf-8"
+    )
+    findings = core.check_records(root, [E03])
+    assert {(f.record, f.rule_id, f.location) for f in findings} == {
+        (revision_2, "e03-sources-stale", "definition.sources[2].revision")
+    }
+
+
+def test_another_experiment_is_refused_and_not_read_under_the_e06_rules() -> None:
+    other = core.AnalysisExperiment(
+        "V2-E07", "docs/proof/experiments/v2-e07", "E07", "e07"
+    )
+    with pytest.raises(ValueError, match="V2-E07"):
+        core._record_findings(REPO_ROOT, "x", load(E06_RECORD), other, {}, latest=True)

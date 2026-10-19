@@ -360,7 +360,8 @@ them. V2-E03 fixes its population, its ten signals with the caller record as the
 reference, the API error rate as the comparator of its ranking with no ranking
 preference, and how it counts caller failures that the API error counter misses. V2-E06
 fixes two allocation views, the one measured statistic, and a local cost basis with no
-price. No analysis code and no figure exists, and the
+price. No figure of either exists, the code that computes either analysis in full does
+not exist, and the
 [pre-run readiness review](docs/proof/environment/v2-s6-006-pr1-validation.md#the-consolidated-pre-run-readiness-review)
 states what each latest freeze still owes before its first run.
 

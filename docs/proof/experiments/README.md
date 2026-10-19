@@ -95,8 +95,8 @@ the repository owner amended it](#the-reversal-timing-of-v2-e04-and-rule-set-3).
 freezes](#the-analysis-experiment-freezes) of V2-E03 and V2-E06, in their own directories,
 committed before any run of an experiment whose runs they read. Each binds the latest
 records of its sources by digest, and [`tools/analysis_preregistration`](../../../tools/analysis_preregistration/core.py)
-holds each to them. No analysis code, no figure, and no run exists, and nothing ran in that
-change.
+holds each to them. No source run and no figure of either exists, the code that computes
+either analysis in full does not exist, and nothing ran in that change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -125,8 +125,8 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E02C, API pod loss | 2 | [`v2-e02c/freeze-r2.v1alpha1.json`](v2-e02c/freeze-r2.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E04, bad release and Git reversal | 2 | [`v2-e04/freeze-r2.v1alpha1.json`](v2-e04/freeze-r2.v1alpha1.json) | One part, E04, at C2 | Frozen before any run, under rule set 3. It supersedes revision 1 with the clock policy of rule set 2 and the reversal timing as the repository owner amended it: E04-AC12 judges the recovery from Git visibility to the onset of the stabilization span against the unchanged 52,000 ms, and E04-AC8 ends its window when the desired state is restored. No run exists. [See below](#the-reversal-timing-of-v2-e04-and-rule-set-3) |
 | V2-E05, drift reconciliation | 2 | [`v2-e05/freeze-r2.v1alpha1.json`](v2-e05/freeze-r2.v1alpha1.json) | One part, E05, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
-| V2-E03, signal truthfulness | 1 | [`v2-e03/freeze-r1.v1alpha1.json`](v2-e03/freeze-r1.v1alpha1.json) | One part, E03, at C2, derived from the C2 runs of its sources | Frozen before any run of its sources. It binds revision 2 of V2-E02A, V2-E02B, and V2-E02C, the initial population, and of V2-E04, the extension, and excludes V2-E05 by a stated rule. No analysis code and no figure exists. [See below](#the-analysis-experiment-freezes) |
-| V2-E06, reliability resource and cost overhead | 1 | [`v2-e06/freeze-r1.v1alpha1.json`](v2-e06/freeze-r1.v1alpha1.json) | One part, E06, at C2: C0 for the allocation arithmetic and C2 for the figures read from runs | Frozen before any run of its sources. It binds revision 2 of V2-E02A and V2-E02B. The cost basis is local, and no cloud provider is used. No analysis code and no figure exists. [See below](#the-analysis-experiment-freezes) |
+| V2-E03, signal truthfulness | 1 | [`v2-e03/freeze-r1.v1alpha1.json`](v2-e03/freeze-r1.v1alpha1.json) | One part, E03, at C2, derived from the C2 runs of its sources | Frozen before any run of its sources. It binds revision 2 of V2-E02A, V2-E02B, and V2-E02C, the initial population, and of V2-E04, the extension, and excludes V2-E05 by a stated rule. No figure exists, and the code that computes the analysis in full does not exist. [See below](#the-analysis-experiment-freezes) |
+| V2-E06, reliability resource and cost overhead | 1 | [`v2-e06/freeze-r1.v1alpha1.json`](v2-e06/freeze-r1.v1alpha1.json) | One part, E06, at C2: C0 for the allocation arithmetic and C2 for the figures read from runs | Frozen before any run of its sources. It binds revision 2 of V2-E02A and V2-E02B. The cost basis is local, and no cloud provider is used. No figure and no code that computes one exists. [See below](#the-analysis-experiment-freezes) |
 
 ## Why a freeze comes first
 
@@ -1784,8 +1784,10 @@ truthfulness, and [`v2-e06/freeze-r1.v1alpha1.json`](v2-e06/freeze-r1.v1alpha1.j
 V2-E06, reliability resource and cost overhead. Neither experiment injects a fault or
 starts a caller. Each reads the stored evidence of the runs of other experiments, its
 **sources**. So each record fixes, before any source run exists, which runs it reads, what
-it reads from them, and how it computes. No source run, no analysis code, and no figure of
-either experiment exists, and nothing ran in that change.
+it reads from them, and how it computes. No source run and no figure of either experiment
+exists, and nothing ran in that change. Part of the V2-E03 computation exists:
+`tools/reliability_analysis` computes some figures of one run for a signal of one timeline
+stream and one tier. The rest of each analysis does not exist.
 
 The repository owner decided on 2026-10-18 that V2-E03 and V2-E06 each have their own
 freeze record before any source run. That decision was due before Sprint 6 began, and it
@@ -1833,7 +1835,8 @@ V2-E03 compares what each preregistered signal stated with what the caller recor
   planned change extends the analysis over it, and a drift that the delivery controller
   reverts is a scenario that this ranking does not preregister.
 - **The ten signals.** Signal 1 is the caller outcome, the reference truth, and is not
-  ranked. The nine candidates are the API canonical error rate (2), the Ready endpoint
+  ranked. The nine candidates are the API canonical error rate (2), from the counters
+  `inferops_inference_errors_total` and `inferops_inference_requests_total`, the Ready endpoint
   counts of the API Service (3) and the runtime Service (4), the pod readiness of the API
   tier (5) and the runtime tier (6), the Deployment ready replica count (7), the scrape
   state of the API and runtime targets (8), and the sync state (9) and health state (10)
@@ -1856,8 +1859,10 @@ V2-E03 compares what each preregistered signal stated with what the caller recor
 - **The computations.** The first change, the detection lag from the first caller impact,
   the false-healthy and the false-unavailable time, and the not-observed time of each
   signal, each with an inner and an outer figure, as `tools/reliability_analysis`
-  computes a sampled interval. A signal that is not observed is never healthy: the ranking
-  counts its not-observed time against it.
+  computes a sampled interval. A signal that is not observed is never healthy. The ranking
+  uses two ranking figures that add the not-observed time to the false-healthy and the
+  false-unavailable time, so they are stricter than the published figures, which stay
+  unchanged beside them.
 - **Ordering.** The timelines are aligned under the clock policy of the sources, and the
   record states that this is not a claim of synchronized clocks. A lead or a lag between
   a caller instant and a reading is stated only when it is more than the clock bound of
@@ -1926,26 +1931,26 @@ runs it and plants each defect below in a copy.
 | `e03-sources-stale` | The record binds each source experiment once, in its role, to the path, the revision, and the content digest of a registered freeze record of that experiment. The digest is that of the file and of its registry pin, and the latest record binds the latest revision. |
 | `e03-source-fields-differ` | The environment, the caller profile, the topology, the fault, the repetition count, the bound record, and the clock policy digest that the record states for its sources are those that each bound source states. |
 | `e03-clock-contradiction` | No text of the record states that the clock difference is not measured, orders instants by a time without the margin of the source clock policy, names synchronization or a guarantee in a sentence with no negation, or states that every run is INCONCLUSIVE, in the phrases that tools.experiment_preregistration names. |
-| `e03-analysis-code` | The record states that the code that computes its figures is pinned by a later revision before any figure is computed. Its material scope names this check, its empty procedure directory, and every revision file of each source, and each executable that it lists is pinned. |
-| `e03-population` | The initial population is the counted runs of V2-E02A, V2-E02B, and V2-E02C. The extension is the counted runs of V2-E04. V2-E05 is excluded from the ranking with a reason. No experiment is in two of them, and the record states that a later source revision needs a later revision of it. |
-| `e03-signal-set` | The preregistered signals are the ten of the record, numbered 1 to 10, each with its identifier. Signal 1 is the caller reference and is not a candidate. A further signal is labeled exploratory and is not ranked. |
+| `e03-analysis-code` | The analysis-code rule of the record names its procedure directory and holds the phrases that this check names, and no other prose of it is read. The material scope names this check, the procedure directory, and every revision file of each source, and each executable that the record lists is pinned. Whether the procedure directory exists is not read. |
+| `e03-population` | The initial population is the counted runs of V2-E02A, V2-E02B, and V2-E02C. The extension is the counted runs of V2-E04. V2-E05 is excluded from the ranking with a reason. No experiment is in two of them, and the later-source-revision rule holds the phrases that this check names. No other prose of it is read. |
+| `e03-signal-set` | The preregistered signals are the ten of the record, numbered 1 to 10, each with its identifier. Signal 1 is the caller reference and is not a candidate. A further signal is labeled exploratory, is a candidate with a number above 10, and is not ranked. |
 | `e03-signal-streams` | Each signal reads the stream of its number. Every bound source collects that stream, and the signal states the interval at which the source collects it. A timeline signal names a source that tools.reliability_analysis registers for its stream, a telemetry signal names queries of the registered query set that the sources name, and each signal states its problem, healthy, and not-observed definitions. |
-| `e03-candidate` | The operational signal candidate is signal 2, the API error rate. Its role is the comparator, it has no ranking preference, it is not declared a winner, and its statements hold the phrases that this check names. No signal is declared a winner. |
+| `e03-candidate` | The operational signal candidate is signal 2, the API error rate. Its role is the comparator, it has no ranking preference, it is not declared a winner, and its statements hold the phrases that this check names. No member of the definition named winner or predeterminedWinner is other than false, and none named rankingPreference is other than none. |
 | `e03-ranking` | The ranking rule states the earliest change, the most caller-truthful signal, the trade-off, the exploratory label, and the not-observed time. Its comparator is the candidate, and it is judged on the inner and the outer figure. |
-| `e03-caller-failures` | The record states, for each failed caller outcome, how the caller record identifies it and whether it states a canonical error code, that the false-healthy time of a signal counts every failed completion, and the two figures that it reports for each run. |
-| `e03-computations` | The record states each computation, that a signal that is not observed is never healthy, and an ordering rule that names the margin of the source clock policy and states no lead or lag inside it. |
+| `e03-caller-failures` | The record states, for each failed caller outcome, how the caller record identifies it and whether it states a canonical error code, a false-healthy rule that holds the phrase that this check names, and the two figures that it reports for each run. |
+| `e03-computations` | The record states each computation. Its not-observed computation holds the phrase never healthy, and its ordering rule holds the margin of the source clock policy and the phrase no lead or lag. No other prose of them is read. |
 | `e06-record-missing` | V2-E06 has a committed freeze record in its directory, and the record names that experiment. |
 | `e06-record-shape` | The record states its version, its kind, its experiment, an integer revision, one part, and a definition object. |
 | `e06-fields-unanswered` | Each freeze field has one entry for the one part, answered with a value or as not applicable with a reason, and never pending. |
 | `e06-sources-stale` | The record binds each source experiment once, in its role, to the path, the revision, and the content digest of a registered freeze record of that experiment. The digest is that of the file and of its registry pin, and the latest record binds the latest revision. |
 | `e06-source-fields-differ` | The environment, the caller profile, the topology, the fault, the repetition count, the bound record, and the clock policy digest that the record states for its sources are those that each bound source states. |
 | `e06-clock-contradiction` | No text of the record states that the clock difference is not measured, orders instants by a time without the margin of the source clock policy, names synchronization or a guarantee in a sentence with no negation, or states that every run is INCONCLUSIVE, in the phrases that tools.experiment_preregistration names. |
-| `e06-analysis-code` | The record states that the code that computes its figures is pinned by a later revision before any figure is computed. Its material scope names this check, its empty procedure directory, and every revision file of each source, and each executable that it lists is pinned. |
+| `e06-analysis-code` | The analysis-code rule of the record names its procedure directory and holds the phrases that this check names, and no other prose of it is read. The material scope names this check, the procedure directory, and every revision file of each source, and each executable that the record lists is pinned. Whether the procedure directory exists is not read. |
 | `e06-views` | View A compares V2-E02A and V2-E02B with the replica counts that they state. View B compares one API and one runtime replica, reconstructed by arithmetic, with the two and two of V2-E02B. |
-| `e06-labels` | Each view and each metric has one label of the three. A view or a metric that reads only configuration is not labeled measured, and a measured one reads a run stream. |
+| `e06-labels` | Each view and each metric has one label of the three and reads only registered reads. A view or a metric that reads only configuration is not labeled measured, a measured one reads a run stream, and a static allocation reads configuration alone. The utilization metric is labeled measured or unavailable, and no other view or metric is labeled measured. |
 | `e06-metrics` | The record states the six metrics, each with what it reads and a statement, and the rollout headroom definition. |
 | `e06-utilization` | The utilization statistic, its stream, its query set, its queries, its source runs, its aggregate, and its no-series rule are stated. |
-| `e06-cost-basis` | The cost basis is local, no cloud provider is used, and a later revision precedes any figure from one. |
+| `e06-cost-basis` | The cost basis is local, no cloud provider is used, its cloud rule holds the phrase that this check names, and no member of the cost basis is named price, charge, currency, or amount. |
 | `e06-evidence-target` | The evidence target is C0 for the allocation arithmetic and C2 for the figures read from runs, and the confidence of a cost is stated apart. |
 
 ### What is enforced for the analysis records, and what is not
@@ -1953,12 +1958,25 @@ runs it and plants each defect below in a copy.
 Enforced in the default lane: every rule above and every rule of the freeze check, over
 the two committed records. Not enforced:
 
-- **That an analysis follows its record.** No analysis code exists. A later change adds it
-  under a later revision of the record, which pins it. Code added outside the procedure
+- **That an analysis follows its record.** The code that computes either analysis in full
+  does not exist. For one run, `tools/reliability_analysis` computes whether a signal
+  changed, its detection lag, and its false-healthy and false-unavailable time, for a
+  signal of one timeline stream and one tier. It reads no telemetry stream. A later change
+  adds the rest, and a later revision of the record pins every part before any figure. Code added outside the procedure
   directory is listed as added only when a pinned module imports it, and the review of
   that revision checks the rest.
+- **That a phrase means what it says.** Where a rule reads named phrases, a text that
+  holds them and then says otherwise passes; a test holds one such gap. A member named
+  `winner` or `predeterminedWinner` anywhere in the V2-E03 definition must be false, and
+  one named `rankingPreference` must be `none`, but a winner stated in prose is not read.
+- **That the procedure directory is absent.** The check reads the scope, not the tree.
+  A suite test holds that no procedure directory exists today.
 - **That a definition is right.** The check reads structure, identifiers, intervals, and
-  the phrases that it names in six texts. A problem, healthy, or not-observed definition
+  the phrases that it names in seven texts of V2-E03: the two statements of the candidate,
+  the false-healthy rule of the caller failures, the not-observed computation, the ordering
+  rule, the later-source-revision rule, and the analysis-code rule. V2-E06 has two such
+  texts, its analysis-code rule and its cloud rule. The
+  contradiction scan reads every text of both records. A problem, healthy, or not-observed definition
   is held to exist, not to be correct.
 - **That a source collects what its text says.** The check reads the stream names and the
   interval from the collection text of each source. It does not run a collector.

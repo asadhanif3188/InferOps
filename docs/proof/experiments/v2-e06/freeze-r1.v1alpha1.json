@@ -206,6 +206,7 @@
     "limitations": [
       "No code that computes an E06 figure exists. A later change adds it, under a later revision of this record.",
       "View B is reconstructed by arithmetic from the target release. It is not a release, and it is not the released V1 configuration.",
+      "View B counts one API pod and one runtime pod on its single-path side, and the API and runtime pods of the target on its other side. The in-cluster telemetry collector, which the real profile deploys, and every other pod template of the release are in the total requests of View A and not in View B.",
       "The requests are those of the committed configuration. A pod that the cluster admitted with other requests is not read.",
       "Only the processor time of the API is measured. The memory of the API and every resource of the serving runtime are unavailable.",
       "A counter value is the last sample that the in-cluster collector stored, which can be older than its reading by up to one scrape interval of 30 s. The interval of a pair is the time between two evaluation instants, not between two scrapes.",
@@ -221,7 +222,7 @@
     ],
     "analysisCode": {
       "procedureDirectory": "docs/proof/experiments/v2-e06/procedure",
-      "rule": "No code that computes an E06 figure exists when this record is registered. A later change adds it. Before any figure is computed, a later revision of this record pins that code in its material scope and classifies each input that moved. The procedure directory, which does not exist at registration, is in the material scope, so a driver added there is listed as added by python -m tools.experiment_freeze --changes. Code added elsewhere is listed only when a pinned module imports it. The review of the later revision checks the rest."
+      "rule": "No code that computes an E06 figure exists when this record is registered: no code renders the chart for a view, sums a request, or computes the utilization statistic. A later change adds it. Before any figure is computed, a later revision of this record pins that code in its material scope and classifies each input that moved. The procedure directory, which does not exist at registration, is in the material scope, so a driver added there is listed as added by python -m tools.experiment_freeze --changes. Code added elsewhere is listed only when a pinned module imports it. The review of the later revision checks the rest."
     },
     "executables": [
       "tools/analysis_preregistration/__main__.py",
@@ -524,7 +525,7 @@
     {
       "path": "charts/inferops-llm/templates/_helpers.tpl",
       "sha256": "5d7d9400651d8c6c864f95aa9a30f13b3a2047b9f36fbeee13d68156bee3cd2e",
-      "role": "the chart that renders the release"
+      "role": "the scrape jobs and the k8s_component label that the up queries select"
     },
     {
       "path": "charts/inferops-llm/templates/_validate.tpl",
@@ -584,12 +585,12 @@
     {
       "path": "charts/inferops-llm/templates/telemetry-collector.yaml",
       "sha256": "3cf5b09891a77a59b2101a7eb4f7ec76d5cf27333e66711699dcfca50fae170a",
-      "role": "the scrape jobs of the in-cluster collector"
+      "role": "the in-cluster collector, which reads the scrape configuration"
     },
     {
       "path": "charts/inferops-llm/templates/telemetry-scrape-config.yaml",
       "sha256": "3fdecea5037a897bf126fa7ebb5e1dfbe2edf79078183efe7df916e6c39e5442",
-      "role": "the chart that renders the release"
+      "role": "the scrape configuration of the in-cluster collector"
     },
     {
       "path": "charts/inferops-llm/templates/tests/connection.yaml",
@@ -943,7 +944,7 @@
     },
     {
       "path": "tools/analysis_preregistration/core.py",
-      "sha256": "0635de3ea233d844da9a1fbbb9580109e881986cb9cf691fd44e3a57a4a89922",
+      "sha256": "7a8fee054475fb75acd615e467b500da5c0b672eb656b5dfc1563aed7af3613a",
       "role": "this check"
     },
     {

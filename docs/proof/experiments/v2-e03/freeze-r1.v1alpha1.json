@@ -11,7 +11,7 @@
   },
   "definition": {
     "purpose": "Compare what each preregistered signal stated with what the caller record shows, over the counted runs of the experiments that this record binds. V2-E03 injects no fault and starts no caller. It reads the stored evidence of those runs.",
-    "hypothesis": "Expected observation, not a result: a signal that reads the caller path, the API error rate or the Ready endpoint count of a Service, states the caller impact of a pod loss for a larger part of its duration than a pod readiness, a Deployment replica count, a scrape state, or a delivery controller state. The analysis is valid when this expectation does not hold, and its result then states that it does not hold.",
+    "hypothesis": "Expected observation, not a result: a signal that reads the caller path, the API error rate or the Ready endpoint count of a Service, states the caller impact of a pod loss for a larger part of its duration than a pod readiness, a Deployment replica count, a scrape state, or a delivery controller state. The analysis is valid whatever this comparison shows, and its result states what it shows.",
     "sources": [
       {
         "experiment": "V2-E02A",
@@ -118,11 +118,16 @@
             "api-requests-by-outcome",
             "api-errors-by-code"
           ],
-          "statement": "For two consecutive samples of one telemetry collection, e is the increase of the sum over the error codes of api-errors-by-code, and r is the increase of the sum over the outcomes of api-requests-by-outcome. The value of the pair is e divided by r. The API publishes its error counter only after it counts its first error, so before that error the query has no series. A reading of api-errors-by-code with the result no-series is therefore read as no counted error, but only when, in the same sample, api-requests-by-outcome is answered with a series and api-scrape-targets-up equals api-scrape-targets with at least topology.apiReplicas targets. Any other reading of api-errors-by-code with no series is not observed."
+          "counters": [
+            "inferops_inference_errors_total",
+            "inferops_inference_requests_total"
+          ],
+          "statement": "api-errors-by-code sums the counter inferops_inference_errors_total by error code. api-requests-by-outcome sums the counter inferops_inference_requests_total by outcome. For two consecutive samples of one telemetry collection, e is the increase of the error sum, and r is the increase of the request sum. The value of the pair is e divided by r.",
+          "noSeries": "The API publishes its error counter only after it counts its first error. Before that error, api-errors-by-code has no series. A reading of api-errors-by-code with no series is read as no counted error only when three conditions hold in the same sample. First, api-requests-by-outcome is answered with a series. Second, api-scrape-targets-up equals api-scrape-targets. Third, that count is at least topology.apiReplicas. Any other reading of api-errors-by-code with no series is not observed."
         },
         "problem": "A pair in which e is above zero: the API counted at least one canonical error between the two samples.",
         "healthy": "A pair in which r is above zero and e is zero.",
-        "notObserved": "A pair in which a reading of either query is not answered, a reading with no series is not read as stated above, a sum falls because a process started again or a target left, or r is zero. It is never healthy.",
+        "notObserved": "A pair in which a reading of either query is not answered, a reading with no series is not read as derivation.noSeries states, a sum falls because a process started again or a target left, or r is zero. Such a pair is not observed even when e is above zero. It is never healthy.",
         "describes": "The caller path through the API: the requests that the API answered.",
         "clock": "host"
       },
@@ -235,9 +240,9 @@
           "tier": "both",
           "statement": "The readyReplicas count of the Deployment of each tier, in one reading of the deployments stream. The availableReplicas count is also collected, and it is not this signal."
         },
-        "problem": "A reading in which the count of either tier is below its expected count: topology.apiReplicas for the API tier and topology.runtimeReplicas for the runtime tier.",
+        "problem": "A reading in which the count of either tier is reported and below its expected count: topology.apiReplicas for the API tier and topology.runtimeReplicas for the runtime tier. A reported count below its expected count states the problem even when the count of the other tier is missing.",
         "healthy": "A reading in which each tier states a count at or above its expected count.",
-        "notObserved": "A reading that is not answered, or in which the count of either tier is missing. The Kubernetes API omits a count of zero, and the deployments stream states an omitted count as missing, not as zero. So a tier with no Ready replica is not observed by this signal. It is never healthy.",
+        "notObserved": "A reading that is not answered, or a reading that states no problem and in which the count of either tier is missing. The Kubernetes API omits a count of zero, and the deployments stream states an omitted count as missing, not as zero. So a tier with no Ready replica is not observed by this signal, unless the other tier states the problem. It is never healthy.",
         "describes": "A component: the Deployment controller's count of the pods of each tier.",
         "clock": "host"
       },
@@ -265,7 +270,7 @@
         },
         "problem": "A sample in which, for either tier, u states a series below the expected replica count of the tier, or t is answered with no series.",
         "healthy": "A sample in which u states a series at or above the expected replica count of each tier.",
-        "notObserved": "A sample in which one of the four reads is not answered, or in which u has no series while t states a series. It is never healthy.",
+        "notObserved": "A sample that states no problem for either tier, and in which one of the four reads is not answered, or u has no series while t states a series. A problem of one tier is stated whatever the reads of the other tier. It is never healthy.",
         "describes": "Collector reachability: whether the in-cluster collector scraped the targets of each tier.",
         "clock": "host"
       },
@@ -321,7 +326,7 @@
       "rankingPreference": "none",
       "predeterminedWinner": false,
       "statement": "Signal 2, the API canonical error rate, is the preregistered operational signal candidate for operator use. It fills one role: the comparator of definition.ranking. It is not a predetermined ranking winner. Each signal, signal 2 included, is ranked only by the recorded evidence and definition.ranking, and the caller record stays the reference truth.",
-      "comparatorCondition": "definition.ranking names a signal most caller-truthful only when its false-unavailable time is not greater than that of the comparator, signal 2. Signal 2 meets that condition trivially, because it is compared with itself. That gives it no ranking preference: it must still have the lowest false-healthy time of all signals."
+      "comparatorCondition": "definition.ranking names a signal most caller-truthful only when its ranking false-unavailable time is not greater than that of the comparator, signal 2. Signal 2 meets that condition trivially, because it is compared with itself. That gives it no ranking preference: it must still have the lowest ranking false-healthy time of all signals."
     },
     "timeline": {
       "meaning": "Each figure of this record aligns the caller record, the timeline streams, the telemetry streams, and the operator events of one run on one time basis. That alignment is not a claim that the clocks are synchronized, and the procedure does not synchronize them. Each instant keeps the clock and the resolution that the clock policy of its source gives it. Each order and each interval across the node clock and the host clock uses the clock bound of that run and the margin of that policy.",
@@ -329,21 +334,22 @@
     },
     "callerFailures": {
       "statement": "The API error counter counts a request that the API answered with a canonical error. A caller failure can have no such count: a request that timed out, a connection that failed, an answer that was missing or not valid, or an error that the API counted in a process that ended before its next scrape.",
+      "classificationOrder": "The runner classifies a request in this order. No answer is timeout, and a failed connection is transport-error. Then an answer that names another adapter is identity-refused. Then an answer after the request timeout is timeout. Then another HTTP status is http-error. Then the required status with another model, no first choice, or no required usage counts is invalid-response. Each other answer is success.",
       "outcomes": [
         {
           "outcome": "http-error",
           "canonicalErrorCode": "when-stated",
-          "identifiedBy": "An answer with an HTTP status other than the required status. The caller record keeps errorCode and errorCondition for this outcome alone, and only when the answer stated them."
+          "identifiedBy": "An answer within the request timeout, from the required adapter or naming no adapter, with an HTTP status other than the required status. The caller record keeps errorCode and errorCondition for this outcome alone, and only when the answer stated them."
         },
         {
           "outcome": "invalid-response",
           "canonicalErrorCode": "never",
-          "identifiedBy": "An answer with the required status whose body the runner could not read as the required completion."
+          "identifiedBy": "An answer within the request timeout with the required status that names another model, holds no first choice, or holds no usage counts where the run requires them."
         },
         {
           "outcome": "timeout",
           "canonicalErrorCode": "never",
-          "identifiedBy": "No answer before the request timeout of the runner, or an answer after it. The request line holds no HTTP status, or a latency above the timeout."
+          "identifiedBy": "No answer before the request timeout, or an answer that arrived after it and names the required adapter or no adapter. The request line holds no HTTP status, or a latency above the timeout."
         },
         {
           "outcome": "transport-error",
@@ -353,7 +359,7 @@
         {
           "outcome": "identity-refused",
           "canonicalErrorCode": "never",
-          "identifiedBy": "An answer from an adapter or a model other than the one that the run requires."
+          "identifiedBy": "An answer that names an adapter other than the required one, at any status and at any latency."
         }
       ],
       "falseHealthy": "The false-healthy time of each signal counts every failed completion of the caller record, whatever its outcome, and whether or not it states a canonical error code. A failure that the API error counter did not count is therefore false-healthy time of signal 2 when signal 2 states healthy.",
@@ -375,7 +381,7 @@
       "detectionLag": "For each signal, the start instant of the first reading at or after the search start that states the problem, less the first caller impact. A negative lag means that the signal stated the problem before the first caller impact. definition.ordering decides whether a lead or a lag is stated.",
       "falseHealthy": "For each signal, the time in which the caller fails and the signal states healthy. The caller fails during each failure episode of the caller record: from the completion of its first failed request to the completion of the next successful one. An episode with no later success inside the window lasts to the end of the window.",
       "falseUnavailable": "For each signal, the time in the window after the first completion and outside every failure episode in which the signal states the problem.",
-      "notObserved": "For each signal, the time in which no reading gives it a state, inside and outside the failure episodes. A signal that is not observed is never healthy and never a problem. This time is stated on its own, and definition.ranking counts it against the signal.",
+      "notObserved": "For each signal, the time in which no reading gives it a state, inside and outside the failure episodes. A signal that is not observed is never healthy and never a problem. This time is stated on its own, and the ranking figures of definition.ranking count it against the signal.",
       "figures": "Each duration of a sampled signal is two figures, as tools.reliability_analysis computes a sampled interval. The inner figure is the time between consecutive readings that both gave the state, and it does not cross a reading with no state. The outer figure is the time between the nearest readings on each side that gave another state. No figure states the state between two readings.",
       "changed": "For each signal and each run, whether any reading in the window states a state other than that of the first reading of the window.",
       "describes": "For each signal and each run, whether the signal reads the tier that the fault of the source changed, or the caller path through the API Service. The fault of the source names its target: the runtime tier in V2-E02A and V2-E02B, the API tier in V2-E02C, and the release in V2-E04."
@@ -383,7 +389,7 @@
     "ordering": "A lead or a lag between a caller instant, on the node clock, and a reading, on the host clock, is stated only when its size is more than the clock bound of the run plus the coarser resolution of the two sources. Otherwise no lead or lag is stated, and the result states the reason clock-bound-reached. The clock bound of each run is the one that its source record computes from P8. Two readings of the host clock are ordered to the coarser resolution of their two sources, as the source policy states for one clock.",
     "ranking": {
       "earliest": "The result may state that a signal changed earliest in one scenario only from the recorded instants of that scenario, and only when the result holds under definition.ordering.",
-      "mostCallerTruthful": "The result may state that one signal was the most caller-truthful of the preregistered signals in the scenarios of a population only when two conditions hold over the counted runs of that population: the signal has the lowest total false-healthy time, and its total false-unavailable time is not greater than that of the comparator. Both conditions hold for the inner and for the outer figures.",
+      "mostCallerTruthful": "The result may state that one signal was the most caller-truthful of the preregistered signals in the scenarios of a population only when two conditions hold over the counted runs of that population. First, the signal has the lowest total ranking false-healthy time. Second, its total ranking false-unavailable time is not greater than that of the comparator. Each condition must hold for the inner figures and for the outer figures.",
       "comparator": "api-error-rate",
       "figures": [
         "inner",
@@ -391,7 +397,7 @@
       ],
       "tradeOff": "When no signal holds both conditions, or when two signals trade one condition against the other, the result publishes the trade-off and names no signal.",
       "exploratory": "A signal that is added after any result of the population is seen is labeled exploratory. It is not ranked with the ten signals of this record.",
-      "notObserved": "For the ranking, the time in which a signal is not observed counts against it: inside a failure episode as false-healthy time, and outside one as false-unavailable time. The not-observed time is also published on its own.",
+      "notObserved": "The ranking uses two ranking figures for each signal. The ranking false-healthy time is the false-healthy time plus the not-observed time inside the failure episodes. The ranking false-unavailable time is the false-unavailable time plus the not-observed time outside them. So the time in which a signal is not observed counts against it. The two ranking figures are stricter than the figures of definition.computations, which are published unchanged beside them, with the not-observed time on its own.",
       "scope": "The ranking reads the initial population, and later the population with the extension. Each result names its population. Signal 1 is the reference and is not ranked."
     },
     "doesNotEstablish": [
@@ -402,7 +408,7 @@
       "An alert threshold, a service level, or an availability."
     ],
     "limitations": [
-      "No code that computes an E03 figure exists. tools.reliability_analysis reads no telemetry stream, so signals 2 and 8 need code that a later change adds, under a later revision of this record.",
+      "Part of the code exists. For one run, tools.reliability_analysis computes whether a signal changed, its detection lag, and its false-healthy and false-unavailable time with inner and outer figures, for a signal of one timeline stream and one tier. It reads no telemetry stream, and it reads one tier for each signal. No code computes signals 2 and 8, signal 7 over its two tiers, the first change, the not-observed time, the two caller-failure figures, the ranking figures, or the ranking over runs. A later change adds that code under a later revision of this record.",
       "Signals 2 and 8 read values that the in-cluster collector stored. A value can be older than its reading by up to one scrape interval of 30 s, and the collection reads every 15 s. So the first change of these signals can follow a change of the API by up to the sum of the two intervals.",
       "Signal 2 reads a no-series answer of the error query as no counted error only under the conditions of its derivation. That reading rests on the API publishing its error counter only after it counts its first error, as src/inferops/api/observability.py does in the pinned content.",
       "When a process of the API starts again, or its target leaves, a counter sum falls. The errors that the process counted after its last scrape are then in no reading. The pair with the fall is not observed, and the failures-without-counter-change figure can count those errors as missing.",
@@ -421,7 +427,7 @@
     ],
     "analysisCode": {
       "procedureDirectory": "docs/proof/experiments/v2-e03/procedure",
-      "rule": "No code that computes an E03 figure exists when this record is registered. A later change adds it. Before any figure is computed, a later revision of this record pins that code in its material scope and classifies each input that moved. The procedure directory, which does not exist at registration, is in the material scope, so a driver added there is listed as added by python -m tools.experiment_freeze --changes. Code added elsewhere is listed only when a pinned module imports it. The review of the later revision checks the rest."
+      "rule": "When this record is registered, part of the code exists: tools.reliability_analysis computes some figures of one run for a signal of one timeline stream and one tier, as definition.limitations states. The rest does not exist, and a later change adds it. Before any E03 figure is computed, with existing or with added code, a later revision of this record pins that code in its material scope and classifies each input that moved. The procedure directory, which does not exist at registration, is in the material scope, so a driver added there is listed as added by python -m tools.experiment_freeze --changes. Code added elsewhere is listed only when a pinned module imports it. The review of the later revision checks the rest."
     },
     "executables": [
       "tools/analysis_preregistration/__main__.py",
@@ -680,7 +686,7 @@
     ]
   },
   "materialScope": {
-    "description": "The path of one analysis: the import closure of the tools that read the stored evidence of a source run, this check, and the freeze checks; this record's procedure directory, which does not exist at registration, so that analysis code added there is listed as added; every revision file of each source experiment, so that a later source revision is listed as added; the records that the sources name; the caller profile; and the API and chart files that decide what signals 2 and 8 read.",
+    "description": "The path of one analysis: the import closure of the tools that read the stored evidence of a source run, this check, and the freeze checks; this record's procedure directory, which does not exist at registration, so that analysis code added there is listed as added; every revision file of each source experiment, so that a later source revision is listed as added; the records that the sources name; the caller profile; and the API and chart files that decide what signals 2 and 8 read: the error counter of the API, the scrape interval, the scrape configuration, and the scrape jobs.",
     "entryModules": [
       "tools.analysis_preregistration.__main__",
       "tools.experiment_freeze.__main__",
@@ -710,15 +716,27 @@
       "src/inferops/api/observability.py",
       "src/inferops/telemetry/names.py",
       "charts/inferops-llm/values.yaml",
-      "charts/inferops-llm/templates/telemetry-collector.yaml"
+      "charts/inferops-llm/templates/telemetry-collector.yaml",
+      "charts/inferops-llm/templates/telemetry-scrape-config.yaml",
+      "charts/inferops-llm/templates/_helpers.tpl"
     ],
     "exclusions": []
   },
   "pinnedInputs": [
     {
+      "path": "charts/inferops-llm/templates/_helpers.tpl",
+      "sha256": "5d7d9400651d8c6c864f95aa9a30f13b3a2047b9f36fbeee13d68156bee3cd2e",
+      "role": "the scrape jobs and the k8s_component label that the up queries select"
+    },
+    {
       "path": "charts/inferops-llm/templates/telemetry-collector.yaml",
       "sha256": "3cf5b09891a77a59b2101a7eb4f7ec76d5cf27333e66711699dcfca50fae170a",
-      "role": "the scrape jobs of the in-cluster collector"
+      "role": "the in-cluster collector, which reads the scrape configuration"
+    },
+    {
+      "path": "charts/inferops-llm/templates/telemetry-scrape-config.yaml",
+      "sha256": "3fdecea5037a897bf126fa7ebb5e1dfbe2edf79078183efe7df916e6c39e5442",
+      "role": "the scrape configuration of the in-cluster collector"
     },
     {
       "path": "charts/inferops-llm/values.yaml",
@@ -1022,7 +1040,7 @@
     },
     {
       "path": "tools/analysis_preregistration/core.py",
-      "sha256": "0635de3ea233d844da9a1fbbb9580109e881986cb9cf691fd44e3a57a4a89922",
+      "sha256": "7a8fee054475fb75acd615e467b500da5c0b672eb656b5dfc1563aed7af3613a",
       "role": "this check"
     },
     {
