@@ -79,13 +79,24 @@ policy applies for the first time: inside it, the comparison is not judged, for
 `clock-bound-reached`.
 
 **Why the onset can precede `reversalStart`.** `tools/reliability_analysis` searches for
-the span from the `fault-injection-finished` event. A span holds the reversal commit as
-its expected revision, so it holds at least one argo reading that reports it, but its
-first request can complete between the last argo reading that reports another revision
-and `reversalStart`. That needs the controller to resolve the commit within about one
-reading interval of the push. When it happens, the span of the analysis is not the span
-that the definition names, and no figure states that span, so E04-AC12 is not judged.
-The record registers a reason for it rather than trusting the analysis's span.
+the span from the `fault-injection-finished` event. A reading that does not hold the
+reversal commit with `Synced` blocks the span only until that reading finishes, so a span
+holds at least one argo reading that reports the commit with `Synced`, but its first
+request can complete between the last argo reading that does not and `reversalStart`.
+That needs the controller to resolve and sync the commit within about one reading of the
+push. When it happens, the span of the analysis is not the span that the amended
+definition names, and no figure states that span, so E04-AC12 is not judged, for
+`recovery-onset-not-after-reversal`.
+
+**That reason is a rule of this record, not of the amended definition.** The amended
+definition would take the first span that starts after `reversalStart` and then
+completes. No tool computes it, and the record does not ask the review to compute it by
+hand. So the reason can make `INCONCLUSIVE` a run that the amended definition would
+judge `PASSED`, or `FAILED` when no such span starts within 52,000 ms of `reversalStart`.
+That second case is a relaxation, in a case that needs the controller to resolve the
+commit within about one reading of the push. It was chosen before any run, and the
+record states it as a limitation. The repository owner may prefer the other choice: a
+later revision can replace the reason with a computed onset before any run.
 
 ## Every member that differs from revision 1
 
@@ -97,9 +108,9 @@ holds this list.
 | `metadata.revision`, `registered`, `registeredBy`, `supersedes`, `preregistrationRules` | 2; 2026-10-19; `V2-S6-005-PR1`; revision 1 by path and digest; rule set 3 | A revision states the one it supersedes and its rule set |
 | `definition.hypothesis` | Its last sentence no longer calls the bound an expected observation; it states that most runs are not expected to meet it | The expected consequence |
 | `definition.gitTransitions`, T3 | The operator records `reversal-created` immediately before the push, reads `main` on the remote until a read reports the commit, and then records `reversal-accepted`; the transcript holds the push and each read | The bracket of `reversalStart` |
-| `definition.detectionRule` | An object: `rule` is revision 1's text unchanged, with 22,000 ms; `clocks` states that the age runs from a Kubernetes timestamp to a reading, that the rule is an operator rule and not a verdict, and how the margin applies | The clock policy |
+| `definition.detectionRule` | An object: `rule` is revision 1's text unchanged, with 22,000 ms; `clocks` states that the age runs from a Kubernetes timestamp to a reading, that the rule is an operator rule and not a verdict, and that the operator now declares detection only past 22,000 ms plus the margin known during the run | The clock policy; a change of the procedure, stated below |
 | `definition.reversalTiming` | Replaced: the five instants, `recoveryEnd`, the three intervals, and the operator events. The revision-1 member `split`, which put the discovery in the operator interval, is removed | The amended timing |
-| `definition.limitations` | The clock limitation rewritten, and the analysis limitation added, as in the four records of rule set 2; the discovery limitation now puts the discovery inside `recoveryMs`; three added: the record taken before the push, the template read from `Synced`, and that no tool computes the timing; the latest-revision limitation added | The policy; the amended timing |
+| `definition.limitations` | The clock limitation rewritten, and the analysis limitation added, as in the four records of rule set 2; the discovery limitation now puts the discovery inside `recoveryMs`; four added: the record taken before the push, the template read from `Synced`, that no tool computes the timing, and that `recovery-onset-not-after-reversal` is a rule of the record beyond the amendment; the latest-revision limitation added. Six added in all, one rewritten, one replaced, fifteen in all | The policy; the amended timing |
 | `definition.history` | Four entries added: revision 2, when revision 1 chose its timing, the amendment, and the expected consequence | What was known |
 | `definition.preparation` | P1 gains the latest-revision clause, and P8 names the policy, as in the four records of rule set 2 | The policy |
 | `definition.window.clocks` | As in the four records of rule set 2 | It stated the contradiction |
@@ -114,10 +125,11 @@ holds this list.
 
 **Unchanged:** the fault, the topology, the detection threshold of 22,000 ms, the
 containment criteria E04-AC9, E04-AC10, E04-AC11, and E04-AC13, the validity criteria
-E04-AC1 to E04-AC7, the repetitions, the third-run signature, the windows, the
-observation limit, the post-recovery window, the abort conditions, the cleanup, the
-evidence paths, the analysis declaration, the material scope, and every bound of
-`derivedNumericBounds`.
+E04-AC1 to E04-AC7, the repetitions, the third-run signature, the two bounds of the
+window, `definition.window.from` and `definition.window.to`, the observation limit, the
+post-recovery window, the abort conditions, the cleanup, the evidence paths, the
+analysis declaration, the material scope, and every bound of `derivedNumericBounds`. The
+clock text of the window, `definition.window.clocks`, changes as listed above.
 
 **E04-AC8 keeps its coverage.** Revision 1 ended its window at its `reversalStart`, the
 start of the last argo reading before the reversal commit was resolved. Revision 2 moves
@@ -126,19 +138,24 @@ finish of an argo reading that reports the reversal commit, which is always late
 that start. When `desiredStateRestored` is not established, the window ends at the end
 of the window. No containment window is shorter than under revision 1.
 
-**The detection rule.** Its threshold is unchanged. The age is the start of a pods
-reading, on the host clock, less the `createdAt` of a pod, on the node clock to the
-second. During the run the operator applies the margin from the start reading of P8
-alone, because the end reading follows the window, so a detection can be declared up to
-that margin later than 22,000 ms. No verdict is judged from the detection rule; it moves
-`operatorDecisionMs` alone. The result page states the age at the detection reading and
+**The detection rule changes the procedure.** Its threshold of 22,000 ms is unchanged.
+The age is the start of a pods reading, on the host clock, less the `createdAt` of a pod,
+on the node clock to the second. Revision 1 declared detection at the first pods reading
+with an age of at least 22,000 ms. Revision 2 declares it at the first reading whose age
+exceeds 22,000 ms by more than d plus w of the start reading of P8 alone, plus 1,000 ms,
+because the end reading follows the window. So detection can come later than under
+revision 1 by up to that margin plus one reading interval, and the reversal with it. No
+verdict is judged from the detection rule, and `operatorDecisionMs`, which starts at
+`detection-reviewed`, does not grow with it. What moves is the reversal in time: the bad
+rollout stays exposed to the containment criteria for longer, and less of the
+observation limit is left. The result page states the age at the detection reading and
 whether it exceeds 22,000 ms by more than the margin of the run.
 
 ## The registry row and the moved pins
 
 | Record | Supersedes | Registered content digest |
 |---|---|---|
-| `v2-e04/freeze-r2` | `v2-e04/freeze-r1`, `0dcc3b1c…4e5d` | `80d4fc4b57f219c476b17672269fd3b5ac72388093892a26ad0eefbb12a219ff` |
+| `v2-e04/freeze-r2` | `v2-e04/freeze-r1`, `0dcc3b1c…4e5d` | `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619` |
 
 | Moved pin | Material | Reason |
 |---|---|---|
@@ -176,9 +193,9 @@ equality.
 
 | Rule | Holds |
 |---|---|
-| `prereg-reversal-instants` | The five instants, each with a definition, its source, and its clock; `reversalStart` of kind `git-visibility`, bracketed by two operator events, judged at the earlier end, and not established for `reversal-start-unconfirmed`; `stabilizationOnset` read from `stabilizedRecovery.span.first.finishedAt`, of a completed span only, after `reversalStart`, and not judged for `recovery-onset-not-after-reversal` otherwise; `stabilizedAt` read from `stabilizedRecovery.stabilizedAt`, inside the observation limit; `recoveryEnd` is `stabilizationOnset` |
+| `prereg-reversal-instants` | The five instants, each with a definition, its source, and its clock; `reversalStart` of kind `git-visibility`, bracketed by two operator events, judged at the earlier end, and not established for `reversal-start-unconfirmed`; `stabilizationOnset` read from `stabilizedRecovery.span.first.finishedAt`, of a completed span only, after `reversalStart`, and not judged for `recovery-onset-not-after-reversal` otherwise; `stabilizedAt` read from `stabilizedRecovery.stabilizedAt`, inside the observation limit; `recoveryEnd` is `stabilizationOnset`; the definition of `reversalStart`, its two bracket ends, and the definition of `stabilizationOnset` hold the phrases that the check names |
 | `prereg-reversal-intervals` | The three intervals with their start, end, and judging criterion, and the four operator events |
-| `prereg-reversal-criteria` | E04-AC12 judges `recoveryMs` against `reversal_recovery_bound_ms` with the value, the formula, and the bound record of `derivedNumericBounds`, which the existing bound rules hold to `bounds-r1`; its one interval entry runs from an operator event to a caller record, cross-clock; E04-AC8 ends its window at `desiredStateRestored` |
+| `prereg-reversal-criteria` | E04-AC12 judges `recoveryMs` against `reversal_recovery_bound_ms` with the value, the formula, and the bound record of `derivedNumericBounds`, which the existing bound rules hold to `bounds-r1`; its one interval entry runs from an operator event to a caller record, cross-clock; E04-AC8 ends its window at `desiredStateRestored`; each of the two is stated once |
 | `prereg-reversal-reasons` | Both timing reasons registered for `INCONCLUSIVE` and named by the outcome rules |
 
 The suite plants each defect in a copy of revision 2 and asserts the exact findings:
@@ -192,8 +209,9 @@ removed, and the rule that names it removed; the onset reason removed; the onset
 from `stabilizedAt`; the onset no longer held after `reversalStart`; `stabilizedAt` no
 longer held inside the limit; `recoveryMs` not judged; the operator events cut to one; a
 clock policy of V2-E04 that differs; a V2-E04 revision 2 of rule set 2 and of none; a
-V2-E04 record without a reversal timing; and ten malformed members, each a finding and
-never an error. Revision 1 of V2-E04 still passes under rule set 1, is byte-identical, and
+V2-E04 record without a reversal timing; and ten malformed members, each a finding of a
+rule that reads the member and never an error. The second commit adds fourteen more,
+listed below with the review. Revision 1 of V2-E04 still passes under rule set 1, is byte-identical, and
 is not held to the timing rules.
 
 **The analysis semantics.** Two tests run `tools/reliability_analysis` on the committed
@@ -204,8 +222,9 @@ cannot be read for the other. With one completion inside that span turned into a
 the analysis states no stabilized recovery, and both members state nothing: an
 interrupted span gives no onset.
 
-**Known gaps.** The timing rules read the structure of a record, not its prose: a
-definition is held to be non-empty, not to say what its structure says. They do not read
+**Known gaps.** The timing rules read the structure of a record. Of its prose they read
+only the phrases that the check names in four texts, so a text that holds them can still
+say something else, and every other definition is held only to be non-empty. They do not read
 a run, and no tool computes `reversalStart`, `controllerObserved`,
 `desiredStateRestored`, or the three intervals: the review of each run computes them
 from the evidence. Nothing checks that the operator records `reversal-created`
@@ -232,7 +251,7 @@ immediately before the push.
 
 ## Validation
 
-Run from Git Bash, at the first commit of this change.
+Run from Git Bash. The first table is of the first commit, `ca3acb8`.
 
 | Check | Command | Result |
 |---|---|---|
@@ -248,6 +267,79 @@ Run from Git Bash, at the first commit of this change.
 | Related suites | `python -m pytest` over the preregistration, freeze, analysis-replay, reliability-analysis, test-inventory, and document-link suites | 2,634 passed, 1 skipped |
 | Whitespace | `git diff --check` | Clean |
 | Default lane | `python -m pytest -q` | 23,037 passed, 42 skipped, 14 deselected, in 68 min |
+
+The second table is of the second commit, which closes the review findings below.
+
+| Check | Command | Result |
+|---|---|---|
+| Freeze and preregistration checks | `python -m tools.experiment_freeze --check`, `python -m tools.experiment_preregistration --check` | `PASSED: 22 freeze record(s), every rule held`; `PASSED: 5 experiment record(s) and 5 superseded revision(s), every rule held` |
+| Changed inputs | `python -m tools.experiment_freeze --changes RECORD` | V2-E04 revision 2 lists none, exit 0. V2-E04 revision 1 lists the three files of the check, and each revision 2 of rule set 2 lists `core.py`, exit 1 |
+| Bounds, consumed records, and evidence index | the six `--check` commands above, and `evidence_index --gate` | Each exit 0 |
+| Lint, format, and types | `ruff check .`, `ruff format --check .`, and `mypy` as above, also with `--platform linux` | All checks passed; 790 files already formatted; no issues in 191 source files, both |
+| Whitespace | `git diff --check` | Clean |
+| Default lane | `python -m pytest -q` | 23,052 passed, 42 skipped, 14 deselected, in 79 min |
+
+## Independent review of the first commit
+
+Two independent reviews read the first commit: one of the check and its suite, one of
+the record and the pages against the amended definition and the repository. Neither
+found a critical defect. The second commit corrects every finding below. The record was
+generated and registered again, so its registered digest is not that of the first
+commit.
+
+**What the first commit got wrong, in the check:**
+
+- A second E04-AC12 or E04-AC8 hid a defective first one. The criteria were read into a
+  map by identifier, so the last copy won: a record with a wrong first E04-AC12 and a
+  conforming copy after it passed. Each of the two must now be stated once, and the
+  first copy is the one read.
+- The rule statement said that `reversalStart` is bracketed and that the onset follows
+  it, and the check read only flags and member names. Bracket ends of "x" and "y", the
+  two ends swapped, and an onset defined as "the stabilizedAt instant" all passed. The
+  check now reads named phrases in four texts, and the rule statement says that no other
+  prose is read.
+- The malformed-member test asserted only that some finding named the record. It now
+  holds the rule of each finding.
+- No negative test reached a wrong source of `controllerObserved`, a wrong clock of
+  `stabilizedAt`, another reason or another instant in the onset rule, another interval
+  in E04-AC12, an E04-AC8 statement that names `reversalStart`, outcome rules that do not
+  name a timing reason, or an E04-AC12 interval entry declared twice or not at all. The
+  suite now plants each.
+- No test held that each record is read under the rule set it was registered under. One
+  does now.
+
+**What the first commit got wrong, in the record and the pages:**
+
+- This record said that the detection rule moves `operatorDecisionMs` alone, and that
+  detection can be declared up to the margin later. Both were false: the interval starts
+  at `detection-reviewed` and does not grow, the delay is up to the margin plus one
+  reading interval, and what moves is the reversal in time. The pages did not say that
+  the procedure changed. Each says so now, and the record names d plus w of the start
+  reading, which its policy defines, in place of a clock bound of the start reading,
+  which it does not.
+- `recovery-onset-not-after-reversal` was presented as following from the amended
+  definition. It is a rule of the record, and in a rare case it relaxes a `FAILED`
+  verdict to `INCONCLUSIVE`. The record states it as a limitation, and this record and
+  the experiments page state its consequences. Its boundary was described as the last
+  argo reading that reports another revision; it is the last reading that does not hold
+  the reversal commit with `Synced`.
+- The experiments page said that three limitations were added and that the windows were
+  unchanged. Six were added, and the clock text of the window changed. The page now
+  lists the members that change as in the four records of rule set 2, and this record
+  no longer lists the windows as unchanged.
+- The reason `reversal-start-unconfirmed` left out a missing read in the transcript,
+  which the rule it names includes. CONTRIBUTING said that every revision of V2-E04
+  states rule set 3, which revision 1 does not. The CHANGELOG did not say that the
+  amendment came after the Q4 values were known. Each is corrected.
+- The definition of `reversalStart` repeated the wording of a source outside the
+  repository. It is reworded.
+- The validation table of this record held placeholders when the reviews read it. It
+  was filled from the runs before the first commit.
+
+**Kept, and why.** The clause of `prereg-rule-set-unknown` that a V2-E04 record after
+revision 1 states rule set 3 or later stays in that rule, which selects the rule set of a
+record. A test now holds the rule set of every registered record. The four records of
+rule set 2 stay unrunnable until a later revision of each classifies `core.py`.
 
 ## What this does not establish
 

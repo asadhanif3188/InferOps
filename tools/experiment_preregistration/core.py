@@ -84,7 +84,9 @@ a span that completed, and it is ``recoveryEnd``. The record states ``recoveryMs
 ``gitopsDiscoveryMs``, and ``operatorDecisionMs`` with their ends, E04-AC12 judges
 ``recoveryMs`` cross-clock against the bound of ``derivedNumericBounds``, E04-AC8
 ends its window at ``desiredStateRestored``, and two exclusion reasons leave
-E04-AC12 not judged when an instant is not established. Rule set 2 is not edited:
+E04-AC12 not judged when an instant is not established. Beside the structure, they
+read the phrases of :data:`REVERSAL_PHRASES` in four texts, and no other prose: a
+text that holds the phrases can still say something else. Rule set 2 is not edited:
 each record registered under it reads as it did. The rules read the structure that
 a record states. They do not read a run.
 
@@ -444,6 +446,31 @@ GIT_VISIBILITY: Final = "git-visibility"
 EARLIER: Final = "earlier"
 BRACKET_ENDS: Final = ("earlier", "later")
 
+#: The phrases that the prose of the reversal timing holds, by the path of its member
+#: under ``instants``. They tie the earlier end of the bracket to the record taken
+#: before the push, the later end to the confirming read, and the onset to the first
+#: request of a completed span. The rules read these phrases and no other prose, so a
+#: text that holds them can still say something else.
+REVERSAL_PHRASES: Final[Mapping[tuple[str, ...], tuple[str, ...]]] = {
+    ("reversalStart", "definition"): (
+        "remote that the controller reads",
+        "not a controller observation",
+    ),
+    ("reversalStart", "bracket", "earlier", "instant"): (
+        "reversal-created",
+        "immediately before the push",
+    ),
+    ("reversalStart", "bracket", "later", "instant"): (
+        "first read of main",
+        "reversal-accepted",
+    ),
+    ("stabilizationOnset", "definition"): (
+        "first request",
+        "starts after reversalStart",
+        "observed complete without interruption",
+    ),
+}
+
 #: The member of a run analysis from which each caller instant is read. The span
 #: that ``tools.reliability_analysis`` states is one that completed: ``span.first``
 #: names its first request, with the completion instant ``finishedAt``, and
@@ -644,7 +671,10 @@ RULES: Final[Mapping[str, str]] = {
         "judged when it is not established. stabilizationOnset is read from "
         "stabilizedRecovery.span.first.finishedAt of a span that completed, and follows "
         "reversalStart. stabilizedAt is read from stabilizedRecovery.stabilizedAt "
-        "inside the observation limit. recoveryEnd is stabilizationOnset."
+        "inside the observation limit. recoveryEnd is stabilizationOnset. The "
+        "definition of reversalStart, its two bracket ends, and the definition of "
+        "stabilizationOnset hold the phrases that this check names, and no other prose "
+        "is read."
     ),
     "prereg-reversal-intervals": (
         "A V2-E04 record of rule set 3 states recoveryMs from reversalStart to "
@@ -658,7 +688,8 @@ RULES: Final[Mapping[str, str]] = {
         "reversal_recovery_bound_ms with the value, the formula, and the bound record "
         "of derivedNumericBounds, and declares that interval cross-clock, from "
         "reversalStart on the host clock to stabilizationOnset on the node clock. "
-        "E04-AC8 ends its window at desiredStateRestored."
+        "E04-AC8 ends its window at desiredStateRestored. Each of the two criteria is "
+        "stated once."
     ),
     "prereg-reversal-reasons": (
         "A V2-E04 record of rule set 3 registers reversal-start-unconfirmed and "
@@ -1761,6 +1792,18 @@ def _instant_findings(name: str, document: Mapping[str, Any]) -> Iterator[Findin
             "reversalStart is not bracketed by two operator-event instants and judged "
             "at the earlier end",
         )
+    for path, phrases in REVERSAL_PHRASES.items():
+        text: Any = instants
+        for step in path:
+            text = text.get(step) if isinstance(text, Mapping) else None
+        missing = [p for p in phrases if not isinstance(text, str) or p not in text]
+        if missing:
+            yield Finding(
+                rule,
+                name,
+                f"{base}.instants.{'.'.join(path)}",
+                "it does not hold the phrases " + ", ".join(repr(p) for p in missing),
+            )
     absent = _member(start, "notEstablished")
     if (
         absent.get("reason") != REVERSAL_START_UNCONFIRMED
@@ -1866,10 +1909,24 @@ def _reversal_criterion_findings(
     name: str, document: Mapping[str, Any]
 ) -> Iterator[Finding]:
     rule = "prereg-reversal-criteria"
-    criteria: dict[str, tuple[int | None, Mapping[str, Any]]] = {
-        c["id"]: (index, c)
+    listed = [
+        (index, c)
         for index, c in enumerate(_value(document, "acceptanceCriteria"))
         if isinstance(c.get("id"), str)
+    ]
+    # A second criterion of one identifier would let a conforming copy hide a
+    # defective one, so each of the two is stated once.
+    for identifier in (RECOVERY_CRITERION, CONTAINMENT_CRITERION):
+        count = sum(1 for _, c in listed if c["id"] == identifier)
+        if count != 1:
+            yield Finding(
+                rule,
+                name,
+                "fields.acceptanceCriteria",
+                f"{identifier} is stated {count} times, and not once",
+            )
+    criteria: dict[str, tuple[int | None, Mapping[str, Any]]] = {
+        c["id"]: (index, c) for index, c in reversed(listed)
     }
     absent: tuple[int | None, Mapping[str, Any]] = (None, {})
     bounds = _value(document, "derivedNumericBounds")

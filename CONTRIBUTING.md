@@ -684,8 +684,8 @@ A later revision states its rule set in `metadata.preregistrationRules`, and a r
 rule set 2 states the one clock policy of rule set 2 word for word. Do not write that the
 clocks are synchronized, that a bound is guaranteed, or that the clock difference is not
 measured: the check refuses the phrases that it names, and a paraphrase can pass it. Never edit the rule set that a registered record is read
-under: a change of the rules is a new rule set. A revision of V2-E04 states rule set 3 or
-later, which holds the reversal timing as the repository owner amended it, and never
+under: a change of the rules is a new rule set. A revision of V2-E04 after revision 1 states
+rule set 3 or later, which holds the reversal timing as the repository owner amended it, and never
 judges the recovery from a controller observation or to the end of the stabilization
 span.
 [The records' description](docs/proof/experiments/README.md#the-reliability-experiment-freezes)

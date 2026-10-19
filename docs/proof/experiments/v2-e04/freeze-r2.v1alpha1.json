@@ -27,13 +27,13 @@
     ],
     "detectionRule": {
       "rule": "The operator declares the bad state detected at the first pods reading in which a runtime pod of a template hash that no runtime pod had before the fault has existed for at least 22,000 ms, twice runtime_start_bound_ms of 11,000 ms, without a Ready condition True. At that reading the operator records detection-reviewed, and then decides the reversal.",
-      "clocks": "The age of a pod is the start of a pods reading, on the host clock, less the createdAt instant of the pod, a Kubernetes timestamp on the node clock, to the second. It is an interval between the two clocks. The detection rule is an operator rule and not a verdict: no criterion is judged from it, and its threshold of 22,000 ms is unchanged. The operator applies it with the margin of definition.clockPolicy.boundComparison as far as it is known during the run: detection is declared only at a reading in which the age exceeds 22,000 ms by more than the clock bound of the start reading of P8 plus 1,000 ms, the coarser resolution of the two sources, because the end reading of P8 follows the window. The result page states the age at the detection reading, and whether it exceeds 22,000 ms by more than the clock bound of the run plus the coarser resolution of the two sources."
+      "clocks": "The age of a pod is the start of a pods reading, on the host clock, less the createdAt instant of the pod, a Kubernetes timestamp on the node clock, to the second. It is an interval between the two clocks. The detection rule is an operator rule and not a verdict: no criterion is judged from it, and its threshold of 22,000 ms is unchanged. The operator applies it with the margin of definition.clockPolicy.boundComparison as far as it is known during the run, because the end reading of P8 follows the window: detection is declared only at a reading in which the age exceeds 22,000 ms by more than d plus w of the start reading of P8 alone, as definition.clockPolicy.bound defines them, plus 1,000 ms, the coarser resolution of the two sources. Revision 1 declared detection at the first reading with an age of at least 22,000 ms, so revision 2 can declare it, and the operator can then reverse, later by up to that margin plus one reading interval. The result page states the age at the detection reading, and whether it exceeds 22,000 ms by more than the clock bound of the run plus the coarser resolution of the two sources."
     },
     "reversalTiming": {
       "statement": "The instants and the intervals of the reversal, as the repository owner amended their definition by change control on 2026-10-18. Each instant names its source and its clock in the inventory of definition.clockPolicy, and each interval names its start and its end. E04-AC12 judges recoveryMs. gitopsDiscoveryMs and operatorDecisionMs are reported, and no criterion compares either with a bound.",
       "instants": {
         "reversalStart": {
-          "definition": "The instant at which the accepted reversal commit is verifiably visible in the authoritative remote desired state: the head of main, the branch that the Application follows, on the remote that the controller reads. It is not a controller observation, and no argo reading sets it.",
+          "definition": "The instant at which the accepted reversal commit can be confirmed as the head of main, the branch that the Application follows, on the remote that the controller reads. It is not a controller observation, and no argo reading sets it.",
           "kind": "git-visibility",
           "bracket": {
             "earlier": {
@@ -81,7 +81,7 @@
             "reason": "recovery-onset-not-after-reversal",
             "criterion": "E04-AC12",
             "verdict": "not-judged",
-            "statement": "The analysis searches for the span from the fault-injection-finished event, not from reversalStart. A span cannot hold the reversal commit ahead of an argo reading that reports it, but the requests between the last argo reading that reports another revision and reversalStart can start one. When stabilizationOnset does not follow reversalStart, the span of the analysis is not the span that this definition names, and no figure states that span. E04-AC12 is then not judged, for the reason recovery-onset-not-after-reversal, and definition.clockPolicy.notJudged decides the state. Inside the margin of definition.clockPolicy.ordering it is not judged, for the reason clock-bound-reached."
+            "statement": "The analysis searches for the span from the fault-injection-finished event, not from reversalStart. A span holds at least one argo reading that reports the reversal commit as resolvedRevision with syncStatus Synced, but the requests between the last argo reading that does not and reversalStart can start one. When stabilizationOnset does not follow reversalStart, the span of the analysis is not the span that this definition names, and no figure states that span. E04-AC12 is then not judged, for the reason recovery-onset-not-after-reversal, and definition.clockPolicy.notJudged decides the state. Inside the margin of definition.clockPolicy.ordering it is not judged, for the reason clock-bound-reached."
           }
         },
         "stabilizedAt": {
@@ -150,6 +150,7 @@
       "reversalStart is the record that the operator takes immediately before the push of the reversal commit, as fault-injection-started is for the bad commit. The time from that record to the start of the push is inside recoveryMs, so it can lengthen recoveryMs and cannot shorten it.",
       "The deployments stream states no pod template. desiredStateRestored reads the template from the Synced state of the Application at the reversal commit, which is the controller's comparison of the live objects with that commit, and no reading of this record compares a template hash of the Deployment.",
       "No tool computes reversalStart, controllerObserved, desiredStateRestored, recoveryMs, gitopsDiscoveryMs, or operatorDecisionMs at registration. The review of each run computes them from the evidence and states them on the result page.",
+      "The reason recovery-onset-not-after-reversal is a rule of this record, chosen before any run, and not a rule of the amended definition. When the span of the analysis does not start after reversalStart, the amended definition takes the first span that starts after reversalStart and then completes, and no tool computes that span. This record leaves E04-AC12 not judged instead. That can make INCONCLUSIVE a run that the amended definition would judge PASSED, or FAILED when no such span starts within 52,000 ms of reversalStart.",
       "No tool checks that a run executes the latest registered revision of its experiment. P1 states it, and the review of each run compares it."
     ],
     "history": [
@@ -1311,7 +1312,7 @@
       {
         "id": "reversal-start-unconfirmed",
         "resultState": "INCONCLUSIVE",
-        "reason": "No read of main on the remote that the controller reads reports the reversal commit, so reversalStart is not established, E04-AC12 is not judged, and definition.clockPolicy.notJudged makes the run INCONCLUSIVE."
+        "reason": "No read of main on the remote that the controller reads reports the reversal commit inside the observation limit, or the transcript holds no such read ahead of reversal-accepted, so reversalStart is not established, E04-AC12 is not judged, and definition.clockPolicy.notJudged makes the run INCONCLUSIVE."
       },
       {
         "id": "recovery-onset-not-after-reversal",
@@ -2275,7 +2276,7 @@
     },
     {
       "path": "tools/experiment_preregistration/core.py",
-      "sha256": "db4aaf68b33f234a63a375d65d74b43ce69a37e766777ed375ea4d4d617a104e",
+      "sha256": "0e29593b097914818d3ce9bbd717732c52416ef8cdfceff12b220173bdeec5f0",
       "role": "a module of a tool that the procedure runs, or that it imports"
     },
     {
@@ -2492,7 +2493,7 @@
     {
       "path": "tools/experiment_preregistration/core.py",
       "from": "643ff00a6a38e1e875f8321708691fc65e230a5d52b70b8128b9944ac76e328d",
-      "to": "db4aaf68b33f234a63a375d65d74b43ce69a37e766777ed375ea4d4d617a104e",
+      "to": "0e29593b097914818d3ce9bbd717732c52416ef8cdfceff12b220173bdeec5f0",
       "material": true,
       "reason": "The check adds rule set 3, which this record is registered under: every rule of rule set 2, which holds the record to its clock policy, to the clock of each instant of its criteria, and to text that does not contradict the policy, and the reversal-timing rules, which hold it to its instants, its intervals, E04-AC8, E04-AC12, and the reasons of its timing. It still reads revision 1 under rule set 1. P1 runs it."
     }

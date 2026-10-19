@@ -22,6 +22,7 @@ runs an experiment or contacts a cluster.
 
 from __future__ import annotations
 
+import copy
 import json
 import shutil
 import subprocess
@@ -2636,7 +2637,7 @@ def test_revision_two_of_e04_differs_from_revision_one_only_in_the_listed_member
     assert limitations_2[4:9] == limitations_1[3:8]
     assert R1_DISCOVERY not in limitations_2
     assert "inside recoveryMs" in limitations_2[9]
-    assert len(limitations_2) == 14
+    assert len(limitations_2) == 15
     assert definition_2["measurements"][:-1] == definition_1["measurements"]
     rules_1 = definition_1["outcomeRules"]
     rules_2 = definition_2["outcomeRules"]
@@ -3115,6 +3116,16 @@ def test_a_malformed_reversal_timing_is_a_finding_and_not_an_error(
     findings = found(root)
     assert findings
     assert {f[1] for f in findings} == {E04}
+    # Each finding is of a rule that reads the member, never another rule. A bound
+    # that is not a string is refused by the shape rule before any rule reads it.
+    assert {f[0] for f in findings} <= {
+        "prereg-record-shape",
+        INSTANTS_RULE,
+        INTERVALS_RULE,
+        CRITERIA_RULE,
+        INVENTORY,
+        "prereg-criterion-bound-unknown",
+    }
 
 
 # The analysis semantics that revision 2 names, on a synthetic run of
@@ -3236,3 +3247,264 @@ def test_a_record_of_another_experiment_under_rule_set_three_reads_as_rule_set_t
     refuses the edit itself."""
     edit(root, E05, lambda d: d["metadata"].__setitem__("preregistrationRules", 3))
     assert found(root) == []
+
+
+# The defects that the independent review of the first commit planted, and the
+# clauses that its first suite left without a negative test.
+
+
+def _duplicate(
+    identifier: str, member: str, new: Any
+) -> Callable[[dict[str, Any]], None]:
+    """A defective criterion, with a conforming copy of it after it."""
+
+    def change(document: dict[str, Any]) -> None:
+        criteria = value(document, "acceptanceCriteria")
+        conforming = copy.deepcopy(criterion_of(document, identifier))
+        criterion_of(document, identifier)[member] = new
+        criteria.append(conforming)
+
+    return change
+
+
+def _swap_bracket(document: dict[str, Any]) -> None:
+    bracket = document["definition"]["reversalTiming"]["instants"]["reversalStart"][
+        "bracket"
+    ]
+    earlier, later = bracket["earlier"]["instant"], bracket["later"]["instant"]
+    bracket["earlier"]["instant"], bracket["later"]["instant"] = later, earlier
+
+
+def _duplicate_ac12_clocks(document: dict[str, Any]) -> None:
+    clocks = document["definition"]["criterionClocks"]
+    (entry,) = [
+        e
+        for e in clocks
+        if e["criterion"] == "E04-AC12" and e["comparison"] == "interval"
+    ]
+    clocks.append(copy.deepcopy(entry))
+
+
+def _drop_ac12_clocks(document: dict[str, Any]) -> None:
+    clocks = document["definition"]["criterionClocks"]
+    clocks[:] = [
+        e
+        for e in clocks
+        if not (e["criterion"] == "E04-AC12" and e["comparison"] == "interval")
+    ]
+
+
+def _outcome_without(reason: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        rules = document["definition"]["outcomeRules"]
+        rules[:] = [r.replace(reason, "a reason") for r in rules]
+
+    return change
+
+
+CRITERIA = "fields.acceptanceCriteria"
+PHRASES = "it does not hold the phrases "
+
+
+@pytest.mark.parametrize(
+    ("change", "expected"),
+    [
+        pytest.param(
+            _duplicate("E04-AC12", "boundValueMs", 1),
+            [
+                (CRITERIA_RULE, CRITERIA, "E04-AC12 is stated 2 times, and not once"),
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 states another value of reversal_recovery_bound_ms than "
+                    "derivedNumericBounds",
+                ),
+            ],
+            id="a-defective-recovery-criterion-before-a-conforming-copy",
+        ),
+        pytest.param(
+            _duplicate("E04-AC8", "window", {"from": "x", "to": "reversalStart"}),
+            [
+                (CRITERIA_RULE, CRITERIA, "E04-AC8 is stated 2 times, and not once"),
+                (
+                    CRITERIA_RULE,
+                    AC8,
+                    "E04-AC8 does not end its window at desiredStateRestored",
+                ),
+            ],
+            id="a-defective-containment-criterion-before-a-conforming-copy",
+        ),
+        pytest.param(
+            _swap_bracket,
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{START_AT}.bracket.earlier.instant",
+                    PHRASES + "'reversal-created', 'immediately before the push'",
+                ),
+                (
+                    INSTANTS_RULE,
+                    f"{START_AT}.bracket.later.instant",
+                    PHRASES + "'first read of main', 'reversal-accepted'",
+                ),
+            ],
+            id="the-two-bracket-ends-swapped",
+        ),
+        pytest.param(
+            _set(ONSET, "definition", "The stabilizedAt instant of the analysis."),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{ONSET_AT}.definition",
+                    PHRASES + "'first request', 'starts after reversalStart', "
+                    "'observed complete without interruption'",
+                )
+            ],
+            id="an-onset-defined-as-stabilized-at",
+        ),
+        pytest.param(
+            _set(
+                START,
+                "definition",
+                "The first argo reading that resolves the reversal commit.",
+            ),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{START_AT}.definition",
+                    PHRASES + "'remote that the controller reads', "
+                    "'not a controller observation'",
+                )
+            ],
+            id="a-reversal-start-defined-as-a-controller-reading",
+        ),
+        pytest.param(
+            _set(
+                ["reversalTiming", "instants", "controllerObserved"],
+                "source",
+                "operator-event",
+            ),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.controllerObserved",
+                    "controllerObserved is not stated with its definition, the source "
+                    "collector-reading, and the host clock",
+                )
+            ],
+            id="controller-observed-on-another-source",
+        ),
+        pytest.param(
+            _set(["reversalTiming", "instants", "stabilizedAt"], "clock", "host"),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.stabilizedAt",
+                    "stabilizedAt is not stated with its definition, the source "
+                    "caller-record, and the node clock",
+                )
+            ],
+            id="stabilized-at-on-the-host-clock",
+        ),
+        pytest.param(
+            _set([*ONSET, "notAfterReversalStart"], "reason", "clock-bound-reached"),
+            [
+                (
+                    INSTANTS_RULE,
+                    ONSET_AT,
+                    "stabilizationOnset is not held to follow reversalStart, with "
+                    "E04-AC12 not judged for recovery-onset-not-after-reversal "
+                    "otherwise",
+                )
+            ],
+            id="onset-rule-with-another-reason",
+        ),
+        pytest.param(
+            _set(ONSET, "after", "controllerObserved"),
+            [
+                (
+                    INSTANTS_RULE,
+                    ONSET_AT,
+                    "stabilizationOnset is not held to follow reversalStart, with "
+                    "E04-AC12 not judged for recovery-onset-not-after-reversal "
+                    "otherwise",
+                )
+            ],
+            id="onset-after-another-instant",
+        ),
+        pytest.param(
+            _criterion_member("E04-AC12", "interval", "gitopsDiscoveryMs"),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 does not judge recoveryMs against "
+                    "reversal_recovery_bound_ms",
+                )
+            ],
+            id="recovery-criterion-judges-another-interval",
+        ),
+        pytest.param(
+            _criterion_member(
+                "E04-AC8",
+                "statement",
+                "Every endpoints reading from the fault-injection-started event to "
+                "reversalStart, and not to desiredStateRestored.",
+            ),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC8,
+                    "E04-AC8 does not end its window at desiredStateRestored",
+                )
+            ],
+            id="containment-statement-names-reversal-start",
+        ),
+        pytest.param(
+            _outcome_without("reversal-start-unconfirmed"),
+            [
+                (
+                    TIMING_REASONS,
+                    "definition.outcomeRules",
+                    "the outcome rules do not name reversal-start-unconfirmed",
+                )
+            ],
+            id="outcome-rules-without-the-confirmation-reason",
+        ),
+        pytest.param(
+            _duplicate_ac12_clocks,
+            [(CRITERIA_RULE, "definition.criterionClocks", AC12_CLOCKS)],
+            id="recovery-interval-declared-twice",
+        ),
+        pytest.param(
+            _drop_ac12_clocks,
+            [
+                (
+                    INVENTORY,
+                    AC12,
+                    "it names a bound and declares no clocks of its interval",
+                ),
+                (CRITERIA_RULE, "definition.criterionClocks", AC12_CLOCKS),
+            ],
+            id="recovery-interval-not-declared",
+        ),
+    ],
+)
+def test_each_reversal_timing_defect_of_the_review_is_refused(
+    root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
+) -> None:
+    edit(root, E04, change)
+    assert found(root) == [
+        (rule, E04, where, detail) for rule, where, detail in expected
+    ]
+
+
+def test_each_record_is_read_under_the_rule_set_it_was_registered_under() -> None:
+    """A tripwire: rule set 3 changes the rule set of no registered record."""
+    for path in REVISION_ONE.values():
+        assert core._rule_set(path, load(path)) == 1, path
+    for path in CLOCK_REVISIONS.values():
+        assert core._rule_set(path, load(path)) == 2, path
+    assert core._rule_set(E04, load(E04)) == 3

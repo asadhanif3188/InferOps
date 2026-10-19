@@ -1593,33 +1593,53 @@ revision 1.
 - No span completes, or `stabilizedAt` lies outside the observation limit: recovery is
   not established, and E04-AC12 is not met. An interrupted span establishes no recovery,
   because the analysis states only a span that completed.
-- No read of the remote reports the reversal commit: `reversalStart` is not established,
-  and E04-AC12 is not judged, for the new reason `reversal-start-unconfirmed`.
+- No read of the remote reports the reversal commit inside the observation limit, or
+  the transcript holds no such read ahead of `reversal-accepted`: `reversalStart` is not
+  established, and E04-AC12 is not judged, for the new reason
+  `reversal-start-unconfirmed`.
 - The span of the analysis does not start after `reversalStart`. The analysis searches
-  from the `fault-injection-finished` event, so the requests between the last argo reading
-  of another revision and `reversalStart` can start a span. No figure then states the
-  recovery that E04-AC12 judges, and it is not judged, for the new reason
-  `recovery-onset-not-after-reversal`.
+  from the `fault-injection-finished` event. A span holds at least one argo reading that
+  reports the reversal commit with `Synced`, but the requests between the last argo
+  reading that does not and `reversalStart` can start one. That needs the controller to
+  resolve and sync the commit within about one reading of the push. No figure then
+  states the span that the amended definition names, and E04-AC12 is not judged, for the
+  new reason `recovery-onset-not-after-reversal`. **This reason is a rule of the record,
+  chosen before any run, and not of the amended definition**, which would take the first
+  span that starts after `reversalStart` and then completes; no tool computes it. So it
+  can make `INCONCLUSIVE` a run that the amended definition would judge `PASSED`, or, when
+  no such span starts within 52,000 ms of `reversalStart`, `FAILED`. The record states this
+  as a limitation.
 
 When E04-AC12 is not judged, the rule of the policy for a verdict that is not judged
 decides the state, so a `FAILED` state that the judged containment criteria decide stands.
 
-**The detection rule.** Its threshold, 22,000 ms, is unchanged. The age that it reads
-runs from a Kubernetes timestamp, on the node clock to the second, to a reading, on the
-host clock. It is an operator rule and not a verdict, and the record states how the
-margin of the policy applies to it: during the run the margin is known from the start
-reading of P8 alone, and the result page states the margin of the run.
+**The detection rule changes the procedure.** Its threshold, 22,000 ms, is unchanged.
+The age that it reads runs from a Kubernetes timestamp, on the node clock to the second,
+to a reading, on the host clock. It is an operator rule and not a verdict. Revision 1
+declared detection at the first pods reading with an age of at least 22,000 ms. Revision
+2 declares it at the first reading whose age exceeds 22,000 ms by more than the margin of
+the policy, as far as it is known during the run: d plus w of the start reading of P8
+alone, plus 1,000 ms, because the end reading follows the window. So detection, and with
+it the reversal, can come later than under revision 1, by up to that margin plus one
+reading interval. That leaves the bad rollout exposed to the containment criteria for
+longer, and leaves less of the observation limit. The result page states the margin of
+the run.
 
-**What else changes.** The hypothesis no longer calls the bound an expected observation.
-T3 states when the operator records `reversal-created` and `reversal-accepted` around the
+**What else changes.** As in the four records of rule set 2: P1 gains the
+latest-revision clause, P8 names the policy, `definition.window.clocks` and the clock
+outcome rule are rewritten, the reason `clock-bound-reached` names the margin, the clock
+limitation is rewritten, and the analysis and latest-revision limitations are added.
+Beyond them, the hypothesis no longer calls the bound an expected observation, and T3
+states when the operator records `reversal-created` and `reversal-accepted` around the
 push and the confirming read. The limitation that put the discovery in the operator
-interval is replaced, and three limitations are added. The history gains four entries,
-and one measurement and one outcome rule are added. The exclusion reasons gain
-`clock-reading-missing`, `reversal-start-unconfirmed`, and
+interval is replaced, and four limitations are added for the reversal timing, among them
+the one for `recovery-onset-not-after-reversal`: six limitations are added in all. The
+history gains four entries, and one measurement and one outcome rule are added. The
+exclusion reasons gain `clock-reading-missing`, `reversal-start-unconfirmed`, and
 `recovery-onset-not-after-reversal`, twelve in all. Every other member is that of revision
 1: the fault, the topology, the containment criteria E04-AC9 to E04-AC11 and E04-AC13, the
-repetitions, the third-run signature, the windows, the abort conditions, the cleanup, and
-the evidence paths. The pins moved for the three files of the check alone, and revision 2
+repetitions, the third-run signature, the bounds of the window and the observation limit,
+the abort conditions, the cleanup, and the evidence paths. The pins moved for the three files of the check alone, and revision 2
 classifies `core.py` as material and the other two as not.
 
 **The expected consequence, stated before any run.** A span cannot hold the reversal
@@ -1683,9 +1703,9 @@ runs it and plants each defect below in a copy.
 | `prereg-clock-rules` | The clock policy of a record of rule set 2 states the offset-stability assumption, refuses a run with an unusable start reading before the fault, leaves the bound not computable after an unusable end reading with the state that the rule for a verdict that is not judged decides, applies that rule of rule set 2, and orders and compares instants of two clocks with the margin and the words of rule set 2. |
 | `prereg-clock-reasons` | A record of rule set 2 registers clock-reading-missing and clock-bound-reached for INCONCLUSIVE, and its outcome rules name both. |
 | `prereg-clock-contradiction` | No text of a record of rule set 2 states that the clock difference is not measured, orders instants by a time in a sentence that does not name the margin of rule set 2, names synchronization or a guarantee in a sentence with no negation, or states that every run is INCONCLUSIVE, in the phrases that this check names. |
-| `prereg-reversal-instants` | A V2-E04 record of rule set 3 names reversalStart, controllerObserved, desiredStateRestored, stabilizationOnset, and stabilizedAt, each with its source and clock. reversalStart is the Git-visibility instant of an operator event, bracketed and judged at the earlier end, and it leaves E04-AC12 not judged when it is not established. stabilizationOnset is read from stabilizedRecovery.span.first.finishedAt of a span that completed, and follows reversalStart. stabilizedAt is read from stabilizedRecovery.stabilizedAt inside the observation limit. recoveryEnd is stabilizationOnset. |
+| `prereg-reversal-instants` | A V2-E04 record of rule set 3 names reversalStart, controllerObserved, desiredStateRestored, stabilizationOnset, and stabilizedAt, each with its source and clock. reversalStart is the Git-visibility instant of an operator event, bracketed and judged at the earlier end, and it leaves E04-AC12 not judged when it is not established. stabilizationOnset is read from stabilizedRecovery.span.first.finishedAt of a span that completed, and follows reversalStart. stabilizedAt is read from stabilizedRecovery.stabilizedAt inside the observation limit. recoveryEnd is stabilizationOnset. The definition of reversalStart, its two bracket ends, and the definition of stabilizationOnset hold the phrases that this check names, and no other prose is read. |
 | `prereg-reversal-intervals` | A V2-E04 record of rule set 3 states recoveryMs from reversalStart to stabilizationOnset, judged by E04-AC12, gitopsDiscoveryMs from reversalStart to controllerObserved, and operatorDecisionMs from detection-reviewed to reversalStart, each reported, and keeps the instants of the four operator events of the reversal. |
-| `prereg-reversal-criteria` | In a V2-E04 record of rule set 3, E04-AC12 judges recoveryMs against reversal_recovery_bound_ms with the value, the formula, and the bound record of derivedNumericBounds, and declares that interval cross-clock, from reversalStart on the host clock to stabilizationOnset on the node clock. E04-AC8 ends its window at desiredStateRestored. |
+| `prereg-reversal-criteria` | In a V2-E04 record of rule set 3, E04-AC12 judges recoveryMs against reversal_recovery_bound_ms with the value, the formula, and the bound record of derivedNumericBounds, and declares that interval cross-clock, from reversalStart on the host clock to stabilizationOnset on the node clock. E04-AC8 ends its window at desiredStateRestored. Each of the two criteria is stated once. |
 | `prereg-reversal-reasons` | A V2-E04 record of rule set 3 registers reversal-start-unconfirmed and recovery-onset-not-after-reversal for INCONCLUSIVE, and its outcome rules name both. |
 
 ### What is enforced, and what is not
@@ -1731,10 +1751,12 @@ the committed records. Not enforced:
   statements contradict P8 until a later revision supersedes it.)
 - **That a run computes the reversal timing as the record states it.** The timing rules
   read the structure of a record: its instants and their sources, its intervals and their
-  ends, E04-AC8, E04-AC12, and the reasons. No tool computes `reversalStart`,
-  `controllerObserved`, `desiredStateRestored`, or the three intervals, and no rule reads
-  whether the prose of an instant says what its structure says. The review of each run
-  computes them from the evidence.
+  ends, E04-AC8, E04-AC12, and the reasons. Of its prose they read only the phrases that
+  the check names in four texts: the definition of `reversalStart`, its two bracket ends,
+  and the definition of `stabilizationOnset`. A text that holds them can still say
+  something else. No tool computes `reversalStart`, `controllerObserved`,
+  `desiredStateRestored`, or the three intervals. The review of each run computes them
+  from the evidence.
 - **That the operator records `reversal-created` immediately before the push.** The
   record states it. The event log does not check it, and no reading compares the record
   with the push. The time between them is inside `recoveryMs`, so it can lengthen the

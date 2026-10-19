@@ -136,7 +136,7 @@ E05_R2_PIN = "f7e1da03503a29ac49de0c6dcaa3536f8640e51d10a53adaf5972821a2d895b2"
 #: Revision 2 of V2-E04, registered by V2-S6-005-PR1 before any run: the same clock
 #: policy, and the reversal timing as the repository owner amended it.
 E04_R2 = "docs/proof/experiments/v2-e04/freeze-r2.v1alpha1.json"
-E04_R2_PIN = "80d4fc4b57f219c476b17672269fd3b5ac72388093892a26ad0eefbb12a219ff"
+E04_R2_PIN = "fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so
