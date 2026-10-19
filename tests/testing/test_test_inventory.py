@@ -485,6 +485,7 @@ NUMBER_WORDS: dict[int, str] = {
     94: "ninety-four",
     95: "ninety-five",
     96: "ninety-six",
+    97: "ninety-seven",
 }
 
 WORD_NUMBERS: dict[str, int] = {word: value for value, word in NUMBER_WORDS.items()}

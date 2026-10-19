@@ -10,6 +10,32 @@ from `1.0.0`.
 
 ### Added
 
+- **The V2-E03 and V2-E06 analysis freezes, and a pre-run readiness review.**
+  `V2-S6-006-PR1` registers revision 1 of the freeze records of V2-E03, signal
+  truthfulness, and V2-E06, reliability resource and cost overhead, before any run of the
+  experiments whose runs they read. Each binds the latest freeze records of its sources
+  by path, revision, and registered digest, and states the digest of their one clock
+  policy. V2-E03 fixes its initial population, the counted runs of V2-E02A, V2-E02B, and
+  V2-E02C, its extension over the counted runs of V2-E04, and a rule that excludes
+  V2-E05; ten signals, each read from a stream that every source collects, with the
+  caller record as the reference truth; the API canonical error rate as the comparator
+  of the ranking, which meets that condition trivially and so has no ranking preference
+  and is not a winner; how the caller record identifies a failure that the API error
+  counter does not count; and the computations, the ordering margin, and the ranking
+  rule. V2-E06 fixes View A, the requested resources of V2-E02A and V2-E02B, and View B,
+  one API and one runtime replica against two of each, reconstructed by arithmetic and
+  labeled static; six metrics, of which only the utilization is labeled measured; the
+  utilization statistic over the `resources` stream of the counted runs of V2-E02A and
+  V2-E02B; and a local cost basis with no price. The new read-only check
+  `tools/analysis_preregistration` has 14 rules for V2-E03 and 13 for V2-E06. It is a
+  separate package, so this change moves no pin of an earlier record. The
+  [readiness review](docs/proof/environment/v2-s6-006-pr1-validation.md#the-consolidated-pre-run-readiness-review)
+  states each latest freeze, its pins, its clock policy, its bounds, and what it still
+  owes: the four revision-2 records of rule set 2 refuse a run until a later revision
+  classifies the `core.py` pin that `V2-S6-005-PR1` moved, and every source still owes
+  its driver. The decision to freeze V2-E03 and V2-E06 was made on 2026-10-18, after the
+  date that was set for it, and each record states the late date. Nothing ran. See
+  [the analysis experiment freezes](docs/proof/experiments/README.md#the-analysis-experiment-freezes).
 - **The governed reversal timing of V2-E04.** `V2-S6-005-PR1` registers revision 2 of the
   V2-E04 record, which supersedes revision 1. Revision 1 started its recovery interval at
   a controller observation, counted the discovery of the reversal commit as operator

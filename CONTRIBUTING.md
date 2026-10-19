@@ -691,6 +691,24 @@ span.
 [The records' description](docs/proof/experiments/README.md#the-reliability-experiment-freezes)
 states each rule and what is not enforced.
 
+**The two analysis experiments are frozen records and a second check that reads files.**
+The freeze records of V2-E03 and V2-E06 bind the latest freeze records of their sources
+by path, revision, and digest. A separate check, with its own rules for each record,
+holds each to them:
+
+```sh
+uv run --locked python -m tools.analysis_preregistration --check
+```
+
+A source revision registered later makes the check refuse until a later revision of the
+analysis record binds it. Analysis code is added under a later revision of its record,
+which pins it before any figure is computed. Never rank a signal that was added after a
+result was seen without the exploratory label, never label a view or a metric measured
+when it reads only configuration, and never state a cost, a saving, or a return on
+investment that the figures do not support.
+[The records' description](docs/proof/experiments/README.md#the-analysis-experiment-freezes)
+states each rule and what is not enforced.
+
 **The infrastructure timelines of an experiment run are captured by a script that changes
 nothing in the cluster and a tool that reads files.** The script samples the release a
 bounded number of times and writes a collection directory under `.artifacts/`. The tool
