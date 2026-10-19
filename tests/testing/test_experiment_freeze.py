@@ -137,6 +137,13 @@ E05_R2_PIN = "f7e1da03503a29ac49de0c6dcaa3536f8640e51d10a53adaf5972821a2d895b2"
 #: policy, and the reversal timing as the repository owner amended it.
 E04_R2 = "docs/proof/experiments/v2-e04/freeze-r2.v1alpha1.json"
 E04_R2_PIN = "fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619"
+#: The two analysis experiment records, registered by V2-S6-006-PR1 before any
+#: source run: each binds the latest freeze records of the experiments whose runs it
+#: reads. Their pins are written out for the same reason.
+E03 = "docs/proof/experiments/v2-e03/freeze-r1.v1alpha1.json"
+E03_PIN = "8efdb239bb1b3ad5901d31b8cc7c7d45edd7059366bc7e7ad7fcd389b004117a"
+E06 = "docs/proof/experiments/v2-e06/freeze-r1.v1alpha1.json"
+E06_PIN = "10e28991745dd5ad32ba3b6c55ef8aeefae26bb7f99c47302b7dcb6bb497f82f"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so
@@ -175,8 +182,8 @@ def test_the_committed_records_are_the_pinned_ones() -> None:
         record_paths()
         == sorted(FROZEN_RECORDS)
         == [
-            *(R1, R2, R3, E02A, E02A_R2, E02B, E02B_R2, E02C, E02C_R2),
-            *(E04, E04_R2, E05, E05_R2),
+            *(R1, R2, R3, E02A, E02A_R2, E02B, E02B_R2, E02C, E02C_R2, E03),
+            *(E04, E04_R2, E05, E05_R2, E06),
             *(Q1, Q1_R2, Q2, Q2_R2, Q2_R3, Q3, Q3_R2, S5I, S5I_R2),
         ]
     )
@@ -201,7 +208,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "PASSED: 22 freeze record(s)" in result.stdout
+    assert "PASSED: 24 freeze record(s)" in result.stdout
 
 
 def test_every_rule_is_published_once_and_every_field_once() -> None:
@@ -781,6 +788,8 @@ def test_every_registered_record_keeps_the_pin_it_was_registered_with() -> None:
         E02C_R2: E02C_R2_PIN,
         E05_R2: E05_R2_PIN,
         E04_R2: E04_R2_PIN,
+        E03: E03_PIN,
+        E06: E06_PIN,
     }
 
 

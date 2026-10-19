@@ -351,6 +351,19 @@ stabilization span, judged against the unchanged 52,000 ms bound. The record sta
 before any run that most runs are not expected to meet that bound.
 No run of any of them exists, and no driver exists yet.
 
+Since `V2-S6-006-PR1` the two analysis experiments are
+[frozen before any of their source runs](docs/proof/experiments/README.md#the-analysis-experiment-freezes):
+signal truthfulness, V2-E03, and the reliability resource and cost overhead, V2-E06.
+Neither injects a fault or starts a caller. Each binds the latest freeze records of the
+experiments whose runs it reads by digest, and a separate read-only check holds it to
+them. V2-E03 fixes its population, its ten signals with the caller record as the
+reference, the API error rate as the comparator of its ranking with no ranking
+preference, and how it counts caller failures that the API error counter misses. V2-E06
+fixes two allocation views, the one measured statistic, and a local cost basis with no
+price. No analysis code and no figure exists, and the
+[pre-run readiness review](docs/proof/environment/v2-s6-006-pr1-validation.md#the-consolidated-pre-run-readiness-review)
+states what each latest freeze still owes before its first run.
+
 ## Prerequisites
 
 | Path | Needs | Where it is measured |

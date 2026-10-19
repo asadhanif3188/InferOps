@@ -1,0 +1,1319 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentFreeze",
+  "metadata": {
+    "experiment": "V2-E03",
+    "title": "Signal truthfulness: which signals state caller impact",
+    "revision": 1,
+    "registered": "2026-10-19",
+    "registeredBy": "V2-S6-006-PR1",
+    "supersedes": null
+  },
+  "definition": {
+    "purpose": "Compare what each preregistered signal stated with what the caller record shows, over the counted runs of the experiments that this record binds. V2-E03 injects no fault and starts no caller. It reads the stored evidence of those runs.",
+    "hypothesis": "Expected observation, not a result: a signal that reads the caller path, the API error rate or the Ready endpoint count of a Service, states the caller impact of a pod loss for a larger part of its duration than a pod readiness, a Deployment replica count, a scrape state, or a delivery controller state. The analysis is valid when this expectation does not hold, and its result then states that it does not hold.",
+    "sources": [
+      {
+        "experiment": "V2-E02A",
+        "role": "initial",
+        "path": "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json",
+        "revision": 2,
+        "contentSha256": "edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562",
+        "preregistrationRules": 2
+      },
+      {
+        "experiment": "V2-E02B",
+        "role": "initial",
+        "path": "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json",
+        "revision": 2,
+        "contentSha256": "be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c",
+        "preregistrationRules": 2
+      },
+      {
+        "experiment": "V2-E02C",
+        "role": "initial",
+        "path": "docs/proof/experiments/v2-e02c/freeze-r2.v1alpha1.json",
+        "revision": 2,
+        "contentSha256": "abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818",
+        "preregistrationRules": 2
+      },
+      {
+        "experiment": "V2-E04",
+        "role": "extension",
+        "path": "docs/proof/experiments/v2-e04/freeze-r2.v1alpha1.json",
+        "revision": 2,
+        "contentSha256": "fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619",
+        "preregistrationRules": 3
+      }
+    ],
+    "sourceClockPolicy": {
+      "sha256": "c8343a26197dd3cbd346016dd492964ff5dbcce653daa6863530360ccbc64896",
+      "statement": "The SHA-256 of definition.clockPolicy of each bound source record, in canonical JSON with sorted keys and no spaces. Each bound source states the same policy, so the policy has one digest. Each order and each interval that this record computes across the node clock and the host clock uses that policy."
+    },
+    "population": {
+      "initial": {
+        "experiments": [
+          "V2-E02A",
+          "V2-E02B",
+          "V2-E02C"
+        ],
+        "runs": "The valid, counted runs of each experiment: each run whose state is PASSED or FAILED under definition.repetitionRule of the bound revision of its experiment, and that executed under that revision. A run in another state is not in the population, and the analysis lists it with its state and its reason. A counted run is never left out because it changes a result."
+      },
+      "extension": {
+        "experiments": [
+          "V2-E04"
+        ],
+        "runs": "The valid, counted runs of V2-E04 under its latest revision, once they exist. The extension is computed under a revision of this record that binds that V2-E04 revision. It adds those runs to the population of the initial analysis, and the initial result stays published beside the extended one."
+      },
+      "excluded": [
+        {
+          "experiment": "V2-E05",
+          "rule": "V2-E05 is not in the population, and no signal is ranked on its runs.",
+          "reason": "V2-E03 may read V2-E05 only as an optional source, and no planned change extends this analysis over the runs of V2-E05. A change of the live state that the delivery controller reverts is not a pod loss or a bad release, so its runs would add a scenario that this ranking does not preregister."
+        }
+      ],
+      "laterSourceRevision": "This record binds the source revisions of definition.sources. A run that executed under a later revision of a source is not in the population of this record. Before any figure is computed from such a run, a later revision of this record binds that source revision. The material scope names every revision file of each source, so python -m tools.experiment_freeze --changes lists a later source revision as added."
+    },
+    "referenceTruth": {
+      "signal": 1,
+      "source": "the caller record of the reliability runner",
+      "statement": "The caller record is the reference truth. It is not a candidate signal, and it is not ranked. No caller figure is derived from a stream, a readiness state, an endpoint count, a replica count, a sync state, a health state, or a scrape state."
+    },
+    "signals": [
+      {
+        "number": 1,
+        "id": "caller-outcome",
+        "name": "Caller outcome",
+        "role": "reference",
+        "stream": "caller",
+        "sampling": {
+          "kind": "per-request",
+          "statement": "Each completed request of the runner, at its completion instant, on the node clock, to the millisecond."
+        },
+        "derivation": {
+          "collection": "caller",
+          "statement": "The success member of each request line of the caller record that scripts/environment/reliability-runner.sh collect stores."
+        },
+        "problem": "A completed request whose success member is false: a failed completion.",
+        "healthy": "A completed request whose success member is true.",
+        "notObserved": "The time between two completions. The caller record states no outcome between them.",
+        "describes": "The caller path: what a caller sent and had answered.",
+        "clock": "node"
+      },
+      {
+        "number": 2,
+        "id": "api-error-rate",
+        "name": "API canonical error rate",
+        "role": "candidate",
+        "stream": "telemetry",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 15000,
+          "statement": "The telemetry collection of each source reads every 15 s. A value is the last sample that the in-cluster collector stored, and the chart scrapes every 30 s, so a value can be older than its reading by up to one scrape interval."
+        },
+        "derivation": {
+          "collection": "telemetry",
+          "querySet": "experiment-run-queries-r1",
+          "queries": [
+            "api-requests-by-outcome",
+            "api-errors-by-code"
+          ],
+          "statement": "For two consecutive samples of one telemetry collection, e is the increase of the sum over the error codes of api-errors-by-code, and r is the increase of the sum over the outcomes of api-requests-by-outcome. The value of the pair is e divided by r. The API publishes its error counter only after it counts its first error, so before that error the query has no series. A reading of api-errors-by-code with the result no-series is therefore read as no counted error, but only when, in the same sample, api-requests-by-outcome is answered with a series and api-scrape-targets-up equals api-scrape-targets with at least topology.apiReplicas targets. Any other reading of api-errors-by-code with no series is not observed."
+        },
+        "problem": "A pair in which e is above zero: the API counted at least one canonical error between the two samples.",
+        "healthy": "A pair in which r is above zero and e is zero.",
+        "notObserved": "A pair in which a reading of either query is not answered, a reading with no series is not read as stated above, a sum falls because a process started again or a target left, or r is zero. It is never healthy.",
+        "describes": "The caller path through the API: the requests that the API answered.",
+        "clock": "host"
+      },
+      {
+        "number": 3,
+        "id": "api-ready-endpoints",
+        "name": "API Service Ready endpoint count",
+        "role": "candidate",
+        "stream": "endpoints",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 2000,
+          "statement": "The timeline collection of each source reads every 2 s. A reading states the state at an instant between the start and the finish of its read."
+        },
+        "derivation": {
+          "collection": "timeline",
+          "analysisSource": "endpoints-ready",
+          "tier": "platform-api",
+          "statement": "The number of Ready endpoints of the API Service in a reading of the endpoints stream."
+        },
+        "problem": "A reading whose count is below topology.apiReplicas.",
+        "healthy": "A reading whose count is topology.apiReplicas or more.",
+        "notObserved": "A reading that is not answered, or that states no count for the tier. It is never healthy.",
+        "describes": "The caller path: the API Service that callers send to.",
+        "clock": "host"
+      },
+      {
+        "number": 4,
+        "id": "runtime-ready-endpoints",
+        "name": "Runtime Service Ready endpoint count",
+        "role": "candidate",
+        "stream": "endpoints",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 2000,
+          "statement": "The timeline collection of each source reads every 2 s. A reading states the state at an instant between the start and the finish of its read."
+        },
+        "derivation": {
+          "collection": "timeline",
+          "analysisSource": "endpoints-ready",
+          "tier": "serving-runtime",
+          "statement": "The number of Ready endpoints of the runtime Service in a reading of the endpoints stream."
+        },
+        "problem": "A reading whose count is below topology.runtimeReplicas.",
+        "healthy": "A reading whose count is topology.runtimeReplicas or more.",
+        "notObserved": "A reading that is not answered, or that states no count for the tier. It is never healthy.",
+        "describes": "The path from the API to the runtime: the runtime Service that the API sends to.",
+        "clock": "host"
+      },
+      {
+        "number": 5,
+        "id": "api-pod-readiness",
+        "name": "API pod readiness",
+        "role": "candidate",
+        "stream": "pods",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 2000,
+          "statement": "The timeline collection of each source reads every 2 s. A reading states the state at an instant between the start and the finish of its read."
+        },
+        "derivation": {
+          "collection": "timeline",
+          "analysisSource": "pods-ready",
+          "tier": "platform-api",
+          "statement": "The number of listed pods of the API tier whose Ready condition is True, in a reading of the pods stream."
+        },
+        "problem": "A reading whose count is below topology.apiReplicas.",
+        "healthy": "A reading whose count is topology.apiReplicas or more.",
+        "notObserved": "A reading that is not answered, or that states no count for the tier. It is never healthy.",
+        "describes": "A component: the pods of the API tier.",
+        "clock": "host"
+      },
+      {
+        "number": 6,
+        "id": "runtime-pod-readiness",
+        "name": "Runtime pod readiness",
+        "role": "candidate",
+        "stream": "pods",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 2000,
+          "statement": "The timeline collection of each source reads every 2 s. A reading states the state at an instant between the start and the finish of its read."
+        },
+        "derivation": {
+          "collection": "timeline",
+          "analysisSource": "pods-ready",
+          "tier": "serving-runtime",
+          "statement": "The number of listed pods of the runtime tier whose Ready condition is True, in a reading of the pods stream."
+        },
+        "problem": "A reading whose count is below topology.runtimeReplicas.",
+        "healthy": "A reading whose count is topology.runtimeReplicas or more.",
+        "notObserved": "A reading that is not answered, or that states no count for the tier. It is never healthy.",
+        "describes": "A component: the pods of the runtime tier.",
+        "clock": "host"
+      },
+      {
+        "number": 7,
+        "id": "deployment-ready-replicas",
+        "name": "Deployment ready replica count",
+        "role": "candidate",
+        "stream": "deployments",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 2000,
+          "statement": "The timeline collection of each source reads every 2 s. A reading states the state at an instant between the start and the finish of its read."
+        },
+        "derivation": {
+          "collection": "timeline",
+          "analysisSource": "deployment-ready-replicas",
+          "tier": "both",
+          "statement": "The readyReplicas count of the Deployment of each tier, in one reading of the deployments stream. The availableReplicas count is also collected, and it is not this signal."
+        },
+        "problem": "A reading in which the count of either tier is below its expected count: topology.apiReplicas for the API tier and topology.runtimeReplicas for the runtime tier.",
+        "healthy": "A reading in which each tier states a count at or above its expected count.",
+        "notObserved": "A reading that is not answered, or in which the count of either tier is missing. The Kubernetes API omits a count of zero, and the deployments stream states an omitted count as missing, not as zero. So a tier with no Ready replica is not observed by this signal. It is never healthy.",
+        "describes": "A component: the Deployment controller's count of the pods of each tier.",
+        "clock": "host"
+      },
+      {
+        "number": 8,
+        "id": "scrape-up",
+        "name": "Scrape state of the API and runtime targets",
+        "role": "candidate",
+        "stream": "telemetry",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 15000,
+          "statement": "The telemetry collection of each source reads every 15 s. A value is the last sample that the in-cluster collector stored, and the chart scrapes every 30 s, so a value can be older than its reading by up to one scrape interval."
+        },
+        "derivation": {
+          "collection": "telemetry",
+          "querySet": "experiment-run-queries-r1",
+          "queries": [
+            "api-scrape-targets",
+            "api-scrape-targets-up",
+            "runtime-scrape-targets",
+            "runtime-scrape-targets-up"
+          ],
+          "statement": "For each tier, in one sample, u is the up query of the tier and t is its target-count query. The in-cluster collector holds an up series for each target that it discovered, so an answered target-count query with no series states that the collector held no target of that tier."
+        },
+        "problem": "A sample in which, for either tier, u states a series below the expected replica count of the tier, or t is answered with no series.",
+        "healthy": "A sample in which u states a series at or above the expected replica count of each tier.",
+        "notObserved": "A sample in which one of the four reads is not answered, or in which u has no series while t states a series. It is never healthy.",
+        "describes": "Collector reachability: whether the in-cluster collector scraped the targets of each tier.",
+        "clock": "host"
+      },
+      {
+        "number": 9,
+        "id": "application-sync-state",
+        "name": "Delivery controller sync state",
+        "role": "candidate",
+        "stream": "argo",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 2000,
+          "statement": "The timeline collection of each source reads every 2 s. A reading states the state at an instant between the start and the finish of its read."
+        },
+        "derivation": {
+          "collection": "timeline",
+          "analysisSource": "application-sync-status",
+          "statement": "The syncStatus that the delivery controller reported for the Application, in a reading of the argo stream."
+        },
+        "problem": "A reading that reports a value other than Synced.",
+        "healthy": "A reading that reports Synced.",
+        "notObserved": "A reading that is not answered, an absent Application, or a value that is not reported. It is never healthy.",
+        "describes": "The delivery controller: whether the live state is that of the revision it resolved.",
+        "clock": "host"
+      },
+      {
+        "number": 10,
+        "id": "application-health-state",
+        "name": "Delivery controller health state",
+        "role": "candidate",
+        "stream": "argo",
+        "sampling": {
+          "kind": "interval",
+          "intervalMs": 2000,
+          "statement": "The timeline collection of each source reads every 2 s. A reading states the state at an instant between the start and the finish of its read."
+        },
+        "derivation": {
+          "collection": "timeline",
+          "analysisSource": "application-health-status",
+          "statement": "The healthStatus that the delivery controller reported for the Application, in a reading of the argo stream."
+        },
+        "problem": "A reading that reports a value other than Healthy.",
+        "healthy": "A reading that reports Healthy.",
+        "notObserved": "A reading that is not answered, an absent Application, or a value that is not reported. It is never healthy.",
+        "describes": "The delivery controller: its health assessment of the resources of the Application.",
+        "clock": "host"
+      }
+    ],
+    "operationalCandidate": {
+      "signal": 2,
+      "id": "api-error-rate",
+      "role": "comparator",
+      "rankingPreference": "none",
+      "predeterminedWinner": false,
+      "statement": "Signal 2, the API canonical error rate, is the preregistered operational signal candidate for operator use. It fills one role: the comparator of definition.ranking. It is not a predetermined ranking winner. Each signal, signal 2 included, is ranked only by the recorded evidence and definition.ranking, and the caller record stays the reference truth.",
+      "comparatorCondition": "definition.ranking names a signal most caller-truthful only when its false-unavailable time is not greater than that of the comparator, signal 2. Signal 2 meets that condition trivially, because it is compared with itself. That gives it no ranking preference: it must still have the lowest false-healthy time of all signals."
+    },
+    "timeline": {
+      "meaning": "Each figure of this record aligns the caller record, the timeline streams, the telemetry streams, and the operator events of one run on one time basis. That alignment is not a claim that the clocks are synchronized, and the procedure does not synchronize them. Each instant keeps the clock and the resolution that the clock policy of its source gives it. Each order and each interval across the node clock and the host clock uses the clock bound of that run and the margin of that policy.",
+      "streams": "A run of each source collects the caller record, the endpoints, pods, deployments, and argo streams of the timeline collection, and the telemetry and resources streams of the telemetry collection, as definition.collection of its source states."
+    },
+    "callerFailures": {
+      "statement": "The API error counter counts a request that the API answered with a canonical error. A caller failure can have no such count: a request that timed out, a connection that failed, an answer that was missing or not valid, or an error that the API counted in a process that ended before its next scrape.",
+      "outcomes": [
+        {
+          "outcome": "http-error",
+          "canonicalErrorCode": "when-stated",
+          "identifiedBy": "An answer with an HTTP status other than the required status. The caller record keeps errorCode and errorCondition for this outcome alone, and only when the answer stated them."
+        },
+        {
+          "outcome": "invalid-response",
+          "canonicalErrorCode": "never",
+          "identifiedBy": "An answer with the required status whose body the runner could not read as the required completion."
+        },
+        {
+          "outcome": "timeout",
+          "canonicalErrorCode": "never",
+          "identifiedBy": "No answer before the request timeout of the runner, or an answer after it. The request line holds no HTTP status, or a latency above the timeout."
+        },
+        {
+          "outcome": "transport-error",
+          "canonicalErrorCode": "never",
+          "identifiedBy": "No HTTP status: the connection failed, was refused, or ended with no answer."
+        },
+        {
+          "outcome": "identity-refused",
+          "canonicalErrorCode": "never",
+          "identifiedBy": "An answer from an adapter or a model other than the one that the run requires."
+        }
+      ],
+      "falseHealthy": "The false-healthy time of each signal counts every failed completion of the caller record, whatever its outcome, and whether or not it states a canonical error code. A failure that the API error counter did not count is therefore false-healthy time of signal 2 when signal 2 states healthy.",
+      "report": [
+        {
+          "figure": "failures-without-canonical-code",
+          "statement": "For each run, the number of failed completions in the window, by outcome, and how many of them state no canonical error code. The caller record gives this count exactly."
+        },
+        {
+          "figure": "failures-without-counter-change",
+          "statement": "For each run, the number of failed completions in the window less the increase of the API error counter over the window, and never less than zero. The increase is the sum of the non-negative increases of consecutive readings. This is the number of caller failures with no matching API error-counter change. Each fall of a sum is stated beside the figure."
+        }
+      ]
+    },
+    "computations": {
+      "searchStart": "The recordedAt instant of the fault-injection-started event of the run.",
+      "firstCallerImpact": "The completion instant of the first failed request at or after the search start, as tools.reliability_analysis states it. A run with no such request has no first caller impact, and its detection lags are not computed.",
+      "firstChange": "For each signal, the first reading at or after the search start whose state differs from the state of the last reading before the search start, with the instants of both readings.",
+      "detectionLag": "For each signal, the start instant of the first reading at or after the search start that states the problem, less the first caller impact. A negative lag means that the signal stated the problem before the first caller impact. definition.ordering decides whether a lead or a lag is stated.",
+      "falseHealthy": "For each signal, the time in which the caller fails and the signal states healthy. The caller fails during each failure episode of the caller record: from the completion of its first failed request to the completion of the next successful one. An episode with no later success inside the window lasts to the end of the window.",
+      "falseUnavailable": "For each signal, the time in the window after the first completion and outside every failure episode in which the signal states the problem.",
+      "notObserved": "For each signal, the time in which no reading gives it a state, inside and outside the failure episodes. A signal that is not observed is never healthy and never a problem. This time is stated on its own, and definition.ranking counts it against the signal.",
+      "figures": "Each duration of a sampled signal is two figures, as tools.reliability_analysis computes a sampled interval. The inner figure is the time between consecutive readings that both gave the state, and it does not cross a reading with no state. The outer figure is the time between the nearest readings on each side that gave another state. No figure states the state between two readings.",
+      "changed": "For each signal and each run, whether any reading in the window states a state other than that of the first reading of the window.",
+      "describes": "For each signal and each run, whether the signal reads the tier that the fault of the source changed, or the caller path through the API Service. The fault of the source names its target: the runtime tier in V2-E02A and V2-E02B, the API tier in V2-E02C, and the release in V2-E04."
+    },
+    "ordering": "A lead or a lag between a caller instant, on the node clock, and a reading, on the host clock, is stated only when its size is more than the clock bound of the run plus the coarser resolution of the two sources. Otherwise no lead or lag is stated, and the result states the reason clock-bound-reached. The clock bound of each run is the one that its source record computes from P8. Two readings of the host clock are ordered to the coarser resolution of their two sources, as the source policy states for one clock.",
+    "ranking": {
+      "earliest": "The result may state that a signal changed earliest in one scenario only from the recorded instants of that scenario, and only when the result holds under definition.ordering.",
+      "mostCallerTruthful": "The result may state that one signal was the most caller-truthful of the preregistered signals in the scenarios of a population only when two conditions hold over the counted runs of that population: the signal has the lowest total false-healthy time, and its total false-unavailable time is not greater than that of the comparator. Both conditions hold for the inner and for the outer figures.",
+      "comparator": "api-error-rate",
+      "figures": [
+        "inner",
+        "outer"
+      ],
+      "tradeOff": "When no signal holds both conditions, or when two signals trade one condition against the other, the result publishes the trade-off and names no signal.",
+      "exploratory": "A signal that is added after any result of the population is seen is labeled exploratory. It is not ranked with the ten signals of this record.",
+      "notObserved": "For the ranking, the time in which a signal is not observed counts against it: inside a failure episode as false-healthy time, and outside one as false-unavailable time. The not-observed time is also published on its own.",
+      "scope": "The ranking reads the initial population, and later the population with the extension. Each result names its population. Signal 1 is the reference and is not ranked."
+    },
+    "doesNotEstablish": [
+      "The earliest signal of an incident other than the scenarios of the population.",
+      "The quality of an alert under a failure that no counted run executed.",
+      "The cause of a change in throughput, latency, or time to first token.",
+      "That a signal ranked here states caller impact in another environment, on another topology, or under another workload.",
+      "An alert threshold, a service level, or an availability."
+    ],
+    "limitations": [
+      "No code that computes an E03 figure exists. tools.reliability_analysis reads no telemetry stream, so signals 2 and 8 need code that a later change adds, under a later revision of this record.",
+      "Signals 2 and 8 read values that the in-cluster collector stored. A value can be older than its reading by up to one scrape interval of 30 s, and the collection reads every 15 s. So the first change of these signals can follow a change of the API by up to the sum of the two intervals.",
+      "Signal 2 reads a no-series answer of the error query as no counted error only under the conditions of its derivation. That reading rests on the API publishing its error counter only after it counts its first error, as src/inferops/api/observability.py does in the pinned content.",
+      "When a process of the API starts again, or its target leaves, a counter sum falls. The errors that the process counted after its last scrape are then in no reading. The pair with the fall is not observed, and the failures-without-counter-change figure can count those errors as missing.",
+      "The failures-without-counter-change figure compares totals over the window. It does not match a counter change to one request.",
+      "Signal 7 does not observe a tier with no Ready replica, because the Kubernetes API omits a count of zero. That time is not-observed time of signal 7, and the ranking rule counts it against the signal.",
+      "A state that began and ended between two readings is in no reading. A reading every 2 s or every 15 s bounds each change by two readings.",
+      "The evaluation instant of a telemetry reading is on the clock of the in-cluster collector. No figure reads it: each figure reads the read instants, on the host clock.",
+      "The population has three counted runs of each pod-loss experiment and two or three of V2-E04. The figures describe those runs. No confidence interval or statistical significance is stated.",
+      "The record of V2-E04 states that most of its runs are not expected to meet its recovery criterion. A run that fails it is still a counted run, and it is in the extension."
+    ],
+    "history": [
+      "This record was written on 2026-10-19, before any run of V2-E02A, V2-E02B, V2-E02C, V2-E04, or V2-E05. No run of these experiments exists, and no figure of this record has been computed.",
+      "On 2026-10-18 the repository owner decided that V2-E03 and V2-E06 each have their own freeze record, registered before any source run. That decision was due before Sprint 6 began, and it was made after the Sprint 6 changes had merged. The late date stays recorded here, and it is not changed or waived.",
+      "The repository owner also decided the population, the exclusion of V2-E05, and signal 2 as the operational signal candidate, with no ranking preference, on 2026-10-18, before any source run.",
+      "Known when it was written: the qualification q1-2, the characterizations q2-2 and q3-2, the bound record bounds-r1, and the freeze records of the five reliability experiments with their revisions. No signal value of a source run was known, because no source run exists."
+    ],
+    "analysisCode": {
+      "procedureDirectory": "docs/proof/experiments/v2-e03/procedure",
+      "rule": "No code that computes an E03 figure exists when this record is registered. A later change adds it. Before any figure is computed, a later revision of this record pins that code in its material scope and classifies each input that moved. The procedure directory, which does not exist at registration, is in the material scope, so a driver added there is listed as added by python -m tools.experiment_freeze --changes. Code added elsewhere is listed only when a pinned module imports it. The review of the later revision checks the rest."
+    },
+    "executables": [
+      "tools/analysis_preregistration/__main__.py",
+      "tools/experiment_freeze/__main__.py"
+    ]
+  },
+  "parts": [
+    {
+      "id": "E03",
+      "title": "Signal truthfulness over the pod-loss runs, with the bad-release extension",
+      "question": "Over the counted runs of its population, which preregistered signal changes first, and for how long does each signal state healthy while callers fail, or state a problem while callers succeed?"
+    }
+  ],
+  "fields": {
+    "experimentIdVersion": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "experiment": "V2-E03",
+          "freezeRevision": 1,
+          "definition": "This record states the population, the signals, the computations, the ranking rule, and the acceptance criteria in full. A change to any of them, to a source binding, or to a pinned input, is a later revision of this record."
+        }
+      }
+    ],
+    "gitRevision": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "preparedFrom": "938e9f3ed85255850cf70a3ffd67018b28dff1a6",
+          "pinnedInputs": "Every file in materialScope is pinned by its content digest in pinnedInputs. A record cannot name the commit that adds it, so the pins freeze the files and not a commit.",
+          "executingRevision": "Each analysis executes at a merged commit of main that holds the revision of this record that pins the analysis code, with its registered digest, and a clean working tree. The analysis document names that commit."
+        }
+      }
+    ],
+    "environmentIdentity": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "provider": "docker-desktop",
+          "environmentSha256": "sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c",
+          "qualification": {
+            "qualificationId": "q1-2",
+            "path": "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+            "contentSha256": "1141cbd1c0acd7eff839395a89eba3fe116a060dafb3941128bf23c440ec1b3d"
+          },
+          "statement": "V2-E03 runs in no environment of its own. Each source run executes in the environment that every bound source names: the qualification q1-2 on the docker-desktop provider with one node. The figures are bounded to that environment."
+        }
+      }
+    ],
+    "callerProfileRevision": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "profile": "RP-1",
+          "revision": 1,
+          "path": "deploy/serving/reliability/rp-1-profile.v1.json",
+          "contentSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+          "statement": "The caller profile of every source run. The caller record of each run is the reference truth of the analysis."
+        }
+      }
+    ],
+    "topology": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "sources": {
+            "V2-E02A": {
+              "apiReplicas": 2,
+              "runtimeReplicas": 1,
+              "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+            },
+            "V2-E02B": {
+              "apiReplicas": 2,
+              "runtimeReplicas": 2,
+              "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db"
+            },
+            "V2-E02C": {
+              "apiReplicas": 2,
+              "runtimeReplicas": 2,
+              "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db"
+            },
+            "V2-E04": {
+              "apiReplicas": 2,
+              "runtimeReplicas": 2,
+              "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db"
+            }
+          },
+          "statement": "V2-E03 deploys nothing. Each run has the topology of its source record."
+        }
+      }
+    ],
+    "fault": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "injected": "none",
+          "sources": {
+            "V2-E02A": "delete-runtime-pod",
+            "V2-E02B": "delete-runtime-pod",
+            "V2-E02C": "delete-api-pod",
+            "V2-E04": "accept-bad-release"
+          },
+          "statement": "V2-E03 injects no fault. Each scenario is the fault of its source record, and each run states its own fault events."
+        }
+      }
+    ],
+    "repetitionCount": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "sources": {
+            "V2-E02A": "3 counted result-bearing runs, under definition.repetitionRule.",
+            "V2-E02B": "3 counted result-bearing runs, under definition.repetitionRule.",
+            "V2-E02C": "3 counted result-bearing runs, under definition.repetitionRule.",
+            "V2-E04": "2 counted result-bearing runs, and a third when definition.setRules requires it, under definition.repetitionRule. The required number is 3 from the moment the rule requires it."
+          },
+          "statement": "V2-E03 has no run of its own. The initial analysis reads the counted runs of V2-E02A, V2-E02B, and V2-E02C, three of each under their repetition rules, and the extension adds the counted runs of V2-E04 under its rule. The analysis is computed once for each population, and it is never repeated to obtain another result."
+        }
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "id": "E03-AC1",
+            "kind": "validity",
+            "statement": "Each candidate signal has a timeline in each counted run of the population, aligned as definition.timeline states, or the analysis states for that run why it has none."
+          },
+          {
+            "id": "E03-AC2",
+            "kind": "validity",
+            "statement": "The caller record of each counted run was captured by the reliability runner, independently of every candidate signal."
+          },
+          {
+            "id": "E03-AC3",
+            "kind": "validity",
+            "statement": "The false-healthy and the false-unavailable time of each candidate signal are computed for each counted run, or the analysis states the reason that one is not computable."
+          },
+          {
+            "id": "E03-AC4",
+            "kind": "validity",
+            "statement": "No reading without a state is read as healthy, and the not-observed time of each signal is stated."
+          }
+        ],
+        "note": "Each criterion is a validity criterion. The analysis is valid whether or not the expectation of definition.hypothesis holds."
+      }
+    ],
+    "derivedNumericBounds": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "boundRecord": {
+            "path": "docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json",
+            "contentSha256": "542b05dd9627b25330a4602071d99276218776cf1f78a5c34ac764fbb3188116"
+          },
+          "use": "No criterion of this record uses a bound of the bound record. The clock bound of each run, which its source computes from P8, is the one bound that a figure of this record uses, in definition.ordering.",
+          "statement": "The bound record that every bound source names."
+        }
+      }
+    ],
+    "evidencePaths": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": {
+          "directory": "docs/proof/experiments/v2-e03/analyses/<analysis>/, where <analysis> is e03-initial-N or e03-extension-N, from 1, never reused",
+          "files": {
+            "analysis.v1alpha1.json": "The signal analysis: for each counted run, the states, figures, and reasons of each signal, and the path and content digest of each run manifest that it read.",
+            "ranking.md": "The ranking or the trade-off, with each figure of each run and each signal, and the population that it read.",
+            "commands.txt": "Every command of the analysis, in order.",
+            "transcript.txt": "What the commands printed, with each exit status, with host paths removed."
+          },
+          "inputs": "The analysis reads the committed run directories of its population and copies no raw stream.",
+          "corrections": "docs/proof/experiments/v2-e03/corrections/<analysis>/correction-N.v1alpha1.json. A committed analysis directory is never edited."
+        }
+      }
+    ],
+    "abortConditions": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "code": "abort-check-refused",
+            "condition": "python -m tools.analysis_preregistration --check fails at the executing commit."
+          },
+          {
+            "code": "abort-code-unpinned",
+            "condition": "The code that computes a figure is not pinned by the revision of this record that the analysis names, or python -m tools.experiment_freeze --changes lists a material file of that revision."
+          },
+          {
+            "code": "abort-source-unbound",
+            "condition": "A run that the analysis reads executed under a source revision that the revision of this record does not bind."
+          },
+          {
+            "code": "abort-input-differs",
+            "condition": "A run directory that the analysis reads differs from its committed content, or python -m tools.experiment_evidence check refuses it."
+          }
+        ],
+        "note": "An aborted analysis publishes no figure. It is kept with its code and its reason."
+      }
+    ],
+    "cleanupProcedure": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": [
+          "C1. The analysis creates no cluster object, starts no caller, and contacts no cluster, so no cluster object is cleaned up.",
+          "C2. The analysis writes only under its own analysis directory. An aborted analysis keeps its commands, its transcript, and its abort reason, and it removes and edits no input."
+        ]
+      }
+    ],
+    "intendedEvidenceLevel": [
+      {
+        "parts": [
+          "E03"
+        ],
+        "status": "value",
+        "value": "C2",
+        "note": "C2-derived: figures computed from the stored evidence of C2 runs on one provider and one node. The analysis itself contacts no cluster. Bounded to the environment of the sources, and not representative."
+      }
+    ]
+  },
+  "materialScope": {
+    "description": "The path of one analysis: the import closure of the tools that read the stored evidence of a source run, this check, and the freeze checks; this record's procedure directory, which does not exist at registration, so that analysis code added there is listed as added; every revision file of each source experiment, so that a later source revision is listed as added; the records that the sources name; the caller profile; and the API and chart files that decide what signals 2 and 8 read.",
+    "entryModules": [
+      "tools.analysis_preregistration.__main__",
+      "tools.experiment_freeze.__main__",
+      "tools.experiment_preregistration.__main__",
+      "tools.reliability_analysis.__main__",
+      "tools.analysis_replay.__main__",
+      "tools.experiment_timeline.__main__",
+      "tools.experiment_telemetry.__main__",
+      "tools.experiment_events.__main__",
+      "tools.reliability_runner.__main__",
+      "tools.experiment_evidence.__main__",
+      "tools.experiment_run.__main__"
+    ],
+    "packageRoots": {
+      "inferops": "src",
+      "tools": "."
+    },
+    "paths": [
+      "docs/proof/experiments/v2-e03/procedure/*",
+      "docs/proof/experiments/v2-e02a/freeze-r*.v1alpha1.json",
+      "docs/proof/experiments/v2-e02b/freeze-r*.v1alpha1.json",
+      "docs/proof/experiments/v2-e02c/freeze-r*.v1alpha1.json",
+      "docs/proof/experiments/v2-e04/freeze-r*.v1alpha1.json",
+      "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+      "docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json",
+      "deploy/serving/reliability/rp-1-profile.v1.json",
+      "src/inferops/api/observability.py",
+      "src/inferops/telemetry/names.py",
+      "charts/inferops-llm/values.yaml",
+      "charts/inferops-llm/templates/telemetry-collector.yaml"
+    ],
+    "exclusions": []
+  },
+  "pinnedInputs": [
+    {
+      "path": "charts/inferops-llm/templates/telemetry-collector.yaml",
+      "sha256": "3cf5b09891a77a59b2101a7eb4f7ec76d5cf27333e66711699dcfca50fae170a",
+      "role": "the scrape jobs of the in-cluster collector"
+    },
+    {
+      "path": "charts/inferops-llm/values.yaml",
+      "sha256": "0031a614dec9813171f1e8147f11ed55d33bfa1730c8a39781064c43213cdccd",
+      "role": "the scrape interval of the in-cluster collector"
+    },
+    {
+      "path": "deploy/serving/reliability/rp-1-profile.v1.json",
+      "sha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+      "role": "the caller profile of the sources"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json",
+      "sha256": "adfd951101ca5a40cc41c9b196b5394f9217eb82d3befc242671885ef3a0d1fc",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json",
+      "sha256": "edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json",
+      "sha256": "27c5934bb13b55c9ea2495e664f7f06f45886b1d8eacd1abffde293b08d156e5",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json",
+      "sha256": "be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02c/freeze-r1.v1alpha1.json",
+      "sha256": "b41a9a698301d3c0d4cc1242343d534e4bf63fe200020f2c65113b981dc62352",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02c/freeze-r2.v1alpha1.json",
+      "sha256": "abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e04/freeze-r1.v1alpha1.json",
+      "sha256": "0dcc3b1c0cba1ee51acc962a083d78a82c42093a75fad72e41b193dde3124e5d",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e04/freeze-r2.v1alpha1.json",
+      "sha256": "fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+      "sha256": "1141cbd1c0acd7eff839395a89eba3fe116a060dafb3941128bf23c440ec1b3d",
+      "role": "a record that the sources name"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json",
+      "sha256": "542b05dd9627b25330a4602071d99276218776cf1f78a5c34ac764fbb3188116",
+      "role": "a record that the sources name"
+    },
+    {
+      "path": "src/inferops/__init__.py",
+      "sha256": "871ae3c4e73373b9e916405fb585676c84ed70c62405abeac50fabf17465adff",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/__init__.py",
+      "sha256": "5cbdaf1206b7b00b89bced6aad46854fee67d4ca87eab28d51e302f39cd11ee4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/__init__.py",
+      "sha256": "a6eb27ce0ad79924d689ac218f9ac1c58d31cd5616c7da75941e29ff5591015c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/adapter.py",
+      "sha256": "019c2dbe72c2b4b2eda4945f56856795f83dc2c54463fceb782773fe255a1aec",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/capabilities.py",
+      "sha256": "ed657ee54f4fd3ff71239b313c745201e375a6ad0a8cb986c839d8c7b86f6b4b",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/configuration.py",
+      "sha256": "7135e1f6c5584fe485c9fb3c5ec25fd49d6e98a25d7d0c39a84a5b751dea4fa9",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/http_transport.py",
+      "sha256": "13a19ffb189b416a48881f357316776199d483812ad358ecf43ec42f03390649",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/inference.py",
+      "sha256": "c4ed5323306d361c59a814f48d3622dc509375e08293a175e56c7f7b3a4c3f66",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/metadata.py",
+      "sha256": "ce873ea4da0a7b4b3979f2414e1bcc70f36eb8333959e945245de745bd7020c4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/pins.py",
+      "sha256": "85d86ca0700e38ecfd626f22bb8bc67db8e9a51125c52fe755f3a1c2b2405546",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/readiness.py",
+      "sha256": "f877f91e44462c4cab2cbb4ade6ec11972792ad0979c110d9c880a253efb759c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/settings.py",
+      "sha256": "45a3dc13cfd893c782be062dde20c86388f87f1dff375099d6a99642ec884001",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/transport.py",
+      "sha256": "d169cec0ae8727ebf1af5e7c85350f3195a1e5418c835b13c5c7e4ada5524276",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/mock_serving.py",
+      "sha256": "72f31817b7589d32bab4520c7184ba21e513b6ef935ee761242e911b723a23c9",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/__init__.py",
+      "sha256": "ba90f871e88b120862ebbeff45921fc58a608f9cfa1e73ffd2a003fe15df34cd",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/application.py",
+      "sha256": "dc829593d82b3b28da9eccc8443fbd6ae6c3e36fee2a83f168bd21ccf0469b3c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/errors.py",
+      "sha256": "554fafcd5aeb4e1419d15e9ca3a5fb688963fa401fcb9a5c014aaa3e4a4c30cb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/identifiers.py",
+      "sha256": "e8315d05ccb9ce814cb93147508f0f46ca000e90a5a28934ddb479aa970e6490",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/lifecycle.py",
+      "sha256": "bd2aece5be9631f9bde312e29bd4f2111cf3abf52090b09b136ca339b9bc9f81",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/metrics.py",
+      "sha256": "a58a43c402fc9c476ec4376a0d0c2a02df79f4e39807e8a9a8cbdede03e85b00",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/observability.py",
+      "sha256": "1b37d88b8dc34707ad95e3a2194b0cade574867691a57d0b31871e6e72a54f38",
+      "role": "the API module that publishes the error counter only after its first error"
+    },
+    {
+      "path": "src/inferops/api/responses.py",
+      "sha256": "d3f7ed7522329196c96f24fabbaeb190149cccd9f9873b24497f8fbd452d61f4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/selection.py",
+      "sha256": "f73e1c5d708f59c8c46dd4107b0bf4ba5a4634f30f60b9276038054a94b725be",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/surface.py",
+      "sha256": "ac81932c64c1e93e021d29a2567748ab88f3e413bd2945237e512a88785739ad",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/validation.py",
+      "sha256": "e5bbb62653ddc03ec5e18d094a752237c95f20282c6ca02f41ce4c8c24afae2c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/__init__.py",
+      "sha256": "bbbb9f098f2a31746200e6f62bdd3ec3fc8a9610e346575b354bf8f596cf6ce2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/context.py",
+      "sha256": "4d833e2e684b8c714ab8b649616bb8ad84a62cd2324b716aa4f8e151b44cbeb2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/__init__.py",
+      "sha256": "ac90e4a3dd59f021686dce91c3c10185b7639cf619cd7852e62a5c34eee82c66",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/contract.py",
+      "sha256": "96372b2d766605414c62cad06be188eb13ab08c7e15e53420453dea81eab0d3b",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/errors.py",
+      "sha256": "454fd252c6bd2722d90dd26f9dfb0e5955898bacfc3f994f4b7eaf213e3dcc4c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/test_double.py",
+      "sha256": "f79e7dc9c16b2fba94dd014ac3023f94f8f5fc3240869b24d8706eec0d2c30b1",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/values.py",
+      "sha256": "ba1d1a70e7d006d9fb8554439deb2f1e5958b490ce5b39d94394d15f10fb7ce8",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/__init__.py",
+      "sha256": "c0501df503eea8b7601a9e34e772fd549f9f83be4196836620dc2ebadc2734ae",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/contract.py",
+      "sha256": "b85e7b2597a5310bdb964191b7b7f83fe1bdedb72780ddb2c8fb4718545c3fc2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/errors.py",
+      "sha256": "f0735dd4ce03efafd6d5a177021bfa22b8ae90f41de27994cd838dadf1038aab",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/parsing.py",
+      "sha256": "578a6cd13ceaaabdbc9ac31ee6def51544837ab93f817af43d3f970758ee96e8",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/validation.py",
+      "sha256": "45a8f4f4bb6a242231633926e1d178c35d6bb9424f3d4a2e2df5c4324a80bfdb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/values.py",
+      "sha256": "3a2a4c6d79a6caee3afb2b67b47220f3e746c68b47fc4e004b0913142e6587d2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/versions.py",
+      "sha256": "00a8bc3f3ad17c83765c5ce34c18c1affee1cb6175a2ece4519bb21848819ff6",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/__init__.py",
+      "sha256": "f1d9571661ee3e328f006c1fe534a1d076190d2df8a187849d1fd558a6730f30",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/names.py",
+      "sha256": "b056b3e8a042db3e695a7b1b4a6115f9ebc52982cc6f84b79f28158235b09239",
+      "role": "the metric names and outcomes of the API"
+    },
+    {
+      "path": "src/inferops/telemetry/process.py",
+      "sha256": "6035257ef7c7f19ea94b6890a29f026375d6b8bef52948b1e92512422aedd090",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/records.py",
+      "sha256": "154db0cd92f66931d0fb2b9f43001d30d2fdfbec1f90f0712c1139d74216cad5",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/registry.py",
+      "sha256": "bb341b32521e167cab92f9682f6438f5fc93ca8ee9e2561441ee0169493503c0",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/resource.py",
+      "sha256": "9e53ddfedc679f64368e9094d25dc11e481646a0f20ca166538d2c33d3462ea7",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/__init__.py",
+      "sha256": "2aa0150d36adadb891175596f532622211973267f11c20201a7e4fb10bd18ddb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/analysis_preregistration/__init__.py",
+      "sha256": "89a72cb652f4c7f90755e2f020d9491b91e313294d70f3f802e94a96a1ff0ba2",
+      "role": "this check"
+    },
+    {
+      "path": "tools/analysis_preregistration/__main__.py",
+      "sha256": "6ab098ffc105d30b01991bdc0e206eb43d554ec4e942c280e6cfa45d98641683",
+      "role": "this check"
+    },
+    {
+      "path": "tools/analysis_preregistration/core.py",
+      "sha256": "0635de3ea233d844da9a1fbbb9580109e881986cb9cf691fd44e3a57a4a89922",
+      "role": "this check"
+    },
+    {
+      "path": "tools/analysis_replay/__init__.py",
+      "sha256": "b252ad6f540be7926aca810a00f7ec8204d11a45d7bc037667e2469f75ad53c2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/analysis_replay/__main__.py",
+      "sha256": "f2680e3ec028334f06f0a5fadeb10c40104ec19a2e7084179c3d6e252a22c8a8",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/analysis_replay/core.py",
+      "sha256": "891191484a079d93ce6f79dc6bc2965486163b38837da79f7babca9966ce89db",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/api_carrier/__init__.py",
+      "sha256": "40e548179f50b3539766a8107a98f75be40b30154de441e90701acb5b694c15e",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/api_carrier/http_server.py",
+      "sha256": "2b575783d2e02e009e74d6578f64bcaeedb7340a3082f34f0dc5019b19d76f92",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/contract_validation/__init__.py",
+      "sha256": "18818adcaa25c3e01c66ca21eb17ef91f8c9b9f30216f8f14d9180820f811c08",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/contract_validation/errors.py",
+      "sha256": "2f3fa60477e9349f6d52d019656b50037e4a2d89c6dfe1b13495797cd52f8640",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/contract_validation/workload.py",
+      "sha256": "bc30176be2bb41dfefd628fe0d9f45a810a8bea2c4e4b157c22a2f800340cceb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_index/__init__.py",
+      "sha256": "90424daad62e9abd3217ec8fc69db7b5a0dfb10bee5590a13622f787ca69d2c7",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_index/core.py",
+      "sha256": "bc47a56462d4cf12103e42ffcb740996a7c12e37d03a2165ffed0fe581a7d0b8",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_model/__init__.py",
+      "sha256": "0bb28fa732ae46ae47ec5eaae89d34ca012ee94e1aae3f2b98b0f061fd06afcc",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_model/core.py",
+      "sha256": "7b5ec1931229c2e4882568a93cee4ee89c5865f82529074abf123cb00ab0bdd3",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_model/rules.py",
+      "sha256": "24f87de9c6c0d50a673f3a0561919b299a5ad445acd8edb2cd9d097b0d82201a",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_events/__init__.py",
+      "sha256": "7644b009851cc014ac5e68994d05c1a8dd35726f0a3318b1b356b1d22a6b48ec",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_events/__main__.py",
+      "sha256": "86b66597f76cc87bcdfbde9a65f2dd3170f948d135b7764f2bb6885bb6349e05",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_events/core.py",
+      "sha256": "8b66e1952478aeac517150bc106efb74e5c39a0a07a487385c2e66cff45cdf07",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_evidence/__init__.py",
+      "sha256": "e2e5915cf1b572efb75c79e2291a982c943723be7f0c6ace88dae047e17968a4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_evidence/__main__.py",
+      "sha256": "814ddc02a80e6489caef890223d2a972c9627732f26c76247cd9562bde8ab1a5",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_evidence/core.py",
+      "sha256": "10230ca6b20eb9f4cfb8a8f7ba5d261561e55de7e4951b8371a59a6e4e40163e",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_freeze/__init__.py",
+      "sha256": "938f5d3c48d11f759c72d9ca99f376f26396b2b46eb9eb0cc43647f91def57ad",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_freeze/__main__.py",
+      "sha256": "8929bc5b4b9c4a0166ec6ff0cc7610d1ae2267327ab45123dccea45ea003535a",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_freeze/core.py",
+      "sha256": "db9b1c1fd83668a77639ab8e1e56dbe3ab422460d30a22be4a6be3d68b0f4b46",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_preregistration/__init__.py",
+      "sha256": "8be357515764089b8062172a76c05aed8df899d1fceff3110d7b9666c81ce355",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_preregistration/__main__.py",
+      "sha256": "19aba7528c8d8238cee221ec8f715af738d76c59f7da2eb2887dc277f0809d46",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_preregistration/core.py",
+      "sha256": "0e29593b097914818d3ce9bbd717732c52416ef8cdfceff12b220173bdeec5f0",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_run/__init__.py",
+      "sha256": "b5cb94f54480837c45f474596c934ccec59f87eaffc56d436cf37379bcf04f89",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_run/__main__.py",
+      "sha256": "2c0204a2b4728f92b9459d5edc867cd897c722b6b5acb78b5bc4d804d07f24a3",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_run/core.py",
+      "sha256": "fa2bcb923671644cb230ee2a827a5cb7248fd8d353f1a878294f461bcbd0476b",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_telemetry/__init__.py",
+      "sha256": "b8cbbc69dda94e88a3d321b24daba7700d3258d2aa199805329e13233cad4409",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_telemetry/__main__.py",
+      "sha256": "5fa015c95cdef5d9c5511ab9b2b9726b36d44a9794c9a99e2786127ac6d43784",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_telemetry/core.py",
+      "sha256": "179ce6f2dadea969cd63967eaa9826064fb1ebf43c260b3833da56e7b4cb4858",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_timeline/__init__.py",
+      "sha256": "3050cf91f4155406336804155469e54d89eb0675a25ab5cea35ec3e50e8135aa",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_timeline/__main__.py",
+      "sha256": "4ccc711a33b4968df4e8e0122996383989f410bac6f0e356eaebdc39d7e37f4d",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_timeline/core.py",
+      "sha256": "2cdf718bf897a8556823cb8752f9086703e6828f41807d545d7c3a63c50bf556",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/llm_load/__init__.py",
+      "sha256": "82545fc341c363accc0ee7c144cd89d5f7268ec7bccdd35659ae6a0c75c824f0",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/llm_load/core.py",
+      "sha256": "57df93e5bff1af0b231daa44593e00016bcbbc48f7c10d6564b8b2b227e78a6c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/local_composition/__init__.py",
+      "sha256": "a7bfc29a5a509021d68c05ec9c0f34a63480007d7e55987936fa9e8474039424",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/local_composition/core.py",
+      "sha256": "f1117cd52750b636692faa13254220ad877492320d4bb38f7c2c25ba700d4c0d",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/local_composition/http_server.py",
+      "sha256": "dde885d016acbded76d8fd35a46ceec9a34a3567fe133c3c1c8a2b47567d2c72",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/model_acquisition/__init__.py",
+      "sha256": "6008e3bb4505376726ce6ed88692dbfd0a67ccfc35e448496849cda2e78eba89",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/model_acquisition/core.py",
+      "sha256": "05ba3648ef6fa3e73ac23600cf77197f5769b949e31c5dec12cba5266fb64dd7",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_analysis/__init__.py",
+      "sha256": "2b9d501ea66e430708f074a5cb10a0254537a05b88719bc76dcbdca08c527e08",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_analysis/__main__.py",
+      "sha256": "7ce7ea1f27a4634932a08ba7eede54bcf8d84acb2146838a7260bca2ded9034f",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_analysis/core.py",
+      "sha256": "e4bb5454bcb9b5ea19451bbf722b8ddbba276d3c68f20c679cd33445df65d7af",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_profile/__init__.py",
+      "sha256": "f7ec32f9067c2dd9fb20b56f6ff320646d0ed77357bc70770acc48a912a82e76",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_profile/core.py",
+      "sha256": "42043378966c0a39c54fed6d253f828a81848aaaf8248332d553d4c8aa04d2a9",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_runner/__init__.py",
+      "sha256": "c7153b466df80f2a221179c92e992fe5d19fdc3f8f39e64666b243a49ea8928d",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_runner/__main__.py",
+      "sha256": "02783a1e567780393c61e211edadd67dd0bd30bb13599a8a84e02ce172f3d55a",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_runner/core.py",
+      "sha256": "86929fcb26e2c6490f8070f6b78c80e0d6f5f99d88d3869f4917133fc1cb2ba0",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_runner/incluster.py",
+      "sha256": "e319bfaa31c1994d92d99cb521f053e04608bb70e06e1c0bba2dd85f57933ebb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/runtime_configuration/__init__.py",
+      "sha256": "b4f1a12a432dff42f927f64d9e5dfedf9672cd866c7d5e1da662a2e48b92ad09",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/runtime_configuration/core.py",
+      "sha256": "a234f50699ff8475553e1fcccb50a78fe24aca1608123d55f0ea6837f5b63fd6",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/runtime_packaging/__init__.py",
+      "sha256": "8f29be11b6bd5fc54ffdd6b50252d65931a0329fae46d90c85107cc187fbf66e",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/runtime_packaging/core.py",
+      "sha256": "310eca0203c27d5550028ee5f981e72eafea47d361130fa6a6af5f17a18d2c2e",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/service_endpoint_state/__init__.py",
+      "sha256": "69696d4c5b270bb075e5618401f874f0106216243a21390d21e9b4b5010df105",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/service_endpoint_state/core.py",
+      "sha256": "643bfbe3585ba9ee032f73003ee582b545967ba4d053bc099212b380809315f4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/serving_baseline/__init__.py",
+      "sha256": "0c8062ea74dfed3692d168bf16fee850d3bfdbb1b4890eac21b196d1030d2a8f",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/serving_baseline/core.py",
+      "sha256": "851afbb6ea77697542b5f80a99b3464ab3bfb41e1650c847c1bd69b16c8f5252",
+      "role": "the import closure of a tool that the analysis runs"
+    }
+  ]
+}

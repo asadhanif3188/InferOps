@@ -2691,10 +2691,12 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
     them again, with the reason clock-reading-missing added. The record added by
     V2-S6-005-PR1, revision 2 of V2-E04, registers them again, with that reason and
     the two reasons of its reversal timing added. The freeze check does not read the
-    member. The member is read when an aggregate reads it.
+    member. The member is read when an aggregate reads it. The two records added by
+    V2-S6-006-PR1, revision 1 of V2-E03 and V2-E06, register none: each is an
+    analysis of the runs of other experiments, and no aggregate reads it.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 22
+    assert len(records) == 24
     reliability = {"v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05"}
     registering = []
     for record in records:
