@@ -83,6 +83,10 @@ V2-E05, revision 1 each, in their own directories, committed before any run. Eac
 `q1-2` and `bounds-r1`, and [`tools/experiment_preregistration`](../../../tools/experiment_preregistration/core.py)
 holds each to them and to the others. No run of any of them exists, and nothing ran in
 that change.
+**Four records added by `V2-S6-007-PR1`**: revision 2 of the records of V2-E02A, V2-E02B,
+V2-E02C, and V2-E05, which supersede revision 1 with [one clock
+policy](#the-clock-policy-of-rule-set-2). Revision 1 of each is kept unchanged, and V2-E04
+stays at revision 1. No run exists, and nothing ran in that change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -101,11 +105,15 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | Q3 stable caller characterization, `v2-q3-stable-caller-characterization` | 2 | [`v2-q3/freeze-r2.v1alpha1.json`](v2-q3/freeze-r2.v1alpha1.json) | One part, Q3, at C2 | Frozen before any characterization. It holds a characterization to `q1-2` and to the stable environment identity, and keeps the rule of G and the four Q4 formulas. Since `V2-S6-004-PR2`, one characterization ran under it, [`q3-2`](v2-q3/runs/q3-2/result.md), `CHARACTERIZED`, G = 10,113 ms, and the bound record [`v2-q4/bounds-r1.v1alpha1.json`](v2-q4/bounds-r1.v1alpha1.json) exists. (Until `V2-S6-004-PR2` this cell said that no characterization ran under it and that no bound record exists.) |
 | Q1 environment and identity qualification, `v2-q1-environment-qualification` | 1 | [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification. Not result-bearing: [see below](#the-q1-environment-qualification). Since `V2-S6-001-PR2`, one qualification ran under it, [`q1-1`](v2-q1/runs/q1-1/result.md), and it is `QUALIFIED`. (Until then this row said that no qualification ran under it.) Superseded by revision 2 on 2026-10-17, and kept unchanged. Three pinned inputs differ from its pins, which revision 2 classifies. (Until then this row said that no pinned input differs from its pin.) |
 | Q1 environment and identity qualification, `v2-q1-environment-qualification` | 2 | [`v2-q1/freeze-r2.v1alpha1.json`](v2-q1/freeze-r2.v1alpha1.json) | One part, Q1, at C2 | Frozen before any qualification under it. Its records state the stable environment identity, which holds no memory figure. The seventeen criteria are those of revision 1. Since `V2-S6-004-PR2`, one qualification ran under it, [`q1-2`](v2-q1/runs/q1-2/result.md), and it is `QUALIFIED`; the next identifier is `q1-3`. (Until `V2-S6-004-PR2` this cell said that no qualification ran under it and that the next identifier is `q1-2`.) |
-| V2-E02A, controlled single-runtime baseline | 1 | [`v2-e02a/freeze-r1.v1alpha1.json`](v2-e02a/freeze-r1.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
-| V2-E02B, multi-runtime pod loss | 1 | [`v2-e02b/freeze-r1.v1alpha1.json`](v2-e02b/freeze-r1.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
-| V2-E02C, API pod loss | 1 | [`v2-e02c/freeze-r1.v1alpha1.json`](v2-e02c/freeze-r1.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
-| V2-E04, bad release and Git reversal | 1 | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | One part, E04, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
-| V2-E05, drift reconciliation | 1 | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | One part, E05, at C2 | Frozen before any run. No run exists. [See below](#the-reliability-experiment-freezes) |
+| V2-E02A, controlled single-runtime baseline | 1 | [`v2-e02a/freeze-r1.v1alpha1.json`](v2-e02a/freeze-r1.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
+| V2-E02B, multi-runtime pod loss | 1 | [`v2-e02b/freeze-r1.v1alpha1.json`](v2-e02b/freeze-r1.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
+| V2-E02C, API pod loss | 1 | [`v2-e02c/freeze-r1.v1alpha1.json`](v2-e02c/freeze-r1.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
+| V2-E04, bad release and Git reversal | 1 | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | One part, E04, at C2 | Frozen before any run. No run exists. It is the latest V2-E04 record, read under rule set 1, and its clock statements still contradict its P8. Since `V2-S6-007-PR1` the three files of `tools/experiment_preregistration` differ from its pins and no revision classifies them, so a run refuses to start until a later revision supersedes it. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E05, drift reconciliation | 1 | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | One part, E05, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
+| V2-E02A, controlled single-runtime baseline | 2 | [`v2-e02a/freeze-r2.v1alpha1.json`](v2-e02a/freeze-r2.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E02B, multi-runtime pod loss | 2 | [`v2-e02b/freeze-r2.v1alpha1.json`](v2-e02b/freeze-r2.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E02C, API pod loss | 2 | [`v2-e02c/freeze-r2.v1alpha1.json`](v2-e02c/freeze-r2.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E05, drift reconciliation | 2 | [`v2-e05/freeze-r2.v1alpha1.json`](v2-e05/freeze-r2.v1alpha1.json) | One part, E05, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. [See below](#the-clock-policy-of-rule-set-2) |
 
 ## Why a freeze comes first
 
@@ -1211,6 +1219,12 @@ in that change**: no Git switch, no commit to `main`, no fault, and no cluster r
 | V2-E04, bad release and Git reversal | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | As V2-E02B | Accept a bad runtime release into `main`, then revert it | 2, and a third when the two differ in their causal signature | `caller_total_unavailability_bound_ms`, `reversal_recovery_bound_ms` | C2 |
 | V2-E05, drift reconciliation | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | As V2-E02B | Scale the live runtime Deployment from 2 to 1, with Git unchanged | 2 | `reconciliation_bound_ms`, 210,000 ms | C2 |
 
+Since `V2-S6-007-PR1` the latest record of V2-E02A, V2-E02B, V2-E02C, and V2-E05 is
+revision 2, and the latest record of V2-E04 is revision 1. Each revision 2 differs from
+its revision 1 only in [its clock policy and the members that it
+lists](#the-clock-policy-of-rule-set-2). The topologies, faults, counted runs, bounds,
+and levels of the table are unchanged.
+
 A record is not evidence. It states what a run must do and what counts as a pass. Each
 record states its procedure, its measurements, its criteria, each marked `validity` or
 `pass`, its exclusion reasons, its abort conditions, its cleanup, its limitations, what it
@@ -1287,12 +1301,14 @@ a criterion is material, and it is a later revision too.
   record, for the post-recovery window, for an unrelated failure, and for the evidence.
   V2-E02A has validity criteria only, so it is a characterization: a run of it is never
   `FAILED`.
-- **Two clocks.** An interval between instants of two clocks that lies within the clock
-  bound of the run of a bound is neither held nor failed: the run is `INCONCLUSIVE` for the
-  reason `clock-bound-reached`.
+- **Two clocks.** Under revision 1, an interval between instants of two clocks that lies
+  within the clock bound of the run of a bound is neither held nor failed: the run is
+  `INCONCLUSIVE` for the reason `clock-bound-reached`. Revision 2 of V2-E02A, V2-E02B,
+  V2-E02C, and V2-E05 replaces that rule with [the clock policy of rule
+  set 2](#the-clock-policy-of-rule-set-2).
 - **Repetitions.** A `PASSED` or `FAILED` run is counted and never repeated, replaced, or
   left out. A `REFUSED`, `INCONCLUSIVE`, or `ABORTED` run is kept, for one of nine
-  registered exclusion reasons, and the next run takes the next identifier, up to six runs
+  registered exclusion reasons under revision 1, or of ten under revision 2, and the next run takes the next identifier, up to six runs
   for E02, five for E04, and four for E05.
 - **The caller is the reference.** No stream, readiness state, endpoint count, replica
   count, sync state, health state, or scrape state changes a caller figure.
@@ -1335,6 +1351,179 @@ a criterion is material, and it is a later revision too.
   the drift. No caller figure changes those verdicts. Each run keeps the two live
   ConfigMaps that the precondition read.
 
+### The clock policy of rule set 2
+
+`V2-S6-007-PR1` registered revision 2 of the records of V2-E02A, V2-E02B, V2-E02C, and
+V2-E05 on 2026-10-18, before any run. A review of the Sprint 6 records found that the
+clock statements of each revision 1 contradicted its own procedure. P8 read the node
+clock against the host clock and computed a clock bound, and an outcome rule compared
+intervals with that bound. The limitations and the window of the same record described
+the clocks as three clocks whose difference is not read, and stated a fixed ordering
+threshold of one second. Revision 2 replaces those statements with one clock policy,
+`definition.clockPolicy`, which is the same in each of the four records. Revision 1 of
+each is kept unchanged. **No run exists under either revision, and nothing ran in that
+change.** V2-E04 stays at revision 1 until a later revision supersedes it with the same
+policy.
+
+**What the policy governs.** It governs each verdict instant that
+`definition.criterionClocks` declares: each order of two instants and each interval that
+a criterion compares with a value. It does not govern how
+[`tools/reliability_analysis`](../../testing/reliability-analysis.md) puts a request in
+the window by its completion instant, starts its search for a stabilized recovery at the
+`fault-injection-finished` event, and holds a span to the readings that overlap it. Each
+of these orders an instant of the node clock and an instant of the host clock with no
+margin, and so does the check of the stable pre-fault window. Each record states this as
+a limitation, and a verdict that reads such a figure reads it as the analysis states it.
+
+**Two clocks, six sources.** The provider has one node, so the runner pod, the
+Kubernetes API server, the kubelet, and the delivery controller read one clock. The
+control process, the collection scripts, the operator event log, and the P8 readings run
+on one host and read the other.
+
+| Source | Clock | Resolution |
+|---|---|---|
+| `caller-record`: the start and the completion of each request | node | 1 ms |
+| `kubernetes-timestamp`: a creation, deletion, or condition timestamp, or the start or the finish of an operation of the Application, inside a reading | node | 1,000 ms |
+| `collector-reading`: the start and the finish of each read of a stream | host | 1 ms |
+| `operator-event`: the `recordedAt` instant of each event. The window and the observation limit are stated from these | host | 1 ms |
+| `clock-reading-host`: the two host instants of each P8 reading | host | 1 ms |
+| `clock-reading-node`: the node instant of each P8 reading | node | 1 ms |
+
+Three kinds of instant are on no source, and no verdict reads them: the evaluation and
+scrape instants of the in-cluster telemetry collector, on the node clock; the
+`occurredAt` instant of an operator event, on the clock that the event names, which can
+be a third clock such as that of the Git host; and the instants of the Application
+status other than those of an operation.
+
+**The measurement is P8, unchanged.** P8 reads the clocks before the runner starts and
+again after the window ends. Each reading is a host instant, the UTC time that a pod of
+the node prints, and a second host instant, as the Sprint 5 integration validation read
+them. That validation read the node instant from the node container, and a pod of the
+node reads the same kernel clock. The bound formula is that of revision 1, word for
+word: the largest of the two differences between the node instant and the nearer host
+instant, plus the time between the two host instants. Revision 1 does not say whether
+the largest difference and the time between the host instants are taken from one reading
+or each over both readings. Rule set 2 states the computation: For each reading, d is
+the absolute difference between the node instant and the nearer of its two host
+instants, and w is the time from its first to its second host instant. The clock bound
+of the run is the larger d of the start and the end reading plus the larger w of the two
+readings, in milliseconds. The other reading, the larger over the two readings of d plus
+w of one reading, is never larger, because the larger of d1 plus w1 and d2 plus w2 is at
+most the larger d plus the larger w.
+
+The bound is conservative to the resolution of its instants. The node instant was
+printed at a host instant between the two host instants of its reading, so at that
+reading the node clock less the host clock lies between the node instant less the second
+host instant and the node instant less the first. Its size is at most the larger of
+those two differences, which is at most d plus w. Each instant is cut to the
+millisecond, so the offset can exceed the bound by less than 1 ms, and the margin below
+adds at least 1 ms to the bound.
+
+**The bound is measured at two readings only.** The clock bound is measured at the start
+reading and at the end reading only. To apply it to an instant between the two readings
+is an assumption: the offset between the node clock and the host clock stays inside the
+clock bound between them. Each record of rule set 2 makes that assumption explicitly,
+and no reading tests it. Drift between the readings is not measured. The result page
+states the net change of the offset from the start reading to the end reading, and no
+verdict reads it. The procedure does not synchronize the clocks, and it does not
+guarantee the bound.
+
+**An unusable reading.** A reading is unusable when it is missing, when one of its
+instants is not a UTC instant to the millisecond, or when its second host instant is
+before its first. An unusable start reading ends the run before the fault: no fault is
+injected, and the run is `REFUSED` for `precondition-not-held`. Revision 1 stated no
+outcome for an unusable reading. An unusable end reading makes the bound not computable,
+and each verdict that depends on it is not judged, for the new exclusion reason
+`clock-reading-missing`. Each other verdict is judged. The end-reading rule names no
+state of its own: the rule below decides the state.
+
+**A verdict that is not judged.** A verdict that is not judged is neither held nor
+failed. The state of the run is computed twice from the judged verdicts: once with each
+verdict that is not judged taken as held, and once with each taken as failed. When the
+two states are the same, that is the state of the run. When they differ, the run is
+INCONCLUSIVE for the reason of a verdict that is not judged. So a state that the judged
+verdicts decide stands, and a FAILED state that they decide is never made INCONCLUSIVE.
+The repository owner chose this one rule for an unusable end reading, for an order
+inside the margin, and for a bound comparison inside the margin.
+
+**Orders and bound comparisons across the two clocks use one margin**: the clock bound
+of the run plus the coarser resolution of the two sources. No order is stated between an
+instant of the node clock and an instant of the host clock whose difference is inside
+the margin. An interval between the two clocks is compared with a bound only when it
+differs from the bound by more than the margin. Inside it, the verdict is not judged,
+for `clock-bound-reached`. Two instants of one clock are ordered to the coarser
+resolution of their sources, so two Kubernetes timestamps of one second are not ordered,
+and an interval of one clock is compared with a bound directly. This replaces the fixed
+one-second rule of revision 1.
+
+**How revision 2 judges a run otherwise than revision 1.** No criterion of the four
+records compares an interval between the two clocks with a bound, so the clock-bound
+rule of revision 1 had no case to apply to. Revision 2 differs in four places: the
+margin replaces the fixed one-second ordering rule; an order inside the margin is not
+judged and can make a run `INCONCLUSIVE` for `clock-bound-reached`, where revision 1
+stated no consequence; an unusable end reading can make a run `INCONCLUSIVE` for
+`clock-reading-missing`; and an unusable start reading makes a run `REFUSED`. Each
+follows the rule for a verdict that is not judged.
+
+**The clock of each instant of each criterion.** `definition.criterionClocks` names, for
+each criterion that orders instants or compares an interval with a value, the source and
+the clock of each instant. `definition.criteriaWithoutClocks` lists each other
+criterion: the evidence criterion of each record, the manual-action criterion of V2-E02B
+and V2-E05, which holds for no manual-action event at all, and the drift criterion of
+V2-E05. These comparisons with a value are on one clock:
+
+- E02C-AC10 compares `callerFailureEpisodeMs` with `caller_total_unavailability_bound_ms`,
+  20,226 ms. Both ends of a closed episode are caller completions, on the node clock.
+  Whether an episode near an edge of the window is in it, and is closed, follows the cut
+  of the window by the analysis.
+- E05-AC9 compares the restoration with `reconciliation_bound_ms`, 210,000 ms. It runs
+  from the `fault-injection-started` event to the finish of a deployments reading, both
+  on the host clock. The clock bound does not apply to it, and an unusable end reading
+  leaves it judged.
+- The 10 s between two readings of AC2 is on the host clock, and the 60 s of the
+  post-recovery window is on the node clock.
+
+The cross-clock orders are those of a caller completion or `stabilizedAt` against the
+window, an event, or the observation limit, of a pod's `deletionTimestamp` against the
+observation limit, and of the controller's `operationStartedAt`, to the second, against
+the `fault-injection-started` event in E05-AC8. An operation that starts within the
+margin of that event is not ordered with it, so E05-AC8 is then not judged.
+
+**What else changed.** Each revision 2 differs from its revision 1 in these members
+alone, and a test holds that list:
+
+- `metadata`: the revision, the change that registered it, `supersedes`, and
+  `preregistrationRules`, 2;
+- `definition.limitations`: the clock limitation, rewritten to the policy, and two new
+  limitations: the analysis cuts that the policy does not govern, and that no tool
+  checks that a run executes the latest revision;
+- `definition.history`: one new entry, for revision 2;
+- `definition.preparation`: P1 gains one clause, that the record is the latest revision
+  of its experiment that the freeze registry of the executing revision registers, and P8
+  names the policy. No tool checks the P1 clause: the review of the run compares it;
+- `definition.window.clocks` and the clock outcome rule, rewritten to the policy;
+- `definition.clockPolicy`, `definition.criterionClocks`, and
+  `definition.criteriaWithoutClocks`, new;
+- `exclusionReasons`: `clock-bound-reached` names the margin, and `clock-reading-missing`
+  is new, so each record registers ten reasons;
+- for V2-E05, `definition.reconciliationTiming` names the host clock, and states that
+  the clock bound does not apply to it;
+- the freeze revision and `preparedFrom`, the pins, and `inputChanges`.
+
+The pins moved for the three files of `tools/experiment_preregistration` alone. Revision
+2 classifies `core.py` as material, because P1 runs the check and the check now holds
+the record to its clock policy, and `__init__.py` and `__main__.py` as not material. The
+supersession is stated in `metadata.supersedes` of each record; a registry row names a
+path and a digest only. Every criterion, bound, window, fault, topology, repetition
+rule, abort condition, cleanup step, and evidence path is that of revision 1. The
+[baseline comparison record](../../environment/single-runtime-baseline-profile.md) is
+unchanged: it names no freeze record, and both revisions 2 state its digest.
+
+**V2-E04 until its revision 2.** V2-E04 revision 1 is the latest V2-E04 record, and the
+check reads it under rule set 1. Its clock statements still contradict its P8. The three
+files of the check differ from its pins and no revision classifies them, so `--changes`
+lists them and its P1 refuses a run. No run of V2-E04 is authorized.
+
 ### The check
 
 ```sh
@@ -1344,7 +1533,16 @@ uv run --locked python -m tools.experiment_preregistration --check
 [`tools/experiment_preregistration`](../../../tools/experiment_preregistration/core.py)
 reads the latest record of each of the five experiments and compares it with the
 qualification, the bound record, and the baseline comparison that it names, and with the
-other records. It exits 0 when every rule holds and 1 when one does not, so a run can use
+other records. It reads each record under its own rule set: a revision-1 record of
+`V2-S6-003-PR1` states none and is read under rule set 1, the first twelve rules below,
+and every later revision states its rule set in `metadata.preregistrationRules`. Rule set
+2 adds the five clock rules, and `prereg-rule-set-unknown` refuses a record that states
+no known rule set. It also checks each superseded revision alone, under its own
+rule set, except for the two clauses that compare a record with the present: that its
+bound record is the latest committed, and that its qualified release is that of the latest
+V2-E02B. Those two clauses are the one narrowing of a revision-1 check, and it applies
+only to a superseded revision. Today it prints `PASSED: 5 experiment record(s) and 4 superseded revision(s),
+every rule held`. It exits 0 when every rule holds and 1 when one does not, so a run can use
 it as a precondition. It reads files and writes none. Each record pins it. The default-lane
 suite [`tests/testing/test_experiment_preregistration.py`](../../../tests/testing/test_experiment_preregistration.py)
 runs it and plants each defect below in a copy.
@@ -1358,11 +1556,17 @@ runs it and plants each defect below in a copy.
 | `prereg-bounds-incompatible` | The bound record states the environment, the qualification, and the release that the record states. |
 | `prereg-criterion-bound-unknown` | A criterion that names a bound names a bound of the record and states its value as a whole figure in milliseconds. |
 | `prereg-reconciliation-bound-differs` | The reconciliation bound of V2-E05 is the sum of its three registered components. |
-| `prereg-shared-differs` | The five records state one environment, one caller profile, one intended level, and one bound record with its bounds, and V2-E02A and V2-E02B state every shared field, definition, validity criterion, and exclusion reason alike. |
+| `prereg-shared-differs` | The five records state one environment, one caller profile, one intended level, and one bound record with its bounds. Every record of rule set 2 states one clock policy. V2-E02A and V2-E02B state every shared field, definition, clock policy, validity criterion with its clocks, and exclusion reason alike. |
 | `prereg-baseline-difference-unpermitted` | The topology of V2-E02A differs from that of V2-E02B only in the permitted members. The replica counts and the release of each side are those of the committed COMPARABLE baseline comparison and of the pinned desired-state files, and each disruption budget is the one the chart renders for its replica count. |
 | `prereg-target-topology-differs` | V2-E02C, V2-E04, and V2-E05 state the topology of V2-E02B. |
 | `prereg-executable-unpinned` | A record lists at least one executable, each is a pinned input, the entry file of a tool has its entry module in the material scope, and the scope names this check, the record's procedure directory, the qualification, and the bound record. |
 | `prereg-exclusion-reasons-unsupported` | A record registers exclusion reasons for its own experiment, in the form that the aggregate reads. |
+| `prereg-rule-set-unknown` | A revision-1 record of V2-S6-003-PR1 states no rule set and is read under rule set 1. Every other record states a rule set of 2 or later that this check knows. |
+| `prereg-clock-inventory` | A record of rule set 2 states the node clock and the host clock, and each instant source with the clock and the resolution of rule set 2. Each criterion entry of definition.criterionClocks names a criterion of the record and two instants, each with a source and a clock of the inventory, and is cross-clock exactly when the inventory puts its sources on two clocks. Each criterion declares clocks or is listed in definition.criteriaWithoutClocks, and not both. Each criterion that names a bound declares the clocks of its interval. |
+| `prereg-clock-measurement` | A record of rule set 2 has a P8 that reads the clocks before the runner starts and after the window ends and states the bound formula of revision 1, and its clock policy measures with P8, a start and an end reading of three instants, and the bound formula and the computation of rule set 2. |
+| `prereg-clock-rules` | The clock policy of a record of rule set 2 states the offset-stability assumption, refuses a run with an unusable start reading before the fault, leaves the bound not computable after an unusable end reading with the state that the rule for a verdict that is not judged decides, applies that rule of rule set 2, and orders and compares instants of two clocks with the margin and the words of rule set 2. |
+| `prereg-clock-reasons` | A record of rule set 2 registers clock-reading-missing and clock-bound-reached for INCONCLUSIVE, and its outcome rules name both. |
+| `prereg-clock-contradiction` | No text of a record of rule set 2 states that the clock difference is not measured, orders instants by a time in a sentence that does not name the margin of rule set 2, names synchronization or a guarantee in a sentence with no negation, or states that every run is INCONCLUSIVE, in the phrases that this check names. |
 
 ### What is enforced, and what is not
 
@@ -1385,3 +1589,21 @@ the committed records. Not enforced:
   the figure, not to say what it says about it.
 - **That an abort code or a fault code is recorded.** The records register the codes. No
   check compares a recorded code with them.
+- **That a run executes the latest revision of its experiment.** P1 of each revision 2
+  states it. No tool checks it: the review of the run compares it.
+- **That the offset stays inside the bound between the two readings.** It is an
+  assumption that each revision 2 states. No reading tests it, and drift is not measured.
+- **That a text means what the policy says.** The contradiction rule reads phrases. A
+  sentence that names synchronization or a guarantee and holds a negation anywhere is not
+  refused, and neither is a paraphrase that no phrase names, such as "the two clocks
+  agree". Tests hold four such gaps.
+- **That a criterion listed without clocks orders no instant.** The check requires each
+  criterion either to declare its clocks or to be listed in
+  `definition.criteriaWithoutClocks`, and it requires the clocks of the interval of each
+  criterion that names a bound. Whether a listed criterion truly orders no instant, and
+  whether an entry names every order that a criterion states, is the record's statement.
+- **How the analysis orders node and host instants.** The window, the stabilization
+  search, and the span overlap of `tools/reliability_analysis` order instants of the two
+  clocks with no margin. The policy does not govern them, and each record says so.
+- **V2-E04 revision 1 is read under rule set 1.** Its clock statements still contradict
+  its P8 until a later revision supersedes it.

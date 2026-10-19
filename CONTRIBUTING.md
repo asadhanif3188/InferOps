@@ -680,6 +680,11 @@ uv run --locked python -m tools.experiment_preregistration --check
 A driver, a bad-release revision, or a drift injector is added under a later revision of
 its record, which pins it and merges before the first result-bearing run. Never change a
 criterion, a bound, a window, or an exclusion reason after a run's evidence is read.
+A later revision states its rule set in `metadata.preregistrationRules`, and a revision of
+rule set 2 states the one clock policy of rule set 2 word for word. Do not write that the
+clocks are synchronized, that a bound is guaranteed, or that the clock difference is not
+measured: the check refuses the phrases that it names, and a paraphrase can pass it. Never edit the rule set that a registered record is read
+under: a change of the rules is a new rule set.
 [The records' description](docs/proof/experiments/README.md#the-reliability-experiment-freezes)
 states each rule and what is not enforced.
 

@@ -119,7 +119,13 @@ value, the resolution, and the clock. It does not replace `recordedAt`.
 | `git-host` | The host of the Git repository. |
 | `other-host` | Another host that the page of the run names. |
 
-**The difference between two clocks is not measured.** The header of a log
+**The difference between two clocks is not measured by the log.** Since `V2-S6-007-PR1`,
+revision 2 of the freeze records of V2-E02A, V2-E02B, V2-E02C, and V2-E05 bounds that
+difference at two readings of each run, and states when a verdict may use the bound: see
+[the clock policy of rule set
+2](../proof/experiments/README.md#the-clock-policy-of-rule-set-2). The log does not read
+that bound.
+The header of a log
 states `skew` as `not-measured`. An interval between a `recordedAt` and an
 `occurredAt` on another clock holds that difference, and no order under one
 second is established for an `occurredAt` with a resolution of one second.

@@ -10,6 +10,26 @@ from `1.0.0`.
 
 ### Added
 
+- **One clock policy for the reliability experiment freezes.** `V2-S6-007-PR1` registers
+  revision 2 of the records of V2-E02A, V2-E02B, V2-E02C, and V2-E05, which supersede
+  revision 1. Each revision 1 stated that the clock difference is not measured and used a
+  fixed ordering threshold of one second, while its P8 measured a clock bound. Each
+  revision 2 states one policy, `definition.clockPolicy`: the node clock and the host
+  clock with six instant sources and their resolutions, P8 as the measurement, revision
+  1's bound formula word for word, an explicit offset-stability assumption, the rules for
+  an unusable start or end reading with the new reason `clock-reading-missing`, one rule
+  for a verdict that is not judged, under which a FAILED state that the judged verdicts
+  decide is never made INCONCLUSIVE, and one margin for orders and bound comparisons
+  across the two clocks. Each criterion declares the clock of each instant it orders or
+  measures, or is listed as a criterion without clocks; E05's reconciliation bound is
+  on the host clock alone. The policy does not govern how the analysis cuts the window
+  or searches a stabilization span, and each record says so. No criterion, bound, window, fault, or repetition rule
+  changes. `tools/experiment_preregistration` gains rule sets: revision 1 is read under
+  rule set 1, as registered, rule set 2 adds five clock rules, and one rule refuses a
+  record that states no known rule set, 18 rules in all. It now checks each superseded
+  revision alone too. V2-E04 stays at revision 1 until a later revision of its record.
+  Nothing ran. See
+  [the clock policy of rule set 2](docs/proof/experiments/README.md#the-clock-policy-of-rule-set-2).
 - **The reliability experiments are frozen before any run.** `V2-S6-003-PR1` registers
   five freeze records, revision 1 each: V2-E02A, the controlled single-runtime baseline
   (2 API, 1 runtime, delete the one runtime pod, 3 runs); V2-E02B, multi-runtime pod

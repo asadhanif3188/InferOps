@@ -502,7 +502,13 @@ that a run passed.**
 - A caller instant is on the clock of the runner's pod. A reading is on the
   clock of the collecting host. An event is on the clock of the recording host.
   The difference between the clocks is not measured. Each figure that compares a
-  caller instant with a reading or an event holds that difference.
+  caller instant with a reading or an event holds that difference. Since
+  `V2-S6-007-PR1`, revision 2 of the freeze records of V2-E02A, V2-E02B, V2-E02C,
+  and V2-E05 bounds that difference at two readings of each run, and states when a
+  verdict may use the bound: see [the clock policy of rule
+  set 2](../proof/experiments/README.md#the-clock-policy-of-rule-set-2). The
+  analysis does not read that bound, and the window and the stabilization search
+  order instants of the two clocks with no margin.
 - A request is counted at its completion. A request that fails after a long time
   is counted at the end of that time. The first caller impact is the completion
   of the first failed request, and the request started earlier.

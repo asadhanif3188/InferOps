@@ -2686,11 +2686,13 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
 
     The five records added by V2-S6-003-PR1, of V2-E02A, V2-E02B, V2-E02C,
     V2-E04, and V2-E05, each register the reasons of their own experiment before
-    any run, in the form that the aggregate reads. The freeze check does not read
-    the member. The member is read when an aggregate reads it.
+    any run, in the form that the aggregate reads. The four records added by
+    V2-S6-007-PR1, revision 2 of V2-E02A, V2-E02B, V2-E02C, and V2-E05, register
+    them again, with the reason clock-reading-missing added. The freeze check does
+    not read the member. The member is read when an aggregate reads it.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 17
+    assert len(records) == 21
     reliability = {"v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05"}
     registering = []
     for record in records:
@@ -2702,7 +2704,7 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
             registering.append(record.parent.name)
         else:
             assert core.EXCLUSION_REASONS_MEMBER not in document
-    assert sorted(registering) == sorted(reliability)
+    assert sorted(registering) == sorted([*reliability, *(reliability - {"v2-e04"})])
     example = _read_json(EXAMPLE_ROOT / FREEZE_REF)
     assert core.EXCLUSION_REASONS_MEMBER not in example
 
