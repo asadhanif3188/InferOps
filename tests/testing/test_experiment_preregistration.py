@@ -114,7 +114,7 @@ RECORDS = {
 #: Revision 3 of V2-E04, of rule set 4, registered by V2-S6-008-PR1. Its registered
 #: pin is written out so that a change is visible.
 E04_R3 = "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json"
-E04_R3_PIN = "14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb"
+E04_R3_PIN = "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05"
 #: Every committed record, and the latest committed revision of each experiment.
 ALL_COMMITTED = sorted([*ALL_RECORDS, E04_R3])
 LATEST_RECORDS = {**RECORDS, "V2-E04": E04_R3}
@@ -4683,6 +4683,13 @@ def _restored(document: dict[str, Any]) -> None:
     )
 
 
+def _r3_append_clock_policy(text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["clockPolicy"]["notJudged"]["rule"] += " " + text
+
+    return change
+
+
 CONTROLLER_DEFECTS = [
     pytest.param(
         _restore_ac2,
@@ -4816,6 +4823,46 @@ CONTROLLER_DEFECTS = [
         [(CONTROLLER_RULE, AC2_AT, EVENTS_DETAIL)],
         id="e04-ac2-without-reversal-accepted",
     ),
+    # The defects that the independent review of the third commit planted: a modal or
+    # a passive paraphrase, a state that only the controller sets, a verdict after a
+    # semicolon, and a controller condition in the clock policy.
+    pytest.param(
+        _add_to("E04-AC2", "Argo CD must sync the reversal commit."),
+        [(CONTROLLER_RULE, f"{AC2_AT}.statement", VALIDITY_DETAIL)],
+        id="a-modal-paraphrase-in-e04-ac2",
+    ),
+    pytest.param(
+        _add_to("E04-AC3", "Argo CD detects the reversal."),
+        [
+            (
+                CONTROLLER_RULE,
+                "fields.acceptanceCriteria[0].value[2].statement",
+                VALIDITY_DETAIL,
+            )
+        ],
+        id="a-detection-of-the-reversal-in-a-validity-criterion",
+    ),
+    pytest.param(
+        _add_to("E04-AC4", "The Application reports Synced at the end of the window."),
+        [
+            (
+                CONTROLLER_RULE,
+                "fields.acceptanceCriteria[0].value[3].statement",
+                VALIDITY_DETAIL,
+            )
+        ],
+        id="a-sync-state-in-a-validity-criterion-without-the-reversal",
+    ),
+    pytest.param(
+        _rule("Argo CD must discover the reversal; otherwise the run is INCONCLUSIVE."),
+        [(CONTROLLER_RULE, "definition.outcomeRules[8]", EXCLUDING_DETAIL)],
+        id="a-verdict-after-a-semicolon",
+    ),
+    pytest.param(
+        _rule("If the reversal is not discovered, the run is inconclusive."),
+        [(CONTROLLER_RULE, "definition.outcomeRules[8]", EXCLUDING_DETAIL)],
+        id="a-passive-paraphrase-in-lower-case",
+    ),
 ]
 
 
@@ -4829,6 +4876,27 @@ def test_each_controller_discovery_defect_is_refused(
     assert found(full_root) == [
         (rule, E04_R3, where, detail) for rule, where, detail in expected
     ]
+
+
+def test_a_controller_condition_in_the_clock_policy_is_refused(
+    full_root: Path,
+) -> None:
+    """The clock policy is shared, so the shared and the clock rules refuse the edit
+    too; the controller rule refuses it on its own text."""
+    edit(
+        full_root,
+        E04_R3,
+        _r3_append_clock_policy(
+            "When the controller never resolves the reversal commit, the run is "
+            "INCONCLUSIVE."
+        ),
+    )
+    assert (
+        CONTROLLER_RULE,
+        E04_R3,
+        "definition.clockPolicy.notJudged.rule",
+        EXCLUDING_DETAIL,
+    ) in found(full_root)
 
 
 def test_revision_three_states_the_controller_discovery_as_recovery() -> None:
@@ -4861,3 +4929,31 @@ def test_the_controller_rule_does_not_read_revision_two_or_another_experiment(
     findings = {f.rule_id for f in core._selection_findings(E04, load(E04))}
     assert CONTROLLER_RULE in findings
     assert found(root) == []
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(
+            _criterion_member("E04-AC3", "id", ["x"]), id="a-criterion-id-a-list"
+        ),
+        pytest.param(
+            lambda d: d["definition"]["criterionClocks"][0].__setitem__(
+                "criterion", ["x"]
+            ),
+            id="a-clock-criterion-a-list",
+        ),
+        pytest.param(_discovery("statement", ["x"]), id="a-discovery-statement-a-list"),
+        pytest.param(
+            lambda d: timing_of(d).__setitem__("controllerDiscovery", "x"),
+            id="the-discovery-a-text",
+        ),
+    ],
+)
+def test_a_malformed_controller_member_is_a_finding_and_not_an_error(
+    full_root: Path, change: Callable[[dict[str, Any]], None]
+) -> None:
+    edit(full_root, E04_R3, change)
+    findings = found(full_root)
+    assert findings
+    assert {f[1] for f in findings} == {E04_R3}

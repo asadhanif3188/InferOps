@@ -1700,7 +1700,7 @@ E04-AC12 not judged instead when the span of the run analysis, which searches fr
 and every statement of it, and selects that span by one preregistered rule. Revision 2
 and its registry row are kept unchanged, and its digest is
 `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619`. Revision 3 has the
-digest `14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb`. **No run exists under any revision, and nothing ran in that
+digest `41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05`. **No run exists under any revision, and nothing ran in that
 change.**
 
 **The selection**, `definition.reversalTiming.selection`:
@@ -1752,7 +1752,7 @@ observation limit and of the window, the bound, the operator event log and the r
 commit, and the verdict of every other criterion. It returns the verdicts of E04-AC12,
 E04-AC5, and E04-AC2, the reason of a verdict that is not judged, the reported span, and
 the state. It judges E04-AC2 from the event log and the commit alone, and refuses a
-declared one, so no reading of the controller reaches a validity verdict. It reads no run directory and runs nothing. It
+declared one, so no reading of the controller reaches the verdict of E04-AC2. It reads no run directory and runs nothing. It
 imports `_find_span` of `tools/reliability_analysis` and copies none of it, which couples
 it to the private completion and series types of that tool. Revision 3 names it in its
 material scope and pins it. No code computes the selection from the evidence of a run:
@@ -1872,7 +1872,7 @@ runs it and plants each defect below in a copy.
 | `prereg-reversal-unmet-recovery` | In a V2-E04 record of rule set 4, E04-AC12 is a pass criterion, and it and the outcome rules state that when reversalStart is established and no span that starts after it completes inside the observation limit, the criterion is not met. E04-AC12 states that it is not judged, for reversal-start-unconfirmed, when reversalStart is not established. |
 | `prereg-reversal-selected-span` | In a V2-E04 record of rule set 4, stabilizedAt names the selection and no member of the run analysis, and the definitions of stabilizedAt, of the observation limit, and of the post-recovery window, and E04-AC5, a validity criterion, each name the selected span and not the stabilized recovery that the analysis states. The rule reads these members and the named phrases, and no other prose. |
 | `prereg-reversal-outcome-reference` | A V2-E04 record of rule set 4 names the outcome reference, reversal_outcome of tools.reversal_outcome.core, in its selection, names that module in its material scope and pins its file, and states that code which computes the selection from the evidence of a run is pinned before the first result-bearing run. The rule reads these members and the named phrase, and no other prose. |
-| `prereg-reversal-controller-discovery` | A V2-E04 record of rule set 4 states in definition.reversalTiming.controllerDiscovery that the discovery of the reversal commit by the controller is part of recoveryMs, judged by E04-AC12 and by no validity criterion, and that a controller that does not discover it leaves E04-AC12 not met. E04-AC2 is a validity criterion that names the four operator events of the reversal and the reversal commit, stated once, and each criterion clock of E04-AC2 orders operator events only. No sentence of a validity criterion, of a criterion clock of one, of an INCONCLUSIVE or ABORTED exclusion reason, or of an abort condition names a reading or an instant of the controller together with the reversal or the known-good revision, and no sentence of the reversal timing, the outcome rules, the Git transitions, the fault procedure, the observation limit, the post-recovery window, a pass criterion, its criterion clocks, or another exclusion reason names one with a verdict that is not judged, an INCONCLUSIVE run, or an abort, in the words that this check names. A paraphrase that no named word reaches is not refused. |
+| `prereg-reversal-controller-discovery` | A V2-E04 record of rule set 4 states in definition.reversalTiming.controllerDiscovery that the discovery of the reversal commit by the controller is part of recoveryMs, judged by E04-AC12 and by no validity criterion, and that a controller that does not discover it leaves E04-AC12 not met. E04-AC2 is a validity criterion that names the four operator events of the reversal and the reversal commit, stated once, and each criterion clock of E04-AC2 orders operator events only. No sentence of a validity criterion, of a criterion clock of one, of an INCONCLUSIVE or ABORTED exclusion reason, or of an abort condition names a reading or an instant of the controller together with the reversal or the known-good revision, or names controllerObserved, desiredStateRestored, gitopsDiscoveryMs, or the sync state, and no sentence of the reversal timing, the outcome rules, the Git transitions, the fault procedure, the observation limit, the post-recovery window, the clock policy, the repetition rule, the preparation, the execution gate, a pass criterion, its criterion clocks, or another exclusion reason names one with a verdict that is not judged, an INCONCLUSIVE run, or an abort, in the words that this check names. A paraphrase that no named word reaches is not refused. |
 
 ### What is enforced, and what is not
 
@@ -1986,7 +1986,7 @@ and the content digest of its latest registered freeze record:
 | V2-E03 | V2-E02B | initial | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
 | V2-E03 | V2-E02C | initial | 2 | `abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818` |
 | V2-E03, revision 1 | V2-E04 | extension | 2 | `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619` |
-| V2-E03, revision 2 | V2-E04 | extension | 3 | `14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb` |
+| V2-E03, revision 2 | V2-E04 | extension | 3 | `41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05` |
 | V2-E06 | V2-E02A | baseline | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
 | V2-E06 | V2-E02B | target | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
 

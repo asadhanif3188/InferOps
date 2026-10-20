@@ -105,10 +105,14 @@ another source than the operator events, and when a validity criterion, a criter
 clock of one, an `INCONCLUSIVE` or `ABORTED` reason, or an abort condition names a
 reading or an instant of the controller with the reversal or the known-good revision,
 or another text of the record names one with a verdict that is not judged, an
-`INCONCLUSIVE` run, or an abort. On the record of the second commit it gives four
-findings: the clause, the argo criterion clock twice, and the missing member. The
+`INCONCLUSIVE` run, or an abort. Since the fourth commit it also refuses, in a
+validity criterion, its clocks, such a reason, or an abort condition, a reading of
+the controller with `controllerObserved`, `desiredStateRestored`,
+`gitopsDiscoveryMs`, or the sync state, and it reads the clock policy, the
+repetition rule, the preparation, and the execution gate too. On the record of the
+second commit it gives four findings: the clause, the argo criterion clock twice, and the missing member. The
 outcome reference judges E04-AC2 itself, from the event log and the commit, and
-refuses a declared one, so no reading of the controller can reach a validity verdict
+refuses a declared one, so no reading of the controller can reach the verdict of E04-AC2
 through it. A paraphrase that the named words do not reach passes the rule, which its
 statement says.
 
@@ -200,7 +204,7 @@ holds this list.
 | `instants.stabilizedAt` | `analysisMember` removed, `selectedBy` added, the definition and the statement name the selected span | `stabilizedAt` refers to the selected span |
 | `definition.observation` | Its last sentence names the selected span; the limit, 1,680 s, is unchanged | The observation-limit rule refers to the selected span |
 | `definition.postRecoveryWindow` | Names the selected span | The post-recovery window follows the selected span |
-| `definition.criterionClocks` | Entry 2 of revision 2, the argo order of E04-AC2, removed in the third commit; entries 7, 8, 16, 17, and 18 of revision 2, 6, 7, 15, 16, and 17 of revision 3: the two E04-AC5 entries and the E04-AC12 interval name the selected span; the E04-AC12 order of `reversalStart` now orders each candidate completion; both E04-AC12 orders, and the E04-AC5 limit order, are resolved both ways | The order entry that left the verdict not judged inside the margin is replaced |
+| `definition.criterionClocks` | Counting from 0: entry 2 of revision 2, the argo order of E04-AC2, removed in the third commit; entries 7, 8, 16, 17, and 18 of revision 2, 6, 7, 15, 16, and 17 of revision 3: the two E04-AC5 entries and the E04-AC12 interval name the selected span; the E04-AC12 order of `reversalStart` now orders each candidate completion; both E04-AC12 orders, and the E04-AC5 limit order, are resolved both ways | The order entry that left the verdict not judged inside the margin is replaced |
 | `definition.outcomeRules` | Rule 6 rewritten | The rule that left E04-AC12 not judged when the onset does not follow `reversalStart` is removed |
 | `definition.limitations` | The limitation of the reason replaced by four limitations of the selection, eighteen in all | The reason is gone; the limits of the selection are stated |
 | `definition.history` | Four entries added, thirteen in all | When revision 3 was written, the E04-AC2 correction, what revision 2 added and the re-review found, and the unchanged expected consequence |
@@ -378,15 +382,18 @@ and revision 3 under rule set 3. Since the second commit it also refuses the exc
 in the words `starts before` and `precedes`, in an outcome rule, a member of the timing,
 and the observation limit, a reason of the timing that does not name E04-AC12, and a
 defective E04-AC5 beside a conforming one. Since the third commit it also refuses, with
-the exact findings, sixteen defects of the controller rule: the E04-AC2 clause of
+the exact findings, twenty-one defects of the controller rule: the E04-AC2 clause of
 revision 2 restored, its argo criterion clock restored, the clause in other words, in
 E04-AC3, and as the known-good revision in E04-AC4, an `INCONCLUSIVE` reason and an
 abort condition for a controller that does not discover, an outcome rule and a clause of
 E04-AC12 that leave the run `INCONCLUSIVE` or the criterion not judged on the
 controller, the member of the restored state likewise, the member of the discovery
 removed, made a condition of validity, judged by E04-AC2, or not judged, and E04-AC2
-made a pass criterion or stated without reversal-accepted. Twelve malformed members give
-findings and never raise.
+made a pass criterion or stated without reversal-accepted; and, since the fourth
+commit, a modal and a passive paraphrase, a detection of the reversal, a sync state
+in a validity criterion, and a verdict after a semicolon. A further test refuses a
+controller condition in the clock policy. Sixteen malformed members give findings and
+never raise.
 
 **The negative tests of V2-E03 revision 2**: a binding of the superseded revision 2 of
 V2-E04, a wrong digest, a wrong, textual, or missing rule set, an extension that counts
@@ -523,6 +530,18 @@ The third table is of the third commit, which corrects E04-AC2.
 | The pages | the document-link, case-study, published-methods, test-strategy, authorization, gate-matrix, evidence-index, and release suites | 2,334 passed |
 | Whitespace | `git diff --check` | Clean |
 
+The fourth table is of the fourth commit, which closes the findings of the review of the
+third commit below.
+
+| Check | Command | Result |
+|---|---|---|
+| Preregistration, analysis, and freeze checks | the three `--check` commands above | `PASSED: 5 experiment record(s) and 6 superseded revision(s), every rule held`; `PASSED: 2 analysis experiment(s), every rule held`; `PASSED: 26 freeze record(s), every rule held` |
+| Changed inputs | `--changes` for each latest record | V2-E04 revision 3 and V2-E03 revision 2 `UNCHANGED`, exit 0; V2-E02A, V2-E02B, V2-E02C, and V2-E05 revision 2 and V2-E06 revision 1 exit 1, as the readiness review states |
+| Consumed records and evidence | the commands of the first table | Each exit 0 |
+| Lint, format, and types | `ruff check .`, `ruff format --check .`, `mypy` as above, also with `--platform linux` | All checks passed; 799 files already formatted; no issues in 195 source files, both |
+| Whitespace | `git diff --check` | Clean |
+| Default lane | `python -m pytest -q`, every file staged except this cell | 23,350 passed, 42 skipped, 14 deselected, in 38 min, after the run with the two boundary failures that the review section states |
+
 ## Independent review of the first commit
 
 Two independent reviews read the first commit: one of the outcome reference, the
@@ -582,6 +601,65 @@ the diff. Left as they are, and disclosed: the outcome reference does not requir
 declared criterion to be present, and on an `INCONCLUSIVE` state that the two
 computations of `notJudged` decide it lists the reasons of every verdict that is not
 judged.
+
+## Independent review of the third commit
+
+Two independent reviews read the third commit: one of the semantics, the outcome
+reference, the check, and their suites, and one of the records, the binding, and the
+pages. Neither found a critical or a high defect. **Asked whether any valid E04 recovery
+failure can still be `INCONCLUSIVE` merely because Argo CD did not discover or
+reconcile the accepted reversal, the first answered no.** It traced each validity
+criterion, each exclusion reason, each abort condition, the outcome rules, the clock
+policy, the fallback of the E04-AC8 window, and the two computations of the reference,
+and ran the reference on a run whose condition series never hold the reversal commit:
+E04-AC2 held, E04-AC5 held, E04-AC12 not met, `FAILED`, and still `FAILED` with E04-AC8
+not met. It found that the controller paths that remain need a span, so a controller
+that did discover the reversal: the clock margins of the bound and of the end of the
+limit, and a post-recovery window that does not hold. The third commit got the
+following wrong, and the fourth corrects each:
+
+- **The new rule crashed on a criterion identifier that is a list** (`TypeError`),
+  for a criterion or a criterion clock. It is a finding now, and four malformed-member
+  tests hold it.
+- **The rule missed modal and passive paraphrases**: `Argo CD must sync the reversal
+  commit`, `Argo CD detects the reversal`, and `the reversal is not discovered`. It now
+  reads up to three auxiliary words between the controller and its verb, the verbs
+  `detect` and `reach`, and the passive forms, and three defects of the review hold it.
+- **A validity criterion that reads a state only the controller sets passed** when it
+  did not name the reversal, for example `the Application reports Synced`. A validity
+  criterion, a criterion clock of one, an `INCONCLUSIVE` or `ABORTED` reason, or an abort
+  condition is now refused when it names `controllerObserved`, `desiredStateRestored`,
+  `gitopsDiscoveryMs`, or the sync state with a reading of the controller.
+- **A verdict after a semicolon escaped** the scan of the other texts, which split
+  sentences at semicolons. That scan now reads whole sentences, to their full stop.
+- **The rule did not read the clock policy, the repetition rule, the preparation, or
+  the execution gate.** It reads them now; a test plants a controller condition in the
+  rule of `definition.clockPolicy.notJudged`.
+- **Overclaim.** The experiments README and this page said that no reading of the
+  controller reaches a validity verdict through the reference. E04-AC1, E04-AC3, and
+  E04-AC5 read the argo stream or the condition series, so the pages now say that none
+  reaches the verdict of E04-AC2. The reference docstring now says that the read that
+  confirms the reversal decides `reversalStart`, which the caller declares, and that the
+  reference does not read it. The criterion-clock row of the member table now counts
+  its entries from 0.
+- **The default lane then refused the fourth commit's first draft.** The pattern of the
+  new rule named the controller in the words that the Argo CD boundary test of
+  `tests/architecture/test_argocd_bootstrap.py` refuses in any tool outside its allowed
+  list, so two of its tests failed: 2 failed, 23,348 passed, 42 skipped, 14 deselected.
+  The pattern now spells the name with a whitespace class, which matches the same text,
+  and the lane was run again on the final tree.
+
+Both reviews confirmed what they checked and found correct: the binding of V2-E03
+revision 2 to the registered digest of the final revision 3 and to rule set 4; the
+byte identity of V2-E04 revisions 1 and 2, V2-E03 revision 1, every Q1 to Q4 record,
+and `bounds-r1`, and of their registry rows, with `main`; the three checks and the
+`--changes` results; rule set 3 and revision 2 unchanged; the faithfulness of the
+reading of E04-AC2 by the reference; and no private-planning text, finding identifier,
+later story identifier, or local path in the diff. Left as they are, and disclosed:
+the reference requires the instants of the operator events not to decrease, so a step
+of the host clock backwards between two of them leaves E04-AC2 not held; no registered
+reason names a run whose operator events do not hold, as before; and the rule reads
+named words, so a paraphrase that none of them reaches passes it.
 
 ## What this does not establish
 

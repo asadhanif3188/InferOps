@@ -45,7 +45,7 @@
         "role": "extension",
         "path": "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json",
         "revision": 3,
-        "contentSha256": "14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb",
+        "contentSha256": "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05",
         "preregistrationRules": 4
       }
     ],
@@ -832,7 +832,7 @@
     },
     {
       "path": "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json",
-      "sha256": "14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb",
+      "sha256": "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05",
       "role": "a freeze record of a source experiment"
     },
     {
@@ -1212,7 +1212,7 @@
     },
     {
       "path": "tools/experiment_preregistration/core.py",
-      "sha256": "701d8b7efc121977c158f146042ddcd4cd9de75b1d83406524fd810b90c66dca",
+      "sha256": "247b7685b9fff2640d10d6ea45350ad93d647cf6130f8dc80b1afab28883f890",
       "role": "the import closure of a tool that the analysis runs"
     },
     {
@@ -1385,7 +1385,7 @@
     {
       "path": "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json",
       "from": null,
-      "to": "14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb",
+      "to": "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05",
       "material": true,
       "reason": "Revision 3 of V2-E04, which this revision binds. It removes the onset exclusion of revision 2 and selects the span of its recovery criterion by one preregistered rule."
     },
@@ -1399,7 +1399,7 @@
     {
       "path": "tools/experiment_preregistration/core.py",
       "from": "0e29593b097914818d3ce9bbd717732c52416ef8cdfceff12b220173bdeec5f0",
-      "to": "701d8b7efc121977c158f146042ddcd4cd9de75b1d83406524fd810b90c66dca",
+      "to": "247b7685b9fff2640d10d6ea45350ad93d647cf6130f8dc80b1afab28883f890",
       "material": false,
       "reason": "The check of the source records adds rule set 4, which V2-E04 revision 3 is read under. This record imports two of its functions, the phrase scan of the clock rules, and they are unchanged."
     }

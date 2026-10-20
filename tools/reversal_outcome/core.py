@@ -60,7 +60,9 @@ detection-reviewed, reversal-decided, reversal-created, and reversal-accepted ar
 recorded once each, in that order and with instants that do not decrease, and
 reversal-created and reversal-accepted each record the reversal commit.
 reversal-accepted is recorded only after a read of the remote branch reports the
-reversal commit as its head, so it is the record of the accepted reversal. Whether
+reversal commit as its head, so it is the record of the accepted reversal; whether
+the transcript holds that read decides whether reversalStart is established,
+which the caller declares, and this module does not read it. Whether
 and when the controller resolves the reversal commit is part of the system recovery
 that E04-AC12 judges, as the repository owner decided by change control on
 2026-10-20: a controller that never resolves it leaves the condition series with no

@@ -2359,7 +2359,7 @@
     },
     {
       "path": "tools/experiment_preregistration/core.py",
-      "sha256": "701d8b7efc121977c158f146042ddcd4cd9de75b1d83406524fd810b90c66dca",
+      "sha256": "247b7685b9fff2640d10d6ea45350ad93d647cf6130f8dc80b1afab28883f890",
       "role": "a module of a tool that the procedure runs, or that it imports"
     },
     {
@@ -2519,7 +2519,7 @@
     },
     {
       "path": "tools/reversal_outcome/core.py",
-      "sha256": "82b4d49b519e71a6f22fd81971c6fe00f7f73983ecf49846275ef7ee600f9e89",
+      "sha256": "431b6dde46a8648525c6022074f4865f4ef83bd0b3f1697da30123260d66f31c",
       "role": "the outcome reference that the selection names"
     },
     {
@@ -2572,7 +2572,7 @@
     {
       "path": "tools/experiment_preregistration/core.py",
       "from": "0e29593b097914818d3ce9bbd717732c52416ef8cdfceff12b220173bdeec5f0",
-      "to": "701d8b7efc121977c158f146042ddcd4cd9de75b1d83406524fd810b90c66dca",
+      "to": "247b7685b9fff2640d10d6ea45350ad93d647cf6130f8dc80b1afab28883f890",
       "material": true,
       "reason": "The check adds rule set 4, which this record is registered under: every rule of rule set 2, the reversal intervals and criteria of rule set 3, the parts of the reversal instants and reasons of rule set 3 that hold reversalStart, controllerObserved, desiredStateRestored, the observation limit, and reversal-start-unconfirmed, and six selection rules, which hold this record to its selection, to no onset exclusion, to E04-AC12 when no span after reversalStart completes, to the members of the selected span, to the pinned outcome reference, and to the discovery of the reversal by the controller as system recovery and no condition of validity. It still reads revision 2 under rule set 3. P1 runs it."
     },
@@ -2586,7 +2586,7 @@
     {
       "path": "tools/reversal_outcome/core.py",
       "from": null,
-      "to": "82b4d49b519e71a6f22fd81971c6fe00f7f73983ecf49846275ef7ee600f9e89",
+      "to": "431b6dde46a8648525c6022074f4865f4ef83bd0b3f1697da30123260d66f31c",
       "material": true,
       "reason": "The outcome reference, added by this revision: it applies definition.reversalTiming.selection and the outcome rules to declared inputs, judges E04-AC2 from the operator events of the reversal alone, and the review of each run checks its selection with it."
     }

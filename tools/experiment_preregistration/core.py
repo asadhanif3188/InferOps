@@ -659,17 +659,32 @@ REVERSAL_EVENTS_NAMED: Final = (
 _CONTROLLER_WORD: Final = re.compile(
     r"\bresolvedRevision\b|\bsyncStatus\b|\bSynced\b|\bargo (?:reading|stream)s?\b"
     r"|\bcontrollerObserved\b|\bdesiredStateRestored\b|\bgitopsDiscoveryMs\b"
-    r"|\b(?:controller|Argo CD|Application)(?:'s)?\s+"
-    r"(?:never\s+|does\s+not\s+|did\s+not\s+|fails\s+to\s+|first\s+)?"
-    r"(?:resolv|report|discover|sync|reconcil|observ|pick)\w*"
-    r"|\b(?:discovery|resolution|reconciliation|observation)s?\s+by\s+the\s+"
-    r"(?:controller|Application)\b",
+    r"|\b(?:controller|Argo\s+CD|Application)(?:'s)?\s+"
+    r"(?:(?:must|should|shall|will|would|can|could|may|has|have|had|is|are|was|"
+    r"to|then|first|never|not|does|did|do|fails|failed|eventually|always|also)"
+    r"\s+){0,3}"
+    r"(?:resolv|report|discover|sync|reconcil|observ|pick|detect|reach)\w*"
+    r"|\b(?:discovery|resolution|reconciliation|observation|detection)s?\s+by\s+"
+    r"(?:the\s+)?(?:controller|Application|Argo\s+CD)\b"
+    r"|\b(?:not|never)\s+(?:be\s+|been\s+)?(?:discovered|reconciled|synced|detected)\b",
+    re.IGNORECASE,
+)
+#: The instants and the states that only the controller sets: one of them in a
+#: condition of validity is a controller condition whatever else the sentence names.
+#: A whole sentence, to its full stop: a verdict in a clause after a semicolon
+#: still belongs to the controller reading before it.
+_FULL_SENTENCE_END: Final = re.compile(r"(?<=[.])\s+|\n+")
+_CONTROLLER_INSTANT: Final = re.compile(
+    r"\bcontrollerObserved\b|\bdesiredStateRestored\b|\bgitopsDiscoveryMs\b"
+    r"|\bsyncStatus\b|\bSynced\b",
     re.IGNORECASE,
 )
 _REVERSAL_WORD: Final = re.compile(r"\breversal\b|\brevert|\bknown-good\b", re.I)
-#: A verdict left not judged, an INCONCLUSIVE run, or an abort.
+#: A verdict left not judged, an INCONCLUSIVE run, or an abort; naming an abort
+#: condition is not an abort.
 _EXCLUDING_WORD: Final = re.compile(
-    r"\bnot (?:be )?judged\b|\bnot-judged\b|\bINCONCLUSIVE\b|\bABORTED\b|\babort",
+    r"\bnot (?:be )?judged\b|\bnot-judged\b|\bINCONCLUSIVE\b|\bABORTED\b"
+    r"|\babort(?!\s+conditions?\b)",
     re.IGNORECASE,
 )
 #: The phrases of the definition of stabilizationOnset: those of the amended
@@ -967,11 +982,14 @@ RULES: Final[Mapping[str, str]] = {
         "of a validity criterion, of a criterion clock of one, of an INCONCLUSIVE or "
         "ABORTED exclusion reason, or of an abort condition names a reading or an "
         "instant of the controller together with the reversal or the known-good "
-        "revision, and no sentence of the reversal timing, the outcome rules, the Git "
-        "transitions, the fault procedure, the observation limit, the post-recovery "
-        "window, a pass criterion, its criterion clocks, or another exclusion reason "
-        "names one with a verdict that is not judged, an INCONCLUSIVE run, or an "
-        "abort, in the words that this check names. A paraphrase that no named word reaches is not "
+        "revision, or names controllerObserved, desiredStateRestored, "
+        "gitopsDiscoveryMs, or the sync state, and no sentence of the reversal "
+        "timing, the outcome rules, the Git transitions, the fault procedure, the "
+        "observation limit, the post-recovery window, the clock policy, the "
+        "repetition rule, the preparation, the execution gate, a pass criterion, its "
+        "criterion clocks, or another exclusion reason names one with a verdict that "
+        "is not judged, an INCONCLUSIVE run, or an abort, in the words that this check "
+        "names. A paraphrase that no named word reaches is not "
         "refused."
     ),
 }
@@ -2863,16 +2881,18 @@ def _outcome_reference_findings(
 
 def _controller_sentence(text: str, *, excluding: bool) -> bool:
     """A sentence names a reading or an instant of the controller, and with it the
-    reversal or the known-good revision, or, when ``excluding``, a verdict that is
-    not judged, an INCONCLUSIVE run, or an abort."""
+    reversal or the known-good revision, or an instant or a state that only the
+    controller sets; or, when ``excluding``, names a reading or an instant of the
+    controller with a verdict that is not judged, an INCONCLUSIVE run, or an
+    abort."""
     return any(
         _CONTROLLER_WORD.search(sentence)
         and (
             _EXCLUDING_WORD.search(sentence)
             if excluding
-            else _REVERSAL_WORD.search(sentence)
+            else _REVERSAL_WORD.search(sentence) or _CONTROLLER_INSTANT.search(sentence)
         )
-        for sentence in _SENTENCE_END.split(text)
+        for sentence in _FULL_SENTENCE_END.split(text)
     )
 
 
@@ -2916,13 +2936,18 @@ def _controller_discovery_findings(
                 f"{REVERSAL_EVENTS_CRITERION} is not the validity criterion of the "
                 "operator events of the reversal and the reversal commit",
             )
-    validity = {c.get("id") for _, c in criteria if c.get("kind") == "validity"} - {
-        None
+    validity = {
+        identifier
+        for _, c in criteria
+        if c.get("kind") == "validity" and isinstance(identifier := c.get("id"), str)
     }
     strict: list[tuple[str, Any]] = []
     loose: list[tuple[str, Any]] = []
     for index, criterion in criteria:
-        texts = strict if criterion.get("id") in validity else loose
+        identifier = criterion.get("id")
+        texts = (
+            strict if isinstance(identifier, str) and identifier in validity else loose
+        )
         texts.extend(_strings_in(criterion, _criterion_at(index)))
     definition = document["definition"]
     clocks = definition.get("criterionClocks")
@@ -2930,7 +2955,12 @@ def _controller_discovery_findings(
         if not isinstance(entry, Mapping):
             continue
         where = f"definition.criterionClocks[{index}]"
-        texts = strict if entry.get("criterion") in validity else loose
+        criterion_id = entry.get("criterion")
+        texts = (
+            strict
+            if isinstance(criterion_id, str) and criterion_id in validity
+            else loose
+        )
         texts.extend(_strings_in(entry, where))
         instants = entry.get("instants")
         if entry.get("criterion") == REVERSAL_EVENTS_CRITERION and any(
@@ -2967,6 +2997,10 @@ def _controller_discovery_findings(
         "faultProcedure",
         "observation",
         "postRecoveryWindow",
+        "clockPolicy",
+        "repetitionRule",
+        "preparation",
+        "executionGate",
     ):
         loose.extend(_strings_in(definition.get(member), f"definition.{member}"))
     for texts, excluding in ((strict, False), (loose, True)):
