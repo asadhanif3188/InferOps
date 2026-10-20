@@ -46,8 +46,8 @@ at the `fault-injection-finished` event, and when that span did not start after
 `reversalStart` it left E04-AC12 not judged, for `recovery-onset-not-after-reversal`.
 Its validation record and its limitations said so: the reason could make `INCONCLUSIVE`
 a run that the definition judges `PASSED`, or `FAILED` when no span after `reversalStart`
-starts within 52,000 ms of it. The checker required the reason, and green checks encoded
-the deviation. Revision 3 removes it before any E04 run.
+starts within 52,000 ms of it. Rule set 3 requires the reason of revision 2, so its passing
+check held the record to the exclusion. Revision 3 removes it before any E04 run.
 
 ## The selection rule and the outcome rules, as revision 3 states them
 
@@ -66,9 +66,11 @@ reads each member:
    candidates and that completes inside the observation limit, 1,680,000 ms after
    `fault-injection-finished` (`observationLimit`), which `definition.observation` states
    unchanged.
-4. **Before `reversalStart`**: a span, or the part of a span, that starts before it is
-   never selected and never a reason for a verdict (`beforeReversalStart.selected` and
-   `reasonForVerdict`, both false).
+4. **Before `reversalStart`**: when the clock bound is computable, a span, or the part
+   of a span, that is ordered before it is never selected and never a reason for a
+   verdict (`beforeReversalStart.selected` and `reasonForVerdict`, both false). After an
+   unusable end reading of P8 no completion can be ordered before it, so none is known
+   to be before it, and item 8 states that case.
 5. **Cross-clock orders** (`orders`): the order of each candidate completion and
    `reversalStart`, and the order of `stabilizedAt` and the end of the observation limit.
    Inside the margin of `definition.clockPolicy.ordering` each is resolved both ways:
@@ -76,14 +78,23 @@ reads each member:
    `margin-as-outside` for the second.
 6. **Verdicts** (`verdicts.differ`): one verdict under every resolution is the verdict of
    E04-AC12. Different verdicts leave it not judged, for `clock-bound-reached`, and
-   `definition.clockPolicy.notJudged` decides the state.
-7. **Reported span** (`reported`): when the resolutions select different spans with one
-   verdict, `stabilizationOnset`, `stabilizedAt`, `recoveryMs`, the post-recovery window,
-   and E04-AC5 use the span of `margin-as-before`, which does not understate `recoveryMs`,
-   and otherwise that of `margin-as-after`.
+   `definition.clockPolicy.notJudged` decides the state. A verdict that is the same under
+   every resolution does not need the order, so the ordering rule of the policy and the
+   clock outcome rule do not leave it not judged. That is the record's reading of the
+   policy, which leaves not judged a verdict that needs an order inside the margin, and
+   the record states it before any run. E04-AC5 is judged the same way.
+7. **Reported span** (`reported`): when the resolutions select different spans, whether
+   their verdicts agree or differ, `stabilizationOnset`, `stabilizedAt`, `recoveryMs`, the
+   post-recovery window, and E04-AC5 use the span of `margin-as-before`, which does not
+   understate `recoveryMs`. When it selects no span, because it finds none or its span is
+   ordered after the end of the observation limit, they use the span of `margin-as-after`.
 8. **Unusable end reading** (`endReading`): only the verdicts that depend on the clock
-   bound are not judged, for `clock-reading-missing`. With no bound every completion is a
-   candidate, and when no span completes over them E04-AC12 is not met.
+   bound are not judged, for `clock-reading-missing`. With no bound no completion can be
+   ordered before `reversalStart`, so every completion is a candidate. When no span
+   completes over them E04-AC12 is not met. When one does, whether it starts after the
+   reversal is not known, and that clock uncertainty, not a span known to start earlier,
+   leaves E04-AC12 not judged. No reading holds the reversal commit before it is pushed,
+   so the condition series hold no span before the push.
 9. **Outcome reference and evidence code** (`outcomeReference`, `evidenceComputation`):
    `reversal_outcome` of `tools.reversal_outcome.core` applies the rule to declared
    inputs; code that computes it from the evidence of a run is pinned by a revision
@@ -95,9 +106,11 @@ reads each member:
 observation limit, the not-established rule, and the bound comparison, and the merged
 clock policy names the margin and the rule for a verdict that is not judged. Neither
 says which span the reported figures use when the two resolutions select different spans
-with one verdict. Revision 3 takes the span of the resolution that orders the candidates
-after `reversalStart`, because it does not understate `recoveryMs`, and states the choice
-before any run. No other choice was left open.
+with one verdict, nor whether a verdict that is the same under every resolution of an
+order inside the margin needs that order. Revision 3 takes the span of the resolution
+that orders the candidates
+after `reversalStart`, because it does not understate `recoveryMs`, reads such a verdict
+as not needing the order, and states both before any run. No other choice was left open.
 
 **The outcome rules.** E04-AC12 stays a pass criterion with its bound, 52,000 ms, its
 formula, `(2 * S) + 30000`, and the bound-record digest
@@ -149,6 +162,12 @@ holds the list:
 | `definition.population.extension` | `executedUnder` names revision 3 of V2-E04, and the runs statement counts only the runs that executed under it; a run under revision 2 is not in the population |
 | `definition.history` | One entry added |
 | `fields.experimentIdVersion`, `fields.gitRevision` | Freeze revision 2; prepared from `0863728` |
+| `metadata`, `pinnedInputs`, `inputChanges` | Revision 2, registered 2026-10-20, superseding revision 1; revision 3 of V2-E04 pinned and the two checks with new digests; each moved pin classified |
+
+The list itself, `definition.changesFromSupersededRevision`, is the one member that
+revision 1 does not have and that the rule does not compare. (The first commit listed
+five members, and the rule compared the definition, the fields, and the material scope
+alone; its review found the three unlisted members.)
 
 The population, the signals, the candidate, the ranking, the caller-failure rule, the
 computations, the ordering, the clock-policy digest, and the limitations are those of
@@ -207,8 +226,8 @@ history.
 - five selection rules: `prereg-reversal-selection`, the selection member and the
   definition of `stabilizationOnset`; `prereg-reversal-onset-exclusion`, no onset reason,
   no `notAfterReversalStart` member, exactly three reasons for E04-AC12 not judged, no
-  statement of the exclusion without its reason, and each E04-AC12 order resolved both
-  ways; `prereg-reversal-unmet-recovery`, E04-AC12 a pass criterion with the clause for no
+  other reason of the timing, no statement of the exclusion without its reason in the two
+  forms that it names, and each E04-AC12 order resolved both ways; `prereg-reversal-unmet-recovery`, E04-AC12 a pass criterion with the clause for no
   completed span after `reversalStart`; `prereg-reversal-selected-span`, `stabilizedAt`,
   the observation limit, the post-recovery window, and E04-AC5 on the selected span; and
   `prereg-reversal-outcome-reference`, the outcome reference named, scoped, and pinned.
@@ -280,7 +299,11 @@ unscoped, or another; the `reversalStart` kind, bracket, or earlier end changed;
 recovery interval changed; the three statements of the exclusion that do not name its
 reason, which are the clause of E04-AC12, the order entry of E04-AC12, and the outcome
 rule; the onset member under an allowed reason; the evidence-computation rule removed;
-and revision 3 under rule set 3. Ten malformed members give findings and never raise.
+and revision 3 under rule set 3. Since the second commit it also refuses the exclusion
+in the words `starts before` and `precedes`, in an outcome rule, a member of the timing,
+and the observation limit, a reason of the timing that does not name E04-AC12, and a
+defective E04-AC5 beside a conforming one. Twelve malformed members give findings and
+never raise.
 
 **The negative tests of V2-E03 revision 2**: a binding of the superseded revision 2 of
 V2-E04, a wrong digest, a wrong, textual, or missing rule set, an extension that counts
@@ -294,21 +317,23 @@ members never raise.
 When `reversalStart` is established, `reversal-start-unconfirmed` does not apply, and a run
 that was neither refused nor aborted is `INCONCLUSIVE` only by one of these paths. Each is
 governed by a criterion or a registered reason, and **none depends on whether a
-stabilization span starts before `reversalStart`**: the selection never reads such a span
-or its part before `reversalStart`, and no rule names one.
+stabilization span is known to start before `reversalStart`**: when the clock bound is
+computable, the selection never reads a completion ordered before `reversalStart`, and
+no rule names one. After an unusable end reading no completion can be ordered before it,
+so no span is known to start before it, and the last row governs that case.
 
 | Path | Governing criterion or reason | Why it does not depend on a span before `reversalStart` |
 |---|---|---|
 | The fault is not produced | E04-AC1, `fault-not-produced` | It reads the argo and pods readings of the bad commit |
-| The operator events are not recorded in their order with the reversal commit | E04-AC2 | It reads the operator event log |
+| The operator events are not recorded in their order with the reversal commit | E04-AC2 | It reads the operator event log. No registered exclusion reason names this cause either |
 | No argo reading reports the reversal commit as `resolvedRevision` inside the observation limit | E04-AC2, inherited from revision 1 unchanged | It reads the argo stream. This is the path by which a run in which the controller never discovers the reversal commit is `INCONCLUSIVE`, where the amended definition would judge it `FAILED`; this change does not change E04-AC2. No registered exclusion reason names this cause, so the aggregate of such a run would need one: a later revision owes it |
-| A stream is refused or has a gap of more than 10 s | E04-AC3, `stream-incomplete` | It reads the four streams |
-| The caller record is refused or does not cover the window | E04-AC4, `caller-incomplete` | It reads the caller record and the window |
-| The post-recovery window after the selected span does not hold | E04-AC5, `caller-incomplete` | It reads the completions after `stabilizedAt` of the selected span, which starts after `reversalStart`; with no selected span it holds |
+| Any clause of E04-AC3: a stream is refused, does not state a value in its first or its last reading inside the window, or has a gap of more than 10 s | E04-AC3, `stream-incomplete` | It reads the four streams |
+| Any clause of E04-AC4: the caller record is refused, or is not of the plan, the mode, the target, or the end state, does not cover the window, does not end its last completion before the window with a success, or has no completion inside the window after the fault | E04-AC4, `caller-incomplete` | It reads the caller record and the window |
+| The post-recovery window after the selected span does not hold | E04-AC5, `caller-incomplete` | It reads the completions after `stabilizedAt` of the selected span, which is not ordered before `reversalStart`; with no selected span it holds |
 | An unrelated failure | E04-AC6, `unrelated-failure` | It reads the pods and the node |
 | The evidence is incomplete or the analysis is not reproduced | E04-AC7, `evidence-incomplete` | It reads the run directory |
 | A verdict needs a cross-clock order or bound comparison inside the margin, and the two computations of `definition.clockPolicy.notJudged` differ | `clock-bound-reached` | It is governed clock uncertainty. For E04-AC12 it arises only when the resolutions of a completion inside the margin of `reversalStart`, or of `stabilizedAt` inside the margin of the end of the limit, give different verdicts, or when `recoveryMs` is inside the margin of the bound |
-| The end reading of P8 is unusable, and the two computations differ | `clock-reading-missing` | It is governed missing evidence of the clock bound |
+| The end reading of P8 is unusable, and the two computations differ | `clock-reading-missing` | It is governed missing evidence of the clock bound. No completion can then be ordered before `reversalStart`, so no span is known to start before it; and the cross-clock orders of E04-AC4 are not judged either, so every such run is `INCONCLUSIVE` whatever its spans |
 
 The validation of the outcome reference holds the E04-AC2 path as a test, and states
 its state, `INCONCLUSIVE`.
@@ -336,7 +361,7 @@ repeats the others. A `--changes` result is
 | V2-E02B revision 2 | A later revision that classifies the moved `core.py` pin, and the driver under a later revision | **Not ready to run**, for the same reason |
 | V2-E02C revision 2 | The same | **Not ready to run**, for the same reason |
 | V2-E05 revision 2 | A later revision that classifies the moved `core.py` pin, the driver, and the drift injector, each under a later revision | **Not ready to run**, for the same reason |
-| V2-E04 revision 3 | The driver, the bad-release fixture, and the machine-readable known-good identity record, each under a later revision that pins it; that revision also pins code that computes the selection from evidence, or the review of each run computes it by hand and checks it with the outcome reference; and, for the aggregate, a registered reason for the E04-AC2 path above | **Not ready to run**: its pins are unchanged, and the three items do not exist. Its semantics have no onset exclusion |
+| V2-E04 revision 3 | The driver, the bad-release fixture, and the machine-readable known-good identity record, each under a later revision that pins it; that revision also pins code that computes the selection from evidence, or the review of each run computes it by hand and checks it with the outcome reference; and, for the aggregate, a registered reason for each E04-AC2 path above | **Not ready to run**: its pins are unchanged, and the three items do not exist. Its semantics have no onset exclusion |
 | V2-E03 revision 2 | The analysis code, under a later revision that pins it, and a later revision that binds the source revisions of the counted runs | **Frozen and complete for this change.** No analysis may run under it |
 | V2-E06 revision 1 | A later revision that classifies its two moved check pins, binds the source revisions of the counted runs of V2-E02A and V2-E02B, and pins the analysis code | **Frozen; not ready to run**: its P1 equivalent, `--changes`, exits 1 |
 
@@ -360,14 +385,15 @@ procedure directories.
 - Rule set 1, rule set 2, and rule set 3.
 - Released V1 history and `v1.0.0`.
 
-**The F2 and F3 corrections still pass.** The clock-policy tests of rule set 2, which hold
-the F3 correction, and the E03 and E06 tests of the analysis suite that hold the F2
-correction, run unchanged against the copy of the records as they were before this change,
-and the clock policy of revision 3 is that of every other latest record, byte for byte.
+**The earlier corrections still pass.** The clock-policy tests of rule set 2, which hold
+the correction of `V2-S6-007-PR1`, and the E03 and E06 tests of the analysis suite, which
+hold that of `V2-S6-006-PR1`, run unchanged against the copy of the records as they were
+before this change, and the clock policy of revision 3 is that of every other latest
+record, byte for byte.
 
 ## Validation
 
-Run from Git Bash on the head of the first commit.
+Run from Git Bash. The first table is of the first commit, `c1ade35`.
 
 | Check | Command | Result |
 |---|---|---|
@@ -375,15 +401,87 @@ Run from Git Bash on the head of the first commit.
 | Analysis check | `python -m tools.analysis_preregistration --check` | `PASSED: 2 analysis experiment(s), every rule held` |
 | Freeze check | `python -m tools.experiment_freeze --check` | `PASSED: 26 freeze record(s), every rule held` |
 | Changed inputs of the two new records | `--changes` for V2-E04 revision 3 and V2-E03 revision 2 | `UNCHANGED`, exit 0, each |
-| Changed inputs of the other latest records | `--changes` for each | as the readiness review states: exit 1 for V2-E02A, V2-E02B, V2-E02C, V2-E05, and V2-E06 |
-| Consumed records | `environment_qualification`, `runtime_startup`, `caller_characterization`, `experiment_bounds`, and `baseline_profile` `--check` | RESULT_CONSUMED |
-| Evidence | `evidence_index --check` and `--gate`; `experiment_run`, `experiment_evidence`, and `analysis_replay` repository checks | RESULT_EVIDENCE |
-| Lint and format | `ruff check .`, `ruff format --check .` | RESULT_LINT |
-| Types | `mypy`, and with `--platform linux` | RESULT_TYPES |
-| Targeted suites | the preregistration, analysis-preregistration, freeze, bounds, qualification, reliability-analysis, outcome-reference, replay, and inventory suites | RESULT_TARGETED |
-| Document links | the document-link tests | RESULT_LINKS |
-| Whitespace | `git diff --cached --check` | RESULT_WHITESPACE |
-| Default lane | `python -m pytest -q` | RESULT_LANE |
+| Changed inputs of the other latest records | `--changes` for each | exit 1 for V2-E02A, V2-E02B, V2-E02C, and V2-E05 revision 2, and for V2-E06 revision 1, as the readiness review states |
+| Consumed records | `environment_qualification`, `runtime_startup`, `caller_characterization`, `experiment_bounds`, and `baseline_profile` `--check` | Each exit 0 |
+| Evidence | `evidence_index --check` and `--gate`; the `experiment_run`, `experiment_evidence`, and `analysis_replay` repository checks | Each exit 0 |
+| Lint and format | `ruff check .`, `ruff format --check .` | All checks passed; 799 files already formatted |
+| Types | `mypy tools` and the changed test modules, and with `--platform linux` | No issues, both, after one fix in the new suite |
+| Targeted suites | the preregistration, analysis-preregistration, freeze, replay, inventory, and outcome-reference suites | 2,242 passed, 1 skipped |
+| Targeted suites, and the document links | the document-link, bounds, qualification, startup, caller, and reliability-analysis suites, every file staged | 1,032 passed |
+| Whitespace | `git diff --cached --check` | Clean |
+| Default lane | `python -m pytest -q` | Not measured on the first commit. It was started on that commit and stopped at 6 % once the review fixes began to change the files it reads, so its result would have described neither commit |
+
+The second table is of the second commit, which closes the review findings below.
+
+| Check | Command | Result |
+|---|---|---|
+| Preregistration, analysis, and freeze checks | the three `--check` commands above | `PASSED: 5 experiment record(s) and 6 superseded revision(s), every rule held`; `PASSED: 2 analysis experiment(s), every rule held`; `PASSED: 26 freeze record(s), every rule held` |
+| Changed inputs | `--changes` for each latest record | V2-E04 revision 3 and V2-E03 revision 2 `UNCHANGED`, exit 0; V2-E02A, V2-E02B, V2-E02C, and V2-E05 revision 2 and V2-E06 revision 1 exit 1, as the readiness review states |
+| Consumed records and evidence | the commands of the first table | Each exit 0 |
+| Lint, format, and types | `ruff check .`, `ruff format --check .`, `mypy` as above, also with `--platform linux` | All checks passed; 799 files already formatted; no issues, both |
+| The changed suites | the outcome-reference, analysis-preregistration, and the new parts of the preregistration suite | Each passes in the default lane below; the new fallback test fails on the reference of the first commit |
+| Whitespace | `git diff --cached --check` | Clean |
+| Default lane | `python -m pytest -q`, every file staged | 23,304 passed, 42 skipped, 14 deselected, in 40 min |
+
+## Independent review of the first commit
+
+Two independent reviews read the first commit: one of the outcome reference, the
+checks, and their suites, and one of the records and the pages against the
+requirements and the repository. Neither found a critical or a high defect. The first
+draft got the following wrong, and the second commit corrects each:
+
+- **The outcome reference reported the wrong span.** When the span of `margin-as-before`
+  completed after the end of the observation limit, the reference still took it as the
+  chosen span. It then reported no span and held E04-AC5 trivially, where the record
+  says to use the span of `margin-as-after`. A test now holds the fallback; it fails on
+  the first commit.
+- **The record overclaimed that a span before `reversalStart` is never a reason for a
+  verdict.** After an unusable end reading every completion is a candidate, so a span
+  that would be ordered before `reversalStart` with a bound can leave E04-AC12 not
+  judged instead of not met. That is governed clock uncertainty: with no bound no span is
+  known to start before `reversalStart`. The selection, the outcome rule, this record,
+  and the experiments README now say so, and state that such a run is `INCONCLUSIVE`
+  through E04-AC4 whatever its spans.
+- **The reported-span rule covered only resolutions that agree.** It now holds whether
+  their verdicts agree or differ, and names the case of a span after the limit.
+- **The two-way rule was not reconciled with the clock outcome rule**, which says that a
+  verdict inside the margin is not judged. The selection now states that a verdict that is
+  the same under every resolution does not need the order, as its reading of the policy.
+- **The onset-exclusion rule was narrower than its statement.** It read three phrasings,
+  `does not follow`, `does not start after`, and `does not come after`, in three texts.
+  Exclusions in the words `starts before` or `precedes`, in a member of the timing, in the
+  observation limit, or as a new reason whose text does not name E04-AC12, passed. It now
+  reads a second form in every text of the timing, the observation limit, the
+  post-recovery window, every criterion, every criterion clock, and the outcome rules,
+  and refuses a reason of the timing other than `reversal-start-unconfirmed`; its
+  statement says which words it reads and that a paraphrase can pass.
+- **A reason that is not a string crashed rule set 4** (`TypeError`), for a
+  not-established reason that is a list or an object. It is a finding now, and two
+  malformed-member tests hold it.
+- **A second E04-AC5 was not refused**, so a defective copy could sit beside a conforming
+  one. It is refused now.
+- **The change list of V2-E03 revision 2 left out three members** that differ: its
+  metadata, its pins, and their classification. The list names them, and the rule
+  compares them.
+- **Wording.** The selection, selected-span, and outcome-reference statements now say
+  that they read members and named phrases; the evidence-computation rule no longer says
+  that the analysis of V2-E03 binds the revision that the runs execute under, which
+  revision 2 does not; the inventory names every clause of E04-AC2, E04-AC3, and E04-AC4,
+  and asks for a registered reason for each E04-AC2 path; a limitation states that the
+  run analysis still reports its own stabilized recovery, which is not the span that
+  E04-AC12 judges; this page no longer used two finding labels of a review that no public
+  page defines; and two typos in the test inventory are fixed.
+
+Both reviews confirmed what they checked and found correct: rule set 3 reads exactly as
+before; E04 revisions 1 and 2 and E03 revision 1 are byte-identical to `0863728` and
+their rows are unchanged; the clock policy, the bound, the containment window, the
+observation limit, and the `reversalStart` definition of revision 3 are those of
+revision 2; every count of this page; the pin classification; the readiness review; and
+no private-planning text, finding identifier, later story identifier, or local path in
+the diff. Left as they are, and disclosed: the outcome reference does not require every
+declared criterion to be present, and on an `INCONCLUSIVE` state that the two
+computations of `notJudged` decide it lists the reasons of every verdict that is not
+judged.
 
 ## What this does not establish
 

@@ -45,7 +45,7 @@
         "role": "extension",
         "path": "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json",
         "revision": 3,
-        "contentSha256": "c95186c6ef1bb7034c71ef6a8e39ed3a92dd1a265497d11d2f99d570fc81ce29",
+        "contentSha256": "5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582",
         "preregistrationRules": 4
       }
     ],
@@ -453,6 +453,18 @@
       {
         "member": "fields.gitRevision",
         "reason": "The revision of main that revision 2 was prepared from."
+      },
+      {
+        "member": "metadata",
+        "reason": "The revision is 2, registered on 2026-10-20 by V2-S6-008-PR1, and it supersedes revision 1 by path and digest."
+      },
+      {
+        "member": "pinnedInputs",
+        "reason": "Revision 3 of V2-E04 is pinned, and the two checks have new digests."
+      },
+      {
+        "member": "inputChanges",
+        "reason": "Each moved pin is classified."
       }
     ],
     "analysisCode": {
@@ -820,7 +832,7 @@
     },
     {
       "path": "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json",
-      "sha256": "c95186c6ef1bb7034c71ef6a8e39ed3a92dd1a265497d11d2f99d570fc81ce29",
+      "sha256": "5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582",
       "role": "a freeze record of a source experiment"
     },
     {
@@ -1075,7 +1087,7 @@
     },
     {
       "path": "tools/analysis_preregistration/core.py",
-      "sha256": "e74d1eeaf74f5d695f003abe7ca9ccb9161c83050cc69678806013905dd5fd3e",
+      "sha256": "f19cc9ae1884aaa0d241d4bd6380fdb2b2a8491bae7c624e803d99001ca41ff2",
       "role": "this check"
     },
     {
@@ -1200,7 +1212,7 @@
     },
     {
       "path": "tools/experiment_preregistration/core.py",
-      "sha256": "5a904996e0cf512aee5aedb2a40f04b1b7d40f451ac94ef95ece90ce713d5665",
+      "sha256": "2ba84ad291aad4a27dbfd4d5efc28943312f63ab22ae7f193053234ba8612566",
       "role": "the import closure of a tool that the analysis runs"
     },
     {
@@ -1373,21 +1385,21 @@
     {
       "path": "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json",
       "from": null,
-      "to": "c95186c6ef1bb7034c71ef6a8e39ed3a92dd1a265497d11d2f99d570fc81ce29",
+      "to": "5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582",
       "material": true,
       "reason": "Revision 3 of V2-E04, which this revision binds. It removes the onset exclusion of revision 2 and selects the span of its recovery criterion by one preregistered rule."
     },
     {
       "path": "tools/analysis_preregistration/core.py",
       "from": "7a8fee054475fb75acd615e467b500da5c0b672eb656b5dfc1563aed7af3613a",
-      "to": "e74d1eeaf74f5d695f003abe7ca9ccb9161c83050cc69678806013905dd5fd3e",
+      "to": "f19cc9ae1884aaa0d241d4bd6380fdb2b2a8491bae7c624e803d99001ca41ff2",
       "material": true,
       "reason": "The check adds three rules that read a V2-E03 record after revision 1: the rule set of each binding, the V2-E04 revision of the extension, and the list of the members that differ from the superseded revision. It reads revision 1 as before."
     },
     {
       "path": "tools/experiment_preregistration/core.py",
       "from": "0e29593b097914818d3ce9bbd717732c52416ef8cdfceff12b220173bdeec5f0",
-      "to": "5a904996e0cf512aee5aedb2a40f04b1b7d40f451ac94ef95ece90ce713d5665",
+      "to": "2ba84ad291aad4a27dbfd4d5efc28943312f63ab22ae7f193053234ba8612566",
       "material": false,
       "reason": "The check of the source records adds rule set 4, which V2-E04 revision 3 is read under. This record imports two of its functions, the phrase scan of the clock rules, and they are unchanged."
     }

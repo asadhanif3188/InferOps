@@ -34,14 +34,19 @@ more than the margin.
 **The reported span.** The instants and figures that a result states, and the
 post-recovery window that E04-AC5 judges, use the span of the resolution that
 counts only the completions ordered after ``reversalStart``, which does not
-understate ``recoveryMs``. When that resolution selects no span, they use the
-other one.
+understate ``recoveryMs``. When that resolution selects no span, because it finds
+none or because its span is ordered after the end of the observation limit, they
+use the span of the other one.
 
 **No clock bound.** When the end reading of P8 is unusable, the clock bound is not
 computable, and each verdict that orders a node instant and a host instant is not
 judged, for ``clock-reading-missing``. No completion can then be ordered before
-``reversalStart``, so every completion is a candidate. When no span completes
-over them at all, E04-AC12 does not depend on the bound and is not met.
+``reversalStart``, so none is known to be before it, and every completion is a
+candidate. When no span completes over them at all, E04-AC12 does not depend on
+the bound and is not met. When one does, whether it starts after ``reversalStart``
+is not known, so E04-AC12 is not judged: the clock uncertainty, and not a span
+known to start before ``reversalStart``, leaves it so. Before the reversal commit is
+pushed no reading holds it, so the condition series hold no such span.
 
 **The state.** A verdict that is not judged is neither held nor failed. The state
 is computed once with each such verdict taken as held and once with each taken as
@@ -437,7 +442,22 @@ def reversal_outcome(inputs: ReversalInputs) -> ReversalOutcome:
                 found.append(Resolution(name, limit, span, inside, verdict))
         resolutions = tuple(found)
         recovery = _one([r.verdict for r in resolutions])
-        chosen = spans[REPORTED_RESOLUTION] or spans[MARGIN_AS_AFTER]
+        # The reported span is that of margin-as-before when it selects a span, one
+        # that is not ordered after the end of the observation limit, and otherwise
+        # that of margin-as-after. A span that completes after the limit is not
+        # selected, so it never hides the span of the other resolution.
+        chosen = next(
+            (
+                span
+                for span in (spans[REPORTED_RESOLUTION], spans[MARGIN_AS_AFTER])
+                if span is not None
+                and _order(
+                    span.stabilized_at_ms, inputs.observation_limit_end_ms, margin
+                )
+                <= 0
+            ),
+            None,
+        )
         post_recovery = Verdict(HELD)
         if chosen is not None:
             order = _order(

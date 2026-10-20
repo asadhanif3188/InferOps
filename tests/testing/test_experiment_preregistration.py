@@ -114,7 +114,7 @@ RECORDS = {
 #: Revision 3 of V2-E04, of rule set 4, registered by V2-S6-008-PR1. Its registered
 #: pin is written out so that a change is visible.
 E04_R3 = "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json"
-E04_R3_PIN = "c95186c6ef1bb7034c71ef6a8e39ed3a92dd1a265497d11d2f99d570fc81ce29"
+E04_R3_PIN = "5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582"
 #: Every committed record, and the latest committed revision of each experiment.
 ALL_COMMITTED = sorted([*ALL_RECORDS, E04_R3])
 LATEST_RECORDS = {**RECORDS, "V2-E04": E04_R3}
@@ -3939,6 +3939,102 @@ NAMES_REASON = f"it names {ONSET_REASON}"
 DOES_NOT_FOLLOW = "it states that the onset or a span does not follow reversalStart"
 
 
+def _append_text(
+    at: Callable[[dict[str, Any]], dict[str, Any]], member: str, text: str
+) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        at(document)[member] += " " + text
+
+    return change
+
+
+def _duplicate_ac5(document: dict[str, Any]) -> None:
+    criteria = value(document, "acceptanceCriteria")
+    defective = copy.deepcopy(criterion_of(document, "E04-AC5"))
+    defective["statement"] = criterion_of(load(E04), "E04-AC5")["statement"]
+    criteria.append(defective)
+
+
+# The defects that the independent review of the first commit planted: the
+# exclusion in words that the first matcher did not name, in texts that it did not
+# read, a reason of the timing that does not name E04-AC12, and a second E04-AC5.
+REVIEW_DEFECTS = [
+    pytest.param(
+        _outcome_rule(
+            "When the span starts before reversalStart, E04-AC12 is not judged."
+        ),
+        [(ONSET_RULE, "definition.outcomeRules[6]", DOES_NOT_FOLLOW)],
+        id="a-span-before-reversal-start-not-judged",
+    ),
+    pytest.param(
+        _outcome_rule(
+            "When stabilizationOnset precedes reversalStart, the run is INCONCLUSIVE."
+        ),
+        [(ONSET_RULE, "definition.outcomeRules[6]", DOES_NOT_FOLLOW)],
+        id="an-onset-that-precedes-reversal-start-inconclusive",
+    ),
+    pytest.param(
+        _append_text(
+            SELECTED_ONSET,
+            "completion",
+            "When stabilizationOnset precedes reversalStart, E04-AC12 is not judged.",
+        ),
+        [(ONSET_RULE, f"{ONSET_AT}.completion", DOES_NOT_FOLLOW)],
+        id="the-exclusion-in-a-member-of-the-timing",
+    ),
+    pytest.param(
+        lambda d: d["definition"].__setitem__(
+            "observation",
+            d["definition"]["observation"]
+            + " A span that starts before reversalStart leaves E04-AC12 not judged.",
+        ),
+        [(ONSET_RULE, "definition.observation", DOES_NOT_FOLLOW)],
+        id="the-exclusion-in-the-observation-limit",
+    ),
+    pytest.param(
+        _register(
+            {
+                "id": "span-before-reversal",
+                "resultState": "INCONCLUSIVE",
+                "reason": "A span starts before reversalStart.",
+            }
+        ),
+        [
+            (
+                ONSET_RULE,
+                "exclusionReasons.reasons[11]",
+                "span-before-reversal is a reason of the reversal timing beside "
+                "reversal-start-unconfirmed",
+            )
+        ],
+        id="a-reason-of-the-timing-that-does-not-name-e04-ac12",
+    ),
+    pytest.param(
+        _duplicate_ac5,
+        [
+            (
+                SELECTED_RULE,
+                "fields.acceptanceCriteria",
+                "E04-AC5 is stated 2 times, and not once",
+            )
+        ],
+        id="a-defective-e04-ac5-beside-a-conforming-one",
+    ),
+]
+
+
+@pytest.mark.parametrize(("change", "expected"), REVIEW_DEFECTS)
+def test_each_selection_defect_of_the_review_is_refused(
+    full_root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
+) -> None:
+    edit(full_root, E04_R3, change)
+    assert found(full_root) == [
+        (rule, E04_R3, where, detail) for rule, where, detail in expected
+    ]
+
+
 @pytest.mark.parametrize(
     ("change", "expected"),
     [
@@ -4467,6 +4563,18 @@ def test_each_selection_defect_of_revision_three_is_refused(
             id="modules-text",
         ),
         pytest.param(_criterion_member("E04-AC5", "statement", 5), id="ac5-a-number"),
+        pytest.param(
+            lambda d: timing_of(d)["instants"]["reversalStart"][
+                "notEstablished"
+            ].__setitem__("reason", []),
+            id="not-established-reason-a-list",
+        ),
+        pytest.param(
+            lambda d: timing_of(d)["instants"]["reversalStart"][
+                "notEstablished"
+            ].__setitem__("reason", {"x": 1}),
+            id="not-established-reason-an-object",
+        ),
     ],
 )
 def test_a_malformed_selection_is_a_finding_and_not_an_error(

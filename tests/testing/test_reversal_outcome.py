@@ -132,6 +132,7 @@ def run(
     start: int | None = REVERSAL_START,
     clock_bound: int | None = CLOCK_BOUND,
     declared: list[Criterion] | None = None,
+    limit_end: int = OBSERVATION_LIMIT_END,
 ) -> ReversalOutcome:
     return reversal_outcome(
         ReversalInputs(
@@ -140,12 +141,22 @@ def run(
             resolution_ms=RESOLUTION,
             completions=calls,
             conditions=conditions(synced_from),
-            observation_limit_end_ms=OBSERVATION_LIMIT_END,
+            observation_limit_end_ms=limit_end,
             window_end_ms=WINDOW_END,
             bound_ms=BOUND,
             criteria=criteria() if declared is None else declared,
         )
     )
+
+
+def every(start: int, step: int, count: int) -> list[analysis._Completion]:
+    """``count`` successful completions, ``step`` ms apart, from ``start``."""
+    return [
+        analysis._Completion(
+            k + 1, start + step * k - 500, start + step * k, True, "success"
+        )
+        for k in range(count)
+    ]
 
 
 def successes_from(start: int, end: int = WINDOW_END - 1000) -> tuple[int, int, bool]:
@@ -338,6 +349,58 @@ def test_two_resolutions_select_different_spans_with_one_verdict() -> None:
     assert result.post_recovery == Verdict(NOT_HELD, outcome.CALLER_INCOMPLETE)
     assert result.state == INCONCLUSIVE
     assert result.reasons == (outcome.CALLER_INCOMPLETE,)
+
+
+def test_the_other_span_is_reported_when_the_first_completes_after_the_limit() -> None:
+    """Found by the review of the first commit. A completion every 7 s from 20 ms
+    before reversalStart, inside the margin. margin-as-after selects the span from it,
+    which completes inside the observation limit; margin-as-before selects the span
+    from the next one, which completes after it and so is not selected. The reported
+    span, and the post-recovery window that E04-AC5 judges, are then those of
+    margin-as-after. The first commit reported no span and held E04-AC5 trivially."""
+    start = 200_500
+    calls = every(start - 20, 7000, 21)
+    result = run(calls, start=start, limit_end=267_000)
+    spans = {r.candidates: r.span for r in result.resolutions}
+    assert spans[MARGIN_AS_BEFORE] is not None
+    assert spans[MARGIN_AS_BEFORE].stabilized_at_ms == start - 20 + 70_000
+    assert spans[MARGIN_AS_AFTER] is not None
+    assert result.reported == spans[MARGIN_AS_AFTER]
+    assert result.reported.onset_ms == start - 20
+    assert result.reported.stabilized_at_ms == start - 20 + 63_000
+    # The resolutions give different verdicts: held after, not met before.
+    assert result.recovery == Verdict(NOT_JUDGED, CLOCK_BOUND_REACHED)
+    assert result.post_recovery == Verdict(HELD)
+    # Without successes after the reported span, E04-AC5 of that span fails.
+    short = run(calls[:11], start=start, limit_end=267_000)
+    assert short.reported == spans[MARGIN_AS_AFTER]
+    assert short.post_recovery == Verdict(NOT_HELD, outcome.CALLER_INCOMPLETE)
+
+
+def test_stabilized_at_inside_the_margin_of_the_limit_with_two_verdicts() -> None:
+    """stabilizedAt 10 ms after the end of the observation limit, and recoveryMs well
+    inside the bound: inside the limit E04-AC12 holds, outside it is not met, so it
+    is not judged. E04-AC5 applies under one resolution and holds under both."""
+    calls = completions(successes_from(201_000))
+    result = run(calls, limit_end=261_000 - 10)
+    assert result.reported is not None
+    assert result.reported.stabilized_at_ms == 261_000
+    assert {r.verdict for r in result.resolutions} == {
+        Verdict(HELD),
+        Verdict(NOT_HELD),
+    }
+    assert result.recovery == Verdict(NOT_JUDGED, CLOCK_BOUND_REACHED)
+    assert result.post_recovery == Verdict(HELD)
+    assert result.state == INCONCLUSIVE
+
+
+def test_e04_ac5_inside_the_margin_of_the_limit_with_two_verdicts() -> None:
+    """The same span, with no successful request after it: E04-AC5 fails when the span
+    counts as inside the limit and holds when it does not, so it is not judged."""
+    calls = completions(successes_from(201_000, 261_000), failures(262_000, 400_000))
+    result = run(calls, limit_end=261_000 - 10)
+    assert result.post_recovery == Verdict(NOT_JUDGED, CLOCK_BOUND_REACHED)
+    assert result.state == INCONCLUSIVE
 
 
 def test_a_first_request_inside_the_margin_with_one_verdict_both_ways() -> None:

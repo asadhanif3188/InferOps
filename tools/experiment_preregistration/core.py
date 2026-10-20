@@ -649,6 +649,16 @@ ANALYSIS_SPAN: Final = "the analysis states a stabilized recovery"
 BOTH_WAYS_PHRASE: Final = "resolved both ways"
 #: A reason that a sentence names, registered or not.
 _FOR_THE_REASON: Final = re.compile(r"\bfor the reason ([a-z0-9]+(?:-[a-z0-9]+)+)")
+#: A sentence that names reversalStart, an instant or a span earlier than it, and a
+#: verdict that is not judged or a run that is INCONCLUSIVE, states the onset
+#: exclusion in another form. A reason of the timing names reversalStart or the onset.
+_EARLY_WORD: Final = re.compile(
+    r"\b(?:before|precedes?|preceded|preceding|earlier than|not after|"
+    r"(?:does|do|did) not (?:follow|start after|come after))\b",
+    re.IGNORECASE,
+)
+_VERDICT_WORD: Final = re.compile(r"\bnot (?:be )?judged\b|\bINCONCLUSIVE\b")
+_TIMING_WORD: Final = re.compile(r"\breversalStart\b|\bstabilizationOnset\b|\bonset\b")
 #: A statement of the onset exclusion that does not name its reason: a verdict that
 #: is left not judged because the onset or a span does not follow reversalStart.
 _ONSET_EXCLUSION: Final = re.compile(
@@ -861,18 +871,25 @@ RULES: Final[Mapping[str, str]] = {
         "only the verdicts that depend on the bound, and with no span that completes "
         "the criterion is not met. stabilizationOnset names the selection and no "
         "member of the run analysis, and its definition holds the phrases that this "
-        "check names."
+        "check names. The rule reads these members and the named phrases, and no "
+        "other prose."
     ),
     "prereg-reversal-onset-exclusion": (
         "A V2-E04 record of rule set 4 registers no recovery-onset-not-after-reversal, "
         "names it in no outcome rule, criterion, criterion clock, or member of the "
-        "reversal timing, and has no notAfterReversalStart member. The only reasons "
-        "for which a member, a registered reason, or an outcome rule leaves E04-AC12 "
-        "not judged are reversal-start-unconfirmed, clock-bound-reached, and "
-        "clock-reading-missing. No outcome rule, criterion, or criterion clock states "
-        "that the onset or a span does not follow reversalStart, in the phrases that "
-        "this check names, no criterion clock of E04-AC12 orders stabilizationOnset, "
-        "and each order of E04-AC12 is resolved both ways."
+        "reversal timing, and has no notAfterReversalStart member. No member that "
+        "names E04-AC12 and a not-judged verdict, no registered reason that names "
+        "E04-AC12 not judged, and no reason that an outcome rule names for E04-AC12 "
+        "not judged is other than reversal-start-unconfirmed, clock-bound-reached, or "
+        "clock-reading-missing, and no registered reason other than "
+        "reversal-start-unconfirmed names reversalStart or the onset. No outcome rule, "
+        "criterion, criterion clock, text of the reversal timing, observation limit, "
+        "or post-recovery window states that the onset or a span does not follow "
+        "reversalStart, or names reversalStart, an earlier instant or span, and a "
+        "verdict that is not judged or an INCONCLUSIVE run in one sentence, in the "
+        "words that this check names. No criterion clock of E04-AC12 orders "
+        "stabilizationOnset, and each order of E04-AC12 is resolved both ways. A "
+        "paraphrase that no named word reaches is not refused."
     ),
     "prereg-reversal-unmet-recovery": (
         "In a V2-E04 record of rule set 4, E04-AC12 is a pass criterion, and it and "
@@ -886,14 +903,16 @@ RULES: Final[Mapping[str, str]] = {
         "member of the run analysis, and the definitions of stabilizedAt, of the "
         "observation limit, and of the post-recovery window, and E04-AC5, a validity "
         "criterion, each name the selected span and not the stabilized recovery that "
-        "the analysis states."
+        "the analysis states. The rule reads these members and the named "
+        "phrases, and no other prose."
     ),
     "prereg-reversal-outcome-reference": (
         "A V2-E04 record of rule set 4 names the outcome reference, reversal_outcome "
         "of tools.reversal_outcome.core, in its selection, names that module in its "
         "material scope and pins its file, and states that code which computes the "
         "selection from the evidence of a run is pinned before the first "
-        "result-bearing run."
+        "result-bearing run. The rule reads these members and the named "
+        "phrase, and no other prose."
     ),
 }
 
@@ -2510,7 +2529,7 @@ def _onset_exclusion_findings(
     for location, reason in _not_judged_members(
         {k: v for k, v in document.items() if k != "pinnedInputs"}, ""
     ):
-        if reason not in RECOVERY_NOT_JUDGED_REASONS:
+        if not isinstance(reason, str) or reason not in RECOVERY_NOT_JUDGED_REASONS:
             yield Finding(
                 rule,
                 name,
@@ -2533,6 +2552,21 @@ def _onset_exclusion_findings(
                 f"exclusionReasons.reasons[{index}]",
                 f"{reason_id} leaves {RECOVERY_CRITERION} not judged",
             )
+    for index, entry in enumerate(reasons):
+        reason_id, reason_text = entry.get("id"), entry.get("reason")
+        if (
+            isinstance(reason_id, str)
+            and reason_id not in (REVERSAL_START_UNCONFIRMED, ONSET_NOT_AFTER_START)
+            and isinstance(reason_text, str)
+            and _TIMING_WORD.search(reason_text)
+        ):
+            yield Finding(
+                rule,
+                name,
+                f"exclusionReasons.reasons[{index}]",
+                f"{reason_id} is a reason of the reversal timing beside "
+                f"{REVERSAL_START_UNCONFIRMED}",
+            )
     registered = {r.get("id") for r in reasons if isinstance(r.get("id"), str)} | {
         ONSET_NOT_AFTER_START
     }
@@ -2553,20 +2587,33 @@ def _onset_exclusion_findings(
                     f"definition.outcomeRules[{index}]",
                     f"it leaves {RECOVERY_CRITERION} not judged for another reason",
                 )
-    criteria = _criteria_by_id(document)
+    definition = document["definition"]
     texts: list[tuple[str, Any]] = [
         (f"definition.outcomeRules[{i}]", r) for i, r in enumerate(rules)
     ]
-    for index, criterion in criteria.values():
-        texts.append((_criterion_at(index), criterion.get("statement")))
-    clocks = document["definition"]["criterionClocks"]
+    for index, criterion in enumerate(_value(document, "acceptanceCriteria")):
+        if isinstance(criterion, Mapping):
+            texts.append((_criterion_at(index), criterion.get("statement")))
+    clocks = definition["criterionClocks"]
     for index, entry in enumerate(clocks):
         if isinstance(entry, Mapping):
             texts.append(
                 (f"definition.criterionClocks[{index}]", entry.get("statement"))
             )
+    texts.extend(
+        _strings_in(definition.get("reversalTiming"), "definition.reversalTiming")
+    )
+    for member in ("observation", "postRecoveryWindow"):
+        texts.append((f"definition.{member}", definition.get(member)))
     for location, text in texts:
-        if isinstance(text, str) and _ONSET_EXCLUSION.search(text):
+        if not isinstance(text, str):
+            continue
+        if _ONSET_EXCLUSION.search(text) or any(
+            REVERSAL_START in sentence
+            and _EARLY_WORD.search(sentence)
+            and _VERDICT_WORD.search(sentence)
+            for sentence in _SENTENCE_END.split(text)
+        ):
             yield Finding(
                 rule,
                 name,
@@ -2689,6 +2736,18 @@ def _selected_span_findings(
                 "it does not name the selected span, or names the stabilized recovery "
                 "that the analysis states",
             )
+    stated = [
+        c
+        for c in _value(document, "acceptanceCriteria")
+        if isinstance(c, Mapping) and c.get("id") == "E04-AC5"
+    ]
+    if len(stated) != 1:
+        yield Finding(
+            rule,
+            name,
+            "fields.acceptanceCriteria",
+            f"E04-AC5 is stated {len(stated)} times, and not once",
+        )
     index, criterion = _criteria_by_id(document).get("E04-AC5", (None, {}))
     statement = criterion.get("statement")
     if (

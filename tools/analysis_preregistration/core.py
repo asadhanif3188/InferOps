@@ -405,9 +405,12 @@ RULES: Final[Mapping[str, str]] = {
         "A V2-E03 record after revision 1 names the revision that it supersedes by "
         "path and registered digest, and lists in "
         "definition.changesFromSupersededRevision each member of its definition, "
-        "its fields, and its material scope that differs from that revision, once "
-        "and with a reason, and no member that does not differ. A member that is an "
-        "object in both is compared by its own members."
+        "its fields, and its material scope that differs from that revision, and "
+        "each other member of the record that differs, such as its metadata and its "
+        "pins, once and with a reason, and no member that does not differ. A member "
+        "of the definition, the fields, or the material scope that is an object in "
+        "both is compared by its own members, and the list itself is not compared. "
+        "The reason is not read."
     ),
     **_rules("e06", "V2-E06"),
     "e06-views": (
@@ -1516,6 +1519,14 @@ def _changed_members(prior: Mapping[str, Any], current: Mapping[str, Any]) -> li
                 after, after is not _ABSENT
             ):
                 found.append(f"{section}.{key}")
+    # Every other member of the record is compared whole: metadata, the pins, and
+    # their classification differ in every later revision, and are listed too.
+    for key in sorted((set(prior) | set(current)) - set(CHANGED_SECTIONS)):
+        before, after = prior.get(key, _ABSENT), current.get(key, _ABSENT)
+        if _canonical(before, before is not _ABSENT) != _canonical(
+            after, after is not _ABSENT
+        ):
+            found.append(key)
     return found
 
 

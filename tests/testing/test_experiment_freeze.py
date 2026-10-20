@@ -148,9 +148,9 @@ E06_PIN = "e774e5f1d46f7c544a65d449ec7f512b6aca8f004ddbbf8298a2ac1d7375b468"
 #: which selects the span of its recovery criterion with no onset exclusion, and
 #: revision 2 of V2-E03, which binds it. Their pins are written out the same way.
 E04_R3 = "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json"
-E04_R3_PIN = "c95186c6ef1bb7034c71ef6a8e39ed3a92dd1a265497d11d2f99d570fc81ce29"
+E04_R3_PIN = "5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582"
 E03_R2 = "docs/proof/experiments/v2-e03/freeze-r2.v1alpha1.json"
-E03_R2_PIN = "6d642213d975bb4c10318d60ed9cd6d71171ff753a3ecdde3a908a5d647d7b09"
+E03_R2_PIN = "4ecc33f7aa12f4321e9834a2ab0c3a957987c83655eb17142528306743e38872"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so

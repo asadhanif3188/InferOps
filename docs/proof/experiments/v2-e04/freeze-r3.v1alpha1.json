@@ -120,7 +120,7 @@
         "beforeReversalStart": {
           "selected": false,
           "reasonForVerdict": false,
-          "statement": "A span, or the part of a span, that starts before reversalStart is never selected and is never a reason for a verdict. It neither leaves E04-AC12 not judged nor changes the state of a run."
+          "statement": "When the clock bound is computable, a span, or the part of a span, that is ordered before reversalStart is never selected and is never a reason for a verdict. It neither leaves E04-AC12 not judged nor changes the state of a run. After an unusable end reading of P8 no completion can be ordered before reversalStart, so none is known to be before it, and definition.reversalTiming.selection.endReading states that case."
         },
         "orders": [
           {
@@ -156,7 +156,7 @@
             "reason": "clock-bound-reached",
             "stateDecidedBy": "definition.clockPolicy.notJudged"
           },
-          "statement": "E04-AC12 is judged under each resolution of the two orders, and recoveryMs under each is compared with the bound by definition.clockPolicy.boundComparison. When every resolution gives the same verdict, that is the verdict of E04-AC12. When they differ, E04-AC12 is not judged, for the reason clock-bound-reached, and definition.clockPolicy.notJudged decides the state."
+          "statement": "E04-AC12 is judged under each resolution of the two orders, and recoveryMs under each is compared with the bound by definition.clockPolicy.boundComparison. When every resolution gives the same verdict, that is the verdict of E04-AC12. When they differ, E04-AC12 is not judged, for the reason clock-bound-reached, and definition.clockPolicy.notJudged decides the state. A verdict that is the same under every resolution does not need the order, so definition.clockPolicy.ordering and the clock outcome rule of definition.outcomeRules do not leave it not judged. E04-AC5 is judged the same way."
         },
         "reported": {
           "resolution": "margin-as-before",
@@ -168,13 +168,13 @@
             "definition.postRecoveryWindow",
             "E04-AC5"
           ],
-          "statement": "When the resolutions select different spans and give the same verdict, every reported instant and figure, stabilizationOnset, stabilizedAt, and recoveryMs, the post-recovery window, and E04-AC5 use the span of margin-as-before, the resolution that counts only the completions ordered after reversalStart, so recoveryMs is not understated. When margin-as-before selects no span, they use the span of margin-as-after."
+          "statement": "When the resolutions select different spans, every reported instant and figure, stabilizationOnset, stabilizedAt, and recoveryMs, the post-recovery window, and E04-AC5 use the span of margin-as-before, the resolution that counts only the completions ordered after reversalStart, so recoveryMs is not understated. The same choice holds whether their verdicts agree or differ. When margin-as-before selects no span, because it finds none or its span is ordered after the end of the observation limit, they use the span of margin-as-after."
         },
         "endReading": {
           "reason": "clock-reading-missing",
           "dependsOnBound": "not-judged",
           "noSpan": "not-met",
-          "statement": "After an unusable end reading of P8 the clock bound is not computable, and only the verdicts that depend on it are not judged, for the reason clock-reading-missing. No completion can then be held before reversalStart, so every completion of the window is a candidate. When no span completes over them at all, E04-AC12 does not depend on the bound, and it is not met."
+          "statement": "After an unusable end reading of P8 the clock bound is not computable, and only the verdicts that depend on it are not judged, for the reason clock-reading-missing. No completion can then be ordered before reversalStart, so none is known to be before it, and every completion of the window is a candidate. When no span completes over them at all, E04-AC12 does not depend on the bound, and it is not met. When one does, whether it starts after the reversal is not known, so the clock uncertainty leaves E04-AC12 not judged, and no span known to start earlier does. No reading holds the reversal commit before it is pushed, so the condition series hold no span before the push. The cross-clock orders of E04-AC4 are not judged after an unusable end reading either."
         },
         "outcomeReference": {
           "module": "tools.reversal_outcome.core",
@@ -182,7 +182,7 @@
           "path": "tools/reversal_outcome/core.py",
           "statement": "The outcome reference applies this selection and the outcome rules of this record to declared inputs: whether reversalStart is established and its instant, the clock bound and the resolution that give the margin, whether the end reading of P8 is usable, the caller completions and the condition series, the end of the observation limit and of the window, the bound, and the verdict of each other criterion. It returns the verdicts of E04-AC12 and E04-AC5, the reason of a verdict that is not judged, and the state. It reads no run directory. It calls the span rule of tools/reliability_analysis and copies none of it. The runs of this experiment and their analysis use it, or a revision of this record registered before the first result-bearing run pins the code that replaces it."
         },
-        "evidenceComputation": "No code computes this selection from the evidence of a run at registration. Code that does is pinned by a revision of this record registered before the first result-bearing run, for example the revision that pins the driver, so that the runs execute under the revision that the analysis of V2-E03 binds. Until then, the review of each run computes the selection by hand, by this rule, from the caller record and the condition streams, and checks it with the outcome reference. The absence of a tool is never a reason to leave E04-AC12 not judged."
+        "evidenceComputation": "No code computes this selection from the evidence of a run at registration. Code that does is pinned by a revision of this record registered before the first result-bearing run, for example the revision that pins the driver, and a later revision of the V2-E03 record binds the revision that the runs execute under. Until then, the review of each run computes the selection by hand, by this rule, from the caller record and the condition streams, and checks it with the outcome reference. The absence of a tool is never a reason to leave E04-AC12 not judged."
       },
       "recoveryEnd": "stabilizationOnset",
       "intervals": {
@@ -244,7 +244,7 @@
       "The span rule holds a span to the readings that overlap it, across the two clocks and with no margin, as in revision 2. definition.clockPolicy governs the two orders of the selection, and not the span rule inside them.",
       "A reading that does not hold a condition blocks a span only until that reading finishes. So a span can start up to one reading interval of the argo stream before the first reading that holds the reversal commit, and recoveryMs can be understated by up to that interval.",
       "Inside the margin of definition.clockPolicy.ordering the selection is made under each resolution. When the resolutions give different verdicts, E04-AC12 is not judged, for the reason clock-bound-reached, and definition.clockPolicy.notJudged decides the state.",
-      "No tool computes the selection from the evidence of a run at registration. tools/reversal_outcome applies it to declared inputs, and the review of each run computes it from the caller record and the condition streams until a later revision pins code that does.",
+      "No tool computes the selection from the evidence of a run at registration. tools/reversal_outcome applies it to declared inputs, and the review of each run computes it from the caller record and the condition streams until a later revision pins code that does. The run analysis still states its own stabilized recovery, from its search after the fault-injection-finished event, and definition.measurements reports it. It is not the span that E04-AC12 judges.",
       "No tool checks that a run executes the latest registered revision of its experiment. P1 states it, and the review of each run compares it."
     ],
     "history": [
@@ -855,7 +855,7 @@
       "FAILED: every criterion of kind validity held, and a criterion of kind pass did not.",
       "PASSED: every criterion held.",
       "A verdict that orders an instant of the node clock and an instant of the host clock, or that compares an interval between the two clocks with a bound, follows definition.clockPolicy. Inside the margin of the policy it is not judged, for the reason clock-bound-reached. After an unusable end reading of P8 it is not judged, for the reason clock-reading-missing. definition.clockPolicy.notJudged then decides the state.",
-      "When reversalStart is not established, E04-AC12 is not judged, for the reason reversal-start-unconfirmed, and definition.clockPolicy.notJudged then decides the state. definition.reversalTiming.selection selects the span that E04-AC12 judges. When reversalStart is established and no span that starts after it completes inside the observation limit, recovery is not established, and E04-AC12 is not met. A span that starts before reversalStart is never a reason for a verdict.",
+      "When reversalStart is not established, E04-AC12 is not judged, for the reason reversal-start-unconfirmed, and definition.clockPolicy.notJudged then decides the state. definition.reversalTiming.selection selects the span that E04-AC12 judges. When reversalStart is established and no span that starts after it completes inside the observation limit, recovery is not established, and E04-AC12 is not met. When the clock bound is computable, a span that is ordered before reversalStart is never a reason for a verdict.",
       "A run has exactly one state. The result page states each criterion, its kind, the evidence it was judged from, and the verdict. The run analysis states the figures, and the result page states the state."
     ],
     "repetitionRule": "2 counted runs. A run is counted when its state is PASSED or FAILED. A counted run is never repeated, replaced, or left out of an aggregate. A run that is REFUSED, INCONCLUSIVE, or ABORTED for a registered exclusion reason is kept, and the next run takes the next identifier. At most 5 runs start under one revision. When fewer than the required number of runs are counted after 5, the set is INCONCLUSIVE, and a further run needs a later revision of this record. Each run begins with the preparation P1 to P8 and ends with the cleanup.",
@@ -2369,7 +2369,7 @@
     },
     {
       "path": "tools/experiment_preregistration/core.py",
-      "sha256": "5a904996e0cf512aee5aedb2a40f04b1b7d40f451ac94ef95ece90ce713d5665",
+      "sha256": "2ba84ad291aad4a27dbfd4d5efc28943312f63ab22ae7f193053234ba8612566",
       "role": "a module of a tool that the procedure runs, or that it imports"
     },
     {
@@ -2529,7 +2529,7 @@
     },
     {
       "path": "tools/reversal_outcome/core.py",
-      "sha256": "b2540d5b5c271e4170134c5a3695570244dbaa98c5e6d2a0341855e304edd043",
+      "sha256": "de770248ef8cde17e8274870e315658889aa80989a9c8468bc84f8b946537f38",
       "role": "the outcome reference that the selection names"
     },
     {
@@ -2582,7 +2582,7 @@
     {
       "path": "tools/experiment_preregistration/core.py",
       "from": "0e29593b097914818d3ce9bbd717732c52416ef8cdfceff12b220173bdeec5f0",
-      "to": "5a904996e0cf512aee5aedb2a40f04b1b7d40f451ac94ef95ece90ce713d5665",
+      "to": "2ba84ad291aad4a27dbfd4d5efc28943312f63ab22ae7f193053234ba8612566",
       "material": true,
       "reason": "The check adds rule set 4, which this record is registered under: every rule of rule set 2, the reversal intervals and criteria of rule set 3, the parts of the reversal instants and reasons of rule set 3 that hold reversalStart, controllerObserved, desiredStateRestored, the observation limit, and reversal-start-unconfirmed, and five selection rules, which hold this record to its selection, to no onset exclusion, to E04-AC12 when no span after reversalStart completes, to the members of the selected span, and to the pinned outcome reference. It still reads revision 2 under rule set 3. P1 runs it."
     },
@@ -2596,7 +2596,7 @@
     {
       "path": "tools/reversal_outcome/core.py",
       "from": null,
-      "to": "b2540d5b5c271e4170134c5a3695570244dbaa98c5e6d2a0341855e304edd043",
+      "to": "de770248ef8cde17e8274870e315658889aa80989a9c8468bc84f8b946537f38",
       "material": true,
       "reason": "The outcome reference, added by this revision: it applies definition.reversalTiming.selection and the outcome rules to declared inputs, and the review of each run checks its selection with it."
     }
