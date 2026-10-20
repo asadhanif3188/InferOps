@@ -125,12 +125,12 @@
     },
     {
       "path": "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json",
-      "contentSha256": "5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582",
+      "contentSha256": "14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb",
       "registeredBy": "V2-S6-008-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e03/freeze-r2.v1alpha1.json",
-      "contentSha256": "4ecc33f7aa12f4321e9834a2ab0c3a957987c83655eb17142528306743e38872",
+      "contentSha256": "e27e8c58b22620bc41edf3fa97b82b24caa93afb84a7187a739eae334b7e623d",
       "registeredBy": "V2-S6-008-PR1"
     }
   ]

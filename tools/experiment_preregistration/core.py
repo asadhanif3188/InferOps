@@ -103,8 +103,11 @@ reference that applies it. Rule set 4 holds every rule of rule set 2,
 of ``prereg-reversal-instants`` that hold ``reversalStart``,
 ``controllerObserved``, ``desiredStateRestored``, the source and clock of each
 instant, the observation limit of ``stabilizedAt``, and ``recoveryEnd``, the part
-of ``prereg-reversal-reasons`` that holds ``reversal-start-unconfirmed``, and five
-selection rules. A V2-E04 record after revision 2 states rule set 4 or later. Rule
+of ``prereg-reversal-reasons`` that holds ``reversal-start-unconfirmed``, and six
+selection rules. The sixth holds that the controller's discovery of the reversal is
+system recovery, which E04-AC12 judges, and no condition of validity, as the
+repository owner decided by change control on 2026-10-20. A V2-E04 record after
+revision 2 states rule set 4 or later. Rule
 set 3 is not edited: revision 2 reads as before. This module does not import
 ``tools.reversal_outcome``, so the pins of the records that do not name it do not
 gain it.
@@ -338,11 +341,12 @@ RULE_SETS: Final[Mapping[int, str]] = {
         "desiredStateRestored, the source and the clock of each instant, the "
         "observation limit of stabilizedAt, and recoveryEnd, and the part of "
         "prereg-reversal-reasons that holds reversal-start-unconfirmed, each "
-        "unchanged; and the five selection rules, which read a V2-E04 record: the "
+        "unchanged; and the six selection rules, which read a V2-E04 record: the "
         "selection of the span after reversalStart, no onset exclusion, the recovery "
         "criterion when no such span completes, the members of the selected span, "
-        "and the pinned outcome reference. A V2-E04 record after revision 2 states "
-        "rule set 4 or later."
+        "the pinned outcome reference, and the controller's discovery as system "
+        "recovery and no condition of validity. A V2-E04 record after revision 2 "
+        "states rule set 4 or later."
     ),
 }
 
@@ -630,6 +634,44 @@ OUTCOME_REFERENCE: Final[Mapping[str, str]] = {
     "path": "tools/reversal_outcome/core.py",
 }
 EVIDENCE_COMPUTATION_PHRASE: Final = "before the first result-bearing run"
+#: The discovery of the reversal commit by the controller is part of recoveryMs, which
+#: E04-AC12 judges, and no condition of validity: a controller that does not discover
+#: the reversal leaves no span, and E04-AC12 not met.
+CONTROLLER_DISCOVERY: Final = "controllerDiscovery"
+CONTROLLER_DISCOVERY_MEMBERS: Final[Mapping[str, object]] = {
+    "partOf": "recoveryMs",
+    "judgedBy": RECOVERY_CRITERION,
+    "validity": False,
+    "notDiscovered": "not-met",
+}
+#: The validity criterion of the operator events of the reversal, and what it names.
+REVERSAL_EVENTS_CRITERION: Final = "E04-AC2"
+REVERSAL_EVENTS_NAMED: Final = (
+    "detection-reviewed",
+    "reversal-decided",
+    "reversal-created",
+    "reversal-accepted",
+    "the reversal commit",
+)
+#: A reading or an instant of the controller: its resolved revision or sync state,
+#: an argo reading, the instants that it sets, or the controller resolving,
+#: reporting, discovering, syncing, reconciling, observing, or picking up a commit.
+_CONTROLLER_WORD: Final = re.compile(
+    r"\bresolvedRevision\b|\bsyncStatus\b|\bSynced\b|\bargo (?:reading|stream)s?\b"
+    r"|\bcontrollerObserved\b|\bdesiredStateRestored\b|\bgitopsDiscoveryMs\b"
+    r"|\b(?:controller|Argo CD|Application)(?:'s)?\s+"
+    r"(?:never\s+|does\s+not\s+|did\s+not\s+|fails\s+to\s+|first\s+)?"
+    r"(?:resolv|report|discover|sync|reconcil|observ|pick)\w*"
+    r"|\b(?:discovery|resolution|reconciliation|observation)s?\s+by\s+the\s+"
+    r"(?:controller|Application)\b",
+    re.IGNORECASE,
+)
+_REVERSAL_WORD: Final = re.compile(r"\breversal\b|\brevert|\bknown-good\b", re.I)
+#: A verdict left not judged, an INCONCLUSIVE run, or an abort.
+_EXCLUDING_WORD: Final = re.compile(
+    r"\bnot (?:be )?judged\b|\bnot-judged\b|\bINCONCLUSIVE\b|\bABORTED\b|\babort",
+    re.IGNORECASE,
+)
 #: The phrases of the definition of stabilizationOnset: those of the amended
 #: definition, which rule set 3 also reads.
 ONSET_PHRASES: Final = REVERSAL_PHRASES[(STABILIZATION_ONSET, "definition")]
@@ -913,6 +955,24 @@ RULES: Final[Mapping[str, str]] = {
         "selection from the evidence of a run is pinned before the first "
         "result-bearing run. The rule reads these members and the named "
         "phrase, and no other prose."
+    ),
+    "prereg-reversal-controller-discovery": (
+        "A V2-E04 record of rule set 4 states in "
+        "definition.reversalTiming.controllerDiscovery that the discovery of the "
+        "reversal commit by the controller is part of recoveryMs, judged by E04-AC12 "
+        "and by no validity criterion, and that a controller that does not discover "
+        "it leaves E04-AC12 not met. E04-AC2 is a validity criterion that names the "
+        "four operator events of the reversal and the reversal commit, stated once, "
+        "and each criterion clock of E04-AC2 orders operator events only. No sentence "
+        "of a validity criterion, of a criterion clock of one, of an INCONCLUSIVE or "
+        "ABORTED exclusion reason, or of an abort condition names a reading or an "
+        "instant of the controller together with the reversal or the known-good "
+        "revision, and no sentence of the reversal timing, the outcome rules, the Git "
+        "transitions, the fault procedure, the observation limit, the post-recovery "
+        "window, a pass criterion, its criterion clocks, or another exclusion reason "
+        "names one with a verdict that is not judged, an INCONCLUSIVE run, or an "
+        "abort, in the words that this check names. A paraphrase that no named word reaches is not "
+        "refused."
     ),
 }
 
@@ -2801,9 +2861,134 @@ def _outcome_reference_findings(
         )
 
 
+def _controller_sentence(text: str, *, excluding: bool) -> bool:
+    """A sentence names a reading or an instant of the controller, and with it the
+    reversal or the known-good revision, or, when ``excluding``, a verdict that is
+    not judged, an INCONCLUSIVE run, or an abort."""
+    return any(
+        _CONTROLLER_WORD.search(sentence)
+        and (
+            _EXCLUDING_WORD.search(sentence)
+            if excluding
+            else _REVERSAL_WORD.search(sentence)
+        )
+        for sentence in _SENTENCE_END.split(text)
+    )
+
+
+def _controller_discovery_findings(
+    name: str, document: Mapping[str, Any]
+) -> Iterator[Finding]:
+    rule = "prereg-reversal-controller-discovery"
+    discovery = _member(_timing(document), CONTROLLER_DISCOVERY)
+    if not _equal(discovery, CONTROLLER_DISCOVERY_MEMBERS) or not _text(
+        discovery.get("statement")
+    ):
+        yield Finding(
+            rule,
+            name,
+            f"definition.reversalTiming.{CONTROLLER_DISCOVERY}",
+            "the controller's discovery of the reversal is not stated as part of "
+            "recoveryMs, judged by E04-AC12 and by no validity criterion",
+        )
+    criteria = [
+        (index, c)
+        for index, c in enumerate(_value(document, "acceptanceCriteria") or [])
+        if isinstance(c, Mapping)
+    ]
+    events = [(i, c) for i, c in criteria if c.get("id") == REVERSAL_EVENTS_CRITERION]
+    if len(events) != 1:
+        yield Finding(
+            rule,
+            name,
+            "fields.acceptanceCriteria",
+            f"{REVERSAL_EVENTS_CRITERION} is stated {len(events)} times, and not once",
+        )
+    for index, criterion in events:
+        statement = criterion.get("statement")
+        if criterion.get("kind") != "validity" or not all(
+            _holds(statement, named) for named in REVERSAL_EVENTS_NAMED
+        ):
+            yield Finding(
+                rule,
+                name,
+                _criterion_at(index),
+                f"{REVERSAL_EVENTS_CRITERION} is not the validity criterion of the "
+                "operator events of the reversal and the reversal commit",
+            )
+    validity = {c.get("id") for _, c in criteria if c.get("kind") == "validity"} - {
+        None
+    }
+    strict: list[tuple[str, Any]] = []
+    loose: list[tuple[str, Any]] = []
+    for index, criterion in criteria:
+        texts = strict if criterion.get("id") in validity else loose
+        texts.extend(_strings_in(criterion, _criterion_at(index)))
+    definition = document["definition"]
+    clocks = definition.get("criterionClocks")
+    for index, entry in enumerate(clocks if isinstance(clocks, list) else []):
+        if not isinstance(entry, Mapping):
+            continue
+        where = f"definition.criterionClocks[{index}]"
+        texts = strict if entry.get("criterion") in validity else loose
+        texts.extend(_strings_in(entry, where))
+        instants = entry.get("instants")
+        if entry.get("criterion") == REVERSAL_EVENTS_CRITERION and any(
+            not isinstance(i, Mapping) or i.get("source") != "operator-event"
+            for i in (instants if isinstance(instants, list) else [None])
+        ):
+            yield Finding(
+                rule,
+                name,
+                where,
+                f"an order of {REVERSAL_EVENTS_CRITERION} reads a source other than "
+                "the operator events",
+            )
+    reasons = _member(document, "exclusionReasons").get("reasons")
+    for index, reason in enumerate(reasons if isinstance(reasons, list) else []):
+        if isinstance(reason, Mapping):
+            texts = (
+                strict
+                if reason.get("resultState") in ("INCONCLUSIVE", "ABORTED")
+                else loose
+            )
+            texts.extend(_strings_in(reason, f"exclusionReasons.reasons[{index}]"))
+    strict.extend(
+        _strings_in(
+            _value(document, "abortConditions"), "fields.abortConditions[0].value"
+        )
+    )
+    loose.extend(
+        _strings_in(definition.get("reversalTiming"), "definition.reversalTiming")
+    )
+    for member in (
+        "outcomeRules",
+        "gitTransitions",
+        "faultProcedure",
+        "observation",
+        "postRecoveryWindow",
+    ):
+        loose.extend(_strings_in(definition.get(member), f"definition.{member}"))
+    for texts, excluding in ((strict, False), (loose, True)):
+        for location, text in texts:
+            if isinstance(text, str) and _controller_sentence(
+                text, excluding=excluding
+            ):
+                yield Finding(
+                    rule,
+                    name,
+                    location,
+                    "it makes the controller's discovery of the reversal a condition "
+                    "of validity"
+                    if not excluding
+                    else "it leaves a verdict not judged, or a run INCONCLUSIVE or "
+                    "aborted, on the controller's discovery of the reversal",
+                )
+
+
 def _selection_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
     """Every finding of the reversal rules of rule set 4 for one V2-E04 record: the
-    parts of rule set 3 that it keeps, and the five selection rules."""
+    parts of rule set 3 that it keeps, and the six selection rules."""
     yield from _instant_findings(name, document, SELECTION_RULE_SET)
     yield from _interval_findings(name, document)
     yield from _reversal_criterion_findings(name, document)
@@ -2813,6 +2998,7 @@ def _selection_findings(name: str, document: Mapping[str, Any]) -> Iterator[Find
     yield from _unmet_recovery_findings(name, document)
     yield from _selected_span_findings(name, document)
     yield from _outcome_reference_findings(name, document)
+    yield from _controller_discovery_findings(name, document)
 
 
 # --------------------------------------------------------------------------

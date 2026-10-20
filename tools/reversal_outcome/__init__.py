@@ -6,7 +6,8 @@ reversalStart and is then observed complete inside the observation limit, by the
 unchanged span rule of tools/reliability_analysis, with each cross-clock order
 inside the margin of the clock policy resolved both ways. This package applies
 that rule and the outcome rules of the record to inputs that the caller declares,
-and returns the verdicts of E04-AC12 and E04-AC5 and the state of the run. It
+and returns the verdicts of E04-AC12, E04-AC5, and E04-AC2 and the state of the
+run. E04-AC2 is judged from the operator events of the reversal alone. It
 reads no run directory and runs nothing.
 
 See docs/proof/experiments/README.md, which describes the record, and
@@ -36,14 +37,18 @@ from .core import (
     POST_RECOVERY_CRITERION,
     RECOVERY_CRITERION,
     REPORTED_RESOLUTION,
+    REVERSAL_EVENTS,
+    REVERSAL_EVENTS_CRITERION,
     REVERSAL_START_UNCONFIRMED,
     VALIDITY,
     Criterion,
+    OperatorEvent,
     Resolution,
     ReversalInputs,
     ReversalOutcome,
     Span,
     Verdict,
+    reversal_events,
     reversal_outcome,
 )
 
@@ -69,13 +74,17 @@ __all__ = [
     "POST_RECOVERY_CRITERION",
     "RECOVERY_CRITERION",
     "REPORTED_RESOLUTION",
+    "REVERSAL_EVENTS",
+    "REVERSAL_EVENTS_CRITERION",
     "REVERSAL_START_UNCONFIRMED",
     "VALIDITY",
     "Criterion",
+    "OperatorEvent",
     "Resolution",
     "ReversalInputs",
     "ReversalOutcome",
     "Span",
     "Verdict",
+    "reversal_events",
     "reversal_outcome",
 ]

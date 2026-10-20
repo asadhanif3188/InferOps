@@ -3,8 +3,8 @@
 ``tools.reversal_outcome`` applies the selection rule and the outcome rules of
 revision 3 of the V2-E04 freeze record to declared inputs. Each test below builds
 one synthetic run in memory: the caller completions, the three condition series of
-the span rule, the instants of the host clock, the clock bound, and the verdict of
-every criterion that the reference does not compute. No test reads a run
+the span rule, the instants of the host clock, the clock bound, the operator event
+log, and the verdict of every criterion that the reference does not compute. No test reads a run
 directory, runs an experiment, or contacts a cluster, and no run of V2-E04 exists.
 
 A test of the first part names the case, the verdict of E04-AC12, and the state.
@@ -16,6 +16,7 @@ not describe one run.
 from __future__ import annotations
 
 import ast
+import inspect
 import json
 from collections.abc import Sequence
 from pathlib import Path
@@ -37,12 +38,15 @@ from tools.reversal_outcome import (
     NOT_JUDGED,
     PASS,
     PASSED,
+    REVERSAL_EVENTS,
     REVERSAL_START_UNCONFIRMED,
     VALIDITY,
     Criterion,
+    OperatorEvent,
     ReversalInputs,
     ReversalOutcome,
     Verdict,
+    reversal_events,
     reversal_outcome,
 )
 
@@ -64,10 +68,10 @@ CLOCK_BOUND = 40
 RESOLUTION = 1
 MARGIN = CLOCK_BOUND + RESOLUTION
 
-#: Every criterion of V2-E04 other than E04-AC5 and E04-AC12, with its kind.
+#: Every criterion of V2-E04 other than E04-AC2, E04-AC5, and E04-AC12, with its
+#: kind. The reference judges those three.
 OTHER_CRITERIA = {
     "E04-AC1": VALIDITY,
-    "E04-AC2": VALIDITY,
     "E04-AC3": VALIDITY,
     "E04-AC4": VALIDITY,
     "E04-AC6": VALIDITY,
@@ -78,6 +82,35 @@ OTHER_CRITERIA = {
     "E04-AC11": PASS,
     "E04-AC13": PASS,
 }
+
+
+#: The commit of the reversal, and the operator event log of a run that holds
+#: E04-AC2: the fault events, then the four events of the reversal in their order.
+#: reversal-created is recorded at reversalStart, and reversal-accepted after the
+#: read that confirms the commit on the remote.
+REVERSAL_COMMIT = "4f3c2b1a0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b"
+
+
+def reversal_log(**changes: OperatorEvent | None) -> list[OperatorEvent]:
+    """The event log of the run, with the events named by ``_`` replaced or, when
+    ``None``, removed."""
+    log = {
+        "fault-injection-started": OperatorEvent("fault-injection-started", 99_000),
+        "fault-injection-finished": OperatorEvent(
+            "fault-injection-finished", FAULT_FINISHED
+        ),
+        "detection-reviewed": OperatorEvent("detection-reviewed", 150_000),
+        "reversal-decided": OperatorEvent("reversal-decided", 170_000),
+        "reversal-created": OperatorEvent(
+            "reversal-created", REVERSAL_START, REVERSAL_COMMIT
+        ),
+        "reversal-accepted": OperatorEvent(
+            "reversal-accepted", REVERSAL_START + 4000, REVERSAL_COMMIT
+        ),
+    }
+    for key, event in changes.items():
+        log[key.replace("_", "-")] = event  # type: ignore[assignment]
+    return [e for e in log.values() if e is not None]
 
 
 def completions(*segments: tuple[int, int, bool]) -> list[analysis._Completion]:
@@ -133,6 +166,7 @@ def run(
     clock_bound: int | None = CLOCK_BOUND,
     declared: list[Criterion] | None = None,
     limit_end: int = OBSERVATION_LIMIT_END,
+    events: list[OperatorEvent] | None = None,
 ) -> ReversalOutcome:
     return reversal_outcome(
         ReversalInputs(
@@ -145,6 +179,8 @@ def run(
             window_end_ms=WINDOW_END,
             bound_ms=BOUND,
             criteria=criteria() if declared is None else declared,
+            events=reversal_log() if events is None else events,
+            reversal_commit=REVERSAL_COMMIT,
         )
     )
 
@@ -470,20 +506,199 @@ def test_an_unusable_end_reading_with_no_span_that_completes() -> None:
 
 
 def test_the_controller_never_resolves_the_reversal_commit_inside_the_limit() -> None:
-    """The callers succeed, but no reading holds the reversal commit before the end of
-    the window, so no span completes. E04-AC2, a validity criterion inherited from
-    revision 1, does not hold, because no argo reading reports the reversal commit
-    inside the observation limit: the run is INCONCLUSIVE, not FAILED. Revision 3
-    does not change E04-AC2, and its validation record lists this path. No
-    registered exclusion reason names this cause, so the criterion is the reason."""
+    """The reversal is accepted into the remote branch and the callers succeed, but
+    no argo reading reports the reversal commit before the end of the window, so the
+    condition series hold no span. The controller's discovery is part of the system
+    recovery that E04-AC12 judges, as the repository owner decided by change control
+    on 2026-10-20: E04-AC2 holds on the operator events alone, E04-AC12 is not met,
+    and the run is FAILED, not INCONCLUSIVE. Until that change E04-AC2 required an
+    argo reading of the reversal commit, and this case was INCONCLUSIVE."""
+    result = run(completions(successes_from(0)), synced_from=WINDOW_END)
+    assert result.reversal_events == Verdict(HELD)
+    assert result.recovery == Verdict(NOT_HELD)
+    assert all(r.span is None for r in result.resolutions)
+    assert result.state == FAILED
+    assert result.reasons == ()
+
+
+def test_the_controller_resolves_the_reversal_commit_after_the_limit() -> None:
+    """The controller reports the reversal commit only after the observation limit,
+    so the first span after reversalStart completes outside it: FAILED."""
+    result = run(
+        completions(successes_from(0)), synced_from=OBSERVATION_LIMIT_END + 10_000
+    )
+    assert result.reversal_events == Verdict(HELD)
+    assert result.recovery == Verdict(NOT_HELD)
+    assert result.reported is None
+    assert result.state == FAILED
+
+
+def test_the_controller_resolves_the_reversal_but_no_stabilization_follows() -> None:
+    """The controller reports the reversal commit soon after reversalStart, and the
+    callers fail to the end of the window, so no span completes: FAILED."""
+    result = run(
+        completions(
+            successes_from(0, FAULT_FINISHED),
+            failures(FAULT_FINISHED + 1000, WINDOW_END - 1000),
+        ),
+        synced_from=REVERSAL_START + 30_000,
+    )
+    assert result.reversal_events == Verdict(HELD)
+    assert result.recovery == Verdict(NOT_HELD)
+    assert result.state == FAILED
+
+
+def test_a_run_with_every_criterion_held_is_passed() -> None:
+    """The controller reports the reversal commit, and a span starts 31.5 s after
+    reversalStart and completes: PASSED."""
+    onset = REVERSAL_START + 31_500
+    result = run(
+        completions(failures(FAULT_FINISHED, onset - 1000), successes_from(onset)),
+        synced_from=REVERSAL_START + 20_000,
+    )
+    assert result.reversal_events == Verdict(HELD)
+    assert result.recovery == Verdict(HELD)
+    assert result.state == PASSED
+
+
+def _swap(first: str, second: str) -> list[OperatorEvent]:
+    log = reversal_log()
+    i = next(k for k, e in enumerate(log) if e.name == first)
+    j = next(k for k, e in enumerate(log) if e.name == second)
+    log[i], log[j] = log[j], log[i]
+    return log
+
+
+@pytest.mark.parametrize(
+    "events",
+    [
+        pytest.param(reversal_log(detection_reviewed=None), id="detection-missing"),
+        pytest.param(reversal_log(reversal_decided=None), id="decision-missing"),
+        pytest.param(reversal_log(reversal_created=None), id="creation-missing"),
+        pytest.param(
+            reversal_log(reversal_accepted=None), id="acceptance-not-recorded"
+        ),
+        pytest.param(
+            _swap("reversal-decided", "reversal-created"), id="out-of-order-in-the-log"
+        ),
+        pytest.param(
+            reversal_log(
+                reversal_decided=OperatorEvent("reversal-decided", REVERSAL_START + 1)
+            ),
+            id="an-instant-that-decreases",
+        ),
+        pytest.param(
+            reversal_log(
+                reversal_created=OperatorEvent("reversal-created", REVERSAL_START)
+            ),
+            id="creation-without-the-commit",
+        ),
+        pytest.param(
+            reversal_log(
+                reversal_accepted=OperatorEvent(
+                    "reversal-accepted", REVERSAL_START + 4000, "0" * 40
+                )
+            ),
+            id="acceptance-of-another-commit",
+        ),
+        pytest.param(
+            [*reversal_log(), OperatorEvent("reversal-decided", REVERSAL_START + 5000)],
+            id="an-event-recorded-twice",
+        ),
+    ],
+)
+def test_operator_events_that_do_not_hold_leave_e04_ac2_not_held(
+    events: list[OperatorEvent],
+) -> None:
+    """E04-AC2 is not forced to hold: a missing, misordered, or wrong operator event
+    of the reversal leaves it not held, and the run INCONCLUSIVE, even though the
+    recovery itself is judged. No reason is registered for this cause, so the state
+    names the criterion."""
+    calls = completions(successes_from(150_000))
+    result = run(calls, events=events)
+    assert result.reversal_events == Verdict(NOT_HELD)
+    assert result.recovery == Verdict(HELD)
+    assert result.state == INCONCLUSIVE
+    assert result.reasons == ("E04-AC2",)
+
+
+def test_an_accepted_reversal_that_no_read_confirms_is_governed_uncertainty() -> None:
+    """reversal-accepted is recorded, but the transcript holds no read of the remote
+    branch that confirms the commit, so reversalStart is not established. E04-AC2
+    holds on the events, and E04-AC12 is not judged, for reversal-start-unconfirmed:
+    the governed uncertainty, with notJudged deciding the state."""
+    result = run(completions(successes_from(150_000)), start=None)
+    assert result.reversal_events == Verdict(HELD)
+    assert result.recovery == Verdict(NOT_JUDGED, REVERSAL_START_UNCONFIRMED)
+    assert result.state == INCONCLUSIVE
+    assert result.reasons == (REVERSAL_START_UNCONFIRMED,)
+
+
+def test_a_missing_argo_stream_is_a_validity_outcome_and_not_a_recovery_failure() -> (
+    None
+):
+    """The argo stream is refused, so no condition series holds the reversal commit
+    and no span completes. E04-AC3, which is declared, does not hold, for
+    stream-incomplete: the run is INCONCLUSIVE, not FAILED, and the reason is the
+    stream and not the recovery."""
     result = run(
         completions(successes_from(0)),
         synced_from=WINDOW_END,
-        declared=criteria(E04_AC2=Verdict(NOT_HELD)),
+        declared=criteria(E04_AC3=Verdict(NOT_HELD, "stream-incomplete")),
     )
     assert result.recovery == Verdict(NOT_HELD)
     assert result.state == INCONCLUSIVE
-    assert result.reasons == ("E04-AC2",)
+    assert result.reasons == ("stream-incomplete",)
+
+
+def test_e04_ac2_reads_the_operator_events_and_the_commit_only() -> None:
+    """The verdict of E04-AC2 takes no reading of the controller: its function reads
+    the event log and the commit, and the same log gives the same verdict whatever
+    the condition series hold."""
+    assert list(inspect.signature(reversal_events).parameters) == [
+        "events",
+        "reversal_commit",
+    ]
+    assert REVERSAL_EVENTS == (
+        "detection-reviewed",
+        "reversal-decided",
+        "reversal-created",
+        "reversal-accepted",
+    )
+    assert reversal_events(reversal_log(), REVERSAL_COMMIT) == Verdict(HELD)
+    calls = completions(successes_from(0))
+    verdicts = {
+        run(calls, synced_from=synced).reversal_events
+        for synced in (0, REVERSAL_START, OBSERVATION_LIMIT_END, WINDOW_END)
+    }
+    assert verdicts == {Verdict(HELD)}
+
+
+def test_the_containment_window_runs_to_the_window_end_without_a_restored_state() -> (
+    None
+):
+    """When the controller never reports the reversal commit, desiredStateRestored is
+    not established, and revision 3 ends the window of E04-AC8 at the end of
+    definition.window. E04-AC8 is then judged, so a failed containment stands
+    FAILED beside a recovery that is not met."""
+    document: Any = json.loads((REPO_ROOT / E04_R3).read_text(encoding="utf-8"))
+    restored = document["definition"]["reversalTiming"]["instants"][
+        "desiredStateRestored"
+    ]
+    assert "ends at the end of definition.window" in restored["notEstablished"]
+    (entry,) = document["fields"]["acceptanceCriteria"]
+    (ac8,) = [c for c in entry["value"] if c["id"] == "E04-AC8"]
+    assert ac8["kind"] == PASS
+    assert ac8["statement"].endswith(
+        "When desiredStateRestored is not established, the window ends at the end of "
+        "definition.window."
+    )
+    result = run(
+        completions(successes_from(0)),
+        synced_from=WINDOW_END,
+        declared=criteria(E04_AC8=Verdict(NOT_HELD)),
+    )
+    assert result.state == FAILED
 
 
 def test_reversal_start_not_established() -> None:
@@ -588,6 +803,7 @@ def test_the_kinds_of_the_declared_criteria_are_those_of_revision_3() -> None:
     document: Any = json.loads((REPO_ROOT / E04_R3).read_text(encoding="utf-8"))
     (entry,) = document["fields"]["acceptanceCriteria"]
     kinds = {c["id"]: c["kind"] for c in entry["value"]}
+    assert kinds.pop("E04-AC2") == VALIDITY
     assert kinds.pop("E04-AC5") == VALIDITY
     assert kinds.pop("E04-AC12") == PASS
     assert kinds == OTHER_CRITERIA
@@ -625,6 +841,14 @@ def test_revision_3_pins_the_reference() -> None:
             id="post-recovery-declared",
         ),
         pytest.param(
+            {"criteria": [Criterion("E04-AC2", VALIDITY, Verdict(HELD))]},
+            "computed here",
+            id="operator-events-declared",
+        ),
+        pytest.param(
+            {"reversal_commit": ""}, "reversal commit", id="no-reversal-commit"
+        ),
+        pytest.param(
             {"criteria": [Criterion("E04-AC1", VALIDITY, Verdict(HELD))] * 2},
             "twice",
             id="declared-twice",
@@ -654,6 +878,8 @@ def test_inputs_that_do_not_describe_one_run_are_refused(
         "window_end_ms": WINDOW_END,
         "bound_ms": BOUND,
         "criteria": criteria(),
+        "events": reversal_log(),
+        "reversal_commit": REVERSAL_COMMIT,
         **change,
     }
     with pytest.raises(ValueError, match=message):

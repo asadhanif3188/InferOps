@@ -689,8 +689,9 @@ rule set 3 or later, which holds the reversal timing as the repository owner ame
 judges the recovery from a controller observation or to the end of the stabilization
 span. A revision of V2-E04 after revision 2 states rule set 4 or later: it selects the span of
 E04-AC12 as the first span that starts after `reversalStart` and then completes, never leaves
-E04-AC12 not judged because a span starts before `reversalStart`, and keeps
-`tools/reversal_outcome`, its outcome reference, pinned. A change to the selection or to the
+E04-AC12 not judged because a span starts before `reversalStart`, never makes the
+controller's discovery of the reversal a condition of validity, which E04-AC12 judges
+as recovery, and keeps `tools/reversal_outcome`, its outcome reference, pinned. A change to the selection or to the
 outcome rules changes that reference and its tests in the same change.
 [The records' description](docs/proof/experiments/README.md#the-reliability-experiment-freezes)
 states each rule and what is not enforced.

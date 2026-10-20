@@ -114,7 +114,7 @@ RECORDS = {
 #: Revision 3 of V2-E04, of rule set 4, registered by V2-S6-008-PR1. Its registered
 #: pin is written out so that a change is visible.
 E04_R3 = "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json"
-E04_R3_PIN = "5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582"
+E04_R3_PIN = "14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb"
 #: Every committed record, and the latest committed revision of each experiment.
 ALL_COMMITTED = sorted([*ALL_RECORDS, E04_R3])
 LATEST_RECORDS = {**RECORDS, "V2-E04": E04_R3}
@@ -347,7 +347,7 @@ def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
 
 
 def test_every_rule_is_published() -> None:
-    assert len(RULES) == 27
+    assert len(RULES) == 28
     text = README.read_text(encoding="utf-8")
     for rule, statement in RULES.items():
         assert f"| `{rule}` | {statement} |" in text, rule
@@ -3548,6 +3548,7 @@ ONSET_RULE = "prereg-reversal-onset-exclusion"
 UNMET_RULE = "prereg-reversal-unmet-recovery"
 SELECTED_RULE = "prereg-reversal-selected-span"
 REFERENCE_RULE = "prereg-reversal-outcome-reference"
+CONTROLLER_RULE = "prereg-reversal-controller-discovery"
 SELECTED_AT = f"{TIMING}.selection"
 #: Where E04-AC5 is in the list of criteria.
 AC5 = "fields.acceptanceCriteria[0].value[4]"
@@ -3566,6 +3567,7 @@ E04_R3_CHANGED_MEMBERS = {
     "metadata.preregistrationRules",
     "definition.reversalTiming.statement",
     "definition.reversalTiming.selection",
+    "definition.reversalTiming.controllerDiscovery",
     "definition.reversalTiming.instants.stabilizationOnset.analysisMember",
     "definition.reversalTiming.instants.stabilizationOnset.notAfterReversalStart",
     "definition.reversalTiming.instants.stabilizationOnset.selectedBy",
@@ -3648,7 +3650,20 @@ def test_revision_three_differs_from_revision_two_only_in_the_listed_members() -
     assert [c["id"] for c in criteria_2] == [c["id"] for c in criteria_3]
     assert [
         c2["id"] for c2, c3 in zip(criteria_2, criteria_3, strict=True) if c2 != c3
-    ] == ["E04-AC5", "E04-AC12"]
+    ] == ["E04-AC2", "E04-AC5", "E04-AC12"]
+    # E04-AC2 loses its controller clause and gains the record of the accepted
+    # reversal, by the change control of 2026-10-20, and nothing else.
+    ac2_2, ac2_3 = criterion_of(two, "E04-AC2"), criterion_of(three, "E04-AC2")
+    assert {k: v for k, v in ac2_3.items() if k != "statement"} == {
+        k: v for k, v in ac2_2.items() if k != "statement"
+    }
+    clause = (
+        ", and an argo reading reports the reversal commit as resolvedRevision "
+        "inside the observation limit."
+    )
+    assert ac2_2["statement"].endswith(clause)
+    assert ac2_3["statement"].startswith(ac2_2["statement"][: -len(clause)] + ". ")
+    assert "argo" not in ac2_3["statement"]
     ac12_2, ac12_3 = criterion_of(two, "E04-AC12"), criterion_of(three, "E04-AC12")
     assert {k: v for k, v in ac12_3.items() if k != "statement"} == {
         k: v for k, v in ac12_2.items() if k != "statement"
@@ -3665,9 +3680,18 @@ def test_revision_three_differs_from_revision_two_only_in_the_listed_members() -
         definition_2["criterionClocks"],
         definition_3["criterionClocks"],
     )
+    # Revision 3 drops the one criterion clock of E04-AC2 that read an argo reading.
+    (removed,) = [
+        e
+        for e in clocks_2
+        if e["criterion"] == "E04-AC2"
+        and any(i["source"] != "operator-event" for i in e["instants"])
+    ]
+    assert clocks_2.index(removed) == 2
+    clocks_2 = [e for e in clocks_2 if e is not removed]
     assert [
         i for i, (a, b) in enumerate(zip(clocks_2, clocks_3, strict=True)) if a != b
-    ] == [7, 8, 16, 17, 18]
+    ] == [6, 7, 15, 16, 17]
     limitations_2 = definition_2["limitations"]
     limitations_3 = definition_3["limitations"]
     (index,) = [i for i, text in enumerate(limitations_2) if ONSET_REASON in text]
@@ -3675,7 +3699,7 @@ def test_revision_three_differs_from_revision_two_only_in_the_listed_members() -
     assert limitations_3[index + 4 :] == limitations_2[index + 1 :]
     assert len(limitations_3) == len(limitations_2) + 3
     assert definition_3["history"][:9] == definition_2["history"]
-    assert len(definition_3["history"]) == 12
+    assert len(definition_3["history"]) == 13
     for field in (
         "fault",
         "topology",
@@ -3737,6 +3761,7 @@ def test_rule_set_four_does_not_read_revision_two_and_inherits_no_onset_rule() -
         UNMET_RULE,
         SELECTED_RULE,
         REFERENCE_RULE,
+        CONTROLLER_RULE,
     }
     three = load(E04_R3)
     assert "notAfterReversalStart" not in json.dumps(three)
@@ -4445,7 +4470,7 @@ def test_each_selection_defect_of_the_review_is_refused(
         ),
         pytest.param(
             _clock_entry(
-                17,
+                16,
                 lambda e: e.update(
                     instants=[
                         e["instants"][0],
@@ -4463,12 +4488,12 @@ def test_each_selection_defect_of_the_review_is_refused(
             [
                 (
                     ONSET_RULE,
-                    "definition.criterionClocks[17]",
+                    "definition.criterionClocks[16]",
                     "an order of E04-AC12 orders stabilizationOnset",
                 ),
                 (
                     ONSET_RULE,
-                    "definition.criterionClocks[17]",
+                    "definition.criterionClocks[16]",
                     "an order of E04-AC12 is not resolved both ways",
                 ),
             ],
@@ -4584,3 +4609,255 @@ def test_a_malformed_selection_is_a_finding_and_not_an_error(
     findings = found(full_root)
     assert findings
     assert {f[1] for f in findings} == {E04_R3}
+
+
+# --------------------------------------------------------------------------
+# 7. The controller's discovery of the reversal is no condition of validity
+# --------------------------------------------------------------------------
+
+AC2_AT = "fields.acceptanceCriteria[0].value[1]"
+VALIDITY_DETAIL = (
+    "it makes the controller's discovery of the reversal a condition of validity"
+)
+EXCLUDING_DETAIL = (
+    "it leaves a verdict not judged, or a run INCONCLUSIVE or aborted, on the "
+    "controller's discovery of the reversal"
+)
+DISCOVERY_AT = "definition.reversalTiming.controllerDiscovery"
+DISCOVERY_DETAIL = (
+    "the controller's discovery of the reversal is not stated as part of "
+    "recoveryMs, judged by E04-AC12 and by no validity criterion"
+)
+EVENTS_DETAIL = (
+    "E04-AC2 is not the validity criterion of the operator events of the reversal "
+    "and the reversal commit"
+)
+
+
+def _restore_ac2(document: dict[str, Any]) -> None:
+    """E04-AC2 as revision 2 states it, with the controller clause."""
+    criterion_of(document, "E04-AC2")["statement"] = criterion_of(load(E04), "E04-AC2")[
+        "statement"
+    ]
+
+
+def _restore_ac2_clock(document: dict[str, Any]) -> None:
+    """The criterion clock of E04-AC2 that revision 2 states for its argo reading."""
+    entry = load(E04)["definition"]["criterionClocks"][2]
+    assert entry["criterion"] == "E04-AC2"
+    document["definition"]["criterionClocks"].insert(2, entry)
+
+
+def _add_to(identifier: str, text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        criterion_of(document, identifier)["statement"] += " " + text
+
+    return change
+
+
+def _abort(text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        value(document, "abortConditions").append(text)
+
+    return change
+
+
+def _rule(text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["outcomeRules"].append(text)
+
+    return change
+
+
+def _discovery(member: str, new: Any) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        timing_of(document)["controllerDiscovery"][member] = new
+
+    return change
+
+
+def _restored(document: dict[str, Any]) -> None:
+    instants = timing_of(document)["instants"]
+    instants["desiredStateRestored"]["notEstablished"] += (
+        " When desiredStateRestored is not established, the run is INCONCLUSIVE."
+    )
+
+
+CONTROLLER_DEFECTS = [
+    pytest.param(
+        _restore_ac2,
+        [(CONTROLLER_RULE, f"{AC2_AT}.statement", VALIDITY_DETAIL)],
+        id="the-clause-of-revision-two-restored-to-e04-ac2",
+    ),
+    pytest.param(
+        _restore_ac2_clock,
+        [
+            (
+                CONTROLLER_RULE,
+                "definition.criterionClocks[2]",
+                "an order of E04-AC2 reads a source other than the operator events",
+            ),
+            (
+                CONTROLLER_RULE,
+                "definition.criterionClocks[2].statement",
+                VALIDITY_DETAIL,
+            ),
+        ],
+        id="the-argo-clock-of-revision-two-restored-to-e04-ac2",
+    ),
+    pytest.param(
+        _add_to(
+            "E04-AC2",
+            "The controller resolves the reversal commit inside the observation limit.",
+        ),
+        [(CONTROLLER_RULE, f"{AC2_AT}.statement", VALIDITY_DETAIL)],
+        id="the-clause-in-other-words",
+    ),
+    pytest.param(
+        _add_to(
+            "E04-AC3",
+            "The argo stream reports the commit of the revert as resolvedRevision.",
+        ),
+        [
+            (
+                CONTROLLER_RULE,
+                "fields.acceptanceCriteria[0].value[2].statement",
+                VALIDITY_DETAIL,
+            )
+        ],
+        id="the-clause-moved-to-another-validity-criterion",
+    ),
+    pytest.param(
+        _add_to("E04-AC4", "Argo CD discovers the known-good revision."),
+        [
+            (
+                CONTROLLER_RULE,
+                "fields.acceptanceCriteria[0].value[3].statement",
+                VALIDITY_DETAIL,
+            )
+        ],
+        id="the-known-good-revision-in-a-validity-criterion",
+    ),
+    pytest.param(
+        _register(
+            {
+                "id": "reversal-not-discovered",
+                "resultState": "INCONCLUSIVE",
+                "reason": "The controller never resolves the reversal commit inside "
+                "the observation limit.",
+            }
+        ),
+        [(CONTROLLER_RULE, "exclusionReasons.reasons[11].reason", VALIDITY_DETAIL)],
+        id="an-exclusion-reason-for-a-controller-that-does-not-discover",
+    ),
+    pytest.param(
+        _abort("The controller does not resolve the reversal commit in 600 s."),
+        [(CONTROLLER_RULE, "fields.abortConditions[0].value[11]", VALIDITY_DETAIL)],
+        id="an-abort-condition-for-a-controller-that-does-not-discover",
+    ),
+    pytest.param(
+        _rule(
+            "When the controller never resolves the commit, the run is INCONCLUSIVE."
+        ),
+        [(CONTROLLER_RULE, "definition.outcomeRules[8]", EXCLUDING_DETAIL)],
+        id="an-outcome-rule-that-leaves-the-run-inconclusive",
+    ),
+    pytest.param(
+        _add_to(
+            "E04-AC12",
+            "When controllerObserved is not stated, the criterion is not judged.",
+        ),
+        [(CONTROLLER_RULE, f"{AC12}.statement", EXCLUDING_DETAIL)],
+        id="e04-ac12-not-judged-without-the-controller",
+    ),
+    pytest.param(
+        _restored,
+        [
+            (
+                CONTROLLER_RULE,
+                "definition.reversalTiming.instants.desiredStateRestored.notEstablished",
+                EXCLUDING_DETAIL,
+            )
+        ],
+        id="a-restored-state-that-is-not-established-leaves-the-run-inconclusive",
+    ),
+    pytest.param(
+        _remove(_r3("reversalTiming"), "controllerDiscovery"),
+        [(CONTROLLER_RULE, DISCOVERY_AT, DISCOVERY_DETAIL)],
+        id="the-discovery-member-removed",
+    ),
+    pytest.param(
+        _discovery("validity", True),
+        [(CONTROLLER_RULE, DISCOVERY_AT, DISCOVERY_DETAIL)],
+        id="the-discovery-a-condition-of-validity",
+    ),
+    pytest.param(
+        _discovery("judgedBy", "E04-AC2"),
+        [(CONTROLLER_RULE, DISCOVERY_AT, DISCOVERY_DETAIL)],
+        id="the-discovery-judged-by-e04-ac2",
+    ),
+    pytest.param(
+        _discovery("notDiscovered", "not-judged"),
+        [(CONTROLLER_RULE, DISCOVERY_AT, DISCOVERY_DETAIL)],
+        id="a-controller-that-does-not-discover-leaves-e04-ac12-not-judged",
+    ),
+    pytest.param(
+        _criterion_member("E04-AC2", "kind", "pass"),
+        [(CONTROLLER_RULE, AC2_AT, EVENTS_DETAIL)],
+        id="e04-ac2-made-a-pass-criterion",
+    ),
+    pytest.param(
+        _criterion_member(
+            "E04-AC2",
+            "statement",
+            "The operator events detection-reviewed, reversal-decided, and "
+            "reversal-created are recorded in that order, with the reversal commit.",
+        ),
+        [(CONTROLLER_RULE, AC2_AT, EVENTS_DETAIL)],
+        id="e04-ac2-without-reversal-accepted",
+    ),
+]
+
+
+@pytest.mark.parametrize(("change", "expected"), CONTROLLER_DEFECTS)
+def test_each_controller_discovery_defect_is_refused(
+    full_root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
+) -> None:
+    edit(full_root, E04_R3, change)
+    assert found(full_root) == [
+        (rule, E04_R3, where, detail) for rule, where, detail in expected
+    ]
+
+
+def test_revision_three_states_the_controller_discovery_as_recovery() -> None:
+    document = load(E04_R3)
+    discovery = timing_of(document)["controllerDiscovery"]
+    assert {k: v for k, v in discovery.items() if k != "statement"} == dict(
+        core.CONTROLLER_DISCOVERY_MEMBERS
+    )
+    assert "FAILED" in discovery["statement"]
+    ac2 = criterion_of(document, "E04-AC2")
+    assert ac2["kind"] == "validity"
+    clocks = [
+        e
+        for e in document["definition"]["criterionClocks"]
+        if e["criterion"] == "E04-AC2"
+    ]
+    assert len(clocks) == 1
+    assert {i["source"] for i in clocks[0]["instants"]} == {"operator-event"}
+    reasons = {r["id"] for r in document["exclusionReasons"]["reasons"]}
+    assert reasons == {r["id"] for r in load(E04)["exclusionReasons"]["reasons"]} - {
+        ONSET_REASON
+    }
+
+
+def test_the_controller_rule_does_not_read_revision_two_or_another_experiment(
+    root: Path,
+) -> None:
+    """Revision 2 keeps the clause and reads under rule set 3 as before, and the rule
+    reads no record of another experiment."""
+    findings = {f.rule_id for f in core._selection_findings(E04, load(E04))}
+    assert CONTROLLER_RULE in findings
+    assert found(root) == []

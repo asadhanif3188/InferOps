@@ -180,7 +180,7 @@
           "module": "tools.reversal_outcome.core",
           "function": "reversal_outcome",
           "path": "tools/reversal_outcome/core.py",
-          "statement": "The outcome reference applies this selection and the outcome rules of this record to declared inputs: whether reversalStart is established and its instant, the clock bound and the resolution that give the margin, whether the end reading of P8 is usable, the caller completions and the condition series, the end of the observation limit and of the window, the bound, and the verdict of each other criterion. It returns the verdicts of E04-AC12 and E04-AC5, the reason of a verdict that is not judged, and the state. It reads no run directory. It calls the span rule of tools/reliability_analysis and copies none of it. The runs of this experiment and their analysis use it, or a revision of this record registered before the first result-bearing run pins the code that replaces it."
+          "statement": "The outcome reference applies this selection and the outcome rules of this record to declared inputs: whether reversalStart is established and its instant, the clock bound and the resolution that give the margin, whether the end reading of P8 is usable, the caller completions and the condition series, the end of the observation limit and of the window, the bound, the operator event log and the reversal commit, and the verdict of each other criterion. It returns the verdicts of E04-AC12, E04-AC5, and E04-AC2, the reason of a verdict that is not judged, and the state. It judges E04-AC2 from the operator event log and the reversal commit alone, and from no reading of the controller. It reads no run directory. It calls the span rule of tools/reliability_analysis and copies none of it. The runs of this experiment and their analysis use it, or a revision of this record registered before the first result-bearing run pins the code that replaces it."
         },
         "evidenceComputation": "No code computes this selection from the evidence of a run at registration. Code that does is pinned by a revision of this record registered before the first result-bearing run, for example the revision that pins the driver, and a later revision of the V2-E03 record binds the revision that the runs execute under. Until then, the review of each run computes the selection by hand, by this rule, from the caller record and the condition streams, and checks it with the outcome reference. The absence of a tool is never a reason to leave E04-AC12 not judged."
       },
@@ -207,6 +207,13 @@
           "criterion": null,
           "statement": "reversalStart less the recordedAt instant of detection-reviewed: the human interval, from the reviewed detection to the record taken immediately before the push of the reversal. It holds no discovery, reconciliation, or stabilization of the controller or of the caller. Both ends are on the host clock. It is recorded, and it is not part of recoveryMs."
         }
+      },
+      "controllerDiscovery": {
+        "partOf": "recoveryMs",
+        "judgedBy": "E04-AC12",
+        "validity": false,
+        "notDiscovered": "not-met",
+        "statement": "The discovery and the reconciliation of the reversal commit by the controller are part of the system recovery that recoveryMs measures from reversalStart, as the repository owner decided by change control on 2026-10-20. E04-AC12 judges them, and no validity criterion, criterion clock of one, exclusion reason, abort condition, or outcome rule requires the controller to resolve, report, or sync the reversal commit: E04-AC2 reads the operator events of the reversal and the reversal commit only. When no argo reading inside the window reports the reversal commit, controllerObserved, desiredStateRestored, and gitopsDiscoveryMs are not stated, and the window of E04-AC8 ends at the end of definition.window, as desiredStateRestored states. The condition series then hold no reading with the reversal commit as the desired revision, so no span after reversalStart completes inside the observation limit. E04-AC12 is then not met, and a run with every validity criterion held is FAILED."
       },
       "operatorEvents": [
         "detection-reviewed",
@@ -258,6 +265,7 @@
       "The repository owner amended the definition of the reversal timing by change control on 2026-10-18, also after the Q4 values were known and before any run of V2-E04. Revision 2 applies it. reversalStart is the instant at which the reversal commit is visible in the remote desired state, judged at the earlier end of its bracket. recoveryEnd is the onset of the first stabilization span that then completes. The discovery of the commit by the controller is system recovery, and gitopsDiscoveryMs reports it on its own. Measured to the end of a span of at least 60 s, a recovery could never be within a bound below 60,000 ms, so the amendment reads recoveryEnd at the onset of the span knowingly. It does not shorten the span, and it changes no Q4 formula, value, source, or digest: reversal_recovery_bound_ms stays 52,000 ms, (2 * S) + 30000, from bounds-r1.",
       "The expected consequence, stated before any run: a stabilization span cannot hold the reversal commit before the controller reports it, and the procedure permits no manual refresh of the controller. So recoveryMs holds the periodic discovery of the controller, whose documented default basis, as revision 2 of V2-E05 takes it from the Argo CD documentation, is a 120,000 ms timeout plus up to 60,000 ms of jitter. Most runs are not expected to meet E04-AC12. Such a run is FAILED, and it is counted and kept like any other, and gitopsDiscoveryMs states why.",
       "Revision 3 was written on 2026-10-20, after the collective re-review of the Sprint 6 records and before any run of V2-E02A, V2-E02B, V2-E02C, V2-E04, or V2-E05. No run of these experiments exists under any revision.",
+      "E04-AC2, a validity criterion of revision 1 kept by revision 2, also required an argo reading that reports the reversal commit as resolvedRevision inside the observation limit. The amended definition counts the discovery and the reconciliation of the reversal by the controller as system recovery, so that clause made INCONCLUSIVE a valid run in which the controller never discovers an accepted reversal, which the definition judges FAILED. The repository owner decided by change control on 2026-10-20, before revision 3 was registered and before any run of V2-E04, that revision 3 removes the clause and its criterion clock. E04-AC2 keeps the operator events of the reversal, their order, and the reversal commit, and definition.reversalTiming.controllerDiscovery states that E04-AC12 judges the discovery. No exclusion reason is added.",
       "Revision 2 added the exclusion reason recovery-onset-not-after-reversal on 2026-10-19, before any run. It left E04-AC12 not judged when the span that the run analysis states, from its search after the fault-injection-finished event, does not start after reversalStart. The collective re-review of the Sprint 6 records on 2026-10-19 found that the amended definition does not authorize it: the definition takes the first span that starts after reversalStart and then completes, and the reason could make INCONCLUSIVE a run that the definition judges FAILED. Revision 3 removes the reason and every statement of it before any run of V2-E04, and selects that span by one preregistered rule, definition.reversalTiming.selection.",
       "The expected consequence of the amended definition is unchanged: most runs are not expected to meet E04-AC12, and such a run is FAILED, counted, and kept. reversal_recovery_bound_ms stays 52,000 ms, (2 * S) + 30000, from bounds-r1, and the reversalStart definition, the stabilization requirements, the window of E04-AC8, the observation limit, and the clock policy are those of revision 2."
     ],
@@ -455,24 +463,6 @@
         ],
         "crossClock": false,
         "statement": "The four operator events of the reversal are recorded in their sequence. Both instants are on the host clock, to the millisecond."
-      },
-      {
-        "criterion": "E04-AC2",
-        "comparison": "order",
-        "instants": [
-          {
-            "instant": "the start or the finish of a reading",
-            "source": "collector-reading",
-            "clock": "host"
-          },
-          {
-            "instant": "the observation limit, 1,680 s after fault-injection-finished",
-            "source": "operator-event",
-            "clock": "host"
-          }
-        ],
-        "crossClock": false,
-        "statement": "An argo reading that reports the reversal commit lies inside the observation limit. Both instants are on the host clock."
       },
       {
         "criterion": "E04-AC3",
@@ -1123,7 +1113,7 @@
           {
             "id": "E04-AC2",
             "kind": "validity",
-            "statement": "The operator events detection-reviewed, reversal-decided, reversal-created, and reversal-accepted are recorded in that order, with the reversal commit, and an argo reading reports the reversal commit as resolvedRevision inside the observation limit."
+            "statement": "The operator events detection-reviewed, reversal-decided, reversal-created, and reversal-accepted are recorded in that order, with the reversal commit. reversal-accepted is recorded only after a read of main on the remote that the controller reads reports the reversal commit as its head, as definition.gitTransitions T3 states, so it records that the reversal is accepted into the authoritative remote branch."
           },
           {
             "id": "E04-AC3",
@@ -2369,7 +2359,7 @@
     },
     {
       "path": "tools/experiment_preregistration/core.py",
-      "sha256": "2ba84ad291aad4a27dbfd4d5efc28943312f63ab22ae7f193053234ba8612566",
+      "sha256": "701d8b7efc121977c158f146042ddcd4cd9de75b1d83406524fd810b90c66dca",
       "role": "a module of a tool that the procedure runs, or that it imports"
     },
     {
@@ -2524,12 +2514,12 @@
     },
     {
       "path": "tools/reversal_outcome/__init__.py",
-      "sha256": "0338ea53903ff7cb32eb4b203fba7c948b3240496100412c2835d308fc50d23f",
+      "sha256": "bfa2f753d510a33be24d8ff7bd9ddbac4af42391e712691db72aeb743e718dce",
       "role": "the outcome reference that the selection names"
     },
     {
       "path": "tools/reversal_outcome/core.py",
-      "sha256": "de770248ef8cde17e8274870e315658889aa80989a9c8468bc84f8b946537f38",
+      "sha256": "82b4d49b519e71a6f22fd81971c6fe00f7f73983ecf49846275ef7ee600f9e89",
       "role": "the outcome reference that the selection names"
     },
     {
@@ -2582,23 +2572,23 @@
     {
       "path": "tools/experiment_preregistration/core.py",
       "from": "0e29593b097914818d3ce9bbd717732c52416ef8cdfceff12b220173bdeec5f0",
-      "to": "2ba84ad291aad4a27dbfd4d5efc28943312f63ab22ae7f193053234ba8612566",
+      "to": "701d8b7efc121977c158f146042ddcd4cd9de75b1d83406524fd810b90c66dca",
       "material": true,
-      "reason": "The check adds rule set 4, which this record is registered under: every rule of rule set 2, the reversal intervals and criteria of rule set 3, the parts of the reversal instants and reasons of rule set 3 that hold reversalStart, controllerObserved, desiredStateRestored, the observation limit, and reversal-start-unconfirmed, and five selection rules, which hold this record to its selection, to no onset exclusion, to E04-AC12 when no span after reversalStart completes, to the members of the selected span, and to the pinned outcome reference. It still reads revision 2 under rule set 3. P1 runs it."
+      "reason": "The check adds rule set 4, which this record is registered under: every rule of rule set 2, the reversal intervals and criteria of rule set 3, the parts of the reversal instants and reasons of rule set 3 that hold reversalStart, controllerObserved, desiredStateRestored, the observation limit, and reversal-start-unconfirmed, and six selection rules, which hold this record to its selection, to no onset exclusion, to E04-AC12 when no span after reversalStart completes, to the members of the selected span, to the pinned outcome reference, and to the discovery of the reversal by the controller as system recovery and no condition of validity. It still reads revision 2 under rule set 3. P1 runs it."
     },
     {
       "path": "tools/reversal_outcome/__init__.py",
       "from": null,
-      "to": "0338ea53903ff7cb32eb4b203fba7c948b3240496100412c2835d308fc50d23f",
+      "to": "bfa2f753d510a33be24d8ff7bd9ddbac4af42391e712691db72aeb743e718dce",
       "material": false,
       "reason": "The package of the outcome reference, added by this revision. It exports the names of the module and holds no rule."
     },
     {
       "path": "tools/reversal_outcome/core.py",
       "from": null,
-      "to": "de770248ef8cde17e8274870e315658889aa80989a9c8468bc84f8b946537f38",
+      "to": "82b4d49b519e71a6f22fd81971c6fe00f7f73983ecf49846275ef7ee600f9e89",
       "material": true,
-      "reason": "The outcome reference, added by this revision: it applies definition.reversalTiming.selection and the outcome rules to declared inputs, and the review of each run checks its selection with it."
+      "reason": "The outcome reference, added by this revision: it applies definition.reversalTiming.selection and the outcome rules to declared inputs, judges E04-AC2 from the operator events of the reversal alone, and the review of each run checks its selection with it."
     }
   ]
 }

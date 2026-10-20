@@ -67,9 +67,9 @@ E03_PIN = "e0aeb1d228df5dfe28adede301fd038c2445f505a196a73b3dbae6461c4e0bca"
 E06_PIN = "e774e5f1d46f7c544a65d449ec7f512b6aca8f004ddbbf8298a2ac1d7375b468"
 #: Revision 2 of V2-E03 and revision 3 of V2-E04, registered by V2-S6-008-PR1.
 E03_R2 = "docs/proof/experiments/v2-e03/freeze-r2.v1alpha1.json"
-E03_R2_PIN = "4ecc33f7aa12f4321e9834a2ab0c3a957987c83655eb17142528306743e38872"
+E03_R2_PIN = "e27e8c58b22620bc41edf3fa97b82b24caa93afb84a7187a739eae334b7e623d"
 E04_R3 = "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json"
-E04_R3_PIN = "5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582"
+E04_R3_PIN = "14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb"
 
 #: The freeze record of each source that revision 1 of each record binds: the
 #: latest of each before V2-S6-008-PR1.

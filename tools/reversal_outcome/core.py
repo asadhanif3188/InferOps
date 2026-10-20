@@ -54,10 +54,24 @@ failed. When the two agree, that is the state. When they differ, the run is
 ``INCONCLUSIVE`` for the reason of a verdict that is not judged. So a state that
 the judged verdicts decide stands.
 
+**E04-AC2.** E04-AC2 is judged here, from the operator events of the reversal and
+the reversal commit, and from nothing that the controller reports. It holds when
+detection-reviewed, reversal-decided, reversal-created, and reversal-accepted are
+recorded once each, in that order and with instants that do not decrease, and
+reversal-created and reversal-accepted each record the reversal commit.
+reversal-accepted is recorded only after a read of the remote branch reports the
+reversal commit as its head, so it is the record of the accepted reversal. Whether
+and when the controller resolves the reversal commit is part of the system recovery
+that E04-AC12 judges, as the repository owner decided by change control on
+2026-10-20: a controller that never resolves it leaves the condition series with no
+reading of the reversal commit, so no span completes and E04-AC12 is not met. No
+reason is registered for a run whose operator events do not hold, so the state names
+E04-AC2 itself.
+
 **What this does not do.** It reads no file and no run directory, runs nothing,
 and computes nothing from evidence: the caller declares every input, including
-the verdict of every criterion other than E04-AC5 and E04-AC12, the condition
-series, and the completions. It judges a run that was neither refused nor
+the operator events of the reversal, the verdict of every criterion other than
+E04-AC2, E04-AC5, and E04-AC12, the condition series, and the completions. It judges a run that was neither refused nor
 aborted. It imports private names of ``tools.reliability_analysis``: the span rule
 ``_find_span`` and the types of a completion and of a condition series, so a
 change to them moves the pin of each record that pins this module.
@@ -93,14 +107,18 @@ __all__ = [
     "POST_RECOVERY_CRITERION",
     "RECOVERY_CRITERION",
     "REPORTED_RESOLUTION",
+    "REVERSAL_EVENTS",
+    "REVERSAL_EVENTS_CRITERION",
     "REVERSAL_START_UNCONFIRMED",
     "VALIDITY",
     "Criterion",
+    "OperatorEvent",
     "Resolution",
     "ReversalInputs",
     "ReversalOutcome",
     "Span",
     "Verdict",
+    "reversal_events",
     "reversal_outcome",
 ]
 
@@ -120,10 +138,27 @@ PASSED: Final = "PASSED"
 FAILED: Final = "FAILED"
 INCONCLUSIVE: Final = "INCONCLUSIVE"
 
-#: The criterion that judges the recovery, and the one that judges the window
-#: after it. This module computes both. Every other criterion is declared.
+#: The criterion that judges the recovery, the one that judges the window after
+#: it, and the one that judges the operator events of the reversal. This module
+#: computes all three. Every other criterion is declared.
 RECOVERY_CRITERION: Final = "E04-AC12"
 POST_RECOVERY_CRITERION: Final = "E04-AC5"
+REVERSAL_EVENTS_CRITERION: Final = "E04-AC2"
+COMPUTED: Final = (
+    REVERSAL_EVENTS_CRITERION,
+    POST_RECOVERY_CRITERION,
+    RECOVERY_CRITERION,
+)
+
+#: The operator events of the reversal, in the order that E04-AC2 requires. The
+#: last two record the reversal commit.
+REVERSAL_EVENTS: Final = (
+    "detection-reviewed",
+    "reversal-decided",
+    "reversal-created",
+    "reversal-accepted",
+)
+COMMIT_EVENTS: Final = frozenset({"reversal-created", "reversal-accepted"})
 
 #: The reasons for which this module leaves a verdict not judged.
 REVERSAL_START_UNCONFIRMED: Final = "reversal-start-unconfirmed"
@@ -177,6 +212,16 @@ class Verdict:
 
 
 @dataclass(frozen=True)
+class OperatorEvent:
+    """One event of the operator event log: its name, its recordedAt instant on the
+    host clock in milliseconds since the epoch, and the commit that it records."""
+
+    name: str
+    recorded_at_ms: int
+    commit: str | None = None
+
+
+@dataclass(frozen=True)
 class Criterion:
     """One declared criterion of the run: its identifier, its kind, and its verdict."""
 
@@ -194,8 +239,10 @@ class ReversalInputs:
     instant is in milliseconds since the epoch. ``completions`` are the caller
     completions of the window in completion order, and ``conditions`` are the
     condition series of the span rule, built with the reversal commit as the
-    expected desired revision. ``criteria`` holds every criterion of the record
-    other than E04-AC5 and E04-AC12, with its kind and its verdict.
+    expected desired revision. ``events`` is the operator event log of the run in
+    log order, and ``reversal_commit`` the commit of the reversal: E04-AC2 is judged
+    from them. ``criteria`` holds every criterion of the record other than E04-AC2,
+    E04-AC5, and E04-AC12, with its kind and its verdict.
     """
 
     reversal_start_ms: int | None
@@ -207,6 +254,8 @@ class ReversalInputs:
     window_end_ms: int
     bound_ms: int
     criteria: Sequence[Criterion]
+    events: Sequence[OperatorEvent]
+    reversal_commit: str
 
 
 @dataclass(frozen=True)
@@ -244,6 +293,7 @@ class ReversalOutcome:
 
     recovery: Verdict
     post_recovery: Verdict
+    reversal_events: Verdict
     reported: Span | None
     resolutions: tuple[Resolution, ...]
     state: str
@@ -259,15 +309,37 @@ def _check(inputs: ReversalInputs) -> None:
         raise ValueError("the clock bound is negative")
     if inputs.resolution_ms < 1:
         raise ValueError("the resolution of a source is at least 1 ms")
+    if not inputs.reversal_commit:
+        raise ValueError("the reversal commit is not declared")
     seen: set[str] = set()
     for criterion in inputs.criteria:
-        if criterion.identifier in (RECOVERY_CRITERION, POST_RECOVERY_CRITERION):
+        if criterion.identifier in COMPUTED:
             raise ValueError(f"{criterion.identifier} is computed here, not declared")
         if criterion.identifier in seen:
             raise ValueError(f"{criterion.identifier} is declared twice")
         seen.add(criterion.identifier)
         if criterion.kind not in KINDS or criterion.verdict.verdict not in VERDICTS:
             raise ValueError(f"{criterion.identifier} has no kind or verdict")
+
+
+def reversal_events(events: Sequence[OperatorEvent], reversal_commit: str) -> Verdict:
+    """E04-AC2: the operator events of the reversal, from the event log alone.
+
+    The events of the reversal are read in log order. They hold when they are the
+    four of :data:`REVERSAL_EVENTS`, each once and in that order, with instants that
+    do not decrease, and when reversal-created and reversal-accepted each record
+    the reversal commit. No reading of the controller is an input.
+    """
+    reversal = [e for e in events if e.name in REVERSAL_EVENTS]
+    instants = [e.recorded_at_ms for e in reversal]
+    held = (
+        tuple(e.name for e in reversal) == REVERSAL_EVENTS
+        and instants == sorted(instants)
+        and all(
+            e.commit == reversal_commit for e in reversal if e.name in COMMIT_EVENTS
+        )
+    )
+    return Verdict(HELD) if held else Verdict(NOT_HELD)
 
 
 def _order(node: int, host: int, margin: int) -> int:
@@ -402,7 +474,8 @@ def _without_bound(
 
 
 def reversal_outcome(inputs: ReversalInputs) -> ReversalOutcome:
-    """The verdicts of E04-AC12 and E04-AC5, the reported span, and the state.
+    """The verdicts of E04-AC12, E04-AC5, and E04-AC2, the reported span, and the
+    state.
 
     Raises:
         ValueError: the inputs do not describe one run as declared.
@@ -471,8 +544,10 @@ def reversal_outcome(inputs: ReversalInputs) -> ReversalOutcome:
             elif order == 0:
                 reported = chosen
                 post_recovery = _one([judged, Verdict(HELD)])
+    events = reversal_events(inputs.events, inputs.reversal_commit)
     criteria = [
         *inputs.criteria,
+        Criterion(REVERSAL_EVENTS_CRITERION, VALIDITY, events),
         Criterion(POST_RECOVERY_CRITERION, VALIDITY, post_recovery),
         Criterion(RECOVERY_CRITERION, PASS, recovery),
     ]
@@ -480,6 +555,7 @@ def reversal_outcome(inputs: ReversalInputs) -> ReversalOutcome:
     return ReversalOutcome(
         recovery=recovery,
         post_recovery=post_recovery,
+        reversal_events=events,
         reported=reported,
         resolutions=resolutions,
         state=state,

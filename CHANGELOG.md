@@ -25,8 +25,13 @@ from `1.0.0`.
   with no such span is `FAILED`. The bound, 52,000 ms, the reversal-start definition, the
   stabilization requirements, the E04-AC8 window, the observation limit, and the clock
   policy are unchanged. The new outcome reference, `tools/reversal_outcome`, applies the
-  rule and the outcome rules to declared inputs, and revision 3 pins it.
-  `tools/experiment_preregistration` gains rule set 4, 27 rules in all, and a V2-E04
+  rule and the outcome rules to declared inputs, and revision 3 pins it. E04-AC2 no
+  longer requires an argo reading of the reversal commit, as the repository owner
+  decided by change control on 2026-10-20: the controller's discovery is part of the
+  recovery that E04-AC12 judges, so a valid run whose controller never discovers an
+  accepted reversal is `FAILED`, not `INCONCLUSIVE`, and the outcome reference judges
+  E04-AC2 from the operator events alone.
+  `tools/experiment_preregistration` gains rule set 4, 28 rules in all, and a V2-E04
   record after revision 2 must state rule set 4 or later. Revision 2 of the V2-E03 record
   binds revision 3 by path, revision, digest, and rule set, and its extension counts only
   the runs of revision 3; `tools/analysis_preregistration` gains three rules for a V2-E03

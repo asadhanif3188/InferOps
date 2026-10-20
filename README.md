@@ -355,7 +355,9 @@ the first span that starts after the reversal commit is visible in Git and then
 completes inside the observation limit. Revision 2 left the recovery criterion not
 judged when the span of the analysis started earlier, which the amended definition does
 not authorize, and revision 3 has no such exclusion: a valid run with no such span is
-`FAILED`. An outcome reference applies the rule to declared inputs.
+`FAILED`. A controller that never discovers an accepted reversal fails that criterion
+too: its discovery is part of the recovery, not a condition of a valid run. An outcome
+reference applies the rule to declared inputs.
 No run of any of them exists, and no driver exists yet.
 
 Since `V2-S6-006-PR1` the two analysis experiments are

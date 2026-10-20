@@ -1700,7 +1700,7 @@ E04-AC12 not judged instead when the span of the run analysis, which searches fr
 and every statement of it, and selects that span by one preregistered rule. Revision 2
 and its registry row are kept unchanged, and its digest is
 `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619`. Revision 3 has the
-digest `5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582`. **No run exists under any revision, and nothing ran in that
+digest `14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb`. **No run exists under any revision, and nothing ran in that
 change.**
 
 **The selection**, `definition.reversalTiming.selection`:
@@ -1724,19 +1724,35 @@ recovery is not established, and E04-AC12 is not met: a valid run with no such s
 `reversal-start-unconfirmed`, `clock-bound-reached`, and `clock-reading-missing`. A
 `FAILED` state that the judged verdicts decide stands. The validation record lists
 [every path by which a run whose `reversalStart` is established can be `INCONCLUSIVE`](../environment/v2-s6-008-pr1-validation.md#every-path-to-inconclusive-once-reversalstart-is-established),
-and none depends on whether a span is known to start before `reversalStart`. One of them is
-inherited from revision 1 unchanged: E04-AC2, a validity criterion, requires an argo
-reading that reports the reversal commit inside the observation limit, so a run in which
-the controller never resolves the commit is `INCONCLUSIVE` and not `FAILED`.
+and none depends on whether a span is known to start before `reversalStart`, or on
+whether the controller discovers the reversal.
+
+**The controller's discovery is recovery, not validity.** The discovery and the
+reconciliation of the reversal commit by the controller are part of the system recovery
+that `recoveryMs` measures, so E04-AC12 judges them, and no validity criterion does, as
+the repository owner decided by change control on 2026-10-20, before the record was
+registered. E04-AC2, a validity criterion, no longer requires an argo reading that
+reports the reversal commit inside the observation limit, a clause that revisions 1 and
+2 state: it requires the four operator events of the reversal in their order, with the
+reversal commit, and `reversal-accepted` records the read that confirms the commit on
+the remote branch. Its criterion clock of the argo reading is removed, and
+`definition.reversalTiming.controllerDiscovery` states the rule. A valid run in which
+the controller never discovers an accepted reversal has no span after `reversalStart`,
+because no reading holds the reversal commit, so E04-AC12 is not met and the run is
+`FAILED`; the window of E04-AC8 then ends at the end of the window, so the containment
+criteria are judged too. No exclusion reason is added. A run whose operator events do
+not hold, or whose reversal no read confirms, keeps its governed `INCONCLUSIVE`.
 
 **The outcome reference.** [`tools/reversal_outcome`](../../../tools/reversal_outcome/core.py)
 is one pure function, `reversal_outcome`, that applies the selection and the outcome
 rules of revision 3 to declared inputs: whether `reversalStart` is established and its
 instant, the clock bound and the resolution that give the margin, whether the end reading
 of P8 is usable, the caller completions and the condition series, the ends of the
-observation limit and of the window, the bound, and the verdict of every other criterion.
-It returns the verdicts of E04-AC12 and E04-AC5, the reason of a verdict that is not
-judged, the reported span, and the state. It reads no run directory and runs nothing. It
+observation limit and of the window, the bound, the operator event log and the reversal
+commit, and the verdict of every other criterion. It returns the verdicts of E04-AC12,
+E04-AC5, and E04-AC2, the reason of a verdict that is not judged, the reported span, and
+the state. It judges E04-AC2 from the event log and the commit alone, and refuses a
+declared one, so no reading of the controller reaches a validity verdict. It reads no run directory and runs nothing. It
 imports `_find_span` of `tools/reliability_analysis` and copies none of it, which couples
 it to the private completion and series types of that tool. Revision 3 names it in its
 material scope and pins it. No code computes the selection from the evidence of a run:
@@ -1753,17 +1769,19 @@ the observation-limit sentence of `definition.observation`, the post-recovery wi
 E04-AC5 name the selected span; the thresholds and the condition of E04-AC5 are
 unchanged, and with no selected span it holds, as under revision 2. E04-AC12 replaces
 its clause that the criterion is not judged when the onset does not follow
-`reversalStart` with the clause for a run with no span after it. Five criterion clocks
-change: the two of E04-AC5 and the interval of E04-AC12 name the selected span, the order
-of E04-AC12 and `reversalStart` now orders each candidate completion, and both orders of
-E04-AC12 are resolved both ways. The outcome rule of the timing is rewritten, the reason
-is removed, eleven in all, the limitation of the reason is replaced by four limitations
-of the selection, eighteen in all, and the history gains three entries. The material
+`reversalStart` with the clause for a run with no span after it. E04-AC2 loses its
+controller clause, and the timing gains `controllerDiscovery`. The criterion clock of
+E04-AC2 that reads an argo reading is removed, and five criterion clocks change: the two
+of E04-AC5 and the interval of E04-AC12 name the selected span, the order of E04-AC12 and
+`reversalStart` now orders each candidate completion, and both orders of E04-AC12 are
+resolved both ways. The outcome rule of the timing is rewritten, the reason is removed,
+eleven in all, the limitation of the reason is replaced by four limitations of the
+selection, eighteen in all, and the history gains four entries. The material
 scope gains the outcome reference, and the pins move for `core.py` of
 `tools/experiment_preregistration`, material, and for the two files of the reference.
 Every other member is that of revision 2, the clock policy byte for byte: `reversalStart`,
 `controllerObserved`, `desiredStateRestored`, the intervals, the operator events, the
-detection rule, E04-AC1 to E04-AC4, E04-AC6 to E04-AC11, E04-AC13, the observation
+detection rule, E04-AC1, E04-AC3, E04-AC4, E04-AC6 to E04-AC11, E04-AC13, the observation
 limit, the windows, the abort conditions, the cleanup, the evidence paths, the
 repetitions, and the executables.
 
@@ -1784,9 +1802,12 @@ unchanged, the parts of `prereg-reversal-instants` that hold `reversalStart`,
 `controllerObserved`, `desiredStateRestored`, the source and the clock of each instant,
 the observation limit of `stabilizedAt`, and `recoveryEnd`, and the part of
 `prereg-reversal-reasons` that holds `reversal-start-unconfirmed`, each unchanged. It
-adds five selection rules: `prereg-reversal-selection`, `prereg-reversal-onset-exclusion`,
-`prereg-reversal-unmet-recovery`, `prereg-reversal-selected-span`, and
-`prereg-reversal-outcome-reference`. Rule set 3 is not edited, so revision 2 reads
+adds six selection rules: `prereg-reversal-selection`, `prereg-reversal-onset-exclusion`,
+`prereg-reversal-unmet-recovery`, `prereg-reversal-selected-span`,
+`prereg-reversal-outcome-reference`, and `prereg-reversal-controller-discovery`, which
+refuses the controller clause in E04-AC2, in another validity criterion, in their
+criterion clocks, in an exclusion reason, in an abort condition, and in a text that
+leaves a verdict not judged or a run `INCONCLUSIVE` on a reading of the controller. Rule set 3 is not edited, so revision 2 reads
 exactly as before, and the check reads rule set 3 and rule set 4 by separate gates, so
 that rule set 4 inherits no requirement of the onset reason or of its member. A V2-E04
 record after revision 2 must state rule set 4 or later. That widens the statement of
@@ -1809,7 +1830,7 @@ and every later revision states its rule set in `metadata.preregistrationRules`.
 2 adds the five clock rules, and `prereg-rule-set-unknown` refuses a record that states
 no known rule set. Rule set 3 holds rule set 2 and adds the four reversal-timing rules,
 which read a V2-E04 record, and a V2-E04 record after revision 1 must state rule set 3 or
-later. Rule set 4 replaces the onset exclusion of rule set 3 with five selection rules,
+later. Rule set 4 replaces the onset exclusion of rule set 3 with six selection rules,
 and a V2-E04 record after revision 2 must state rule set 4 or later. (Until
 `V2-S6-005-PR1` there were two rule sets and eighteen rules, and until `V2-S6-008-PR1`
 three rule sets and twenty-two rules.) It also checks each superseded revision alone, under its own
@@ -1851,6 +1872,7 @@ runs it and plants each defect below in a copy.
 | `prereg-reversal-unmet-recovery` | In a V2-E04 record of rule set 4, E04-AC12 is a pass criterion, and it and the outcome rules state that when reversalStart is established and no span that starts after it completes inside the observation limit, the criterion is not met. E04-AC12 states that it is not judged, for reversal-start-unconfirmed, when reversalStart is not established. |
 | `prereg-reversal-selected-span` | In a V2-E04 record of rule set 4, stabilizedAt names the selection and no member of the run analysis, and the definitions of stabilizedAt, of the observation limit, and of the post-recovery window, and E04-AC5, a validity criterion, each name the selected span and not the stabilized recovery that the analysis states. The rule reads these members and the named phrases, and no other prose. |
 | `prereg-reversal-outcome-reference` | A V2-E04 record of rule set 4 names the outcome reference, reversal_outcome of tools.reversal_outcome.core, in its selection, names that module in its material scope and pins its file, and states that code which computes the selection from the evidence of a run is pinned before the first result-bearing run. The rule reads these members and the named phrase, and no other prose. |
+| `prereg-reversal-controller-discovery` | A V2-E04 record of rule set 4 states in definition.reversalTiming.controllerDiscovery that the discovery of the reversal commit by the controller is part of recoveryMs, judged by E04-AC12 and by no validity criterion, and that a controller that does not discover it leaves E04-AC12 not met. E04-AC2 is a validity criterion that names the four operator events of the reversal and the reversal commit, stated once, and each criterion clock of E04-AC2 orders operator events only. No sentence of a validity criterion, of a criterion clock of one, of an INCONCLUSIVE or ABORTED exclusion reason, or of an abort condition names a reading or an instant of the controller together with the reversal or the known-good revision, and no sentence of the reversal timing, the outcome rules, the Git transitions, the fault procedure, the observation limit, the post-recovery window, a pass criterion, its criterion clocks, or another exclusion reason names one with a verdict that is not judged, an INCONCLUSIVE run, or an abort, in the words that this check names. A paraphrase that no named word reaches is not refused. |
 
 ### What is enforced, and what is not
 
@@ -1964,7 +1986,7 @@ and the content digest of its latest registered freeze record:
 | V2-E03 | V2-E02B | initial | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
 | V2-E03 | V2-E02C | initial | 2 | `abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818` |
 | V2-E03, revision 1 | V2-E04 | extension | 2 | `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619` |
-| V2-E03, revision 2 | V2-E04 | extension | 3 | `5ee7e546c5b3b3e26d50974f4be886b596188592356a3f5c6c901339c13e6582` |
+| V2-E03, revision 2 | V2-E04 | extension | 3 | `14b81b19c807fa37acb7ba3e4199977508a40aba767fa0488ccc154eaa0f8ceb` |
 | V2-E06 | V2-E02A | baseline | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
 | V2-E06 | V2-E02B | target | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
 
