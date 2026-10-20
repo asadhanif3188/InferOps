@@ -2,7 +2,8 @@
 
 V2-S6-006-PR1 registered revision 1 of the freeze records of V2-E03 (signal
 truthfulness) and V2-E06 (reliability resource and cost overhead), before any run
-of an experiment whose runs they read. ``tools.experiment_freeze`` checks that each
+of an experiment whose runs they read. V2-S6-008-PR1 registered revision 2 of the
+record of V2-E03, which binds revision 3 of V2-E04. ``tools.experiment_freeze`` checks that each
 record answers every freeze field. ``tools.analysis_preregistration`` reads the
 answers: the source bindings, the values that each record states for its sources,
 and the rules of each record.
@@ -10,8 +11,11 @@ and the rules of each record.
 The first part holds the committed records, with their identities written out so
 that a change to one is visible in review. The second part plants each defect that
 the V2-E03 rules refuse in a copy of the files that the check reads, and asserts the
-exact findings. The third part does the same for the V2-E06 rules. No test runs an
-analysis, computes a figure, or contacts a cluster.
+exact findings. The third part does the same for the V2-E06 rules. Those parts read
+a copy of the records as they were before V2-S6-008-PR1, so that revision 1 of
+V2-E03 is the latest one in it and its rules read as they did. The fifth part holds
+revision 2 of V2-E03 and the three rules of a later revision in a copy of every
+committed record. No test runs an analysis, computes a figure, or contacts a cluster.
 """
 
 from __future__ import annotations
@@ -61,14 +65,25 @@ E06_RECORD = "docs/proof/experiments/v2-e06/freeze-r1.v1alpha1.json"
 #: The registered pins of the two records, written out so that a change is visible.
 E03_PIN = "e0aeb1d228df5dfe28adede301fd038c2445f505a196a73b3dbae6461c4e0bca"
 E06_PIN = "e774e5f1d46f7c544a65d449ec7f512b6aca8f004ddbbf8298a2ac1d7375b468"
+#: Revision 2 of V2-E03 and revision 3 of V2-E04, registered by V2-S6-008-PR1.
+E03_R2 = "docs/proof/experiments/v2-e03/freeze-r2.v1alpha1.json"
+E03_R2_PIN = "6d642213d975bb4c10318d60ed9cd6d71171ff753a3ecdde3a908a5d647d7b09"
+E04_R3 = "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json"
+E04_R3_PIN = "c95186c6ef1bb7034c71ef6a8e39ed3a92dd1a265497d11d2f99d570fc81ce29"
 
-#: The latest freeze record of each source, which both records bind.
+#: The freeze record of each source that revision 1 of each record binds: the
+#: latest of each before V2-S6-008-PR1.
 SOURCE_RECORDS = {
     "V2-E02A": "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json",
     "V2-E02B": "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json",
     "V2-E02C": "docs/proof/experiments/v2-e02c/freeze-r2.v1alpha1.json",
     "V2-E04": "docs/proof/experiments/v2-e04/freeze-r2.v1alpha1.json",
 }
+#: The latest freeze record of each source, which revision 2 of V2-E03 binds.
+LATEST_SOURCES = {**SOURCE_RECORDS, "V2-E04": E04_R3}
+#: The records that V2-S6-008-PR1 added. The second to the fourth part read a copy
+#: without them.
+ADDED = (E03_R2, E04_R3)
 SUPERSEDED_E02A = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"
 PREREGISTRATION_CORE = "tools/experiment_preregistration/core.py"
 EXPERIMENT_DIRECTORIES = ("v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05")
@@ -107,7 +122,9 @@ def test_the_command_passes_over_the_committed_records() -> None:
     )
 
 
-def test_each_record_is_revision_1_registered_by_this_change() -> None:
+def test_each_revision_1_keeps_the_row_it_was_registered_with() -> None:
+    """Revision 1 of each record keeps its row and its pin. Revision 3 of V2-E04 and
+    revision 2 of V2-E03, registered by V2-S6-008-PR1, are the two rows after them."""
     registry = load(REGISTRY)["records"]
     rows = {row["path"]: row for row in registry}
     for path, pin in ((E03_RECORD, E03_PIN), (E06_RECORD, E06_PIN)):
@@ -122,19 +139,41 @@ def test_each_record_is_revision_1_registered_by_this_change() -> None:
         assert metadata["revision"] == 1
         assert metadata["supersedes"] is None
         assert metadata["registeredBy"] == "V2-S6-006-PR1"
-    # The two records are the last two rows: no earlier row moved.
-    assert [row["path"] for row in registry[-2:]] == [E03_RECORD, E06_RECORD]
+    # No earlier row moved, and the two rows of V2-S6-008-PR1 follow.
+    assert [row["path"] for row in registry[-4:]] == [
+        E03_RECORD,
+        E06_RECORD,
+        E04_R3,
+        E03_R2,
+    ]
+    for path, pin in ((E04_R3, E04_R3_PIN), (E03_R2, E03_R2_PIN)):
+        assert rows[path] == {
+            "path": path,
+            "contentSha256": pin,
+            "registeredBy": "V2-S6-008-PR1",
+        }
+        assert content_digest((REPO_ROOT / path).read_bytes()) == pin
 
 
 def test_each_record_binds_the_latest_source_revisions_by_digest() -> None:
-    roles = {E03_RECORD: core.E03_SOURCES, E06_RECORD: core.E06_SOURCES}
-    for path, expected in roles.items():
+    """Revision 1 of each record bound the latest source revisions when it was
+    registered. The latest record of each binds the latest ones now."""
+    roles = {
+        E03_RECORD: (core.E03_SOURCES, SOURCE_RECORDS),
+        E06_RECORD: (core.E06_SOURCES, SOURCE_RECORDS),
+        E03_R2: (core.E03_SOURCES, LATEST_SOURCES),
+    }
+    for path, (expected, bound) in roles.items():
         sources = load(path)["definition"]["sources"]
         assert {s["experiment"]: s["role"] for s in sources} == dict(expected)
         for source in sources:
-            assert source["path"] == SOURCE_RECORDS[source["experiment"]]
-            assert source["revision"] == 2
+            assert source["path"] == bound[source["experiment"]]
+            assert source["revision"] == load(source["path"])["metadata"]["revision"]
             assert source["contentSha256"] == FROZEN_RECORDS[source["path"]]
+            assert (
+                source["preregistrationRules"]
+                == (load(source["path"])["metadata"]["preregistrationRules"])
+            )
 
 
 def test_both_records_state_the_one_clock_policy_of_their_sources() -> None:
@@ -143,7 +182,8 @@ def test_both_records_state_the_one_clock_policy_of_their_sources() -> None:
         for p in SOURCE_RECORDS.values()
     }
     assert len(digests) == 1
-    for path in (E03_RECORD, E06_RECORD):
+    assert policy_digest(load(E04_R3)["definition"]["clockPolicy"]) in digests
+    for path in (E03_RECORD, E06_RECORD, E03_R2):
         assert load(path)["definition"]["sourceClockPolicy"]["sha256"] in digests
 
 
@@ -196,12 +236,26 @@ def test_the_e06_views_metrics_and_statistic_are_as_frozen() -> None:
 
 
 def test_each_record_pins_exactly_its_material_scope() -> None:
-    """A tripwire: a file added to a scope, or one that moves, fails here."""
-    for path in (E03_RECORD, E06_RECORD):
+    """A tripwire: a file added to a scope, or one that moves, fails here. The latest
+    record of each pins its scope. Revision 1 of V2-E03 differs from it by revision 3
+    of V2-E04, which its scope names and which it does not pin, and by the two checks
+    that V2-S6-008-PR1 edited. Revision 1 of V2-E06 differs by those two checks."""
+    checks = [
+        ("tools/analysis_preregistration/core.py", "changed"),
+        (PREREGISTRATION_CORE, "changed"),
+    ]
+    expected = {
+        E03_R2: [],
+        E03_RECORD: [(E04_R3, "added"), *checks],
+        E06_RECORD: checks,
+    }
+    for path, moved in expected.items():
         document = load(path)
         pinned = {item["path"] for item in document["pinnedInputs"]}
-        assert material_files(document["materialScope"], REPO_ROOT) == pinned
-        assert changed_inputs(document, REPO_ROOT) == []
+        scoped = material_files(document["materialScope"], REPO_ROOT)
+        assert scoped - pinned == {p for p, kind in moved if kind == "added"}, path
+        changes = changed_inputs(document, REPO_ROOT)
+        assert sorted((c.path, c.kind) for c in changes) == sorted(moved), path
 
 
 def test_every_source_revision_file_is_in_the_scope_so_a_later_one_is_added() -> None:
@@ -218,10 +272,13 @@ def test_no_run_analysis_or_procedure_exists() -> None:
     for directory in (*EXPERIMENT_DIRECTORIES, "v2-e03", "v2-e06"):
         assert not (experiments / directory / "runs").exists()
         assert not (experiments / directory / "procedure").exists()
-    for directory in ("v2-e03", "v2-e06"):
-        assert sorted(p.name for p in (experiments / directory).iterdir()) == [
-            "freeze-r1.v1alpha1.json"
-        ]
+    assert sorted(p.name for p in (experiments / "v2-e03").iterdir()) == [
+        "freeze-r1.v1alpha1.json",
+        "freeze-r2.v1alpha1.json",
+    ]
+    assert sorted(p.name for p in (experiments / "v2-e06").iterdir()) == [
+        "freeze-r1.v1alpha1.json"
+    ]
 
 
 def test_every_existing_record_still_passes() -> None:
@@ -229,14 +286,17 @@ def test_every_existing_record_still_passes() -> None:
     assert check_reliability_records() == []
 
 
-def test_this_change_moves_no_pin_of_a_source_record() -> None:
-    """The four revisions 2 of rule set 2 differ from their pins in one file, which
-    an earlier change moved. Revision 2 of V2-E04 differs in none. A file that this
-    change adds or edits would be listed here."""
-    for experiment, path in SOURCE_RECORDS.items():
+def test_each_source_record_differs_from_its_pins_in_the_check_alone() -> None:
+    """The four revisions 2 of rule set 2 and revision 2 of V2-E04 differ from their
+    pins in one file, core.py of tools/experiment_preregistration, which
+    V2-S6-005-PR1 and V2-S6-008-PR1 edited. Revision 3 of V2-E04 differs in none. A
+    file that a change adds or edits would be listed here."""
+    for path in SOURCE_RECORDS.values():
         changes = changed_inputs(load(path), REPO_ROOT)
-        expected = [] if experiment == "V2-E04" else [PREREGISTRATION_CORE]
-        assert [(c.path, c.kind) for c in changes] == [(p, "changed") for p in expected]
+        assert [(c.path, c.kind) for c in changes] == [
+            (PREREGISTRATION_CORE, "changed")
+        ]
+    assert changed_inputs(load(E04_R3), REPO_ROOT) == []
     e05 = load("docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json")
     assert [c.path for c in changed_inputs(e05, REPO_ROOT)] == [PREREGISTRATION_CORE]
 
@@ -245,8 +305,9 @@ def test_the_rules_of_each_record_are_separate() -> None:
     e03 = [rule for rule in RULES if rule.startswith("e03-")]
     e06 = [rule for rule in RULES if rule.startswith("e06-")]
     assert len(e03) + len(e06) == len(RULES)
-    assert len(e03) == 14
+    assert len(e03) == 17
     assert len(e06) == 13
+    assert list(core.E03_LATER_RULES) == e03[-3:]
 
 
 def test_the_streams_of_each_source_are_read_from_its_collection() -> None:
@@ -263,7 +324,7 @@ def test_the_streams_of_each_source_are_read_from_its_collection() -> None:
 
 
 def test_no_public_text_names_a_section_of_another_document() -> None:
-    for path in (E03_RECORD, E06_RECORD):
+    for path in (E03_RECORD, E06_RECORD, E03_R2, E04_R3):
         text = (REPO_ROOT / path).read_text(encoding="utf-8")
         assert "§" not in text
 
@@ -273,19 +334,37 @@ def test_no_public_text_names_a_section_of_another_document() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.fixture
-def root(tmp_path: Path) -> Path:
-    """A root that holds the registry and every freeze record of the check."""
+def _copy(tmp_path: Path, *, added: bool) -> Path:
+    """The registry and the freeze records that the check reads. Without ``added``,
+    the records and the rows of V2-S6-008-PR1 are left out."""
+    registry = load(REGISTRY)
+    if not added:
+        registry["records"] = [r for r in registry["records"] if r["path"] not in ADDED]
     target = tmp_path / REGISTRY
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(REPO_ROOT / REGISTRY, target)
+    target.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
     base = REPO_ROOT / "docs" / "proof" / "experiments"
     for directory in (*EXPERIMENT_DIRECTORIES, "v2-e03", "v2-e06"):
         for record in sorted((base / directory).glob("freeze-r*.v1alpha1.json")):
             relative = record.relative_to(REPO_ROOT)
+            if not added and relative.as_posix() in ADDED:
+                continue
             (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(record, tmp_path / relative)
     return tmp_path
+
+
+@pytest.fixture
+def root(tmp_path: Path) -> Path:
+    """A root that holds the registry and every freeze record of the check as they
+    were before V2-S6-008-PR1: revision 1 of V2-E03 is the latest one in it."""
+    return _copy(tmp_path, added=False)
+
+
+@pytest.fixture
+def full_root(tmp_path: Path) -> Path:
+    """A root that holds the registry and every committed freeze record."""
+    return _copy(tmp_path, added=True)
 
 
 def edit(root: Path, path: str, change: Callable[[dict[str, Any]], None]) -> None:
@@ -1100,17 +1179,14 @@ def test_e06_refuses_a_price_or_a_cloud_rule_without_its_phrase(root: Path) -> N
     assert e06_findings(root) == {("e06-cost-basis", "definition.costBasis.cloud")}
 
 
-def test_a_superseded_revision_is_not_held_to_the_latest_sources(root: Path) -> None:
-    """Revision 1 becomes superseded by a planted revision 2. Once a later source
-    revision is registered, only the latest revision is stale."""
-    revision_2 = "docs/proof/experiments/v2-e03/freeze-r2.v1alpha1.json"
-    document = load(E03_RECORD, root)
-    document["metadata"].update(
-        revision=2, supersedes={"path": E03_RECORD, "contentSha256": E03_PIN}
-    )
-    (root / revision_2).write_text(
-        json.dumps(document, indent=2) + "\n", encoding="utf-8"
-    )
+def test_a_superseded_revision_is_not_held_to_the_latest_sources(
+    full_root: Path,
+) -> None:
+    """Revision 1 is superseded by revision 2, and binds revision 2 of V2-E04, which
+    revision 3 supersedes. Once a later source revision is registered, only the
+    latest revision is stale. (Until V2-S6-008-PR1 this test planted a revision 2.)"""
+    root = full_root
+    revision_2 = E03_R2
     assert e03_findings(root) == set()
     later = "docs/proof/experiments/v2-e02c/freeze-r3.v1alpha1.json"
     source = load(SOURCE_RECORDS["V2-E02C"], root)
@@ -1140,3 +1216,315 @@ def test_another_experiment_is_refused_and_not_read_under_the_e06_rules() -> Non
     )
     with pytest.raises(ValueError, match="V2-E07"):
         core._record_findings(REPO_ROOT, "x", load(E06_RECORD), other, {}, latest=True)
+
+
+# --------------------------------------------------------------------------
+# 5. Revision 2 of V2-E03, which binds revision 3 of V2-E04
+# --------------------------------------------------------------------------
+
+#: The members in which revision 2 differs from revision 1, as it lists them.
+E03_R2_CHANGED = [
+    "definition.sources",
+    "definition.population.extension",
+    "definition.history",
+    "fields.experimentIdVersion",
+    "fields.gitRevision",
+]
+E04_BINDING = "definition.sources[3]"
+
+
+def _binding(document: dict[str, Any]) -> dict[str, Any]:
+    (result,) = [
+        s for s in document["definition"]["sources"] if s["experiment"] == "V2-E04"
+    ]
+    assert isinstance(result, dict)
+    return result
+
+
+def _extension(document: dict[str, Any]) -> dict[str, Any]:
+    result = document["definition"]["population"]["extension"]
+    assert isinstance(result, dict)
+    return result
+
+
+def test_e03_revision_2_holds_every_rule(full_root: Path) -> None:
+    assert core.check_records(full_root) == []
+    assert e03_findings(full_root) == set()
+
+
+def test_e03_revision_2_differs_from_revision_1_only_in_the_listed_members() -> None:
+    one, two = load(E03_RECORD), load(E03_R2)
+    assert core._changed_members(one, two) == sorted(E03_R2_CHANGED)
+    listed = two["definition"]["changesFromSupersededRevision"]
+    assert [entry["member"] for entry in listed] == E03_R2_CHANGED
+    assert all(entry["reason"] for entry in listed)
+    assert two["metadata"] == {
+        **one["metadata"],
+        "revision": 2,
+        "registered": "2026-10-20",
+        "registeredBy": "V2-S6-008-PR1",
+        "supersedes": {"path": E03_RECORD, "contentSha256": E03_PIN},
+    }
+    sources_1 = {s["experiment"]: s for s in one["definition"]["sources"]}
+    sources_2 = {s["experiment"]: s for s in two["definition"]["sources"]}
+    for experiment in ("V2-E02A", "V2-E02B", "V2-E02C"):
+        assert sources_2[experiment] == sources_1[experiment]
+    assert sources_2["V2-E04"] == {
+        "experiment": "V2-E04",
+        "role": "extension",
+        "path": E04_R3,
+        "revision": 3,
+        "contentSha256": E04_R3_PIN,
+        "preregistrationRules": 4,
+    }
+    extension = _extension(two)
+    assert extension["experiments"] == ["V2-E04"]
+    assert extension["executedUnder"] == {"path": E04_R3, "revision": 3}
+    assert "revision 2 included, is not in the population" in extension["runs"]
+    population_1 = one["definition"]["population"]
+    population_2 = two["definition"]["population"]
+    for member in ("initial", "excluded", "laterSourceRevision"):
+        assert population_2[member] == population_1[member], member
+    for member in (
+        "signals",
+        "operationalCandidate",
+        "ranking",
+        "callerFailures",
+        "computations",
+        "ordering",
+        "sourceClockPolicy",
+        "limitations",
+    ):
+        assert two["definition"][member] == one["definition"][member], member
+    assert two["definition"]["history"][:-1] == one["definition"]["history"]
+    moved = [c["path"] for c in two["inputChanges"]]
+    assert moved == [
+        E04_R3,
+        "tools/analysis_preregistration/core.py",
+        PREREGISTRATION_CORE,
+    ]
+
+
+def test_e03_revision_1_is_read_under_its_own_rules_and_unchanged() -> None:
+    """Revision 1 states none of what the three later rules read, and they do not
+    read it: it keeps its pin and its row, and it holds every rule it was read under,
+    except that it is no longer the latest."""
+    assert content_digest((REPO_ROOT / E03_RECORD).read_bytes()) == E03_PIN
+    findings = core._record_findings(
+        REPO_ROOT,
+        E03_RECORD,
+        load(E03_RECORD),
+        E03,
+        dict(FROZEN_RECORDS),
+        latest=False,
+    )
+    assert findings == []
+    latest = core._record_findings(
+        REPO_ROOT,
+        E03_RECORD,
+        load(E03_RECORD),
+        E03,
+        dict(FROZEN_RECORDS),
+        latest=True,
+    )
+    assert found(latest) == {("e03-sources-stale", f"{E04_BINDING}.revision")}
+    assert "executedUnder" not in _extension(load(E03_RECORD))
+    assert "changesFromSupersededRevision" not in load(E03_RECORD)["definition"]
+
+
+def _bind_revision_2(document: dict[str, Any]) -> None:
+    previous = load(SOURCE_RECORDS["V2-E04"])
+    _binding(document).update(
+        path=SOURCE_RECORDS["V2-E04"],
+        revision=2,
+        contentSha256=FROZEN_RECORDS[SOURCE_RECORDS["V2-E04"]],
+        preregistrationRules=previous["metadata"]["preregistrationRules"],
+    )
+
+
+def _extend_text(
+    *path: str, text: str = " A later sentence."
+) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        target: Any = document["definition"]
+        for step in path[:-1]:
+            target = target[int(step)] if step.isdigit() else target[step]
+        target[path[-1]] += text
+
+    return change
+
+
+EXTENSION_AT = "definition.population.extension"
+CHANGES_AT = "definition.changesFromSupersededRevision"
+
+
+@pytest.mark.parametrize(
+    ("change", "expected"),
+    [
+        pytest.param(
+            _bind_revision_2,
+            {
+                ("e03-sources-stale", f"{E04_BINDING}.revision"),
+                ("e03-extension-revision", f"{EXTENSION_AT}.executedUnder"),
+                ("e03-revision-changes", CHANGES_AT),
+            },
+            id="it-binds-the-superseded-revision-2",
+        ),
+        pytest.param(
+            lambda d: _binding(d).__setitem__("contentSha256", "0" * 64),
+            {("e03-sources-stale", f"{E04_BINDING}.contentSha256")},
+            id="a-wrong-digest",
+        ),
+        pytest.param(
+            lambda d: _binding(d).__setitem__("preregistrationRules", 3),
+            {("e03-binding-rule-set", f"{E04_BINDING}.preregistrationRules")},
+            id="a-wrong-rule-set",
+        ),
+        pytest.param(
+            lambda d: _binding(d).__setitem__("preregistrationRules", "4"),
+            {("e03-binding-rule-set", f"{E04_BINDING}.preregistrationRules")},
+            id="a-rule-set-that-is-text",
+        ),
+        pytest.param(
+            lambda d: _binding(d).pop("preregistrationRules"),
+            {("e03-binding-rule-set", f"{E04_BINDING}.preregistrationRules")},
+            id="no-rule-set",
+        ),
+        pytest.param(
+            lambda d: _extension(d).__setitem__(
+                "executedUnder", {"path": SOURCE_RECORDS["V2-E04"], "revision": 2}
+            ),
+            {("e03-extension-revision", f"{EXTENSION_AT}.executedUnder")},
+            id="the-extension-counts-the-runs-of-revision-2",
+        ),
+        pytest.param(
+            lambda d: _extension(d).__setitem__(
+                "runs",
+                load(E03_RECORD)["definition"]["population"]["extension"]["runs"],
+            ),
+            {("e03-extension-revision", f"{EXTENSION_AT}.runs")},
+            id="the-extension-counts-the-runs-of-the-latest-revision",
+        ),
+        pytest.param(
+            _extend_text(
+                "population",
+                "extension",
+                "runs",
+                text=" Runs of any latest revision count.",
+            ),
+            {("e03-extension-revision", f"{EXTENSION_AT}.runs")},
+            id="the-extension-admits-the-latest-revision-in-its-text",
+        ),
+        pytest.param(
+            _extend_text("population", "excluded", "0", "reason"),
+            {("e03-revision-changes", CHANGES_AT)},
+            id="a-population-member-changed-and-not-listed",
+        ),
+        pytest.param(
+            _extend_text("signals", "3", "healthy"),
+            {("e03-revision-changes", CHANGES_AT)},
+            id="a-signal-changed-and-not-listed",
+        ),
+        pytest.param(
+            _extend_text("operationalCandidate", "statement"),
+            {("e03-revision-changes", CHANGES_AT)},
+            id="the-candidate-changed-and-not-listed",
+        ),
+        pytest.param(
+            _extend_text("ranking", "mostCallerTruthful"),
+            {("e03-revision-changes", CHANGES_AT)},
+            id="the-ranking-changed-and-not-listed",
+        ),
+        pytest.param(
+            _extend_text("callerFailures", "falseHealthy"),
+            {("e03-revision-changes", CHANGES_AT)},
+            id="the-caller-failure-rule-changed-and-not-listed",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["changesFromSupersededRevision"].append(
+                {"member": "definition.ranking", "reason": "It does not differ."}
+            ),
+            {("e03-revision-changes", CHANGES_AT)},
+            id="a-member-listed-that-does-not-differ",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["changesFromSupersededRevision"].append(
+                {"member": "definition.sources", "reason": "Twice."}
+            ),
+            {("e03-revision-changes", CHANGES_AT)},
+            id="a-member-listed-twice",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["changesFromSupersededRevision"][0].pop("reason"),
+            {
+                ("e03-revision-changes", f"{CHANGES_AT}[0]"),
+                ("e03-revision-changes", CHANGES_AT),
+            },
+            id="a-change-without-its-reason",
+        ),
+        pytest.param(
+            lambda d: d["metadata"]["supersedes"].__setitem__(
+                "contentSha256", "0" * 64
+            ),
+            {("e03-revision-changes", "metadata.supersedes")},
+            id="it-supersedes-another-digest",
+        ),
+    ],
+)
+def test_each_defect_of_a_later_e03_revision_is_refused(
+    full_root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: set[tuple[str, str]],
+) -> None:
+    edit(full_root, E03_R2, change)
+    findings = core.check_records(full_root, [E03])
+    assert {f.record for f in findings} == {E03_R2}
+    assert found(findings) == expected
+
+
+def test_a_change_names_the_member_that_differs(full_root: Path) -> None:
+    edit(full_root, E03_R2, _extend_text("signals", "3", "healthy"))
+    (finding,) = core.check_records(full_root, [E03])
+    assert (
+        finding.detail == "definition.signals differs from revision 1 and is not listed"
+    )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(
+            lambda d: d["definition"].__setitem__("changesFromSupersededRevision", "x"),
+            id="changes-text",
+        ),
+        pytest.param(
+            lambda d: d["definition"].__setitem__(
+                "changesFromSupersededRevision", [["x"], {"member": ["y"]}]
+            ),
+            id="changes-unhashable",
+        ),
+        pytest.param(
+            lambda d: _extension(d).__setitem__("executedUnder", ["x"]),
+            id="executed-under-a-list",
+        ),
+        pytest.param(
+            lambda d: _binding(d).__setitem__("preregistrationRules", [4]),
+            id="rule-set-a-list",
+        ),
+        pytest.param(
+            lambda d: d["metadata"].__setitem__("supersedes", ["x"]),
+            id="supersedes-a-list",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["population"].__setitem__("extension", "x"),
+            id="extension-text",
+        ),
+    ],
+)
+def test_a_malformed_later_revision_is_a_finding_and_never_raises(
+    full_root: Path, change: Callable[[dict[str, Any]], None]
+) -> None:
+    edit(full_root, E03_R2, change)
+    findings = core.check_records(full_root, [E03])
+    assert findings
+    assert {f.record for f in findings} == {E03_R2}
