@@ -122,6 +122,16 @@
       "path": "docs/proof/experiments/v2-e06/freeze-r1.v1alpha1.json",
       "contentSha256": "e774e5f1d46f7c544a65d449ec7f512b6aca8f004ddbbf8298a2ac1d7375b468",
       "registeredBy": "V2-S6-006-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json",
+      "contentSha256": "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05",
+      "registeredBy": "V2-S6-008-PR1"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e03/freeze-r2.v1alpha1.json",
+      "contentSha256": "d29572a6c6eab24068d1c4aecdb4cb1ad31bed5a79d3683471b0a933cf0c715a",
+      "registeredBy": "V2-S6-008-PR1"
     }
   ]
 }

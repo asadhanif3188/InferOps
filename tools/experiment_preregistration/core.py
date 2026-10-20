@@ -90,6 +90,28 @@ text that holds the phrases can still say something else. Rule set 2 is not edit
 each record registered under it reads as it did. The rules read the structure that
 a record states. They do not read a run.
 
+**Rule set 4 replaces the onset exclusion of rule set 3 with a selection.** Rule
+set 3 leaves E04-AC12 not judged when the span of the analysis does not start
+after ``reversalStart``, for the reason ``recovery-onset-not-after-reversal``. The
+amended definition takes the first span that starts after ``reversalStart`` and
+then completes instead, so rule set 4 holds a V2-E04 record to
+``definition.reversalTiming.selection``, which selects that span by the span rule
+of ``tools.reliability_analysis``, with each cross-clock order inside the margin
+of the policy resolved both ways, and to ``tools.reversal_outcome``, the outcome
+reference that applies it. Rule set 4 holds every rule of rule set 2,
+``prereg-reversal-intervals`` and ``prereg-reversal-criteria`` unchanged, the parts
+of ``prereg-reversal-instants`` that hold ``reversalStart``,
+``controllerObserved``, ``desiredStateRestored``, the source and clock of each
+instant, the observation limit of ``stabilizedAt``, and ``recoveryEnd``, the part
+of ``prereg-reversal-reasons`` that holds ``reversal-start-unconfirmed``, and six
+selection rules. The sixth holds that the controller's discovery of the reversal is
+system recovery, which E04-AC12 judges, and no condition of validity, as the
+repository owner decided by change control on 2026-10-20. A V2-E04 record after
+revision 2 states rule set 4 or later. Rule
+set 3 is not edited: revision 2 reads as before. This module does not import
+``tools.reversal_outcome``, so the pins of the records that do not name it do not
+gain it.
+
 **The latest revision is checked in full, and every earlier one alone.** The
 latest revision of each experiment is checked against every rule of its rule
 set, and the records are compared with each other. A superseded revision is
@@ -129,7 +151,11 @@ from tools.experiment_freeze.core import (
     load_registry,
     record_paths,
 )
-from tools.reliability_analysis.core import _reasons_problem
+from tools.reliability_analysis.core import (
+    STABILIZATION_SPAN_MS,
+    STABILIZATION_SUCCESSES,
+    _reasons_problem,
+)
 
 __all__ = [
     "BASELINE",
@@ -156,6 +182,7 @@ __all__ = [
     "REVISION_ONE_RECORDS",
     "RULES",
     "RULE_SETS",
+    "SELECTION_RULE_SET",
     "SHARED_DEFINITION",
     "SHARED_FIELDS",
     "TARGET",
@@ -287,6 +314,7 @@ RULE_SET_MEMBER: Final = "preregistrationRules"
 RULE_SET_ONE: Final = 1
 CLOCK_RULE_SET: Final = 2
 REVERSAL_RULE_SET: Final = 3
+SELECTION_RULE_SET: Final = 4
 
 #: Each rule set, by number. A record is read under the rule set that it was
 #: registered under, and a later rule set never changes how an earlier one reads.
@@ -305,6 +333,20 @@ RULE_SETS: Final[Mapping[int, str]] = {
         "read a V2-E04 record: its named instants and intervals, its recovery and "
         "containment criteria, and the exclusion reasons of its timing. A V2-E04 "
         "record after revision 1 states rule set 3 or later."
+    ),
+    SELECTION_RULE_SET: (
+        "Every rule of rule set 2, unchanged; prereg-reversal-intervals and "
+        "prereg-reversal-criteria of rule set 3, unchanged; the parts of "
+        "prereg-reversal-instants that hold reversalStart, controllerObserved, "
+        "desiredStateRestored, the source and the clock of each instant, the "
+        "observation limit of stabilizedAt, and recoveryEnd, and the part of "
+        "prereg-reversal-reasons that holds reversal-start-unconfirmed, each "
+        "unchanged; and the six selection rules, which read a V2-E04 record: the "
+        "selection of the span after reversalStart, no onset exclusion, the recovery "
+        "criterion when no such span completes, the members of the selected span, "
+        "the pinned outcome reference, and the controller's discovery as system "
+        "recovery and no condition of validity. A V2-E04 record after revision 2 "
+        "states rule set 4 or later."
     ),
 }
 
@@ -514,6 +556,174 @@ REVERSAL_START_UNCONFIRMED: Final = "reversal-start-unconfirmed"
 ONSET_NOT_AFTER_START: Final = "recovery-onset-not-after-reversal"
 NOT_JUDGED_VERDICT: Final = "not-judged"
 
+#: The phrases of the definition of reversalStart and of its bracket ends: the
+#: phrases of rule set 3 that rule set 4 keeps.
+START_PHRASES: Final[Mapping[tuple[str, ...], tuple[str, ...]]] = {
+    path: phrases
+    for path, phrases in REVERSAL_PHRASES.items()
+    if path[0] == REVERSAL_START
+}
+
+#: The selection of rule set 4: the member that states it, and what each of its
+#: members states. The candidates are the caller completions after reversalStart,
+#: the span rule is that of tools/reliability_analysis, unchanged, and each order of
+#: a node instant and a host instant inside the margin is resolved both ways.
+SELECTION: Final = "selection"
+SELECTED_BY: Final = "definition.reversalTiming.selection"
+SELECTION_CANDIDATES: Final[Mapping[str, str]] = {
+    "after": REVERSAL_START,
+    "source": "caller-record",
+}
+SPAN_RULE: Final[Mapping[str, object]] = {
+    "tool": "tools/reliability_analysis",
+    "function": "_find_span",
+    "unchanged": True,
+    "consecutiveSuccesses": STABILIZATION_SUCCESSES,
+    "spanMs": STABILIZATION_SPAN_MS,
+}
+SELECTED_REQUESTS: Final[Mapping[str, tuple[str, str]]] = {
+    "onset": (STABILIZATION_ONSET, "first"),
+    "stabilizedAt": (STABILIZED_AT, "last"),
+}
+#: The observation limit of revision 2, which rule set 4 holds unchanged.
+OBSERVATION_LIMIT: Final[Mapping[str, object]] = {
+    "afterEvent": "fault-injection-finished",
+    "limitMs": 1_680_000,
+}
+OBSERVATION_LIMIT_TEXT: Final = (
+    "The observation limit is 1,680 s after the fault-injection-finished event."
+)
+BEFORE_REVERSAL_START: Final[Mapping[str, bool]] = {
+    "selected": False,
+    "reasonForVerdict": False,
+}
+BOTH_WAYS: Final = "both-ways"
+SELECTION_ORDERS: Final[Mapping[str, tuple[str, str]]] = {
+    "candidate-and-reversal-start": ("margin-as-after", "margin-as-before"),
+    "stabilized-at-and-observation-limit": ("margin-as-inside", "margin-as-outside"),
+}
+#: What the resolutions decide when they give different verdicts.
+DIFFERENT_VERDICTS: Final[Mapping[str, str]] = {
+    "verdict": NOT_JUDGED_VERDICT,
+    "reason": "clock-bound-reached",
+    "stateDecidedBy": "definition.clockPolicy.notJudged",
+}
+#: The span that the reported instants, the figures, and E04-AC5 use: that of the
+#: resolution that counts only the completions ordered after reversalStart, which
+#: does not understate recoveryMs, and otherwise that of the other one.
+REPORTED_SPAN: Final[Mapping[str, object]] = {
+    "resolution": "margin-as-before",
+    "otherwise": "margin-as-after",
+    "members": [
+        STABILIZATION_ONSET,
+        STABILIZED_AT,
+        "recoveryMs",
+        "definition.postRecoveryWindow",
+        "E04-AC5",
+    ],
+}
+SELECTION_END_READING: Final[Mapping[str, str]] = {
+    "reason": "clock-reading-missing",
+    "dependsOnBound": NOT_JUDGED_VERDICT,
+    "noSpan": "not-met",
+}
+#: The outcome reference that applies the selection and the outcome rules.
+OUTCOME_REFERENCE: Final[Mapping[str, str]] = {
+    "module": "tools.reversal_outcome.core",
+    "function": "reversal_outcome",
+    "path": "tools/reversal_outcome/core.py",
+}
+EVIDENCE_COMPUTATION_PHRASE: Final = "before the first result-bearing run"
+#: The discovery of the reversal commit by the controller is part of recoveryMs, which
+#: E04-AC12 judges, and no condition of validity: a controller that does not discover
+#: the reversal leaves no span, and E04-AC12 not met.
+CONTROLLER_DISCOVERY: Final = "controllerDiscovery"
+CONTROLLER_DISCOVERY_MEMBERS: Final[Mapping[str, object]] = {
+    "partOf": "recoveryMs",
+    "judgedBy": RECOVERY_CRITERION,
+    "validity": False,
+    "notDiscovered": "not-met",
+}
+#: The validity criterion of the operator events of the reversal, and what it names.
+REVERSAL_EVENTS_CRITERION: Final = "E04-AC2"
+REVERSAL_EVENTS_NAMED: Final = (
+    "detection-reviewed",
+    "reversal-decided",
+    "reversal-created",
+    "reversal-accepted",
+    "the reversal commit",
+)
+#: A reading or an instant of the controller: its resolved revision or sync state,
+#: an argo reading, the instants that it sets, or the controller resolving,
+#: reporting, discovering, syncing, reconciling, observing, or picking up a commit.
+_CONTROLLER_WORD: Final = re.compile(
+    r"\bresolvedRevision\b|\bsyncStatus\b|\bSynced\b|\bargo (?:reading|stream)s?\b"
+    r"|\bcontrollerObserved\b|\bdesiredStateRestored\b|\bgitopsDiscoveryMs\b"
+    r"|\b(?:controller|Argo\s+CD|Application)(?:'s)?\s+"
+    r"(?:(?:must|should|shall|will|would|can|could|may|has|have|had|is|are|was|"
+    r"to|then|first|never|not|does|did|do|fails|failed|eventually|always|also)"
+    r"\s+){0,3}"
+    r"(?:resolv|report|discover|sync|reconcil|observ|pick|detect|reach)\w*"
+    r"|\b(?:discovery|resolution|reconciliation|observation|detection)s?\s+by\s+"
+    r"(?:the\s+)?(?:controller|Application|Argo\s+CD)\b"
+    r"|\b(?:not|never)\s+(?:be\s+|been\s+)?(?:discovered|reconciled|synced|detected)\b",
+    re.IGNORECASE,
+)
+#: The instants and the states that only the controller sets: one of them in a
+#: condition of validity is a controller condition whatever else the sentence names.
+#: A whole sentence, to its full stop: a verdict in a clause after a semicolon
+#: still belongs to the controller reading before it.
+_FULL_SENTENCE_END: Final = re.compile(r"(?<=[.])\s+|\n+")
+_CONTROLLER_INSTANT: Final = re.compile(
+    r"\bcontrollerObserved\b|\bdesiredStateRestored\b|\bgitopsDiscoveryMs\b"
+    r"|\bsyncStatus\b|\bSynced\b",
+    re.IGNORECASE,
+)
+_REVERSAL_WORD: Final = re.compile(r"\breversal\b|\brevert|\bknown-good\b", re.I)
+#: A verdict left not judged, an INCONCLUSIVE run, or an abort; naming an abort
+#: condition is not an abort.
+_EXCLUDING_WORD: Final = re.compile(
+    r"\bnot (?:be )?judged\b|\bnot-judged\b|\bINCONCLUSIVE\b|\bABORTED\b"
+    r"|\babort(?!\s+conditions?\b)",
+    re.IGNORECASE,
+)
+#: The phrases of the definition of stabilizationOnset: those of the amended
+#: definition, which rule set 3 also reads.
+ONSET_PHRASES: Final = REVERSAL_PHRASES[(STABILIZATION_ONSET, "definition")]
+#: The only reasons for which rule set 4 leaves E04-AC12 not judged.
+RECOVERY_NOT_JUDGED_REASONS: Final = frozenset(
+    {REVERSAL_START_UNCONFIRMED, "clock-bound-reached", "clock-reading-missing"}
+)
+#: The phrases of E04-AC12 and of the outcome rules for a run with no span after
+#: reversalStart that completes, and of each member of the selected span.
+UNMET_RECOVERY: Final = (
+    "When reversalStart is established and no span that starts after it completes "
+    "inside the observation limit"
+)
+NOT_MET: Final = "not met"
+SELECTED_SPAN: Final = "the selected span"
+ANALYSIS_SPAN: Final = "the analysis states a stabilized recovery"
+BOTH_WAYS_PHRASE: Final = "resolved both ways"
+#: A reason that a sentence names, registered or not.
+_FOR_THE_REASON: Final = re.compile(r"\bfor the reason ([a-z0-9]+(?:-[a-z0-9]+)+)")
+#: A sentence that names reversalStart, an instant or a span earlier than it, and a
+#: verdict that is not judged or a run that is INCONCLUSIVE, states the onset
+#: exclusion in another form. A reason of the timing names reversalStart or the onset.
+_EARLY_WORD: Final = re.compile(
+    r"\b(?:before|precedes?|preceded|preceding|earlier than|not after|"
+    r"(?:does|do|did) not (?:follow|start after|come after))\b",
+    re.IGNORECASE,
+)
+_VERDICT_WORD: Final = re.compile(r"\bnot (?:be )?judged\b|\bINCONCLUSIVE\b")
+_TIMING_WORD: Final = re.compile(r"\breversalStart\b|\bstabilizationOnset\b|\bonset\b")
+#: A statement of the onset exclusion that does not name its reason: a verdict that
+#: is left not judged because the onset or a span does not follow reversalStart.
+_ONSET_EXCLUSION: Final = re.compile(
+    r"\b(?:stabilizationOnset|onset|span)\b[^.;\n]*?\b(?:does|do|did)\s+not\s+"
+    r"(?:follow|start after|come after)",
+    re.IGNORECASE,
+)
+
 #: Text that rule set 2 refuses. A sentence that states that the difference of
 #: the clocks is not measured contradicts P8. A sentence that orders instants by a
 #: time and does not name the margin of rule set 2 contradicts the ordering rule.
@@ -626,7 +836,8 @@ RULES: Final[Mapping[str, str]] = {
     "prereg-rule-set-unknown": (
         "A revision-1 record of V2-S6-003-PR1 states no rule set and is read under "
         "rule set 1. Every other record states a rule set of 2 or later that this "
-        "check knows, and a V2-E04 record after revision 1 states rule set 3 or later."
+        "check knows, a V2-E04 record after revision 1 states rule set 3 or later, "
+        "and a V2-E04 record after revision 2 states rule set 4 or later."
     ),
     "prereg-clock-inventory": (
         "A record of rule set 2 states the node clock and the host clock, and each "
@@ -664,27 +875,28 @@ RULES: Final[Mapping[str, str]] = {
         "that this check names."
     ),
     "prereg-reversal-instants": (
-        "A V2-E04 record of rule set 3 names reversalStart, controllerObserved, "
+        "A V2-E04 record of rule set 3 or 4 names reversalStart, controllerObserved, "
         "desiredStateRestored, stabilizationOnset, and stabilizedAt, each with its "
         "source and clock. reversalStart is the Git-visibility instant of an operator "
         "event, bracketed and judged at the earlier end, and it leaves E04-AC12 not "
-        "judged when it is not established. stabilizationOnset is read from "
+        "judged when it is not established. stabilizedAt lies inside the observation "
+        "limit, and recoveryEnd is stabilizationOnset. The definition of reversalStart "
+        "and its two bracket ends hold the phrases that this check names. Under rule "
+        "set 3, stabilizationOnset is also read from "
         "stabilizedRecovery.span.first.finishedAt of a span that completed, and follows "
-        "reversalStart. stabilizedAt is read from stabilizedRecovery.stabilizedAt "
-        "inside the observation limit. recoveryEnd is stabilizationOnset. The "
-        "definition of reversalStart, its two bracket ends, and the definition of "
-        "stabilizationOnset hold the phrases that this check names, and no other prose "
-        "is read."
+        "reversalStart, stabilizedAt is read from stabilizedRecovery.stabilizedAt, and "
+        "the definition of stabilizationOnset holds the phrases that this check names. "
+        "No other prose is read."
     ),
     "prereg-reversal-intervals": (
-        "A V2-E04 record of rule set 3 states recoveryMs from reversalStart to "
+        "A V2-E04 record of rule set 3 or 4 states recoveryMs from reversalStart to "
         "stabilizationOnset, judged by E04-AC12, gitopsDiscoveryMs from reversalStart "
         "to controllerObserved, and operatorDecisionMs from detection-reviewed to "
         "reversalStart, each reported, and keeps the instants of the four operator "
         "events of the reversal."
     ),
     "prereg-reversal-criteria": (
-        "In a V2-E04 record of rule set 3, E04-AC12 judges recoveryMs against "
+        "In a V2-E04 record of rule set 3 or 4, E04-AC12 judges recoveryMs against "
         "reversal_recovery_bound_ms with the value, the formula, and the bound record "
         "of derivedNumericBounds, and declares that interval cross-clock, from "
         "reversalStart on the host clock to stabilizationOnset on the node clock. "
@@ -694,7 +906,91 @@ RULES: Final[Mapping[str, str]] = {
     "prereg-reversal-reasons": (
         "A V2-E04 record of rule set 3 registers reversal-start-unconfirmed and "
         "recovery-onset-not-after-reversal for INCONCLUSIVE, and its outcome rules "
-        "name both."
+        "name both. A V2-E04 record of rule set 4 registers reversal-start-unconfirmed "
+        "for INCONCLUSIVE, and its outcome rules name it."
+    ),
+    "prereg-reversal-selection": (
+        "A V2-E04 record of rule set 4 selects the span of E04-AC12 in "
+        "definition.reversalTiming.selection: the candidates are the caller "
+        "completions after reversalStart, the span rule is _find_span of "
+        "tools/reliability_analysis, unchanged, with 10 successes over 60,000 ms, "
+        "stabilizationOnset is the first and stabilizedAt the last request of the "
+        "first span that it finds, inside the observation limit of 1,680,000 ms after "
+        "fault-injection-finished, which definition.observation states, and a span or "
+        "the part of a span that starts before reversalStart is never selected and "
+        "never a reason for a verdict. The order of a candidate and reversalStart, and "
+        "that of stabilizedAt and the end of the observation limit, are each resolved "
+        "both ways inside the margin, and different verdicts leave E04-AC12 not "
+        "judged, for clock-bound-reached, with the state that "
+        "definition.clockPolicy.notJudged decides. The reported span is that of the "
+        "resolution that counts only the completions ordered after reversalStart, and "
+        "otherwise that of the other one. An unusable end reading leaves not judged "
+        "only the verdicts that depend on the bound, and with no span that completes "
+        "the criterion is not met. stabilizationOnset names the selection and no "
+        "member of the run analysis, and its definition holds the phrases that this "
+        "check names. The rule reads these members and the named phrases, and no "
+        "other prose."
+    ),
+    "prereg-reversal-onset-exclusion": (
+        "A V2-E04 record of rule set 4 registers no recovery-onset-not-after-reversal, "
+        "names it in no outcome rule, criterion, criterion clock, or member of the "
+        "reversal timing, and has no notAfterReversalStart member. No member that "
+        "names E04-AC12 and a not-judged verdict, no registered reason that names "
+        "E04-AC12 not judged, and no reason that an outcome rule names for E04-AC12 "
+        "not judged is other than reversal-start-unconfirmed, clock-bound-reached, or "
+        "clock-reading-missing, and no registered reason other than "
+        "reversal-start-unconfirmed names reversalStart or the onset. No outcome rule, "
+        "criterion, criterion clock, text of the reversal timing, observation limit, "
+        "or post-recovery window states that the onset or a span does not follow "
+        "reversalStart, or names reversalStart, an earlier instant or span, and a "
+        "verdict that is not judged or an INCONCLUSIVE run in one sentence, in the "
+        "words that this check names. No criterion clock of E04-AC12 orders "
+        "stabilizationOnset, and each order of E04-AC12 is resolved both ways. A "
+        "paraphrase that no named word reaches is not refused."
+    ),
+    "prereg-reversal-unmet-recovery": (
+        "In a V2-E04 record of rule set 4, E04-AC12 is a pass criterion, and it and "
+        "the outcome rules state that when reversalStart is established and no span "
+        "that starts after it completes inside the observation limit, the criterion is "
+        "not met. E04-AC12 states that it is not judged, for "
+        "reversal-start-unconfirmed, when reversalStart is not established."
+    ),
+    "prereg-reversal-selected-span": (
+        "In a V2-E04 record of rule set 4, stabilizedAt names the selection and no "
+        "member of the run analysis, and the definitions of stabilizedAt, of the "
+        "observation limit, and of the post-recovery window, and E04-AC5, a validity "
+        "criterion, each name the selected span and not the stabilized recovery that "
+        "the analysis states. The rule reads these members and the named "
+        "phrases, and no other prose."
+    ),
+    "prereg-reversal-outcome-reference": (
+        "A V2-E04 record of rule set 4 names the outcome reference, reversal_outcome "
+        "of tools.reversal_outcome.core, in its selection, names that module in its "
+        "material scope and pins its file, and states that code which computes the "
+        "selection from the evidence of a run is pinned before the first "
+        "result-bearing run. The rule reads these members and the named "
+        "phrase, and no other prose."
+    ),
+    "prereg-reversal-controller-discovery": (
+        "A V2-E04 record of rule set 4 states in "
+        "definition.reversalTiming.controllerDiscovery that the discovery of the "
+        "reversal commit by the controller is part of recoveryMs, judged by E04-AC12 "
+        "and by no validity criterion, and that a controller that does not discover "
+        "it leaves E04-AC12 not met. E04-AC2 is a validity criterion that names the "
+        "four operator events of the reversal and the reversal commit, stated once, "
+        "and each criterion clock of E04-AC2 orders operator events only. No sentence "
+        "of a validity criterion, of a criterion clock of one, of an INCONCLUSIVE or "
+        "ABORTED exclusion reason, or of an abort condition names a reading or an "
+        "instant of the controller together with the reversal or the known-good "
+        "revision, or names controllerObserved, desiredStateRestored, "
+        "gitopsDiscoveryMs, or the sync state, and no sentence of the reversal "
+        "timing, the outcome rules, the Git transitions, the fault procedure, the "
+        "observation limit, the post-recovery window, the clock policy, the "
+        "repetition rule, the preparation, the execution gate, a pass criterion, its "
+        "criterion clocks, or another exclusion reason names one with a verdict that "
+        "is not judged, an INCONCLUSIVE run, or an abort, in the words that this check "
+        "names. A paraphrase that no named word reaches is not "
+        "refused."
     ),
 }
 
@@ -905,6 +1201,8 @@ def _shape_problem(document: Any, rule_set: int = RULE_SET_ONE) -> str | None:
         return "definition states no preparation steps and no outcome rules"
     if not isinstance(_member(document, "exclusionReasons").get("reasons"), list):
         return "the record registers no list of exclusion reasons"
+    # Rule set 3 and rule set 4 each read the reversal timing as an object. This
+    # gate requires that alone, so rule set 4 inherits no onset rule from it.
     if (
         rule_set >= REVERSAL_RULE_SET
         and _member(document, "metadata").get("experiment") == REVERSAL_EXPERIMENT
@@ -1749,7 +2047,12 @@ def _timing(document: Mapping[str, Any]) -> Mapping[str, Any]:
     return _member(document["definition"], "reversalTiming")
 
 
-def _instant_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
+def _instant_findings(
+    name: str, document: Mapping[str, Any], rule_set: int = REVERSAL_RULE_SET
+) -> Iterator[Finding]:
+    """The findings of prereg-reversal-instants. Under rule set 3 every clause is
+    read, in the order of revision 2. Under rule set 4 the clauses of the onset of
+    the analysis are not, and the selection rules read the span instead."""
     rule = "prereg-reversal-instants"
     timing = _timing(document)
     instants = _member(timing, "instants")
@@ -1792,7 +2095,8 @@ def _instant_findings(name: str, document: Mapping[str, Any]) -> Iterator[Findin
             "reversalStart is not bracketed by two operator-event instants and judged "
             "at the earlier end",
         )
-    for path, phrases in REVERSAL_PHRASES.items():
+    phrased = REVERSAL_PHRASES if rule_set == REVERSAL_RULE_SET else START_PHRASES
+    for path, phrases in phrased.items():
         text: Any = instants
         for step in path:
             text = text.get(step) if isinstance(text, Mapping) else None
@@ -1818,6 +2122,23 @@ def _instant_findings(name: str, document: Mapping[str, Any]) -> Iterator[Findin
             f"a reversalStart that is not established does not leave "
             f"{RECOVERY_CRITERION} not judged, for {REVERSAL_START_UNCONFIRMED}",
         )
+    if rule_set != REVERSAL_RULE_SET:
+        settled = _member(instants, STABILIZED_AT)
+        if settled.get("insideObservationLimit") is not True:
+            yield Finding(
+                rule,
+                name,
+                f"{base}.instants.{STABILIZED_AT}",
+                "stabilizedAt is not held inside the observation limit",
+            )
+        if timing.get("recoveryEnd") != STABILIZATION_ONSET:
+            yield Finding(
+                rule,
+                name,
+                f"{base}.recoveryEnd",
+                "recoveryEnd is not stabilizationOnset, the onset of the span",
+            )
+        return
     onset = _member(instants, STABILIZATION_ONSET)
     where = f"{base}.instants.{STABILIZATION_ONSET}"
     if onset.get("analysisMember") != ANALYSIS_MEMBERS[STABILIZATION_ONSET]:
@@ -2012,8 +2333,12 @@ def _reversal_criterion_findings(
 
 
 def _reversal_reason_findings(
-    name: str, document: Mapping[str, Any]
+    name: str,
+    document: Mapping[str, Any],
+    reasons: Sequence[str] = (REVERSAL_START_UNCONFIRMED, ONSET_NOT_AFTER_START),
 ) -> Iterator[Finding]:
+    """The findings of prereg-reversal-reasons. Rule set 3 reads both reasons of
+    the timing, and rule set 4 reads reversal-start-unconfirmed alone."""
     rule = "prereg-reversal-reasons"
     registered = {
         (r["id"], r["resultState"])
@@ -2023,7 +2348,7 @@ def _reversal_reason_findings(
         and isinstance(r.get("resultState"), str)
     }
     outcome = " ".join(document["definition"]["outcomeRules"])
-    for reason in (REVERSAL_START_UNCONFIRMED, ONSET_NOT_AFTER_START):
+    for reason in reasons:
         if (reason, INCONCLUSIVE) not in registered:
             yield Finding(
                 rule,
@@ -2041,11 +2366,673 @@ def _reversal_reason_findings(
 
 
 def _reversal_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
-    """Every finding of the reversal-timing rules for one V2-E04 record."""
+    """Every finding of the reversal-timing rules of rule set 3 for one V2-E04
+    record."""
     yield from _instant_findings(name, document)
     yield from _interval_findings(name, document)
     yield from _reversal_criterion_findings(name, document)
     yield from _reversal_reason_findings(name, document)
+
+
+# --------------------------------------------------------------------------
+# The selection rules of rule set 4, for V2-E04
+# --------------------------------------------------------------------------
+
+
+def _selection(document: Mapping[str, Any]) -> Mapping[str, Any]:
+    return _member(_timing(document), SELECTION)
+
+
+def _holds(text: Any, phrase: str) -> bool:
+    return isinstance(text, str) and phrase in text
+
+
+def _equal(stated: Mapping[str, Any], expected: Mapping[str, Any]) -> bool:
+    """Each member of ``expected`` is stated with its value, and of its type."""
+    return all(
+        _canonical(stated.get(key)) == _canonical(value)
+        for key, value in expected.items()
+    )
+
+
+def _criteria_by_id(
+    document: Mapping[str, Any],
+) -> dict[str, tuple[int, Mapping[str, Any]]]:
+    """Each criterion by identifier, with its index. The first of two is kept, and
+    prereg-reversal-criteria refuses a second E04-AC12."""
+    found: dict[str, tuple[int, Mapping[str, Any]]] = {}
+    for index, criterion in enumerate(_value(document, "acceptanceCriteria")):
+        identifier = criterion.get("id") if isinstance(criterion, Mapping) else None
+        if isinstance(identifier, str) and identifier not in found:
+            found[identifier] = (index, criterion)
+    return found
+
+
+def _criterion_at(index: int | None) -> str:
+    return (
+        "fields.acceptanceCriteria"
+        if index is None
+        else f"fields.acceptanceCriteria[0].value[{index}]"
+    )
+
+
+def _span_selection_findings(
+    name: str, document: Mapping[str, Any]
+) -> Iterator[Finding]:
+    rule = "prereg-reversal-selection"
+    selection = _selection(document)
+    where = f"{SELECTED_BY}"
+    if not selection:
+        yield Finding(rule, name, where, "the record states no selection of the span")
+        return
+    checks: tuple[tuple[str, bool, str], ...] = (
+        (
+            "candidates",
+            _equal(_member(selection, "candidates"), SELECTION_CANDIDATES)
+            and _text(_member(selection, "candidates").get("statement")),
+            "the candidates are not the caller completions after reversalStart",
+        ),
+        (
+            "spanRule",
+            _equal(_member(selection, "spanRule"), SPAN_RULE)
+            and _text(_member(selection, "spanRule").get("statement")),
+            "the span rule is not _find_span of tools/reliability_analysis, "
+            "unchanged, with 10 successes over 60,000 ms",
+        ),
+        (
+            "onset",
+            _member(selection, "onset").get("instant") == SELECTED_REQUESTS["onset"][0]
+            and _member(selection, "onset").get("request")
+            == SELECTED_REQUESTS["onset"][1],
+            "stabilizationOnset is not the first request of the selected span",
+        ),
+        (
+            "stabilizedAt",
+            _member(selection, "stabilizedAt").get("instant")
+            == SELECTED_REQUESTS["stabilizedAt"][0]
+            and _member(selection, "stabilizedAt").get("request")
+            == SELECTED_REQUESTS["stabilizedAt"][1],
+            "stabilizedAt is not the last request of the selected span",
+        ),
+        (
+            "observationLimit",
+            _equal(_member(selection, "observationLimit"), OBSERVATION_LIMIT)
+            and _holds(
+                document["definition"].get("observation"), OBSERVATION_LIMIT_TEXT
+            ),
+            "the observation limit is not 1,680,000 ms after fault-injection-finished, "
+            "as definition.observation states it",
+        ),
+        (
+            "beforeReversalStart",
+            _equal(_member(selection, "beforeReversalStart"), BEFORE_REVERSAL_START)
+            and _text(_member(selection, "beforeReversalStart").get("statement")),
+            "a span that starts before reversalStart is not held from the selection "
+            "and from every verdict",
+        ),
+        (
+            "verdicts",
+            _equal(_member(selection, "verdicts"), {"differ": DIFFERENT_VERDICTS})
+            and _text(_member(selection, "verdicts").get("statement")),
+            "different verdicts of the resolutions do not leave E04-AC12 not judged, "
+            "for clock-bound-reached, with the state that "
+            "definition.clockPolicy.notJudged decides",
+        ),
+        (
+            "reported",
+            _equal(_member(selection, "reported"), REPORTED_SPAN)
+            and _text(_member(selection, "reported").get("statement")),
+            "the reported span is not that of the resolution that counts only the "
+            "completions ordered after reversalStart",
+        ),
+        (
+            "endReading",
+            _equal(_member(selection, "endReading"), SELECTION_END_READING)
+            and _text(_member(selection, "endReading").get("statement")),
+            "an unusable end reading does not leave not judged only the verdicts that "
+            "depend on the bound, with no completed span not met",
+        ),
+    )
+    for member, held, detail in checks:
+        if not held:
+            yield Finding(rule, name, f"{where}.{member}", detail)
+    orders = selection.get("orders")
+    stated: dict[str, Any] = {}
+    if isinstance(orders, list):
+        for order in orders:
+            identifier = order.get("id") if isinstance(order, Mapping) else None
+            if isinstance(identifier, str):
+                stated.setdefault(identifier, []).append(order)
+    for identifier, resolutions in SELECTION_ORDERS.items():
+        listed = stated.get(identifier, [])
+        if len(listed) != 1 or not (
+            listed[0].get("insideMargin") == BOTH_WAYS
+            and listed[0].get("resolutions") == list(resolutions)
+            and _text(listed[0].get("statement"))
+        ):
+            yield Finding(
+                rule,
+                name,
+                f"{where}.orders",
+                f"the order {identifier} is not stated once and resolved both ways "
+                "inside the margin",
+            )
+    if not isinstance(orders, list) or set(stated) != set(SELECTION_ORDERS):
+        yield Finding(
+            rule,
+            name,
+            f"{where}.orders",
+            "the orders are not exactly the two of the selection",
+        )
+    instants = _member(_timing(document), "instants")
+    onset = _member(instants, STABILIZATION_ONSET)
+    onset_at = f"definition.reversalTiming.instants.{STABILIZATION_ONSET}"
+    if (
+        onset.get("selectedBy") != SELECTED_BY
+        or "analysisMember" in onset
+        or onset.get("after") != REVERSAL_START
+        or onset.get("completedSpanOnly") is not True
+    ):
+        yield Finding(
+            rule,
+            name,
+            onset_at,
+            "stabilizationOnset does not name the selection of a completed span after "
+            "reversalStart, or names a member of the run analysis",
+        )
+    missing = [p for p in ONSET_PHRASES if not _holds(onset.get("definition"), p)]
+    if missing:
+        yield Finding(
+            rule,
+            name,
+            f"{onset_at}.definition",
+            "it does not hold the phrases " + ", ".join(repr(p) for p in missing),
+        )
+
+
+def _outside_history(document: Mapping[str, Any]) -> Iterator[tuple[str, str]]:
+    """Every text that can state a rule of the record: the reversal timing, the
+    criteria, the criterion clocks, the outcome rules, and the exclusion reasons.
+    The history and the limitations may name what an earlier revision stated."""
+    definition = document["definition"]
+    yield from _strings_in(
+        definition.get("reversalTiming"), "definition.reversalTiming"
+    )
+    yield from _strings_in(
+        definition.get("criterionClocks"), "definition.criterionClocks"
+    )
+    yield from _strings_in(definition.get("outcomeRules"), "definition.outcomeRules")
+    yield from _strings_in(
+        _value(document, "acceptanceCriteria"), "fields.acceptanceCriteria[0].value"
+    )
+    yield from _strings_in(document.get("exclusionReasons"), "exclusionReasons")
+
+
+def _not_judged_members(value: Any, location: str) -> Iterator[tuple[str, Any]]:
+    """Each member that leaves E04-AC12 not judged, with the reason it states."""
+    if isinstance(value, Mapping):
+        if (
+            value.get("criterion") == RECOVERY_CRITERION
+            and value.get("verdict") == NOT_JUDGED_VERDICT
+        ):
+            yield location, value.get("reason")
+        for key, item in value.items():
+            yield from _not_judged_members(item, f"{location}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from _not_judged_members(item, f"{location}[{index}]")
+
+
+def _onset_exclusion_findings(
+    name: str, document: Mapping[str, Any]
+) -> Iterator[Finding]:
+    rule = "prereg-reversal-onset-exclusion"
+    reasons = [
+        r for r in document["exclusionReasons"]["reasons"] if isinstance(r, Mapping)
+    ]
+    if any(r.get("id") == ONSET_NOT_AFTER_START for r in reasons):
+        yield Finding(
+            rule,
+            name,
+            "exclusionReasons",
+            f"{ONSET_NOT_AFTER_START} is registered",
+        )
+    for location, text in _outside_history(document):
+        if ONSET_NOT_AFTER_START in text:
+            yield Finding(rule, name, location, f"it names {ONSET_NOT_AFTER_START}")
+    for location, _ in _named(
+        document["definition"], "notAfterReversalStart", "definition"
+    ):
+        yield Finding(rule, name, location, "it is a notAfterReversalStart member")
+    for location, reason in _not_judged_members(
+        {k: v for k, v in document.items() if k != "pinnedInputs"}, ""
+    ):
+        if not isinstance(reason, str) or reason not in RECOVERY_NOT_JUDGED_REASONS:
+            yield Finding(
+                rule,
+                name,
+                location.lstrip("."),
+                f"it leaves {RECOVERY_CRITERION} not judged for another reason",
+            )
+    allowed = RECOVERY_NOT_JUDGED_REASONS | {ONSET_NOT_AFTER_START}
+    for index, entry in enumerate(reasons):
+        reason_id, reason_text = entry.get("id"), entry.get("reason")
+        if (
+            isinstance(reason_id, str)
+            and reason_id not in allowed
+            and isinstance(reason_text, str)
+            and RECOVERY_CRITERION in reason_text
+            and "not judged" in reason_text
+        ):
+            yield Finding(
+                rule,
+                name,
+                f"exclusionReasons.reasons[{index}]",
+                f"{reason_id} leaves {RECOVERY_CRITERION} not judged",
+            )
+    for index, entry in enumerate(reasons):
+        reason_id, reason_text = entry.get("id"), entry.get("reason")
+        if (
+            isinstance(reason_id, str)
+            and reason_id not in (REVERSAL_START_UNCONFIRMED, ONSET_NOT_AFTER_START)
+            and isinstance(reason_text, str)
+            and _TIMING_WORD.search(reason_text)
+        ):
+            yield Finding(
+                rule,
+                name,
+                f"exclusionReasons.reasons[{index}]",
+                f"{reason_id} is a reason of the reversal timing beside "
+                f"{REVERSAL_START_UNCONFIRMED}",
+            )
+    registered = {r.get("id") for r in reasons if isinstance(r.get("id"), str)} | {
+        ONSET_NOT_AFTER_START
+    }
+    rules = document["definition"]["outcomeRules"]
+    for index, text in enumerate(rules):
+        for sentence in _SENTENCE_END.split(text):
+            if RECOVERY_CRITERION not in sentence or "not judged" not in sentence:
+                continue
+            named = {
+                reason
+                for reason in registered
+                if re.search(rf"(?<![\w-]){re.escape(str(reason))}(?![\w-])", sentence)
+            } | set(_FOR_THE_REASON.findall(sentence))
+            if named - RECOVERY_NOT_JUDGED_REASONS:
+                yield Finding(
+                    rule,
+                    name,
+                    f"definition.outcomeRules[{index}]",
+                    f"it leaves {RECOVERY_CRITERION} not judged for another reason",
+                )
+    definition = document["definition"]
+    texts: list[tuple[str, Any]] = [
+        (f"definition.outcomeRules[{i}]", r) for i, r in enumerate(rules)
+    ]
+    for index, criterion in enumerate(_value(document, "acceptanceCriteria")):
+        if isinstance(criterion, Mapping):
+            texts.append((_criterion_at(index), criterion.get("statement")))
+    clocks = definition["criterionClocks"]
+    for index, entry in enumerate(clocks):
+        if isinstance(entry, Mapping):
+            texts.append(
+                (f"definition.criterionClocks[{index}]", entry.get("statement"))
+            )
+    texts.extend(
+        _strings_in(definition.get("reversalTiming"), "definition.reversalTiming")
+    )
+    for member in ("observation", "postRecoveryWindow"):
+        texts.append((f"definition.{member}", definition.get(member)))
+    for location, text in texts:
+        if not isinstance(text, str):
+            continue
+        if _ONSET_EXCLUSION.search(text) or any(
+            REVERSAL_START in sentence
+            and _EARLY_WORD.search(sentence)
+            and _VERDICT_WORD.search(sentence)
+            for sentence in _SENTENCE_END.split(text)
+        ):
+            yield Finding(
+                rule,
+                name,
+                location,
+                "it states that the onset or a span does not follow reversalStart",
+            )
+    for index, entry in enumerate(clocks):
+        if not (
+            isinstance(entry, Mapping)
+            and entry.get("criterion") == RECOVERY_CRITERION
+            and entry.get("comparison") == "order"
+        ):
+            continue
+        instants = entry.get("instants")
+        ends = [
+            i.get("instant")
+            for i in (instants if isinstance(instants, list) else [])
+            if isinstance(i, Mapping)
+        ]
+        if any(isinstance(e, str) and e.startswith(STABILIZATION_ONSET) for e in ends):
+            yield Finding(
+                rule,
+                name,
+                f"definition.criterionClocks[{index}]",
+                f"an order of {RECOVERY_CRITERION} orders stabilizationOnset",
+            )
+        if not _holds(entry.get("statement"), BOTH_WAYS_PHRASE):
+            yield Finding(
+                rule,
+                name,
+                f"definition.criterionClocks[{index}]",
+                f"an order of {RECOVERY_CRITERION} is not resolved both ways",
+            )
+
+
+def _named(value: Any, member: str, location: str) -> Iterator[tuple[str, Any]]:
+    """The location and the value of each member named ``member`` in ``value``."""
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            where = f"{location}.{key}"
+            if key == member:
+                yield where, item
+            yield from _named(item, member, where)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from _named(item, member, f"{location}[{index}]")
+
+
+def _unmet_recovery_findings(
+    name: str, document: Mapping[str, Any]
+) -> Iterator[Finding]:
+    rule = "prereg-reversal-unmet-recovery"
+    index, criterion = _criteria_by_id(document).get(RECOVERY_CRITERION, (None, {}))
+    where = _criterion_at(index)
+    if criterion.get("kind") != "pass":
+        yield Finding(
+            rule, name, where, f"{RECOVERY_CRITERION} is not a pass criterion"
+        )
+    statement = criterion.get("statement")
+    if not (_holds(statement, UNMET_RECOVERY) and _holds(statement, NOT_MET)):
+        yield Finding(
+            rule,
+            name,
+            where,
+            f"{RECOVERY_CRITERION} does not state that it is not met when no span that "
+            "starts after reversalStart completes inside the observation limit",
+        )
+    if not (
+        _holds(statement, "When reversalStart is not established")
+        and _holds(statement, REVERSAL_START_UNCONFIRMED)
+    ):
+        yield Finding(
+            rule,
+            name,
+            where,
+            f"{RECOVERY_CRITERION} does not state that it is not judged, for "
+            f"{REVERSAL_START_UNCONFIRMED}, when reversalStart is not established",
+        )
+    outcome = " ".join(document["definition"]["outcomeRules"])
+    if not (
+        UNMET_RECOVERY in outcome and f"{RECOVERY_CRITERION} is not met" in outcome
+    ):
+        yield Finding(
+            rule,
+            name,
+            "definition.outcomeRules",
+            f"the outcome rules do not state that {RECOVERY_CRITERION} is not met when "
+            "no span that starts after reversalStart completes inside the observation "
+            "limit",
+        )
+
+
+def _selected_span_findings(
+    name: str, document: Mapping[str, Any]
+) -> Iterator[Finding]:
+    rule = "prereg-reversal-selected-span"
+    instants = _member(_timing(document), "instants")
+    settled = _member(instants, STABILIZED_AT)
+    where = f"definition.reversalTiming.instants.{STABILIZED_AT}"
+    if (
+        settled.get("selectedBy") != SELECTED_BY
+        or "analysisMember" in settled
+        or not _holds(settled.get("definition"), SELECTED_SPAN)
+    ):
+        yield Finding(
+            rule,
+            name,
+            where,
+            "stabilizedAt does not name the selected span, or names a member of the "
+            "run analysis",
+        )
+    definition = document["definition"]
+    for member in ("observation", "postRecoveryWindow"):
+        text = definition.get(member)
+        if not _holds(text, SELECTED_SPAN) or _holds(text, ANALYSIS_SPAN):
+            yield Finding(
+                rule,
+                name,
+                f"definition.{member}",
+                "it does not name the selected span, or names the stabilized recovery "
+                "that the analysis states",
+            )
+    stated = [
+        c
+        for c in _value(document, "acceptanceCriteria")
+        if isinstance(c, Mapping) and c.get("id") == "E04-AC5"
+    ]
+    if len(stated) != 1:
+        yield Finding(
+            rule,
+            name,
+            "fields.acceptanceCriteria",
+            f"E04-AC5 is stated {len(stated)} times, and not once",
+        )
+    index, criterion = _criteria_by_id(document).get("E04-AC5", (None, {}))
+    statement = criterion.get("statement")
+    if (
+        criterion.get("kind") != "validity"
+        or not _holds(statement, SELECTED_SPAN)
+        or _holds(statement, ANALYSIS_SPAN)
+    ):
+        yield Finding(
+            rule,
+            name,
+            _criterion_at(index),
+            "E04-AC5 is not a validity criterion of the selected span",
+        )
+
+
+def _outcome_reference_findings(
+    name: str, document: Mapping[str, Any]
+) -> Iterator[Finding]:
+    rule = "prereg-reversal-outcome-reference"
+    selection = _selection(document)
+    reference = _member(selection, "outcomeReference")
+    where = f"{SELECTED_BY}.outcomeReference"
+    if not _equal(reference, OUTCOME_REFERENCE) or not _text(
+        reference.get("statement")
+    ):
+        yield Finding(
+            rule,
+            name,
+            where,
+            "the selection does not name reversal_outcome of "
+            "tools.reversal_outcome.core",
+        )
+    scope = _member(document, "materialScope")
+    modules = scope.get("entryModules")
+    if not isinstance(modules, list) or OUTCOME_REFERENCE["module"] not in modules:
+        yield Finding(
+            rule,
+            name,
+            "materialScope.entryModules",
+            "the scope does not name the outcome reference",
+        )
+    if OUTCOME_REFERENCE["path"] not in _pins(document):
+        yield Finding(rule, name, "pinnedInputs", "the outcome reference is not pinned")
+    if not _holds(selection.get("evidenceComputation"), EVIDENCE_COMPUTATION_PHRASE):
+        yield Finding(
+            rule,
+            name,
+            f"{SELECTED_BY}.evidenceComputation",
+            "it does not state that code which computes the selection from evidence "
+            "is pinned before the first result-bearing run",
+        )
+
+
+def _controller_sentence(text: str, *, excluding: bool) -> bool:
+    """A sentence names a reading or an instant of the controller, and with it the
+    reversal or the known-good revision, or an instant or a state that only the
+    controller sets; or, when ``excluding``, names a reading or an instant of the
+    controller with a verdict that is not judged, an INCONCLUSIVE run, or an
+    abort."""
+    return any(
+        _CONTROLLER_WORD.search(sentence)
+        and (
+            _EXCLUDING_WORD.search(sentence)
+            if excluding
+            else _REVERSAL_WORD.search(sentence) or _CONTROLLER_INSTANT.search(sentence)
+        )
+        for sentence in _FULL_SENTENCE_END.split(text)
+    )
+
+
+def _controller_discovery_findings(
+    name: str, document: Mapping[str, Any]
+) -> Iterator[Finding]:
+    rule = "prereg-reversal-controller-discovery"
+    discovery = _member(_timing(document), CONTROLLER_DISCOVERY)
+    if not _equal(discovery, CONTROLLER_DISCOVERY_MEMBERS) or not _text(
+        discovery.get("statement")
+    ):
+        yield Finding(
+            rule,
+            name,
+            f"definition.reversalTiming.{CONTROLLER_DISCOVERY}",
+            "the controller's discovery of the reversal is not stated as part of "
+            "recoveryMs, judged by E04-AC12 and by no validity criterion",
+        )
+    criteria = [
+        (index, c)
+        for index, c in enumerate(_value(document, "acceptanceCriteria") or [])
+        if isinstance(c, Mapping)
+    ]
+    events = [(i, c) for i, c in criteria if c.get("id") == REVERSAL_EVENTS_CRITERION]
+    if len(events) != 1:
+        yield Finding(
+            rule,
+            name,
+            "fields.acceptanceCriteria",
+            f"{REVERSAL_EVENTS_CRITERION} is stated {len(events)} times, and not once",
+        )
+    for index, criterion in events:
+        statement = criterion.get("statement")
+        if criterion.get("kind") != "validity" or not all(
+            _holds(statement, named) for named in REVERSAL_EVENTS_NAMED
+        ):
+            yield Finding(
+                rule,
+                name,
+                _criterion_at(index),
+                f"{REVERSAL_EVENTS_CRITERION} is not the validity criterion of the "
+                "operator events of the reversal and the reversal commit",
+            )
+    validity = {
+        identifier
+        for _, c in criteria
+        if c.get("kind") == "validity" and isinstance(identifier := c.get("id"), str)
+    }
+    strict: list[tuple[str, Any]] = []
+    loose: list[tuple[str, Any]] = []
+    for index, criterion in criteria:
+        identifier = criterion.get("id")
+        texts = (
+            strict if isinstance(identifier, str) and identifier in validity else loose
+        )
+        texts.extend(_strings_in(criterion, _criterion_at(index)))
+    definition = document["definition"]
+    clocks = definition.get("criterionClocks")
+    for index, entry in enumerate(clocks if isinstance(clocks, list) else []):
+        if not isinstance(entry, Mapping):
+            continue
+        where = f"definition.criterionClocks[{index}]"
+        criterion_id = entry.get("criterion")
+        texts = (
+            strict
+            if isinstance(criterion_id, str) and criterion_id in validity
+            else loose
+        )
+        texts.extend(_strings_in(entry, where))
+        instants = entry.get("instants")
+        if entry.get("criterion") == REVERSAL_EVENTS_CRITERION and any(
+            not isinstance(i, Mapping) or i.get("source") != "operator-event"
+            for i in (instants if isinstance(instants, list) else [None])
+        ):
+            yield Finding(
+                rule,
+                name,
+                where,
+                f"an order of {REVERSAL_EVENTS_CRITERION} reads a source other than "
+                "the operator events",
+            )
+    reasons = _member(document, "exclusionReasons").get("reasons")
+    for index, reason in enumerate(reasons if isinstance(reasons, list) else []):
+        if isinstance(reason, Mapping):
+            texts = (
+                strict
+                if reason.get("resultState") in ("INCONCLUSIVE", "ABORTED")
+                else loose
+            )
+            texts.extend(_strings_in(reason, f"exclusionReasons.reasons[{index}]"))
+    strict.extend(
+        _strings_in(
+            _value(document, "abortConditions"), "fields.abortConditions[0].value"
+        )
+    )
+    loose.extend(
+        _strings_in(definition.get("reversalTiming"), "definition.reversalTiming")
+    )
+    for member in (
+        "outcomeRules",
+        "gitTransitions",
+        "faultProcedure",
+        "observation",
+        "postRecoveryWindow",
+        "clockPolicy",
+        "repetitionRule",
+        "preparation",
+        "executionGate",
+    ):
+        loose.extend(_strings_in(definition.get(member), f"definition.{member}"))
+    for texts, excluding in ((strict, False), (loose, True)):
+        for location, text in texts:
+            if isinstance(text, str) and _controller_sentence(
+                text, excluding=excluding
+            ):
+                yield Finding(
+                    rule,
+                    name,
+                    location,
+                    "it makes the controller's discovery of the reversal a condition "
+                    "of validity"
+                    if not excluding
+                    else "it leaves a verdict not judged, or a run INCONCLUSIVE or "
+                    "aborted, on the controller's discovery of the reversal",
+                )
+
+
+def _selection_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding]:
+    """Every finding of the reversal rules of rule set 4 for one V2-E04 record: the
+    parts of rule set 3 that it keeps, and the six selection rules."""
+    yield from _instant_findings(name, document, SELECTION_RULE_SET)
+    yield from _interval_findings(name, document)
+    yield from _reversal_criterion_findings(name, document)
+    yield from _reversal_reason_findings(name, document, (REVERSAL_START_UNCONFIRMED,))
+    yield from _span_selection_findings(name, document)
+    yield from _onset_exclusion_findings(name, document)
+    yield from _unmet_recovery_findings(name, document)
+    yield from _selected_span_findings(name, document)
+    yield from _outcome_reference_findings(name, document)
+    yield from _controller_discovery_findings(name, document)
 
 
 # --------------------------------------------------------------------------
@@ -2376,7 +3363,9 @@ def _rule_set(path: str, document: Mapping[str, Any]) -> int | None:
     """The rule set that a record is read under, or None when it states no known one.
 
     A V2-E04 record after revision 1 is read under rule set 3 or later, so that the
-    reversal-timing rules read every such revision.
+    reversal-timing rules read every such revision, and one after revision 2 under
+    rule set 4 or later, so that no later revision can leave the selection rules by
+    stating rule set 3.
     """
     stated = _member(document, "metadata").get(RULE_SET_MEMBER, None)
     if path in REVISION_ONE_RECORDS:
@@ -2386,7 +3375,15 @@ def _rule_set(path: str, document: Mapping[str, Any]) -> int | None:
     reversal = _member(document, "metadata").get("experiment") == REVERSAL_EXPERIMENT
     if reversal and stated < REVERSAL_RULE_SET:
         return None
+    if reversal and _revision(path) > 2 and stated < SELECTION_RULE_SET:
+        return None
     return stated
+
+
+def _revision(path: str) -> int:
+    """The revision that the name of a record states, or 0."""
+    match = RECORD_NAME.match(PurePosixPath(path).name)
+    return 0 if match is None else int(match.group(1))
 
 
 def _readable(
@@ -2409,6 +3406,11 @@ def _readable(
     if rule_set is None:
         if path in REVISION_ONE_RECORDS:
             detail = "a revision-1 record of rule set 1 states no rule set"
+        elif experiment.experiment_id == REVERSAL_EXPERIMENT and _revision(path) > 2:
+            detail = (
+                "a V2-E04 record after revision 2 states no rule set of 4 or later "
+                "that this check knows"
+            )
         elif experiment.experiment_id == REVERSAL_EXPERIMENT:
             detail = (
                 "a V2-E04 record after revision 1 states no rule set of 3 or later "
@@ -2449,11 +3451,13 @@ def _record_findings(
     yield from _exclusion_findings(path, experiment.experiment_id, document)
     if rule_set >= CLOCK_RULE_SET:
         yield from _clock_findings(path, document)
-    if (
-        rule_set >= REVERSAL_RULE_SET
-        and experiment.experiment_id == REVERSAL_EXPERIMENT
-    ):
-        yield from _reversal_findings(path, document)
+    # Rule set 3 reads the onset of the analysis and its exclusion reason, and rule
+    # set 4 reads the selection instead: neither inherits the other's rules.
+    if experiment.experiment_id == REVERSAL_EXPERIMENT:
+        if rule_set == REVERSAL_RULE_SET:
+            yield from _reversal_findings(path, document)
+        elif rule_set >= SELECTION_RULE_SET:
+            yield from _selection_findings(path, document)
 
 
 def _sorted(findings: list[Finding]) -> list[Finding]:

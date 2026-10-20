@@ -2693,10 +2693,13 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
     the two reasons of its reversal timing added. The freeze check does not read the
     member. The member is read when an aggregate reads it. The two records added by
     V2-S6-006-PR1, revision 1 of V2-E03 and V2-E06, register none: each is an
-    analysis of the runs of other experiments, and no aggregate reads it.
+    analysis of the runs of other experiments, and no aggregate reads it. The two
+    records added by V2-S6-008-PR1 follow the same rule: revision 3 of V2-E04
+    registers the reasons of revision 2 without recovery-onset-not-after-reversal,
+    and revision 2 of V2-E03 registers none.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 24
+    assert len(records) == 26
     reliability = {"v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05"}
     registering = []
     for record in records:
@@ -2708,7 +2711,19 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
             registering.append(record.parent.name)
         else:
             assert core.EXCLUSION_REASONS_MEMBER not in document
-    assert sorted(registering) == sorted([*reliability, *reliability])
+    assert sorted(registering) == sorted([*reliability, *reliability, "v2-e04"])
+    reasons = {
+        record.name: [
+            r["id"] for r in _read_json(record)["exclusionReasons"]["reasons"]
+        ]
+        for record in records
+        if record.parent.name == "v2-e04"
+    }
+    onset = "recovery-onset-not-after-reversal"
+    assert onset in reasons["freeze-r2.v1alpha1.json"]
+    assert reasons["freeze-r3.v1alpha1.json"] == [
+        r for r in reasons["freeze-r2.v1alpha1.json"] if r != onset
+    ]
     example = _read_json(EXAMPLE_ROOT / FREEZE_REF)
     assert core.EXCLUSION_REASONS_MEMBER not in example
 

@@ -10,6 +10,35 @@ from `1.0.0`.
 
 ### Added
 
+- **The selection of the span of V2-E04, and the rebinding of V2-E03.** `V2-S6-008-PR1`
+  registers revision 3 of the V2-E04 record, which supersedes revision 2. The collective
+  re-review of the Sprint 6 records on 2026-10-19 found that revision 2 adds the reason
+  `recovery-onset-not-after-reversal`, which the amended definition does not authorize:
+  it left E04-AC12 not judged when the span of the run analysis did not start after
+  `reversalStart`, where the definition takes the first span that starts after it and
+  then completes, so it could make `INCONCLUSIVE` a run that the definition judges
+  `FAILED`. Revision 3 removes the reason and every statement of it, and selects that
+  span by one preregistered rule, `definition.reversalTiming.selection`: the caller
+  completions after `reversalStart`, the unchanged span rule of
+  `tools/reliability_analysis`, the first span that completes inside the observation
+  limit, and each cross-clock order inside the margin resolved both ways. A valid run
+  with no such span is `FAILED`. The bound, 52,000 ms, the reversal-start definition, the
+  stabilization requirements, the E04-AC8 window, the observation limit, and the clock
+  policy are unchanged. The new outcome reference, `tools/reversal_outcome`, applies the
+  rule and the outcome rules to declared inputs, and revision 3 pins it. E04-AC2 no
+  longer requires an argo reading of the reversal commit, as the repository owner
+  decided by change control on 2026-10-20: the controller's discovery is part of the
+  recovery that E04-AC12 judges, so a valid run whose controller never discovers an
+  accepted reversal is `FAILED`, not `INCONCLUSIVE`, and the outcome reference judges
+  E04-AC2 from the operator events alone.
+  `tools/experiment_preregistration` gains rule set 4, 28 rules in all, and a V2-E04
+  record after revision 2 must state rule set 4 or later. Revision 2 of the V2-E03 record
+  binds revision 3 by path, revision, digest, and rule set, and its extension counts only
+  the runs of revision 3; `tools/analysis_preregistration` gains three rules for a V2-E03
+  revision after revision 1, seventeen for V2-E03 in all. The two edits move the `core.py`
+  pin of the four revision-2 records of rule set 2 again, and two pins of V2-E06 revision
+  1, and none of them is revised here. Nothing ran. See
+  [the selection of the span of V2-E04](docs/proof/experiments/README.md#the-selection-of-the-span-of-v2-e04-and-rule-set-4).
 - **The V2-E03 and V2-E06 analysis freezes, and a pre-run readiness review.**
   `V2-S6-006-PR1` registers revision 1 of the freeze records of V2-E03, signal
   truthfulness, and V2-E06, reliability resource and cost overhead, before any run of the

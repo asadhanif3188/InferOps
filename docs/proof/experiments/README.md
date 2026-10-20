@@ -97,6 +97,12 @@ committed before any run of an experiment whose runs they read. Each binds the l
 records of its sources by digest, and [`tools/analysis_preregistration`](../../../tools/analysis_preregistration/core.py)
 holds each to them. No source run and no figure of either exists, the code that computes
 either analysis in full does not exist, and nothing ran in that change.
+**Two records added by `V2-S6-008-PR1`**: revision 3 of the record of V2-E04, under rule
+set 4, which supersedes revision 2 and [selects the span of its recovery criterion with no
+onset exclusion](#the-selection-of-the-span-of-v2-e04-and-rule-set-4), and revision 2 of
+the record of V2-E03, which supersedes revision 1 and binds revision 3. Revision 2 of
+V2-E04 and revision 1 of V2-E03 are kept unchanged. No run exists, and nothing ran in that
+change.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -123,10 +129,12 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E02A, controlled single-runtime baseline | 2 | [`v2-e02a/freeze-r2.v1alpha1.json`](v2-e02a/freeze-r2.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E02B, multi-runtime pod loss | 2 | [`v2-e02b/freeze-r2.v1alpha1.json`](v2-e02b/freeze-r2.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E02C, API pod loss | 2 | [`v2-e02c/freeze-r2.v1alpha1.json`](v2-e02c/freeze-r2.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
-| V2-E04, bad release and Git reversal | 2 | [`v2-e04/freeze-r2.v1alpha1.json`](v2-e04/freeze-r2.v1alpha1.json) | One part, E04, at C2 | Frozen before any run, under rule set 3. It supersedes revision 1 with the clock policy of rule set 2 and the reversal timing as the repository owner amended it: E04-AC12 judges the recovery from Git visibility to the onset of the stabilization span against the unchanged 52,000 ms, and E04-AC8 ends its window when the desired state is restored. No run exists. [See below](#the-reversal-timing-of-v2-e04-and-rule-set-3) |
+| V2-E04, bad release and Git reversal | 2 | [`v2-e04/freeze-r2.v1alpha1.json`](v2-e04/freeze-r2.v1alpha1.json) | One part, E04, at C2 | Frozen before any run, under rule set 3. It supersedes revision 1 with the clock policy of rule set 2 and the reversal timing as the repository owner amended it: E04-AC12 judges the recovery from Git visibility to the onset of the stabilization span against the unchanged 52,000 ms, and E04-AC8 ends its window when the desired state is restored. No run exists. Superseded by revision 3 on 2026-10-20, and kept unchanged: its reason `recovery-onset-not-after-reversal` is not authorized by the amended definition. Since `V2-S6-008-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin, and revision 3 classifies it. (Until `V2-S6-008-PR1` this cell ended "No run exists.") [See below](#the-reversal-timing-of-v2-e04-and-rule-set-3) |
+| V2-E04, bad release and Git reversal | 3 | [`v2-e04/freeze-r3.v1alpha1.json`](v2-e04/freeze-r3.v1alpha1.json) | One part, E04, at C2 | Frozen before any run, under rule set 4. It supersedes revision 2: it removes the reason `recovery-onset-not-after-reversal` and selects the span of E04-AC12, the first span that starts after `reversalStart` and then completes inside the observation limit, by one preregistered rule, and it pins the outcome reference `tools/reversal_outcome`. A valid run with no such span is `FAILED`. The bound, the reversal-start definition, the window of E04-AC8, the observation limit, and the clock policy are those of revision 2. No run exists. [See below](#the-selection-of-the-span-of-v2-e04-and-rule-set-4) |
 | V2-E05, drift reconciliation | 2 | [`v2-e05/freeze-r2.v1alpha1.json`](v2-e05/freeze-r2.v1alpha1.json) | One part, E05, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
-| V2-E03, signal truthfulness | 1 | [`v2-e03/freeze-r1.v1alpha1.json`](v2-e03/freeze-r1.v1alpha1.json) | One part, E03, at C2, derived from the C2 runs of its sources | Frozen before any run of its sources. It binds revision 2 of V2-E02A, V2-E02B, and V2-E02C, the initial population, and of V2-E04, the extension, and excludes V2-E05 by a stated rule. No figure exists, and the code that computes the analysis in full does not exist. [See below](#the-analysis-experiment-freezes) |
-| V2-E06, reliability resource and cost overhead | 1 | [`v2-e06/freeze-r1.v1alpha1.json`](v2-e06/freeze-r1.v1alpha1.json) | One part, E06, at C2: C0 for the allocation arithmetic and C2 for the figures read from runs | Frozen before any run of its sources. It binds revision 2 of V2-E02A and V2-E02B. The cost basis is local, and no cloud provider is used. No figure and no code that computes one exists. [See below](#the-analysis-experiment-freezes) |
+| V2-E03, signal truthfulness | 1 | [`v2-e03/freeze-r1.v1alpha1.json`](v2-e03/freeze-r1.v1alpha1.json) | One part, E03, at C2, derived from the C2 runs of its sources | Frozen before any run of its sources. It binds revision 2 of V2-E02A, V2-E02B, and V2-E02C, the initial population, and of V2-E04, the extension, and excludes V2-E05 by a stated rule. No figure exists, and the code that computes the analysis in full does not exist. Superseded by revision 2 on 2026-10-20, and kept unchanged: its V2-E04 binding is superseded. Since `V2-S6-008-PR1`, revision 3 of V2-E04 and the two checks differ from its pins, and revision 2 classifies them. (Until `V2-S6-008-PR1` this cell ended "does not exist.") [See below](#the-analysis-experiment-freezes) |
+| V2-E03, signal truthfulness | 2 | [`v2-e03/freeze-r2.v1alpha1.json`](v2-e03/freeze-r2.v1alpha1.json) | One part, E03, at C2, derived from the C2 runs of its sources | Frozen before any run of its sources. It binds revision 3 of V2-E04 by path, revision, digest, and rule set, counts in its extension only the runs that execute under it, keeps the three other bindings of revision 1, and lists each member that differs from revision 1. No figure exists. [See below](#the-analysis-experiment-freezes) |
+| V2-E06, reliability resource and cost overhead | 1 | [`v2-e06/freeze-r1.v1alpha1.json`](v2-e06/freeze-r1.v1alpha1.json) | One part, E06, at C2: C0 for the allocation arithmetic and C2 for the figures read from runs | Frozen before any run of its sources. It binds revision 2 of V2-E02A and V2-E02B. The cost basis is local, and no cloud provider is used. Since `V2-S6-008-PR1`, `core.py` of `tools/analysis_preregistration` and of `tools/experiment_preregistration` differ from its pins and no revision classifies them, so an analysis refuses to start until a later revision does. No figure and no code that computes one exists. [See below](#the-analysis-experiment-freezes) |
 
 ## Why a freeze comes first
 
@@ -1233,12 +1241,16 @@ in that change**: no Git switch, no commit to `main`, no fault, and no cluster r
 | V2-E05, drift reconciliation | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | As V2-E02B | Scale the live runtime Deployment from 2 to 1, with Git unchanged | 2 | `reconciliation_bound_ms`, 210,000 ms | C2 |
 
 Since `V2-S6-007-PR1` the latest record of V2-E02A, V2-E02B, V2-E02C, and V2-E05 is
-revision 2, and since `V2-S6-005-PR1` the latest record of V2-E04 is revision 2 as well.
-Each revision 2 of the four differs from its revision 1 only in [its clock policy and the
-members that it lists](#the-clock-policy-of-rule-set-2), and revision 2 of V2-E04 also in
-[its reversal timing](#the-reversal-timing-of-v2-e04-and-rule-set-3). The topologies,
-faults, counted runs, bounds, and levels of the table are unchanged. (Until
-`V2-S6-005-PR1` this paragraph said that the latest record of V2-E04 is revision 1.)
+revision 2. The latest record of V2-E04 was revision 2 from `V2-S6-005-PR1`, and since
+`V2-S6-008-PR1` it is revision 3. Each revision 2 of the four differs from its revision 1
+only in [its clock policy and the members that it lists](#the-clock-policy-of-rule-set-2),
+revision 2 of V2-E04 also in
+[its reversal timing](#the-reversal-timing-of-v2-e04-and-rule-set-3), and revision 3 of
+V2-E04 differs from its revision 2 in
+[the selection of the span of its recovery criterion](#the-selection-of-the-span-of-v2-e04-and-rule-set-4).
+The topologies, faults, counted runs, bounds, and levels of the table are unchanged.
+(Until `V2-S6-005-PR1` this paragraph said that the latest record of V2-E04 is revision
+1, and until `V2-S6-008-PR1` that it is revision 2.)
 
 A record is not evidence. It states what a run must do and what counts as a pass. Each
 record states its procedure, its measurements, its criteria, each marked `validity` or
@@ -1319,11 +1331,12 @@ a criterion is material, and it is a later revision too.
 - **Two clocks.** Under revision 1, an interval between instants of two clocks that lies
   within the clock bound of the run of a bound is neither held nor failed: the run is
   `INCONCLUSIVE` for the reason `clock-bound-reached`. Revision 2 of V2-E02A, V2-E02B,
-  V2-E02C, and V2-E05, and since `V2-S6-005-PR1` revision 2 of V2-E04, replaces that rule
-  with [the clock policy of rule set 2](#the-clock-policy-of-rule-set-2).
+  V2-E02C, and V2-E05, since `V2-S6-005-PR1` revision 2 of V2-E04, and since
+  `V2-S6-008-PR1` revision 3 of V2-E04, replaces that rule with
+  [the clock policy of rule set 2](#the-clock-policy-of-rule-set-2).
 - **Repetitions.** A `PASSED` or `FAILED` run is counted and never repeated, replaced, or
   left out. A `REFUSED`, `INCONCLUSIVE`, or `ABORTED` run is kept, for one of nine
-  registered exclusion reasons under revision 1, or of ten under revision 2, or of twelve under revision 2 of V2-E04, and the next run takes the next identifier, up to six runs
+  registered exclusion reasons under revision 1, or of ten under revision 2, or of twelve under revision 2 of V2-E04, or of eleven under revision 3 of V2-E04, and the next run takes the next identifier, up to six runs
   for E02, five for E04, and four for E05.
 - **The caller is the reference.** No stream, readiness state, endpoint count, replica
   count, sync state, health state, or scrape state changes a caller figure.
@@ -1339,7 +1352,11 @@ a criterion is material, and it is a later revision too.
   judged at the earlier end of its bracket. Revision 1 started the interval at the last
   controller reading before the reversal commit was resolved, a choice made after the Q4
   values were known and governed by no change control. [The reversal timing of revision
-  2](#the-reversal-timing-of-v2-e04-and-rule-set-3) states each instant. (Until
+  2](#the-reversal-timing-of-v2-e04-and-rule-set-3) states each instant. Since
+  `V2-S6-008-PR1`, revision 3
+  [selects that span by one preregistered rule](#the-selection-of-the-span-of-v2-e04-and-rule-set-4),
+  with no onset exclusion: a valid run in which no span that starts after
+  `reversalStart` completes inside the observation limit is `FAILED`. (Until
   `V2-S6-005-PR1` this bullet described revision 1 alone.)
 - **V2-E04 needs a third run only for a different causal signature**: whether a container of
   a bad pod started, whether the runtime Service fell to one Ready endpoint, whether the API
@@ -1616,7 +1633,11 @@ revision 1.
   span that starts after `reversalStart` and then completes; no tool computes it. So it
   can make `INCONCLUSIVE` a run that the amended definition would judge `PASSED`, or, when
   no such span starts within 52,000 ms of `reversalStart`, `FAILED`. The record states this
-  as a limitation.
+  as a limitation. (Since `V2-S6-008-PR1` this bullet describes revision 2 alone. The
+  collective re-review of the Sprint 6 records on 2026-10-19 found the reason
+  unauthorized, and revision 3 removes it:
+  [the selection of the span](#the-selection-of-the-span-of-v2-e04-and-rule-set-4) states
+  what replaces it.)
 
 When E04-AC12 is not judged, the rule of the policy for a verdict that is not judged
 decides the state, so a `FAILED` state that the judged containment criteria decide stands.
@@ -1666,6 +1687,134 @@ read a V2-E04 record, and a V2-E04 record after revision 1 must state rule set 3
 so a later revision cannot leave the timing rules by stating rule set 2. Rule set 2 is not
 edited: each record registered under it reads as before.
 
+### The selection of the span of V2-E04, and rule set 4
+
+`V2-S6-008-PR1` registered revision 3 of the record of V2-E04 on 2026-10-20, before any
+run. The collective re-review of the Sprint 6 records on 2026-10-19 found that revision 2
+adds the exclusion reason `recovery-onset-not-after-reversal`, which the amended
+definition of the reversal timing does not authorize. The definition takes the first
+stabilization span that starts after `reversalStart` and then completes. Revision 2 left
+E04-AC12 not judged instead when the span of the run analysis, which searches from the
+`fault-injection-finished` event, does not start after `reversalStart`, so it could make
+`INCONCLUSIVE` a run that the definition judges `FAILED`. Revision 3 removes the reason,
+and every statement of it, and selects that span by one preregistered rule. Revision 2
+and its registry row are kept unchanged, and its digest is
+`fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619`. Revision 3 has the
+digest `41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05`. **No run exists under any revision, and nothing ran in that
+change.**
+
+**The selection**, `definition.reversalTiming.selection`:
+
+| Member | What it states |
+|---|---|
+| Candidates | The caller completions of the window after `reversalStart`, in completion order. A span that continues across `reversalStart` is a candidate from its first request after it. |
+| Span rule | `_find_span` of `tools/reliability_analysis`, unchanged: consecutive successful completions, at least 10 of them over at least 60,000 ms, each condition held, at least one reading of each condition inside the span, and the reversal commit as the expected desired revision. A failed completion ends a candidate span, so an interrupted span is not selected and the next span that completes can be. |
+| `stabilizationOnset` and `stabilizedAt` | The completion of the first and of the last request of the first span that the rule finds over the candidates and that completes inside the observation limit, 1,680 s after `fault-injection-finished`, which is unchanged. |
+| Before `reversalStart` | When the clock bound is computable, a span, or the part of a span, that is ordered before `reversalStart` is never selected and is never a reason for a verdict. After an unusable end reading no completion can be ordered before it, so none is known to be before it: the row of the end reading states that case. |
+| Two clocks | `reversalStart` and the end of the observation limit are host instants, and a completion is a node instant. Inside the margin of the policy each of the two orders is resolved both ways. The selection is made once over the completions not ordered before `reversalStart`, where a completion inside the margin counts as after it, `margin-as-after`, and once over the completions ordered after it, `margin-as-before`. `stabilizedAt` inside the margin counts once as inside the limit and once as outside it. When every resolution gives one verdict, that is the verdict of E04-AC12. When they differ, E04-AC12 is not judged, for `clock-bound-reached`, and `definition.clockPolicy.notJudged` decides the state. A verdict that is the same under every resolution does not need the order, so the ordering rule of the policy and the clock outcome rule do not leave it not judged; that is the record's reading of the policy, stated before any run. E04-AC5 is judged the same way. |
+| The reported span | When the resolutions select different spans, whether their verdicts agree or differ, `stabilizationOnset`, `stabilizedAt`, `recoveryMs`, the post-recovery window, and E04-AC5 use the span of `margin-as-before`, which does not understate `recoveryMs`. When it selects no span, because it finds none or its span is ordered after the end of the observation limit, they use the span of `margin-as-after`. |
+| An unusable end reading of P8 | Only the verdicts that depend on the clock bound are not judged, for `clock-reading-missing`. With no bound no completion can be ordered before `reversalStart`, so none is known to be before it, and every completion of the window is a candidate. When no span completes over them, E04-AC12 does not depend on the bound and is not met. When one does, the clock uncertainty leaves E04-AC12 not judged, and no span known to start before `reversalStart` does. The cross-clock orders of E04-AC4 are not judged then either, so such a run is `INCONCLUSIVE` whatever its spans. |
+
+**The outcome rules.** E04-AC12 stays a pass criterion with its bound, 52,000 ms, its
+formula, `(2 * S) + 30000`, and the digest of `bounds-r1`. When `reversalStart` is
+established and no span that starts after it completes inside the observation limit,
+recovery is not established, and E04-AC12 is not met: a valid run with no such span is
+`FAILED`. When `reversalStart` is not established, E04-AC12 is not judged, for
+`reversal-start-unconfirmed`. The reasons that can leave E04-AC12 not judged are exactly
+`reversal-start-unconfirmed`, `clock-bound-reached`, and `clock-reading-missing`. A
+`FAILED` state that the judged verdicts decide stands. The validation record lists
+[every path by which a run whose `reversalStart` is established can be `INCONCLUSIVE`](../environment/v2-s6-008-pr1-validation.md#every-path-to-inconclusive-once-reversalstart-is-established),
+and none depends on whether a span is known to start before `reversalStart`, or on
+whether the controller discovers the reversal.
+
+**The controller's discovery is recovery, not validity.** The discovery and the
+reconciliation of the reversal commit by the controller are part of the system recovery
+that `recoveryMs` measures, so E04-AC12 judges them, and no validity criterion does, as
+the repository owner decided by change control on 2026-10-20, before the record was
+registered. E04-AC2, a validity criterion, no longer requires an argo reading that
+reports the reversal commit inside the observation limit, a clause that revisions 1 and
+2 state: it requires the four operator events of the reversal in their order, with the
+reversal commit, and `reversal-accepted` records the read that confirms the commit on
+the remote branch. Its criterion clock of the argo reading is removed, and
+`definition.reversalTiming.controllerDiscovery` states the rule. A valid run in which
+the controller never discovers an accepted reversal has no span after `reversalStart`,
+because no reading holds the reversal commit, so E04-AC12 is not met and the run is
+`FAILED`; the window of E04-AC8 then ends at the end of the window, so the containment
+criteria are judged too. No exclusion reason is added. A run whose operator events do
+not hold, or whose reversal no read confirms, keeps its governed `INCONCLUSIVE`.
+
+**The outcome reference.** [`tools/reversal_outcome`](../../../tools/reversal_outcome/core.py)
+is one pure function, `reversal_outcome`, that applies the selection and the outcome
+rules of revision 3 to declared inputs: whether `reversalStart` is established and its
+instant, the clock bound and the resolution that give the margin, whether the end reading
+of P8 is usable, the caller completions and the condition series, the ends of the
+observation limit and of the window, the bound, the operator event log and the reversal
+commit, and the verdict of every other criterion. It returns the verdicts of E04-AC12,
+E04-AC5, and E04-AC2, the reason of a verdict that is not judged, the reported span, and
+the state. It judges E04-AC2 from the event log and the commit alone, and refuses a
+declared one, so no reading of the controller reaches the verdict of E04-AC2. It reads no run directory and runs nothing. It
+imports `_find_span` of `tools/reliability_analysis` and copies none of it, which couples
+it to the private completion and series types of that tool. Revision 3 names it in its
+material scope and pins it. No code computes the selection from the evidence of a run:
+code that does is pinned by a revision of the record registered before the first
+result-bearing run, and until then the review of each run computes the selection by hand
+and checks it with the reference. The absence of a tool is never a reason to leave
+E04-AC12 not judged. The default-lane suite
+[`tests/testing/test_reversal_outcome.py`](../../../tests/testing/test_reversal_outcome.py)
+holds it to each case that the record names, on synthetic runs built in memory.
+
+**What else changes.** `stabilizationOnset` loses the member of the run analysis that it
+was read from and the member of the exclusion, and names the selection. `stabilizedAt`,
+the observation-limit sentence of `definition.observation`, the post-recovery window, and
+E04-AC5 name the selected span; the thresholds and the condition of E04-AC5 are
+unchanged, and with no selected span it holds, as under revision 2. E04-AC12 replaces
+its clause that the criterion is not judged when the onset does not follow
+`reversalStart` with the clause for a run with no span after it. E04-AC2 loses its
+controller clause, and the timing gains `controllerDiscovery`. The criterion clock of
+E04-AC2 that reads an argo reading is removed, and five criterion clocks change: the two
+of E04-AC5 and the interval of E04-AC12 name the selected span, the order of E04-AC12 and
+`reversalStart` now orders each candidate completion, and both orders of E04-AC12 are
+resolved both ways. The outcome rule of the timing is rewritten, the reason is removed,
+eleven in all, the limitation of the reason is replaced by four limitations of the
+selection, eighteen in all, and the history gains four entries. The material
+scope gains the outcome reference, and the pins move for `core.py` of
+`tools/experiment_preregistration`, material, and for the two files of the reference.
+Every other member is that of revision 2, the clock policy byte for byte: `reversalStart`,
+`controllerObserved`, `desiredStateRestored`, the intervals, the operator events, the
+detection rule, E04-AC1, E04-AC3, E04-AC4, E04-AC6 to E04-AC11, E04-AC13, the observation
+limit, the windows, the abort conditions, the cleanup, the evidence paths, the
+repetitions, and the executables.
+
+**The limitations of the selection.** The span rule holds a span to the readings that
+overlap it across the two clocks with no margin, as before. A reading that does not hold
+a condition blocks a span only until that reading finishes, so a span can start up to one
+reading interval of the argo stream before the first reading that holds the reversal
+commit, and `recoveryMs` can be understated by up to that interval. Inside the margin the
+selection is made under each resolution, and different verdicts leave E04-AC12 not
+judged. No tool computes the selection from the evidence of a run at registration.
+
+**The expected consequence is unchanged.** Most runs are not expected to meet E04-AC12.
+Such a run is `FAILED`, counted, and kept, and `gitopsDiscoveryMs` states why.
+
+**Rule set 4.** Revision 3 states rule set 4. Rule set 4 holds every rule of rule set 2,
+unchanged, `prereg-reversal-intervals` and `prereg-reversal-criteria` of rule set 3,
+unchanged, the parts of `prereg-reversal-instants` that hold `reversalStart`,
+`controllerObserved`, `desiredStateRestored`, the source and the clock of each instant,
+the observation limit of `stabilizedAt`, and `recoveryEnd`, and the part of
+`prereg-reversal-reasons` that holds `reversal-start-unconfirmed`, each unchanged. It
+adds six selection rules: `prereg-reversal-selection`, `prereg-reversal-onset-exclusion`,
+`prereg-reversal-unmet-recovery`, `prereg-reversal-selected-span`,
+`prereg-reversal-outcome-reference`, and `prereg-reversal-controller-discovery`, which
+refuses the controller clause in E04-AC2, in another validity criterion, in their
+criterion clocks, in an exclusion reason, in an abort condition, and in a text that
+leaves a verdict not judged or a run `INCONCLUSIVE` on a reading of the controller. Rule set 3 is not edited, so revision 2 reads
+exactly as before, and the check reads rule set 3 and rule set 4 by separate gates, so
+that rule set 4 inherits no requirement of the onset reason or of its member. A V2-E04
+record after revision 2 must state rule set 4 or later. That widens the statement of
+`prereg-rule-set-unknown`, and it is the one widened statement. The check does not
+import `tools/reversal_outcome`, so the pins of the records that do not name it do not
+gain it.
+
 ### The check
 
 ```sh
@@ -1681,11 +1830,14 @@ and every later revision states its rule set in `metadata.preregistrationRules`.
 2 adds the five clock rules, and `prereg-rule-set-unknown` refuses a record that states
 no known rule set. Rule set 3 holds rule set 2 and adds the four reversal-timing rules,
 which read a V2-E04 record, and a V2-E04 record after revision 1 must state rule set 3 or
-later. (Until `V2-S6-005-PR1` there were two rule sets and eighteen rules.) It also checks each superseded revision alone, under its own
+later. Rule set 4 replaces the onset exclusion of rule set 3 with six selection rules,
+and a V2-E04 record after revision 2 must state rule set 4 or later. (Until
+`V2-S6-005-PR1` there were two rule sets and eighteen rules, and until `V2-S6-008-PR1`
+three rule sets and twenty-two rules.) It also checks each superseded revision alone, under its own
 rule set, except for the two clauses that compare a record with the present: that its
 bound record is the latest committed, and that its qualified release is that of the latest
 V2-E02B. Those two clauses are the one narrowing of a revision-1 check, and it applies
-only to a superseded revision. Today it prints `PASSED: 5 experiment record(s) and 5 superseded revision(s),
+only to a superseded revision. Today it prints `PASSED: 5 experiment record(s) and 6 superseded revision(s),
 every rule held`. It exits 0 when every rule holds and 1 when one does not, so a run can use
 it as a precondition. It reads files and writes none. Each record pins it. The default-lane
 suite [`tests/testing/test_experiment_preregistration.py`](../../../tests/testing/test_experiment_preregistration.py)
@@ -1705,16 +1857,22 @@ runs it and plants each defect below in a copy.
 | `prereg-target-topology-differs` | V2-E02C, V2-E04, and V2-E05 state the topology of V2-E02B. |
 | `prereg-executable-unpinned` | A record lists at least one executable, each is a pinned input, the entry file of a tool has its entry module in the material scope, and the scope names this check, the record's procedure directory, the qualification, and the bound record. |
 | `prereg-exclusion-reasons-unsupported` | A record registers exclusion reasons for its own experiment, in the form that the aggregate reads. |
-| `prereg-rule-set-unknown` | A revision-1 record of V2-S6-003-PR1 states no rule set and is read under rule set 1. Every other record states a rule set of 2 or later that this check knows, and a V2-E04 record after revision 1 states rule set 3 or later. |
+| `prereg-rule-set-unknown` | A revision-1 record of V2-S6-003-PR1 states no rule set and is read under rule set 1. Every other record states a rule set of 2 or later that this check knows, a V2-E04 record after revision 1 states rule set 3 or later, and a V2-E04 record after revision 2 states rule set 4 or later. |
 | `prereg-clock-inventory` | A record of rule set 2 states the node clock and the host clock, and each instant source with the clock and the resolution of rule set 2. Each criterion entry of definition.criterionClocks names a criterion of the record and two instants, each with a source and a clock of the inventory, and is cross-clock exactly when the inventory puts its sources on two clocks. Each criterion declares clocks or is listed in definition.criteriaWithoutClocks, and not both. Each criterion that names a bound declares the clocks of its interval. |
 | `prereg-clock-measurement` | A record of rule set 2 has a P8 that reads the clocks before the runner starts and after the window ends and states the bound formula of revision 1, and its clock policy measures with P8, a start and an end reading of three instants, and the bound formula and the computation of rule set 2. |
 | `prereg-clock-rules` | The clock policy of a record of rule set 2 states the offset-stability assumption, refuses a run with an unusable start reading before the fault, leaves the bound not computable after an unusable end reading with the state that the rule for a verdict that is not judged decides, applies that rule of rule set 2, and orders and compares instants of two clocks with the margin and the words of rule set 2. |
 | `prereg-clock-reasons` | A record of rule set 2 registers clock-reading-missing and clock-bound-reached for INCONCLUSIVE, and its outcome rules name both. |
 | `prereg-clock-contradiction` | No text of a record of rule set 2 states that the clock difference is not measured, orders instants by a time in a sentence that does not name the margin of rule set 2, names synchronization or a guarantee in a sentence with no negation, or states that every run is INCONCLUSIVE, in the phrases that this check names. |
-| `prereg-reversal-instants` | A V2-E04 record of rule set 3 names reversalStart, controllerObserved, desiredStateRestored, stabilizationOnset, and stabilizedAt, each with its source and clock. reversalStart is the Git-visibility instant of an operator event, bracketed and judged at the earlier end, and it leaves E04-AC12 not judged when it is not established. stabilizationOnset is read from stabilizedRecovery.span.first.finishedAt of a span that completed, and follows reversalStart. stabilizedAt is read from stabilizedRecovery.stabilizedAt inside the observation limit. recoveryEnd is stabilizationOnset. The definition of reversalStart, its two bracket ends, and the definition of stabilizationOnset hold the phrases that this check names, and no other prose is read. |
-| `prereg-reversal-intervals` | A V2-E04 record of rule set 3 states recoveryMs from reversalStart to stabilizationOnset, judged by E04-AC12, gitopsDiscoveryMs from reversalStart to controllerObserved, and operatorDecisionMs from detection-reviewed to reversalStart, each reported, and keeps the instants of the four operator events of the reversal. |
-| `prereg-reversal-criteria` | In a V2-E04 record of rule set 3, E04-AC12 judges recoveryMs against reversal_recovery_bound_ms with the value, the formula, and the bound record of derivedNumericBounds, and declares that interval cross-clock, from reversalStart on the host clock to stabilizationOnset on the node clock. E04-AC8 ends its window at desiredStateRestored. Each of the two criteria is stated once. |
-| `prereg-reversal-reasons` | A V2-E04 record of rule set 3 registers reversal-start-unconfirmed and recovery-onset-not-after-reversal for INCONCLUSIVE, and its outcome rules name both. |
+| `prereg-reversal-instants` | A V2-E04 record of rule set 3 or 4 names reversalStart, controllerObserved, desiredStateRestored, stabilizationOnset, and stabilizedAt, each with its source and clock. reversalStart is the Git-visibility instant of an operator event, bracketed and judged at the earlier end, and it leaves E04-AC12 not judged when it is not established. stabilizedAt lies inside the observation limit, and recoveryEnd is stabilizationOnset. The definition of reversalStart and its two bracket ends hold the phrases that this check names. Under rule set 3, stabilizationOnset is also read from stabilizedRecovery.span.first.finishedAt of a span that completed, and follows reversalStart, stabilizedAt is read from stabilizedRecovery.stabilizedAt, and the definition of stabilizationOnset holds the phrases that this check names. No other prose is read. |
+| `prereg-reversal-intervals` | A V2-E04 record of rule set 3 or 4 states recoveryMs from reversalStart to stabilizationOnset, judged by E04-AC12, gitopsDiscoveryMs from reversalStart to controllerObserved, and operatorDecisionMs from detection-reviewed to reversalStart, each reported, and keeps the instants of the four operator events of the reversal. |
+| `prereg-reversal-criteria` | In a V2-E04 record of rule set 3 or 4, E04-AC12 judges recoveryMs against reversal_recovery_bound_ms with the value, the formula, and the bound record of derivedNumericBounds, and declares that interval cross-clock, from reversalStart on the host clock to stabilizationOnset on the node clock. E04-AC8 ends its window at desiredStateRestored. Each of the two criteria is stated once. |
+| `prereg-reversal-reasons` | A V2-E04 record of rule set 3 registers reversal-start-unconfirmed and recovery-onset-not-after-reversal for INCONCLUSIVE, and its outcome rules name both. A V2-E04 record of rule set 4 registers reversal-start-unconfirmed for INCONCLUSIVE, and its outcome rules name it. |
+| `prereg-reversal-selection` | A V2-E04 record of rule set 4 selects the span of E04-AC12 in definition.reversalTiming.selection: the candidates are the caller completions after reversalStart, the span rule is _find_span of tools/reliability_analysis, unchanged, with 10 successes over 60,000 ms, stabilizationOnset is the first and stabilizedAt the last request of the first span that it finds, inside the observation limit of 1,680,000 ms after fault-injection-finished, which definition.observation states, and a span or the part of a span that starts before reversalStart is never selected and never a reason for a verdict. The order of a candidate and reversalStart, and that of stabilizedAt and the end of the observation limit, are each resolved both ways inside the margin, and different verdicts leave E04-AC12 not judged, for clock-bound-reached, with the state that definition.clockPolicy.notJudged decides. The reported span is that of the resolution that counts only the completions ordered after reversalStart, and otherwise that of the other one. An unusable end reading leaves not judged only the verdicts that depend on the bound, and with no span that completes the criterion is not met. stabilizationOnset names the selection and no member of the run analysis, and its definition holds the phrases that this check names. The rule reads these members and the named phrases, and no other prose. |
+| `prereg-reversal-onset-exclusion` | A V2-E04 record of rule set 4 registers no recovery-onset-not-after-reversal, names it in no outcome rule, criterion, criterion clock, or member of the reversal timing, and has no notAfterReversalStart member. No member that names E04-AC12 and a not-judged verdict, no registered reason that names E04-AC12 not judged, and no reason that an outcome rule names for E04-AC12 not judged is other than reversal-start-unconfirmed, clock-bound-reached, or clock-reading-missing, and no registered reason other than reversal-start-unconfirmed names reversalStart or the onset. No outcome rule, criterion, criterion clock, text of the reversal timing, observation limit, or post-recovery window states that the onset or a span does not follow reversalStart, or names reversalStart, an earlier instant or span, and a verdict that is not judged or an INCONCLUSIVE run in one sentence, in the words that this check names. No criterion clock of E04-AC12 orders stabilizationOnset, and each order of E04-AC12 is resolved both ways. A paraphrase that no named word reaches is not refused. |
+| `prereg-reversal-unmet-recovery` | In a V2-E04 record of rule set 4, E04-AC12 is a pass criterion, and it and the outcome rules state that when reversalStart is established and no span that starts after it completes inside the observation limit, the criterion is not met. E04-AC12 states that it is not judged, for reversal-start-unconfirmed, when reversalStart is not established. |
+| `prereg-reversal-selected-span` | In a V2-E04 record of rule set 4, stabilizedAt names the selection and no member of the run analysis, and the definitions of stabilizedAt, of the observation limit, and of the post-recovery window, and E04-AC5, a validity criterion, each name the selected span and not the stabilized recovery that the analysis states. The rule reads these members and the named phrases, and no other prose. |
+| `prereg-reversal-outcome-reference` | A V2-E04 record of rule set 4 names the outcome reference, reversal_outcome of tools.reversal_outcome.core, in its selection, names that module in its material scope and pins its file, and states that code which computes the selection from the evidence of a run is pinned before the first result-bearing run. The rule reads these members and the named phrase, and no other prose. |
+| `prereg-reversal-controller-discovery` | A V2-E04 record of rule set 4 states in definition.reversalTiming.controllerDiscovery that the discovery of the reversal commit by the controller is part of recoveryMs, judged by E04-AC12 and by no validity criterion, and that a controller that does not discover it leaves E04-AC12 not met. E04-AC2 is a validity criterion that names the four operator events of the reversal and the reversal commit, stated once, and each criterion clock of E04-AC2 orders operator events only. No sentence of a validity criterion, of a criterion clock of one, of an INCONCLUSIVE or ABORTED exclusion reason, or of an abort condition names a reading or an instant of the controller together with the reversal or the known-good revision, or names controllerObserved, desiredStateRestored, gitopsDiscoveryMs, or the sync state, and no sentence of the reversal timing, the outcome rules, the Git transitions, the fault procedure, the observation limit, the post-recovery window, the clock policy, the repetition rule, the preparation, the execution gate, a pass criterion, its criterion clocks, or another exclusion reason names one with a verdict that is not judged, an INCONCLUSIVE run, or an abort, in the words that this check names. A paraphrase that no named word reaches is not refused. |
 
 ### What is enforced, and what is not
 
@@ -1774,7 +1932,29 @@ the committed records. Not enforced:
   template of a Deployment.
 - **That the four records of rule set 2 can be run.** Since `V2-S6-005-PR1`, `core.py`
   differs from the pin of each, and its P1 refuses a run until a later revision of it
-  classifies the file.
+  classifies the file. `V2-S6-008-PR1` moved it again.
+- **That a run selects the span as revision 3 states it.** The selection rules read the
+  structure of the selection, the members of the selected span, the criteria, the
+  criterion clocks, the outcome rules, and the reasons. They read prose for the phrases
+  that they name: the definition of `stabilizationOnset`, the clause of E04-AC12 and of the
+  outcome rules for a run with no span after `reversalStart`, the selected span in four
+  texts, the two-way resolution in each order of E04-AC12, the evidence-computation rule,
+  and the onset exclusion in two forms: a statement that the onset or a span does not
+  follow `reversalStart`, and a sentence that names `reversalStart`, an earlier instant or
+  span in the words `before`, `precedes`, `earlier than`, or `not after`, and a verdict
+  that is not judged or a run that is `INCONCLUSIVE`. They read the outcome rules, every
+  criterion, every criterion clock, every text of the reversal timing, the observation
+  limit, and the post-recovery window, and refuse a registered reason other than
+  `reversal-start-unconfirmed` that names `reversalStart` or the onset. A paraphrase of
+  the onset exclusion that no named word reaches, or one in the history or the
+  limitations, is not refused. (Until the second commit of `V2-S6-008-PR1` the first form
+  alone was read, in three texts; its review found the gap.) No code computes the selection
+  from the evidence of a run: the outcome reference applies it to declared inputs, and the
+  review of each run declares them.
+- **That the outcome reference is the one that a run uses.** Revision 3 pins it, and a
+  later revision that pins code which computes the selection from evidence must pin that
+  code before the first result-bearing run. No check compares a run's selection with the
+  reference.
 
 ## The analysis experiment freezes
 
@@ -1805,9 +1985,16 @@ and the content digest of its latest registered freeze record:
 | V2-E03 | V2-E02A | initial | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
 | V2-E03 | V2-E02B | initial | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
 | V2-E03 | V2-E02C | initial | 2 | `abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818` |
-| V2-E03 | V2-E04 | extension | 2 | `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619` |
+| V2-E03, revision 1 | V2-E04 | extension | 2 | `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619` |
+| V2-E03, revision 2 | V2-E04 | extension | 3 | `41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05` |
 | V2-E06 | V2-E02A | baseline | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
 | V2-E06 | V2-E02B | target | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
+
+Revision 2 of V2-E03, registered by `V2-S6-008-PR1` on 2026-10-20, binds revision 3 of
+V2-E04 by path, revision, content digest, and rule set, 4, and keeps the three other
+bindings of revision 1. Each binding of a revision after 1 states the rule set of the
+record that it binds. (Until `V2-S6-008-PR1` the table named the V2-E04 binding of
+revision 1 alone.)
 
 Each record also states the environment, the caller profile, the topology, the fault, the
 repetition count, and the bound record of each source, as that source states them, and
@@ -1819,7 +2006,10 @@ the check refuses a binding that is not the latest revision. **A run under a lat
 revision is not in the population of either record until a later revision of that record
 binds the source revision.** The sources will need such revisions before their first run:
 each owes its driver, and four of them owe a classification of a moved pin ([see the
-readiness review](../environment/v2-s6-006-pr1-validation.md#the-consolidated-pre-run-readiness-review)).
+readiness review](../environment/v2-s6-008-pr1-validation.md#the-consolidated-pre-run-readiness-review),
+which since `V2-S6-008-PR1` supersedes
+[the review of `V2-S6-006-PR1`](../environment/v2-s6-006-pr1-validation.md#the-consolidated-pre-run-readiness-review)
+for the records that it moves).
 So the first analysis of each experiment is expected to run under a later revision of its
 record, which also pins the analysis code.
 
@@ -1829,9 +2019,12 @@ V2-E03 compares what each preregistered signal stated with what the caller recor
 
 - **The population.** The initial analysis reads the valid, counted runs of V2-E02A,
   V2-E02B, and V2-E02C: each run whose state is PASSED or FAILED under the repetition rule
-  of its bound revision. The extension adds the counted runs of V2-E04 under its latest
-  revision, once they exist, and the initial result stays published beside the extended
-  one. V2-E05 is excluded from the ranking by a stated rule: it is an optional source, no
+  of its bound revision. The extension adds the counted runs of V2-E04, once they exist,
+  and the initial result stays published beside the extended one. Under revision 2 of
+  V2-E03 the extension counts only the runs that executed under revision 3 of V2-E04, the
+  revision that it binds, and names it in `executedUnder`. A run under revision 2 of
+  V2-E04 is not in the population. (Until `V2-S6-008-PR1` this bullet said that the
+  extension counts the runs of V2-E04 under its latest revision, as revision 1 states.) V2-E05 is excluded from the ranking by a stated rule: it is an optional source, no
   planned change extends the analysis over it, and a drift that the delivery controller
   reverts is a scenario that this ranking does not preregister.
 - **The ten signals.** Signal 1 is the caller outcome, the reference truth, and is not
@@ -1917,7 +2110,11 @@ and so that this change edits no file that those records pin. It imports two pri
 functions of that package, the phrase scan of the clock rules, and it changes nothing in
 it. It reads the latest record of each of the two experiments in full, and a superseded
 revision against every rule except that its sources are the latest ones. V2-E03 and
-V2-E06 each have their own rules, fourteen and thirteen. Today it prints `PASSED: 2
+V2-E06 each have their own rules, seventeen and thirteen. Three of the V2-E03 rules read
+a revision after revision 1 alone: the rule set of each binding, the V2-E04 revision of
+the extension, and the list in `definition.changesFromSupersededRevision` of each member
+that differs from the superseded revision. Revision 1 is read under the fourteen that it
+was registered under. (Until `V2-S6-008-PR1` V2-E03 had fourteen rules.) Today it prints `PASSED: 2
 analysis experiment(s), every rule held`. It exits 0 when every rule holds and 1 when one
 does not. It reads files and writes none. Each record pins it. The default-lane suite
 [`tests/testing/test_analysis_preregistration.py`](../../../tests/testing/test_analysis_preregistration.py)
@@ -1939,6 +2136,9 @@ runs it and plants each defect below in a copy.
 | `e03-ranking` | The ranking rule states the earliest change, the most caller-truthful signal, the trade-off, the exploratory label, and the not-observed time. Its comparator is the candidate, and it is judged on the inner and the outer figure. |
 | `e03-caller-failures` | The record states, for each failed caller outcome, how the caller record identifies it and whether it states a canonical error code, a false-healthy rule that holds the phrase that this check names, and the two figures that it reports for each run. |
 | `e03-computations` | The record states each computation. Its not-observed computation holds the phrase never healthy, and its ordering rule holds the margin of the source clock policy and the phrase no lead or lag. No other prose of them is read. |
+| `e03-binding-rule-set` | In a V2-E03 record after revision 1, each source binding states, as an integer, the rule set that its bound freeze record states in metadata.preregistrationRules. |
+| `e03-extension-revision` | In a V2-E03 record after revision 1, the extension counts only the runs of V2-E04 that executed under the V2-E04 revision that definition.sources binds: it names that path and that revision, and its runs statement names the revision, holds the phrases that this check names, and does not count the runs of a latest revision. |
+| `e03-revision-changes` | A V2-E03 record after revision 1 names the revision that it supersedes by path and registered digest, and lists in definition.changesFromSupersededRevision each member of its definition, its fields, and its material scope that differs from that revision, and each other member of the record that differs, such as its metadata and its pins, once and with a reason, and no member that does not differ. A member of the definition, the fields, or the material scope that is an object in both is compared by its own members, and the list itself is not compared. The reason is not read. |
 | `e06-record-missing` | V2-E06 has a committed freeze record in its directory, and the record names that experiment. |
 | `e06-record-shape` | The record states its version, its kind, its experiment, an integer revision, one part, and a definition object. |
 | `e06-fields-unanswered` | Each freeze field has one entry for the one part, answered with a value or as not applicable with a reason, and never pending. |
@@ -1982,5 +2182,10 @@ the two committed records. Not enforced:
   interval from the collection text of each source. It does not run a collector.
 - **That a paraphrase is refused.** The contradiction scan is the one of the reliability
   records, and it has the same gaps.
+- **That a member listed as changed changed as its reason says.** The revision-change rule
+  compares each member of the definition, the fields, and the material scope with the
+  superseded revision, and one level inside a member that is an object in both. A change
+  deeper inside a list or an object is listed by the member that holds it, and the reason
+  that the record gives is not read.
 - **That the V2-E06 arithmetic reads the files that the record pins.** The record names
   them and pins them. No code renders the chart or computes a request yet.

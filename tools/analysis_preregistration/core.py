@@ -42,6 +42,14 @@ contradictions as the records of their sources. A change to them moves a pin of
 each record here. This module does not change that package, so it moves no pin
 of a record that the package checks.
 
+**A later V2-E03 revision is held to what it binds and to what it changes.** Three
+rules read a V2-E03 record after revision 1 alone, so revision 1, which this module
+also checks as a superseded revision, keeps reading under its own rules. Each source
+binding states the rule set that its bound record states. The extension counts only
+the runs of V2-E04 that executed under the V2-E04 revision that the record binds.
+And the record lists each member of its definition, its fields, and its material
+scope that differs from the revision that it supersedes, with a reason.
+
 **What this does not do.** It reads files and writes none. It runs no analysis,
 computes no figure, contacts no cluster, and reads no Git history. It reads text
 only for the phrases that it names, and a paraphrase that no phrase names is not
@@ -252,6 +260,24 @@ EVIDENCE_TARGET: Final[Mapping[str, str]] = {"allocation": "C0", "runDerived": "
 #: The entry module of this check, which each record pins.
 ENTRY_MODULE: Final = "tools.analysis_preregistration.__main__"
 
+#: The rules that read a V2-E03 record after revision 1, and no other.
+E03_LATER_RULES: Final = (
+    "e03-binding-rule-set",
+    "e03-extension-revision",
+    "e03-revision-changes",
+)
+#: The member of ``metadata`` of a bound record that states its rule set.
+RULE_SET_MEMBER: Final = "preregistrationRules"
+#: The member of the extension that names the V2-E04 revision whose runs it counts,
+#: and the phrases of its runs statement.
+EXECUTED_UNDER: Final = "executedUnder"
+EXTENSION_PHRASES: Final = ("executed under", "not in the population")
+LATEST_REVISION: Final = "latest revision"
+#: The member of the definition that lists what differs from the superseded
+#: revision, and the sections whose members it lists.
+CHANGES_MEMBER: Final = "changesFromSupersededRevision"
+CHANGED_SECTIONS: Final = ("definition", "fields", "materialScope")
+
 _INTERVAL: Final = re.compile(r"--interval (\d+):")
 #: The list of streams after ": the streams", up to ", from", a full stop, or the end.
 _STREAMS: Final = re.compile(r": the streams (.*?)(?:, from |\.|$)")
@@ -362,6 +388,29 @@ RULES: Final[Mapping[str, str]] = {
         "the phrase never healthy, and its ordering rule holds the margin of the "
         "source clock policy and the phrase no lead or lag. No other prose of them "
         "is read."
+    ),
+    "e03-binding-rule-set": (
+        "In a V2-E03 record after revision 1, each source binding states, as an "
+        "integer, the rule set that its bound freeze record states in "
+        "metadata.preregistrationRules."
+    ),
+    "e03-extension-revision": (
+        "In a V2-E03 record after revision 1, the extension counts only the runs of "
+        "V2-E04 that executed under the V2-E04 revision that definition.sources "
+        "binds: it names that path and that revision, and its runs statement names "
+        "the revision, holds the phrases that this check names, and does not count "
+        "the runs of a latest revision."
+    ),
+    "e03-revision-changes": (
+        "A V2-E03 record after revision 1 names the revision that it supersedes by "
+        "path and registered digest, and lists in "
+        "definition.changesFromSupersededRevision each member of its definition, "
+        "its fields, and its material scope that differs from that revision, and "
+        "each other member of the record that differs, such as its metadata and its "
+        "pins, once and with a reason, and no member that does not differ. A member "
+        "of the definition, the fields, or the material scope that is an object in "
+        "both is compared by its own members, and the list itself is not compared. "
+        "The reason is not read."
     ),
     **_rules("e06", "V2-E06"),
     "e06-views": (
@@ -1382,6 +1431,174 @@ def _target_findings(name: str, document: Mapping[str, Any]) -> Iterator[Finding
 
 
 # --------------------------------------------------------------------------
+# A V2-E03 record after revision 1
+# --------------------------------------------------------------------------
+
+
+def _binding_rule_set_findings(
+    name: str, document: Mapping[str, Any], sources: Mapping[str, Mapping[str, Any]]
+) -> Iterator[Finding]:
+    """Each binding states the rule set of the record that it binds."""
+    rule = "e03-binding-rule-set"
+    bindings = _member(document, "definition").get("sources")
+    for index, binding in enumerate(bindings if isinstance(bindings, list) else []):
+        if not isinstance(binding, Mapping):
+            continue
+        record = sources.get(str(binding.get("experiment")))
+        if record is None:
+            # The binding itself is a finding of the sources rule.
+            continue
+        stated = binding.get(RULE_SET_MEMBER)
+        expected = _member(record, "metadata").get(RULE_SET_MEMBER)
+        if type(stated) is not int or stated != expected:
+            yield Finding(
+                rule,
+                name,
+                f"definition.sources[{index}].{RULE_SET_MEMBER}",
+                f"the rule set of the bound record, {expected}",
+            )
+
+
+def _extension_revision_findings(
+    name: str, document: Mapping[str, Any]
+) -> Iterator[Finding]:
+    """The extension counts the runs of the bound V2-E04 revision alone."""
+    rule = "e03-extension-revision"
+    definition = _member(document, "definition")
+    extension = _member(_member(definition, "population"), "extension")
+    where = "definition.population.extension"
+    bindings = definition.get("sources")
+    bound = [
+        b
+        for b in (bindings if isinstance(bindings, list) else [])
+        if isinstance(b, Mapping) and b.get("experiment") in E03_EXTENSION
+    ]
+    if len(bound) != 1:
+        # The sources rule names a missing or a second binding.
+        return
+    executed = _member(extension, EXECUTED_UNDER)
+    path, revision = bound[0].get("path"), bound[0].get("revision")
+    if executed.get("path") != path or executed.get("revision") != revision:
+        yield Finding(
+            rule,
+            name,
+            f"{where}.{EXECUTED_UNDER}",
+            "the path and the revision of the V2-E04 binding",
+        )
+    runs = extension.get("runs")
+    missing = _phrases(runs, (*EXTENSION_PHRASES, f"revision {revision}"))
+    if missing or (isinstance(runs, str) and LATEST_REVISION in runs.lower()):
+        yield Finding(
+            rule,
+            name,
+            f"{where}.runs",
+            "the runs of the bound V2-E04 revision alone",
+        )
+
+
+_ABSENT: Final = object()
+
+
+def _changed_members(prior: Mapping[str, Any], current: Mapping[str, Any]) -> list[str]:
+    """Each member of the sections that differs, by its path. A member that is an
+    object in both is compared by its own members."""
+    found: list[str] = []
+    for section in CHANGED_SECTIONS:
+        left, right = _member(prior, section), _member(current, section)
+        for key in sorted(set(left) | set(right)):
+            if section == "definition" and key == CHANGES_MEMBER:
+                continue
+            before, after = left.get(key, _ABSENT), right.get(key, _ABSENT)
+            if isinstance(before, Mapping) and isinstance(after, Mapping):
+                for sub in sorted(set(before) | set(after)):
+                    if _canonical(before.get(sub, None), sub in before) != _canonical(
+                        after.get(sub, None), sub in after
+                    ):
+                        found.append(f"{section}.{key}.{sub}")
+            elif _canonical(before, before is not _ABSENT) != _canonical(
+                after, after is not _ABSENT
+            ):
+                found.append(f"{section}.{key}")
+    # Every other member of the record is compared whole: metadata, the pins, and
+    # their classification differ in every later revision, and are listed too.
+    for key in sorted((set(prior) | set(current)) - set(CHANGED_SECTIONS)):
+        before, after = prior.get(key, _ABSENT), current.get(key, _ABSENT)
+        if _canonical(before, before is not _ABSENT) != _canonical(
+            after, after is not _ABSENT
+        ):
+            found.append(key)
+    return found
+
+
+def _canonical(value: Any, present: bool = True) -> str:
+    if not present:
+        return "<absent>"
+    return json.dumps(value, sort_keys=True, ensure_ascii=False)
+
+
+def _revision_change_findings(
+    root: Path,
+    name: str,
+    document: Mapping[str, Any],
+    experiment: AnalysisExperiment,
+    registry: Mapping[str, str],
+) -> Iterator[Finding]:
+    """The record lists every member that differs from the superseded revision."""
+    rule = "e03-revision-changes"
+    revision = _member(document, "metadata").get("revision")
+    assert isinstance(revision, int)
+    previous = f"{experiment.directory}/freeze-r{revision - 1}.v1alpha1.json"
+    supersedes = _member(document, "metadata").get("supersedes")
+    read = _read(root, previous)
+    if (
+        not isinstance(supersedes, Mapping)
+        or supersedes.get("path") != previous
+        or read is None
+        or not isinstance(read[1], Mapping)
+        or supersedes.get("contentSha256") != content_digest(read[0])
+        or registry.get(previous) != supersedes.get("contentSha256")
+    ):
+        yield Finding(
+            rule,
+            name,
+            "metadata.supersedes",
+            f"the path and the registered digest of {previous}",
+        )
+        return
+    listed = _member(document, "definition").get(CHANGES_MEMBER)
+    where = f"definition.{CHANGES_MEMBER}"
+    members: list[str] = []
+    for index, entry in enumerate(listed if isinstance(listed, list) else [None]):
+        member = entry.get("member") if isinstance(entry, Mapping) else None
+        if not isinstance(member, str) or not _text(
+            entry.get("reason") if isinstance(entry, Mapping) else None
+        ):
+            yield Finding(
+                rule, name, f"{where}[{index}]", "a member, with the reason it differs"
+            )
+            continue
+        members.append(member)
+    for member in sorted({m for m in members if members.count(m) > 1}):
+        yield Finding(rule, name, where, f"{member} is listed twice")
+    changed = _changed_members(read[1], document)
+    for member in changed:
+        if member not in members:
+            yield Finding(
+                rule,
+                name,
+                where,
+                f"{member} differs from revision {revision - 1} and is not listed",
+            )
+    for member in sorted(set(members) - set(changed)):
+        yield Finding(
+            rule,
+            name,
+            where,
+            f"{member} is listed and does not differ from revision {revision - 1}",
+        )
+
+
+# --------------------------------------------------------------------------
 # The records
 # --------------------------------------------------------------------------
 
@@ -1421,6 +1638,14 @@ def _record_findings(
         findings.extend(_ranking_findings(name, document))
         findings.extend(_caller_failure_findings(name, document))
         findings.extend(_computation_findings(name, document))
+        # Revision 1 states none of what these rules read, and it is checked under
+        # the rules that it was registered under.
+        if _member(document, "metadata").get("revision") != 1:
+            findings.extend(_binding_rule_set_findings(name, document, sources))
+            findings.extend(_extension_revision_findings(name, document))
+            findings.extend(
+                _revision_change_findings(root, name, document, experiment, registry)
+            )
     else:
         findings.extend(_view_findings(name, document, sources))
         findings.extend(_label_findings(name, document))

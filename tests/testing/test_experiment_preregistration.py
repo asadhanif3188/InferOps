@@ -5,7 +5,9 @@ V2-E04, and V2-E05, before any run. V2-S6-007-PR1 registered revision 2 of the
 records of V2-E02A, V2-E02B, V2-E02C, and V2-E05, under rule set 2 and its one
 clock policy. V2-S6-005-PR1 registered revision 2 of the record of V2-E04, under
 the same policy and the reversal timing as the repository owner amended it.
-Revision 1 of each stays unchanged.
+V2-S6-008-PR1 registered revision 3 of the record of V2-E04, under rule set 4, which
+selects the span of its recovery criterion with no onset exclusion. Revision 1 of
+each, and revision 2 of V2-E04, stay unchanged.
 ``tools.experiment_freeze`` checks that each record answers every freeze field.
 ``tools.experiment_preregistration`` reads the answers: the qualification, the
 bound record, and the baseline comparison that each record names, the clock
@@ -16,8 +18,10 @@ The first part holds the committed records, with their identities written out so
 that a change to one is visible in review. The second and the third part plant
 each defect that the check refuses in a copy of the files it reads, and assert
 the exact findings. The fourth part does the same for the clock rules, and the fifth for
-the reversal-timing rules of V2-E04. No test
-runs an experiment or contacts a cluster.
+the reversal-timing rules of V2-E04. Those parts read a copy of the records as they
+were before revision 3 of V2-E04, so that rule set 3 is held to read exactly as it
+did. The sixth part holds revision 3 and the selection rules of rule set 4 in a copy
+of every committed record. No test runs an experiment or contacts a cluster.
 """
 
 from __future__ import annotations
@@ -96,8 +100,10 @@ REGISTERED_BY = {
     "V2-E04": "V2-S6-005-PR1",
 }
 RULE_SET_OF = {**dict.fromkeys(CLOCK_REVISIONS, 2), "V2-E04": 3}
-#: Every committed record of the five experiments.
+#: Every record of the five experiments before V2-S6-008-PR1. The second to the
+#: fifth part read a copy of these alone, in which revision 2 of V2-E04 is the latest.
 ALL_RECORDS = sorted(set(REVISION_ONE.values()) | set(REVISION_TWO.values()))
+#: The latest revision of each experiment in that copy.
 RECORDS = {
     "V2-E02A": E02A,
     "V2-E02B": E02B,
@@ -105,6 +111,13 @@ RECORDS = {
     "V2-E04": E04,
     "V2-E05": E05,
 }
+#: Revision 3 of V2-E04, of rule set 4, registered by V2-S6-008-PR1. Its registered
+#: pin is written out so that a change is visible.
+E04_R3 = "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json"
+E04_R3_PIN = "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05"
+#: Every committed record, and the latest committed revision of each experiment.
+ALL_COMMITTED = sorted([*ALL_RECORDS, E04_R3])
+LATEST_RECORDS = {**RECORDS, "V2-E04": E04_R3}
 
 QUALIFICATION = "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json"
 QUALIFICATION_1 = "docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json"
@@ -164,7 +177,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout.strip() == (
-        "PASSED: 5 experiment record(s) and 5 superseded revision(s), every rule held"
+        "PASSED: 5 experiment record(s) and 6 superseded revision(s), every rule held"
     )
 
 
@@ -180,8 +193,20 @@ def test_each_revision_one_record_is_registered_by_v2_s6_003_and_unchanged() -> 
     assert check_freezes() == []
 
 
-def test_the_latest_records_are_revision_two() -> None:
-    assert {k: path for k, (path, _) in latest_records().items()} == RECORDS
+def test_the_latest_records_are_revision_two_and_v2_e04_revision_three() -> None:
+    assert {k: path for k, (path, _) in latest_records().items()} == LATEST_RECORDS
+    three = load(E04_R3)["metadata"]
+    assert three == {
+        "experiment": "V2-E04",
+        "title": load(E04)["metadata"]["title"],
+        "revision": 3,
+        "registered": "2026-10-20",
+        "registeredBy": "V2-S6-008-PR1",
+        "supersedes": {"path": E04, "contentSha256": FROZEN_RECORDS[E04]},
+        "preregistrationRules": 4,
+    }
+    assert FROZEN_RECORDS[E04_R3] == E04_R3_PIN
+    assert content_digest((REPO_ROOT / E04_R3).read_bytes()) == E04_R3_PIN
     for experiment, path in REVISION_TWO.items():
         metadata = load(path)["metadata"]
         assert metadata["experiment"] == experiment
@@ -197,13 +222,13 @@ def test_the_latest_records_are_revision_two() -> None:
 
 def test_no_field_is_pending_or_not_applicable() -> None:
     """No placeholder: every freeze field of every record is answered with a value."""
-    for path in ALL_RECORDS:
+    for path in ALL_COMMITTED:
         for field, entries in load(path)["fields"].items():
             assert [e["status"] for e in entries] == ["value"], (path, field)
 
 
 def test_each_record_names_the_q1_2_lineage_and_the_bound_record() -> None:
-    for path in ALL_RECORDS:
+    for path in ALL_COMMITTED:
         document = load(path)
         environment = value(document, "environmentIdentity")
         assert environment["environmentSha256"] == ENVIRONMENT_SHA256
@@ -228,7 +253,7 @@ def test_each_record_names_the_q1_2_lineage_and_the_bound_record() -> None:
 def test_the_q3_1_refusal_is_kept_and_named_as_history() -> None:
     record = load("docs/proof/experiments/v2-q3/runs/q3-1/record.v1alpha1.json")
     assert record["result"] == "REFUSED"
-    for path in ALL_RECORDS:
+    for path in ALL_COMMITTED:
         assert any(
             "q3-1 REFUSED" in line for line in load(path)["definition"]["history"]
         )
@@ -300,9 +325,9 @@ def test_no_run_and_no_driver_exists_for_any_experiment() -> None:
     one registers a later revision, and its file is listed as added until then."""
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
+        revisions = 3 if experiment.experiment_id == "V2-E04" else 2
         assert sorted(p.name for p in directory.iterdir()) == [
-            "freeze-r1.v1alpha1.json",
-            "freeze-r2.v1alpha1.json",
+            f"freeze-r{n}.v1alpha1.json" for n in range(1, revisions + 1)
         ]
 
 
@@ -310,8 +335,9 @@ def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
     """A tripwire: a file added to or removed from a scope moves this set. Such a
     change owes a later revision of the record before any run, and the
     ``--changes`` command of the freeze tool lists the file until then. Revision 1
-    pins the same files as revision 2, with other digests of this check."""
-    for path in ALL_RECORDS:
+    pins the same files as revision 2, with other digests of this check. Revision 3
+    of V2-E04 also pins the outcome reference that its selection names."""
+    for path in ALL_COMMITTED:
         document = load(path)
         pinned = {item["path"] for item in document["pinnedInputs"]}
         assert material_files(document["materialScope"], REPO_ROOT) == pinned, path
@@ -321,7 +347,7 @@ def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
 
 
 def test_every_rule_is_published() -> None:
-    assert len(RULES) == 22
+    assert len(RULES) == 28
     text = README.read_text(encoding="utf-8")
     for rule, statement in RULES.items():
         assert f"| `{rule}` | {statement} |" in text, rule
@@ -1390,20 +1416,22 @@ def test_each_revision_one_record_still_passes_under_its_own_rules() -> None:
 def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
     """A tripwire. Revision 2 classifies the moves since each revision 1. The
     reversal-timing rules of V2-S6-005-PR1 moved core.py once more, after the four
-    revisions 2 of V2-S6-007-PR1 pinned it, and no revision classifies that move:
-    each of the four lists it as changed, and its P1 refuses a run, until a later
-    revision of it classifies it. V2-E04 revision 2 pins the present file."""
+    revisions 2 of V2-S6-007-PR1 pinned it, and the selection rules of V2-S6-008-PR1
+    moved it again. No revision classifies those moves: each of the four, and
+    revision 2 of V2-E04, lists core.py as changed, and its P1 refuses a run, until
+    a later revision of it classifies it. V2-E04 revision 3 pins the present file,
+    and no other file of the check moved."""
     for path in REVISION_ONE.values():
         changes = changed_inputs(load(path), REPO_ROOT)
         assert [(c.path, c.kind) for c in changes] == [
             (file, "changed") for file in CHECK_FILES
         ], path
-    for path in CLOCK_REVISIONS.values():
+    for path in REVISION_TWO.values():
         changes = changed_inputs(load(path), REPO_ROOT)
         assert [(c.path, c.kind) for c in changes] == [
             ("tools/experiment_preregistration/core.py", "changed")
         ], path
-    assert changed_inputs(load(E04), REPO_ROOT) == []
+    assert changed_inputs(load(E04_R3), REPO_ROOT) == []
 
 
 def test_the_reconciliation_bound_of_e05_is_on_the_host_clock_alone() -> None:
@@ -1948,7 +1976,7 @@ def test_a_missing_reading_rule_other_than_that_of_rule_set_two_is_refused(
         ),
         pytest.param(
             E05,
-            4,
+            5,
             "the record states no rule set of 2 or later that this check knows",
             id="unknown-rule-set",
         ),
@@ -2416,7 +2444,7 @@ def test_a_later_bound_record_leaves_the_superseded_revisions_alone(
 
 
 def test_the_rule_sets_are_published() -> None:
-    assert sorted(core.RULE_SETS) == [1, 2, 3]
+    assert sorted(core.RULE_SETS) == [1, 2, 3, 4]
     assert frozenset(REVISION_ONE.values()) == core.REVISION_ONE_RECORDS
     text = README.read_text(encoding="utf-8")
     for constant in (
@@ -3508,3 +3536,1424 @@ def test_each_record_is_read_under_the_rule_set_it_was_registered_under() -> Non
     for path in CLOCK_REVISIONS.values():
         assert core._rule_set(path, load(path)) == 2, path
     assert core._rule_set(E04, load(E04)) == 3
+    assert core._rule_set(E04_R3, load(E04_R3)) == 4
+
+
+# --------------------------------------------------------------------------
+# 6. The selection of V2-E04 revision 3, and rule set 4
+# --------------------------------------------------------------------------
+
+SELECTION_RULE = "prereg-reversal-selection"
+ONSET_RULE = "prereg-reversal-onset-exclusion"
+UNMET_RULE = "prereg-reversal-unmet-recovery"
+SELECTED_RULE = "prereg-reversal-selected-span"
+REFERENCE_RULE = "prereg-reversal-outcome-reference"
+CONTROLLER_RULE = "prereg-reversal-controller-discovery"
+SELECTED_AT = f"{TIMING}.selection"
+#: Where E04-AC5 is in the list of criteria.
+AC5 = "fields.acceptanceCriteria[0].value[4]"
+ONSET_REASON = "recovery-onset-not-after-reversal"
+E04_R2_PIN = "fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619"
+
+#: The members in which V2-E04 revision 3 differs from its revision 2. A list is
+#: one member, so a changed criterion, criterion clock, or limitation moves its
+#: whole list.
+E04_R3_CHANGED_MEMBERS = {
+    "metadata.revision",
+    "metadata.registered",
+    "metadata.registeredBy",
+    "metadata.supersedes.path",
+    "metadata.supersedes.contentSha256",
+    "metadata.preregistrationRules",
+    "definition.reversalTiming.statement",
+    "definition.reversalTiming.selection",
+    "definition.reversalTiming.controllerDiscovery",
+    "definition.reversalTiming.instants.stabilizationOnset.analysisMember",
+    "definition.reversalTiming.instants.stabilizationOnset.notAfterReversalStart",
+    "definition.reversalTiming.instants.stabilizationOnset.selectedBy",
+    "definition.reversalTiming.instants.stabilizationOnset.completion",
+    "definition.reversalTiming.instants.stabilizedAt.analysisMember",
+    "definition.reversalTiming.instants.stabilizedAt.selectedBy",
+    "definition.reversalTiming.instants.stabilizedAt.definition",
+    "definition.reversalTiming.instants.stabilizedAt.statement",
+    "definition.observation",
+    "definition.postRecoveryWindow",
+    "definition.criterionClocks",
+    "definition.outcomeRules",
+    "definition.limitations",
+    "definition.history",
+    "exclusionReasons.reasons",
+    "fields.experimentIdVersion",
+    "fields.gitRevision",
+    "fields.acceptanceCriteria",
+    "materialScope.description",
+    "materialScope.entryModules",
+    "pinnedInputs",
+    "inputChanges",
+}
+
+
+@pytest.fixture
+def full_root(tmp_path: Path) -> Path:
+    """A root that holds every file the check reads, with revision 3 of V2-E04."""
+    for relative in (REGISTRY, QUALIFICATION, QUALIFICATION_1, BOUNDS, COMPARISON):
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO_ROOT / relative, target)
+    for path in ALL_COMMITTED:
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO_ROOT / path, target)
+    return tmp_path
+
+
+def selection_of(document: dict[str, Any]) -> dict[str, Any]:
+    result = timing_of(document)["selection"]
+    assert isinstance(result, dict)
+    return result
+
+
+def test_revision_three_holds_every_rule_of_rule_set_four(full_root: Path) -> None:
+    assert found(full_root) == []
+    document = load(E04_R3)
+    assert core._rule_set(E04_R3, document) == core.SELECTION_RULE_SET == 4
+    assert list(core._selection_findings(E04_R3, document)) == []
+    assert list(core._clock_findings(E04_R3, document)) == []
+
+
+def test_revision_three_differs_from_revision_two_only_in_the_listed_members() -> None:
+    """A tripwire: every other member keeps its revision-2 value byte for byte."""
+    two, three = load(E04), load(E04_R3)
+    assert differences(two, three) == E04_R3_CHANGED_MEMBERS
+    definition_2, definition_3 = two["definition"], three["definition"]
+    assert definition_3["clockPolicy"] == definition_2["clockPolicy"]
+    for member in (
+        "hypothesis",
+        "detectionRule",
+        "gitTransitions",
+        "preparation",
+        "window",
+        "measurements",
+        "setRules",
+        "executables",
+        "analysisDeclaration",
+        "repetitionRule",
+    ):
+        assert definition_3[member] == definition_2[member], member
+    timing_2, timing_3 = timing_of(two), timing_of(three)
+    for member in ("intervals", "operatorEvents", "events", "recoveryEnd"):
+        assert timing_3[member] == timing_2[member], member
+    for instant in ("reversalStart", "controllerObserved", "desiredStateRestored"):
+        assert timing_3["instants"][instant] == timing_2["instants"][instant]
+    criteria_2 = value(two, "acceptanceCriteria")
+    criteria_3 = value(three, "acceptanceCriteria")
+    assert [c["id"] for c in criteria_2] == [c["id"] for c in criteria_3]
+    assert [
+        c2["id"] for c2, c3 in zip(criteria_2, criteria_3, strict=True) if c2 != c3
+    ] == ["E04-AC2", "E04-AC5", "E04-AC12"]
+    # E04-AC2 loses its controller clause and gains the record of the accepted
+    # reversal, by the change control of 2026-10-20, and nothing else.
+    ac2_2, ac2_3 = criterion_of(two, "E04-AC2"), criterion_of(three, "E04-AC2")
+    assert {k: v for k, v in ac2_3.items() if k != "statement"} == {
+        k: v for k, v in ac2_2.items() if k != "statement"
+    }
+    clause = (
+        ", and an argo reading reports the reversal commit as resolvedRevision "
+        "inside the observation limit."
+    )
+    assert ac2_2["statement"].endswith(clause)
+    assert ac2_3["statement"].startswith(ac2_2["statement"][: -len(clause)] + ". ")
+    assert "argo" not in ac2_3["statement"]
+    ac12_2, ac12_3 = criterion_of(two, "E04-AC12"), criterion_of(three, "E04-AC12")
+    assert {k: v for k, v in ac12_3.items() if k != "statement"} == {
+        k: v for k, v in ac12_2.items() if k != "statement"
+    }
+    assert criterion_of(three, "E04-AC5")["kind"] == "validity"
+    assert criterion_of(three, "E04-AC8") == criterion_of(two, "E04-AC8")
+    reasons_2 = two["exclusionReasons"]["reasons"]
+    reasons_3 = three["exclusionReasons"]["reasons"]
+    assert reasons_3 == [r for r in reasons_2 if r["id"] != ONSET_REASON]
+    assert len(reasons_3) == 11
+    rules_2, rules_3 = definition_2["outcomeRules"], definition_3["outcomeRules"]
+    assert rules_3[:6] + rules_3[7:] == rules_2[:6] + rules_2[7:]
+    clocks_2, clocks_3 = (
+        definition_2["criterionClocks"],
+        definition_3["criterionClocks"],
+    )
+    # Revision 3 drops the one criterion clock of E04-AC2 that read an argo reading.
+    (removed,) = [
+        e
+        for e in clocks_2
+        if e["criterion"] == "E04-AC2"
+        and any(i["source"] != "operator-event" for i in e["instants"])
+    ]
+    assert clocks_2.index(removed) == 2
+    clocks_2 = [e for e in clocks_2 if e is not removed]
+    assert [
+        i for i, (a, b) in enumerate(zip(clocks_2, clocks_3, strict=True)) if a != b
+    ] == [6, 7, 15, 16, 17]
+    limitations_2 = definition_2["limitations"]
+    limitations_3 = definition_3["limitations"]
+    (index,) = [i for i, text in enumerate(limitations_2) if ONSET_REASON in text]
+    assert limitations_3[:index] == limitations_2[:index]
+    assert limitations_3[index + 4 :] == limitations_2[index + 1 :]
+    assert len(limitations_3) == len(limitations_2) + 3
+    assert definition_3["history"][:9] == definition_2["history"]
+    assert len(definition_3["history"]) == 13
+    for field in (
+        "fault",
+        "topology",
+        "repetitionCount",
+        "abortConditions",
+        "cleanupProcedure",
+        "evidencePaths",
+        "derivedNumericBounds",
+        "environmentIdentity",
+        "callerProfileRevision",
+        "intendedEvidenceLevel",
+    ):
+        assert value(two, field) == value(three, field), field
+    moved = [c["path"] for c in three["inputChanges"]]
+    assert moved == [
+        "tools/experiment_preregistration/core.py",
+        "tools/reversal_outcome/__init__.py",
+        "tools/reversal_outcome/core.py",
+    ]
+    assert [c["material"] for c in three["inputChanges"]] == [True, False, True]
+
+
+def test_revision_two_is_kept_and_read_under_rule_set_three() -> None:
+    """Revision 2 and its registry row are unchanged. It still registers the onset
+    reason, and rule set 3 still requires it of revision 2."""
+    assert FROZEN_RECORDS[E04] == E04_R2_PIN
+    assert content_digest((REPO_ROOT / E04).read_bytes()) == E04_R2_PIN
+    rows = {row["path"]: row for row in load(REGISTRY)["records"]}
+    assert rows[E04] == {
+        "path": E04,
+        "contentSha256": E04_R2_PIN,
+        "registeredBy": "V2-S6-005-PR1",
+    }
+    assert rows[E04_R3] == {
+        "path": E04_R3,
+        "contentSha256": E04_R3_PIN,
+        "registeredBy": "V2-S6-008-PR1",
+    }
+    document = load(E04)
+    assert core._rule_set(E04, document) == 3
+    assert ONSET_REASON in {r["id"] for r in document["exclusionReasons"]["reasons"]}
+    assert list(core._reversal_findings(E04, document)) == []
+    without = copy.deepcopy(document)
+    without["exclusionReasons"]["reasons"] = [
+        r for r in without["exclusionReasons"]["reasons"] if r["id"] != ONSET_REASON
+    ]
+    assert [f.detail for f in core._reversal_findings(E04, without)] == [
+        f"{ONSET_REASON} is not registered for INCONCLUSIVE"
+    ]
+
+
+def test_rule_set_four_does_not_read_revision_two_and_inherits_no_onset_rule() -> None:
+    """Revision 2 fails every selection rule, so rule set 4 is not rule set 3 with
+    rules added; and revision 3, which states no onset rule, passes rule set 4."""
+    findings = {f.rule_id for f in core._selection_findings(E04, load(E04))}
+    assert findings == {
+        SELECTION_RULE,
+        ONSET_RULE,
+        UNMET_RULE,
+        SELECTED_RULE,
+        REFERENCE_RULE,
+        CONTROLLER_RULE,
+    }
+    three = load(E04_R3)
+    assert "notAfterReversalStart" not in json.dumps(three)
+    assert list(core._selection_findings(E04_R3, three)) == []
+
+
+def test_the_selection_of_revision_three_is_as_registered() -> None:
+    selection = selection_of(load(E04_R3))
+    assert selection["candidates"]["after"] == "reversalStart"
+    assert selection["candidates"]["source"] == "caller-record"
+    assert {k: v for k, v in selection["spanRule"].items() if k != "statement"} == {
+        "tool": "tools/reliability_analysis",
+        "function": "_find_span",
+        "unchanged": True,
+        "consecutiveSuccesses": analysis.STABILIZATION_SUCCESSES,
+        "spanMs": analysis.STABILIZATION_SPAN_MS,
+    }
+    assert (selection["onset"]["instant"], selection["onset"]["request"]) == (
+        "stabilizationOnset",
+        "first",
+    )
+    assert (
+        selection["stabilizedAt"]["instant"],
+        selection["stabilizedAt"]["request"],
+    ) == ("stabilizedAt", "last")
+    assert selection["observationLimit"]["limitMs"] == 1_680_000
+    assert selection["beforeReversalStart"]["selected"] is False
+    assert selection["beforeReversalStart"]["reasonForVerdict"] is False
+    assert [
+        (o["id"], o["insideMargin"], o["resolutions"]) for o in selection["orders"]
+    ] == [
+        (
+            "candidate-and-reversal-start",
+            "both-ways",
+            ["margin-as-after", "margin-as-before"],
+        ),
+        (
+            "stabilized-at-and-observation-limit",
+            "both-ways",
+            ["margin-as-inside", "margin-as-outside"],
+        ),
+    ]
+    assert selection["verdicts"]["differ"] == {
+        "verdict": "not-judged",
+        "reason": "clock-bound-reached",
+        "stateDecidedBy": "definition.clockPolicy.notJudged",
+    }
+    assert selection["reported"]["resolution"] == "margin-as-before"
+    assert selection["reported"]["otherwise"] == "margin-as-after"
+    assert selection["endReading"]["noSpan"] == "not-met"
+    assert selection["outcomeReference"]["module"] == "tools.reversal_outcome.core"
+    assert (
+        "never a reason to leave E04-AC12 not judged"
+        in (selection["evidenceComputation"])
+    )
+
+
+def test_the_resolution_names_of_the_record_are_those_of_the_reference() -> None:
+    """The record and tools/reversal_outcome name one set of resolutions."""
+    from tools import reversal_outcome
+
+    selection = selection_of(load(E04_R3))
+    (candidates, limit) = selection["orders"]
+    assert tuple(candidates["resolutions"]) == reversal_outcome.CANDIDATE_RESOLUTIONS
+    assert tuple(limit["resolutions"]) == reversal_outcome.LIMIT_RESOLUTIONS
+    assert selection["reported"]["resolution"] == reversal_outcome.REPORTED_RESOLUTION
+
+
+def test_the_reasons_that_leave_e04_ac12_not_judged_are_exactly_three() -> None:
+    document = load(E04_R3)
+    leaving = {
+        reason
+        for _, reason in core._not_judged_members(
+            {k: v for k, v in document.items() if k != "pinnedInputs"}, ""
+        )
+    }
+    assert leaving == {"reversal-start-unconfirmed"}
+    assert {
+        "reversal-start-unconfirmed",
+        "clock-bound-reached",
+        "clock-reading-missing",
+    } == core.RECOVERY_NOT_JUDGED_REASONS
+    for location, text in core._outside_history(document):
+        assert ONSET_REASON not in text, location
+    history = " ".join(document["definition"]["history"])
+    assert ONSET_REASON in history
+    assert "found that the amended definition does not authorize it" in history
+
+
+def test_the_check_does_not_import_the_outcome_reference() -> None:
+    """So the pins of a record that does not name it do not gain it."""
+    for path in ALL_RECORDS:
+        pinned = {item["path"] for item in load(path)["pinnedInputs"]}
+        assert not any(p.startswith("tools/reversal_outcome/") for p in pinned), path
+    source = (REPO_ROOT / "tools/experiment_preregistration/core.py").read_text(
+        encoding="utf-8"
+    )
+    assert "import tools.reversal_outcome" not in source
+    assert "from tools.reversal_outcome" not in source
+
+
+def _r3(*path: str) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    def at(document: dict[str, Any]) -> dict[str, Any]:
+        target: Any = document["definition"]
+        for step in path:
+            target = target[step]
+        assert isinstance(target, dict)
+        return target
+
+    return at
+
+
+def _plant(
+    at: Callable[[dict[str, Any]], dict[str, Any]], member: str, new: Any
+) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        at(document)[member] = new
+
+    return change
+
+
+def _remove(
+    at: Callable[[dict[str, Any]], dict[str, Any]], member: str
+) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        del at(document)[member]
+
+    return change
+
+
+def _register(reason: dict[str, str]) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        document["exclusionReasons"]["reasons"].append(reason)
+
+    return change
+
+
+def _outcome_rule(text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["outcomeRules"][6] += " " + text
+
+    return change
+
+
+def _statement(identifier: str, text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        criterion_of(document, identifier)["statement"] = text
+
+    return change
+
+
+def _append_to_statement(
+    identifier: str, text: str
+) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        criterion_of(document, identifier)["statement"] += " " + text
+
+    return change
+
+
+def _clock_entry(
+    index: int, change: Callable[[dict[str, Any]], None]
+) -> Callable[[dict[str, Any]], None]:
+    def wrapped(document: dict[str, Any]) -> None:
+        change(document["definition"]["criterionClocks"][index])
+
+    return wrapped
+
+
+def _unpin_reference(document: dict[str, Any]) -> None:
+    document["pinnedInputs"] = [
+        p
+        for p in document["pinnedInputs"]
+        if not p["path"].startswith("tools/reversal_outcome/")
+    ]
+
+
+def _unscope_reference(document: dict[str, Any]) -> None:
+    modules = document["materialScope"]["entryModules"]
+    modules.remove("tools.reversal_outcome.core")
+
+
+def _shorten_limit(document: dict[str, Any]) -> None:
+    definition = document["definition"]
+    definition["observation"] = definition["observation"].replace("1,680 s", "600 s")
+    selection_of(document)["observationLimit"]["limitMs"] = 600_000
+
+
+SELECTION = _r3("reversalTiming", "selection")
+SELECTED_ONSET = _r3("reversalTiming", "instants", "stabilizationOnset")
+SELECTED_STABILIZED = _r3("reversalTiming", "instants", "stabilizedAt")
+START_R3 = _r3("reversalTiming", "instants", "reversalStart")
+RECOVERY_R3 = _r3("reversalTiming", "intervals", "recoveryMs")
+ONSET_SELECTION = (
+    "stabilizationOnset does not name the selection of a completed span after "
+    "reversalStart, or names a member of the run analysis"
+)
+ANOTHER_REASON = "it leaves E04-AC12 not judged for another reason"
+NAMES_REASON = f"it names {ONSET_REASON}"
+DOES_NOT_FOLLOW = "it states that the onset or a span does not follow reversalStart"
+
+
+def _append_text(
+    at: Callable[[dict[str, Any]], dict[str, Any]], member: str, text: str
+) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        at(document)[member] += " " + text
+
+    return change
+
+
+def _duplicate_ac5(document: dict[str, Any]) -> None:
+    criteria = value(document, "acceptanceCriteria")
+    defective = copy.deepcopy(criterion_of(document, "E04-AC5"))
+    defective["statement"] = criterion_of(load(E04), "E04-AC5")["statement"]
+    criteria.append(defective)
+
+
+# The defects that the independent review of the first commit planted: the
+# exclusion in words that the first matcher did not name, in texts that it did not
+# read, a reason of the timing that does not name E04-AC12, and a second E04-AC5.
+REVIEW_DEFECTS = [
+    pytest.param(
+        _outcome_rule(
+            "When the span starts before reversalStart, E04-AC12 is not judged."
+        ),
+        [(ONSET_RULE, "definition.outcomeRules[6]", DOES_NOT_FOLLOW)],
+        id="a-span-before-reversal-start-not-judged",
+    ),
+    pytest.param(
+        _outcome_rule(
+            "When stabilizationOnset precedes reversalStart, the run is INCONCLUSIVE."
+        ),
+        [(ONSET_RULE, "definition.outcomeRules[6]", DOES_NOT_FOLLOW)],
+        id="an-onset-that-precedes-reversal-start-inconclusive",
+    ),
+    pytest.param(
+        _append_text(
+            SELECTED_ONSET,
+            "completion",
+            "When stabilizationOnset precedes reversalStart, E04-AC12 is not judged.",
+        ),
+        [(ONSET_RULE, f"{ONSET_AT}.completion", DOES_NOT_FOLLOW)],
+        id="the-exclusion-in-a-member-of-the-timing",
+    ),
+    pytest.param(
+        lambda d: d["definition"].__setitem__(
+            "observation",
+            d["definition"]["observation"]
+            + " A span that starts before reversalStart leaves E04-AC12 not judged.",
+        ),
+        [(ONSET_RULE, "definition.observation", DOES_NOT_FOLLOW)],
+        id="the-exclusion-in-the-observation-limit",
+    ),
+    pytest.param(
+        _register(
+            {
+                "id": "span-before-reversal",
+                "resultState": "INCONCLUSIVE",
+                "reason": "A span starts before reversalStart.",
+            }
+        ),
+        [
+            (
+                ONSET_RULE,
+                "exclusionReasons.reasons[11]",
+                "span-before-reversal is a reason of the reversal timing beside "
+                "reversal-start-unconfirmed",
+            )
+        ],
+        id="a-reason-of-the-timing-that-does-not-name-e04-ac12",
+    ),
+    pytest.param(
+        _duplicate_ac5,
+        [
+            (
+                SELECTED_RULE,
+                "fields.acceptanceCriteria",
+                "E04-AC5 is stated 2 times, and not once",
+            )
+        ],
+        id="a-defective-e04-ac5-beside-a-conforming-one",
+    ),
+]
+
+
+@pytest.mark.parametrize(("change", "expected"), REVIEW_DEFECTS)
+def test_each_selection_defect_of_the_review_is_refused(
+    full_root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
+) -> None:
+    edit(full_root, E04_R3, change)
+    assert found(full_root) == [
+        (rule, E04_R3, where, detail) for rule, where, detail in expected
+    ]
+
+
+@pytest.mark.parametrize(
+    ("change", "expected"),
+    [
+        pytest.param(
+            _register(
+                {
+                    "id": ONSET_REASON,
+                    "resultState": "INCONCLUSIVE",
+                    "reason": "The span does not start after reversalStart.",
+                }
+            ),
+            [
+                (ONSET_RULE, "exclusionReasons", f"{ONSET_REASON} is registered"),
+                (ONSET_RULE, "exclusionReasons.reasons[11].id", NAMES_REASON),
+            ],
+            id="the-onset-reason-registered",
+        ),
+        pytest.param(
+            _outcome_rule(
+                "When the span of the analysis is earlier, E04-AC12 is not judged, "
+                f"for the reason {ONSET_REASON}."
+            ),
+            [
+                (ONSET_RULE, "definition.outcomeRules[6]", NAMES_REASON),
+                (ONSET_RULE, "definition.outcomeRules[6]", ANOTHER_REASON),
+            ],
+            id="the-onset-reason-in-an-outcome-rule",
+        ),
+        pytest.param(
+            _append_to_statement(
+                "E04-AC12", f"An earlier span is not judged, for {ONSET_REASON}."
+            ),
+            [(ONSET_RULE, f"{AC12}.statement", NAMES_REASON)],
+            id="the-onset-reason-in-e04-ac12",
+        ),
+        pytest.param(
+            _register(
+                {
+                    "id": "recovery-span-early",
+                    "resultState": "INCONCLUSIVE",
+                    "reason": "A span starts early, so E04-AC12 is not judged.",
+                }
+            ),
+            [
+                (
+                    ONSET_RULE,
+                    "exclusionReasons.reasons[11]",
+                    "recovery-span-early leaves E04-AC12 not judged",
+                )
+            ],
+            id="another-registered-reason-for-e04-ac12",
+        ),
+        pytest.param(
+            _outcome_rule(
+                "When a span starts early, E04-AC12 is not judged, for the reason "
+                "recovery-span-early."
+            ),
+            [(ONSET_RULE, "definition.outcomeRules[6]", ANOTHER_REASON)],
+            id="another-unregistered-reason-in-an-outcome-rule",
+        ),
+        pytest.param(
+            _plant(
+                SELECTION,
+                "earlySpan",
+                {
+                    "criterion": "E04-AC12",
+                    "verdict": "not-judged",
+                    "reason": "recovery-span-early",
+                },
+            ),
+            [(ONSET_RULE, f"{SELECTED_AT}.earlySpan", ANOTHER_REASON)],
+            id="another-member-that-leaves-e04-ac12-not-judged",
+        ),
+        pytest.param(
+            _plant(
+                SELECTED_ONSET,
+                "analysisMember",
+                "stabilizedRecovery.span.first.finishedAt",
+            ),
+            [(SELECTION_RULE, ONSET_AT, ONSET_SELECTION)],
+            id="the-onset-read-from-the-search-after-the-fault",
+        ),
+        pytest.param(
+            _plant(
+                _r3("reversalTiming", "selection", "candidates"),
+                "after",
+                "fault-injection-finished",
+            ),
+            [
+                (
+                    SELECTION_RULE,
+                    f"{SELECTED_AT}.candidates",
+                    "the candidates are not the caller completions after reversalStart",
+                )
+            ],
+            id="candidates-from-the-fault",
+        ),
+        pytest.param(
+            _plant(
+                _r3("reversalTiming", "selection", "beforeReversalStart"),
+                "selected",
+                True,
+            ),
+            [
+                (
+                    SELECTION_RULE,
+                    f"{SELECTED_AT}.beforeReversalStart",
+                    "a span that starts before reversalStart is not held from the "
+                    "selection and from every verdict",
+                )
+            ],
+            id="a-span-before-reversal-start-admitted",
+        ),
+        pytest.param(
+            lambda d: selection_of(d)["orders"].pop(),
+            [
+                (
+                    SELECTION_RULE,
+                    f"{SELECTED_AT}.orders",
+                    "the order stabilized-at-and-observation-limit is not stated once "
+                    "and resolved both ways inside the margin",
+                ),
+                (
+                    SELECTION_RULE,
+                    f"{SELECTED_AT}.orders",
+                    "the orders are not exactly the two of the selection",
+                ),
+            ],
+            id="the-two-way-rule-of-the-limit-removed",
+        ),
+        pytest.param(
+            lambda d: selection_of(d)["orders"][0].__setitem__(
+                "insideMargin", "not-judged"
+            ),
+            [
+                (
+                    SELECTION_RULE,
+                    f"{SELECTED_AT}.orders",
+                    "the order candidate-and-reversal-start is not stated once and "
+                    "resolved both ways inside the margin",
+                )
+            ],
+            id="always-not-judged-inside-the-margin",
+        ),
+        pytest.param(
+            lambda d: selection_of(d)["reported"].__setitem__(
+                "resolution", "margin-as-after"
+            ),
+            [
+                (
+                    SELECTION_RULE,
+                    f"{SELECTED_AT}.reported",
+                    "the reported span is not that of the resolution that counts only "
+                    "the completions ordered after reversalStart",
+                )
+            ],
+            id="the-reported-span-understates-recovery",
+        ),
+        pytest.param(
+            _statement(
+                "E04-AC12",
+                "recoveryMs is at most reversal_recovery_bound_ms, 52,000 ms. When "
+                "reversalStart is not established, the criterion is not judged, for "
+                "the reason reversal-start-unconfirmed.",
+            ),
+            [
+                (
+                    UNMET_RULE,
+                    AC12,
+                    "E04-AC12 does not state that it is not met when no span that "
+                    "starts after reversalStart completes inside the observation limit",
+                )
+            ],
+            id="the-no-span-clause-of-e04-ac12-removed",
+        ),
+        pytest.param(
+            _criterion_member("E04-AC12", "kind", "validity"),
+            [(UNMET_RULE, AC12, "E04-AC12 is not a pass criterion")],
+            id="e04-ac12-made-a-validity-criterion",
+        ),
+        pytest.param(
+            lambda d: d["definition"]["outcomeRules"].__setitem__(
+                6,
+                "When reversalStart is not established, E04-AC12 is not judged, for "
+                "the reason reversal-start-unconfirmed.",
+            ),
+            [
+                (
+                    UNMET_RULE,
+                    "definition.outcomeRules",
+                    "the outcome rules do not state that E04-AC12 is not met when no "
+                    "span that starts after reversalStart completes inside the "
+                    "observation limit",
+                )
+            ],
+            id="the-no-span-outcome-rule-removed",
+        ),
+        pytest.param(
+            _statement(
+                "E04-AC5",
+                "When the analysis states a stabilized recovery inside the "
+                "observation limit, at least 10 successful requests complete after "
+                "the stabilizedAt instant inside the window, and the last of them "
+                "completes at least 60 s after it.",
+            ),
+            [
+                (
+                    SELECTED_RULE,
+                    AC5,
+                    "E04-AC5 is not a validity criterion of the selected span",
+                )
+            ],
+            id="e04-ac5-on-the-span-of-the-analysis",
+        ),
+        pytest.param(
+            _plant(
+                SELECTED_STABILIZED, "analysisMember", "stabilizedRecovery.stabilizedAt"
+            ),
+            [
+                (
+                    SELECTED_RULE,
+                    f"{TIMING}.instants.stabilizedAt",
+                    "stabilizedAt does not name the selected span, or names a member of "
+                    "the run analysis",
+                )
+            ],
+            id="stabilized-at-from-the-analysis",
+        ),
+        pytest.param(
+            lambda d: d["definition"].__setitem__(
+                "postRecoveryWindow",
+                load(E04)["definition"]["postRecoveryWindow"],
+            ),
+            [
+                (
+                    SELECTED_RULE,
+                    "definition.postRecoveryWindow",
+                    "it does not name the selected span, or names the stabilized "
+                    "recovery that the analysis states",
+                )
+            ],
+            id="the-post-recovery-window-of-revision-two",
+        ),
+        pytest.param(
+            _shorten_limit,
+            [
+                (
+                    SELECTION_RULE,
+                    f"{SELECTED_AT}.observationLimit",
+                    "the observation limit is not 1,680,000 ms after "
+                    "fault-injection-finished, as definition.observation states it",
+                )
+            ],
+            id="the-observation-limit-shortened",
+        ),
+        pytest.param(
+            _ac8_to_reversal_start,
+            [
+                (
+                    CRITERIA_RULE,
+                    AC8,
+                    "E04-AC8 does not end its window at desiredStateRestored",
+                )
+            ],
+            id="the-containment-window-changed",
+        ),
+        pytest.param(
+            _criterion_member("E04-AC12", "boundValueMs", 60_000),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 states another value of reversal_recovery_bound_ms than "
+                    "derivedNumericBounds",
+                )
+            ],
+            id="the-bound-value-changed",
+        ),
+        pytest.param(
+            _criterion_member("E04-AC12", "boundFormula", "(2 * S) + 40000"),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 states another formula of reversal_recovery_bound_ms "
+                    "than derivedNumericBounds",
+                )
+            ],
+            id="the-bound-formula-changed",
+        ),
+        pytest.param(
+            _criterion_member(
+                "E04-AC12", "boundRecord", {"path": BOUNDS, "contentSha256": "0" * 64}
+            ),
+            [
+                (
+                    CRITERIA_RULE,
+                    AC12,
+                    "E04-AC12 states another bound record of "
+                    "reversal_recovery_bound_ms than derivedNumericBounds",
+                )
+            ],
+            id="the-bound-record-digest-changed",
+        ),
+        pytest.param(
+            lambda d: policy_of(d).__setitem__(
+                "statement", policy_of(d)["statement"] + " E04 reads it differently."
+            ),
+            [
+                (
+                    "prereg-shared-differs",
+                    "definition.clockPolicy",
+                    "it differs from V2-E02B",
+                )
+            ],
+            id="a-clock-policy-that-differs",
+        ),
+        pytest.param(
+            _unpin_reference,
+            [(REFERENCE_RULE, "pinnedInputs", "the outcome reference is not pinned")],
+            id="the-outcome-reference-not-pinned",
+        ),
+        pytest.param(
+            _unscope_reference,
+            [
+                (
+                    REFERENCE_RULE,
+                    "materialScope.entryModules",
+                    "the scope does not name the outcome reference",
+                )
+            ],
+            id="the-outcome-reference-not-in-the-scope",
+        ),
+        pytest.param(
+            lambda d: selection_of(d)["outcomeReference"].__setitem__(
+                "function", "outcome"
+            ),
+            [
+                (
+                    REFERENCE_RULE,
+                    f"{SELECTED_AT}.outcomeReference",
+                    "the selection does not name reversal_outcome of "
+                    "tools.reversal_outcome.core",
+                )
+            ],
+            id="another-outcome-reference",
+        ),
+        pytest.param(
+            _plant(START_R3, "kind", "controller-observation"),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.reversalStart",
+                    "reversalStart is not the Git-visibility instant: it is not stated "
+                    "as git-visibility",
+                )
+            ],
+            id="the-reversal-start-kind-changed",
+        ),
+        pytest.param(
+            _swap_bracket,
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.reversalStart.bracket.earlier.instant",
+                    PHRASES + "'reversal-created', 'immediately before the push'",
+                ),
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.reversalStart.bracket.later.instant",
+                    PHRASES + "'first read of main', 'reversal-accepted'",
+                ),
+            ],
+            id="the-reversal-start-bracket-swapped",
+        ),
+        pytest.param(
+            _plant(START_R3, "judgedAt", "later"),
+            [
+                (
+                    INSTANTS_RULE,
+                    f"{TIMING}.instants.reversalStart",
+                    "reversalStart is not bracketed by two operator-event instants and "
+                    "judged at the earlier end",
+                )
+            ],
+            id="the-reversal-start-judged-at-the-later-end",
+        ),
+        pytest.param(
+            _plant(RECOVERY_R3, "end", "stabilizedAt"),
+            [
+                (
+                    INTERVALS_RULE,
+                    f"{TIMING}.intervals.recoveryMs",
+                    "recoveryMs is not stated from reversalStart to stabilizationOnset, "
+                    "judged by E04-AC12",
+                )
+            ],
+            id="the-recovery-interval-changed",
+        ),
+        pytest.param(
+            _append_to_statement(
+                "E04-AC12",
+                "When stabilizationOnset does not follow it, the criterion is not "
+                "judged.",
+            ),
+            [(ONSET_RULE, AC12, DOES_NOT_FOLLOW)],
+            id="the-ac12-clause-of-the-exclusion-without-its-reason",
+        ),
+        pytest.param(
+            _clock_entry(
+                16,
+                lambda e: e.update(
+                    instants=[
+                        e["instants"][0],
+                        {
+                            "instant": "stabilizationOnset, the completion instant of "
+                            "the first request of the selected span",
+                            "source": "caller-record",
+                            "clock": "node",
+                        },
+                    ],
+                    statement="stabilizationOnset follows reversalStart, and inside "
+                    "the margin the verdict is not judged.",
+                ),
+            ),
+            [
+                (
+                    ONSET_RULE,
+                    "definition.criterionClocks[16]",
+                    "an order of E04-AC12 orders stabilizationOnset",
+                ),
+                (
+                    ONSET_RULE,
+                    "definition.criterionClocks[16]",
+                    "an order of E04-AC12 is not resolved both ways",
+                ),
+            ],
+            id="the-order-entry-of-the-exclusion",
+        ),
+        pytest.param(
+            _outcome_rule(
+                "When stabilizationOnset does not follow reversalStart, E04-AC12 is "
+                "not judged, and definition.clockPolicy.notJudged decides the state."
+            ),
+            [(ONSET_RULE, "definition.outcomeRules[6]", DOES_NOT_FOLLOW)],
+            id="the-outcome-rule-of-the-exclusion-without-its-reason",
+        ),
+        pytest.param(
+            _plant(
+                SELECTED_ONSET,
+                "notAfterReversalStart",
+                {
+                    "reason": "clock-bound-reached",
+                    "criterion": "E04-AC12",
+                    "verdict": "not-judged",
+                    "statement": "Not judged when the onset is earlier.",
+                },
+            ),
+            [
+                (
+                    ONSET_RULE,
+                    f"{ONSET_AT}.notAfterReversalStart",
+                    "it is a notAfterReversalStart member",
+                )
+            ],
+            id="the-onset-member-under-an-allowed-reason",
+        ),
+        pytest.param(
+            _remove(SELECTION, "evidenceComputation"),
+            [
+                (
+                    REFERENCE_RULE,
+                    f"{SELECTED_AT}.evidenceComputation",
+                    "it does not state that code which computes the selection from "
+                    "evidence is pinned before the first result-bearing run",
+                )
+            ],
+            id="the-evidence-computation-rule-removed",
+        ),
+        pytest.param(
+            lambda d: d["metadata"].__setitem__("preregistrationRules", 3),
+            [
+                (
+                    "prereg-rule-set-unknown",
+                    "metadata.preregistrationRules",
+                    "a V2-E04 record after revision 2 states no rule set of 4 or later "
+                    "that this check knows",
+                )
+            ],
+            id="revision-three-under-rule-set-three",
+        ),
+    ],
+)
+def test_each_selection_defect_of_revision_three_is_refused(
+    full_root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
+) -> None:
+    edit(full_root, E04_R3, change)
+    assert found(full_root) == [
+        (rule, E04_R3, where, detail) for rule, where, detail in expected
+    ]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(_plant(SELECTION, "orders", "x"), id="orders-text"),
+        pytest.param(_plant(SELECTION, "orders", [1, [2]]), id="orders-unhashable"),
+        pytest.param(_plant(SELECTION, "candidates", ["x"]), id="candidates-a-list"),
+        pytest.param(_plant(SELECTION, "outcomeReference", 3), id="reference-a-number"),
+        pytest.param(
+            _plant(_r3("reversalTiming"), "selection", []), id="selection-a-list"
+        ),
+        pytest.param(_plant(SELECTED_ONSET, "definition", ["x"]), id="onset-a-list"),
+        pytest.param(
+            lambda d: d["definition"].__setitem__("observation", {"x": 1}),
+            id="observation-an-object",
+        ),
+        pytest.param(
+            lambda d: d["exclusionReasons"]["reasons"].append({"id": ["x"]}),
+            id="reason-id-a-list",
+        ),
+        pytest.param(
+            lambda d: d["materialScope"].__setitem__("entryModules", "x"),
+            id="modules-text",
+        ),
+        pytest.param(_criterion_member("E04-AC5", "statement", 5), id="ac5-a-number"),
+        pytest.param(
+            lambda d: timing_of(d)["instants"]["reversalStart"][
+                "notEstablished"
+            ].__setitem__("reason", []),
+            id="not-established-reason-a-list",
+        ),
+        pytest.param(
+            lambda d: timing_of(d)["instants"]["reversalStart"][
+                "notEstablished"
+            ].__setitem__("reason", {"x": 1}),
+            id="not-established-reason-an-object",
+        ),
+    ],
+)
+def test_a_malformed_selection_is_a_finding_and_not_an_error(
+    full_root: Path, change: Callable[[dict[str, Any]], None]
+) -> None:
+    edit(full_root, E04_R3, change)
+    findings = found(full_root)
+    assert findings
+    assert {f[1] for f in findings} == {E04_R3}
+
+
+# --------------------------------------------------------------------------
+# 7. The controller's discovery of the reversal is no condition of validity
+# --------------------------------------------------------------------------
+
+AC2_AT = "fields.acceptanceCriteria[0].value[1]"
+VALIDITY_DETAIL = (
+    "it makes the controller's discovery of the reversal a condition of validity"
+)
+EXCLUDING_DETAIL = (
+    "it leaves a verdict not judged, or a run INCONCLUSIVE or aborted, on the "
+    "controller's discovery of the reversal"
+)
+DISCOVERY_AT = "definition.reversalTiming.controllerDiscovery"
+DISCOVERY_DETAIL = (
+    "the controller's discovery of the reversal is not stated as part of "
+    "recoveryMs, judged by E04-AC12 and by no validity criterion"
+)
+EVENTS_DETAIL = (
+    "E04-AC2 is not the validity criterion of the operator events of the reversal "
+    "and the reversal commit"
+)
+
+
+def _restore_ac2(document: dict[str, Any]) -> None:
+    """E04-AC2 as revision 2 states it, with the controller clause."""
+    criterion_of(document, "E04-AC2")["statement"] = criterion_of(load(E04), "E04-AC2")[
+        "statement"
+    ]
+
+
+def _restore_ac2_clock(document: dict[str, Any]) -> None:
+    """The criterion clock of E04-AC2 that revision 2 states for its argo reading."""
+    entry = load(E04)["definition"]["criterionClocks"][2]
+    assert entry["criterion"] == "E04-AC2"
+    document["definition"]["criterionClocks"].insert(2, entry)
+
+
+def _add_to(identifier: str, text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        criterion_of(document, identifier)["statement"] += " " + text
+
+    return change
+
+
+def _abort(text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        value(document, "abortConditions").append(text)
+
+    return change
+
+
+def _rule(text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["outcomeRules"].append(text)
+
+    return change
+
+
+def _discovery(member: str, new: Any) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        timing_of(document)["controllerDiscovery"][member] = new
+
+    return change
+
+
+def _restored(document: dict[str, Any]) -> None:
+    instants = timing_of(document)["instants"]
+    instants["desiredStateRestored"]["notEstablished"] += (
+        " When desiredStateRestored is not established, the run is INCONCLUSIVE."
+    )
+
+
+def _r3_append_clock_policy(text: str) -> Callable[[dict[str, Any]], None]:
+    def change(document: dict[str, Any]) -> None:
+        document["definition"]["clockPolicy"]["notJudged"]["rule"] += " " + text
+
+    return change
+
+
+CONTROLLER_DEFECTS = [
+    pytest.param(
+        _restore_ac2,
+        [(CONTROLLER_RULE, f"{AC2_AT}.statement", VALIDITY_DETAIL)],
+        id="the-clause-of-revision-two-restored-to-e04-ac2",
+    ),
+    pytest.param(
+        _restore_ac2_clock,
+        [
+            (
+                CONTROLLER_RULE,
+                "definition.criterionClocks[2]",
+                "an order of E04-AC2 reads a source other than the operator events",
+            ),
+            (
+                CONTROLLER_RULE,
+                "definition.criterionClocks[2].statement",
+                VALIDITY_DETAIL,
+            ),
+        ],
+        id="the-argo-clock-of-revision-two-restored-to-e04-ac2",
+    ),
+    pytest.param(
+        _add_to(
+            "E04-AC2",
+            "The controller resolves the reversal commit inside the observation limit.",
+        ),
+        [(CONTROLLER_RULE, f"{AC2_AT}.statement", VALIDITY_DETAIL)],
+        id="the-clause-in-other-words",
+    ),
+    pytest.param(
+        _add_to(
+            "E04-AC3",
+            "The argo stream reports the commit of the revert as resolvedRevision.",
+        ),
+        [
+            (
+                CONTROLLER_RULE,
+                "fields.acceptanceCriteria[0].value[2].statement",
+                VALIDITY_DETAIL,
+            )
+        ],
+        id="the-clause-moved-to-another-validity-criterion",
+    ),
+    pytest.param(
+        _add_to("E04-AC4", "Argo CD discovers the known-good revision."),
+        [
+            (
+                CONTROLLER_RULE,
+                "fields.acceptanceCriteria[0].value[3].statement",
+                VALIDITY_DETAIL,
+            )
+        ],
+        id="the-known-good-revision-in-a-validity-criterion",
+    ),
+    pytest.param(
+        _register(
+            {
+                "id": "reversal-not-discovered",
+                "resultState": "INCONCLUSIVE",
+                "reason": "The controller never resolves the reversal commit inside "
+                "the observation limit.",
+            }
+        ),
+        [(CONTROLLER_RULE, "exclusionReasons.reasons[11].reason", VALIDITY_DETAIL)],
+        id="an-exclusion-reason-for-a-controller-that-does-not-discover",
+    ),
+    pytest.param(
+        _abort("The controller does not resolve the reversal commit in 600 s."),
+        [(CONTROLLER_RULE, "fields.abortConditions[0].value[11]", VALIDITY_DETAIL)],
+        id="an-abort-condition-for-a-controller-that-does-not-discover",
+    ),
+    pytest.param(
+        _rule(
+            "When the controller never resolves the commit, the run is INCONCLUSIVE."
+        ),
+        [(CONTROLLER_RULE, "definition.outcomeRules[8]", EXCLUDING_DETAIL)],
+        id="an-outcome-rule-that-leaves-the-run-inconclusive",
+    ),
+    pytest.param(
+        _add_to(
+            "E04-AC12",
+            "When controllerObserved is not stated, the criterion is not judged.",
+        ),
+        [(CONTROLLER_RULE, f"{AC12}.statement", EXCLUDING_DETAIL)],
+        id="e04-ac12-not-judged-without-the-controller",
+    ),
+    pytest.param(
+        _restored,
+        [
+            (
+                CONTROLLER_RULE,
+                "definition.reversalTiming.instants.desiredStateRestored.notEstablished",
+                EXCLUDING_DETAIL,
+            )
+        ],
+        id="a-restored-state-that-is-not-established-leaves-the-run-inconclusive",
+    ),
+    pytest.param(
+        _remove(_r3("reversalTiming"), "controllerDiscovery"),
+        [(CONTROLLER_RULE, DISCOVERY_AT, DISCOVERY_DETAIL)],
+        id="the-discovery-member-removed",
+    ),
+    pytest.param(
+        _discovery("validity", True),
+        [(CONTROLLER_RULE, DISCOVERY_AT, DISCOVERY_DETAIL)],
+        id="the-discovery-a-condition-of-validity",
+    ),
+    pytest.param(
+        _discovery("judgedBy", "E04-AC2"),
+        [(CONTROLLER_RULE, DISCOVERY_AT, DISCOVERY_DETAIL)],
+        id="the-discovery-judged-by-e04-ac2",
+    ),
+    pytest.param(
+        _discovery("notDiscovered", "not-judged"),
+        [(CONTROLLER_RULE, DISCOVERY_AT, DISCOVERY_DETAIL)],
+        id="a-controller-that-does-not-discover-leaves-e04-ac12-not-judged",
+    ),
+    pytest.param(
+        _criterion_member("E04-AC2", "kind", "pass"),
+        [(CONTROLLER_RULE, AC2_AT, EVENTS_DETAIL)],
+        id="e04-ac2-made-a-pass-criterion",
+    ),
+    pytest.param(
+        _criterion_member(
+            "E04-AC2",
+            "statement",
+            "The operator events detection-reviewed, reversal-decided, and "
+            "reversal-created are recorded in that order, with the reversal commit.",
+        ),
+        [(CONTROLLER_RULE, AC2_AT, EVENTS_DETAIL)],
+        id="e04-ac2-without-reversal-accepted",
+    ),
+    # The defects that the independent review of the third commit planted: a modal or
+    # a passive paraphrase, a state that only the controller sets, a verdict after a
+    # semicolon, and a controller condition in the clock policy.
+    pytest.param(
+        _add_to("E04-AC2", "Argo CD must sync the reversal commit."),
+        [(CONTROLLER_RULE, f"{AC2_AT}.statement", VALIDITY_DETAIL)],
+        id="a-modal-paraphrase-in-e04-ac2",
+    ),
+    pytest.param(
+        _add_to("E04-AC3", "Argo CD detects the reversal."),
+        [
+            (
+                CONTROLLER_RULE,
+                "fields.acceptanceCriteria[0].value[2].statement",
+                VALIDITY_DETAIL,
+            )
+        ],
+        id="a-detection-of-the-reversal-in-a-validity-criterion",
+    ),
+    pytest.param(
+        _add_to("E04-AC4", "The Application reports Synced at the end of the window."),
+        [
+            (
+                CONTROLLER_RULE,
+                "fields.acceptanceCriteria[0].value[3].statement",
+                VALIDITY_DETAIL,
+            )
+        ],
+        id="a-sync-state-in-a-validity-criterion-without-the-reversal",
+    ),
+    pytest.param(
+        _rule("Argo CD must discover the reversal; otherwise the run is INCONCLUSIVE."),
+        [(CONTROLLER_RULE, "definition.outcomeRules[8]", EXCLUDING_DETAIL)],
+        id="a-verdict-after-a-semicolon",
+    ),
+    pytest.param(
+        _rule("If the reversal is not discovered, the run is inconclusive."),
+        [(CONTROLLER_RULE, "definition.outcomeRules[8]", EXCLUDING_DETAIL)],
+        id="a-passive-paraphrase-in-lower-case",
+    ),
+]
+
+
+@pytest.mark.parametrize(("change", "expected"), CONTROLLER_DEFECTS)
+def test_each_controller_discovery_defect_is_refused(
+    full_root: Path,
+    change: Callable[[dict[str, Any]], None],
+    expected: list[tuple[str, str, str]],
+) -> None:
+    edit(full_root, E04_R3, change)
+    assert found(full_root) == [
+        (rule, E04_R3, where, detail) for rule, where, detail in expected
+    ]
+
+
+def test_a_controller_condition_in_the_clock_policy_is_refused(
+    full_root: Path,
+) -> None:
+    """The clock policy is shared, so the shared and the clock rules refuse the edit
+    too; the controller rule refuses it on its own text."""
+    edit(
+        full_root,
+        E04_R3,
+        _r3_append_clock_policy(
+            "When the controller never resolves the reversal commit, the run is "
+            "INCONCLUSIVE."
+        ),
+    )
+    assert (
+        CONTROLLER_RULE,
+        E04_R3,
+        "definition.clockPolicy.notJudged.rule",
+        EXCLUDING_DETAIL,
+    ) in found(full_root)
+
+
+def test_revision_three_states_the_controller_discovery_as_recovery() -> None:
+    document = load(E04_R3)
+    discovery = timing_of(document)["controllerDiscovery"]
+    assert {k: v for k, v in discovery.items() if k != "statement"} == dict(
+        core.CONTROLLER_DISCOVERY_MEMBERS
+    )
+    assert "FAILED" in discovery["statement"]
+    ac2 = criterion_of(document, "E04-AC2")
+    assert ac2["kind"] == "validity"
+    clocks = [
+        e
+        for e in document["definition"]["criterionClocks"]
+        if e["criterion"] == "E04-AC2"
+    ]
+    assert len(clocks) == 1
+    assert {i["source"] for i in clocks[0]["instants"]} == {"operator-event"}
+    reasons = {r["id"] for r in document["exclusionReasons"]["reasons"]}
+    assert reasons == {r["id"] for r in load(E04)["exclusionReasons"]["reasons"]} - {
+        ONSET_REASON
+    }
+
+
+def test_the_controller_rule_does_not_read_revision_two_or_another_experiment(
+    root: Path,
+) -> None:
+    """Revision 2 keeps the clause and reads under rule set 3 as before, and the rule
+    reads no record of another experiment."""
+    findings = {f.rule_id for f in core._selection_findings(E04, load(E04))}
+    assert CONTROLLER_RULE in findings
+    assert found(root) == []
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(
+            _criterion_member("E04-AC3", "id", ["x"]), id="a-criterion-id-a-list"
+        ),
+        pytest.param(
+            lambda d: d["definition"]["criterionClocks"][0].__setitem__(
+                "criterion", ["x"]
+            ),
+            id="a-clock-criterion-a-list",
+        ),
+        pytest.param(_discovery("statement", ["x"]), id="a-discovery-statement-a-list"),
+        pytest.param(
+            lambda d: timing_of(d).__setitem__("controllerDiscovery", "x"),
+            id="the-discovery-a-text",
+        ),
+    ],
+)
+def test_a_malformed_controller_member_is_a_finding_and_not_an_error(
+    full_root: Path, change: Callable[[dict[str, Any]], None]
+) -> None:
+    edit(full_root, E04_R3, change)
+    findings = found(full_root)
+    assert findings
+    assert {f[1] for f in findings} == {E04_R3}

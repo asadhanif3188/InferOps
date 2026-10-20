@@ -687,7 +687,12 @@ measured: the check refuses the phrases that it names, and a paraphrase can pass
 under: a change of the rules is a new rule set. A revision of V2-E04 after revision 1 states
 rule set 3 or later, which holds the reversal timing as the repository owner amended it, and never
 judges the recovery from a controller observation or to the end of the stabilization
-span.
+span. A revision of V2-E04 after revision 2 states rule set 4 or later: it selects the span of
+E04-AC12 as the first span that starts after `reversalStart` and then completes, never leaves
+E04-AC12 not judged because a span starts before `reversalStart`, never makes the
+controller's discovery of the reversal a condition of validity, which E04-AC12 judges
+as recovery, and keeps `tools/reversal_outcome`, its outcome reference, pinned. A change to the selection or to the
+outcome rules changes that reference and its tests in the same change.
 [The records' description](docs/proof/experiments/README.md#the-reliability-experiment-freezes)
 states each rule and what is not enforced.
 
@@ -701,7 +706,9 @@ uv run --locked python -m tools.analysis_preregistration --check
 ```
 
 A source revision registered later makes the check refuse until a later revision of the
-analysis record binds it. Analysis code is added under a later revision of its record,
+analysis record binds it. A later V2-E03 revision states the rule set of each binding, counts
+in its extension only the runs of the V2-E04 revision that it binds, and lists each member
+that differs from the revision that it supersedes. Analysis code is added under a later revision of its record,
 which pins it before any figure is computed. Never rank a signal that was added after a
 result was seen without the exploratory label, never label a view or a metric measured
 when it reads only configuration, and never state a cost, a saving, or a return on
