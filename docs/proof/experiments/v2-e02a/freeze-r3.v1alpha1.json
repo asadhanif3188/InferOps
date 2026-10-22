@@ -49,10 +49,12 @@
       "The runner, the collectors, and the release run on the one node, and the capacity gate does not count the runner. The pods stream names no node: with one node, every pod is on it.",
       "The API image is built at each run and the build is not byte-reproducible, so each run records the digest it built.",
       "The driver is docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt, and the procedure that it starts is python -m tools.experiment_e02a. Revision 3 pins both. No run has executed them on a cluster. The tests and the dry runs executed the control against scenario files, with no cluster command and no fault.",
-      "The control restates the figures that this record states in prose: the stable pre-fault window and its checks, the window, the observation limit, the collection, the topology wait, and the number of runs under one revision. It refuses a record that does not state each figure in the phrase that it names. It reads every other value of a run from the structured members of this record.",
+      "The control restates the figures that this record states in prose: the stable pre-fault window and its checks, the window, the observation limit, the collection, the topology wait, the number of runs under one revision, and the 60 s of abort-cluster-incident. It refuses a record that does not state each figure in the phrase that it names. It reads the topology, the release, the model, the environment identity, the caller run, the exclusion reasons, and the rule of the declaration from the structured members of this record. The Helm release, the names of the two Services, the labels of the tiers, and the line that the model verification prints are constants of the control, and this record states none of them.",
       "P4 reads capacity twice: before the preparation installs anything, and immediately before the Application is applied. The gate must accept both readings, and the stable environment identity of each must have the environmentSha256 of environmentIdentity.",
       "The control reads six abort conditions at each check: abort-checkout-changed, abort-cluster-incident, abort-unrelated-change, abort-caller-lost, abort-revision-unknown, and abort-model-risk, the last for the model cache claim alone. The target check of P3 decides abort-wrong-target before the preparation, and the control issues the fault command at most once, which is abort-fault-differs. The control does not read a change that a person makes, the model file of a replacement pod, or abort-cleanup-unsafe. The review of the run compares them.",
-      "The control bounds its waits with figures that this record does not state: 120 s for a collector to start sampling, 300 s after the caller duration for the Job to end, and 3,600 s for the collectors to take their samples. Each bounds a wait. None changes a criterion, a window, or a figure of a run.",
+      "The control bounds its waits and its commands with figures that this record does not state: 120 s for a collector to start sampling, 300 s after the caller duration for the Job to end, 3,600 s for the collectors to take their samples, 3,600 s for each verb of the driver, 900 s for each check of P1, 120 s for each read of Git, and 300 s for the fault command. A verb or a check that reaches its bound gives no answer, and the control refuses the step that reads it. None changes a criterion, a window, or a figure of a run.",
+      "The driver runs the fault command of F3 with the context docker-desktop, which each kubectl command of the driver names: kubectl --context docker-desktop delete pod <name> --namespace inferops-release --wait=false. control.json states the command in that form.",
+      "definition.executables is shared with V2-E02B and lists neither the driver nor the control. This record pins both through materialScope.",
       "The control reads the caller record for the stable pre-fault window from the log of the runner pod while the runner runs. It skips a line that is not a complete request line of the run.",
       "The control writes a work directory under .artifacts/. It does not write the run directory of the proof tree, its manifest, the run analysis, or the result page. They are assembled after the review of the run.",
       "The control writes the declaration of each run from definition.analysisDeclaration, before it reads the evidence of the run. No code holds a stored declaration to that rule afterwards. The review of each run compares them.",
@@ -1239,7 +1241,7 @@
     },
     {
       "path": "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt",
-      "sha256": "760b8262fd0fcae1777e68f5b21cf2b080f14179911f8de7522934b10ede83d6",
+      "sha256": "0266eb7e55916985ccd7772869fbcd1456a06fd06fff4885a37e65dbdd25e58b",
       "role": "the driver of the procedure, or a module of the control that it starts"
     },
     {
@@ -1974,27 +1976,27 @@
     },
     {
       "path": "tools/experiment_e02a/__init__.py",
-      "sha256": "2137bc81dcec306f3d5b10a129eaa74b40e7d01e9516a284430971e1c1bb79ed",
+      "sha256": "f5ba6cdad8dc7aa341f69a380a9aa0b1d96e22473a117727d4dd1b68bafe0838",
       "role": "the driver of the procedure, or a module of the control that it starts"
     },
     {
       "path": "tools/experiment_e02a/__main__.py",
-      "sha256": "547f08eaa73e630c601e7d7c3d20ce4b489d520d803aa57897d2762833920513",
+      "sha256": "91a6c3deea25f28346268c33bb10761f114d4c6cf0cd4113dba8ae079b7d931a",
       "role": "the driver of the procedure, or a module of the control that it starts"
     },
     {
       "path": "tools/experiment_e02a/control.py",
-      "sha256": "d999b0c265ee6f6fec7379062e05eb5186f872226a6d69a12d3bca6233630271",
+      "sha256": "1d6d3c07b2a9cfe8a6f094af689f8a2c629f219a98b814059f7db476992e0ad9",
       "role": "the driver of the procedure, or a module of the control that it starts"
     },
     {
       "path": "tools/experiment_e02a/core.py",
-      "sha256": "d9bf865d8cd08a15f0b0c7a4d6724e64037c1dadd6b0efdcc92f1f86f89e8762",
+      "sha256": "fc2c377cd8273db1af85280c0423391ac6a5b7b663b73815ba534eb7d261b300",
       "role": "the driver of the procedure, or a module of the control that it starts"
     },
     {
       "path": "tools/experiment_e02a/ports.py",
-      "sha256": "3d596bc36c574daf3c6f28d6e1b7a8ecc3fd7632fff085ea3b7d9226e3bf218c",
+      "sha256": "1a70a2da2df31e1bebe39b203b7487873ec913078efc24c48a8a439774a0250a",
       "role": "the driver of the procedure, or a module of the control that it starts"
     },
     {
@@ -2257,44 +2259,44 @@
     {
       "path": "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt",
       "from": null,
-      "to": "760b8262fd0fcae1777e68f5b21cf2b080f14179911f8de7522934b10ede83d6",
+      "to": "0266eb7e55916985ccd7772869fbcd1456a06fd06fff4885a37e65dbdd25e58b",
       "material": true,
-      "reason": "The driver of the procedure. It starts the control and holds each command that reads or changes the cluster, the fault command included."
+      "reason": "The driver of the procedure. It starts the control, and it holds, as one verb each, every command through which the control reads or changes the cluster, the fault command included. The scripts that a verb calls run their own commands."
     },
     {
       "path": "tools/experiment_e02a/__init__.py",
       "from": null,
-      "to": "2137bc81dcec306f3d5b10a129eaa74b40e7d01e9516a284430971e1c1bb79ed",
+      "to": "f5ba6cdad8dc7aa341f69a380a9aa0b1d96e22473a117727d4dd1b68bafe0838",
       "material": true,
-      "reason": "A module of the control that the driver starts. It runs the procedure in the order of this record and decides each step."
+      "reason": "The package entry of the control. It exports the decisions of core.py."
     },
     {
       "path": "tools/experiment_e02a/__main__.py",
       "from": null,
-      "to": "547f08eaa73e630c601e7d7c3d20ce4b489d520d803aa57897d2762833920513",
+      "to": "91a6c3deea25f28346268c33bb10761f114d4c6cf0cd4113dba8ae079b7d931a",
       "material": true,
-      "reason": "A module of the control that the driver starts. It runs the procedure in the order of this record and decides each step."
+      "reason": "The command that the driver starts. It loads the plan from this record and starts the control of a run, or of a dry run."
     },
     {
       "path": "tools/experiment_e02a/control.py",
       "from": null,
-      "to": "d999b0c265ee6f6fec7379062e05eb5186f872226a6d69a12d3bca6233630271",
+      "to": "1d6d3c07b2a9cfe8a6f094af689f8a2c629f219a98b814059f7db476992e0ad9",
       "material": true,
-      "reason": "A module of the control that the driver starts. It runs the procedure in the order of this record and decides each step."
+      "reason": "It runs the steps P1 to C4 in the order of this record."
     },
     {
       "path": "tools/experiment_e02a/core.py",
       "from": null,
-      "to": "d9bf865d8cd08a15f0b0c7a4d6724e64037c1dadd6b0efdcc92f1f86f89e8762",
+      "to": "fc2c377cd8273db1af85280c0423391ac6a5b7b663b73815ba534eb7d261b300",
       "material": true,
-      "reason": "A module of the control that the driver starts. It runs the procedure in the order of this record and decides each step."
+      "reason": "It reads this record and decides each step from what the control read, and it holds the figures that the control restates to their phrases."
     },
     {
       "path": "tools/experiment_e02a/ports.py",
       "from": null,
-      "to": "3d596bc36c574daf3c6f28d6e1b7a8ecc3fd7632fff085ea3b7d9226e3bf218c",
+      "to": "1a70a2da2df31e1bebe39b203b7487873ec913078efc24c48a8a439774a0250a",
       "material": true,
-      "reason": "A module of the control that the driver starts. It runs the procedure in the order of this record and decides each step."
+      "reason": "It runs each read and each act of the control as one verb of the driver, the fault included, or answers it from a scenario file in a dry run."
     },
     {
       "path": "tools/experiment_preregistration/core.py",

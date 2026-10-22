@@ -14,10 +14,11 @@
 # This file is a pinned input of the V2-E02A freeze record from revision 3 on.
 # The procedure itself is python -m tools.experiment_e02a: it reads the latest
 # registered record, runs the steps in the order of the record, and decides each
-# step. This file starts it, and it holds each command that reads or changes the
-# cluster as one verb. The package names no cluster, no delivery controller, and
-# no script. Each verb is one command or one fixed sequence of commands, so each
-# can be read here.
+# step. This file starts it, and it holds, as one verb each, every command through
+# which the control reads or changes the cluster. The scripts that a verb calls
+# run their own commands. The package names no delivery controller and no script.
+# Each verb is one command or one fixed sequence of commands, so each can be read
+# here.
 #
 # The phase run exports the provider and the paths of this file and of its bash,
 # and runs the procedure. The procedure calls `verb` and `fault`. The phases
@@ -28,8 +29,10 @@
 # does not set what `verb` and `fault` require, so a dry run that reached either
 # would be refused here too.
 #
-# The fault is one command: kubectl delete pod <name> --namespace inferops-release
-# --wait=false, once, with the default grace period. The phase `fault` creates a
+# The fault is one command: kubectl --context docker-desktop delete pod <name>
+# --namespace inferops-release --wait=false, once, with the default grace period.
+# The record states it without the context, which every kubectl command of this
+# file names. The phase `fault` creates a
 # marker in the work directory of the run before it runs the command, and it
 # refuses when the marker exists. So one run deletes at most one pod.
 #
@@ -90,9 +93,19 @@ run_phase() {
   export INFEROPS_PROVIDER=docker-desktop
   unset INFEROPS_KIND_CLUSTER_NAME
   export INFEROPS_E02A_MODE="${LIVE_MODE}"
-  export INFEROPS_E02A_DRIVER
-  INFEROPS_E02A_DRIVER="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
-  export INFEROPS_E02A_BASH="${BASH}"
+  local driver bash_path
+  # The control is a Windows program under Git Bash, and MSYS_NO_PATHCONV keeps
+  # the shell from converting a path in its environment. So each path is given in
+  # the absolute form that the control reads, however this file was named.
+  if command -v cygpath >/dev/null 2>&1; then
+    driver="$(cygpath -m -a "$0")"
+    bash_path="$(cygpath -m -a "${BASH}")"
+  else
+    driver="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+    bash_path="${BASH}"
+  fi
+  export INFEROPS_E02A_DRIVER="${driver}"
+  export INFEROPS_E02A_BASH="${bash_path}"
   # The scripts call `python`. The locked environment comes first, so that is
   # the interpreter that uv.lock pins.
   export PATH="$(pwd)/.venv/Scripts:$(pwd)/.venv/bin:${PATH}"

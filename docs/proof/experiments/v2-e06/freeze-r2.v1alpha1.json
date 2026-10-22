@@ -21,7 +21,7 @@
         "role": "baseline",
         "path": "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json",
         "revision": 3,
-        "contentSha256": "2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456",
+        "contentSha256": "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf",
         "preregistrationRules": 2
       },
       {
@@ -222,7 +222,7 @@
       "On 2026-10-18 the repository owner decided that V2-E03 and V2-E06 each have their own freeze record, registered before any source run. That decision was due before Sprint 6 began, and it was made after the Sprint 6 changes had merged. The late date stays recorded here, and it is not changed or waived.",
       "The repository owner decided on 2026-10-18 that the cost basis is local and that no cloud provider is used.",
       "Known when it was written: the committed configuration of both releases, and that the API declares its resident memory metric and does not emit it. No utilization figure was known, because no source run exists.",
-      "Revision 2 was written on 2026-10-22, before any run of V2-E02A or V2-E02B, and before any figure of this record. Revision 3 of V2-E02A was registered with the driver of V2-E02A, and the check of this record holds its latest revision to the latest revision of each source. So revision 2 binds revision 3 of V2-E02A, by path, revision, content digest, and rule set, and it classifies the two pins of revision 1 that moved. Every other member keeps its revision-1 value."
+      "Revision 2 was written on 2026-10-22, before any run of V2-E02A or V2-E02B, and before any figure of this record. Revision 3 of V2-E02A was registered with the driver of V2-E02A, and the check of this record holds its latest revision to the latest revision of each source. So revision 2 binds revision 3 of V2-E02A, by path, revision, content digest, and rule set, and it classifies the two pins of revision 1 that moved. The definition, the fields, and the material scope keep the values of revision 1, except the V2-E02A binding, the history, the freeze revision, and the revision of main."
     ],
     "analysisCode": {
       "procedureDirectory": "docs/proof/experiments/v2-e06/procedure",
@@ -628,7 +628,7 @@
     },
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json",
-      "sha256": "2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456",
+      "sha256": "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf",
       "role": "a freeze record of a source experiment"
     },
     {
@@ -1236,7 +1236,7 @@
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json",
       "from": null,
-      "to": "2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456",
+      "to": "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf",
       "material": true,
       "reason": "Revision 3 of V2-E02A, which this revision binds. It pins the driver of V2-E02A and its control, and it changes no criterion, measurement, window, or topology of V2-E02A."
     },

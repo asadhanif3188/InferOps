@@ -20,6 +20,13 @@ record that states it. :func:`binding_findings` refuses a record whose text does
 not hold each phrase, so a later revision that changes a figure refuses this
 control until the control changes too.
 
+**Some values are constants of this module, and the record states none of
+them**: the Helm release ``inferops``, the names of the two Services, the labels of
+the tiers, the line that the model verification prints, and the context
+``docker-desktop`` of the fault command. The record states the namespace, the
+replica counts, and the fault command, and the control reads them from it or holds
+them to a phrase.
+
 **What it does not do.** It does not judge a criterion, and it states no result
 of a run that reached the fault. The review of the run judges the criteria and
 writes the result page. It does not check that a reading is true: it decides from
@@ -55,6 +62,7 @@ __all__ = [
     "FAULT_CODE",
     "FIRST_CHECK_SECONDS",
     "FIRST_CONTROL_REVISION",
+    "KUBE_CONTEXT",
     "LAST_CHECK_SECONDS",
     "MAXIMUM_RUNS",
     "OBSERVATION_LIMIT_SECONDS",
@@ -99,7 +107,9 @@ __all__ = [
     "ready_replicas",
     "repository_findings",
     "runner_pod_start",
+    "spec_replicas",
     "stable_window",
+    "succeeded_before",
     "topology_findings",
     "window",
 ]
@@ -138,6 +148,10 @@ TOPOLOGY_WAIT_SECONDS: Final = 1800
 MAXIMUM_RUNS: Final = 6
 CLUSTER_INCIDENT_SECONDS: Final = 60
 FAULT_CODE: Final = "delete-runtime-pod"
+
+#: The kubectl context of every cluster command of the driver, the fault included.
+#: The record states the fault command without it.
+KUBE_CONTEXT: Final = "docker-desktop"
 
 #: The abort codes, in the order of the record. :func:`load_plan` refuses a record
 #: that states another set.
@@ -698,6 +712,21 @@ def ready_replicas(deployments: Any) -> dict[str, int | None]:
     return counts
 
 
+def spec_replicas(deployments: Any) -> dict[str, int | None]:
+    """The spec.replicas of the one Deployment of each tier, or None."""
+    found: dict[str, list[Mapping[str, Any]]] = {tier: [] for tier in TIERS}
+    for item in _items(deployments):
+        tier = _tier(item)
+        if tier is not None:
+            found[tier].append(item)
+    return {
+        tier: _integer(_pointer(items[0], "/spec/replicas"))
+        if len(items) == 1
+        else None
+        for tier, items in found.items()
+    }
+
+
 def ready_endpoints(slices: Any) -> dict[str, int | None]:
     """The Ready endpoints of the Service of each tier, over its EndpointSlices.
 
@@ -962,6 +991,14 @@ def stable_window(
     if reasons:
         return False, "; ".join(reasons)
     return True, f"{recent} successful requests in the last 60 s, the last succeeded"
+
+
+def succeeded_before(requests: Sequence[Request], end: datetime) -> bool:
+    """Whether a request succeeded in the last 60 s before ``end``, which C3 reads."""
+    since = end - timedelta(seconds=STABLE_LOOKBACK_SECONDS)
+    return any(
+        request.success and since < request.finished_at <= end for request in requests
+    )
 
 
 # --------------------------------------------------------------------------

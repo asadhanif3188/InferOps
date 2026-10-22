@@ -126,7 +126,7 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E02C, API pod loss | 1 | [`v2-e02c/freeze-r1.v1alpha1.json`](v2-e02c/freeze-r1.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
 | V2-E04, bad release and Git reversal | 1 | [`v2-e04/freeze-r1.v1alpha1.json`](v2-e04/freeze-r1.v1alpha1.json) | One part, E04, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-19, and kept unchanged: its clock statements contradicted its P8, and its recovery interval started at a controller observation and counted the discovery of the reversal as operator time. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-005-PR1` this cell said that it is the latest V2-E04 record and that no revision classifies the three files.) [See below](#the-reversal-timing-of-v2-e04-and-rule-set-3) |
 | V2-E05, drift reconciliation | 1 | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | One part, E05, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
-| V2-E02A, controlled single-runtime baseline | 2 | [`v2-e02a/freeze-r2.v1alpha1.json`](v2-e02a/freeze-r2.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Superseded by revision 3 on 2026-10-22, and kept unchanged: it pins no driver, and its rule G1 names revision 2 as the revision that the switch change registers. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin, and since `V2-S7-001-PR1` its scope also holds the driver, which it does not pin. Revision 3 classifies both. (Until `V2-S7-001-PR1` this cell said that no revision classifies `core.py`.) [See below](#the-clock-policy-of-rule-set-2) |
+| V2-E02A, controlled single-runtime baseline | 2 | [`v2-e02a/freeze-r2.v1alpha1.json`](v2-e02a/freeze-r2.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Superseded by revision 3 on 2026-10-22, and kept unchanged: it pins no driver, and its rule G1 names revision 2 as the revision that the switch change registers. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin, and since `V2-S7-001-PR1` its scope also holds the driver, which it does not pin. Revision 3 classifies both. (Until `V2-S6-005-PR1` this cell ended "No run exists." Until `V2-S7-001-PR1` it said that no revision classifies `core.py`.) [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E02A, controlled single-runtime baseline | 3 | [`v2-e02a/freeze-r3.v1alpha1.json`](v2-e02a/freeze-r3.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 2: it pins [the driver and its control](#the-e02a-driver-and-revision-3), states that the switch change registers revision 4, and classifies the moved pin of `core.py` as not material. It changes no criterion, bound, window, fault, collection, measurement, outcome rule, exclusion reason, abort condition, cleanup, or repetition rule. No run exists, and the desired state on `main` is still the 2+2 target, so a run refuses at P2 until a later change switches it and registers revision 4. [See below](#the-e02a-driver-and-revision-3) |
 | V2-E02B, multi-runtime pod loss | 2 | [`v2-e02b/freeze-r2.v1alpha1.json`](v2-e02b/freeze-r2.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E02C, API pod loss | 2 | [`v2-e02c/freeze-r2.v1alpha1.json`](v2-e02c/freeze-r2.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
@@ -1353,12 +1353,14 @@ a criterion is material, and it is a later revision too.
 
 `V2-S7-001-PR1` adds the driver of V2-E02A and registers revision 3 of its record,
 [`v2-e02a/freeze-r3.v1alpha1.json`](v2-e02a/freeze-r3.v1alpha1.json), with the registered
-digest `2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456`. The driver is
+digest `2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf`. The driver is
 [`v2-e02a/procedure/e02a-driver.txt`](v2-e02a/procedure/e02a-driver.txt). It starts
 `tools/experiment_e02a`, which runs the procedure of the latest registered record in its
-order and decides each step, and it holds each command that reads or changes the cluster
-as one verb, and the fault as its own phase. [The control page](../../testing/experiment-e02a-control.md)
-describes both. Neither has run on a cluster.
+order and decides each step, and it holds each command through which the control reads
+or changes the cluster
+as one verb, and the fault as its own phase; the scripts that it calls run their own
+commands. [The control page](../../testing/experiment-e02a-control.md) describes both.
+Neither has run on a cluster.
 
 - **What revision 3 changes.** It pins the driver and the five modules of the control, adds
   the control to its material scope, names the driver in its limitations, adds one history
@@ -1381,9 +1383,14 @@ describes both. Neither has run on a cluster.
   the desired state and registers revision 4.
 - **The control reads the record.** It refuses a record that differs from its registry
   pin, a revision before 3, and a record that does not state a figure of the control in
-  the phrase that it names, and it reads every other value from the structured members.
+  the phrase that it names. It reads the topology, the release, the model, the
+  environment identity, the caller run, the exclusion reasons, and the rule of the
+  declaration from the structured members. The Helm release, the Service names, the
+  labels of the tiers, and the line of the model verification are constants of the
+  control.
 - **A dry run cannot inject a fault.** A dry run takes an identifier `dry-run-N`, answers
-  each read from a scenario file, executes nothing, and constructs no fault. The fault
+  each cluster read from a scenario file, executes no cluster command, and constructs no
+  fault. The fault
   phase of the driver accepts a run identifier `e02a-N` alone, and deletes at most one pod
   per run.
 - **The analysis records.** The check of the analysis records holds the latest V2-E03 and
@@ -2038,27 +2045,30 @@ and the content digest of its latest registered freeze record:
 
 | Record | Source | Role | Revision | Registered digest |
 |---|---|---|---|---|
-| V2-E03 | V2-E02A | initial | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
+| V2-E03, revisions 1 and 2 | V2-E02A | initial | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
 | V2-E03 | V2-E02B | initial | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
 | V2-E03 | V2-E02C | initial | 2 | `abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818` |
 | V2-E03, revision 1 | V2-E04 | extension | 2 | `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619` |
 | V2-E03, revision 2 | V2-E04 | extension | 3 | `41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05` |
-| V2-E03, revision 3 | V2-E02A | initial | 3 | `2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456` |
+| V2-E03, revision 3 | V2-E02A | initial | 3 | `2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf` |
 | V2-E06, revision 1 | V2-E02A | baseline | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
-| V2-E06, revision 2 | V2-E02A | baseline | 3 | `2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456` |
+| V2-E06, revision 2 | V2-E02A | baseline | 3 | `2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf` |
 | V2-E06 | V2-E02B | target | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
 
 Revision 3 of V2-E03 and revision 2 of V2-E06, registered by `V2-S7-001-PR1` on
 2026-10-22, bind revision 3 of V2-E02A. The check holds the latest revision of each
 analysis record to the latest revision of each source, so the registration of
-revision 3 of V2-E02A needs them in the same change. Each keeps every other binding
-and every other member of its definition, its fields, and its material scope. Revision
+revision 3 of V2-E02A needs them in the same change. Each keeps every other binding,
+and its definition, its fields, and its material scope keep the values of the revision
+that it supersedes, except the V2-E02A binding, the history, the list of changes of
+V2-E03, the freeze revision, and the revision of `main`. Revision
 2 of V2-E06 also classifies the two check pins that `V2-S6-008-PR1` moved, as not
 material: each rule that the two edits added reads a V2-E03 or a V2-E04 record alone.
 The runs of V2-E02A will execute under a later revision of V2-E02A, so a later revision
 of each record binds that revision before any figure is computed from them. (Until
-`V2-S7-001-PR1` this table named the V2-E02A binding of revision 2 alone, and the rows
-of V2-E03 and V2-E06 named no revision.)
+`V2-S7-001-PR1` this table named one V2-E02A binding of each record, revision 2, its
+first V2-E03 row named no revision of V2-E03, and its V2-E06 rows named no revision of
+V2-E06.)
 
 Revision 2 of V2-E03, registered by `V2-S6-008-PR1` on 2026-10-20, binds revision 3 of
 V2-E04 by path, revision, content digest, and rule set, 4, and keeps the three other
@@ -2075,9 +2085,12 @@ file of each source, `freeze-r*.v1alpha1.json`, so
 the check refuses a binding that is not the latest revision. **A run under a later source
 revision is not in the population of either record until a later revision of that record
 binds the source revision.** The sources will need such revisions before their first run:
-V2-E02A owes the switch of its desired state, each other source owes its driver, and three
-of them owe a classification of a moved pin. (Until `V2-S7-001-PR1` this sentence said
-that each owes its driver and that four owe a classification.) ([See the
+V2-E02A owes the switch of its desired state, each other source owes its driver, and
+V2-E02B and V2-E02C owe a classification of a moved pin, as V2-E05 does, which neither
+analysis reads. (Until `V2-S7-001-PR1` this sentence said that each owes its driver and
+that four owe a classification.) Since `V2-S7-001-PR1`
+[its validation](../environment/v2-s7-001-pr1-validation.md#what-each-latest-freeze-owes)
+states what each latest freeze owes ([before it, see the
 readiness review](../environment/v2-s6-008-pr1-validation.md#the-consolidated-pre-run-readiness-review),
 which since `V2-S6-008-PR1` supersedes
 [the review of `V2-S6-006-PR1`](../environment/v2-s6-006-pr1-validation.md#the-consolidated-pre-run-readiness-review)

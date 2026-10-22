@@ -9,12 +9,15 @@ acts only through a :class:`Port`, and it deletes a pod only through a
 **A dry run cannot inject a fault.** The fault is a separate object. A run of the
 procedure gets one, and a dry run gets None. With None the control issues no fault
 command and records no fault event. ``python -m tools.experiment_e02a dry-run``
-never constructs a fault, and its port reads a scenario file and executes nothing.
+never constructs a fault, and its port answers each cluster read from a scenario
+file and executes no cluster command.
 
 **A refusal is a result, and so is an abort.** The control writes what it decided
 into ``control.json`` in the work directory of the run, whatever the result is. A
 refusal before P5 leaves the cluster as it was. A refusal or an abort after the
-start of P5 runs the cleanup.
+start of P5 runs the cleanup. An error that the procedure does not decide, such as
+an interrupt or a file that cannot be written, stops the control with the state
+STOPPED: it runs the cleanup that it can and records the error by its type.
 
 **The control states no result of a run that reached the fault.** It states that
 the run was observed, and the review of the run judges each criterion.
@@ -42,9 +45,11 @@ __all__ = [
     "P1_CHECKS",
     "PREPARATION",
     "REFUSED",
+    "STOPPED",
     "Background",
     "Control",
     "Fault",
+    "IdentifierRefused",
     "Outcome",
     "Port",
 ]
@@ -83,6 +88,7 @@ POLL_SECONDS: Final = 5
 OBSERVED: Final = "OBSERVED"
 REFUSED: Final = "REFUSED"
 ABORTED: Final = "ABORTED"
+STOPPED: Final = "STOPPED"
 
 
 class Background(Protocol):
@@ -139,6 +145,8 @@ class Port(Protocol):
 
     def keep(self, run_id: str, work: Path) -> list[str]: ...
 
+    def caller_record(self, run_id: str) -> str | None: ...
+
 
 class Fault(Protocol):
     """The one command that deletes a pod."""
@@ -154,6 +162,10 @@ class Outcome:
     reason: str | None
     step: str
     work: Path
+
+
+class IdentifierRefused(ValueError):
+    """The identifier of a run cannot be used. Nothing is written."""
 
 
 class _Stop(Exception):
@@ -213,6 +225,22 @@ def _reading(reading: core.ClockReading | None) -> dict[str, str] | None:
     }
 
 
+#: What ``control.json`` states for each state of the control.
+_STATEMENTS: Final[dict[str, str]] = {
+    OBSERVED: (
+        "The control states no result of a run that reached the fault. "
+        "The review of the run judges each criterion."
+    ),
+    REFUSED: "The control states this state and its reason.",
+    ABORTED: "The control states this state and its reason.",
+    STOPPED: (
+        "The control stopped on an error that the procedure does not decide, ran "
+        "the cleanup that it could, and states no result. The review of the run "
+        "classifies it."
+    ),
+}
+
+
 class Control:
     """One run of the procedure, or one dry run of it."""
 
@@ -239,6 +267,7 @@ class Control:
         self.events_open = False
         self.fault_issued = False
         self.fault_reached = False
+        self.fault_exit: int | None = None
         self.collectors: dict[str, Background] = {}
         self.head = ""
         self.desired = ""
@@ -272,11 +301,18 @@ class Control:
         """Run the procedure. The identifier is spent once the work directory exists.
 
         Raises:
-            ValueError: the identifier cannot be used. Nothing is written.
+            IdentifierRefused: the identifier cannot be used, or its work directory
+                exists. Nothing is written.
+            KeyboardInterrupt: an interrupt, after the cleanup that the control
+                could run and the record of the STOPPED state.
         """
         findings = self.identifier_findings()
+        if not findings and self.work.exists():
+            findings = [
+                f"{self.run_id} has a work directory; one identifier is one run"
+            ]
         if findings:
-            raise ValueError("; ".join(findings))
+            raise IdentifierRefused("; ".join(findings))
         self.work.mkdir(parents=True, exist_ok=False)
         self.journal.document = {
             "experimentId": core.EXPERIMENT_ID,
@@ -291,26 +327,36 @@ class Control:
             "steps": [],
         }
         self.journal.write()
+        interrupt: KeyboardInterrupt | None = None
         try:
             self._procedure()
             outcome = Outcome(OBSERVED, None, "C4", self.work)
         except _Stop as stop:
             outcome = Outcome(stop.state, stop.reason, stop.step, self.work)
             self._after_stop(stop)
+        except (Exception, KeyboardInterrupt) as error:
+            steps = self.journal.document.get("steps") or [{"step": "start"}]
+            stopped = _Stop(
+                STOPPED, f"control-error: {type(error).__name__}", steps[-1]["step"]
+            )
+            outcome = Outcome(stopped.state, stopped.reason, stopped.step, self.work)
+            try:
+                self._after_stop(stopped)
+            except Exception as cleanup_error:
+                self.journal.document["cleanupError"] = type(cleanup_error).__name__
+            if isinstance(error, KeyboardInterrupt):
+                interrupt = error
         self.journal.document["outcome"] = {
             "state": outcome.state,
             "reason": outcome.reason,
             "step": outcome.step,
-            "statement": (
-                "The control states no result of a run that reached the fault. "
-                "The review of the run judges each criterion."
-                if outcome.state == OBSERVED
-                else "The control states this state and its reason."
-            ),
+            "statement": _STATEMENTS[outcome.state],
         }
         self.journal.document["finishedAt"] = core.format_instant(self.port.now())
         self.journal.document["kept"] = self.port.keep(self.run_id, self.work)
         self.journal.write()
+        if interrupt is not None:
+            raise interrupt
         return outcome
 
     def _refuse(self, step: str, findings: list[str], reason: str = "") -> None:
@@ -448,10 +494,17 @@ class Control:
             if tier == core.RUNTIME_TIER
         }
         findings.extend(core.model_findings(self.plan, pods, logs))
+        # The abort conditions compare later readings with these. A read that does
+        # not answer is not an empty list.
+        namespaces = _names(self.port.read("namespaces"))
+        crds = _names(self.port.read("crds"))
+        if namespaces is None or crds is None:
+            findings.append(
+                "the namespaces or the custom resource definitions were not read"
+            )
         self._hold("P7", findings, releaseId=self.plan.release_id)
-        # The abort conditions compare later readings with these.
-        self.prepared_namespaces = _names(self.port.read("namespaces")) or ()
-        self.prepared_crds = _names(self.port.read("crds")) or ()
+        assert namespaces is not None and crds is not None
+        self.prepared_namespaces, self.prepared_crds = namespaces, crds
 
     def _p8(self, reading: str) -> core.ClockReading | None:
         parsed = core.clock_reading(self.port.read("clock"))
@@ -628,7 +681,12 @@ class Control:
         return target
 
     def _fault(self, target: core.Target) -> tuple[datetime, datetime]:
-        argv = ["kubectl", *core.fault_argv_tail(self.plan, target)]
+        argv = [
+            "kubectl",
+            "--context",
+            core.KUBE_CONTEXT,
+            *core.fault_argv_tail(self.plan, target),
+        ]
         self.fault_reached = True
         if self.fault is None:
             at = self.port.now()
@@ -655,7 +713,12 @@ class Control:
         finished = self._record(
             "fault-injection-finished", code=core.FAULT_CODE, subject=subject
         )
-        self.journal.step("F2-F4", finished, [], command=argv, exitStatus=status)
+        # A command that fails is recorded, and the procedure goes on: the record
+        # observes after F4 whatever the command did, and the review judges
+        # fault-not-produced.
+        self.fault_exit = status
+        failed = [f"the fault command exited {status}"] if status != 0 else []
+        self.journal.step("F2-F4", finished, failed, command=argv, exitStatus=status)
         return started, finished
 
     def _declare(self, started: datetime, finished: datetime) -> None:
@@ -727,6 +790,16 @@ class Control:
                 collector.stop()
         return exits
 
+    @staticmethod
+    def _collector_findings(exits: dict[str, int | None]) -> list[str]:
+        return [
+            f"the {name} collector exited {status}"
+            if status is not None
+            else f"the {name} collector did not end within its bound and was stopped"
+            for name, status in exits.items()
+            if status != 0
+        ]
+
     def _close_events(self) -> None:
         if self.events_open:
             events.close_log(self.events_path, now=self.port.now)
@@ -737,7 +810,9 @@ class Control:
         self.journal.step("C1", self.port.now(), self._collect_and_stop_runner())
         exits = self._wait_collectors()
         self._close_events()
-        self.journal.step("C2", self.port.now(), [], collectorExits=exits)
+        self.journal.step(
+            "C2", self.port.now(), self._collector_findings(exits), collectorExits=exits
+        )
         self._verify_before_removal()
         self._remove()
 
@@ -746,13 +821,26 @@ class Control:
         drift = []
         if self.port.status("application-verify") != 0:
             drift.append("the live Application or project differs from the manifests")
-        replicas = core.ready_replicas(_json(self.port.read("deployments")))
+        deployments = _json(self.port.read("deployments"))
+        replicas = core.ready_replicas(deployments)
+        specified = core.spec_replicas(deployments)
         for tier, expected in self.plan.replicas.items():
+            if specified[tier] != expected:
+                drift.append(f"{tier} spec.replicas is {specified[tier]}")
             if replicas[tier] != expected:
                 drift.append(f"{tier} readyReplicas is {replicas[tier]}")
         state = core.application_state(_json(self.port.read("application")))
         if state["revision"] != self.desired or state["sync"] != "Synced":
             drift.append("the Application is not Synced at the desired revision")
+        assert self.window_end is not None
+        if not core.succeeded_before(
+            core.caller_requests(self.port.caller_record(self.run_id), self.run_id),
+            self.window_end,
+        ):
+            drift.append(
+                "the caller record holds no successful completion in the last 60 s "
+                "of the window"
+            )
         self.journal.step("C3", self.port.now(), drift, recordedAsDrift=True)
 
     def _remove(self) -> None:
@@ -775,14 +863,16 @@ class Control:
     def _after_stop(self, stop: _Stop) -> None:
         """The cleanup after a refusal or an abort. Each step is recorded.
 
-        After an abort the collectors run to their samples, because their streams
-        are evidence of the run. After a refusal no fault was injected, and the
-        collectors are stopped.
+        After an abort, or a stop after the fault, the collectors run to their
+        samples, because their streams are evidence of the run. After a refusal, or
+        a stop before the fault, no fault was injected, and the collectors are
+        stopped.
         """
         findings = self._collect_and_stop_runner()
         if self.collectors:
-            if stop.state == ABORTED:
+            if stop.state == ABORTED or self.fault_reached:
                 exits = self._wait_collectors()
+                findings.extend(self._collector_findings(exits))
             else:
                 for collector in self.collectors.values():
                     collector.stop()

@@ -9,10 +9,11 @@ registry pin and to the phrases that this control restates, and prints what a ru
 takes from it. It reads no cluster.
 
 ``dry-run`` runs the procedure against a scenario file on a virtual clock. It
-executes no command, constructs no fault, records no fault event, and takes an
-identifier ``dry-run-N``, never a run identifier. It writes under
+executes no cluster command, constructs no fault, records no fault event, and
+takes an identifier ``dry-run-N``, never a run identifier. It writes under
 ``.artifacts/v2-e02a/dry-runs/``. A scenario that states no repository member
-reads that member from the checkout, without the network.
+reads that member from the checkout: it runs ``git`` and the checks of P1, which
+read files and contact no network.
 
 ``run`` runs the procedure on the cluster. It refuses to start unless the E02A
 driver started it: each cluster command is a verb of that driver. Start it with
@@ -21,9 +22,11 @@ It writes under ``.artifacts/v2-e02a/runs/``.
 
 **Exit status 0 says that the control finished and wrote what it decided.** It
 does not say that a precondition held or that a run is valid: a refusal and an
-abort are results, and ``control.json`` states them. Exit status 3 says that the
-record, the identifier, or the scenario cannot be used, and nothing was written.
-Exit status 2 says that the arguments are not usable.
+abort are results, and ``control.json`` states them. Exit status 4 says that the
+control stopped on an error that the procedure does not decide, after the cleanup
+that it could run; ``control.json`` states the state STOPPED. Exit status 3 says
+that the record, the identifier, or the scenario cannot be used, and nothing was
+written. Exit status 2 says that the arguments are not usable.
 """
 
 from __future__ import annotations
@@ -34,7 +37,7 @@ import os
 import sys
 from pathlib import Path
 
-from .control import Control
+from .control import STOPPED, Control, IdentifierRefused
 from .core import REPO_ROOT, PlanRefused, load_plan
 from .ports import (
     DRY_RUNS_WORK,
@@ -49,6 +52,7 @@ from .ports import (
 )
 
 REFUSED_EXIT = 3
+STOPPED_EXIT = 4
 
 
 def _emit(text: str) -> None:
@@ -161,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         outcome = control.run()
-    except ValueError as error:
+    except IdentifierRefused as error:
         print(f"REFUSED: {error}", file=sys.stderr)
         return REFUSED_EXIT
     relative = outcome.work.relative_to(REPO_ROOT).as_posix()
@@ -170,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         + (f" ({outcome.reason}, at {outcome.step})" if outcome.reason else "")
         + f": {relative}/control.json\n"
     )
-    return 0
+    return STOPPED_EXIT if outcome.state == STOPPED else 0
 
 
 if __name__ == "__main__":

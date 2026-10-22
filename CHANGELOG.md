@@ -13,14 +13,14 @@ from `1.0.0`.
 - **The E02A driver and revision 3 of the V2-E02A record.** `V2-S7-001-PR1` adds the
   driver that revisions 1 and 2 of the V2-E02A record stated was owed, and registers
   revision 3, which pins it. The driver,
-  `docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt`, is the one file of the
-  procedure that runs a cluster command: it holds each read and each act as one verb, and
-  the fault as its own phase. It starts `tools/experiment_e02a`, which reads the latest
+  `docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt`, is the one file through
+  which the control issues a cluster command: it holds each read and each act as one
+  verb, and the fault as its own phase. The scripts that it calls run their own commands. It starts `tools/experiment_e02a`, which reads the latest
   registered record, refuses it unless it is revision 3 or later, has its registry pin,
   and states each figure that the control restates, and runs P1 to P8, the collection,
   the stable pre-fault window, F1 to F4, the observation, and C1 to C4 in that order. A
-  dry run, `dry-run-N`, answers each read from a scenario file, executes nothing, and
-  has no fault; a run identifier `e02a-N` is the only one that a fault accepts, and the
+  dry run, `dry-run-N`, answers each cluster read from a scenario file, executes no
+  cluster command, and has no fault; a run identifier `e02a-N` is the only one that a fault accepts, and the
   driver deletes at most one pod per run. The control states no result of a run that
   reached the fault: the review judges each criterion. Revision 3 changes no criterion,
   bound, window, fault, collection, measurement, outcome rule, exclusion reason, abort

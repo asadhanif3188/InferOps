@@ -21,6 +21,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -79,7 +80,13 @@ def _deployments(api: int | None = 2, runtime: int | None = 1) -> dict[str, Any]
     items = []
     for tier, ready in ((core.API_TIER, api), (core.RUNTIME_TIER, runtime)):
         status = {} if ready is None else {"readyReplicas": ready}
-        items.append({"metadata": {"labels": _labels(tier)}, "status": status})
+        items.append(
+            {
+                "metadata": {"labels": _labels(tier)},
+                "spec": {"replicas": {core.API_TIER: 2, core.RUNTIME_TIER: 1}[tier]},
+                "status": status,
+            }
+        )
     return {"items": items}
 
 
@@ -1025,6 +1032,9 @@ def test_a_run_deletes_the_target_once_between_the_two_fault_events(
 
 
 def test_a_second_fault_is_refused_as_an_abort(tmp_path: Path) -> None:
+    """The guard of the control itself. The procedure calls the fault step once, so
+    this sets the flag by hand. The marker of the driver is the guard that a run
+    reaches, and the driver tests hold it."""
     fault = RecordingFault()
     control, _ = _control(tmp_path, scenario(), fault=fault)
     control.fault_issued = True
@@ -1035,7 +1045,7 @@ def test_a_second_fault_is_refused_as_an_abort(tmp_path: Path) -> None:
 
 
 def test_a_dry_run_issues_no_fault_and_records_no_fault_event(tmp_path: Path) -> None:
-    control, port = _control(tmp_path, scenario())
+    control, _ = _control(tmp_path, scenario())
     outcome = control.run()
     assert (outcome.state, outcome.reason) == (OBSERVED, None)
     log = events.read_log((outcome.work / "operator-events.jsonl").read_text("utf-8"))
@@ -1044,6 +1054,8 @@ def test_a_dry_run_issues_no_fault_and_records_no_fault_event(tmp_path: Path) ->
     assert f2["dryRun"] is True
     assert f2["command"] == [
         "kubectl",
+        "--context",
+        "docker-desktop",
         "delete",
         "pod",
         RUNTIME_POD,
@@ -1051,7 +1063,7 @@ def test_a_dry_run_issues_no_fault_and_records_no_fault_event(tmp_path: Path) ->
         "inferops-release",
         "--wait=false",
     ]
-    assert not any("fault" in entry for entry in port.log)
+    assert f2["held"] is True
 
 
 def test_the_dry_run_command_constructs_no_fault_and_runs_no_process(
@@ -1591,3 +1603,265 @@ def test_each_verb_that_the_control_calls_is_a_verb_of_the_driver(
     }
     for verb in called:
         assert f"\n    {verb})" in text, verb
+
+
+# --------------------------------------------------------------------------
+# Added after the independent review of the first commit
+# --------------------------------------------------------------------------
+
+
+class FailingFault(RecordingFault):
+    """A fault whose command fails, as a kubectl that answers NotFound does."""
+
+    def delete(self, pod: str) -> int:
+        self.deleted.append(pod)
+        return 1
+
+
+def test_a_failed_fault_command_is_a_finding_and_the_run_is_observed(
+    tmp_path: Path,
+) -> None:
+    fault = FailingFault()
+    control, _ = _control(tmp_path, scenario(), fault=fault)
+    outcome = control.run()
+    assert outcome.state == OBSERVED
+    step = next(s for s in _journal(outcome)["steps"] if s["step"] == "F2-F4")
+    assert (step["held"], step["exitStatus"]) == (False, 1)
+    assert step["findings"] == ["the fault command exited 1"]
+    assert _steps(outcome)[-1] == "C4"
+
+
+def test_p7_refuses_when_the_namespaces_after_the_preparation_are_not_read(
+    tmp_path: Path,
+) -> None:
+    document = scenario()
+    document["reads"]["namespaces"].insert(3, {"after": "application-apply", "exit": 1})
+    control, port = _control(tmp_path, document)
+    outcome = control.run()
+    assert (outcome.state, outcome.step) == (REFUSED, "P7")
+    p7 = next(s for s in _journal(outcome)["steps"] if s["step"] == "P7")
+    assert p7["findings"] == [
+        "the namespaces or the custom resource definitions were not read"
+    ]
+    assert "act release-remove: not executed in a dry run" in port.log
+
+
+class _Failed:
+    """A collector that samples and then exits 3."""
+
+    def alive(self) -> bool:
+        return True
+
+    def output(self) -> str:
+        return "samples: test\n"
+
+    def wait(self, seconds: float) -> int | None:
+        return 3
+
+    def stop(self) -> None:
+        return None
+
+
+def test_c2_states_a_collector_that_failed(tmp_path: Path) -> None:
+    control, port = _control(tmp_path, scenario(), fault=RecordingFault())
+    port.start = lambda name, *arguments: _Failed()  # type: ignore[method-assign, assignment]
+    outcome = control.run()
+    c2 = next(s for s in _journal(outcome)["steps"] if s["step"] == "C2")
+    assert c2["held"] is False
+    assert c2["findings"] == [
+        "the timeline collector exited 3",
+        "the telemetry collector exited 3",
+    ]
+
+
+def test_c3_reads_spec_replicas_and_the_last_60_s_of_the_caller(
+    tmp_path: Path,
+) -> None:
+    document = scenario()
+    drifted = _deployments()
+    drifted["items"][1]["spec"]["replicas"] = 2
+    document["reads"]["deployments"] = [
+        {"json": _deployments()},
+        {"after": "runner-collect", "json": drifted},
+    ]
+    document["reads"]["caller-record"] = {"exit": 1}
+    control, _ = _control(tmp_path, document, fault=RecordingFault())
+    outcome = control.run()
+    c3 = next(s for s in _journal(outcome)["steps"] if s["step"] == "C3")
+    assert c3["findings"] == [
+        "serving-runtime spec.replicas is 2",
+        "the caller record holds no successful completion in the last 60 s of "
+        "the window",
+    ]
+
+
+def test_c3_holds_when_the_caller_succeeds_at_the_end_of_the_window(
+    tmp_path: Path,
+) -> None:
+    control, _ = _control(tmp_path, scenario(), fault=RecordingFault())
+    outcome = control.run()
+    c3 = next(s for s in _journal(outcome)["steps"] if s["step"] == "C3")
+    assert c3["findings"] == []
+
+
+def test_an_error_after_p5_stops_the_control_and_runs_the_cleanup(
+    tmp_path: Path,
+) -> None:
+    control, port = _control(tmp_path, scenario())
+    original = port.act
+
+    def act(name: str, *arguments: str) -> int:
+        if name == "controller":
+            raise OSError("a file that cannot be written")
+        return original(name, *arguments)
+
+    port.act = act  # type: ignore[method-assign]
+    outcome = control.run()
+    assert (outcome.state, outcome.reason, outcome.step) == (
+        control_module.STOPPED,
+        "control-error: OSError",
+        "P4 before-install",
+    )
+    journal = _journal(outcome)
+    assert journal["outcome"]["state"] == control_module.STOPPED
+    assert "act release-remove: not executed in a dry run" in port.log
+    assert _steps(outcome)[-1] == "C4"
+
+
+def test_an_interrupt_runs_the_cleanup_and_is_raised_again(tmp_path: Path) -> None:
+    control, port = _control(tmp_path, scenario())
+    original = port.act
+
+    def act(name: str, *arguments: str) -> int:
+        if name == "application-apply":
+            raise KeyboardInterrupt
+        return original(name, *arguments)
+
+    port.act = act  # type: ignore[method-assign]
+    with pytest.raises(KeyboardInterrupt):
+        control.run()
+    journal = json.loads((control.work / "control.json").read_text("utf-8"))
+    assert journal["outcome"]["state"] == control_module.STOPPED
+    assert "act release-remove: not executed in a dry run" in port.log
+
+
+def test_a_dry_run_identifier_that_has_a_work_directory_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(cli, "load_plan", lambda _root: PLAN)
+    path = tmp_path / "scenario.json"
+    path.write_text(json.dumps(scenario()), "utf-8")
+    arguments = ["dry-run", "--run-id", "dry-run-1", "--scenario", str(path)]
+    assert cli.main(arguments) == 0
+    assert cli.main(arguments) == cli.REFUSED_EXIT
+
+
+@pytest.mark.parametrize(
+    "caller",
+    [
+        {"everyMs": 0},
+        {"everyMs": "2000"},
+        {"podStartsAfterSeconds": -1},
+        {"podStartsAfterSeconds": 1.5},
+    ],
+)
+def test_a_scenario_with_an_unusable_caller_is_refused(caller: dict[str, Any]) -> None:
+    with pytest.raises(ports.ScenarioRefused):
+        ScenarioPort(scenario(caller=caller), None)
+
+
+def test_the_driver_and_the_control_name_one_namespace_and_one_context() -> None:
+    text = DRIVER.read_text(encoding="utf-8")
+    assert f'\nNAMESPACE="{PLAN.namespace}"\n' in text
+    assert f'k() {{ kubectl --context {core.KUBE_CONTEXT} "$@"; }}' in text
+
+
+def test_the_driver_hands_the_control_paths_that_it_can_read(tmp_path: Path) -> None:
+    """The phase run starts the control with the paths of the driver and of its
+    bash in the form that the control reads, and with the controller namespace."""
+    bash = _bash()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    seen = tmp_path / "seen.txt"
+    stub = bin_dir / "uv"
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        f'printf "%s\\n" "$INFEROPS_E02A_DRIVER" "$INFEROPS_E02A_BASH" '
+        f'"$INFEROPS_E02A_MODE" "$*" > "{seen.as_posix()}"\n',
+        "utf-8",
+        newline="\n",
+    )
+    stub.chmod(0o755)
+    done = _driver(bash, tmp_path, bin_dir, "run", "e02a-1", live=False)
+    assert done.returncode == 0, done.stderr
+    driver, bash_path, mode, arguments = seen.read_text("utf-8").splitlines()
+    assert Path(driver).resolve() == DRIVER.resolve()
+    assert Path(bash_path).is_file()
+    assert mode == "live"
+    assert arguments.endswith(
+        "python -m tools.experiment_e02a run --run-id e02a-1 "
+        "--controller-namespace argocd"
+    )
+
+
+def _stub_driver(directory: Path, body: str) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    stub = directory / "driver.txt"
+    stub.write_text("#!/usr/bin/env bash\n" + body, "utf-8", newline="\n")
+    return stub
+
+
+def test_the_live_port_runs_each_verb_through_the_driver_and_keeps_it(
+    tmp_path: Path,
+) -> None:
+    bash = _bash()
+    driver = _stub_driver(
+        tmp_path / "bin",
+        'case "$2" in\n'
+        '  namespaces) printf "namespace/a\\n" ;;\n'
+        '  runner-start) printf "from %s\\n" "$(pwd -W)"; exit 4 ;;\n'
+        "  *) exit 1 ;;\n"
+        "esac\n",
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    port = ports.LivePort(tmp_path, PLAN, driver, bash, work)
+    assert port.read("namespaces") == "namespace/a\n"
+    assert port.read("crds") is None
+    assert port.act("runner-start", "e02a-1") == 4
+    commands = (work / "commands.txt").read_text("utf-8").splitlines()
+    assert commands[0].endswith("verb namespaces")
+    assert all(str(tmp_path) not in line for line in commands)
+    transcript = (work / "transcript.txt").read_text("utf-8")
+    assert "[exit 4]" in transcript
+    assert "from <repository>" in transcript
+
+
+def test_a_live_fault_returns_the_status_of_the_fault_phase(tmp_path: Path) -> None:
+    bash = _bash()
+    driver = _stub_driver(
+        tmp_path / "bin", '[ "$1" = fault ] && [ "$2" = e02a-1 ] && exit 3\nexit 9\n'
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    port = ports.LivePort(tmp_path, PLAN, driver, bash, work)
+    fault = ports.LiveFault(tmp_path, driver, bash, "e02a-1", port)
+    assert fault.delete("pod-a") == 3
+    assert (
+        (work / "commands.txt")
+        .read_text("utf-8")
+        .strip()
+        .endswith("fault e02a-1 pod-a")
+    )
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32", reason="a drive-letter path is a path of Windows alone"
+)
+def test_the_transcript_replaces_each_form_of_the_checkout_path() -> None:
+    port = ports.LivePort(Path("D:/work/InferOps"), PLAN, DRIVER, "bash", Path("w"))
+    text = r"D:\work\InferOps\a D:/work/InferOps/b /d/work/InferOps/c /d/work/other"
+    assert port._clean_text(text) == (
+        r"<repository>\a <repository>/b <repository>/c /d/work/other"
+    )

@@ -5,15 +5,19 @@ network: P2 of a run reads the remote main through :class:`LivePort`.
 
 :class:`LivePort` runs each cluster read and each cluster act as one verb of the
 E02A driver, ``docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt``. The
-driver is the one file of the procedure that names the cluster, the delivery
-controller, and the scripts. This package names none of them. Each command and
-what it printed are kept for ``commands.txt`` and ``transcript.txt``.
+driver is the one file through which the control issues a cluster command, and the
+scripts that it calls issue their own. This package names no delivery controller
+and no script. Each command and what it printed are kept for ``commands.txt`` and
+``transcript.txt``. The output of a verb goes to a file and not to a pipe, so a
+process that a verb leaves behind cannot hold the control.
 
 :class:`LiveFault` deletes one pod through the fault verb of the driver. It is
 constructed for a run identifier and never for a dry run.
 
-:class:`ScenarioPort` answers each read from a scenario file and executes nothing.
-It is the port of a dry run, and it has no fault.
+:class:`ScenarioPort` answers each cluster read from a scenario file and executes
+no cluster command. It is the port of a dry run, and it has no fault. A scenario
+that states no repository member reads that member from the checkout: it runs
+``git`` and the checks of P1, which read files and contact no network.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -62,6 +67,7 @@ CAPACITY_RECORD: Final = (
 GIT_TIMEOUT_SECONDS: Final = 120
 CHECK_TIMEOUT_SECONDS: Final = 900
 VERB_TIMEOUT_SECONDS: Final = 3600
+FAULT_TIMEOUT_SECONDS: Final = 300
 
 
 def _lf(data: bytes) -> bytes:
@@ -227,12 +233,23 @@ class _Process:
             return None
 
     def stop(self) -> None:
-        if self.alive():
+        if not self.alive():
+            return
+        if sys.platform == "win32":
+            # terminate() ends the collector bash alone on Windows. Its kubectl and
+            # sleep children would survive it, so the whole tree is ended.
+            subprocess.run(
+                ["taskkill", "/T", "/F", "/PID", str(self.process.pid)],
+                capture_output=True,
+                timeout=60,
+                check=False,
+            )
+        else:
             self.process.terminate()
-            try:
-                self.process.wait(timeout=30)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
+        try:
+            self.process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
 
 
 @dataclass
@@ -307,19 +324,26 @@ class LivePort:
 
     def _verb(self, name: str, arguments: Sequence[str]) -> tuple[int | None, bytes]:
         argv = self._argv("verb", name, arguments)
-        try:
-            done = subprocess.run(
-                argv,
-                cwd=self.root,
-                capture_output=True,
-                timeout=VERB_TIMEOUT_SECONDS,
-                check=False,
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            self._log(argv, None, b"")
-            return None, b""
-        self._log(argv, done.returncode, done.stdout + done.stderr)
-        return done.returncode, done.stdout
+        return self._command(argv, VERB_TIMEOUT_SECONDS)
+
+    def _command(self, argv: list[str], timeout: float) -> tuple[int | None, bytes]:
+        """Run one command with its output in files, and keep it in the transcript."""
+        with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+            try:
+                process = subprocess.Popen(argv, cwd=self.root, stdout=out, stderr=err)
+            except OSError:
+                self._log(argv, None, b"")
+                return None, b""
+            try:
+                status: int | None = process.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                _Process(process, Path(os.devnull)).stop()
+                status = None
+            out.seek(0)
+            err.seek(0)
+            printed, problems = out.read(), err.read()
+        self._log(argv, status, printed + problems)
+        return status, printed
 
     def read(self, name: str, *arguments: str) -> str | None:
         status, output = self._verb(name, arguments)
@@ -333,6 +357,14 @@ class LivePort:
     def act(self, name: str, *arguments: str) -> int:
         status = self._verb(name, arguments)[0]
         return 1 if status is None else status
+
+    def caller_record(self, run_id: str) -> str | None:
+        """The caller record that the runner script collected, or None."""
+        path = self.root / RUNNER_RUN.format(run=run_id) / "caller.jsonl"
+        try:
+            return _lf(path.read_bytes()).decode("utf-8", "replace")
+        except OSError:
+            return None
 
     def start(self, name: str, *arguments: str) -> _Process:
         argv = self._argv("verb", name, arguments)
@@ -360,8 +392,16 @@ class LivePort:
 
     def _clean_text(self, text: str) -> str:
         """Text with the host path of the checkout replaced, LF line ends, and no
-        trailing whitespace."""
-        for form in {str(self.root), self.root.as_posix()}:
+        trailing whitespace.
+
+        The path is replaced in its Windows forms and, on a drive, in the form that
+        Git Bash prints, ``/d/...``. The longest form is replaced first.
+        """
+        forms = {str(self.root), self.root.as_posix()}
+        drive = self.root.drive
+        if len(drive) == 2 and drive[1] == ":":
+            forms.add(f"/{drive[0].lower()}{self.root.as_posix()[2:]}")
+        for form in sorted(forms, key=len, reverse=True):
             text = text.replace(form, "<repository>")
         return "\n".join(line.rstrip() for line in text.replace("\r", "").split("\n"))
 
@@ -434,15 +474,8 @@ class LiveFault:
 
     def delete(self, pod: str) -> int:
         argv = [self.bash, str(self.driver), "fault", self.run_id, pod]
-        try:
-            done = subprocess.run(
-                argv, cwd=self.root, capture_output=True, timeout=300, check=False
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            self.port._log(argv, None, b"")
-            return 1
-        self.port._log(argv, done.returncode, done.stdout + done.stderr)
-        return done.returncode
+        status = self.port._command(argv, FAULT_TIMEOUT_SECONDS)[0]
+        return 1 if status is None else status
 
 
 # --------------------------------------------------------------------------
@@ -504,6 +537,21 @@ class ScenarioPort:
             raise ScenarioRefused("a scenario states its start as a UTC instant")
         self.clock = start
         self.acted["start"] = start
+        caller = self.scenario.get("caller")
+        if caller is not None:
+            every = caller.get("everyMs", 2000) if isinstance(caller, Mapping) else None
+            delay = (
+                caller.get("podStartsAfterSeconds", 5)
+                if isinstance(caller, Mapping)
+                else None
+            )
+            if not (
+                type(every) is int and every >= 1 and type(delay) is int and delay >= 0
+            ):
+                raise ScenarioRefused(
+                    "a scenario states the caller with everyMs of at least 1 and "
+                    "podStartsAfterSeconds of at least 0, each an integer"
+                )
 
     # The checkout -------------------------------------------------------
 
@@ -640,7 +688,7 @@ class ScenarioPort:
         if not isinstance(caller, Mapping) or "runner-start" not in self.acted:
             return None
         starts = self.acted["runner-start"] + timedelta(
-            seconds=caller.get("podStartsAfterSeconds", 5)
+            seconds=int(caller.get("podStartsAfterSeconds", 5))
         )
         if self.clock < starts:
             return json.dumps({"items": []})
@@ -699,6 +747,12 @@ class ScenarioPort:
 
     def sleep(self, seconds: float) -> None:
         self.clock += timedelta(seconds=max(seconds, 0.001))
+
+    def caller_record(self, run_id: str) -> str | None:
+        reads = self.scenario.get("reads", {})
+        if isinstance(reads, Mapping) and "caller-record" in reads:
+            return self.read("caller-record", run_id)
+        return self._caller_text(run_id)
 
     def keep(self, run_id: str, work: Path) -> list[str]:
         (work / "dry-run.txt").write_bytes(("\n".join(self.log) + "\n").encode("utf-8"))

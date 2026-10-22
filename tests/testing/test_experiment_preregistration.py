@@ -119,7 +119,7 @@ E04_R3_PIN = "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05"
 #: driver of V2-E02A and the control that the driver starts. The copies of the later
 #: parts leave it out, so that they read revision 2 as the latest V2-E02A record.
 E02A_R3 = "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json"
-E02A_R3_PIN = "2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456"
+E02A_R3_PIN = "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf"
 DRIVER = "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
 #: Every committed record before V2-S7-001-PR1, every committed record, and the latest
 #: committed revision of each experiment.

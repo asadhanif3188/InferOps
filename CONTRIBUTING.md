@@ -679,9 +679,10 @@ uv run --locked python -m tools.experiment_preregistration --check
 
 A driver, a bad-release revision, or a drift injector is added under a later revision of
 its record, which pins it and merges before the first result-bearing run. The E02A driver
-is the one file of its procedure that runs a cluster command, and its control,
-`tools/experiment_e02a`, names no cluster, controller, or script. Dry-run it, never run it,
-without the owner's authorization:
+is the one file through which its control issues a cluster command, and the scripts that
+the driver calls run their own. The control, `tools/experiment_e02a`, names no delivery
+controller and no script. Dry-run it freely. Never run it without the owner's
+authorization:
 
 ```sh
 bash docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt dry-run dry-run-1 SCENARIO

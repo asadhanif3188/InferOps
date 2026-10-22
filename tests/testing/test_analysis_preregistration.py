@@ -90,9 +90,9 @@ ADDED = (E03_R2, E04_R3)
 #: revision 2 of V2-E03 and revision 1 of V2-E06 as the latest records.
 E02A_R3 = "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json"
 E03_R3 = "docs/proof/experiments/v2-e03/freeze-r3.v1alpha1.json"
-E03_R3_PIN = "c95d8bc5a11871f6138088ee62917ecff1920584e427f6f4a9c5189d97e8bb10"
+E03_R3_PIN = "036e9077d4f479e2e01873fbf02bc06c7345c8760e6ea2b13b3afa7507ea6f3f"
 E06_R2 = "docs/proof/experiments/v2-e06/freeze-r2.v1alpha1.json"
-E06_R2_PIN = "3c70ee508893be8df42aacea1dbb391be3f3228ca1768401ec6dd3d9a029139a"
+E06_R2_PIN = "d8e562da2b131697bee29f9b1d5848b4353f72513c3e3e42326d20dd0f5086bf"
 LATER = (E02A_R3, E03_R3, E06_R2)
 DRIVER = "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
 SUPERSEDED_E02A = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"

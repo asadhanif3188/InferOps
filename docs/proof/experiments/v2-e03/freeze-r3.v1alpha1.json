@@ -21,7 +21,7 @@
         "role": "initial",
         "path": "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json",
         "revision": 3,
-        "contentSha256": "2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456",
+        "contentSha256": "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf",
         "preregistrationRules": 2
       },
       {
@@ -432,7 +432,7 @@
       "The repository owner also decided the population, the exclusion of V2-E05, and signal 2 as the operational signal candidate, with no ranking preference, on 2026-10-18, before any source run.",
       "Known when it was written: the qualification q1-2, the characterizations q2-2 and q3-2, the bound record bounds-r1, and the freeze records of the five reliability experiments with their revisions. No signal value of a source run was known, because no source run exists.",
       "Revision 2 was written on 2026-10-20, before any run of V2-E02A, V2-E02B, V2-E02C, V2-E04, or V2-E05, and before any figure of this record. The collective re-review of the Sprint 6 records on 2026-10-19 found that revision 2 of V2-E04 added an exclusion that the amended definition of its recovery does not authorize, and revision 3 of V2-E04 removes it. Revision 1 of this record bound revision 2 of V2-E04, so revision 2 binds revision 3, by path, revision, content digest, and rule set, and its extension counts only the runs that executed under revision 3. The bindings of V2-E02A, V2-E02B, and V2-E02C, the clock policy digest, and every other member keep their revision-1 values.",
-      "Revision 3 was written on 2026-10-22, before any run of V2-E02A, V2-E02B, V2-E02C, V2-E04, or V2-E05, and before any figure of this record. Revision 3 of V2-E02A was registered with the driver of V2-E02A, and this check holds the latest revision of this record to the latest revision of each source. So revision 3 binds revision 3 of V2-E02A, by path, revision, content digest, and rule set. The runs of V2-E02A execute under a later revision of V2-E02A, and definition.population.laterSourceRevision states what that requires before any figure is computed from them. Every other member keeps its revision-2 value."
+      "Revision 3 was written on 2026-10-22, before any run of V2-E02A, V2-E02B, V2-E02C, V2-E04, or V2-E05, and before any figure of this record. Revision 3 of V2-E02A was registered with the driver of V2-E02A, and this check holds the latest revision of this record to the latest revision of each source. So revision 3 binds revision 3 of V2-E02A, by path, revision, content digest, and rule set. The runs of V2-E02A execute under a later revision of V2-E02A, and definition.population.laterSourceRevision states what that requires before any figure is computed from them. The definition, the fields, and the material scope keep the values of revision 2, except the V2-E02A binding, the history, the list of changes, the freeze revision, and the revision of main."
     ],
     "changesFromSupersededRevision": [
       {
@@ -799,7 +799,7 @@
     },
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json",
-      "sha256": "2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456",
+      "sha256": "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf",
       "role": "a freeze record of a source experiment"
     },
     {
@@ -1387,7 +1387,7 @@
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json",
       "from": null,
-      "to": "2eb83a06ba4c1a6289f9f9ebeeb971298ae7f001d91475e8dc6c09696528d456",
+      "to": "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf",
       "material": true,
       "reason": "Revision 3 of V2-E02A, which this revision binds. It pins the driver of V2-E02A and its control, and it changes no criterion, measurement, window, or topology of V2-E02A."
     }
