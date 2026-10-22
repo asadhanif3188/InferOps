@@ -358,7 +358,10 @@ not authorize, and revision 3 has no such exclusion: a valid run with no such sp
 `FAILED`. A controller that never discovers an accepted reversal fails that criterion
 too: its discovery is part of the recovery, not a condition of a valid run. An outcome
 reference applies the rule to declared inputs.
-No run of any of them exists, and no driver exists yet.
+No run of any of them exists. Since `V2-S7-001-PR1` V2-E02A has
+[a driver](docs/testing/experiment-e02a-control.md), pinned by revision 3 of its
+record, which has run against scenario files and never on a cluster. It refuses a run
+while the desired state on `main` is the 2+2 target. No other experiment has a driver.
 
 Since `V2-S6-006-PR1` the two analysis experiments are
 [frozen before any of their source runs](docs/proof/experiments/README.md#the-analysis-experiment-freezes):

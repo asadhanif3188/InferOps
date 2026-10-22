@@ -84,6 +84,17 @@ LATEST_SOURCES = {**SOURCE_RECORDS, "V2-E04": E04_R3}
 #: The records that V2-S6-008-PR1 added. The second to the fourth part read a copy
 #: without them.
 ADDED = (E03_R2, E04_R3)
+#: The records that V2-S7-001-PR1 added: revision 3 of V2-E02A, which pins its
+#: driver, and revision 3 of V2-E03 and revision 2 of V2-E06, which bind it. Every
+#: copy leaves them out except :func:`later_root`, so that the earlier parts read
+#: revision 2 of V2-E03 and revision 1 of V2-E06 as the latest records.
+E02A_R3 = "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json"
+E03_R3 = "docs/proof/experiments/v2-e03/freeze-r3.v1alpha1.json"
+E03_R3_PIN = "c95d8bc5a11871f6138088ee62917ecff1920584e427f6f4a9c5189d97e8bb10"
+E06_R2 = "docs/proof/experiments/v2-e06/freeze-r2.v1alpha1.json"
+E06_R2_PIN = "3c70ee508893be8df42aacea1dbb391be3f3228ca1768401ec6dd3d9a029139a"
+LATER = (E02A_R3, E03_R3, E06_R2)
+DRIVER = "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
 SUPERSEDED_E02A = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"
 PREREGISTRATION_CORE = "tools/experiment_preregistration/core.py"
 EXPERIMENT_DIRECTORIES = ("v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05")
@@ -139,18 +150,25 @@ def test_each_revision_1_keeps_the_row_it_was_registered_with() -> None:
         assert metadata["revision"] == 1
         assert metadata["supersedes"] is None
         assert metadata["registeredBy"] == "V2-S6-006-PR1"
-    # No earlier row moved, and the two rows of V2-S6-008-PR1 follow.
-    assert [row["path"] for row in registry[-4:]] == [
+    # No earlier row moved, the two rows of V2-S6-008-PR1 follow, and then the three
+    # rows of V2-S7-001-PR1.
+    assert [row["path"] for row in registry[-7:]] == [
         E03_RECORD,
         E06_RECORD,
         E04_R3,
         E03_R2,
+        *LATER,
     ]
-    for path, pin in ((E04_R3, E04_R3_PIN), (E03_R2, E03_R2_PIN)):
+    for path, pin, story in (
+        (E04_R3, E04_R3_PIN, "V2-S6-008-PR1"),
+        (E03_R2, E03_R2_PIN, "V2-S6-008-PR1"),
+        (E03_R3, E03_R3_PIN, "V2-S7-001-PR1"),
+        (E06_R2, E06_R2_PIN, "V2-S7-001-PR1"),
+    ):
         assert rows[path] == {
             "path": path,
             "contentSha256": pin,
-            "registeredBy": "V2-S6-008-PR1",
+            "registeredBy": story,
         }
         assert content_digest((REPO_ROOT / path).read_bytes()) == pin
 
@@ -162,6 +180,8 @@ def test_each_record_binds_the_latest_source_revisions_by_digest() -> None:
         E03_RECORD: (core.E03_SOURCES, SOURCE_RECORDS),
         E06_RECORD: (core.E06_SOURCES, SOURCE_RECORDS),
         E03_R2: (core.E03_SOURCES, LATEST_SOURCES),
+        E03_R3: (core.E03_SOURCES, {**LATEST_SOURCES, "V2-E02A": E02A_R3}),
+        E06_R2: (core.E06_SOURCES, {**SOURCE_RECORDS, "V2-E02A": E02A_R3}),
     }
     for path, (expected, bound) in roles.items():
         sources = load(path)["definition"]["sources"]
@@ -239,15 +259,20 @@ def test_each_record_pins_exactly_its_material_scope() -> None:
     """A tripwire: a file added to a scope, or one that moves, fails here. The latest
     record of each pins its scope. Revision 1 of V2-E03 differs from it by revision 3
     of V2-E04, which its scope names and which it does not pin, and by the two checks
-    that V2-S6-008-PR1 edited. Revision 1 of V2-E06 differs by those two checks."""
+    that V2-S6-008-PR1 edited. Revision 1 of V2-E06 differs by those two checks.
+    Since V2-S7-001-PR1 each earlier revision also differs by revision 3 of V2-E02A,
+    which revision 3 of V2-E03 and revision 2 of V2-E06 pin."""
     checks = [
         ("tools/analysis_preregistration/core.py", "changed"),
         (PREREGISTRATION_CORE, "changed"),
     ]
+    later = (E02A_R3, "added")
     expected = {
-        E03_R2: [],
-        E03_RECORD: [(E04_R3, "added"), *checks],
-        E06_RECORD: checks,
+        E03_R3: [],
+        E06_R2: [],
+        E03_R2: [later],
+        E03_RECORD: [(E04_R3, "added"), later, *checks],
+        E06_RECORD: [later, *checks],
     }
     for path, moved in expected.items():
         document = load(path)
@@ -267,17 +292,22 @@ def test_every_source_revision_file_is_in_the_scope_so_a_later_one_is_added() ->
 
 
 def test_no_run_analysis_or_procedure_exists() -> None:
-    """Nothing ran: no source run, no analysis, and no analysis code."""
+    """Nothing ran: no source run, no analysis, and no analysis code. The one
+    procedure is the driver of V2-E02A, which V2-S7-001-PR1 added."""
     experiments = REPO_ROOT / "docs" / "proof" / "experiments"
     for directory in (*EXPERIMENT_DIRECTORIES, "v2-e03", "v2-e06"):
         assert not (experiments / directory / "runs").exists()
-        assert not (experiments / directory / "procedure").exists()
+        assert (experiments / directory / "procedure").exists() == (
+            directory == "v2-e02a"
+        )
     assert sorted(p.name for p in (experiments / "v2-e03").iterdir()) == [
         "freeze-r1.v1alpha1.json",
         "freeze-r2.v1alpha1.json",
+        "freeze-r3.v1alpha1.json",
     ]
     assert sorted(p.name for p in (experiments / "v2-e06").iterdir()) == [
-        "freeze-r1.v1alpha1.json"
+        "freeze-r1.v1alpha1.json",
+        "freeze-r2.v1alpha1.json",
     ]
 
 
@@ -290,13 +320,17 @@ def test_each_source_record_differs_from_its_pins_in_the_check_alone() -> None:
     """The four revisions 2 of rule set 2 and revision 2 of V2-E04 differ from their
     pins in one file, core.py of tools/experiment_preregistration, which
     V2-S6-005-PR1 and V2-S6-008-PR1 edited. Revision 3 of V2-E04 differs in none. A
-    file that a change adds or edits would be listed here."""
-    for path in SOURCE_RECORDS.values():
+    file that a change adds or edits would be listed here. Since V2-S7-001-PR1
+    revision 2 of V2-E02A also lists the driver of V2-E02A as added, and revision 3
+    of V2-E02A differs in none."""
+    for experiment, path in SOURCE_RECORDS.items():
         changes = changed_inputs(load(path), REPO_ROOT)
-        assert [(c.path, c.kind) for c in changes] == [
-            (PREREGISTRATION_CORE, "changed")
-        ]
+        added = [(DRIVER, "added")] if experiment == "V2-E02A" else []
+        assert sorted((c.path, c.kind) for c in changes) == sorted(
+            [*added, (PREREGISTRATION_CORE, "changed")]
+        )
     assert changed_inputs(load(E04_R3), REPO_ROOT) == []
+    assert changed_inputs(load(E02A_R3), REPO_ROOT) == []
     e05 = load("docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json")
     assert [c.path for c in changed_inputs(e05, REPO_ROOT)] == [PREREGISTRATION_CORE]
 
@@ -334,12 +368,13 @@ def test_no_public_text_names_a_section_of_another_document() -> None:
 # --------------------------------------------------------------------------
 
 
-def _copy(tmp_path: Path, *, added: bool) -> Path:
+def _copy(tmp_path: Path, *, added: bool, later: bool = False) -> Path:
     """The registry and the freeze records that the check reads. Without ``added``,
-    the records and the rows of V2-S6-008-PR1 are left out."""
+    the records and the rows of V2-S6-008-PR1 are left out, and without ``later``
+    those of V2-S7-001-PR1."""
+    left_out = (() if added else ADDED) + (() if later else LATER)
     registry = load(REGISTRY)
-    if not added:
-        registry["records"] = [r for r in registry["records"] if r["path"] not in ADDED]
+    registry["records"] = [r for r in registry["records"] if r["path"] not in left_out]
     target = tmp_path / REGISTRY
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
@@ -347,7 +382,7 @@ def _copy(tmp_path: Path, *, added: bool) -> Path:
     for directory in (*EXPERIMENT_DIRECTORIES, "v2-e03", "v2-e06"):
         for record in sorted((base / directory).glob("freeze-r*.v1alpha1.json")):
             relative = record.relative_to(REPO_ROOT)
-            if not added and relative.as_posix() in ADDED:
+            if relative.as_posix() in left_out:
                 continue
             (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(record, tmp_path / relative)
@@ -363,8 +398,53 @@ def root(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def full_root(tmp_path: Path) -> Path:
-    """A root that holds the registry and every committed freeze record."""
+    """A root that holds the registry and every freeze record of the check as they
+    were after V2-S6-008-PR1 and before V2-S7-001-PR1: revision 2 of V2-E03 is the
+    latest one in it."""
     return _copy(tmp_path, added=True)
+
+
+@pytest.fixture
+def later_root(tmp_path: Path) -> Path:
+    """A root that holds the registry and every committed freeze record."""
+    return _copy(tmp_path, added=True, later=True)
+
+
+def test_the_later_records_hold_every_rule_in_a_copy(later_root: Path) -> None:
+    assert core.check_records(later_root) == []
+
+
+def test_revision_3_of_v2_e03_and_revision_2_of_v2_e06_move_the_v2_e02a_binding_alone() -> (
+    None
+):
+    """Each binds revision 3 of V2-E02A, and every other source binding, the
+    definition, and the fields keep their earlier values, except the history, the
+    list of changes, the freeze revision, and the revision of main."""
+    for later, earlier in ((E03_R3, E03_R2), (E06_R2, E06_RECORD)):
+        new, old = load(later), load(earlier)
+        new_sources = {s["experiment"]: s for s in new["definition"]["sources"]}
+        old_sources = {s["experiment"]: s for s in old["definition"]["sources"]}
+        assert new_sources["V2-E02A"] == {
+            **old_sources["V2-E02A"],
+            "path": E02A_R3,
+            "revision": 3,
+            "contentSha256": FROZEN_RECORDS[E02A_R3],
+        }
+        assert {k: v for k, v in new_sources.items() if k != "V2-E02A"} == {
+            k: v for k, v in old_sources.items() if k != "V2-E02A"
+        }
+        skipped = {"sources", "history", "changesFromSupersededRevision"}
+        for key in set(new["definition"]) | set(old["definition"]):
+            if key not in skipped:
+                assert new["definition"].get(key) == old["definition"].get(key), key
+        for key in new["fields"]:
+            if key not in ("experimentIdVersion", "gitRevision"):
+                assert new["fields"][key] == old["fields"][key], key
+        assert new["materialScope"] == old["materialScope"]
+        assert new["metadata"]["supersedes"] == {
+            "path": earlier,
+            "contentSha256": FROZEN_RECORDS[earlier],
+        }
 
 
 def edit(root: Path, path: str, change: Callable[[dict[str, Any]], None]) -> None:
@@ -1311,7 +1391,8 @@ def test_e03_revision_2_differs_from_revision_1_only_in_the_listed_members() -> 
 def test_e03_revision_1_is_read_under_its_own_rules_and_unchanged() -> None:
     """Revision 1 states none of what the three later rules read, and they do not
     read it: it keeps its pin and its row, and it holds every rule it was read under,
-    except that it is no longer the latest."""
+    except that it is no longer the latest: its V2-E04 binding and, since
+    V2-S7-001-PR1, its V2-E02A binding are superseded."""
     assert content_digest((REPO_ROOT / E03_RECORD).read_bytes()) == E03_PIN
     findings = core._record_findings(
         REPO_ROOT,
@@ -1330,7 +1411,10 @@ def test_e03_revision_1_is_read_under_its_own_rules_and_unchanged() -> None:
         dict(FROZEN_RECORDS),
         latest=True,
     )
-    assert found(latest) == {("e03-sources-stale", f"{E04_BINDING}.revision")}
+    assert found(latest) == {
+        ("e03-sources-stale", f"{E04_BINDING}.revision"),
+        ("e03-sources-stale", "definition.sources[0].revision"),
+    }
     assert "executedUnder" not in _extension(load(E03_RECORD))
     assert "changesFromSupersededRevision" not in load(E03_RECORD)["definition"]
 

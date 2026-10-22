@@ -10,6 +10,34 @@ from `1.0.0`.
 
 ### Added
 
+- **The E02A driver and revision 3 of the V2-E02A record.** `V2-S7-001-PR1` adds the
+  driver that revisions 1 and 2 of the V2-E02A record stated was owed, and registers
+  revision 3, which pins it. The driver,
+  `docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt`, is the one file of the
+  procedure that runs a cluster command: it holds each read and each act as one verb, and
+  the fault as its own phase. It starts `tools/experiment_e02a`, which reads the latest
+  registered record, refuses it unless it is revision 3 or later, has its registry pin,
+  and states each figure that the control restates, and runs P1 to P8, the collection,
+  the stable pre-fault window, F1 to F4, the observation, and C1 to C4 in that order. A
+  dry run, `dry-run-N`, answers each read from a scenario file, executes nothing, and
+  has no fault; a run identifier `e02a-N` is the only one that a fault accepts, and the
+  driver deletes at most one pod per run. The control states no result of a run that
+  reached the fault: the review judges each criterion. Revision 3 changes no criterion,
+  bound, window, fault, collection, measurement, outcome rule, exclusion reason, abort
+  condition, cleanup, or repetition rule, and every member that V2-E02B shares with it
+  is unchanged. It names the driver in its limitations, states that the switch change
+  registers revision 4 where rule G1 of revisions 1 and 2 named revision 2, keeps G4
+  word for word, and classifies the `core.py` pin of `tools/experiment_preregistration`
+  as not material. The analysis check holds the latest V2-E03 and V2-E06 records to the
+  latest V2-E02A revision, so revision 3 of V2-E03 and revision 2 of V2-E06 bind
+  revision 3 and change nothing else; V2-E06 revision 2 also classifies the two check
+  pins that `V2-S6-008-PR1` moved. The desired state on `main` stays two API and two
+  runtime replicas, and a run refuses at P2 until a later change switches it and
+  registers revision 4. Nothing ran on a cluster: no fault was injected, no run
+  identifier was taken, and no caller request was sent. See
+  [the control page](docs/testing/experiment-e02a-control.md) and
+  [the validation record](docs/proof/environment/v2-s7-001-pr1-validation.md).
+
 - **The selection of the span of V2-E04, and the rebinding of V2-E03.** `V2-S6-008-PR1`
   registers revision 3 of the V2-E04 record, which supersedes revision 2. The collective
   re-review of the Sprint 6 records on 2026-10-19 found that revision 2 adds the reason
