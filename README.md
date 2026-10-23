@@ -358,7 +358,11 @@ not authorize, and revision 3 has no such exclusion: a valid run with no such sp
 `FAILED`. A controller that never discovers an accepted reversal fails that criterion
 too: its discovery is part of the recovery, not a condition of a valid run. An outcome
 reference applies the rule to declared inputs.
-No run of any of them exists, and no driver exists yet.
+No run of any of them exists. Since `V2-S7-001-PR1` the baseline record is at
+revision 3, which pins [its driver and its control](docs/testing/experiment-e02a-control.md).
+The control has run against scenario files, and the fault phase of the driver against a
+stub `kubectl`; neither has run on a cluster. A run refuses while the desired state on
+`main` is the 2+2 target. No other experiment has a driver.
 
 Since `V2-S6-006-PR1` the two analysis experiments are
 [frozen before any of their source runs](docs/proof/experiments/README.md#the-analysis-experiment-freezes):
@@ -369,12 +373,15 @@ them. V2-E03 fixes its population, its ten signals with the caller record as the
 reference, the API error rate as the comparator of its ranking with no ranking
 preference, and how it counts caller failures that the API error counter misses. V2-E06
 fixes two allocation views, the one measured statistic, and a local cost basis with no
-price. Since `V2-S6-008-PR1` V2-E03 is at revision 2, which binds revision 3 of the
-bad-release record and counts only the runs that execute under it. No figure of either
-exists, the code that computes either analysis in full does not exist, and the
-[pre-run readiness review](docs/proof/environment/v2-s6-008-pr1-validation.md#the-consolidated-pre-run-readiness-review)
-states what each latest freeze still owes before its first run. (Until `V2-S6-008-PR1`
-this paragraph linked the review of `V2-S6-006-PR1`.)
+price. Since `V2-S6-008-PR1` V2-E03 binds revision 3 of the bad-release record and
+counts only the runs that execute under it. Since `V2-S7-001-PR1` V2-E03 is at revision
+3 and V2-E06 at revision 2: each binds revision 3 of the baseline record and changes
+nothing else. No figure of either exists, the code that computes either analysis in full
+does not exist, and the validation of `V2-S7-001-PR1` states
+[what each latest freeze still owes](docs/proof/environment/v2-s7-001-pr1-validation.md#what-each-latest-freeze-owes) before
+its first run. (Until `V2-S6-008-PR1` this paragraph linked the review of
+`V2-S6-006-PR1`, and until `V2-S7-001-PR1` it said that V2-E03 is at revision 2 and
+linked [the readiness review of `V2-S6-008-PR1`](docs/proof/environment/v2-s6-008-pr1-validation.md#the-consolidated-pre-run-readiness-review).)
 
 ## Prerequisites
 

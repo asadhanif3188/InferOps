@@ -115,9 +115,17 @@ RECORDS = {
 #: pin is written out so that a change is visible.
 E04_R3 = "docs/proof/experiments/v2-e04/freeze-r3.v1alpha1.json"
 E04_R3_PIN = "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05"
-#: Every committed record, and the latest committed revision of each experiment.
+#: Revision 3 of V2-E02A, of rule set 2, registered by V2-S7-001-PR1. It pins the
+#: driver of V2-E02A and the control that the driver starts. The copies of the later
+#: parts leave it out, so that they read revision 2 as the latest V2-E02A record.
+E02A_R3 = "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json"
+E02A_R3_PIN = "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf"
+DRIVER = "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
+#: Every committed record before V2-S7-001-PR1, every committed record, and the latest
+#: committed revision of each experiment.
 ALL_COMMITTED = sorted([*ALL_RECORDS, E04_R3])
-LATEST_RECORDS = {**RECORDS, "V2-E04": E04_R3}
+EVERY_RECORD = sorted([*ALL_COMMITTED, E02A_R3])
+LATEST_RECORDS = {**RECORDS, "V2-E04": E04_R3, "V2-E02A": E02A_R3}
 
 QUALIFICATION = "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json"
 QUALIFICATION_1 = "docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json"
@@ -177,7 +185,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout.strip() == (
-        "PASSED: 5 experiment record(s) and 6 superseded revision(s), every rule held"
+        "PASSED: 5 experiment record(s) and 7 superseded revision(s), every rule held"
     )
 
 
@@ -193,8 +201,22 @@ def test_each_revision_one_record_is_registered_by_v2_s6_003_and_unchanged() -> 
     assert check_freezes() == []
 
 
-def test_the_latest_records_are_revision_two_and_v2_e04_revision_three() -> None:
+def test_the_latest_records_are_revision_two_and_v2_e04_and_v2_e02a_revision_three() -> (
+    None
+):
     assert {k: path for k, (path, _) in latest_records().items()} == LATEST_RECORDS
+    e02a = load(E02A_R3)["metadata"]
+    assert e02a == {
+        "experiment": "V2-E02A",
+        "title": load(E02A)["metadata"]["title"],
+        "revision": 3,
+        "registered": "2026-10-22",
+        "registeredBy": "V2-S7-001-PR1",
+        "supersedes": {"path": E02A, "contentSha256": FROZEN_RECORDS[E02A]},
+        "preregistrationRules": 2,
+    }
+    assert FROZEN_RECORDS[E02A_R3] == E02A_R3_PIN
+    assert content_digest((REPO_ROOT / E02A_R3).read_bytes()) == E02A_R3_PIN
     three = load(E04_R3)["metadata"]
     assert three == {
         "experiment": "V2-E04",
@@ -320,15 +342,20 @@ def test_the_reconciliation_bound_of_e05_is_210000_ms_and_not_a_guarantee() -> N
         assert "reconciliationBound" not in value(load(path), "derivedNumericBounds")
 
 
-def test_no_run_and_no_driver_exists_for_any_experiment() -> None:
-    """The records come before any run. No driver is committed: the change that adds
-    one registers a later revision, and its file is listed as added until then."""
+def test_no_run_exists_and_the_one_driver_is_that_of_v2_e02a() -> None:
+    """The records come before any run. Since V2-S7-001-PR1 one driver is committed,
+    that of V2-E02A, and revision 3 of its record pins it. Revisions 1 and 2 of
+    V2-E02A list it as added. No other experiment has a driver."""
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
-        revisions = 3 if experiment.experiment_id == "V2-E04" else 2
-        assert sorted(p.name for p in directory.iterdir()) == [
-            f"freeze-r{n}.v1alpha1.json" for n in range(1, revisions + 1)
-        ]
+        revisions = 3 if experiment.experiment_id in ("V2-E04", "V2-E02A") else 2
+        names = [f"freeze-r{n}.v1alpha1.json" for n in range(1, revisions + 1)]
+        if experiment.experiment_id == "V2-E02A":
+            names.append("procedure")
+            assert [p.name for p in (directory / "procedure").iterdir()] == [
+                "e02a-driver.txt"
+            ]
+        assert sorted(p.name for p in directory.iterdir()) == names
 
 
 def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
@@ -336,11 +363,15 @@ def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:
     change owes a later revision of the record before any run, and the
     ``--changes`` command of the freeze tool lists the file until then. Revision 1
     pins the same files as revision 2, with other digests of this check. Revision 3
-    of V2-E04 also pins the outcome reference that its selection names."""
-    for path in ALL_COMMITTED:
+    of V2-E04 also pins the outcome reference that its selection names. The driver
+    of V2-E02A is in the scope of revisions 1 and 2 of V2-E02A, which do not pin it,
+    and revision 3 pins it."""
+    for path in EVERY_RECORD:
         document = load(path)
         pinned = {item["path"] for item in document["pinnedInputs"]}
-        assert material_files(document["materialScope"], REPO_ROOT) == pinned, path
+        added = {DRIVER} if path in (E02A_R1, E02A) else set()
+        assert material_files(document["materialScope"], REPO_ROOT) - pinned == added
+        assert pinned <= material_files(document["materialScope"], REPO_ROOT), path
         assert "tools/experiment_preregistration/core.py" in pinned
         assert REGISTRY not in pinned
         assert path not in pinned
@@ -1420,18 +1451,23 @@ def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
     moved it again. No revision classifies those moves: each of the four, and
     revision 2 of V2-E04, lists core.py as changed, and its P1 refuses a run, until
     a later revision of it classifies it. V2-E04 revision 3 pins the present file,
-    and no other file of the check moved."""
+    and no other file of the check moved. Since V2-S7-001-PR1 revisions 1 and 2 of
+    V2-E02A also list the driver as added, and revision 3 of V2-E02A pins the driver
+    and classifies the move of core.py."""
     for path in REVISION_ONE.values():
         changes = changed_inputs(load(path), REPO_ROOT)
-        assert [(c.path, c.kind) for c in changes] == [
-            (file, "changed") for file in CHECK_FILES
-        ], path
+        added = [(DRIVER, "added")] if path == E02A_R1 else []
+        assert sorted((c.path, c.kind) for c in changes) == sorted(
+            [*added, *((file, "changed") for file in CHECK_FILES)]
+        ), path
     for path in REVISION_TWO.values():
         changes = changed_inputs(load(path), REPO_ROOT)
-        assert [(c.path, c.kind) for c in changes] == [
-            ("tools/experiment_preregistration/core.py", "changed")
-        ], path
+        added = [(DRIVER, "added")] if path == E02A else []
+        assert sorted((c.path, c.kind) for c in changes) == sorted(
+            [*added, ("tools/experiment_preregistration/core.py", "changed")]
+        ), path
     assert changed_inputs(load(E04_R3), REPO_ROOT) == []
+    assert changed_inputs(load(E02A_R3), REPO_ROOT) == []
 
 
 def test_the_reconciliation_bound_of_e05_is_on_the_host_clock_alone() -> None:

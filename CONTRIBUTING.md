@@ -670,7 +670,7 @@ the rules, the formulas, and what a record does not establish.
 
 **The reliability experiments are frozen records and one check that reads files.** The
 freeze records of V2-E02A, V2-E02B, V2-E02C, V2-E04, and V2-E05 state each procedure in
-full, and no driver exists. The check holds each record to the qualification, the bound
+full. One driver exists, that of V2-E02A, which revision 3 of its record pins. The check holds each record to the qualification, the bound
 record, and the baseline comparison that it names, and to the others:
 
 ```sh
@@ -678,7 +678,19 @@ uv run --locked python -m tools.experiment_preregistration --check
 ```
 
 A driver, a bad-release revision, or a drift injector is added under a later revision of
-its record, which pins it and merges before the first result-bearing run. Never change a
+its record, which pins it and merges before the first result-bearing run. The E02A driver
+is the one file through which its control issues a cluster command, and the scripts that
+the driver calls run their own. The control, `tools/experiment_e02a`, names no delivery
+controller and no script. Dry-run it freely. Never run it without the owner's
+authorization:
+
+```sh
+bash docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt dry-run dry-run-1 SCENARIO
+uv run --locked python -m tools.experiment_e02a plan
+```
+
+Any edit of the driver or of `tools/experiment_e02a` moves a pin of the V2-E02A record,
+so it needs a later revision before a run. Never change a
 criterion, a bound, a window, or an exclusion reason after a run's evidence is read.
 A later revision states its rule set in `metadata.preregistrationRules`, and a revision of
 rule set 2 states the one clock policy of rule set 2 word for word. Do not write that the

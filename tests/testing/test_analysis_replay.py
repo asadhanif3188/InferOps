@@ -2696,10 +2696,13 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
     analysis of the runs of other experiments, and no aggregate reads it. The two
     records added by V2-S6-008-PR1 follow the same rule: revision 3 of V2-E04
     registers the reasons of revision 2 without recovery-onset-not-after-reversal,
-    and revision 2 of V2-E03 registers none.
+    and revision 2 of V2-E03 registers none. The three records added by
+    V2-S7-001-PR1 follow it too: revision 3 of V2-E02A registers the reasons of
+    revision 2 unchanged, and revision 3 of V2-E03 and revision 2 of V2-E06 register
+    none.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 26
+    assert len(records) == 29
     reliability = {"v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05"}
     registering = []
     for record in records:
@@ -2711,7 +2714,9 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
             registering.append(record.parent.name)
         else:
             assert core.EXCLUSION_REASONS_MEMBER not in document
-    assert sorted(registering) == sorted([*reliability, *reliability, "v2-e04"])
+    assert sorted(registering) == sorted(
+        [*reliability, *reliability, "v2-e04", "v2-e02a"]
+    )
     reasons = {
         record.name: [
             r["id"] for r in _read_json(record)["exclusionReasons"]["reasons"]
@@ -2724,6 +2729,12 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
     assert reasons["freeze-r3.v1alpha1.json"] == [
         r for r in reasons["freeze-r2.v1alpha1.json"] if r != onset
     ]
+    e02a = {
+        record.name: _read_json(record)["exclusionReasons"]
+        for record in records
+        if record.parent.name == "v2-e02a"
+    }
+    assert e02a["freeze-r3.v1alpha1.json"] == e02a["freeze-r2.v1alpha1.json"]
     example = _read_json(EXAMPLE_ROOT / FREEZE_REF)
     assert core.EXCLUSION_REASONS_MEMBER not in example
 

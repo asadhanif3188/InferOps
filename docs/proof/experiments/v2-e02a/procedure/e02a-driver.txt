@@ -1,0 +1,265 @@
+#!/usr/bin/env bash
+# Drives one V2-E02A run: the loss of the one runtime pod of the single-runtime
+# baseline release on the docker-desktop provider, while the RP-1 runner sends
+# requests. Run it from the repository root:
+#
+#   bash e02a-driver.txt run e02a-N                 one run, P1 to C4, on the cluster
+#   bash e02a-driver.txt dry-run dry-run-N FILE     the procedure against a scenario file
+#   bash e02a-driver.txt down                       remove the release, the controller,
+#                                                   and the prerequisite layer by hand
+#
+# N of a run is the next run identifier. One identifier is one run. It is never
+# reused, and every run is kept, whatever it shows.
+#
+# This file is a pinned input of the V2-E02A freeze record from revision 3 on.
+# The procedure itself is python -m tools.experiment_e02a: it reads the latest
+# registered record, runs the steps in the order of the record, and decides each
+# step. This file starts it, and it holds, as one verb each, every command through
+# which the control reads or changes the cluster. The scripts that a verb calls
+# run their own commands. The package names no delivery controller and no script.
+# Each verb is one command or one fixed sequence of commands, so each can be read
+# here.
+#
+# The phase run exports the provider and the paths of this file and of its bash,
+# and runs the procedure. The procedure calls `verb` and `fault`. The phases
+# `verb` and `fault` refuse unless the phase run started them.
+#
+# A dry run executes no verb. Its port answers each read from the scenario file
+# and executes nothing, and the procedure constructs no fault. The phase dry-run
+# does not set what `verb` and `fault` require, so a dry run that reached either
+# would be refused here too.
+#
+# The fault is one command: kubectl --context docker-desktop delete pod <name>
+# --namespace inferops-release --wait=false, once, with the default grace period.
+# The record states it without the context, which every kubectl command of this
+# file names. The phase `fault` creates a
+# marker in the work directory of the run before it runs the command, and it
+# refuses when the marker exists. So one run deletes at most one pod.
+#
+# Everything is written under .artifacts/, which Git ignores, so the working tree
+# stays clean. The run directory of the proof tree is assembled from the work
+# directory after the review of the run.
+set -u
+
+PHASE="${1:?give the phase: run, dry-run, down, verb, or fault}"
+shift
+
+EXPERIMENT="V2-E02A"
+NAMESPACE="inferops-release"
+CONTROLLER_NAMESPACE="argocd"
+APPLICATION="local-docker-desktop-support-assistant"
+RELEASE_KEY="local-docker-desktop/support-assistant"
+NODE_CONTAINER="desktop-control-plane"
+INSTANCE_SELECTOR="app.kubernetes.io/instance=inferops"
+RUNTIME_SELECTOR="app.kubernetes.io/instance=inferops,app.kubernetes.io/component=serving-runtime"
+RUNNER_SELECTOR="app.kubernetes.io/name=inferops-reliability-runner"
+KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings,poddisruptionbudgets"
+RUNS_WORK=".artifacts/v2-e02a/runs"
+CAPACITY_COLLECTIONS=".artifacts/capacity-preflight/collections"
+CAPACITY_SCRIPT="scripts/environment/capacity-preflight.sh"
+APPLICATION_SCRIPT="scripts/environment/argocd-application.sh"
+BOOTSTRAP="scripts/environment/argocd-bootstrap.sh"
+PREREQUISITES="scripts/environment/terraform-prerequisites.sh"
+RUNNER_SCRIPT="scripts/environment/reliability-runner.sh"
+TIMELINE_SCRIPT="scripts/environment/experiment-timeline.sh"
+TELEMETRY_SCRIPT="scripts/environment/experiment-telemetry.sh"
+LIVE_MODE="live"
+
+# A path that starts with a slash is an argument for a container here, and not
+# a path of this host.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
+k() { kubectl --context docker-desktop "$@"; }
+instant() { date -u +%Y-%m-%dT%H:%M:%S.%3NZ; }
+
+refuse() {
+  printf 'REFUSED: %s\n' "$1" >&2
+  exit 2
+}
+
+require_live() {
+  [ "${INFEROPS_E02A_MODE:-}" = "${LIVE_MODE}" ] ||
+    refuse "the phase ${PHASE} runs only inside the phase run"
+}
+
+# --------------------------------------------------------------------------
+# The phases that a person starts
+# --------------------------------------------------------------------------
+
+run_phase() {
+  local id="${1:?give the run identifier e02a-N}"
+  [[ "${id}" =~ ^e02a-[1-9][0-9]*$ ]] || refuse "a run identifier is e02a-N"
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  export INFEROPS_E02A_MODE="${LIVE_MODE}"
+  local driver bash_path
+  # The control is a Windows program under Git Bash, and MSYS_NO_PATHCONV keeps
+  # the shell from converting a path in its environment. So each path is given in
+  # the absolute form that the control reads, however this file was named.
+  if command -v cygpath >/dev/null 2>&1; then
+    driver="$(cygpath -m -a "$0")"
+    bash_path="$(cygpath -m -a "${BASH}")"
+  else
+    driver="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+    bash_path="${BASH}"
+  fi
+  export INFEROPS_E02A_DRIVER="${driver}"
+  export INFEROPS_E02A_BASH="${bash_path}"
+  # The scripts call `python`. The locked environment comes first, so that is
+  # the interpreter that uv.lock pins.
+  export PATH="$(pwd)/.venv/Scripts:$(pwd)/.venv/bin:${PATH}"
+  exec uv run --locked python -m tools.experiment_e02a run \
+    --run-id "${id}" --controller-namespace "${CONTROLLER_NAMESPACE}"
+}
+
+dry_run_phase() {
+  local id="${1:?give the dry run identifier dry-run-N}"
+  local scenario="${2:?give the scenario file}"
+  [[ "${id}" =~ ^dry-run-[1-9][0-9]*$ ]] || refuse "a dry run identifier is dry-run-N"
+  unset INFEROPS_E02A_MODE INFEROPS_E02A_DRIVER INFEROPS_E02A_BASH
+  exec uv run --locked python -m tools.experiment_e02a dry-run \
+    --run-id "${id}" --scenario "${scenario}"
+}
+
+# C4, by hand: the cleanup that the procedure runs after a run, for a run that
+# stopped before its cleanup.
+down_phase() {
+  export INFEROPS_PROVIDER=docker-desktop
+  unset INFEROPS_KIND_CLUSTER_NAME
+  release_remove
+}
+
+release_remove() {
+  bash "${APPLICATION_SCRIPT}" remove --confirm
+  local application=$?
+  helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" \
+    --ignore-not-found --wait --timeout 600s
+  local release=$?
+  bash "${BOOTSTRAP}" remove --confirm
+  local controller=$?
+  bash "${PREREQUISITES}" destroy --confirm
+  local prerequisites=$?
+  printf 'application=%s release=%s controller=%s prerequisites=%s\n' \
+    "${application}" "${release}" "${controller}" "${prerequisites}"
+  [ "${application}" -eq 0 ] && [ "${release}" -eq 0 ] &&
+    [ "${controller}" -eq 0 ] && [ "${prerequisites}" -eq 0 ]
+}
+
+# --------------------------------------------------------------------------
+# The fault: the one command that deletes a pod
+# --------------------------------------------------------------------------
+
+fault_phase() {
+  require_live
+  local id="${1:?give the run identifier}" pod="${2:?give the pod name}"
+  [[ "${id}" =~ ^e02a-[1-9][0-9]*$ ]] || refuse "a fault is of a run e02a-N"
+  [[ "${pod}" =~ ^[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?$ ]] || refuse "the pod is not a pod name"
+  [ -d "${RUNS_WORK}/${id}" ] || refuse "the run ${id} has no work directory"
+  # The marker is created before the command, and it is never removed. A second
+  # fault of the run is refused here.
+  if ! (set -o noclobber && printf '%s\n' "${pod}" >"${RUNS_WORK}/${id}/fault-issued") 2>/dev/null; then
+    refuse "the run ${id} has issued its fault"
+  fi
+  k delete pod "${pod}" --namespace "${NAMESPACE}" --wait=false
+}
+
+# --------------------------------------------------------------------------
+# The verbs: each read and each act of the procedure
+# --------------------------------------------------------------------------
+
+model_cache_fill() {
+  local work=".artifacts/v2-e02a/preparation/model-cache.$$"
+  mkdir -p "${work}"
+  bash scripts/environment/api-image.sh values >"${work}/api-image-values.yaml" || return 1
+  bash scripts/environment/model-seed-image.sh values >"${work}/model-seed-values.yaml" || return 1
+  # The preparation release is the V1 real values file: one API replica and one
+  # runtime replica. It is not the release the run observes. Its acquisition job
+  # limit is raised as for the qualification q1-2.
+  helm --kube-context docker-desktop install inferops charts/inferops-llm \
+    --namespace "${NAMESPACE}" \
+    --values charts/inferops-llm/ci/real-values.yaml \
+    --values "${work}/api-image-values.yaml" \
+    --values "${work}/model-seed-values.yaml" \
+    --set model.acquisition.resources.limits.memory=2Gi \
+    --wait --timeout 15m || return 1
+  helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" \
+    --wait --timeout 600s || return 1
+  local left="unread"
+  for _ in $(seq 1 120); do
+    left="$(k get "${KINDS}" -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o name)" || return 1
+    [ -n "${left}" ] || break
+    sleep 2
+  done
+  printf 'What the preparation release left: %s\n' "${left:-nothing}"
+  [ -z "${left}" ]
+}
+
+verb_phase() {
+  require_live
+  local name="${1:?give the verb}"
+  shift
+  case "${name}" in
+    # P3: the target check of the operating procedures.
+    target) bash -c 'source scripts/environment/lib.sh && inferops::resolve_target && printf "target %s\n" "${INFEROPS_TARGET_PROVIDER}"' ;;
+    namespaces) k get namespaces -o name ;;
+    crds) k get customresourcedefinitions -o name ;;
+    # P4: one reading of the capacity gate, and its record.
+    capacity) bash "${CAPACITY_SCRIPT}" --into "${1:?}" ;;
+    capacity-record) cat "${CAPACITY_COLLECTIONS}/${1:?}/record.v1alpha1.json" ;;
+    # P5: the preparation, as the qualification q1-2 prepared the release.
+    api-image) bash scripts/environment/api-image.sh build && bash scripts/environment/api-image.sh load ;;
+    api-image-digest) bash scripts/environment/api-image.sh digest ;;
+    seed-image) bash scripts/environment/model-seed-image.sh build && bash scripts/environment/model-seed-image.sh load ;;
+    prerequisites) bash "${PREREQUISITES}" apply ;;
+    model-cache) model_cache_fill ;;
+    controller) bash "${BOOTSTRAP}" install && bash "${BOOTSTRAP}" verify ;;
+    application-apply) bash "${APPLICATION_SCRIPT}" apply --api-image-digest "${1:?}" ;;
+    # P6 and C3.
+    application-verify) bash "${APPLICATION_SCRIPT}" verify ;;
+    deployments) k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json ;;
+    endpoints) k get endpointslices.discovery.k8s.io -n "${NAMESPACE}" -o json ;;
+    application) k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" -o json ;;
+    # P7.
+    provenance) uv run --locked python -m tools.desired_state_provenance --revision "${1:?}" "${RELEASE_KEY}" ;;
+    runtime-pods) k get pods -n "${NAMESPACE}" -l "${RUNTIME_SELECTOR}" -o json ;;
+    verify-log) k logs "${1:?}" -n "${NAMESPACE}" -c verify-model ;;
+    # P8: a host instant, the node instant, and a second host instant.
+    clock)
+      instant
+      docker exec "${NODE_CONTAINER}" date -u +%Y-%m-%dT%H:%M:%S.%3NZ | tr -d '\r'
+      instant
+      ;;
+    # The collection. Each collector replaces this shell, so the procedure holds
+    # the collector itself.
+    timeline) exec bash "${TIMELINE_SCRIPT}" --experiment "${EXPERIMENT}" --run "${1:?}" \
+      --samples "${2:?}" --interval "${3:?}" --into "${1}" ;;
+    telemetry) exec bash "${TELEMETRY_SCRIPT}" --experiment "${EXPERIMENT}" --run "${1:?}" \
+      --samples "${2:?}" --interval "${3:?}" --into "${1}" ;;
+    runner-start) bash "${RUNNER_SCRIPT}" start --experiment-id "${EXPERIMENT}" --run-id "${1:?}" \
+      --release-id "${2:?}" --duration-seconds "${3:?}" --request-ceiling "${4:?}" ;;
+    # The stable pre-fault window, F1, and the abort conditions.
+    runner-pod) k get pods -n "${NAMESPACE}" -l "inferops.io/run-id=${1:?},${RUNNER_SELECTOR}" -o json ;;
+    runner-log) k logs "job/inferops-reliability-${1:?}" -n "${NAMESPACE}" ;;
+    runner-job) k get job "inferops-reliability-${1:?}" -n "${NAMESPACE}" -o json ;;
+    release-pods) k get pods -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o json ;;
+    nodes) k get nodes -o json ;;
+    claims) k get persistentvolumeclaims -n "${NAMESPACE}" -o json ;;
+    # C1.
+    runner-collect) bash "${RUNNER_SCRIPT}" collect --run-id "${1:?}" ;;
+    runner-cleanup) bash "${RUNNER_SCRIPT}" cleanup --run-id "${1:?}" ;;
+    run-objects) k get jobs,configmaps,pods,networkpolicies -n "${NAMESPACE}" -l "inferops.io/run-id=${1:?}" -o name ;;
+    # C4.
+    release-remove) release_remove ;;
+    *) refuse "no verb ${name}" ;;
+  esac
+}
+
+case "${PHASE}" in
+  run) run_phase "$@" ;;
+  dry-run) dry_run_phase "$@" ;;
+  down) down_phase ;;
+  verb) verb_phase "$@" ;;
+  fault) fault_phase "$@" ;;
+  *) refuse "the phase is run, dry-run, down, verb, or fault" ;;
+esac
