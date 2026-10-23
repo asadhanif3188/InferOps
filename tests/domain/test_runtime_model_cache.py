@@ -39,6 +39,7 @@ from typing import Any
 
 import pytest
 
+from tests.support.target_tree import target_root
 from tools.gitops_desired_state import DESIRED_STATE_RELEASES
 from tools.runtime_model_cache import (
     CAPACITY_REFUSED_EXIT,
@@ -75,7 +76,8 @@ PREREQUISITE_MODULE = (
     REPO_ROOT / "infra" / "terraform" / "modules" / "platform-prerequisites" / "main.tf"
 )
 
-EXPECTED = expected_identity()
+# The two-replica target, whichever side the desired state of this tree selects.
+EXPECTED = expected_identity(root=target_root())
 MODEL = EXPECTED["model"]
 DIGEST = MODEL["sha256"].removeprefix("sha256:")
 PATH = EXPECTED["containerPath"]
@@ -340,6 +342,28 @@ def test_the_expected_identity_is_the_two_pin_records() -> None:
     assert f"{EXPECTED['mountPath']}/{MODEL['fileName']}" == PATH
 
 
+def test_the_desired_state_of_this_tree_expects_the_one_runtime_replica_of_g1() -> None:
+    """Rule G1 of the V2-E02A record switched the desired state to the baseline.
+
+    A collection made at this tree expects one runtime replica. Each other member
+    of the identity is the target's, except the digest of the values file: the
+    two releases differ in the replica count and the workload version alone, and
+    the identity states no workload version.
+    """
+    selected = expected_identity()
+    assert selected["runtimeReplicas"] == 1
+    assert pin_findings(selected) == []
+    assert selected["release"]["valuesFileSha256"] == (
+        "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+    )
+    assert EXPECTED["release"]["valuesFileSha256"] == (
+        "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
+    )
+    for name, value in EXPECTED.items():
+        if name not in ("release", "runtimeReplicas"):
+            assert selected[name] == value, name
+
+
 @pytest.mark.parametrize(
     ("section", "member", "value"),
     [
@@ -382,7 +406,7 @@ def test_a_values_file_without_a_usable_member_gives_no_expected_identity(
     tmp_path: Path, old: str, new: str, message: str
 ) -> None:
     declared = DESIRED_STATE_RELEASES[0]
-    values = REPO_ROOT / declared.directory / "values.generated.yaml"
+    values = target_root() / declared.directory / "values.generated.yaml"
     text = values.read_text(encoding="utf-8")
     assert old in text
     target = tmp_path / declared.directory / "values.generated.yaml"
@@ -1271,7 +1295,8 @@ def test_the_command_prints_the_expected_identity_and_checks_the_committed_runs(
 ):
     printed = _command("--expected")
     assert printed.returncode == 0, printed.stderr
-    assert json.loads(printed.stdout) == EXPECTED
+    # The command reads this tree, whose desired state selects one side.
+    assert json.loads(printed.stdout) == expected_identity()
     checked = _command("--check")
     assert checked.returncode == 0, checked.stderr
     assert checked.stdout.startswith(

@@ -102,10 +102,16 @@ FOLLOWED_REVISION = "main"
 RECORDED_RELEASE_ID = "eeda9493e0ffca2af499342e2850c63e30ff7254d094016c816d7fbe23fc01ae"
 RECORDED_RUN_REVISION = "293767b6c27d858e911e5e43104ad74fbfac4b02"
 #: The declaration that held at the commit the recorded runs reported. The release
-#: was then derived from the one-replica contract. The declaration in this tree
-#: names the two-replica contract, which that commit does not hold.
+#: was then derived from the one-replica contract. Since the G1 switch of the
+#: V2-E02A record the declaration in this tree names that contract too.
 DECLARED_AT_THE_RECORDED_RUNS = replace(
     DECLARED, contract="contracts/workload/examples/valid/synchronous-llm-local.yaml"
+)
+#: The declaration of the two-replica target. It names a contract that the commit
+#: of the recorded runs does not hold.
+TARGET_DECLARED = replace(
+    DECLARED,
+    contract="contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
 )
 PLACEHOLDER_DIGEST = "sha256:" + "0" * 64
 
@@ -431,6 +437,16 @@ def test_a_commit_without_the_release_is_refused(tmp_path: Path) -> None:
     )
 
 
+#: The maximum replica line of the declared contract, whichever contract the
+#: desired state selects. A larger maximum still parses, and it changes the
+#: contract's content.
+_MAXIMUM = re.search(
+    r"maximumReplicas: [0-9]+",
+    (REPO_ROOT / DECLARED.contract).read_text(encoding="utf-8"),
+)
+assert _MAXIMUM is not None
+
+
 def _edit(relative: str, old: str, new: str) -> Callable[[Path], None]:
     def apply(root: Path) -> None:
         path = root / relative
@@ -507,7 +523,7 @@ PLANTED: tuple[tuple[str, Callable[[Path], None], set[str]], ...] = (
     ),
     (
         "a contract that changed after the release was rendered",
-        _edit(DECLARED.contract, "minimumReplicas: 2", "minimumReplicas: 1"),
+        _edit(DECLARED.contract, _MAXIMUM.group(0), "maximumReplicas: 9"),
         {"release-sources-mismatch"},
     ),
     (
@@ -719,9 +735,9 @@ def test_the_recorded_runs_reported_one_commit_and_it_resolves_to_the_release() 
     object to it. The release identifier is restated here, and the desired-state
     document states the same one.
 
-    The commit is read with the declaration that held at it. The declaration in
-    this tree names a contract that the commit does not hold, and the tool refuses
-    the commit under that declaration: it does not guess an earlier one.
+    The commit is read with the declaration that held at it. A declaration that
+    names a contract that the commit does not hold, such as the two-replica
+    target's, is refused: the tool does not guess an earlier one.
     """
     for transcript in TRANSCRIPTS:
         assert reported_revisions(transcript) == {RECORDED_RUN_REVISION}, transcript
@@ -730,9 +746,9 @@ def test_the_recorded_runs_reported_one_commit_and_it_resolves_to_the_release() 
     if exists.returncode != 0:
         pytest.skip("this checkout does not hold the commit the runs reported")
     with pytest.raises(ProvenanceRefused) as refused:
-        resolve(RECORDED_RUN_REVISION, DECLARED)
+        resolve(RECORDED_RUN_REVISION, TARGET_DECLARED)
     assert [(f.rule_id, f.subject) for f in refused.value.findings] == [
-        ("desired-state-absent-at-revision", DECLARED.contract)
+        ("desired-state-absent-at-revision", TARGET_DECLARED.contract)
     ]
     recorded = resolve(RECORDED_RUN_REVISION, DECLARED_AT_THE_RECORDED_RUNS)
     assert recorded.release_id == RECORDED_RELEASE_ID

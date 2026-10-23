@@ -29,11 +29,18 @@ under revision 2, and that the freeze record of E02A and E02B would name the ide
 `q1-2` when `q1-2` is `QUALIFIED`.)
 
 Before a V2 reliability experiment runs, Q1 decides whether one local
-environment holds the target topology of the desired-state release: two
+environment holds the two-replica target topology of the desired-state release: two
 platform API replicas and two serving runtime replicas, delivered by the
 controller at the desired revision, with both runtime replicas on the pinned
 model, and with the caller runner completing real requests through the API
 Service. The result is `QUALIFIED` or `REFUSED`. There is no third result.
+
+Since `V2-S7-003-PR1` the desired state holds the single-runtime baseline, by
+[the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4). Q1 qualifies the two-replica target, so a qualification at a commit that
+holds the switch reads one runtime replica where its target states two, and it is not a
+qualification of its target. The committed qualifications `q1-1` and `q1-2` ran before
+the switch. Revision 2 of the Q1 record also lists the three pinned files that the
+switch moved, and a later qualification needs a revision that classifies them.
 
 | Property | Value |
 |---|---|

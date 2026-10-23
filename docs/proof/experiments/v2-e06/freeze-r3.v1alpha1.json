@@ -1,0 +1,1264 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentFreeze",
+  "metadata": {
+    "experiment": "V2-E06",
+    "title": "Reliability resource and cost overhead",
+    "revision": 3,
+    "registered": "2026-10-23",
+    "registeredBy": "V2-S7-003-PR1",
+    "supersedes": {
+      "path": "docs/proof/experiments/v2-e06/freeze-r2.v1alpha1.json",
+      "contentSha256": "d8e562da2b131697bee29f9b1d5848b4353f72513c3e3e42326d20dd0f5086bf"
+    }
+  },
+  "definition": {
+    "purpose": "State the resources that the reliability topology requests and uses, beside the caller outcome of the controlled comparison. V2-E06 injects no fault and starts no caller. It reads committed configuration and the stored evidence of the counted runs of V2-E02A and V2-E02B.",
+    "hypothesis": "Expected observation, not a result: the second runtime replica adds requested resources that can be computed from committed configuration and stated beside the caller outcome of V2-E02A and V2-E02B. The analysis is valid whatever the caller outcome shows, and its result states that outcome as measured.",
+    "sources": [
+      {
+        "experiment": "V2-E02A",
+        "role": "baseline",
+        "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+        "revision": 4,
+        "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+        "preregistrationRules": 2
+      },
+      {
+        "experiment": "V2-E02B",
+        "role": "target",
+        "path": "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json",
+        "revision": 2,
+        "contentSha256": "be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c",
+        "preregistrationRules": 2
+      }
+    ],
+    "sourceClockPolicy": {
+      "sha256": "c8343a26197dd3cbd346016dd492964ff5dbcce653daa6863530360ccbc64896",
+      "statement": "The SHA-256 of definition.clockPolicy of each bound source record, in canonical JSON with sorted keys and no spaces. No figure of this record compares an instant of the node clock with an instant of the host clock. A reading is in the window of a run by its read instants, on the host clock, and the interval of a utilization pair is the time between two evaluation instants of one in-cluster collector, on its one clock."
+    },
+    "views": [
+      {
+        "id": "view-a",
+        "title": "The runtime redundancy increment",
+        "sides": [
+          {
+            "experiment": "V2-E02A",
+            "apiReplicas": 2,
+            "runtimeReplicas": 1,
+            "configuration": "The desired-state files of tests/domain/fixtures/experiment-profiles/single-runtime-baseline, which topology.release of V2-E02A names by digest, rendered with the pinned chart."
+          },
+          {
+            "experiment": "V2-E02B",
+            "apiReplicas": 2,
+            "runtimeReplicas": 2,
+            "configuration": "The desired-state files of gitops/environments/local-docker-desktop/workloads/support-assistant, which topology.release of V2-E02B names by digest, rendered with the pinned chart."
+          }
+        ],
+        "reads": [
+          "requests"
+        ],
+        "label": "static-allocation",
+        "statement": "The requested CPU and memory of each side, by tier and in total, and their difference. The committed baseline comparison states the differences between the two releases. The view states an allocation, not a use."
+      },
+      {
+        "id": "view-b",
+        "title": "The full reliability topology",
+        "sides": [
+          {
+            "name": "single-path-equivalent",
+            "apiReplicas": 1,
+            "runtimeReplicas": 1,
+            "reconstructed": true,
+            "from": "The API and the runtime pod templates that the chart renders for the target release of V2-E02B, one of each."
+          },
+          {
+            "name": "target",
+            "experiment": "V2-E02B",
+            "apiReplicas": 2,
+            "runtimeReplicas": 2,
+            "reconstructed": false
+          }
+        ],
+        "reads": [
+          "requests"
+        ],
+        "label": "static-allocation",
+        "statement": "The single-path equivalent is reconstructed by arithmetic: the requests of one API pod and one runtime pod of the pod templates of the target release. No release with one API replica and one runtime replica is rendered, applied, or run, and no released V1 configuration is read. The view is static and allocation-based, and the result labels it so."
+      }
+    ],
+    "metrics": [
+      {
+        "id": "api-requests",
+        "reads": [
+          "requests"
+        ],
+        "label": "static-allocation",
+        "statement": "The CPU and memory requests of the API pod template, times the API replica count of the side."
+      },
+      {
+        "id": "runtime-requests",
+        "reads": [
+          "requests"
+        ],
+        "label": "static-allocation",
+        "statement": "The CPU and memory requests of the runtime pod template, times the runtime replica count of the side."
+      },
+      {
+        "id": "total-requests",
+        "reads": [
+          "requests"
+        ],
+        "label": "static-allocation",
+        "statement": "The sum of the requests of every pod template that the chart renders for the side and that runs for the life of the release, each times its replica count. The request of a pod is counted as Kubernetes counts it: the larger of the sum of its containers and its largest init container. A pod that a Helm hook creates is listed apart and is not in the sum, because it is not part of the installed release."
+      },
+      {
+        "id": "utilization",
+        "reads": [
+          "resources-stream"
+        ],
+        "label": "measured",
+        "statement": "The statistic of definition.utilization. It is measured for the processor time of the API alone. Each other resource is labeled unavailable, with its reason."
+      },
+      {
+        "id": "model-cache-storage",
+        "reads": [
+          "claim-request"
+        ],
+        "label": "static-allocation",
+        "statement": "The requested storage of each PersistentVolumeClaim that the release mounts, counted once for each claim and not once for each replica, with its access mode. The Terraform prerequisite layer provisions the model cache claim."
+      },
+      {
+        "id": "rollout-headroom",
+        "reads": [
+          "requests",
+          "rollout-strategy"
+        ],
+        "label": "static-allocation",
+        "statement": "The headroom of definition.rolloutHeadroom."
+      }
+    ],
+    "rolloutHeadroom": "The requests of the pods that the rollout strategy of each Deployment allows above its replica count during a rollout: maxSurge pods of that tier, each with the requests of its pod template, read from the rendered Deployment. A tier whose strategy allows no surge adds no headroom, and the result states its maxUnavailable beside it.",
+    "utilization": {
+      "statistic": "The mean processor use of the API in one run, in cores: the sum of the increases of api-cpu-seconds over the valid pairs of consecutive readings in the window, divided by the sum of the times between the evaluatedAt instants of those pairs. A pair is valid when both readings of api-cpu-seconds are answered with a series, the value does not fall, and api-processes-reporting-cpu states topology.apiReplicas in both samples.",
+      "window": "The window of definition.window of the source record of the run. A reading is in the window when its read.startedAt instant is in it. Both are on the host clock.",
+      "stream": "resources",
+      "querySet": "experiment-run-queries-r1",
+      "queries": [
+        "api-processes-reporting-cpu",
+        "api-cpu-seconds",
+        "api-resident-memory-bytes"
+      ],
+      "sourceRuns": {
+        "experiments": [
+          "V2-E02A",
+          "V2-E02B"
+        ],
+        "runs": "The valid, counted runs of each, under the bound revisions: each run whose state is PASSED or FAILED under definition.repetitionRule of its source. A run in another state is not read, and the result lists it with its state."
+      },
+      "aggregate": "For each side, the median of its run figures, with each run figure shown. No confidence interval and no statistical significance is stated.",
+      "noSeries": "A reading with the result no-series is not zero. A pair with such a reading is not valid, and it is counted. A run with no valid pair has no figure, and the result labels it unavailable, with the count of pairs and the reason of each.",
+      "memory": "api-resident-memory-bytes is read and reported. The API declares the metric and does not emit it, so the query is expected to have no series, and the memory use of the API is then labeled unavailable. No memory figure is estimated.",
+      "unavailable": [
+        {
+          "resource": "the processor and memory use of the serving runtime",
+          "reason": "The registered query set reads no resource use of the serving runtime, of a container, or of a node, because the release has no source for them."
+        },
+        {
+          "resource": "the memory use of the API",
+          "reason": "The API does not emit its resident memory metric."
+        }
+      ]
+    },
+    "costBasis": {
+      "basis": "local",
+      "provider": "docker-desktop, on one workstation",
+      "statement": "Each figure is a requested resource, a requested storage size, or a measured processor use, in cores and bytes. No price, charge, or currency figure is computed. A difference in requested resources is stated as an allocation, not as a cost.",
+      "cloud": {
+        "used": false,
+        "rule": "No cloud provider is used. If one is used later, a later revision of this record states the cost source, the charge or the labeled estimate, the runtime, the exclusions, the confidence, and the approved budget, before any figure from that provider is computed."
+      }
+    },
+    "reliabilityBeside": {
+      "experiments": [
+        "V2-E02A",
+        "V2-E02B"
+      ],
+      "figures": [
+        "caller-failure-episode-ms",
+        "max-success-gap-ms",
+        "requests-failed-in-window",
+        "requests-failed-since-fault",
+        "stabilized-since-fault-started-ms"
+      ],
+      "statement": "The result shows the median caller figures of V2-E02A and V2-E02B, from their aggregates, beside the resource difference of View A. View B has no run of the single-path equivalent, so no caller figure is shown as its baseline. V2-E04 tests a bad release on the target topology and has no counterpart on another topology, so no figure of V2-E04 is paired with a resource difference."
+    },
+    "claimBoundary": "No statement of the result goes beyond its figures: no return on investment, saving, efficiency, or cost claim, and no claim that the resource difference causes the caller difference.",
+    "evidenceTarget": {
+      "allocation": "C0",
+      "runDerived": "C2",
+      "costConfidence": "A requested resource is read from committed configuration, so it is exact for that configuration and states nothing about use. A processor use is measured on one provider and one node and is bounded to them. No price is stated, so no price confidence applies."
+    },
+    "doesNotEstablish": [
+      "The cost of the topology in a currency, on a cloud provider, or for another workload.",
+      "A saving, a return on investment, or an efficiency.",
+      "The resource use of the serving runtime, of a container, or of a node.",
+      "That the resource difference causes the caller difference.",
+      "A capacity, a sizing rule, or the overhead of a topology in another environment."
+    ],
+    "limitations": [
+      "No code that computes an E06 figure exists. A later change adds it, under a later revision of this record.",
+      "View B is reconstructed by arithmetic from the target release. It is not a release, and it is not the released V1 configuration.",
+      "View B counts one API pod and one runtime pod on its single-path side, and the API and runtime pods of the target on its other side. The in-cluster telemetry collector, which the real profile deploys, and every other pod template of the release are in the total requests of View A and not in View B.",
+      "The requests are those of the committed configuration. A pod that the cluster admitted with other requests is not read.",
+      "Only the processor time of the API is measured. The memory of the API and every resource of the serving runtime are unavailable.",
+      "A counter value is the last sample that the in-cluster collector stored, which can be older than its reading by up to one scrape interval of 30 s. The interval of a pair is the time between two evaluation instants, not between two scrapes.",
+      "A process of the API that starts again makes the sum fall. The pair with the fall is not valid, and the processor time of the ended process after its last scrape is in no reading.",
+      "The window of a source run holds its fault, so the processor use includes the time after the fault.",
+      "Three runs of each side support a median and no confidence interval."
+    ],
+    "history": [
+      "This record was written on 2026-10-19, before any run of V2-E02A or V2-E02B. No run of these experiments exists, and no figure of this record has been computed.",
+      "On 2026-10-18 the repository owner decided that V2-E03 and V2-E06 each have their own freeze record, registered before any source run. That decision was due before Sprint 6 began, and it was made after the Sprint 6 changes had merged. The late date stays recorded here, and it is not changed or waived.",
+      "The repository owner decided on 2026-10-18 that the cost basis is local and that no cloud provider is used.",
+      "Known when it was written: the committed configuration of both releases, and that the API declares its resident memory metric and does not emit it. No utilization figure was known, because no source run exists.",
+      "Revision 2 was written on 2026-10-22, before any run of V2-E02A or V2-E02B, and before any figure of this record. Revision 3 of V2-E02A was registered with the driver of V2-E02A, and the check of this record holds its latest revision to the latest revision of each source. So revision 2 binds revision 3 of V2-E02A, by path, revision, content digest, and rule set, and it classifies the two pins of revision 1 that moved. The definition, the fields, and the material scope keep the values of revision 1, except the V2-E02A binding, the history, the freeze revision, and the revision of main.",
+      "Revision 3 was written on 2026-10-23, before any run of V2-E02A or V2-E02B, and before any figure of this record. Revision 4 of V2-E02A was registered by the change that executes its rule G1, and the check of this record holds its latest revision to the latest revision of each source. So revision 3 binds revision 4 of V2-E02A, by path, revision, content digest, and rule set. It classifies the two pins of revision 2 that the switch moved: the desired-state files of the target now hold the files of the baseline, until rule G3 of V2-E02A restores the files of the target. The definition, the fields, and the material scope keep the values of revision 2, except the V2-E02A binding, the history, the freeze revision, and the revision of main."
+    ],
+    "analysisCode": {
+      "procedureDirectory": "docs/proof/experiments/v2-e06/procedure",
+      "rule": "No code that computes an E06 figure exists when this record is registered: no code renders the chart for a view, sums a request, or computes the utilization statistic. A later change adds it. Before any figure is computed, a later revision of this record pins that code in its material scope and classifies each input that moved. The procedure directory, which does not exist at registration, is in the material scope, so a driver added there is listed as added by python -m tools.experiment_freeze --changes. Code added elsewhere is listed only when a pinned module imports it. The review of the later revision checks the rest."
+    },
+    "executables": [
+      "tools/analysis_preregistration/__main__.py",
+      "tools/experiment_freeze/__main__.py"
+    ]
+  },
+  "parts": [
+    {
+      "id": "E06",
+      "title": "Reliability resource and cost overhead of the redundant topology",
+      "question": "What do the second runtime replica, and the topology of two API and two runtime replicas, add in requested resources, and how much processor time does the API use, beside the caller outcome of the controlled comparison?"
+    }
+  ],
+  "fields": {
+    "experimentIdVersion": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "experiment": "V2-E06",
+          "freezeRevision": 3,
+          "definition": "This record states the views, the metrics, the utilization statistic, the cost basis, and the acceptance criteria in full. A change to any of them, to a source binding, or to a pinned input, is a later revision of this record."
+        }
+      }
+    ],
+    "gitRevision": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "preparedFrom": "a07a23e5b5677609355d6d77b8dc4873097289db",
+          "pinnedInputs": "Every file in materialScope is pinned by its content digest in pinnedInputs. A record cannot name the commit that adds it, so the pins freeze the files and not a commit.",
+          "executingRevision": "Each analysis executes at a merged commit of main that holds the revision of this record that pins the analysis code, with its registered digest, and a clean working tree. The analysis document names that commit."
+        }
+      }
+    ],
+    "environmentIdentity": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "provider": "docker-desktop",
+          "environmentSha256": "sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c",
+          "qualification": {
+            "qualificationId": "q1-2",
+            "path": "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+            "contentSha256": "1141cbd1c0acd7eff839395a89eba3fe116a060dafb3941128bf23c440ec1b3d"
+          },
+          "statement": "V2-E06 runs in no environment of its own. Its utilization figures are read from source runs in the environment that both bound sources name: the qualification q1-2 on the docker-desktop provider with one node. Its allocation figures are read from committed configuration."
+        }
+      }
+    ],
+    "callerProfileRevision": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "profile": "RP-1",
+          "revision": 1,
+          "path": "deploy/serving/reliability/rp-1-profile.v1.json",
+          "contentSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+          "statement": "The caller profile of every source run. The caller figures shown beside View A come from runs with this profile."
+        }
+      }
+    ],
+    "topology": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "sources": {
+            "V2-E02A": {
+              "apiReplicas": 2,
+              "runtimeReplicas": 1,
+              "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+            },
+            "V2-E02B": {
+              "apiReplicas": 2,
+              "runtimeReplicas": 2,
+              "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db"
+            }
+          },
+          "statement": "V2-E06 deploys nothing. View A reads the topologies of its two sources. View B reconstructs one API and one runtime replica by arithmetic."
+        }
+      }
+    ],
+    "fault": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "injected": "none",
+          "sources": {
+            "V2-E02A": "delete-runtime-pod",
+            "V2-E02B": "delete-runtime-pod"
+          },
+          "statement": "V2-E06 injects no fault. The source runs that its utilization reads each hold the fault of their source record."
+        }
+      }
+    ],
+    "repetitionCount": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "sources": {
+            "V2-E02A": "3 counted result-bearing runs, under definition.repetitionRule.",
+            "V2-E02B": "3 counted result-bearing runs, under definition.repetitionRule."
+          },
+          "statement": "V2-E06 has no run of its own. The utilization reads the counted runs of V2-E02A and V2-E02B, three of each under their repetition rules. The allocation arithmetic is computed once for each view."
+        }
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "id": "E06-AC1",
+            "kind": "validity",
+            "statement": "The requested resources of each side of each view are computed from committed configuration that this record pins."
+          },
+          {
+            "id": "E06-AC2",
+            "kind": "validity",
+            "statement": "Each utilization figure is labeled measured or unavailable, and each unavailable one states its reason."
+          },
+          {
+            "id": "E06-AC3",
+            "kind": "validity",
+            "statement": "The cost basis is stated with each figure."
+          },
+          {
+            "id": "E06-AC4",
+            "kind": "validity",
+            "statement": "The caller figures of V2-E02A and V2-E02B are shown beside the resource difference of View A."
+          },
+          {
+            "id": "E06-AC5",
+            "kind": "validity",
+            "statement": "No statement of the result goes beyond its figures, as definition.claimBoundary states."
+          }
+        ],
+        "note": "Each criterion is a validity criterion. The analysis is valid whatever difference the figures show."
+      }
+    ],
+    "derivedNumericBounds": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "boundRecord": {
+            "path": "docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json",
+            "contentSha256": "542b05dd9627b25330a4602071d99276218776cf1f78a5c34ac764fbb3188116"
+          },
+          "use": "No criterion or figure of this record uses a bound of the bound record.",
+          "statement": "The bound record that both bound sources name."
+        }
+      }
+    ],
+    "evidencePaths": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": {
+          "directory": "docs/proof/experiments/v2-e06/analyses/<analysis>/, where <analysis> is e06-N, from 1, never reused",
+          "files": {
+            "analysis.v1alpha1.json": "The views, the metrics with their labels, the utilization figure of each run, and the path and content digest of each configuration file and run manifest that it read.",
+            "result.md": "The two views, each figure with its label and its basis, and the caller figures beside View A.",
+            "commands.txt": "Every command of the analysis, in order.",
+            "transcript.txt": "What the commands printed, with each exit status, with host paths removed."
+          },
+          "corrections": "docs/proof/experiments/v2-e06/corrections/<analysis>/correction-N.v1alpha1.json. A committed analysis directory is never edited."
+        }
+      }
+    ],
+    "abortConditions": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": [
+          {
+            "code": "abort-check-refused",
+            "condition": "python -m tools.analysis_preregistration --check fails at the executing commit."
+          },
+          {
+            "code": "abort-code-unpinned",
+            "condition": "The code that computes a figure is not pinned by the revision of this record that the analysis names, or python -m tools.experiment_freeze --changes lists a material file of that revision."
+          },
+          {
+            "code": "abort-source-unbound",
+            "condition": "A run that the analysis reads executed under a source revision that the revision of this record does not bind."
+          },
+          {
+            "code": "abort-input-differs",
+            "condition": "A run directory that the analysis reads differs from its committed content, or python -m tools.experiment_evidence check refuses it."
+          }
+        ],
+        "note": "An aborted analysis publishes no figure. It is kept with its code and its reason."
+      }
+    ],
+    "cleanupProcedure": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": [
+          "C1. The analysis creates no cluster object, starts no caller, and contacts no cluster, so no cluster object is cleaned up.",
+          "C2. The analysis writes only under its own analysis directory. An aborted analysis keeps its commands, its transcript, and its abort reason, and it removes and edits no input."
+        ]
+      }
+    ],
+    "intendedEvidenceLevel": [
+      {
+        "parts": [
+          "E06"
+        ],
+        "status": "value",
+        "value": "C2",
+        "note": "C0 for the allocation arithmetic of View A and View B, and C2 for the utilization read from the counted runs, bounded to one provider and one node. definition.evidenceTarget states each, and the confidence of a cost apart."
+      }
+    ]
+  },
+  "materialScope": {
+    "description": "The path of one analysis: the import closure of the tools that read the stored evidence of a source run and the aggregates, this check, and the freeze checks; this record's procedure directory, which does not exist at registration; every revision file of each source experiment; the records that the sources name; and the committed configuration that the requested resources are read from: the chart, the desired-state files of both releases, and the Terraform prerequisite layer that provisions the model cache claim.",
+    "entryModules": [
+      "tools.analysis_preregistration.__main__",
+      "tools.experiment_freeze.__main__",
+      "tools.experiment_preregistration.__main__",
+      "tools.experiment_telemetry.__main__",
+      "tools.reliability_analysis.__main__",
+      "tools.analysis_replay.__main__",
+      "tools.experiment_evidence.__main__",
+      "tools.experiment_run.__main__"
+    ],
+    "packageRoots": {
+      "inferops": "src",
+      "tools": "."
+    },
+    "paths": [
+      "docs/proof/experiments/v2-e06/procedure/*",
+      "docs/proof/experiments/v2-e02a/freeze-r*.v1alpha1.json",
+      "docs/proof/experiments/v2-e02b/freeze-r*.v1alpha1.json",
+      "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+      "docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json",
+      "deploy/serving/reliability/rp-1-profile.v1.json",
+      "charts/inferops-llm/.helmignore",
+      "charts/inferops-llm/Chart.yaml",
+      "charts/inferops-llm/values.yaml",
+      "charts/inferops-llm/values.schema.json",
+      "charts/inferops-llm/templates/**/*",
+      "gitops/environments/local-docker-desktop/workloads/support-assistant/*",
+      "tests/domain/fixtures/experiment-profiles/single-runtime-baseline/*",
+      "infra/terraform/environments/local/*.tf",
+      "infra/terraform/modules/platform-prerequisites/*.tf",
+      "src/inferops/telemetry/names.py"
+    ],
+    "exclusions": []
+  },
+  "pinnedInputs": [
+    {
+      "path": "charts/inferops-llm/.helmignore",
+      "sha256": "6616c0dcb7188d2b5f90528049f6859d429e01dd72e01c48cfbc67b463419915",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/Chart.yaml",
+      "sha256": "f354d999392c0223984ca74473c2a7452fb556d00fb60dcee7742865477c4411",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/NOTES.txt",
+      "sha256": "b7c0e66995248f602052fc9448dfcbf8c2d53c1615a7526f3c1bb7fe1e974363",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/_helpers.tpl",
+      "sha256": "5d7d9400651d8c6c864f95aa9a30f13b3a2047b9f36fbeee13d68156bee3cd2e",
+      "role": "the scrape jobs and the k8s_component label that the up queries select"
+    },
+    {
+      "path": "charts/inferops-llm/templates/_validate.tpl",
+      "sha256": "57a7b0e670c21bdc3610e9b4cda21e8a9dc72ba361f8b41316d449b9a51bfc48",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/api-deployment.yaml",
+      "sha256": "2b792c84d607886de4e313e6f66d734a801d9769a2e37bda7f5786479b624212",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/api-disruption-budget.yaml",
+      "sha256": "55353d6f028441ffbdeb8e93775ece5bcc7a52ee49b066d2ed17e9a4f571a3d6",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/api-service.yaml",
+      "sha256": "ae2ade9a5de1b2b8875d3b0bc0459400554bc10d33e23b9f0b9d248528ed346a",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/configmap.yaml",
+      "sha256": "22529d32db43e80934239e1567d344a67ecb1ce4f380bdee88e13297c67a4e45",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/model-acquisition-job.yaml",
+      "sha256": "0320986c90d7245a21fedd7b05cf13dffbc3425d6820f1cc1c67efc7ea944098",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/networkpolicy.yaml",
+      "sha256": "f18f83703fcbb6b7098dc9bd8b2f81738a89fc6c28dc3191dd4e44870bb8d0e5",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/runtime-deployment.yaml",
+      "sha256": "f23b2d05ec2633aef394f4e96c7f3be07d1ea28c5b4687c50ed6069135d8e8ef",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/runtime-disruption-budget.yaml",
+      "sha256": "aeecdb2c4a2ccb14db367f85f0425ccc702012592d987692a082a8775e9f6a63",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/runtime-service.yaml",
+      "sha256": "f01dc18891b1401d321bca4f01e1a3be1193e7cb4bf2d7a07ff4ebc4a996eaad",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/serviceaccount.yaml",
+      "sha256": "92732605addd07dff5d59a7e5e9883ac277e299b8d684abe62b81d3408181955",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/templates/telemetry-collector.yaml",
+      "sha256": "3cf5b09891a77a59b2101a7eb4f7ec76d5cf27333e66711699dcfca50fae170a",
+      "role": "the in-cluster collector, which reads the scrape configuration"
+    },
+    {
+      "path": "charts/inferops-llm/templates/telemetry-scrape-config.yaml",
+      "sha256": "3fdecea5037a897bf126fa7ebb5e1dfbe2edf79078183efe7df916e6c39e5442",
+      "role": "the scrape configuration of the in-cluster collector"
+    },
+    {
+      "path": "charts/inferops-llm/templates/tests/connection.yaml",
+      "sha256": "b62f9728d0234f1ab403b6ac0b0a61c3e8b37eef7873d697a14a4474441e99f4",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/values.schema.json",
+      "sha256": "69909a02069e0c556b65c4d62a96f9f64f5487c6f074cbbf9ad1c96586361cb2",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "charts/inferops-llm/values.yaml",
+      "sha256": "0031a614dec9813171f1e8147f11ed55d33bfa1730c8a39781064c43213cdccd",
+      "role": "the chart that renders the release"
+    },
+    {
+      "path": "deploy/serving/reliability/rp-1-profile.v1.json",
+      "sha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+      "role": "the caller profile of the sources"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json",
+      "sha256": "adfd951101ca5a40cc41c9b196b5394f9217eb82d3befc242671885ef3a0d1fc",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json",
+      "sha256": "edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json",
+      "sha256": "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+      "sha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02b/freeze-r1.v1alpha1.json",
+      "sha256": "27c5934bb13b55c9ea2495e664f7f06f45886b1d8eacd1abffde293b08d156e5",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json",
+      "sha256": "be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c",
+      "role": "a freeze record of a source experiment"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json",
+      "sha256": "1141cbd1c0acd7eff839395a89eba3fe116a060dafb3941128bf23c440ec1b3d",
+      "role": "a record that the sources name"
+    },
+    {
+      "path": "docs/proof/experiments/v2-q4/bounds-r1.v1alpha1.json",
+      "sha256": "542b05dd9627b25330a4602071d99276218776cf1f78a5c34ac764fbb3188116",
+      "role": "a record that the sources name"
+    },
+    {
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+      "sha256": "f7eaab845c29ecfc1014005d570721e4d2e0f4d5e6b63aab92b8e52a7aea876e",
+      "role": "the desired-state files of a release"
+    },
+    {
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+      "sha256": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6",
+      "role": "the desired-state files of a release"
+    },
+    {
+      "path": "infra/terraform/environments/local/main.tf",
+      "sha256": "e8987e9af0028e514d90bf3f9839fe93601e202eeab9a65887d333c461986395",
+      "role": "the Terraform prerequisite layer that provisions the model cache claim"
+    },
+    {
+      "path": "infra/terraform/environments/local/outputs.tf",
+      "sha256": "ee41a7097067d6242bf863bd81af427c1705db4b838c6d6313ccd6a2282344fb",
+      "role": "the Terraform prerequisite layer that provisions the model cache claim"
+    },
+    {
+      "path": "infra/terraform/environments/local/variables.tf",
+      "sha256": "a941abf57cee298bf96421ccbd6d597ea923e7ff8e8c660f60b14efc467d182a",
+      "role": "the Terraform prerequisite layer that provisions the model cache claim"
+    },
+    {
+      "path": "infra/terraform/environments/local/versions.tf",
+      "sha256": "0fb6a9c438392807afdb3eb0ab97215728ac0bc6a48a312baf9ee52ea7a049c4",
+      "role": "the Terraform prerequisite layer that provisions the model cache claim"
+    },
+    {
+      "path": "infra/terraform/modules/platform-prerequisites/main.tf",
+      "sha256": "9cdfd413f3733d46ef2cd79ee2346adbb7c1bc3828b5999f371b749df64c9f26",
+      "role": "the Terraform prerequisite layer that provisions the model cache claim"
+    },
+    {
+      "path": "infra/terraform/modules/platform-prerequisites/outputs.tf",
+      "sha256": "ecdb543dfea7831c9b29a86e9f026e7c1a687c62a05e83e65dabb4c65176d7e7",
+      "role": "the Terraform prerequisite layer that provisions the model cache claim"
+    },
+    {
+      "path": "infra/terraform/modules/platform-prerequisites/variables.tf",
+      "sha256": "5461be1116732f12142138c35d8223a168a930862d21df70cea6c814da4b86c7",
+      "role": "the Terraform prerequisite layer that provisions the model cache claim"
+    },
+    {
+      "path": "infra/terraform/modules/platform-prerequisites/versions.tf",
+      "sha256": "e58863407444a56514a718253baec862aa1b3043448dca458e1d72c5e74a1f75",
+      "role": "the Terraform prerequisite layer that provisions the model cache claim"
+    },
+    {
+      "path": "src/inferops/__init__.py",
+      "sha256": "871ae3c4e73373b9e916405fb585676c84ed70c62405abeac50fabf17465adff",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/__init__.py",
+      "sha256": "5cbdaf1206b7b00b89bced6aad46854fee67d4ca87eab28d51e302f39cd11ee4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/__init__.py",
+      "sha256": "a6eb27ce0ad79924d689ac218f9ac1c58d31cd5616c7da75941e29ff5591015c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/adapter.py",
+      "sha256": "019c2dbe72c2b4b2eda4945f56856795f83dc2c54463fceb782773fe255a1aec",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/capabilities.py",
+      "sha256": "ed657ee54f4fd3ff71239b313c745201e375a6ad0a8cb986c839d8c7b86f6b4b",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/configuration.py",
+      "sha256": "7135e1f6c5584fe485c9fb3c5ec25fd49d6e98a25d7d0c39a84a5b751dea4fa9",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/http_transport.py",
+      "sha256": "13a19ffb189b416a48881f357316776199d483812ad358ecf43ec42f03390649",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/inference.py",
+      "sha256": "c4ed5323306d361c59a814f48d3622dc509375e08293a175e56c7f7b3a4c3f66",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/metadata.py",
+      "sha256": "ce873ea4da0a7b4b3979f2414e1bcc70f36eb8333959e945245de745bd7020c4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/pins.py",
+      "sha256": "85d86ca0700e38ecfd626f22bb8bc67db8e9a51125c52fe755f3a1c2b2405546",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/readiness.py",
+      "sha256": "f877f91e44462c4cab2cbb4ade6ec11972792ad0979c110d9c880a253efb759c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/settings.py",
+      "sha256": "45a3dc13cfd893c782be062dde20c86388f87f1dff375099d6a99642ec884001",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/llama_cpp/transport.py",
+      "sha256": "d169cec0ae8727ebf1af5e7c85350f3195a1e5418c835b13c5c7e4ada5524276",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/adapters/mock_serving.py",
+      "sha256": "72f31817b7589d32bab4520c7184ba21e513b6ef935ee761242e911b723a23c9",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/__init__.py",
+      "sha256": "ba90f871e88b120862ebbeff45921fc58a608f9cfa1e73ffd2a003fe15df34cd",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/application.py",
+      "sha256": "dc829593d82b3b28da9eccc8443fbd6ae6c3e36fee2a83f168bd21ccf0469b3c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/errors.py",
+      "sha256": "554fafcd5aeb4e1419d15e9ca3a5fb688963fa401fcb9a5c014aaa3e4a4c30cb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/identifiers.py",
+      "sha256": "e8315d05ccb9ce814cb93147508f0f46ca000e90a5a28934ddb479aa970e6490",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/lifecycle.py",
+      "sha256": "bd2aece5be9631f9bde312e29bd4f2111cf3abf52090b09b136ca339b9bc9f81",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/metrics.py",
+      "sha256": "a58a43c402fc9c476ec4376a0d0c2a02df79f4e39807e8a9a8cbdede03e85b00",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/observability.py",
+      "sha256": "1b37d88b8dc34707ad95e3a2194b0cade574867691a57d0b31871e6e72a54f38",
+      "role": "the API module that publishes the error counter only after its first error"
+    },
+    {
+      "path": "src/inferops/api/responses.py",
+      "sha256": "d3f7ed7522329196c96f24fabbaeb190149cccd9f9873b24497f8fbd452d61f4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/selection.py",
+      "sha256": "f73e1c5d708f59c8c46dd4107b0bf4ba5a4634f30f60b9276038054a94b725be",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/surface.py",
+      "sha256": "ac81932c64c1e93e021d29a2567748ab88f3e413bd2945237e512a88785739ad",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/api/validation.py",
+      "sha256": "e5bbb62653ddc03ec5e18d094a752237c95f20282c6ca02f41ce4c8c24afae2c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/__init__.py",
+      "sha256": "bbbb9f098f2a31746200e6f62bdd3ec3fc8a9610e346575b354bf8f596cf6ce2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/context.py",
+      "sha256": "4d833e2e684b8c714ab8b649616bb8ad84a62cd2324b716aa4f8e151b44cbeb2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/__init__.py",
+      "sha256": "ac90e4a3dd59f021686dce91c3c10185b7639cf619cd7852e62a5c34eee82c66",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/contract.py",
+      "sha256": "96372b2d766605414c62cad06be188eb13ab08c7e15e53420453dea81eab0d3b",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/errors.py",
+      "sha256": "454fd252c6bd2722d90dd26f9dfb0e5955898bacfc3f994f4b7eaf213e3dcc4c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/test_double.py",
+      "sha256": "f79e7dc9c16b2fba94dd014ac3023f94f8f5fc3240869b24d8706eec0d2c30b1",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/serving/values.py",
+      "sha256": "ba1d1a70e7d006d9fb8554439deb2f1e5958b490ce5b39d94394d15f10fb7ce8",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/__init__.py",
+      "sha256": "c0501df503eea8b7601a9e34e772fd549f9f83be4196836620dc2ebadc2734ae",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/contract.py",
+      "sha256": "b85e7b2597a5310bdb964191b7b7f83fe1bdedb72780ddb2c8fb4718545c3fc2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/errors.py",
+      "sha256": "f0735dd4ce03efafd6d5a177021bfa22b8ae90f41de27994cd838dadf1038aab",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/parsing.py",
+      "sha256": "578a6cd13ceaaabdbc9ac31ee6def51544837ab93f817af43d3f970758ee96e8",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/validation.py",
+      "sha256": "45a8f4f4bb6a242231633926e1d178c35d6bb9424f3d4a2e2df5c4324a80bfdb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/values.py",
+      "sha256": "3a2a4c6d79a6caee3afb2b67b47220f3e746c68b47fc4e004b0913142e6587d2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/domain/workload/versions.py",
+      "sha256": "00a8bc3f3ad17c83765c5ce34c18c1affee1cb6175a2ece4519bb21848819ff6",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/__init__.py",
+      "sha256": "f1d9571661ee3e328f006c1fe534a1d076190d2df8a187849d1fd558a6730f30",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/names.py",
+      "sha256": "b056b3e8a042db3e695a7b1b4a6115f9ebc52982cc6f84b79f28158235b09239",
+      "role": "the metric names and outcomes of the API"
+    },
+    {
+      "path": "src/inferops/telemetry/process.py",
+      "sha256": "6035257ef7c7f19ea94b6890a29f026375d6b8bef52948b1e92512422aedd090",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/records.py",
+      "sha256": "154db0cd92f66931d0fb2b9f43001d30d2fdfbec1f90f0712c1139d74216cad5",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/registry.py",
+      "sha256": "bb341b32521e167cab92f9682f6438f5fc93ca8ee9e2561441ee0169493503c0",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "src/inferops/telemetry/resource.py",
+      "sha256": "9e53ddfedc679f64368e9094d25dc11e481646a0f20ca166538d2c33d3462ea7",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline/rendered-workload-release.yaml",
+      "sha256": "f7eaab845c29ecfc1014005d570721e4d2e0f4d5e6b63aab92b8e52a7aea876e",
+      "role": "the desired-state files of a release"
+    },
+    {
+      "path": "tests/domain/fixtures/experiment-profiles/single-runtime-baseline/values.generated.yaml",
+      "sha256": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6",
+      "role": "the desired-state files of a release"
+    },
+    {
+      "path": "tools/__init__.py",
+      "sha256": "2aa0150d36adadb891175596f532622211973267f11c20201a7e4fb10bd18ddb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/analysis_preregistration/__init__.py",
+      "sha256": "89a72cb652f4c7f90755e2f020d9491b91e313294d70f3f802e94a96a1ff0ba2",
+      "role": "this check"
+    },
+    {
+      "path": "tools/analysis_preregistration/__main__.py",
+      "sha256": "6ab098ffc105d30b01991bdc0e206eb43d554ec4e942c280e6cfa45d98641683",
+      "role": "this check"
+    },
+    {
+      "path": "tools/analysis_preregistration/core.py",
+      "sha256": "f19cc9ae1884aaa0d241d4bd6380fdb2b2a8491bae7c624e803d99001ca41ff2",
+      "role": "this check"
+    },
+    {
+      "path": "tools/analysis_replay/__init__.py",
+      "sha256": "b252ad6f540be7926aca810a00f7ec8204d11a45d7bc037667e2469f75ad53c2",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/analysis_replay/__main__.py",
+      "sha256": "f2680e3ec028334f06f0a5fadeb10c40104ec19a2e7084179c3d6e252a22c8a8",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/analysis_replay/core.py",
+      "sha256": "891191484a079d93ce6f79dc6bc2965486163b38837da79f7babca9966ce89db",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/api_carrier/__init__.py",
+      "sha256": "40e548179f50b3539766a8107a98f75be40b30154de441e90701acb5b694c15e",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/api_carrier/http_server.py",
+      "sha256": "2b575783d2e02e009e74d6578f64bcaeedb7340a3082f34f0dc5019b19d76f92",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/contract_validation/__init__.py",
+      "sha256": "18818adcaa25c3e01c66ca21eb17ef91f8c9b9f30216f8f14d9180820f811c08",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/contract_validation/errors.py",
+      "sha256": "2f3fa60477e9349f6d52d019656b50037e4a2d89c6dfe1b13495797cd52f8640",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/contract_validation/workload.py",
+      "sha256": "bc30176be2bb41dfefd628fe0d9f45a810a8bea2c4e4b157c22a2f800340cceb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_index/__init__.py",
+      "sha256": "90424daad62e9abd3217ec8fc69db7b5a0dfb10bee5590a13622f787ca69d2c7",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_index/core.py",
+      "sha256": "bc47a56462d4cf12103e42ffcb740996a7c12e37d03a2165ffed0fe581a7d0b8",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_model/__init__.py",
+      "sha256": "0bb28fa732ae46ae47ec5eaae89d34ca012ee94e1aae3f2b98b0f061fd06afcc",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_model/core.py",
+      "sha256": "7b5ec1931229c2e4882568a93cee4ee89c5865f82529074abf123cb00ab0bdd3",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/evidence_model/rules.py",
+      "sha256": "24f87de9c6c0d50a673f3a0561919b299a5ad445acd8edb2cd9d097b0d82201a",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_events/__init__.py",
+      "sha256": "7644b009851cc014ac5e68994d05c1a8dd35726f0a3318b1b356b1d22a6b48ec",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_events/core.py",
+      "sha256": "8b66e1952478aeac517150bc106efb74e5c39a0a07a487385c2e66cff45cdf07",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_evidence/__init__.py",
+      "sha256": "e2e5915cf1b572efb75c79e2291a982c943723be7f0c6ace88dae047e17968a4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_evidence/__main__.py",
+      "sha256": "814ddc02a80e6489caef890223d2a972c9627732f26c76247cd9562bde8ab1a5",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_evidence/core.py",
+      "sha256": "10230ca6b20eb9f4cfb8a8f7ba5d261561e55de7e4951b8371a59a6e4e40163e",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_freeze/__init__.py",
+      "sha256": "938f5d3c48d11f759c72d9ca99f376f26396b2b46eb9eb0cc43647f91def57ad",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_freeze/__main__.py",
+      "sha256": "8929bc5b4b9c4a0166ec6ff0cc7610d1ae2267327ab45123dccea45ea003535a",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_freeze/core.py",
+      "sha256": "db9b1c1fd83668a77639ab8e1e56dbe3ab422460d30a22be4a6be3d68b0f4b46",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_preregistration/__init__.py",
+      "sha256": "8be357515764089b8062172a76c05aed8df899d1fceff3110d7b9666c81ce355",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_preregistration/__main__.py",
+      "sha256": "19aba7528c8d8238cee221ec8f715af738d76c59f7da2eb2887dc277f0809d46",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_preregistration/core.py",
+      "sha256": "247b7685b9fff2640d10d6ea45350ad93d647cf6130f8dc80b1afab28883f890",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_run/__init__.py",
+      "sha256": "b5cb94f54480837c45f474596c934ccec59f87eaffc56d436cf37379bcf04f89",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_run/__main__.py",
+      "sha256": "2c0204a2b4728f92b9459d5edc867cd897c722b6b5acb78b5bc4d804d07f24a3",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_run/core.py",
+      "sha256": "fa2bcb923671644cb230ee2a827a5cb7248fd8d353f1a878294f461bcbd0476b",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_telemetry/__init__.py",
+      "sha256": "b8cbbc69dda94e88a3d321b24daba7700d3258d2aa199805329e13233cad4409",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_telemetry/__main__.py",
+      "sha256": "5fa015c95cdef5d9c5511ab9b2b9726b36d44a9794c9a99e2786127ac6d43784",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_telemetry/core.py",
+      "sha256": "179ce6f2dadea969cd63967eaa9826064fb1ebf43c260b3833da56e7b4cb4858",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_timeline/__init__.py",
+      "sha256": "3050cf91f4155406336804155469e54d89eb0675a25ab5cea35ec3e50e8135aa",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/experiment_timeline/core.py",
+      "sha256": "2cdf718bf897a8556823cb8752f9086703e6828f41807d545d7c3a63c50bf556",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/llm_load/__init__.py",
+      "sha256": "82545fc341c363accc0ee7c144cd89d5f7268ec7bccdd35659ae6a0c75c824f0",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/llm_load/core.py",
+      "sha256": "57df93e5bff1af0b231daa44593e00016bcbbc48f7c10d6564b8b2b227e78a6c",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/local_composition/__init__.py",
+      "sha256": "a7bfc29a5a509021d68c05ec9c0f34a63480007d7e55987936fa9e8474039424",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/local_composition/core.py",
+      "sha256": "f1117cd52750b636692faa13254220ad877492320d4bb38f7c2c25ba700d4c0d",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/local_composition/http_server.py",
+      "sha256": "dde885d016acbded76d8fd35a46ceec9a34a3567fe133c3c1c8a2b47567d2c72",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/model_acquisition/__init__.py",
+      "sha256": "6008e3bb4505376726ce6ed88692dbfd0a67ccfc35e448496849cda2e78eba89",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/model_acquisition/core.py",
+      "sha256": "05ba3648ef6fa3e73ac23600cf77197f5769b949e31c5dec12cba5266fb64dd7",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_analysis/__init__.py",
+      "sha256": "2b9d501ea66e430708f074a5cb10a0254537a05b88719bc76dcbdca08c527e08",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_analysis/__main__.py",
+      "sha256": "7ce7ea1f27a4634932a08ba7eede54bcf8d84acb2146838a7260bca2ded9034f",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_analysis/core.py",
+      "sha256": "e4bb5454bcb9b5ea19451bbf722b8ddbba276d3c68f20c679cd33445df65d7af",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_profile/__init__.py",
+      "sha256": "f7ec32f9067c2dd9fb20b56f6ff320646d0ed77357bc70770acc48a912a82e76",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_profile/core.py",
+      "sha256": "42043378966c0a39c54fed6d253f828a81848aaaf8248332d553d4c8aa04d2a9",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_runner/__init__.py",
+      "sha256": "c7153b466df80f2a221179c92e992fe5d19fdc3f8f39e64666b243a49ea8928d",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_runner/core.py",
+      "sha256": "86929fcb26e2c6490f8070f6b78c80e0d6f5f99d88d3869f4917133fc1cb2ba0",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/reliability_runner/incluster.py",
+      "sha256": "e319bfaa31c1994d92d99cb521f053e04608bb70e06e1c0bba2dd85f57933ebb",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/runtime_configuration/__init__.py",
+      "sha256": "b4f1a12a432dff42f927f64d9e5dfedf9672cd866c7d5e1da662a2e48b92ad09",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/runtime_configuration/core.py",
+      "sha256": "a234f50699ff8475553e1fcccb50a78fe24aca1608123d55f0ea6837f5b63fd6",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/runtime_packaging/__init__.py",
+      "sha256": "8f29be11b6bd5fc54ffdd6b50252d65931a0329fae46d90c85107cc187fbf66e",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/runtime_packaging/core.py",
+      "sha256": "310eca0203c27d5550028ee5f981e72eafea47d361130fa6a6af5f17a18d2c2e",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/service_endpoint_state/__init__.py",
+      "sha256": "69696d4c5b270bb075e5618401f874f0106216243a21390d21e9b4b5010df105",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/service_endpoint_state/core.py",
+      "sha256": "643bfbe3585ba9ee032f73003ee582b545967ba4d053bc099212b380809315f4",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/serving_baseline/__init__.py",
+      "sha256": "0c8062ea74dfed3692d168bf16fee850d3bfdbb1b4890eac21b196d1030d2a8f",
+      "role": "the import closure of a tool that the analysis runs"
+    },
+    {
+      "path": "tools/serving_baseline/core.py",
+      "sha256": "851afbb6ea77697542b5f80a99b3464ab3bfb41e1650c847c1bd69b16c8f5252",
+      "role": "the import closure of a tool that the analysis runs"
+    }
+  ],
+  "inputChanges": [
+    {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+      "from": null,
+      "to": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+      "material": true,
+      "reason": "Revision 4 of V2-E02A, which this revision binds. It is registered by the G1 switch: it pins the two switched desired-state files and classifies the pins that the switch moved. It changes no criterion, measurement, window, topology, or driver of V2-E02A."
+    },
+    {
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+      "from": "810b4b27e40ec0cf1514d97caa5a7a27818aa12598b1c7b441e4b0ae3c5cb31a",
+      "to": "f7eaab845c29ecfc1014005d570721e4d2e0f4d5e6b63aab92b8e52a7aea876e",
+      "material": true,
+      "reason": "The G1 switch of V2-E02A replaced the desired-state files of the target with the files of the single-runtime baseline profile, byte for byte. This record reads the requested resources of both releases from committed configuration, and the files at this path are the target's only after rule G3 of V2-E02A restores them. A revision of this record that binds the executed V2-E02B revision pins the restored files before any figure is computed."
+    },
+    {
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+      "from": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930",
+      "to": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6",
+      "material": true,
+      "reason": "The G1 switch of V2-E02A replaced the desired-state files of the target with the files of the single-runtime baseline profile, byte for byte. This record reads the requested resources of both releases from committed configuration, and the files at this path are the target's only after rule G3 of V2-E02A restores them. A revision of this record that binds the executed V2-E02B revision pins the restored files before any figure is computed."
+    }
+  ]
+}

@@ -20,7 +20,10 @@ comparison input: no mode reads an installed release or a cluster.
 
 ``--check`` verifies the committed profile: that the comparison is COMPARABLE,
 that the committed baseline release is byte for byte what its declared sources
-derive, and that the committed record is the record this tree gives. Exit status
+derive, that the desired-state release declares the contract of one compared
+side and is byte for byte what its declared sources derive, and that the
+committed record is the record this tree gives. It prints the side that the
+desired state selects. Exit status
 is 0 when no rule is broken and 1 when one is. ``--check`` writes nothing and
 repairs nothing. Exit status 0 of ``--check`` says that the committed profile is
 current and comparable. A refused comparison is reported by ``--record`` with
@@ -46,6 +49,7 @@ import sys
 from pathlib import Path
 
 from tools.generated_release import RegenerationRefused
+from tools.gitops_desired_state import desired_state_release
 
 from .core import (
     CHECK_RULES,
@@ -61,6 +65,7 @@ from .core import (
     WriteRefused,
     build_record,
     record_text,
+    selected_side,
     target_release,
     verify_profile,
     write_profile,
@@ -84,6 +89,11 @@ def _check(root: Path) -> int:
             "OK       the baseline differs from the target only at the permitted paths"
         )
         print("OK       both sides declare one API image digest of the usable form")
+        selected = desired_state_release(TARGET_KEY)
+        print(
+            f"OK       the desired state selects the {selected_side(selected)}: "
+            f"{selected.contract}"
+        )
         return 0
     statements = {rule.rule_id: rule.statement for rule in (*RULES, *CHECK_RULES)}
     for finding in findings:

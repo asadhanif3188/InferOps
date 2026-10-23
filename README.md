@@ -189,7 +189,11 @@ the chart states the API Deployment's rolling-update bounds, which the platform
 defaults own. Since `V2-S4-002-PR1` it also declares two serving runtime replicas,
 from a contract version that states them, and the chart states the runtime
 Deployment's rolling-update bounds: one pod unavailable and no pod above the replica
-count. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
+count. Since `V2-S7-003-PR1` the committed release is the single-runtime baseline, two
+API replicas and one runtime replica: rule G1 of the V2-E02A freeze record switches it
+before the first V2-E02A run, and rule G3 restores the two runtime replicas after the
+last one. Each switch merges only with the explicit authorization of the repository
+owner. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
 release once, and two pods of each tier became Ready on one node:
 [the record](docs/proof/environment/v2-s4-002-pr2-validation.md). It establishes
 nothing about what a caller observes when an API pod or a runtime pod is lost.
@@ -291,7 +295,7 @@ not decide that a reason is true of a run, or that the run executed that commit.
 reason, and no real run was left out. Since `V2-S6-001-PR1` the
 [Q1 environment and identity qualification](docs/environment/environment-qualification.md)
 is frozen before its first run: a driver collects and a tool decides whether one local environment
-holds the target topology of two API replicas and two runtime replicas at its exact
+holds the two-replica target topology, two API replicas and two runtime replicas, at its exact
 identities, with the controller reconciled, both runtime replicas on the pinned model, and
 the caller runner completing real requests. The result is `QUALIFIED` or `REFUSED`. A
 refusal is kept, and no option weakens the target. Since `V2-S6-001-PR2` the first qualification,
@@ -358,11 +362,16 @@ not authorize, and revision 3 has no such exclusion: a valid run with no such sp
 `FAILED`. A controller that never discovers an accepted reversal fails that criterion
 too: its discovery is part of the recovery, not a condition of a valid run. An outcome
 reference applies the rule to declared inputs.
-No run of any of them exists. Since `V2-S7-001-PR1` the baseline record is at
-revision 3, which pins [its driver and its control](docs/testing/experiment-e02a-control.md).
-The control has run against scenario files, and the fault phase of the driver against a
-stub `kubectl`; neither has run on a cluster. A run refuses while the desired state on
-`main` is the 2+2 target. No other experiment has a driver.
+No run of any of them exists. Since `V2-S7-001-PR1` the baseline record pins
+[its driver and its control](docs/testing/experiment-e02a-control.md), and since
+`V2-S7-003-PR1` it is at revision 4, registered by the change that switches the desired
+state to the baseline. The control has run against scenario files, and the fault phase
+of the driver against a stub `kubectl`; neither has run on a cluster. P2 refuses a run
+at a commit of `main` whose desired-state files are not the baseline's, so a run waits
+for the merge of the switch, which needs the authorization of the repository owner. No
+other experiment has a driver. (Until `V2-S7-003-PR1` this paragraph said that the
+record is at revision 3 and that a run refuses while the desired state on `main` is the
+2+2 target.)
 
 Since `V2-S6-006-PR1` the two analysis experiments are
 [frozen before any of their source runs](docs/proof/experiments/README.md#the-analysis-experiment-freezes):
@@ -374,14 +383,17 @@ reference, the API error rate as the comparator of its ranking with no ranking
 preference, and how it counts caller failures that the API error counter misses. V2-E06
 fixes two allocation views, the one measured statistic, and a local cost basis with no
 price. Since `V2-S6-008-PR1` V2-E03 binds revision 3 of the bad-release record and
-counts only the runs that execute under it. Since `V2-S7-001-PR1` V2-E03 is at revision
-3 and V2-E06 at revision 2: each binds revision 3 of the baseline record and changes
-nothing else. No figure of either exists, the code that computes either analysis in full
-does not exist, and the validation of `V2-S7-001-PR1` states
-[what each latest freeze still owes](docs/proof/environment/v2-s7-001-pr1-validation.md#what-each-latest-freeze-owes) before
+counts only the runs that execute under it. Since `V2-S7-003-PR1` V2-E03 is at revision
+4 and V2-E06 at revision 3: each binds revision 4 of the baseline record, which the G1
+switch registers, and V2-E06 also classifies the two desired-state files that the switch
+moved. No figure of either exists, the code that computes either analysis in full
+does not exist, and the validation of `V2-S7-003-PR1` states
+[what each latest freeze still owes](docs/proof/environment/v2-s7-003-pr1-validation.md#what-each-latest-freeze-owes) before
 its first run. (Until `V2-S6-008-PR1` this paragraph linked the review of
-`V2-S6-006-PR1`, and until `V2-S7-001-PR1` it said that V2-E03 is at revision 2 and
-linked [the readiness review of `V2-S6-008-PR1`](docs/proof/environment/v2-s6-008-pr1-validation.md#the-consolidated-pre-run-readiness-review).)
+`V2-S6-006-PR1`, until `V2-S7-001-PR1` it said that V2-E03 is at revision 2 and
+linked [the readiness review of `V2-S6-008-PR1`](docs/proof/environment/v2-s6-008-pr1-validation.md#the-consolidated-pre-run-readiness-review),
+and until `V2-S7-003-PR1` it said that V2-E03 is at revision 3 and V2-E06 at revision 2
+and linked [the validation of `V2-S7-001-PR1`](docs/proof/environment/v2-s7-001-pr1-validation.md#what-each-latest-freeze-owes).)
 
 ## Prerequisites
 

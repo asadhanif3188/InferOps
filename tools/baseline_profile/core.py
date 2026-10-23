@@ -1,11 +1,29 @@
 """The controlled single-runtime baseline, compared with the release it is a baseline of.
 
-The target is the desired-state release of the reference workload: two API
+The target is the two-replica release of the reference workload: two API
 replicas and two serving runtime replicas. The baseline is an experiment profile:
 two API replicas and one serving runtime replica. A comparison of the two
 topologies means something only while the runtime replica count is the one
 variable that differs. This module declares the baseline, derives both releases,
 and refuses each difference that is not stated here.
+
+**The target is declared apart from the desired state.** :func:`target_release`
+takes the declaration of the desired-state release with the key
+:data:`TARGET_KEY` and replaces its contract with :data:`TARGET_CONTRACT`, the
+two-replica contract. So the desired-state declaration owns the directory, the
+binding, the platform defaults, and both revisions, and this module owns the
+two contracts of the comparison. The desired state can select the baseline, as
+rule G1 of the V2-E02A freeze record requires before its runs, and the target
+stays the two-replica release. The target is never derived from the contract
+that the desired state selects, so the baseline is never compared with itself.
+A comparison of two one-replica releases is refused, by the topology rule and
+by the version rule.
+
+**The desired state selects one side.** :func:`verify_profile` holds that the
+desired-state release declares the target's contract or the baseline's contract,
+and no other, and that its committed files are what its declared sources derive.
+So the values file that the target's Application names holds the generated
+values of one compared side. Which side it holds does not change the record.
 
 **The baseline is declared as the target with two fields replaced.**
 :func:`baseline_profile` takes the target's declaration and replaces the contract
@@ -150,6 +168,7 @@ __all__ = [
     "REPO_ROOT",
     "RESULT_STATES",
     "RULES",
+    "TARGET_CONTRACT",
     "TARGET_KEY",
     "TOPOLOGY",
     "Finding",
@@ -158,6 +177,7 @@ __all__ = [
     "baseline_profile",
     "build_record",
     "record_text",
+    "selected_side",
     "target_release",
     "verify_profile",
     "write_profile",
@@ -166,8 +186,16 @@ __all__ = [
 #: The schema name a comparison record states.
 RECORD_SCHEMA: Final = "inferops.io/baseline-profile-comparison/v1alpha1"
 
-#: The desired-state release that the baseline is a baseline of, by its key.
+#: The desired-state release whose declaration the target takes, by its key.
 TARGET_KEY: Final = "local-docker-desktop/support-assistant"
+
+#: The contract the target is rendered from: version ``0.2.0`` of the reference
+#: workload, which declares two serving runtime replicas. This module states it,
+#: and the desired-state declaration does not, so a switch of the desired state
+#: to the baseline leaves the target a two-replica release.
+TARGET_CONTRACT: Final = (
+    "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml"
+)
 
 #: The contract the baseline is rendered from: version ``0.1.0`` of the target's
 #: workload, which declares one serving runtime replica.
@@ -457,10 +485,16 @@ CHECK_RULES: Final[tuple[Rule, ...]] = (
         "sources derive.",
     ),
     Rule(
-        "baseline-target-release-drifted",
-        "The committed target release is, byte for byte, what its declared "
+        "baseline-desired-state-not-compared",
+        "The desired-state release of the target key declares the target's "
+        "contract or the baseline's contract, and no other. So the Application "
+        "of the target delivers one of the two compared releases.",
+    ),
+    Rule(
+        "baseline-desired-state-drifted",
+        "The committed desired-state release is, byte for byte, what its declared "
         "sources derive. So the values file that the target's description names "
-        "holds the generated values that were compared.",
+        "holds the generated values of the side that the desired state selects.",
     ),
     Rule(
         "baseline-record-stale",
@@ -540,8 +574,12 @@ class WriteRefused(Exception):
 
 
 def target_release() -> DeclaredRelease:
-    """The declaration of the desired-state release the baseline is compared with."""
-    return desired_state_release(TARGET_KEY)
+    """The declaration of the target: the desired-state release's, with its contract.
+
+    The contract is :data:`TARGET_CONTRACT` whichever contract the desired state
+    selects. Every other field is the desired-state declaration's.
+    """
+    return replace(desired_state_release(TARGET_KEY), contract=TARGET_CONTRACT)
 
 
 def baseline_profile() -> DeclaredRelease:
@@ -549,6 +587,16 @@ def baseline_profile() -> DeclaredRelease:
     return replace(
         target_release(), directory=PROFILE_DIRECTORY, contract=BASELINE_CONTRACT
     )
+
+
+def selected_side(declared: DeclaredRelease) -> str | None:
+    """The side whose contract a desired-state declaration names, or ``None``.
+
+    The other fields of the two sides are the desired-state declaration's by
+    construction, so the contract decides the side.
+    """
+    sides = {TARGET_CONTRACT: "target", BASELINE_CONTRACT: "baseline"}
+    return sides.get(declared.contract)
 
 
 # --------------------------------------------------------------------------
@@ -1602,10 +1650,10 @@ def verify_profile(root: Path = REPO_ROOT) -> tuple[Finding, ...]:
     """Every way the committed profile under ``root`` breaks a rule.
 
     An empty result means that the comparison is ``COMPARABLE``, that the
-    committed baseline release and the committed target release are each what
-    their declared sources derive, and that the committed record is the record
-    this tree gives. This reads files and writes
-    none.
+    committed baseline release is what its declared sources derive, that the
+    desired-state release selects one compared side and is what its declared
+    sources derive, and that the committed record is the record this tree gives.
+    This reads files and writes none.
     """
     record = build_record(root)
     findings = _record_findings(record)
@@ -1618,14 +1666,24 @@ def verify_profile(root: Path = REPO_ROOT) -> tuple[Finding, ...]:
         )
         for finding in verify(baseline, root)
     )
-    target = target_release()
+    selected = desired_state_release(TARGET_KEY)
+    if selected_side(selected) is None:
+        findings.append(
+            Finding(
+                "baseline-desired-state-not-compared",
+                f"{selected.directory}: contract",
+                f"the desired state declares {selected.contract}; the target "
+                f"declares {TARGET_CONTRACT} and the baseline declares "
+                f"{BASELINE_CONTRACT}",
+            )
+        )
     findings.extend(
         Finding(
-            "baseline-target-release-drifted",
-            f"{target.directory}: {finding.subject}",
+            "baseline-desired-state-drifted",
+            f"{selected.directory}: {finding.subject}",
             f"{finding.rule_id}: {finding.detail}",
         )
-        for finding in verify(target, root)
+        for finding in verify(selected, root)
     )
     path = root / RECORD_PATH
     if not path.is_file() or path.is_symlink():

@@ -2,11 +2,22 @@
 
 Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. Three readings of one cluster are committed, each of 2026-10-09 on the `docker-desktop` provider and each with the result `ACCEPTED`. Two are whole collections, and one is a record with part of its collection. None is a qualification of that host. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
 
-The desired-state release declares two platform API replicas and two serving
-runtime replicas. This page describes the gate that decides, before anything is
+The two-replica target declares two platform API replicas and two serving
+runtime replicas. (Until `V2-S7-003-PR1` this paragraph began "The desired-state release
+declares".) This page describes the gate that decides, before anything is
 installed, whether the stated requests and limits of that release fit in what
 one node of a cluster allocates: what it reads, what it requires, each rule,
 each unit, and what a record does not establish.
+
+**Since `V2-S7-003-PR1` the desired-state release is the single-runtime baseline**, by
+[the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4): two API replicas and one serving runtime replica. The gate derives the
+footprint of the release at the desired-state path, so at such a commit it derives one
+runtime pod fewer. The steady part is then four pods, and 1,000 millicores of CPU
+requests, 2,048 MiB of memory requests, and 3,072 MiB of memory limits lower. The rollout
+headroom does not change, because the runtime tier surges no pod. A test holds that the
+two footprints differ by that one pod and in nothing else. The figures on this page are
+those of the two-replica target, which the test suite derives into a copy of the
+delivery inputs. Rule G3 of the V2-E02A record restores that release.
 
 The gate has two parts.
 

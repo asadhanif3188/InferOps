@@ -545,9 +545,12 @@ is refused, and the remedy differs.
   desired-state release moves both sides alike. So does a change to a contract at a
   permitted path. The findings are `baseline-release-drifted` and
   `baseline-record-stale`. Read them, then run `--write` in the same change. A change
-  that moves the generated values of the target is `baseline-target-release-drifted`
-  too: write the target's release with `python -m tools.gitops_desired_state --write`
-  and its key. A change to a chart file moves the chart digest of both sides. When it
+  that moves the generated values of the side that the desired state selects is
+  `baseline-desired-state-drifted` too: write the desired-state release with
+  `python -m tools.gitops_desired_state --write` and its key. A desired-state
+  declaration that names a contract of neither side is
+  `baseline-desired-state-not-compared`. (Until `V2-S7-003-PR1` the rule was
+  `baseline-target-release-drifted`, and the desired state was always the target.) A change to a chart file moves the chart digest of both sides. When it
   moves no effective value, it is `baseline-record-stale` alone. So is a change to the
   project or the sync policy of the Application, which the record states and does not
   compare.

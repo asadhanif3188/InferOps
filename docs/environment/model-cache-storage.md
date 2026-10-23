@@ -233,8 +233,11 @@ neither refusal fired.
 
 ## Two serving replicas on the one claim
 
-The V2 desired-state release declares two serving runtime replicas. The design above is
-not changed for them: one claim, one writer, and each replica a reader that verifies the
+The V2 two-replica target declares two serving runtime replicas. Since `V2-S7-003-PR1`
+the desired-state release is the single-runtime baseline, with one, by [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4);
+rule G3 of the V2-E02A record restores the target. (Until `V2-S7-003-PR1` this paragraph
+began "The V2 desired-state release declares".) The design above is not changed for
+them: one claim, one writer, and each replica a reader that verifies the
 artifact when its pod starts. The claim is `ReadWriteOnce`, and Kubernetes documents
 that pods which share such a claim run on one node.
 

@@ -50,6 +50,7 @@ from typing import Any
 import pytest
 import yaml
 
+from tests.support.target_tree import target_files
 from tools.baseline_profile import (
     BASELINE_CONTRACT,
     CHECK_RULES,
@@ -79,7 +80,9 @@ from tools.baseline_profile import (
     WriteRefused,
     baseline_profile,
     build_record,
+    core,
     record_text,
+    selected_side,
     target_release,
     verify_profile,
     write_profile,
@@ -90,9 +93,14 @@ from tools.generated_release import (
     GENERATED_FILES,
     MATRIX_PATH,
     REPO_ROOT,
+    DeclaredRelease,
     regenerate,
 )
-from tools.gitops_desired_state import DESIRED_STATE_RELEASES, DESIRED_STATE_ROOT
+from tools.gitops_desired_state import (
+    DESIRED_STATE_RELEASES,
+    DESIRED_STATE_ROOT,
+    desired_state_release,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -269,6 +277,9 @@ def test_the_check_command_passes_on_the_committed_profile() -> None:
     assert f"OK       {PROFILE_DIRECTORY}" in result.stdout
     assert f"OK       {RECORD_PATH}" in result.stdout
     assert f"OK       {INSTALL_PATH}" in result.stdout
+    assert (
+        f"OK       the desired state selects the baseline: {BASELINE_CONTRACT}"
+    ) in result.stdout
 
 
 def test_the_committed_record_is_the_record_the_tree_gives() -> None:
@@ -386,9 +397,13 @@ def test_the_intended_variable_is_the_runtime_replica_count_alone() -> None:
 
 
 def test_the_committed_values_are_the_targets_but_for_two_lines() -> None:
-    """The comparison read as bytes: two lines differ, and every other line is one."""
+    """The comparison read as bytes: two lines differ, and every other line is one.
+
+    The target is derived again, because the desired state of this tree selects
+    the baseline.
+    """
     baseline = (REPO_ROOT / PROFILE_DIRECTORY / VALUES).read_bytes()
-    target = (REPO_ROOT / TARGET_DIRECTORY / VALUES).read_bytes()
+    target = target_files()[VALUES]
     assert b"\r" not in baseline
     ours, theirs = baseline.decode().splitlines(), target.decode().splitlines()
     assert len(ours) == len(theirs)
@@ -408,7 +423,7 @@ def test_the_committed_values_are_the_targets_but_for_two_lines() -> None:
 def test_the_committed_release_names_the_inputs_the_record_states() -> None:
     record = json.loads((REPO_ROOT / RECORD_PATH).read_text(encoding="utf-8"))
     baseline = load(f"{PROFILE_DIRECTORY}/{RELEASE}")
-    target = load(f"{TARGET_DIRECTORY}/{RELEASE}")
+    target = yaml.safe_load(target_files()[RELEASE])
     assert record["releases"] == {"baseline": baseline, "target": target}
     assert baseline["metadata"]["workloadId"] == target["metadata"]["workloadId"]
     for member in ("environmentBinding", "platformDefaults", "renderer"):
@@ -778,15 +793,15 @@ def test_a_change_to_both_sides_is_comparable_and_is_still_reported(root: Path) 
     rules = [finding.rule_id for finding in verify_profile(root)]
     assert set(rules) == {
         "baseline-release-drifted",
-        "baseline-target-release-drifted",
+        "baseline-desired-state-drifted",
         "baseline-record-stale",
     }
     assert write_profile(root) == (True, True)
-    # This tool does not write the target's release. Its own command does.
+    # This tool does not write the desired-state release. Its own command does.
     assert {finding.rule_id for finding in verify_profile(root)} == {
-        "baseline-target-release-drifted"
+        "baseline-desired-state-drifted"
     }
-    assert regenerate(target_release(), root) is True
+    assert regenerate(desired_state_release(TARGET_KEY), root) is True
     assert verify_profile(root) == ()
     assert write_profile(root) == (False, False)
 
@@ -1052,10 +1067,10 @@ def test_a_failed_write_prints_no_path_of_the_host(
     monkeypatch.undo()
     assert {f.rule_id for f in verify_profile(root)} == {
         "baseline-record-stale",
-        "baseline-target-release-drifted",
+        "baseline-desired-state-drifted",
     }
     assert write_profile(root) == (False, True)
-    assert regenerate(target_release(), root) is True
+    assert regenerate(desired_state_release(TARGET_KEY), root) is True
     assert verify_profile(root) == ()
 
 
@@ -1967,18 +1982,20 @@ def test_how_the_target_is_delivered_is_stated_and_not_compared(root: Path) -> N
         assert [f.rule_id for f in verify_profile(root)] == ["baseline-record-stale"]
 
 
-def test_a_hand_edit_of_the_committed_target_values_is_refused(root: Path) -> None:
+def test_a_hand_edit_of_the_committed_desired_state_values_is_refused(
+    root: Path,
+) -> None:
     """The comparison derives the generated values. The check holds that the file
-    the target's description names is the derived one."""
+    the target's description names is the derived one of the selected side."""
     path = root / TARGET_DIRECTORY / VALUES
-    edit(path, "  replicaCount: 2\n  resources:", "  replicaCount: 7\n  resources:")
+    edit(path, "  replicaCount: 1\n  resources:", "  replicaCount: 7\n  resources:")
     assert build_record(root) == build_record()
     assert {f.rule_id for f in verify_profile(root)} == {
-        "baseline-target-release-drifted"
+        "baseline-desired-state-drifted"
     }
     path.unlink()
     assert {f.rule_id for f in verify_profile(root)} == {
-        "baseline-target-release-drifted"
+        "baseline-desired-state-drifted"
     }
 
 
@@ -2443,10 +2460,195 @@ def test_the_profile_is_outside_the_desired_state_and_no_release_declares_it() -
         release.directory for release in (*DECLARED_RELEASES, *DESIRED_STATE_RELEASES)
     ]
     assert PROFILE_DIRECTORY not in declared
-    # One desired-state release exists, and it is the target.
+    # One desired-state release exists, at the target's directory.
     assert [release.directory for release in DESIRED_STATE_RELEASES] == [
         TARGET_DIRECTORY
     ]
+
+
+# --------------------------------------------------------------------------
+# 5a. The desired state selects one side, and the target stays two replicas
+# --------------------------------------------------------------------------
+
+#: A contract of this tree that neither side declares.
+OTHER_CONTRACT = "contracts/workload/examples/valid/mock-llm-ci.yaml"
+
+
+def _select(monkeypatch: pytest.MonkeyPatch, contract: str) -> DeclaredRelease:
+    """Make the desired-state declaration name ``contract``, as a change would."""
+    declared = replace(desired_state_release(TARGET_KEY), contract=contract)
+    monkeypatch.setattr(core, "desired_state_release", lambda _key: declared)
+    return declared
+
+
+def test_the_target_is_declared_apart_from_the_desired_state() -> None:
+    """Rule G1 of the V2-E02A record: the desired state selects the baseline.
+
+    The target keeps the two-replica contract that this tool states. Every other
+    field of the target is the desired-state declaration's, so one owner states
+    the directory, the binding, the platform defaults, and both revisions.
+    """
+    selected = desired_state_release(TARGET_KEY)
+    assert core.TARGET_CONTRACT == TARGET_CONTRACT
+    assert selected.contract == BASELINE_CONTRACT
+    assert selected_side(selected) == "baseline"
+    assert target_release().contract == TARGET_CONTRACT
+    assert replace(target_release(), contract=BASELINE_CONTRACT) == selected
+    assert selected_side(target_release()) == "target"
+    assert selected_side(replace(selected, contract=OTHER_CONTRACT)) is None
+
+
+def test_the_desired_state_holds_the_baseline_profile_byte_for_byte() -> None:
+    """The switch put the profile's two files at the desired-state path."""
+    for name in GENERATED_FILES:
+        assert (REPO_ROOT / TARGET_DIRECTORY / name).read_bytes() == (
+            REPO_ROOT / PROFILE_DIRECTORY / name
+        ).read_bytes(), name
+
+
+def test_a_target_that_follows_the_desired_state_is_refused() -> None:
+    """The baseline is never compared with itself.
+
+    Were the target taken from the desired-state declaration as it stands, the
+    comparison would be of two one-replica releases. It is refused, by the
+    topology rule and by the version rule, and it is never COMPARABLE.
+    """
+    for target in (desired_state_release(TARGET_KEY), baseline_profile()):
+        record = build_record(target=target)
+        assert record["result"] == REFUSED
+        broken = {rule for rule, _subject in found(record)}
+        assert {
+            "baseline-topology-not-declared",
+            "baseline-version-not-distinct",
+        } <= broken
+        assert record["topology"]["target"] == {"apiReplicas": 2, "runtimeReplicas": 1}
+
+
+def test_a_target_contract_lost_to_the_baseline_is_refused_by_the_check(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An edit that gives the target the baseline's contract loses the 2+2 target."""
+    monkeypatch.setattr(core, "TARGET_CONTRACT", BASELINE_CONTRACT)
+    assert target_release().contract == BASELINE_CONTRACT
+    record = build_record()
+    assert record["result"] == REFUSED
+    rules = {finding.rule_id for finding in verify_profile()}
+    assert {
+        "baseline-topology-not-declared",
+        "baseline-version-not-distinct",
+        "baseline-effective-values-differ",
+        "baseline-record-stale",
+    } <= rules
+    assert main(["--check"]) == 1
+    printed = capsys.readouterr().out
+    assert "REFUSED  baseline-topology-not-declared" in printed
+    assert "REFUSED  baseline-version-not-distinct" in printed
+    assert "OK       the desired state selects" not in printed
+
+
+def test_the_record_is_the_same_whichever_side_the_desired_state_selects(
+    root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Before the switch the desired state selected the target; now the baseline.
+
+    The record derives both sides from their declarations, so it is the same in
+    both states, byte for byte. So is the check, once the desired-state files
+    are the derived ones of the side it selects. The switch back, rule G3, needs
+    no new record either.
+    """
+    assert selected_side(desired_state_release(TARGET_KEY)) == "baseline"
+    after = record_text(build_record(root))
+    assert verify_profile(root) == ()
+    _select(monkeypatch, TARGET_CONTRACT)
+    assert {f.rule_id for f in verify_profile(root)} == {
+        "baseline-desired-state-drifted"
+    }
+    assert regenerate(target_release(), root) is True
+    assert record_text(build_record(root)) == after
+    assert verify_profile(root) == ()
+    for name in GENERATED_FILES:
+        assert (root / TARGET_DIRECTORY / name).read_bytes() == target_files()[name]
+
+
+def test_target_files_left_in_place_while_the_baseline_is_selected_are_refused(
+    root: Path,
+) -> None:
+    """A switch of the declaration without its files is stale desired state."""
+    assert regenerate(target_release(), root) is True
+    assert build_record(root)["result"] == COMPARABLE
+    findings = verify_profile(root)
+    assert {f.rule_id for f in findings} == {"baseline-desired-state-drifted"}
+    assert all(f.subject.startswith(TARGET_DIRECTORY) for f in findings)
+
+
+def test_baseline_files_put_in_place_while_the_target_is_selected_are_refused(
+    root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A switch of the files by hand, with no change to the declaration."""
+    _select(monkeypatch, TARGET_CONTRACT)
+    for name in GENERATED_FILES:
+        before = (root / PROFILE_DIRECTORY / name).read_bytes()
+        assert (root / TARGET_DIRECTORY / name).read_bytes() == before
+    assert {f.rule_id for f in verify_profile(root)} == {
+        "baseline-desired-state-drifted"
+    }
+
+
+def test_a_desired_state_that_selects_neither_side_is_refused(
+    root: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A switch to a release that was not compared is refused, files and all."""
+    declared = _select(monkeypatch, OTHER_CONTRACT)
+    assert selected_side(declared) is None
+    # The comparison itself does not read the declared contract of the desired
+    # state, so it holds; the check refuses the selection.
+    assert build_record(root)["result"] == COMPARABLE
+    findings = verify_profile(root)
+    assert [f.rule_id for f in findings if f.rule_id.endswith("not-compared")] == [
+        "baseline-desired-state-not-compared"
+    ]
+    [refusal] = [f for f in findings if f.rule_id.endswith("not-compared")]
+    assert refusal.subject == f"{TARGET_DIRECTORY}: contract"
+    assert OTHER_CONTRACT in refusal.detail
+    assert main(["--check", "--root", str(root)]) == 1
+    assert "REFUSED  baseline-desired-state-not-compared" in capsys.readouterr().out
+
+
+def test_a_hand_edit_of_the_switched_values_is_refused(root: Path) -> None:
+    """The desired-state values file is the baseline's while G1 holds."""
+    path = root / TARGET_DIRECTORY / VALUES
+    edit(path, "  replicaCount: 1\n  resources:", "  replicaCount: 2\n  resources:")
+    assert build_record(root) == build_record()
+    assert {f.rule_id for f in verify_profile(root)} == {
+        "baseline-desired-state-drifted"
+    }
+
+
+def test_after_the_switch_a_target_digest_or_readiness_drift_is_still_refused(
+    root: Path,
+) -> None:
+    """The target side of the comparison is not the desired state's side.
+
+    While the desired state selects the baseline, a declared API image digest of
+    the target that differs, and a readiness input set in the target's
+    Application alone, each still refuse the comparison.
+    """
+    assert selected_side(desired_state_release(TARGET_KEY)) == "baseline"
+    edit(root / INPUTS, f"  target: {DECLARED_DIGEST}", f"  target: {OTHER_DIGEST}")
+    record = refused_by(root)
+    assert {rule for rule, _subject in found(record)} == {
+        "baseline-api-image-digest-unbound"
+    }
+    edit(root / INPUTS, f"  target: {OTHER_DIGEST}", f"  target: {DECLARED_DIGEST}")
+    assert build_record(root)["result"] == COMPARABLE
+    application = yaml.safe_load((root / APPLICATION).read_text(encoding="utf-8"))
+    hand_written = application["spec"]["source"]["helm"]["valuesObject"]
+    hand_written["api"]["probes"] = {"readiness": {"timeoutSeconds": 1}}
+    (root / APPLICATION).write_text(
+        yaml.safe_dump(application, sort_keys=False), encoding="utf-8"
+    )
+    record = refused_by(root)
+    assert found(record) == REFUSED_TIMEOUT
 
 
 def test_the_profile_and_the_record_are_pinned_to_lf() -> None:
@@ -2505,7 +2707,8 @@ def test_the_page_states_each_rule() -> None:
     assert [rule.rule_id for rule in RULES] == RULE_IDS
     assert [rule.rule_id for rule in CHECK_RULES] == [
         "baseline-release-drifted",
-        "baseline-target-release-drifted",
+        "baseline-desired-state-not-compared",
+        "baseline-desired-state-drifted",
         "baseline-record-stale",
     ]
     for rule in (*RULES, *CHECK_RULES):
@@ -2524,7 +2727,7 @@ def test_the_page_states_each_permitted_path_and_each_limit() -> None:
 def test_the_page_states_the_identities_of_the_committed_release() -> None:
     page = DOCUMENT.read_text(encoding="utf-8")
     baseline = load(f"{PROFILE_DIRECTORY}/{RELEASE}")
-    target = load(f"{TARGET_DIRECTORY}/{RELEASE}")
+    target = yaml.safe_load(target_files()[RELEASE])
     assert f"`{baseline['metadata']['releaseId']}`" in page
     assert f"`{target['metadata']['releaseId']}`" in page
     assert f"`{PROFILE_DIRECTORY}`" in page

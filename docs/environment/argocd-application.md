@@ -135,8 +135,12 @@ The project limits what an Application in it may read and change.
 Eight of the nine kinds are the kinds of the committed render of the chart's real
 profile, without the `helm test` pod. That render has one replica for each tier.
 The ninth kind is PodDisruptionBudget. Since chart `0.6.0` the chart renders one
-for a tier of two or more replicas, and the desired-state release declares two
-replicas for each tier. A test compares the sets.
+for a tier of two or more replicas, and the two-replica target declares two
+replicas for each tier. A test compares the sets. Since `V2-S7-003-PR1` the
+desired-state release is the single-runtime baseline, by [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4). Its render holds
+the API tier's budget alone, and a test holds that each kind of it is a kind that the
+project admits. (Until `V2-S7-003-PR1` this paragraph said that the desired-state release
+declares two replicas for each tier.)
 
 The project is not desired state. A cluster where the project was applied before
 it admitted PodDisruptionBudget keeps the eight kinds until an operator runs

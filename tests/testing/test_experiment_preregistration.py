@@ -121,11 +121,29 @@ E04_R3_PIN = "41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05"
 E02A_R3 = "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json"
 E02A_R3_PIN = "2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf"
 DRIVER = "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
+#: Revision 4 of V2-E02A, of rule set 2, registered by V2-S7-003-PR1 with the G1
+#: switch. It pins the two switched desired-state files.
+E02A_R4 = "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json"
+E02A_R4_PIN = "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+#: The files that the G1 switch moved, by the tools whose scope pins them: the two
+#: desired-state files and the desired-state tool, and for V2-E02A and V2-E02B the
+#: baseline-profile tool.
+SWITCHED = [
+    "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+    "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+    "tools/gitops_desired_state/core.py",
+]
+SWITCHED_WITH_BASELINE = [
+    *SWITCHED,
+    "tools/baseline_profile/__init__.py",
+    "tools/baseline_profile/__main__.py",
+    "tools/baseline_profile/core.py",
+]
 #: Every committed record before V2-S7-001-PR1, every committed record, and the latest
 #: committed revision of each experiment.
 ALL_COMMITTED = sorted([*ALL_RECORDS, E04_R3])
-EVERY_RECORD = sorted([*ALL_COMMITTED, E02A_R3])
-LATEST_RECORDS = {**RECORDS, "V2-E04": E04_R3, "V2-E02A": E02A_R3}
+EVERY_RECORD = sorted([*ALL_COMMITTED, E02A_R3, E02A_R4])
+LATEST_RECORDS = {**RECORDS, "V2-E04": E04_R3, "V2-E02A": E02A_R4}
 
 QUALIFICATION = "docs/proof/experiments/v2-q1/runs/q1-2/record.v1alpha1.json"
 QUALIFICATION_1 = "docs/proof/experiments/v2-q1/runs/q1-1/record.v1alpha1.json"
@@ -185,7 +203,7 @@ def test_the_command_passes_over_the_committed_records() -> None:
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout.strip() == (
-        "PASSED: 5 experiment record(s) and 7 superseded revision(s), every rule held"
+        "PASSED: 5 experiment record(s) and 8 superseded revision(s), every rule held"
     )
 
 
@@ -201,10 +219,20 @@ def test_each_revision_one_record_is_registered_by_v2_s6_003_and_unchanged() -> 
     assert check_freezes() == []
 
 
-def test_the_latest_records_are_revision_two_and_v2_e04_and_v2_e02a_revision_three() -> (
-    None
-):
+def test_the_latest_records_are_revision_two_and_v2_e04_3_and_v2_e02a_4() -> None:
     assert {k: path for k, (path, _) in latest_records().items()} == LATEST_RECORDS
+    four = load(E02A_R4)["metadata"]
+    assert four == {
+        "experiment": "V2-E02A",
+        "title": load(E02A)["metadata"]["title"],
+        "revision": 4,
+        "registered": "2026-10-23",
+        "registeredBy": "V2-S7-003-PR1",
+        "supersedes": {"path": E02A_R3, "contentSha256": FROZEN_RECORDS[E02A_R3]},
+        "preregistrationRules": 2,
+    }
+    assert FROZEN_RECORDS[E02A_R4] == E02A_R4_PIN
+    assert content_digest((REPO_ROOT / E02A_R4).read_bytes()) == E02A_R4_PIN
     e02a = load(E02A_R3)["metadata"]
     assert e02a == {
         "experiment": "V2-E02A",
@@ -345,10 +373,12 @@ def test_the_reconciliation_bound_of_e05_is_210000_ms_and_not_a_guarantee() -> N
 def test_no_run_exists_and_the_one_driver_is_that_of_v2_e02a() -> None:
     """The records come before any run. Since V2-S7-001-PR1 one driver is committed,
     that of V2-E02A, and revision 3 of its record pins it. Revisions 1 and 2 of
-    V2-E02A list it as added. No other experiment has a driver."""
+    V2-E02A list it as added. No other experiment has a driver. Since V2-S7-003-PR1
+    V2-E02A has a revision 4."""
+    revisions_of = {"V2-E04": 3, "V2-E02A": 4}
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
-        revisions = 3 if experiment.experiment_id in ("V2-E04", "V2-E02A") else 2
+        revisions = revisions_of.get(experiment.experiment_id, 2)
         names = [f"freeze-r{n}.v1alpha1.json" for n in range(1, revisions + 1)]
         if experiment.experiment_id == "V2-E02A":
             names.append("procedure")
@@ -1453,21 +1483,41 @@ def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
     a later revision of it classifies it. V2-E04 revision 3 pins the present file,
     and no other file of the check moved. Since V2-S7-001-PR1 revisions 1 and 2 of
     V2-E02A also list the driver as added, and revision 3 of V2-E02A pins the driver
-    and classifies the move of core.py."""
-    for path in REVISION_ONE.values():
+    and classifies the move of core.py. Since V2-S7-003-PR1 each record before it
+    also lists the files of the G1 switch that its scope pins, and revision 4 of
+    V2-E02A pins them and classifies each move."""
+
+    def switched(experiment: str) -> list[str]:
+        with_baseline = experiment in ("V2-E02A", "V2-E02B")
+        return SWITCHED_WITH_BASELINE if with_baseline else SWITCHED
+
+    for experiment, path in REVISION_ONE.items():
         changes = changed_inputs(load(path), REPO_ROOT)
         added = [(DRIVER, "added")] if path == E02A_R1 else []
         assert sorted((c.path, c.kind) for c in changes) == sorted(
-            [*added, *((file, "changed") for file in CHECK_FILES)]
+            [
+                *added,
+                *((file, "changed") for file in CHECK_FILES),
+                *((file, "changed") for file in switched(experiment)),
+            ]
         ), path
-    for path in REVISION_TWO.values():
+    for experiment, path in REVISION_TWO.items():
         changes = changed_inputs(load(path), REPO_ROOT)
         added = [(DRIVER, "added")] if path == E02A else []
         assert sorted((c.path, c.kind) for c in changes) == sorted(
-            [*added, ("tools/experiment_preregistration/core.py", "changed")]
+            [
+                *added,
+                ("tools/experiment_preregistration/core.py", "changed"),
+                *((file, "changed") for file in switched(experiment)),
+            ]
         ), path
-    assert changed_inputs(load(E04_R3), REPO_ROOT) == []
-    assert changed_inputs(load(E02A_R3), REPO_ROOT) == []
+    assert sorted(c.path for c in changed_inputs(load(E04_R3), REPO_ROOT)) == sorted(
+        SWITCHED
+    )
+    assert sorted(c.path for c in changed_inputs(load(E02A_R3), REPO_ROOT)) == sorted(
+        SWITCHED_WITH_BASELINE
+    )
+    assert changed_inputs(load(E02A_R4), REPO_ROOT) == []
 
 
 def test_the_reconciliation_bound_of_e05_is_on_the_host_clock_alone() -> None:

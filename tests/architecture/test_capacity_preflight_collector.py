@@ -500,8 +500,12 @@ def test_an_accepted_reading_writes_each_read_and_changes_nothing(
 
 @needs_bash
 def test_a_refused_reading_exits_5_and_keeps_the_directory(sandbox: Path) -> None:
+    # A node whose memory is the required limits of this tree's footprint: the
+    # pods that it already holds leave it short, whichever side the desired
+    # state selects.
+    required = gate.declared_footprint()["totals"]["required"]["memoryLimitBytes"]
     (sandbox / "reads" / "nodes.json").write_text(
-        json.dumps(listed([one_node(memory="8Gi")])), encoding="utf-8"
+        json.dumps(listed([one_node(memory=str(required))])), encoding="utf-8"
     )
     run = run_script(sandbox, "--into", "reading-1")
     assert run.returncode == gate.REFUSED_EXIT == 5, run.output

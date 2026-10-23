@@ -70,6 +70,7 @@ from typing import Any
 import pytest
 import yaml
 
+from tests.support.target_tree import target_root
 from tools.runtime_model_cache import expected_identity
 from tools.workload_policy import check_documents
 
@@ -2635,8 +2636,21 @@ DESIRED_STATE_VALUES = (
 )
 
 
+def _target_values() -> Path:
+    """The generated values of the two-replica target, in a copy of the delivery inputs.
+
+    The desired state of this tree selects one side of the controlled comparison,
+    and rule G1 of the V2-E02A freeze record has it select the single-runtime
+    baseline. The tests of two replicas of each tier read these. The copy is made
+    when a test first asks for it, and not when the module is collected.
+    """
+    return target_root() / DESIRED_STATE_VALUES.relative_to(REPO_ROOT)
+
+
 def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
-    """The desired-state release, as the chart reads it, beside the fixture release.
+    """The two-replica target, as the chart reads it, beside the fixture release.
+
+    The target is the desired-state release when the desired state selects it.
 
     The two generated files differ in three values: the API replica count, the
     runtime replica count, and the workload version. So the two renders differ
@@ -2654,7 +2668,7 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     topology and not what a caller observes when a pod is unavailable.
     """
     desired, budgets = _without_budgets(
-        _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+        _template(_target_values(), HAND_WRITTEN_VALUES)
     )
     fixture, none = _without_budgets(_template(GENERATED_VALUES, HAND_WRITTEN_VALUES))
     assert none == []
@@ -2703,7 +2717,7 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     [mount] = [m for m in container["volumeMounts"] if m["name"] == "model-cache"]
     assert mount["readOnly"] is True
     assert source["revision"] in mount["subPath"]
-    lint = _lint(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    lint = _lint(_target_values(), HAND_WRITTEN_VALUES)
     assert lint.returncode == 0, lint.stdout + lint.stderr
     assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
 
@@ -2862,6 +2876,9 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica(
     sides = _described_sides()
     assert sides["target"]["generated"] == DESIRED_STATE_VALUES
     assert sides["baseline"]["generated"] == BASELINE_PROFILE_VALUES
+    # The Application names the desired-state values file. The target's own
+    # generated values are rendered, whichever side that file holds now.
+    sides["target"]["generated"] = _target_values()
     target_render = _render_described(sides["target"], tmp_path, "target")
     baseline_render = _render_described(sides["baseline"], tmp_path, "baseline")
     assert _beyond_the_permitted(baseline_render, target_render) == []
@@ -3243,17 +3260,17 @@ def test_the_budgets_are_one_declared_row_that_cites_no_evidence() -> None:
 def test_the_desired_state_release_renders_both_budgets_and_the_project_admits_them() -> (
     None
 ):
-    """The release that the Application names, and the kinds its project admits.
+    """The two-replica target, and the kinds that the Application's project admits.
 
-    The desired-state release declares two replicas for each tier, so its
-    render holds both budgets. The project admits exactly the kinds of that
+    The target declares two replicas for each tier, so its render holds both
+    budgets. The project admits exactly the kinds of that
     render, without the `helm test` pod. Argo CD documents that a project
     restricts the kinds that an Application may deploy.
 
     This renders files and reads the project manifest. No Application was
     applied, and no cluster held a budget.
     """
-    render = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    render = _template(_target_values(), HAND_WRITTEN_VALUES)
     documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
     assert sorted(_budgets(documents)) == BOTH_TIERS
     rendered = {
@@ -3277,9 +3294,42 @@ def test_the_workload_policy_accepts_a_render_that_holds_both_budgets() -> None:
     assert not check_documents(documents)
 
 
+def test_the_desired_state_of_this_tree_renders_the_baseline_that_g1_selects() -> None:
+    """Rule G1 of the V2-E02A record switched the desired state to the baseline.
+
+    The desired-state values file is the baseline profile's, byte for byte. Its
+    render holds one runtime replica and the API tier's budget alone, and each
+    kind of it is a kind that the Application's project admits.
+
+    This renders files. No Application was applied.
+    """
+    assert DESIRED_STATE_VALUES.read_bytes() == BASELINE_PROFILE_VALUES.read_bytes()
+    render = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
+    assert sorted(_budgets(documents)) == ["platform-api"]
+    replicas = {
+        d["metadata"]["labels"]["app.kubernetes.io/component"]: d["spec"]["replicas"]
+        for d in documents
+        if d["kind"] == "Deployment"
+    }
+    assert replicas["platform-api"] == 2
+    assert replicas["serving-runtime"] == 1
+    rendered = {
+        (d["apiVersion"].rpartition("/")[0], d["kind"])
+        for d in documents
+        if _mapping(d, "metadata.annotations").get(HOOK_ANNOTATION) != "test"
+    }
+    project = _load_yaml(ARGOCD_PROJECT_PATH)
+    admitted = {
+        (entry["group"], entry["kind"])
+        for entry in project["spec"]["namespaceResourceWhitelist"]
+    }
+    assert rendered <= admitted
+
+
 def _desired_state_runtime() -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """The runtime Deployment of the desired-state render, and every document."""
-    rendered = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    """The runtime Deployment of the two-replica target's render, and every document."""
+    rendered = _template(_target_values(), HAND_WRITTEN_VALUES)
     documents = [d for d in yaml.safe_load_all(rendered) if isinstance(d, dict)]
     [runtime] = [
         d
@@ -3305,7 +3355,7 @@ def test_every_runtime_replica_of_the_desired_state_release_is_given_one_model()
 
     This reads a render. It does not establish what a pod mounts or loads.
     """
-    expected = expected_identity()
+    expected = expected_identity(root=target_root())
     runtime, documents = _desired_state_runtime()
     assert runtime["spec"]["replicas"] == expected["runtimeReplicas"] == 2
 
