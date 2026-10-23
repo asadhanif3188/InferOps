@@ -51,6 +51,8 @@ pytestmark = pytest.mark.docs
 REPO_ROOT = Path(__file__).resolve().parents[2]
 R2 = "docs/proof/experiments/v2-e02a/freeze-r2.v1alpha1.json"
 R3 = "docs/proof/experiments/v2-e02a/freeze-r3.v1alpha1.json"
+#: Revision 4, registered by the G1 switch. It is the latest, and the plan is its.
+R4 = "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json"
 DRIVER = REPO_ROOT / "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
 PACKAGE = REPO_ROOT / "tools" / "experiment_e02a"
 Q1_2_CAPACITY = "docs/proof/experiments/v2-q1/runs/q1-2/capacity/record.v1alpha1.json"
@@ -312,16 +314,16 @@ def _cluster_entries(port: ScenarioPort) -> list[str]:
 # --------------------------------------------------------------------------
 
 
-def test_the_plan_is_revision_3_with_its_registry_pin() -> None:
+def test_the_plan_is_revision_4_with_its_registry_pin() -> None:
     registry = freeze.load_registry(REPO_ROOT)
-    assert PLAN.record_path == R3
-    assert PLAN.revision == 3
-    assert PLAN.record_sha256 == registry[R3]
-    assert freeze.content_digest((REPO_ROOT / R3).read_bytes()) == registry[R3]
+    assert PLAN.record_path == R4
+    assert PLAN.revision == 4
+    assert PLAN.record_sha256 == registry[R4]
+    assert freeze.content_digest((REPO_ROOT / R4).read_bytes()) == registry[R4]
 
 
 def test_the_plan_takes_the_baseline_topology_and_release_from_the_record() -> None:
-    topology = _read(R3)["fields"]["topology"][0]["value"]
+    topology = _read(R4)["fields"]["topology"][0]["value"]
     assert (PLAN.api_replicas, PLAN.runtime_replicas) == (2, 1)
     assert PLAN.replicas == {"platform-api": 2, "serving-runtime": 1}
     assert dict(PLAN.desired_state_files) == topology["release"]["desiredStateFiles"]
@@ -332,11 +334,12 @@ def test_the_plan_takes_the_baseline_topology_and_release_from_the_record() -> N
     assert PLAN.request_ceiling == 10000
 
 
-def test_each_bound_phrase_is_in_revision_3_and_no_finding_is_raised() -> None:
-    document = _read(R3)
-    assert core.binding_findings(document) == []
-    for pointer, phrase in core.BOUND_PHRASES:
-        assert phrase in core._pointer(document, pointer), pointer
+def test_each_bound_phrase_is_in_revisions_3_and_4_and_no_finding_is_raised() -> None:
+    for path in (R3, R4):
+        document = _read(path)
+        assert core.binding_findings(document) == [], path
+        for pointer, phrase in core.BOUND_PHRASES:
+            assert phrase in core._pointer(document, pointer), (path, pointer)
 
 
 def test_the_figures_of_the_control_are_the_figures_of_the_phrases() -> None:
@@ -353,21 +356,21 @@ def test_the_figures_of_the_control_are_the_figures_of_the_phrases() -> None:
 
 
 def _tree_with(tmp_path: Path, change: Any = None, *, register: bool = True) -> Path:
-    """A tree that holds the registry and the V2-E02A records, with revision 3
+    """A tree that holds the registry and the V2-E02A records, with revision 4
     changed by ``change`` and registered again when ``register`` is set."""
-    for path in (R2, R3, freeze.REGISTRY_PATH):
+    for path in (R2, R3, R4, freeze.REGISTRY_PATH):
         target = tmp_path / path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(REPO_ROOT / path, target)
     if change is not None:
-        document = _read(R3)
+        document = _read(R4)
         change(document)
         data = (json.dumps(document, indent=2) + "\n").encode("utf-8")
-        (tmp_path / R3).write_bytes(data)
+        (tmp_path / R4).write_bytes(data)
         if register:
             registry = json.loads((tmp_path / freeze.REGISTRY_PATH).read_text("utf-8"))
             for row in registry["records"]:
-                if row["path"] == R3:
+                if row["path"] == R4:
                     row["contentSha256"] = freeze.content_digest(data)
             (tmp_path / freeze.REGISTRY_PATH).write_text(json.dumps(registry), "utf-8")
     return tmp_path
@@ -386,7 +389,7 @@ def test_a_registry_whose_latest_record_is_revision_2_is_refused(
 ) -> None:
     root = _tree_with(tmp_path)
     registry = json.loads((root / freeze.REGISTRY_PATH).read_text("utf-8"))
-    registry["records"] = [r for r in registry["records"] if r["path"] != R3]
+    registry["records"] = [r for r in registry["records"] if r["path"] not in (R3, R4)]
     (root / freeze.REGISTRY_PATH).write_text(json.dumps(registry), "utf-8")
     with pytest.raises(core.PlanRefused, match="revision 2, which freezes no driver"):
         core.load_plan(root)
@@ -420,6 +423,15 @@ def test_a_later_figure_in_the_record_refuses_this_control(
 
 
 def test_revision_3_pins_the_driver_and_every_module_of_the_control() -> None:
+    assert {
+        pin["path"]: pin["sha256"]
+        for pin in _read(R4)["pinnedInputs"]
+        if pin["path"].startswith(("tools/experiment_e02a/", "docs/proof/"))
+    } == {
+        pin["path"]: pin["sha256"]
+        for pin in _read(R3)["pinnedInputs"]
+        if pin["path"].startswith(("tools/experiment_e02a/", "docs/proof/"))
+    }
     pinned = {pin["path"] for pin in _read(R3)["pinnedInputs"]}
     assert "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt" in pinned
     modules = {path.relative_to(REPO_ROOT).as_posix() for path in PACKAGE.glob("*.py")}
@@ -433,8 +445,8 @@ def test_revision_3_pins_the_driver_and_every_module_of_the_control() -> None:
     )
 
 
-def test_no_material_input_of_revision_3_has_moved() -> None:
-    document = _read(R3)
+def test_no_material_input_of_revision_4_has_moved() -> None:
+    document = _read(R4)
     files = freeze.material_files(document["materialScope"], REPO_ROOT)
     pinned = {pin["path"]: pin["sha256"] for pin in document["pinnedInputs"]}
     assert set(files) == set(pinned)
@@ -503,6 +515,106 @@ def test_g1_names_revision_4_and_g4_keeps_the_owner_authorization_word_for_word(
     )
 
 
+#: The members of revision 4 that differ from revision 3.
+CHANGED_MEMBERS_R4 = {
+    "metadata",
+    "definition.gitTransitions",
+    "definition.limitations",
+    "definition.history",
+    "fields.experimentIdVersion",
+    "fields.gitRevision",
+    "pinnedInputs",
+    "inputChanges",
+}
+
+#: The pins of revision 3 that the G1 switch moved, and whether each is material.
+G1_MOVED = {
+    "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml": True,
+    "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml": True,
+    "tools/gitops_desired_state/core.py": True,
+    "tools/baseline_profile/__init__.py": False,
+    "tools/baseline_profile/__main__.py": False,
+    "tools/baseline_profile/core.py": False,
+}
+
+
+def test_revision_4_differs_from_revision_3_in_the_listed_members_alone() -> None:
+    three, four = _read(R3), _read(R4)
+    differing = set()
+    for section in ("definition", "fields"):
+        for key in set(three[section]) | set(four[section]):
+            if three[section].get(key) != four[section].get(key):
+                differing.add(f"{section}.{key}")
+    for key in set(three) | set(four):
+        if key not in ("definition", "fields") and three.get(key) != four.get(key):
+            differing.add(key)
+    assert differing == CHANGED_MEMBERS_R4
+    assert four["materialScope"] == three["materialScope"]
+    assert four["exclusionReasons"] == three["exclusionReasons"]
+    assert four["fields"]["topology"] == three["fields"]["topology"]
+    assert four["definition"]["history"][:-1] == three["definition"]["history"]
+
+
+def test_revision_4_classifies_each_pin_that_the_g1_switch_moved() -> None:
+    three = {pin["path"]: pin["sha256"] for pin in _read(R3)["pinnedInputs"]}
+    four = {pin["path"]: pin["sha256"] for pin in _read(R4)["pinnedInputs"]}
+    moved = {
+        path for path in set(three) | set(four) if three.get(path) != four.get(path)
+    }
+    changes = _read(R4)["inputChanges"]
+    assert {change["path"]: change["material"] for change in changes} == G1_MOVED
+    assert moved == set(G1_MOVED)
+    for change in changes:
+        assert change["from"] == three[change["path"]]
+        assert change["to"] == four[change["path"]]
+        assert change["reason"]
+    topology = _read(R4)["fields"]["topology"][0]["value"]["release"]
+    for name, digest in topology["desiredStateFiles"].items():
+        assert four[f"{PLAN.desired_state_path}/{name}"] == digest
+
+
+def test_revision_3_lists_the_files_of_the_g1_switch_and_nothing_else() -> None:
+    changes = freeze.changed_inputs(_read(R3), REPO_ROOT)
+    assert {change.path for change in changes} == set(G1_MOVED)
+
+
+def test_g1_and_g4_of_revision_4_state_the_switch_that_registers_it() -> None:
+    """Rule G4 of revisions 1 to 3 states that no switch is executed by the change
+    that registers the record. Revision 4 is registered by the G1 switch, so it states
+    that instead, and it keeps the owner-authorization sentence word for word."""
+    three = _read(R3)["definition"]["gitTransitions"]
+    four = _read(R4)["definition"]["gitTransitions"]
+    assert four[0] == three[0].replace(
+        "That change registers revision 4 of this record, which classifies each moved "
+        "pin, and revision 4 merges before the first run.",
+        "That change registers revision 4 of this record, which is this revision. "
+        "Revision 4 pins the two switched files and classifies each moved pin, and it "
+        "merges with the switch, before the first run.",
+    )
+    assert four[0] != three[0]
+    assert four[1:3] == three[1:3]
+    owner = (
+        "Each switch is a commit to main that needs the explicit authorization of the "
+        "repository owner."
+    )
+    assert three[3] == (
+        f"G4. No switch is executed by the change that registers this record. {owner}"
+    )
+    assert four[3] == (
+        "G4. The change that registers this record executes the G1 switch, in the "
+        f"same merge. {owner}"
+    )
+    assert "No switch is executed" not in four[3]
+
+
+def test_the_procedure_members_shared_with_e02b_are_unchanged_in_revision_4() -> None:
+    from tools.experiment_preregistration import core as preregistration
+
+    three, four = _read(R3), _read(R4)
+    for member in preregistration.SHARED_DEFINITION:
+        assert four["definition"][member] == three["definition"][member], member
+
+
 def test_the_procedure_members_shared_with_e02b_are_unchanged() -> None:
     from tools.experiment_preregistration import core as preregistration
 
@@ -512,18 +624,25 @@ def test_the_procedure_members_shared_with_e02b_are_unchanged() -> None:
     assert three["definition"]["executables"] == target["definition"]["executables"]
 
 
-def test_the_desired_state_on_main_still_derives_two_plus_two() -> None:
-    """The control refuses the active desired state of this tree at P2: its two
-    files have the digests of the 2+2 target, not those of the baseline."""
+def test_the_desired_state_at_head_is_the_baseline_that_p2_accepts() -> None:
+    """Since the G1 switch, P2 accepts the desired state of the commit it reads: its
+    two files have the digests of the baseline that revision 4 states. The 2+2
+    files of the target, which revision 2 of V2-E02B states, are refused."""
     repository = ports.LocalRepository(REPO_ROOT, PLAN)
     head = repository.head()
     if head is None:
         pytest.skip("git is not usable here")
     digests = repository.desired_state_digests(head, PLAN.desired_state_path)
+    assert digests == dict(PLAN.desired_state_files)
+    assert (
+        core.desired_state_findings(
+            PLAN, desired=head, paths_equal=True, digests=digests
+        )
+        == []
+    )
     target = _read(E02B_R2)["fields"]["topology"][0]["value"]["release"]
-    assert digests == target["desiredStateFiles"]
     findings = core.desired_state_findings(
-        PLAN, desired=head, paths_equal=True, digests=digests
+        PLAN, desired=head, paths_equal=True, digests=target["desiredStateFiles"]
     )
     assert len(findings) == 2
     assert all("and the record states" in finding for finding in findings)
@@ -1143,7 +1262,7 @@ def test_the_declaration_is_the_rule_with_each_topology_member_replaced(
         "readyReplicas": {"platform-api": 2, "serving-runtime": 1},
         "runtimeReadyEndpoints": 1,
     }
-    rule = _read(R3)["definition"]["analysisDeclaration"]
+    rule = _read(R4)["definition"]["analysisDeclaration"]
     assert [s["id"] for s in stored["signals"]] == [s["id"] for s in rule["signals"]]
     thresholds = {s["id"]: s.get("problemBelow") for s in stored["signals"]}
     assert thresholds["runtime-ready-endpoints"] == 1
@@ -1414,9 +1533,9 @@ def test_the_declaration_of_the_control_is_analyzed_and_replayed(
     assert runtime["intervals"], runtime
 
     root = tmp_path / "tree"
-    record = root / R3
+    record = root / R4
     record.parent.mkdir(parents=True)
-    shutil.copyfile(REPO_ROOT / R3, record)
+    shutil.copyfile(REPO_ROOT / R4, record)
     run_dir = root / core.DIRECTORY / "runs" / run_id
     run_dir.mkdir(parents=True)
     entries = []
@@ -1442,8 +1561,8 @@ def test_the_declaration_of_the_control_is_analyzed_and_replayed(
         startedAt="2026-10-12T07:59:00Z",
         finishedAt="2026-10-12T08:20:00Z",
         spec={
-            "freezeRecord": R3,
-            "freezeRevision": 3,
+            "freezeRecord": R4,
+            "freezeRevision": 4,
             "freezeContentSha256": PLAN.record_sha256,
         },
     )

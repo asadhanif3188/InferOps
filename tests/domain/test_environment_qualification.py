@@ -44,6 +44,7 @@ from typing import Any
 import pytest
 import yaml
 
+from tests.support.target_tree import G1_MOVED, target_root
 from tools import environment_qualification as q1
 from tools.capacity_preflight import core as capacity_core
 from tools.environment_qualification import __main__ as cli
@@ -1627,13 +1628,23 @@ def test_each_committed_qualification_is_qualified_with_every_rule_held(
 
 
 def test_the_target_is_the_desired_state_release_with_two_and_two_replicas() -> None:
+    """Q1 qualifies the two-replica target, at its desired-state key.
+
+    Rule G1 of the V2-E02A record switched the desired state of this tree to the
+    single-runtime baseline. So the target is read from a copy of the delivery
+    inputs that holds it, and a qualification at this tree would not read its
+    target: the desired state holds one runtime replica.
+    """
     from tools.gitops_desired_state import DESIRED_STATE_RELEASES, release_key
 
     keys = [release_key(release) for release in DESIRED_STATE_RELEASES]
     assert q1.TARGET_RELEASE_KEY in keys
-    values = yaml.safe_load(VALUES.read_text("utf-8"))
+    target = target_root() / VALUES.relative_to(ROOT)
+    values = yaml.safe_load(target.read_text("utf-8"))
     assert values["api"]["replicaCount"] == q1.TARGET_API_REPLICAS == 2
     assert values["runtime"]["replicaCount"] == q1.TARGET_RUNTIME_REPLICAS == 2
+    selected = yaml.safe_load(VALUES.read_text("utf-8"))
+    assert selected["runtime"]["replicaCount"] == 1
 
 
 def test_the_model_rules_that_q1_reads_are_rules_of_the_observation() -> None:
@@ -1650,7 +1661,7 @@ def test_the_model_rules_that_q1_reads_are_rules_of_the_observation() -> None:
 def test_the_runtime_image_pin_is_the_one_the_observation_expects() -> None:
     from tools.runtime_model_cache import expected_identity
 
-    expected = expected_identity()
+    expected = expected_identity(root=target_root())
     assert expected["runtimeImage"]["reference"] == RUNTIME_IMAGE
     assert expected["model"] == PINNED_MODEL
     assert expected["runtimeReplicas"] == q1.TARGET_RUNTIME_REPLICAS
@@ -1732,7 +1743,9 @@ def test_revision_2_supersedes_revision_1_and_changes_no_criterion() -> None:
     assert "no memory figure" in identity["value"]["recordedPerQualification"]
     assert "Q1-AC9" in identity["value"]["capacity"]
     assert (ROOT / identity["value"]["decision"]).is_file()
-    assert freeze.changed_inputs(r2) == []
+    # The G1 switch of the V2-E02A record moved three pinned files, and nothing else.
+    moved = freeze.changed_inputs(r2)
+    assert sorted(change.path for change in moved) == sorted(G1_MOVED)
 
 
 def test_revision_1_can_no_longer_govern_a_new_qualification() -> None:

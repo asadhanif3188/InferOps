@@ -8,6 +8,16 @@ installed, whether the stated requests and limits of that release fit in what
 one node of a cluster allocates: what it reads, what it requires, each rule,
 each unit, and what a record does not establish.
 
+**Since `V2-S7-003-PR1` the desired-state release is the single-runtime baseline**, by
+[the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4): two API replicas and one serving runtime replica. The gate derives the
+footprint of the release at the desired-state path, so at such a commit it derives one
+runtime pod fewer. The steady part is then four pods, and 1,000 millicores of CPU
+requests, 2,048 MiB of memory requests, and 3,072 MiB of memory limits lower. The rollout
+headroom does not change, because the runtime tier surges no pod. A test holds that the
+two footprints differ by that one pod and in nothing else. The figures on this page are
+those of the two-replica target, which the test suite derives into a copy of the
+delivery inputs. Rule G3 of the V2-E02A record restores that release.
+
 The gate has two parts.
 
 1. **`scripts/environment/capacity-preflight.sh` reads the cluster and writes one

@@ -42,6 +42,13 @@ from inferops.domain.render import (
     RELEASE_FILE_NAME,
     VALUES_FILE_NAME,
 )
+from tests.support.target_tree import target_root
+from tools.baseline_profile import (
+    BASELINE_CONTRACT,
+    PROFILE_DIRECTORY,
+    TARGET_CONTRACT,
+    target_release,
+)
 from tools.generated_release import (
     DECLARED_RELEASES,
     GENERATED_FILES,
@@ -202,14 +209,27 @@ def test_every_desired_state_file_is_pinned_to_lf(declared: DeclaredRelease) -> 
 
 
 def test_one_release_is_declared_and_it_is_the_reference_workload() -> None:
-    """A pin. A second path, or another binding, is a decision and not an edit."""
+    """A pin. A second path, or another binding, is a decision and not an edit.
+
+    Rule G1 of the V2-E02A freeze record switched the contract to the
+    single-runtime baseline's, version 0.1.0. The two-replica target keeps its
+    own contract in the comparison tool, so the switch does not move it.
+    """
     assert [release_key(declared) for declared in DESIRED_STATE_RELEASES] == [KEY]
     assert REFERENCE.directory == (
         "gitops/environments/local-docker-desktop/workloads/support-assistant"
     )
-    assert REFERENCE.contract == (
-        "contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml"
+    assert (
+        REFERENCE.contract
+        == BASELINE_CONTRACT
+        == ("contracts/workload/examples/valid/synchronous-llm-local.yaml")
     )
+    assert (
+        target_release().contract
+        == TARGET_CONTRACT
+        == ("contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml")
+    )
+    assert replace(target_release(), contract=REFERENCE.contract) == REFERENCE
     assert REFERENCE.bindings == (
         "contracts/environment/examples/valid/local-docker-desktop.yaml",
     )
@@ -297,8 +317,30 @@ def test_the_declared_revision_names_a_commit_that_holds_the_defaults_read_today
     )
 
 
+def test_the_desired_state_of_this_tree_is_the_single_runtime_baseline() -> None:
+    """Rule G1 of the V2-E02A record: the two files are the baseline profile's.
+
+    The switch replaced the two files of the target with the two files of the
+    profile, byte for byte. So the release differs from the fixture release in
+    the API replica count alone among its values: this binding states two API
+    replicas and the fixture's binding states one, and both contracts are
+    version 0.1.0 with one runtime replica.
+    """
+    for name in GENERATED_FILES:
+        ours = (REPO_ROOT / REFERENCE.directory / name).read_bytes()
+        assert ours == (REPO_ROOT / PROFILE_DIRECTORY / name).read_bytes(), name
+    values = load(f"{REFERENCE.directory}/{VALUES}")
+    fixture = load(f"{DECLARED_RELEASES[0].directory}/{VALUES}")
+    assert values["api"]["replicaCount"] == 2
+    assert values["runtime"]["replicaCount"] == 1
+    assert {**values, "api": {**values["api"], "replicaCount": 1}} == fixture
+
+
 def test_the_values_differ_from_the_reference_release_values_in_three_values() -> None:
-    """The desired-state release and the fixture release differ in three values.
+    """The two-replica target and the fixture release differ in three values.
+
+    The target is read from a copy of the delivery inputs that holds it, because
+    the desired state of this tree selects the baseline.
 
     This binding states two API replicas, and the fixture's binding states one.
     This release's contract declares two runtime replicas at workload version
@@ -325,7 +367,8 @@ def test_the_values_differ_from_the_reference_release_values_in_three_values() -
                 flat[f"{prefix}{key}"] = value
         return flat
 
-    our_values = leaves(load(f"{REFERENCE.directory}/{VALUES}"))
+    target = target_root() / target_release().directory
+    our_values = leaves(yaml.safe_load((target / VALUES).read_text(encoding="utf-8")))
     their_values = leaves(load(f"{fixture.directory}/{VALUES}"))
     assert set(our_values) == set(their_values)
     assert {path for path in our_values if our_values[path] != their_values[path]} == {
@@ -354,7 +397,7 @@ def test_the_values_differ_from_the_reference_release_values_in_three_values() -
         1,
     )
 
-    ours = leaves(load(f"{REFERENCE.directory}/{RELEASE}"))
+    ours = leaves(yaml.safe_load((target / RELEASE).read_text(encoding="utf-8")))
     theirs = leaves(load(f"{fixture.directory}/{RELEASE}"))
     assert {path for path in ours if ours[path] != theirs[path]} == {
         "metadata.releaseId",

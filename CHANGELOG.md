@@ -10,6 +10,32 @@ from `1.0.0`.
 
 ### Added
 
+- **The G1 switch of the desired state to the single-runtime baseline, and revision 4
+  of the V2-E02A record.** `V2-S7-003-PR1` executes rule G1 of the V2-E02A record: the
+  two files at `gitops/environments/local-docker-desktop/workloads/support-assistant`
+  are now the two files of the single-runtime baseline profile, byte for byte, and the
+  declaration of the desired-state release names the `0.1.0` contract, so the check of
+  the tree derives them. The release is two API replicas and one serving runtime
+  replica, `ecc4b9cf…`. The Application manifest, the chart, the binding, the platform
+  defaults, and both revisions are unchanged. `tools/baseline_profile` now declares the
+  target with the two-replica contract that it states, apart from the contract that the
+  desired state selects, so the comparison is still of the baseline, 2+1, and the
+  target, 2+2, and the committed comparison record is unchanged byte for byte. Its check
+  replaces `baseline-target-release-drifted` with `baseline-desired-state-not-compared`
+  and `baseline-desired-state-drifted`, and `--check` names the selected side. Revision
+  4 of the V2-E02A record pins the switched files, classifies the six pins that moved,
+  states in G1 and G4 that its registering change is the switch, keeps the owner
+  authorization of G4 word for word, and changes no criterion, bound, window, fault,
+  topology, driver, or control. Revision 4 of V2-E03 and revision 3 of V2-E06 bind it;
+  V2-E06 also classifies the two desired-state files as material. The suites that test
+  the two-replica topology read it from a copy of the delivery inputs that holds the
+  target. The merge is the switch on a cluster where the Application is applied, and it
+  needs the explicit authorization of the repository owner. Nothing ran on a cluster:
+  no cluster was read or changed, no fault was injected, and no run identifier was
+  taken. See
+  [the experiments page](docs/proof/experiments/README.md#the-g1-switch-and-revision-4)
+  and [the validation record](docs/proof/environment/v2-s7-003-pr1-validation.md).
+
 - **The E02A driver and revision 3 of the V2-E02A record.** `V2-S7-001-PR1` adds the
   driver that revisions 1 and 2 of the V2-E02A record stated was owed, and registers
   revision 3, which pins it. The driver,

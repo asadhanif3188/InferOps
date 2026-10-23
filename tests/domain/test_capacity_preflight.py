@@ -39,6 +39,7 @@ from typing import Any
 import pytest
 import yaml
 
+from tests.support.target_tree import target_root
 from tools import capacity_preflight as gate
 from tools.capacity_preflight import core
 from tools.capacity_preflight.__main__ import main
@@ -63,7 +64,10 @@ MI = 2**20
 GI = 2**30
 
 # Restated on purpose. A figure that this suite computed with the tool's own
-# arithmetic would agree with the tool by construction.
+# arithmetic would agree with the tool by construction. They are the figures of
+# the two-replica target, which a copy of the delivery inputs holds: the desired
+# state of this tree selects one side of the controlled comparison, and rule G1
+# of the V2-E02A freeze record has it select the single-runtime baseline.
 STEADY = {"pods": 5, "cpu": 2300, "requests": 4480 * MI, "limits": 7680 * MI}
 HEADROOM = {"pods": 2, "cpu": 200, "requests": 256 * MI, "limits": 1024 * MI}
 TRANSIENT = {"pods": 2, "cpu": 110, "requests": 48 * MI, "limits": 192 * MI}
@@ -213,6 +217,11 @@ def header(**over: str) -> dict[str, str]:
 ABSENT = object()
 
 
+def target_footprint() -> dict[str, Any]:
+    """The footprint of the two-replica target, from a copy of the delivery inputs."""
+    return gate.declared_footprint(root=target_root())
+
+
 def collection(
     directory: Path,
     *,
@@ -225,11 +234,15 @@ def collection(
     engine: Any = ABSENT,
     version: Any = ABSENT,
 ) -> Path:
-    """Write one collection. ``ABSENT`` leaves a file out, and bytes are written as given."""
+    """Write one collection. ``ABSENT`` leaves a file out, and bytes are written as given.
+
+    The footprint is the target's unless one is given. The command compares a
+    footprint with this tree, so a test of the command gives this tree's.
+    """
     directory.mkdir(parents=True, exist_ok=True)
     documents = {
         "run.json": header() if run is None else run,
-        "footprint.json": gate.declared_footprint() if footprint is None else footprint,
+        "footprint.json": target_footprint() if footprint is None else footprint,
         "nodes.json": listed([node()]) if nodes is None else nodes,
         "pods.json": listed(system_pods()) if pods is None else pods,
         "namespace-limits.json": listed([]) if limits is None else limits,
@@ -428,7 +441,7 @@ def test_an_unreadable_request_is_refused_and_is_not_zero() -> None:
 
 def test_the_footprint_states_the_two_replica_topology_and_its_headroom() -> None:
     """Two API pods, two runtime pods, one collector, two surge pods, two hook pods."""
-    footprint = gate.declared_footprint()
+    footprint = target_footprint()
     assert footprint["schema"] == gate.FOOTPRINT_SCHEMA
     assert footprint["release"] == {
         "key": KEY,
@@ -985,7 +998,7 @@ def test_a_cluster_with_room_is_accepted_and_the_record_states_each_input(
             "memoryRequestBytes": 0,
         },
     ]
-    assert record["footprint"] == gate.declared_footprint()
+    assert record["footprint"] == target_footprint()
     assert record["footprintSha256"] == gate.footprint_digest(record["footprint"])
     assert record["environment"] == {
         "provider": "synthetic",
@@ -1707,7 +1720,7 @@ def test_a_pod_that_is_not_an_unfinished_pod_of_the_release_is_not_the_release(
 
 
 def test_a_placement_constraint_of_the_release_is_refused(tmp_path: Path) -> None:
-    footprint = gate.declared_footprint()
+    footprint = target_footprint()
     footprint["placementConstraints"] = ["runtime.nodeSelector"]
     record = gate.build_record(collection(tmp_path, footprint=footprint))
     refused_only_by(record, "release-states-no-placement-constraint", gate.AMBIGUOUS)
@@ -1908,7 +1921,7 @@ def test_a_footprint_with_a_lowered_or_an_unusable_figure_is_not_a_collection(
     Each of the first four changes would turn a refusal into an acceptance on a
     node that is short. None of them gives a record.
     """
-    footprint = gate.declared_footprint()
+    footprint = target_footprint()
     change(footprint)
     short = node(memory=REQUIRED["limits"] + EXISTING_MEMORY - 1)
     with pytest.raises(gate.CollectionRefused):
@@ -1946,7 +1959,7 @@ def test_a_self_consistent_footprint_of_fewer_replicas_gives_a_record_but_is_sta
     declared release does not fit. The comparison with the committed files is
     what refuses it, and the command makes that comparison first.
     """
-    smaller = copy.deepcopy(gate.declared_footprint())
+    smaller = copy.deepcopy(target_footprint())
     smaller["components"][1]["replicas"] = 1
     smaller["topology"]["runtimeReplicas"] = 1
     smaller = core._derived(smaller)
@@ -1954,9 +1967,10 @@ def test_a_self_consistent_footprint_of_fewer_replicas_gives_a_record_but_is_sta
     directory = collection(tmp_path, footprint=smaller, nodes=listed([short]))
 
     assert gate.build_record(directory)["result"] == gate.ACCEPTED
-    stale = gate.stale_footprint(directory)
+    stale = gate.stale_footprint(directory, root=target_root())
     assert stale is not None and "is not the footprint" in stale
-    assert gate.stale_footprint(collection(tmp_path / "current")) is None
+    current = collection(tmp_path / "current")
+    assert gate.stale_footprint(current, root=target_root()) is None
 
 
 # --------------------------------------------------------------------------
@@ -2012,7 +2026,7 @@ def test_the_page_states_each_rule_each_limit_and_each_figure() -> None:
     for schema in (gate.RECORD_SCHEMA, gate.FOOTPRINT_SCHEMA, gate.COLLECTION_SCHEMA):
         assert f"`{schema}`" in text, schema
 
-    footprint = gate.declared_footprint()
+    footprint = target_footprint()
     assert f"At chart version `{footprint['sources']['chart']['version']}`" in text
     for component in footprint["components"]:
         pod = component["pod"]
@@ -2075,7 +2089,7 @@ def test_the_requirement_is_not_below_what_the_v1_preflight_requires() -> None:
     capacity = json.loads(V1_DESCRIPTOR.read_text(encoding="utf-8"))["capacity"]
     v1_cpu = capacity["requestedCpuMillis"] + capacity["headroomCpuMillis"]
     v1_memory = capacity["peakMemoryBytes"] + capacity["headroomMemoryBytes"]
-    required = gate.declared_footprint()["totals"]["required"]
+    required = target_footprint()["totals"]["required"]
     assert required["cpuRequestMillis"] - v1_cpu == 300
     assert required["memoryLimitBytes"] - v1_memory == 1152 * MI
 
@@ -2143,10 +2157,16 @@ def test_this_tool_and_the_v1_program_give_the_same_sums_for_one_document(
 # --------------------------------------------------------------------------
 
 
+def _short_of_this_trees_limits() -> dict[str, Any]:
+    """A node short of the memory limits of this tree's footprint, by one byte."""
+    required = gate.declared_footprint()["totals"]["required"]["memoryLimitBytes"]
+    return node(memory=required + EXISTING_MEMORY - 1)
+
+
 def test_the_command_exits_0_for_an_accepted_cluster_and_prints_the_record(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    directory = collection(tmp_path)
+    directory = collection(tmp_path, footprint=gate.declared_footprint())
     assert main([str(directory)]) == 0
     printed = capsys.readouterr()
     assert json.loads(printed.out) == gate.build_record(directory)
@@ -2156,7 +2176,11 @@ def test_the_command_exits_0_for_an_accepted_cluster_and_prints_the_record(
 def test_the_command_exits_5_for_a_refused_cluster_and_prints_the_record(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    directory = collection(tmp_path, nodes=listed([node(memory="8Gi")]))
+    directory = collection(
+        tmp_path,
+        footprint=gate.declared_footprint(),
+        nodes=listed([_short_of_this_trees_limits()]),
+    )
     assert main([str(directory)]) == gate.REFUSED_EXIT == 5
     record = json.loads(capsys.readouterr().out)
     assert record["result"] == gate.REFUSED
@@ -2166,7 +2190,8 @@ def test_the_command_exits_5_for_a_refused_cluster_and_prints_the_record(
 def test_the_command_exits_1_and_prints_no_record_for_what_is_not_a_collection(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    assert main([str(collection(tmp_path, run=ABSENT))]) == 1
+    directory = collection(tmp_path, run=ABSENT, footprint=gate.declared_footprint())
+    assert main([str(directory)]) == 1
     printed = capsys.readouterr()
     assert printed.out == ""
     assert printed.err.startswith("REFUSED  not-a-collection: ")
@@ -2177,11 +2202,12 @@ def test_the_command_exits_1_and_prints_no_record_for_what_is_not_a_collection(
 def test_the_command_refuses_a_footprint_that_the_committed_files_do_not_give(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A collection for fewer replicas is not a gate for the declared release."""
-    smaller = copy.deepcopy(gate.declared_footprint())
-    smaller["components"][1]["replicas"] = 1
-    smaller["topology"]["runtimeReplicas"] = 1
-    directory = collection(tmp_path, footprint=core._derived(smaller))
+    """A collection for another replica count is not a gate for the declared release."""
+    other = copy.deepcopy(gate.declared_footprint())
+    count = other["topology"]["runtimeReplicas"] + 1
+    other["components"][1]["replicas"] = count
+    other["topology"]["runtimeReplicas"] = count
+    directory = collection(tmp_path, footprint=core._derived(other))
 
     assert main([str(directory)]) == 1
     printed = capsys.readouterr()
@@ -2191,7 +2217,7 @@ def test_the_command_refuses_a_footprint_that_the_committed_files_do_not_give(
     assert main([str(directory), "--as-collected"]) == 0
     assert json.loads(capsys.readouterr().out)["footprint"]["topology"] == {
         "apiReplicas": 2,
-        "runtimeReplicas": 1,
+        "runtimeReplicas": count,
     }
 
 
@@ -2204,11 +2230,42 @@ def test_with_as_collected_exit_status_0_does_not_say_accepted(
     files of the tree give. With it, a refused record and an accepted record
     both exit 0, and a caller reads the record.
     """
-    refused = collection(tmp_path / "r", nodes=listed([node(memory="8Gi")]))
+    refused = collection(
+        tmp_path / "r",
+        footprint=gate.declared_footprint(),
+        nodes=listed([_short_of_this_trees_limits()]),
+    )
     assert main([str(refused)]) == gate.REFUSED_EXIT
     capsys.readouterr()
     assert main([str(refused), "--as-collected"]) == 0
     assert json.loads(capsys.readouterr().out)["result"] == gate.REFUSED
+
+
+def test_the_desired_state_of_this_tree_gives_the_footprint_of_the_baseline() -> None:
+    """Rule G1 of the V2-E02A record switched the desired state to the baseline.
+
+    So the gate of this tree derives one runtime pod fewer than the target, and
+    every other component of the two footprints is the same.
+    """
+    selected, target = gate.declared_footprint(), target_footprint()
+    assert selected["topology"] == {"apiReplicas": 2, "runtimeReplicas": 1}
+    assert target["topology"] == {"apiReplicas": 2, "runtimeReplicas": 2}
+    for mine, theirs in zip(selected["components"], target["components"], strict=True):
+        if mine["component"] == "serving-runtime":
+            assert (mine["replicas"], theirs["replicas"]) == (1, 2)
+            mine = {**mine, "replicas": 2}
+        assert mine == theirs
+    pod = target["components"][1]["pod"]
+    steady = (selected["totals"]["steady"], target["totals"]["steady"])
+    assert steady[1]["pods"] - steady[0]["pods"] == 1
+    assert (
+        steady[1]["cpuRequestMillis"] - steady[0]["cpuRequestMillis"]
+        == (pod["cpuRequestMillis"])
+    )
+    assert (
+        steady[1]["memoryLimitBytes"] - steady[0]["memoryLimitBytes"]
+        == (pod["memoryLimitBytes"])
+    )
 
 
 def test_the_command_prints_the_declared_footprint(

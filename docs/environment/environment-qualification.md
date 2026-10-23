@@ -35,6 +35,13 @@ controller at the desired revision, with both runtime replicas on the pinned
 model, and with the caller runner completing real requests through the API
 Service. The result is `QUALIFIED` or `REFUSED`. There is no third result.
 
+Since `V2-S7-003-PR1` the desired state holds the single-runtime baseline, by
+[the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4). Q1 qualifies the two-replica target, so a qualification at a commit that
+holds the switch reads one runtime replica where its target states two, and it is not a
+qualification of its target. The committed qualifications `q1-1` and `q1-2` ran before
+the switch. Revision 2 of the Q1 record also lists the three pinned files that the
+switch moved, and a later qualification needs a revision that classifies them.
+
 | Property | Value |
 |---|---|
 | Freeze record | [`freeze-r2.v1alpha1.json`](../proof/experiments/v2-q1/freeze-r2.v1alpha1.json), experiment `v2-q1-environment-qualification`, part `Q1`, criteria `Q1-AC1` to `Q1-AC17`. It supersedes [revision 1](../proof/experiments/v2-q1/freeze-r1.v1alpha1.json), which decided `q1-1`, and changes the identity that a record states and no criterion |

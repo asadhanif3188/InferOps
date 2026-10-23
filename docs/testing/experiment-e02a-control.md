@@ -12,12 +12,15 @@ procedure. This page describes the code that runs that procedure:
 - [`tools/experiment_e02a`](../../tools/experiment_e02a/control.py), the control. It
   runs the steps in the order of the record and decides each one.
 
-Revision 3 of the record pins both. **Neither has run on a cluster.** The tests and the
-dry runs executed the control against scenario files, and the tests executed the fault
-phase of the driver against a stub `kubectl`; no cluster command and no fault was
-executed. No run of V2-E02A exists, and the desired state on `main` is still the target
-topology of V2-E02B, two API replicas and two runtime replicas. A run refuses at P2 until
-a later change switches the desired state and registers revision 4 of the record.
+Revisions 3 and 4 of the record pin both, with the same digests. **Neither has run on
+a cluster.** The tests and the dry runs executed the control against scenario files, and
+the tests executed the fault phase of the driver against a stub `kubectl`; no cluster
+command and no fault was executed. No run of V2-E02A exists. `V2-S7-003-PR1` switches the
+desired state to the baseline and registers revision 4 of the record, which the control
+loads as the latest. P2 reads the remote main, so a run refuses at P2 until that change
+is merged with the authorization of the repository owner. (Until `V2-S7-003-PR1` this
+paragraph said that the desired state on `main` is still the target topology of V2-E02B
+and that a later change registers revision 4.)
 
 ## How the parts fit
 
@@ -151,8 +154,8 @@ have been recorded.
 A scenario that states no repository member reads that member from the checkout: it runs
 `git` and the four checks of P1, which read files and contact no network, and it reads the
 local tracking branch of the remote main and the files of the desired-state path at it. So
-a dry run of this checkout that states no repository member refuses at P2: the desired
-state of `main` is still the 2+2 target. The schema of a scenario is
+a dry run of this checkout that states no repository member refuses at P2 while the remote
+main holds the 2+2 target, which it does until the change of the G1 switch is merged. The schema of a scenario is
 `inferops.io/experiment-e02a-dry-run-scenario/v1alpha1`. Each read answers the latest
 entry whose act has happened, at least `from` seconds before, and the scenario states the
 requests of the runner as an interval of at least 1 ms and failing intervals.
@@ -193,9 +196,11 @@ requests of the runner as an interval of at least 1 ms and failing intervals.
 ## Validation
 
 The suite [`tests/testing/test_experiment_e02a_control.py`](../../tests/testing/test_experiment_e02a_control.py)
-holds the binding to revision 3, each decision, the order of the steps on scenarios, the
+holds the binding to revision 4, and to revision 3 as history, each decision, the order of the steps on scenarios, the
 dry run, the STOPPED state, the live port and the fault phase of the driver against a
 stub driver and a stub `kubectl`, the hand-off of the paths from the driver against a stub
 `uv`, and the analysis and replay of a synthetic 2+1 run. The validation record of the
 change is
-[`docs/proof/environment/v2-s7-001-pr1-validation.md`](../proof/environment/v2-s7-001-pr1-validation.md).
+[`docs/proof/environment/v2-s7-001-pr1-validation.md`](../proof/environment/v2-s7-001-pr1-validation.md),
+and that of revision 4 is
+[`docs/proof/environment/v2-s7-003-pr1-validation.md`](../proof/environment/v2-s7-003-pr1-validation.md).

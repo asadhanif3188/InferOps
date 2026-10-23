@@ -61,10 +61,30 @@ One release is declared.
 
 | Key | Directory | Contract | Binding | Platform defaults | Revisions |
 |---|---|---|---|---|---|
-| `local-docker-desktop/support-assistant` | `gitops/environments/local-docker-desktop/workloads/support-assistant` | `contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml` | `local-docker-desktop`, the only binding offered | The `api` block and `runtime.rollout` of `charts/inferops-llm/values.yaml` | Both are `cdcfd62baf6fff56ca179711855510c93194ce80` |
+| `local-docker-desktop/support-assistant` | `gitops/environments/local-docker-desktop/workloads/support-assistant` | `contracts/workload/examples/valid/synchronous-llm-local.yaml`, version `0.1.0`, since `V2-S7-003-PR1`. Until then `contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml`, version `0.2.0` | `local-docker-desktop`, the only binding offered | The `api` block and `runtime.rollout` of `charts/inferops-llm/values.yaml` | Both are `cdcfd62baf6fff56ca179711855510c93194ce80` |
 
 Its release identifier is
-`b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db`.
+`ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465`. Until
+`V2-S7-003-PR1` it was
+`b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db`, the two-replica
+target.
+
+**The G1 switch.** Since `V2-S7-003-PR1` the tree holds the single-runtime baseline:
+two API replicas and one serving runtime replica. Rule G1 of the
+[V2-E02A freeze record](../proof/experiments/README.md#the-g1-switch-and-revision-4)
+requires it before the first V2-E02A run, and rule G3 restores the two-replica target
+after the last one. The two files are the files of
+[the single-runtime baseline profile](single-runtime-baseline-profile.md), byte for
+byte. The change edited the contract of the declaration and nothing else of it: the
+directory, the binding, the platform defaults, and both revisions are those of the
+target, so the renderer gives the bytes of the profile. It changed no Application
+manifest, chart, binding, or platform default. The merge of the change is the switch on
+a cluster where the Application is applied, and it needs the explicit authorization of
+the repository owner. Until such a merge, `main` holds the target. The two-replica
+target stays declared in `tools/baseline_profile`, with its own contract, so the
+controlled comparison keeps its two sides. A test derives the target into a copy of the
+delivery inputs where a test needs its two replicas. The paragraphs below that describe
+two replicas describe that target.
 
 **Why this binding.** `local-docker-desktop` names the one provider on which the
 Argo CD bootstrap was executed. No release is committed for `local-kind`.
@@ -118,7 +138,12 @@ From `V2-S4-001-PR1` until `V2-S4-002-PR1` the tree held the release
 one runtime replica. No recorded run reconciled that release. **No run reconciled the
 release that the tree holds now.**
 
-**What the values are.** The values file differs from the values file of the reference
+**What the values of the target are.** Since `V2-S7-003-PR1` the values file of the
+tree differs from the values file of the reference release in the test fixtures in one
+value, `api.replicaCount`, 2 here and 1 there, and a test asserts it. The rest of this
+paragraph describes the values of the two-replica target. (Until `V2-S7-003-PR1` this
+paragraph began "What the values are." and described the file of the tree.) The values
+file of the target differs from the values file of the reference
 release in the test fixtures in three values. `api.replicaCount` is 2 here and 1 there:
 the `local-docker-desktop` binding states two API replicas and the `local-kind` binding
 states one. `runtime.replicaCount` is 2 here and 1 there, and
@@ -187,7 +212,13 @@ check compares them with the inputs that this release's Application states. A ch
 to the chart's repository, revision, or path, the release name, the namespace, the
 cluster address, or a hand-written value in the Application alone is refused until
 the baseline's file states the same. That check also holds that the committed files
-of this release are what its declared sources derive.
+of this release are what its declared sources derive. Since `V2-S7-003-PR1` the tree
+holds the baseline's files at this path, and the baseline is no longer derived from
+this release's declaration as it stands: the tool declares the target as this
+declaration with the two-replica contract, and the baseline as the target with the
+contract and the directory replaced. Its check holds that this declaration names the
+contract of one of the two sides, and that the committed files here are what that side
+derives. The comparison record did not change.
 
 ## The promotion boundary
 

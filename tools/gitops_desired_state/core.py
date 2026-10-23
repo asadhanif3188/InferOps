@@ -99,13 +99,22 @@ TREE_DOCUMENT: Final = f"{DESIRED_STATE_ROOT}/README.md"
 #: PodDisruptionBudget for a tier of two or more replicas and changes no value. The
 #: renderer states the chart version, so the commit that made that edit is recorded
 #: here. The release before it named ``40803f2f``, and is in Git history.
+#: The switch to the single-runtime baseline changed the contract alone. The
+#: renderer and the platform defaults did not change, so this revision stays.
 _REFERENCE_RENDER_REVISION: Final = "cdcfd62baf6fff56ca179711855510c93194ce80"
 
 #: Every desired-state release, and the inputs each is derived from.
 #:
-#: The one entry is the two-replica version of the reference workload, on the
-#: ``local-docker-desktop`` binding. The contract declares two serving runtime
-#: replicas, and the binding states two API replicas.
+#: The one entry is the single-runtime baseline of the reference workload, on the
+#: ``local-docker-desktop`` binding. The contract is version ``0.1.0``, which
+#: declares one serving runtime replica, and the binding states two API replicas.
+#: This is the switch that rule G1 of the V2-E02A freeze record requires before
+#: the first V2-E02A run. The release is byte for byte the single-runtime baseline
+#: profile. Until the switch the entry named the two-replica contract, version
+#: ``0.2.0``, which is the target of V2-E02B. Rule G3 of that record restores it
+#: after the last V2-E02A run. ``tools.baseline_profile`` declares that target
+#: apart from this entry, so the comparison keeps its two sides while this entry
+#: selects one of them.
 #: That binding names the one provider on which the GitOps controller's bootstrap
 #: was executed. One Application of that controller reads this release, on a
 #: cluster where an operator applied the Application.
@@ -115,7 +124,7 @@ DESIRED_STATE_RELEASES: Final[tuple[DeclaredRelease, ...]] = (
             f"{ENVIRONMENTS_PATH}/local-docker-desktop/"
             f"{WORKLOADS_SEGMENT}/support-assistant"
         ),
-        contract="contracts/workload/examples/valid/synchronous-llm-two-replicas.yaml",
+        contract="contracts/workload/examples/valid/synchronous-llm-local.yaml",
         bindings=("contracts/environment/examples/valid/local-docker-desktop.yaml",),
         binding_name="local-docker-desktop",
         platform_defaults="charts/inferops-llm/values.yaml",

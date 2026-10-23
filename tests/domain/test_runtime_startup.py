@@ -26,6 +26,7 @@ from typing import Any
 
 import pytest
 
+from tests.support.target_tree import G1_MOVED
 from tools import runtime_startup as q2
 from tools.environment_qualification import core as q1
 from tools.experiment_freeze import core as freeze
@@ -1216,8 +1217,17 @@ def test_the_scope_of_q2_holds_the_scope_of_q1() -> None:
     assert set(q1_record["materialScope"]["entryModules"]) <= set(scope["entryModules"])
 
 
-def test_the_freeze_record_lists_no_changed_material_file() -> None:
-    assert freeze.changed_inputs(_freeze()) == []
+def test_the_freeze_record_lists_only_the_files_of_the_g1_switch() -> None:
+    """Rule G1 of the V2-E02A record moved three files that this record pins.
+
+    The record was registered before the switch, and it is not revised: the
+    qualification runs under it are complete. A run under it would refuse until
+    a later revision classifies them, and a run of this qualification needs the
+    two-replica target in the desired state.
+    """
+    changed = freeze.changed_inputs(_freeze())
+    assert sorted(change.path for change in changed) == sorted(G1_MOVED)
+    assert {change.kind for change in changed} == {"changed"}
 
 
 def test_the_qualification_of_revision_2_is_q1_1_and_qualified() -> None:

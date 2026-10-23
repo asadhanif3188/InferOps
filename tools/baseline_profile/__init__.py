@@ -1,7 +1,9 @@
 """The controlled single-runtime baseline, and its comparison with the target release.
 
-The target is the desired-state release of the reference workload, with two API
-replicas and two serving runtime replicas. The baseline is an experiment profile
+The target is the two-replica release of the reference workload, with two API
+replicas and two serving runtime replicas. It takes the desired-state release's
+declaration with the two-replica contract, so it stays that release while the
+desired state selects the baseline. The baseline is an experiment profile
 with two API replicas and one serving runtime replica. This package declares the
 baseline, derives both releases from their declared inputs, reads the install
 description of each side and the API image digest that each side declares, and
@@ -44,6 +46,7 @@ from .core import (
     REPO_ROOT,
     RESULT_STATES,
     RULES,
+    TARGET_CONTRACT,
     TARGET_KEY,
     TOPOLOGY,
     Finding,
@@ -52,6 +55,7 @@ from .core import (
     baseline_profile,
     build_record,
     record_text,
+    selected_side,
     target_release,
     verify_profile,
     write_profile,
@@ -83,6 +87,7 @@ __all__ = [
     "REPO_ROOT",
     "RESULT_STATES",
     "RULES",
+    "TARGET_CONTRACT",
     "TARGET_KEY",
     "TOPOLOGY",
     "Finding",
@@ -91,6 +96,7 @@ __all__ = [
     "baseline_profile",
     "build_record",
     "record_text",
+    "selected_side",
     "target_release",
     "verify_profile",
     "write_profile",
