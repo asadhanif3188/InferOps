@@ -277,7 +277,14 @@ tree, and in this tree it was stopped because the second commit was to change pi
 records and tests after the review. Before the second commit, the suites of the changed
 modules passed against the first commit: 3,034 passed and 5 skipped, the provenance and
 P2 tests that read `HEAD` included. The lane of the second commit is recorded by the
-commit that follows it.
+commit that follows it:
+
+| Command | Result |
+|---|---|
+| The default lane, `uv run --locked pytest`, on the second commit `13bfc74` | 23,498 passed, 42 skipped, 14 deselected, in 80 min. No test failed |
+
+The third commit edits this page alone, so no file that the lane read or that a freeze
+record pins moved after it. The hosted lane runs when the pull request is opened.
 
 ## Independent review of the first commit
 
