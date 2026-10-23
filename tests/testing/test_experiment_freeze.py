@@ -165,11 +165,11 @@ E06_R2_PIN = "d8e562da2b131697bee29f9b1d5848b4353f72513c3e3e42326d20dd0f5086bf"
 #: 4 of V2-E03 and revision 3 of V2-E06, which bind it. Their pins are written out
 #: the same way.
 E02A_R4 = "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json"
-E02A_R4_PIN = "2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234"
+E02A_R4_PIN = "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
 E03_R4 = "docs/proof/experiments/v2-e03/freeze-r4.v1alpha1.json"
-E03_R4_PIN = "ae500cf4f96bb5c1425e096d4433c83e7ca9e7dc1b4d7ba1587b42058e69d63d"
+E03_R4_PIN = "2883e87ff3e97e65c3f29ee25fc84f4a4dd7a45c54f7c039248c23443f836df2"
 E06_R3 = "docs/proof/experiments/v2-e06/freeze-r3.v1alpha1.json"
-E06_R3_PIN = "4e9d23deafae70e652f795cb2c0e1bb28b4ad1e1fdf5d1d95e8ccaa2b3ce47c9"
+E06_R3_PIN = "baa4c3814088bf1ac7bb6e57369c10e162751c5e19fb48eddc480cf38f5bb331"
 #: The next revision: a planted record that follows the latest one.
 R4 = "docs/proof/experiments/v2-e01/freeze-r4.v1alpha1.json"
 #: The revision every content defect below is planted in. Revision 3 follows it, so

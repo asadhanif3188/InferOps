@@ -573,6 +573,34 @@ def test_revision_4_classifies_each_pin_that_the_g1_switch_moved() -> None:
         assert four[f"{PLAN.desired_state_path}/{name}"] == digest
 
 
+def test_a_switch_without_revision_4_is_refused_at_p1(tmp_path: Path) -> None:
+    """The switched files of this tree, with no revision that classifies them.
+
+    A registry that does not register revision 4 gives the plan of revision 3.
+    Revision 3 states the baseline digests, so P2 alone would accept the switched
+    files; but the freeze tool lists the six files of the switch against revision
+    3, so P1 refuses the run before any cluster read. An unregistered switch is
+    therefore never run under.
+    """
+    root = _tree_with(tmp_path)
+    registry = json.loads((root / freeze.REGISTRY_PATH).read_text("utf-8"))
+    registry["records"] = [r for r in registry["records"] if r["path"] != R4]
+    (root / freeze.REGISTRY_PATH).write_text(json.dumps(registry), "utf-8")
+    (root / R4).unlink()
+    plan = core.load_plan(root)
+    assert (plan.record_path, plan.revision) == (R3, 3)
+    assert dict(plan.desired_state_files) == dict(PLAN.desired_state_files)
+    moved = freeze.changed_inputs(_read(R3), REPO_ROOT)
+    assert {change.path for change in moved} == set(G1_MOVED)
+    findings = core.repository_findings(
+        head=HEAD,
+        clean=True,
+        checks=dict.fromkeys(("a", "b", "c", "d"), 0),
+        changes_exit=1 if moved else 0,
+    )
+    assert findings == ["the freeze tool lists a moved input of the record"]
+
+
 def test_revision_3_lists_the_files_of_the_g1_switch_and_nothing_else() -> None:
     changes = freeze.changed_inputs(_read(R3), REPO_ROOT)
     assert {change.path for change in changes} == set(G1_MOVED)

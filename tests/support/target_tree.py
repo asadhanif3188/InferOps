@@ -25,10 +25,12 @@ import atexit
 import functools
 import shutil
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
+from types import MappingProxyType
 
 from tools.baseline_profile import target_release
-from tools.generated_release import GENERATED_FILES, derive, regenerate
+from tools.generated_release import GENERATED_FILES, derive, regenerate, verify
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -68,7 +70,14 @@ _IGNORED = shutil.ignore_patterns("__pycache__", "*.pyc", "*.egg-info", ".terraf
 def target_root() -> Path:
     """A temporary copy of :data:`COPIED`, with the target release in the desired state.
 
-    The copy is made once for a test session and removed when the session ends.
+    The copy is made once for a test session and removed when the session ends. It
+    is shared by every test of the session, so a test reads it and writes nothing
+    in it; a test that needs to change a file copies what it needs.
+
+    The copy is checked before it is returned: the target derived from it is the
+    target derived from this tree, and its committed files are that derivation. A
+    delivery input that :data:`COPIED` misses fails here, with this message, and
+    not as an unrelated error of a tool.
     """
     root = Path(tempfile.mkdtemp(prefix="inferops-target-"))
     atexit.register(shutil.rmtree, root, ignore_errors=True)
@@ -80,19 +89,22 @@ def target_root() -> Path:
             (root / relative).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, root / relative)
     regenerate(target_release(), root)
+    copied = dict(derive(target_release(), root).files())
+    assert copied == dict(target_files()), (
+        "the copy of the delivery inputs derives another target than this tree"
+    )
+    assert verify(target_release(), root) == (), (
+        "the copy of the delivery inputs does not hold the derived target"
+    )
     return root
 
 
 @functools.cache
-def target_files() -> dict[str, bytes]:
-    """The two generated files of the target release, by name, from this tree's sources."""
+def target_files() -> Mapping[str, bytes]:
+    """The two generated files of the target release, by name, from this tree's sources.
+
+    The mapping is read-only, because every test of the session shares it.
+    """
     files = dict(derive(target_release(), REPO_ROOT).files())
     assert set(files) == set(GENERATED_FILES)
-    return files
-
-
-def target_values(directory: Path) -> Path:
-    """Write the target's generated values into ``directory``, and return the file."""
-    path = directory / GENERATED_FILES[0]
-    path.write_bytes(target_files()[GENERATED_FILES[0]])
-    return path
+    return MappingProxyType(files)

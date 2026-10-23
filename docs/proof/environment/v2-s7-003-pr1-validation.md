@@ -29,9 +29,9 @@ that authorization.
 | The description | [The G1 switch and revision 4](../experiments/README.md#the-g1-switch-and-revision-4), [the desired-state page](../../environment/git-desired-state.md), and [the baseline-profile page](../../environment/single-runtime-baseline-profile.md) |
 
 The registered content digests are
-`2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234` (V2-E02A revision 4),
-`ae500cf4f96bb5c1425e096d4433c83e7ca9e7dc1b4d7ba1587b42058e69d63d` (V2-E03 revision 4), and
-`4e9d23deafae70e652f795cb2c0e1bb28b4ad1e1fdf5d1d95e8ccaa2b3ce47c9` (V2-E06 revision 3).
+`3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e` (V2-E02A revision 4),
+`2883e87ff3e97e65c3f29ee25fc84f4a4dd7a45c54f7c039248c23443f836df2` (V2-E03 revision 4), and
+`baa4c3814088bf1ac7bb6e57369c10e162751c5e19fb48eddc480cf38f5bb331` (V2-E06 revision 3).
 Each is written out in `tests/testing/test_experiment_freeze.py`, so that a change to it is
 visible in review.
 
@@ -94,7 +94,7 @@ visible in review.
 |---|---|
 | `metadata` | Revision 4, registered on 2026-10-23 by `V2-S7-003-PR1`, superseding revision 3 by path and digest. Rule set 2 |
 | `definition.gitTransitions` | G1 states that revision 4 is the revision that the switch change registers. G4 states that the change that registers revision 4 executes the switch. G2 and G3 are those of revision 3 |
-| `definition.limitations` | One item restated, "Revisions 3 and 4 pin both", and three added: 22 items |
+| `definition.limitations` | One item restated, "Revisions 3 and 4 pin both", and four added: 23 items |
 | `definition.history` | One entry states when and why revision 4 was written |
 | `fields.experimentIdVersion` | The freeze revision is 4 |
 | `fields.gitRevision` | Prepared from `a07a23e` |
@@ -105,12 +105,26 @@ A test holds that no other member differs. The material scope, the topology, the
 exclusion reasons, the driver, and the control are those of revision 3, and every member
 that V2-E02A shares with V2-E02B is unchanged.
 
-The three added limitations state: what the switch changes and that the comparison record
+The four added limitations state: what the switch changes and that the comparison record
 is unchanged; that no tool checks the authorization of the merge or that the controller
-delivered the baseline after it; and that the line of the comparison record "The capacity
-preflight derives the footprint of the target only" is not true while the desired state
-selects the baseline, because the preflight derives the footprint of the desired-state
-release, and P4 reads it.
+delivered the baseline after it; that the runtime PodDisruptionBudget of the target stays
+on a cluster where the Application delivered the target, below; and that the line of the
+comparison record "The capacity preflight derives the footprint of the target only" is not
+true while the desired state selects the baseline, because the preflight derives the
+footprint of the desired-state release, and P4 reads it.
+
+**The budget that the switch leaves behind.** The chart renders the PodDisruptionBudget of
+the runtime tier for two or more runtime replicas alone, and the sync policy of the
+Application does not prune. So on a cluster where the Application delivered the target
+and is still applied when the switch merges, that budget stays, with `minAvailable` 1 over
+the one runtime pod, until a person deletes it. It refuses an eviction of that pod, so a
+drain of its node does not complete. It does not bound the fault of F3, which deletes the
+pod and does not evict it. The procedure does not delete it. The `model-cache` verb of P5
+lists each object of the release that remains in the namespace, budgets among them, and
+refuses the run when one remains, so a run does not start beside it. The person who
+merges the switch on such a cluster deletes the budget, or keeps it and accepts that P5
+refuses. [The disruption-budgets page](../../environment/disruption-budgets.md#under-the-argo-cd-application)
+states the general case.
 
 ### G1 and G4
 
@@ -174,7 +188,7 @@ whose scope pins them: the two desired-state files and `core.py` of
 
 | Latest record | Moved by the switch | Moved before | Material, in this assessment | What it owes before its next run |
 |---|---|---|---|---|
-| V2-E02A, revision 4 | None: UNCHANGED | None | None | Its first run, at a merged commit that holds the switch, under the authorization of the repository owner for its faults |
+| V2-E02A, revision 4 | None: UNCHANGED | None | None | Its first run, at a merged commit that holds the switch |
 | V2-E02B, revision 2 | Switched, and the three files of `tools/baseline_profile` | `core.py` of the preregistration check | The two desired-state files: its target is not at its path. The rule G3 restores them, and the restored files have the pinned digests again. The declaration and the baseline-profile tool: not material, because the declaration of the target and the comparison record do not change | The G3 restoration with its own owner authorization, its driver, and a revision that classifies each moved pin |
 | V2-E02C, revision 2 | Switched | `core.py` of the preregistration check | As V2-E02B: the desired-state files until G3 | The G3 restoration, its driver, and a revision that classifies each moved pin |
 | V2-E04, revision 3 | Switched | None | As V2-E02B: the desired-state files until G3 | The G3 restoration, its driver, the bad-release fixture, the known-good identity record, and a revision that classifies each moved pin |
@@ -190,6 +204,14 @@ whose scope pins them: the two desired-state files and `core.py` of
 The materiality in this table is the assessment of this change. The revision that
 classifies a moved pin decides it, before the run that it governs.
 
+**What the restoration owes beside this table.** Rule G3 restores the two files of the
+target. The declaration of `tools/gitops_desired_state` then names the two-replica
+contract again, which `TARGET_CONTRACT` of `tools/baseline_profile` also states, so both
+name one contract and `--check` reports the target as the selected side. Two tests of
+this change name the baseline as the selected side and change with the restoration:
+`test_one_release_is_declared_and_it_is_the_reference_workload` and the selected-side
+tests of the baseline-profile suite. The comparison record does not change.
+
 ## The tests
 
 `tests/domain/test_baseline_profile.py` gains a section on the selected side: ten tests,
@@ -200,13 +222,28 @@ desired state, are read from the derived target.
 The suites that test two replicas of a tier read them from
 [`tests/support/target_tree.py`](../../../tests/support/target_tree.py): a copy of the
 delivery inputs, made once for a session under a temporary directory, in which the
-desired-state directory holds the target derived again by `tools.baseline_profile`. Those
+desired-state directory holds the target derived again by `tools.baseline_profile`. The
+copy is checked before it is used: the target that it derives is the target that this
+tree derives, and its committed files are that target, so an input that the copy misses
+fails there with a stated reason. The chart and renderer suites make the copy when a test
+first asks for it. The model-cache suite makes it when the module is collected, because
+module constants of that suite read the expected identity; a failure there is an error
+of that module's collection. Those
 are the suites of the capacity preflight, the runtime model cache, the Helm chart, the
 renderer, the desired-state tree, and Q1. Each also holds what this tree selects: one
 runtime replica, the footprint of one runtime pod fewer, a render with the API tier's
 budget alone, and a release that differs from the fixture release in the API replica
 count alone. The suites of the provenance tool and of the reconciliation evidence read
 `HEAD`, and they read the switched release once the change is committed.
+
+**The accidental unapproved switch.** The negative tests cover a switch made in one
+part (the declaration without the files, the files without the declaration, a hand edit,
+a declaration of a third contract), a desired state that P2 refuses (the 2+2 files under
+revision 4), and switched files with no registered revision 4:
+`test_a_switch_without_revision_4_is_refused_at_p1` reads the plan of revision 3 from a
+registry without revision 4, and the freeze tool lists the six files of the switch
+against revision 3, so P1 refuses the run before any cluster read. No test can show that
+the owner authorized a merge: no tool reads that authorization.
 
 The tripwires of the Q1, Q2, and Q3 records, and of the records of the five reliability
 experiments and the two analysis records, name the files that the switch moved, record
@@ -232,9 +269,57 @@ records, and leave the three new records out of the copies that read an earlier 
 | The suites of the changed modules, before the first commit | Passed, except the tests that read `HEAD`, which hold the switched release only once it is committed. In a scratch clone with the change committed, the suites of the provenance tool, the reconciliation evidence, and the Argo CD Application passed, 226 tests. The P2 test of the control suite was left to the lane |
 | `git diff --check` | No finding |
 
-The default lane of the first commit was run after that commit, because the suites of the
-provenance tool, the reconciliation evidence, and P2 read `HEAD`. Its result is recorded
-by the second commit.
+The default lane was not completed on the first commit. The suites of the provenance
+tool, the reconciliation evidence, and P2 read `HEAD`, so the lane needs the commit. It
+was started on the first commit in a scratch clone and then in this tree, and it was
+stopped at about 5 % each time: in the clone it ran several times slower than in this
+tree, and in this tree it was stopped because the second commit was to change pinned
+records and tests after the review. Before the second commit, the suites of the changed
+modules passed against the first commit: 3,034 passed and 5 skipped, the provenance and
+P2 tests that read `HEAD` included. The lane of the second commit is recorded by the
+commit that follows it.
+
+## Independent review of the first commit
+
+Two independent reviewers read the first commit, `12b7ad5`: one for the code, the tests,
+and safety, and one for the records, the claims of the documents, and private
+information. Neither changed a file. Neither found a blocking defect. Both found that the
+two switched files are the profile's byte for byte, that no file of the delivery path
+other than the two files moved, that the comparison record is unchanged, that the target
+never follows the desired state and that the tests of that fail if it does, that
+revisions 1 to 3 and every other record are byte-unchanged, that G1 and G4 of revision 4
+are as required, that each moved pin is classified with a reason of its own, that the
+inventory of moved pins in this page agrees with `--changes` record by record, and that
+no private text, local path, or later story identifier is in the change. The second
+commit fixed each finding below. It changed revision 4, so the three records were
+registered again; the digests of the first commit are superseded and no file states them.
+
+**What the first commit got wrong:**
+
+- **It did not state the budget that the switch leaves behind.** The Application does not
+  prune, so on a cluster where it delivered the target the runtime PodDisruptionBudget
+  stays over the one runtime pod. Revision 4 now states it as a limitation, with what P5
+  does, and [the section above](#every-member-that-differs-from-revision-3) describes it.
+- **The accidental unapproved switch was covered in part.** No test held that switched
+  files with no registered revision 4 are refused. A test now holds that P1 refuses them.
+- **Stale text.** The README still said that the baseline record is at revision 3 and that
+  a run refuses while `main` holds the 2+2 target; the inventory row of the control suite
+  said that the plan is revision 3 and that the tree holds the 2+2 digests, beside a new
+  sentence that said the opposite; the capacity-preflight page began with "The
+  desired-state release declares two" runtime replicas; three pages said that Q1
+  qualifies "the target topology of the desired-state release" without the switch; and the
+  testing index said that the control runs revision 3. Each now states what is true, with
+  a dated note where history is kept.
+- **An unsupported claim.** This page said that the first run of V2-E02A needs "the
+  authorization of the repository owner for its faults". No record or page states such an
+  authorization, and the words are removed.
+- **The copy of the delivery inputs was not checked.** An input that it missed would have
+  failed far from the cause. It is now checked when it is made, its files are a read-only
+  mapping, and the chart and renderer suites make it when a test first asks for it and
+  not when the module is collected.
+- **Smaller defects:** the reason recorded for `__main__.py` of the baseline-profile tool
+  did not say that it now imports the desired-state tool; and the command test of a lost
+  target contract asserted one refusal line where two rules refuse.
 
 ## What this does not establish
 
@@ -249,3 +334,5 @@ by the second commit.
   eligibility as not-established, and a run and its review decide it.
 - **That the materiality above is final.** Each later revision decides the moved pins of
   its record.
+- **That a cluster holds no budget of the target after the merge.** The Application does
+  not prune. P5 refuses a run beside such a budget, and no step deletes it.

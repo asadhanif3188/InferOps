@@ -124,7 +124,7 @@ DRIVER = "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
 #: Revision 4 of V2-E02A, of rule set 2, registered by V2-S7-003-PR1 with the G1
 #: switch. It pins the two switched desired-state files.
 E02A_R4 = "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json"
-E02A_R4_PIN = "2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234"
+E02A_R4_PIN = "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
 #: The files that the G1 switch moved, by the tools whose scope pins them: the two
 #: desired-state files and the desired-state tool, and for V2-E02A and V2-E02B the
 #: baseline-profile tool.

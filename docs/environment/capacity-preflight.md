@@ -2,8 +2,9 @@
 
 Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. Three readings of one cluster are committed, each of 2026-10-09 on the `docker-desktop` provider and each with the result `ACCEPTED`. Two are whole collections, and one is a record with part of its collection. None is a qualification of that host. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
 
-The desired-state release declares two platform API replicas and two serving
-runtime replicas. This page describes the gate that decides, before anything is
+The two-replica target declares two platform API replicas and two serving
+runtime replicas. (Until `V2-S7-003-PR1` this paragraph began "The desired-state release
+declares".) This page describes the gate that decides, before anything is
 installed, whether the stated requests and limits of that release fit in what
 one node of a cluster allocates: what it reads, what it requires, each rule,
 each unit, and what a record does not establish.

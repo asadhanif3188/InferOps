@@ -1037,7 +1037,10 @@ the record, and the record states seven acceptance criteria, `S5I-AC1` to `S5I-A
 [`v2-q1/freeze-r1.v1alpha1.json`](v2-q1/freeze-r1.v1alpha1.json) fixes Q1 before any
 qualification runs. Q1 decides whether one local environment holds the target topology
 of the desired-state release, two API replicas and two runtime replicas, at its exact
-identities, before a V2 reliability experiment runs. The procedure is
+identities, before a V2 reliability experiment runs. Since `V2-S7-003-PR1` the
+desired-state release is the single-runtime baseline, by
+[the G1 switch](#the-g1-switch-and-revision-4), so that target is the two-replica target
+and not the release that the tree holds. The procedure is
 [the driver beside it](v2-q1/procedure/q1-driver.txt), and the decision is made by
 [`tools/environment_qualification`](../../../tools/environment_qualification/core.py).
 Both are pinned inputs of the record. The record states seventeen acceptance criteria,
@@ -2055,7 +2058,7 @@ not part of this change.
 
 `V2-S7-003-PR1` executes rule G1 of the V2-E02A record and registers revision 4 of that
 record, [`v2-e02a/freeze-r4.v1alpha1.json`](v2-e02a/freeze-r4.v1alpha1.json), with the
-registered digest `2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234`, in the same change. The change merges into `main` only with
+registered digest `3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e`, in the same change. The change merges into `main` only with
 the explicit authorization of the repository owner for that merge. The Argo CD
 Application follows `main`, so the merge is the switch on a cluster where an operator
 applied the Application. No run of V2-E02A or of any other experiment exists, no fault
@@ -2086,10 +2089,15 @@ was injected, and no cluster was read or changed by this change.
   P1 does not run that check. Rule G1 states that revision 4 is the revision that the
   switch change registers. Rule G4 states that the change that registers revision 4
   executes the switch, and it keeps word for word the requirement that each switch needs
-  the explicit authorization of the repository owner. Revision 4 adds three limitations
+  the explicit authorization of the repository owner. Revision 4 adds four limitations
   and one history entry. It changes no criterion, bound, window, fault, collection,
   measurement, outcome rule, exclusion reason, abort condition, cleanup, repetition rule,
   topology, driver, or control.
+- **A budget can stay behind.** The Application does not prune, and the chart renders
+  the runtime PodDisruptionBudget for two or more runtime replicas alone. On a cluster
+  where the Application delivered the target, that budget stays after the switch over the
+  one runtime pod until a person deletes it, and P5 refuses a run while it remains.
+  Revision 4 states this limitation.
 - **P2 holds at the merged commit.** The two files at the desired-state path of `main`
   have the digests that revision 4 states, so P2 holds the desired state of a run at
   that commit. P2 still refuses a commit whose files are those of the 2+2 target.
@@ -2121,10 +2129,10 @@ and the content digest of its latest registered freeze record:
 | V2-E03, revision 1 | V2-E04 | extension | 2 | `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619` |
 | V2-E03, revision 2 | V2-E04 | extension | 3 | `41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05` |
 | V2-E03, revision 3 | V2-E02A | initial | 3 | `2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf` |
-| V2-E03, revision 4 | V2-E02A | initial | 4 | `2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234` |
+| V2-E03, revision 4 | V2-E02A | initial | 4 | `3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e` |
 | V2-E06, revision 1 | V2-E02A | baseline | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
 | V2-E06, revision 2 | V2-E02A | baseline | 3 | `2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf` |
-| V2-E06, revision 3 | V2-E02A | baseline | 4 | `2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234` |
+| V2-E06, revision 3 | V2-E02A | baseline | 4 | `3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e` |
 | V2-E06 | V2-E02B | target | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
 
 Revision 3 of V2-E03 and revision 2 of V2-E06, registered by `V2-S7-001-PR1` on

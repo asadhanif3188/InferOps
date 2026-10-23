@@ -100,9 +100,9 @@ LATER = (E02A_R3, E03_R3, E06_R2)
 #: :func:`latest_root`.
 E02A_R4 = "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json"
 E03_R4 = "docs/proof/experiments/v2-e03/freeze-r4.v1alpha1.json"
-E03_R4_PIN = "ae500cf4f96bb5c1425e096d4433c83e7ca9e7dc1b4d7ba1587b42058e69d63d"
+E03_R4_PIN = "2883e87ff3e97e65c3f29ee25fc84f4a4dd7a45c54f7c039248c23443f836df2"
 E06_R3 = "docs/proof/experiments/v2-e06/freeze-r3.v1alpha1.json"
-E06_R3_PIN = "4e9d23deafae70e652f795cb2c0e1bb28b4ad1e1fdf5d1d95e8ccaa2b3ce47c9"
+E06_R3_PIN = "baa4c3814088bf1ac7bb6e57369c10e162751c5e19fb48eddc480cf38f5bb331"
 LATEST = (E02A_R4, E03_R4, E06_R3)
 #: The files that the G1 switch moved, by the tools whose scope pins them.
 DESIRED_STATE_FILES = (

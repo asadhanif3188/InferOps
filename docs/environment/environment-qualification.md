@@ -29,7 +29,7 @@ under revision 2, and that the freeze record of E02A and E02B would name the ide
 `q1-2` when `q1-2` is `QUALIFIED`.)
 
 Before a V2 reliability experiment runs, Q1 decides whether one local
-environment holds the target topology of the desired-state release: two
+environment holds the two-replica target topology of the desired-state release: two
 platform API replicas and two serving runtime replicas, delivered by the
 controller at the desired revision, with both runtime replicas on the pinned
 model, and with the caller runner completing real requests through the API

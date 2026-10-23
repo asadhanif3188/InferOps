@@ -21,7 +21,7 @@
         "role": "baseline",
         "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
         "revision": 4,
-        "contentSha256": "2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234",
+        "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
         "preregistrationRules": 2
       },
       {
@@ -634,7 +634,7 @@
     },
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
-      "sha256": "2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234",
+      "sha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
       "role": "a freeze record of a source experiment"
     },
     {
@@ -1242,7 +1242,7 @@
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
       "from": null,
-      "to": "2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234",
+      "to": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
       "material": true,
       "reason": "Revision 4 of V2-E02A, which this revision binds. It is registered by the G1 switch: it pins the two switched desired-state files and classifies the pins that the switch moved. It changes no criterion, measurement, window, topology, or driver of V2-E02A."
     },

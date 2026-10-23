@@ -63,6 +63,7 @@
       "The control runs the latest revision that the freeze registry of the executing revision registers, and it refuses a revision before revision 3. The review of each run compares the revision that the run directory names with the registry.",
       "The change that registers revision 4 switches the desired-state declaration of tools/gitops_desired_state to the 0.1.0 contract of the baseline, and the two files at topology.desiredStatePath to the files of the single-runtime baseline profile, byte for byte. tools/baseline_profile declares the target with the two-replica contract apart from that declaration, so the comparison is of the baseline and the two-replica target in both states of the desired state. Its check refuses a desired state that declares a contract of neither side, and desired-state files that are not what the selected declaration derives. The committed comparison record is byte for byte the record that revisions 1 to 3 pin.",
       "The merge of the change that registers revision 4 is the switch. No tool checks that the repository owner authorized that merge. The review of the change and the record of the merge state the authorization. No tool checks that the controller delivered the baseline after the merge either: the first evidence of the run change states what the controller reported, and P2 and P3 of each run read the desired revision and the release.",
+      "The chart renders the PodDisruptionBudget of the runtime tier for two or more runtime replicas alone, and the Application does not prune. On a cluster where the Application delivered the target and is still applied when the switch merges, that budget stays after the switch, with minAvailable 1 over the one runtime pod, until a person deletes it. It refuses an eviction of that pod, so a drain of its node does not complete. It does not bound the fault of F3, which deletes the pod and does not evict it. The procedure does not delete the budget. The model-cache verb of P5 lists each object of the release that remains in the namespace, budgets among them, and refuses the run when one remains, so a run does not start beside the budget.",
       "The committed comparison record states that the capacity preflight derives the footprint of the target only. While the desired state selects the baseline, the preflight derives the footprint of the desired-state release, which is the baseline, and P4 reads that footprint. The record is not written again, because the record of V2-E02B pins its bytes."
     ],
     "history": [
@@ -2286,7 +2287,7 @@
       "from": "0663f26b68374e77ffea56d0bf80098295d648de73fb14b993c43dc95b746dca",
       "to": "7862b5cc20143b9b0be08f9585949e3765dba1c0cf3afd8229b5260286510d60",
       "material": false,
-      "reason": "The check prints the side that the desired state selects. No mode reads another file, and no exit status changes."
+      "reason": "The check prints the side that the desired state selects. For that, the module imports tools.gitops_desired_state and reads the desired-state declaration, which the check already read through core.py. No mode reads another file, and no exit status changes."
     },
     {
       "path": "tools/baseline_profile/core.py",

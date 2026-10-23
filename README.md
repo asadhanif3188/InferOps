@@ -295,7 +295,7 @@ not decide that a reason is true of a run, or that the run executed that commit.
 reason, and no real run was left out. Since `V2-S6-001-PR1` the
 [Q1 environment and identity qualification](docs/environment/environment-qualification.md)
 is frozen before its first run: a driver collects and a tool decides whether one local environment
-holds the target topology of two API replicas and two runtime replicas at its exact
+holds the two-replica target topology, two API replicas and two runtime replicas, at its exact
 identities, with the controller reconciled, both runtime replicas on the pinned model, and
 the caller runner completing real requests. The result is `QUALIFIED` or `REFUSED`. A
 refusal is kept, and no option weakens the target. Since `V2-S6-001-PR2` the first qualification,
@@ -362,11 +362,16 @@ not authorize, and revision 3 has no such exclusion: a valid run with no such sp
 `FAILED`. A controller that never discovers an accepted reversal fails that criterion
 too: its discovery is part of the recovery, not a condition of a valid run. An outcome
 reference applies the rule to declared inputs.
-No run of any of them exists. Since `V2-S7-001-PR1` the baseline record is at
-revision 3, which pins [its driver and its control](docs/testing/experiment-e02a-control.md).
-The control has run against scenario files, and the fault phase of the driver against a
-stub `kubectl`; neither has run on a cluster. A run refuses while the desired state on
-`main` is the 2+2 target. No other experiment has a driver.
+No run of any of them exists. Since `V2-S7-001-PR1` the baseline record pins
+[its driver and its control](docs/testing/experiment-e02a-control.md), and since
+`V2-S7-003-PR1` it is at revision 4, registered by the change that switches the desired
+state to the baseline. The control has run against scenario files, and the fault phase
+of the driver against a stub `kubectl`; neither has run on a cluster. P2 refuses a run
+at a commit of `main` whose desired-state files are not the baseline's, so a run waits
+for the merge of the switch, which needs the authorization of the repository owner. No
+other experiment has a driver. (Until `V2-S7-003-PR1` this paragraph said that the
+record is at revision 3 and that a run refuses while the desired state on `main` is the
+2+2 target.)
 
 Since `V2-S6-006-PR1` the two analysis experiments are
 [frozen before any of their source runs](docs/proof/experiments/README.md#the-analysis-experiment-freezes):

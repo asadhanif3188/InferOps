@@ -150,17 +150,17 @@
     },
     {
       "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
-      "contentSha256": "2b1844b9c28c3854db40a5df539cc32ab03ff514639dc3ba0c9bd7ae0bf71234",
+      "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
       "registeredBy": "V2-S7-003-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e03/freeze-r4.v1alpha1.json",
-      "contentSha256": "ae500cf4f96bb5c1425e096d4433c83e7ca9e7dc1b4d7ba1587b42058e69d63d",
+      "contentSha256": "2883e87ff3e97e65c3f29ee25fc84f4a4dd7a45c54f7c039248c23443f836df2",
       "registeredBy": "V2-S7-003-PR1"
     },
     {
       "path": "docs/proof/experiments/v2-e06/freeze-r3.v1alpha1.json",
-      "contentSha256": "4e9d23deafae70e652f795cb2c0e1bb28b4ad1e1fdf5d1d95e8ccaa2b3ce47c9",
+      "contentSha256": "baa4c3814088bf1ac7bb6e57369c10e162751c5e19fb48eddc480cf38f5bb331",
       "registeredBy": "V2-S7-003-PR1"
     }
   ]

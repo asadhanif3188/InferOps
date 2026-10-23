@@ -2635,11 +2635,16 @@ DESIRED_STATE_VALUES = (
     / "values.generated.yaml"
 )
 
-#: The generated values of the two-replica target, from a copy of the delivery
-#: inputs. The desired state of this tree selects one side of the controlled
-#: comparison, and rule G1 of the V2-E02A freeze record has it select the
-#: single-runtime baseline. The tests of two replicas of each tier read these.
-TARGET_VALUES = target_root() / DESIRED_STATE_VALUES.relative_to(REPO_ROOT)
+
+def _target_values() -> Path:
+    """The generated values of the two-replica target, in a copy of the delivery inputs.
+
+    The desired state of this tree selects one side of the controlled comparison,
+    and rule G1 of the V2-E02A freeze record has it select the single-runtime
+    baseline. The tests of two replicas of each tier read these. The copy is made
+    when a test first asks for it, and not when the module is collected.
+    """
+    return target_root() / DESIRED_STATE_VALUES.relative_to(REPO_ROOT)
 
 
 def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
@@ -2662,7 +2667,9 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     run applied it once, on one provider. This establishes the rendered
     topology and not what a caller observes when a pod is unavailable.
     """
-    desired, budgets = _without_budgets(_template(TARGET_VALUES, HAND_WRITTEN_VALUES))
+    desired, budgets = _without_budgets(
+        _template(_target_values(), HAND_WRITTEN_VALUES)
+    )
     fixture, none = _without_budgets(_template(GENERATED_VALUES, HAND_WRITTEN_VALUES))
     assert none == []
     assert _budget_components(budgets) == ["platform-api", "serving-runtime"]
@@ -2710,7 +2717,7 @@ def test_the_desired_state_release_renders_two_replicas_of_each_tier() -> None:
     [mount] = [m for m in container["volumeMounts"] if m["name"] == "model-cache"]
     assert mount["readOnly"] is True
     assert source["revision"] in mount["subPath"]
-    lint = _lint(TARGET_VALUES, HAND_WRITTEN_VALUES)
+    lint = _lint(_target_values(), HAND_WRITTEN_VALUES)
     assert lint.returncode == 0, lint.stdout + lint.stderr
     assert GUARD_REQUIRES.findall(lint.stdout + lint.stderr) == []
 
@@ -2871,7 +2878,7 @@ def test_the_baseline_profile_renders_the_target_with_one_runtime_replica(
     assert sides["baseline"]["generated"] == BASELINE_PROFILE_VALUES
     # The Application names the desired-state values file. The target's own
     # generated values are rendered, whichever side that file holds now.
-    sides["target"]["generated"] = TARGET_VALUES
+    sides["target"]["generated"] = _target_values()
     target_render = _render_described(sides["target"], tmp_path, "target")
     baseline_render = _render_described(sides["baseline"], tmp_path, "baseline")
     assert _beyond_the_permitted(baseline_render, target_render) == []
@@ -3263,7 +3270,7 @@ def test_the_desired_state_release_renders_both_budgets_and_the_project_admits_t
     This renders files and reads the project manifest. No Application was
     applied, and no cluster held a budget.
     """
-    render = _template(TARGET_VALUES, HAND_WRITTEN_VALUES)
+    render = _template(_target_values(), HAND_WRITTEN_VALUES)
     documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
     assert sorted(_budgets(documents)) == BOTH_TIERS
     rendered = {
@@ -3322,7 +3329,7 @@ def test_the_desired_state_of_this_tree_renders_the_baseline_that_g1_selects() -
 
 def _desired_state_runtime() -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """The runtime Deployment of the two-replica target's render, and every document."""
-    rendered = _template(TARGET_VALUES, HAND_WRITTEN_VALUES)
+    rendered = _template(_target_values(), HAND_WRITTEN_VALUES)
     documents = [d for d in yaml.safe_load_all(rendered) if isinstance(d, dict)]
     [runtime] = [
         d

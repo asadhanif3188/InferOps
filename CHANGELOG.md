@@ -30,7 +30,10 @@ from `1.0.0`.
   V2-E06 also classifies the two desired-state files as material. The suites that test
   the two-replica topology read it from a copy of the delivery inputs that holds the
   target. The merge is the switch on a cluster where the Application is applied, and it
-  needs the explicit authorization of the repository owner. Nothing ran on a cluster:
+  needs the explicit authorization of the repository owner. The Application does not
+  prune, so on a cluster where it delivered the target the runtime PodDisruptionBudget
+  stays after the switch until a person deletes it, and P5 refuses a run while it
+  remains; revision 4 states it. Nothing ran on a cluster:
   no cluster was read or changed, no fault was injected, and no run identifier was
   taken. See
   [the experiments page](docs/proof/experiments/README.md#the-g1-switch-and-revision-4)

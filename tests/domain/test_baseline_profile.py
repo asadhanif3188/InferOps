@@ -2540,7 +2540,10 @@ def test_a_target_contract_lost_to_the_baseline_is_refused_by_the_check(
         "baseline-record-stale",
     } <= rules
     assert main(["--check"]) == 1
-    assert "REFUSED  baseline-topology-not-declared" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "REFUSED  baseline-topology-not-declared" in printed
+    assert "REFUSED  baseline-version-not-distinct" in printed
+    assert "OK       the desired state selects" not in printed
 
 
 def test_the_record_is_the_same_whichever_side_the_desired_state_selects(
