@@ -253,6 +253,26 @@ copies and adds a copy with every record; `test_analysis_replay.py` counts 29 re
 | The default lane, before the second commit | 23,472 passed, 42 skipped, 14 deselected, in 79 min: the 17 tests that the second commit adds, over the first lane |
 | `git diff --check` | No finding |
 
+### The hosted lane of the second commit
+
+The hosted default lane, on Ubuntu, failed on the second commit `7a7c04a` with one test:
+`test_the_live_port_runs_each_verb_through_the_driver_and_keeps_it`. Its stub driver
+printed the working directory with `pwd -W`, an option of Git Bash alone. Linux bash
+refuses the option and printed nothing, so the transcript held no checkout path to
+replace. Every other job of the run passed. The local lanes ran on Windows, where the
+option exists, so they did not show the defect. The job log is not readable without
+admin rights, and the failure was located by its position in the collection order: the
+mark `F` was followed by a pass and a skip, as that test is followed by
+`test_a_live_fault_returns_the_status_of_the_fault_phase` and by the test that runs on
+Windows alone.
+
+The third commit changes the stub to `pwd -W 2>/dev/null || pwd`, which prints the form of
+the path that each host prints. The change is in the test alone: no file that a freeze
+record pins moved, and `--changes` of each new record is UNCHANGED. After it, the suite
+passed 107 tests on Windows, and ruff and mypy, with and without `--platform linux`,
+passed. The default lane was not run again locally; the hosted lane of the third commit
+is its check on Linux.
+
 ## Independent review of the first commit
 
 Two independent reviewers read the first commit, `e7cfa4c`: one for the code and its

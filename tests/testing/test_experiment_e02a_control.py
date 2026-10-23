@@ -1816,11 +1816,13 @@ def test_the_live_port_runs_each_verb_through_the_driver_and_keeps_it(
     tmp_path: Path,
 ) -> None:
     bash = _bash()
+    # `pwd -W` prints the Windows form under Git Bash, and Linux bash has no such
+    # option. Each host prints the form of the checkout path that its tools print.
     driver = _stub_driver(
         tmp_path / "bin",
         'case "$2" in\n'
         '  namespaces) printf "namespace/a\\n" ;;\n'
-        '  runner-start) printf "from %s\\n" "$(pwd -W)"; exit 4 ;;\n'
+        '  runner-start) printf "from %s\\n" "$(pwd -W 2>/dev/null || pwd)"; exit 4 ;;\n'
         "  *) exit 1 ;;\n"
         "esac\n",
     )
