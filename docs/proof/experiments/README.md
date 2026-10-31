@@ -1247,8 +1247,10 @@ freezes](#the-reliability-experiment-freezes) cite them so.
 
 `V2-S6-003-PR1` registered five freeze records on 2026-10-18, revision 1 each, one
 for each reliability experiment, in its own directory. They fix each experiment
-before its first result-bearing run. **No run of any of them exists, and nothing ran
-in that change**: no Git switch, no commit to `main`, no fault, and no cluster read.
+before its first result-bearing run. **No run of any of them existed then, and nothing
+ran in that change**: no Git switch, no commit to `main`, no fault, and no cluster read.
+[The V2-E02A runs](#the-v2-e02a-runs) came later. (Until `V2-S7-001-PR2` this paragraph
+said that no run of any of them exists.)
 
 | Experiment | Record | Topology | Fault | Counted runs | Bounds in a criterion | Level |
 |---|---|---|---|---|---|---|
@@ -1646,7 +1648,8 @@ classifies the three files of the check that differ from its pins. (Until
 again, to add rule set 3, after these four records had pinned it. `--changes` lists it as
 changed for each of them, no revision classifies it, and the P1 of each refuses a run
 until a later revision of it classifies the file. Rule set 2 itself is not edited, so the
-check reads each of them as before. No run of any of them is authorized yet.
+check reads each of them as before. No run of any of them was authorized then. The
+[V2-E02A runs](#the-v2-e02a-runs) executed under its revision 4.
 
 ### The reversal timing of V2-E04, and rule set 3
 
@@ -2048,6 +2051,15 @@ the committed records. Not enforced:
 review of each run judged the seven validity criteria, and each held. Three runs are counted,
 so the set that the repetition rule requires is complete, and three of the six runs that
 one revision allows were started.
+
+**One verdict rests on a reading that the owner approved after the evidence was read.**
+`E02A-AC2` limits the time between readings of a stream that have a value. The record does
+not state whether a reading with one omitted field has a value. Kubernetes omits a
+`readyReplicas` of zero, so that one count has no value for 22 s to 25 s in each run. On
+the readings of each stream the largest time is 5.796 s, and on that one count each run
+would be `INCONCLUSIVE` and none would be counted. The repository owner approved the
+stream reading on 2026-10-31. One correction of each run states this and four other
+statements, under [`v2-e02a/corrections`](v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json).
 
 **`PASSED` is not a reliability pass here.** V2-E02A is a characterization with validity
 criteria alone. The state says that a run is valid. Requests failed in each run.

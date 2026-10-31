@@ -1,8 +1,9 @@
 """Assemble one reviewed V2-E02A run directory from its work directory.
 
-It ran once per run in V2-S7-001-PR2, after the run, from the repository root. It is not
-a tool of the repository, and it is not an input of a freeze record. It is kept as the
-record of how the pages were computed.
+It ran in V2-S7-001-PR2 after the three runs, from the repository root. It is not a tool
+of the repository, and it is not an input of a freeze record. It is kept as the record of
+how the pages were computed, so its code stays as it ran. The review of the change found
+that it writes two digests of the wrong kind: the correction of each run states them.
 
 Usage (from the repository root, on the branch of the change):
     uv run --locked python <this file> RUN TARGET_ROOT

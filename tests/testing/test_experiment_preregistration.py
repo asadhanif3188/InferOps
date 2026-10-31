@@ -375,14 +375,14 @@ def test_v2_e02a_alone_has_runs_and_the_one_driver_is_its_own() -> None:
     that of V2-E02A, and revision 3 of its record pins it. Revisions 1 and 2 of
     V2-E02A list it as added. No other experiment has a driver. Since V2-S7-003-PR1
     V2-E02A has a revision 4. Since V2-S7-001-PR2 it has three runs, each under
-    that revision, and no other experiment has a run."""
+    that revision, with their corrections, and no other experiment has a run."""
     revisions_of = {"V2-E04": 3, "V2-E02A": 4}
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
         revisions = revisions_of.get(experiment.experiment_id, 2)
         names = [f"freeze-r{n}.v1alpha1.json" for n in range(1, revisions + 1)]
         if experiment.experiment_id == "V2-E02A":
-            names += ["procedure", "runs"]
+            names += ["corrections", "procedure", "runs"]
             assert [p.name for p in (directory / "procedure").iterdir()] == [
                 "e02a-driver.txt"
             ]
@@ -394,7 +394,7 @@ def test_v2_e02a_alone_has_runs_and_the_one_driver_is_its_own() -> None:
                 ]["freezeRevision"]
                 for run in runs
             } == {revisions}
-        assert sorted(p.name for p in directory.iterdir()) == names
+        assert sorted(p.name for p in directory.iterdir()) == sorted(names)
 
 
 def test_each_record_pins_exactly_its_material_scope_at_registration() -> None:

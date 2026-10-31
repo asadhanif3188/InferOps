@@ -14,8 +14,11 @@ and it does not decide that the baseline is eligible for the comparison with V2-
 - The run directories [`e02a-1`](../experiments/v2-e02a/runs/e02a-1/result.md),
   [`e02a-2`](../experiments/v2-e02a/runs/e02a-2/result.md), and
   [`e02a-3`](../experiments/v2-e02a/runs/e02a-3/result.md).
+- One correction of each run: [`e02a-1`](../experiments/v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json),
+  [`e02a-2`](../experiments/v2-e02a/corrections/e02a-2/correction-1.v1alpha1.json), and
+  [`e02a-3`](../experiments/v2-e02a/corrections/e02a-3/correction-1.v1alpha1.json).
 - [The assembly script](v2-s7-001-pr2-run-assembly.txt), which computed the verdict inputs and
-  wrote each run directory after the run, and [the host memory logs](v2-s7-001-pr2-host-memory/).
+  wrote each run directory after the runs, and [the host memory logs](v2-s7-001-pr2-host-memory/).
 - Statements in the documentation that said that no run of V2-E02A exists are updated.
 
 The change makes no GitOps switch, registers no freeze record, and changes no frozen input. It
@@ -55,8 +58,9 @@ revision of a run.
 | `e02a-3` | 15:36:41Z | 16:42:32Z | 15:47:24.552Z | `PASSED` |
 
 Three of the six runs that one revision allows were started. None was repeated, and none was
-left out. The session identifier of the container engine was the same from the start of
-`g1-2` to the end of `e02a-3`, so the engine did not restart in that time.
+left out. The operator read the session identifier of the container engine before each start,
+and it was the same from the start of `g1-2` to the end of `e02a-3`. No committed file holds
+those reads.
 
 ## The figures
 
@@ -77,15 +81,21 @@ The review of each run judged the seven validity criteria from the evidence. The
 script computes each input, and it ends with the reason when one does not hold, so that no page
 can state a verdict for it. Three decisions need a reader's attention.
 
-**E02A-AC2 was judged on the readings of each stream.** The criterion limits the time between
+**E02A-AC2 was judged on the readings of each stream, and the owner approved that reading
+after the evidence was read.** The criterion limits the time between
 two consecutive readings of a stream that have a value. Each reading of the four streams
 answered, and the largest time between two in any run was 5.796 s. The API omits a count of a Deployment
 that is zero, so while no runtime pod is Ready, the runtime `readyReplicas` count has no value,
 and the largest time between two readings with a value of that one count is more than 10 s:
-25.1 s, 22.4 s, and 22.0 s in the three runs. The record states that omission as a limitation, and the stream states the other
-fields of those readings. A criterion read on that one count would fail every run of a
-one-replica release by construction. Each result page states the figure, and
-`V2-S7-002-PR1` reads it.
+25.1 s, 22.4 s, and 22.0 s in the three runs. The header of the deployments stream states that
+omission, and the freeze record does not. The stream states the other fields of those readings.
+On the readings of that one count each run would be `INCONCLUSIVE` for the reason
+`stream-incomplete`, and none would be counted, as would each run of a one-replica release. The
+record does not state which reading applies. The first draft of the pages chose the stream
+reading after the evidence was read, and both independent reviewers flagged that. The repository
+owner approved the stream reading on 2026-10-31, in the session of this change. No tool reads
+that approval. It is stated here and in the correction of each run, and `V2-S7-002-PR1` reads
+it. It changes no text of the record.
 
 **The last completion before the window is compared under the clock policy.** In `e02a-1`
 request 50 finished 38 ms before the window start, inside the margin of 818 ms, so no order of
@@ -101,8 +111,8 @@ evidence is on each result page. This limitation stands for each run under revis
 ## The host
 
 The operator read the memory of the host each minute, in a process apart from the procedure.
-The capacity gate does not read the host. The host has 15.7 GB of physical memory, and Visual
-Studio Code ran on it throughout. These are operational readings, and no criterion reads them.
+The capacity gate does not read the host. The host has 15.7 GB of physical memory. These are
+operational readings, and no criterion reads them.
 
 | Attempt | Lowest available physical memory | Lowest free commit | Largest working set of the virtual machine | Largest page file use |
 |---|---:|---:|---:|---:|
@@ -111,8 +121,9 @@ Studio Code ran on it throughout. These are operational readings, and no criteri
 | `e02a-2` | 0.68 GB | 7.52 GB | 7.24 GB | 3,597 MB |
 | `e02a-3` | 0.68 GB | 7.19 GB | 7.93 GB | 4,119 MB |
 
-Attempt `g1-1` stopped after Windows recorded a low virtual memory condition, and the virtual
-machine stopped 80 s later. After that, a run started only with at least 9 GB of free commit,
+As [the observation page](v2-s7-001-pr2-g1-observation/observation.md) states, the operator read
+a low virtual memory condition on the host before `g1-1` stopped. After that, a run started only
+with at least 9 GB of free commit,
 and only after the observation held with the virtual machine up and with free commit at or
 above 5 GB. The owner decided these conditions in the session. The available physical memory
 was low in each run, and the page file was in use, so the host paged. This record does not
@@ -128,6 +139,8 @@ establish whether paging changed a figure of a run.
 | `python -m tools.experiment_freeze --changes` for revision 4 | `UNCHANGED` |
 | A scan of the public diff for local paths, account names, credentials, and private planning material | No finding. The first scan found one local path, which the first redaction missed, before any commit |
 | `git diff --check` | No finding |
+| `tools.reliability_runner` `read_record` with the plan of each run | Each caller record accepted, with the plan digest, and the target the API Service |
+| The full default lane, in a clean clone at the commit of the review fixes | Stated by the commit after that one |
 
 ## What the runs showed about the harness
 
@@ -150,6 +163,32 @@ pinned input.
 - This change registers no claim. The evidence register, the dashboards, and the public claims
   are unchanged.
 
+## Independent review of the first commit
+
+Two independent reviews read the commit `5c2b643`. One recomputed each verdict and figure from
+the raw files. The other read the guards, the driver, and the assembly script. They confirmed
+each figure of the result pages, each manifest hash, each state under the outcome rules, that no
+frozen input moved, and that no local path or credential is in the diff.
+
+| Finding | Severity | What the first draft got wrong | Disposition |
+|---|---|---|---|
+| Two digests of each manifest are of the wrong kind | High | The assembly script wrote the SHA-256 of the file bytes of the binding and the contract. The fields hold the digests that the release records. No check reads them | The correction of each run states the two right values |
+| The state of each run depends on an unstated reading of `E02A-AC2` | High | The row stated a bare `Held`, and the caveat was further down the page | The owner approved the reading, and the correction of each run states it |
+| A guard was missed | High | `test_no_run_analysis_or_procedure_exists` of the analysis records still said that no run exists, and it failed | Replaced by a guard that names the three runs |
+| The result pages state that the record was accepted with the plan, and the script did not check it | High | The statement was true and unverified | `read_record` with the plan accepts each record. The correction of each run states it |
+| This page said that the record states the omission of a zero count | Medium | The freeze record does not. The stream header does | Reworded |
+| Host statements had no committed evidence | Medium | The pages stated them as facts, and a heading stated a cause | Marked as what the operator read. The cause is removed |
+| Six living pages still said that no run exists | Medium | The first sweep missed them | Updated |
+| Three wording and scope points of `E02A-AC1`, `AC5`, and `AC6` | Low | The pages did not state them | The correction of each run states them |
+
+**The assembly script and the observation driver stay as they ran**, so they remain the record of
+what executed. Their known limits are these. The script writes the two digests above. It copies
+files before its last checks, it does not filter the pods stream on an answered read, and it does
+not itself run the layout check. Each pods reading of the three runs answered, and the layout check
+ran afterwards. The driver prints its verdict before its cleanup, and the cleanup does not reach
+its exit status. In attempt `g1-2` each cleanup step exited 0, and both comparisons after it
+found no difference.
+
 ## What this does not establish
 
 - That the service stayed available. Requests failed in each run.
@@ -158,6 +197,7 @@ pinned input.
 - The cause of a failure, of a gap, or of a recovery.
 - That the model file of a replacement pod is the file of the record. The evidence is indirect.
 - That paging on the host changed no figure.
-- That the owner authorization is held by a tool. It is stated by the owner.
+- That the owner authorization, or the approval of the reading of `E02A-AC2`, is held by a tool.
+  Each is stated by the owner.
 - Anything about another provider, node, release, or caller workload.
 - The classification of the set, or the eligibility for the comparison with V2-E02B.

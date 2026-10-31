@@ -1579,9 +1579,7 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
         )
     ] + [(f"{E02A_DIRECTORY}/{run}", "conforming") for run in E02A_RUNS] + [
         (run, core.QUALIFICATION) for run in QUALIFICATION_RUNS
-    ] + [
-        (f"{INTEGRATION_DIRECTORY}/{run}", "conforming") for run in INTEGRATION_RUNS
-    ]
+    ] + [(f"{INTEGRATION_DIRECTORY}/{run}", "conforming") for run in INTEGRATION_RUNS]
     assert report.findings == () and not report.refused
     for run in report.runs:
         assert (run.digests is not None) == (run.status == "conforming")

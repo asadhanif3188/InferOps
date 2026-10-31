@@ -17,7 +17,9 @@ from `1.0.0`.
   characterization, so that state says that a run is valid and is not a reliability pass:
   two requests failed in each run, in one failure episode of about 4 s. The first evidence
   of the change is a bounded observation of the G1 switch, with 2 API replicas and 1 runtime
-  replica at the merged revision. No GitOps switch, freeze registration, or frozen input is
+  replica at the merged revision. One correction of each run fixes two digests in its
+  manifest and records that the owner approved the reading of `E02A-AC2` after the
+  evidence was read. No GitOps switch, freeze registration, or frozen input is
   changed. The set is not classified, and its comparison eligibility is not decided. See
   [the runs](docs/proof/experiments/README.md#the-v2-e02a-runs) and
   [the validation record](docs/proof/environment/v2-s7-001-pr2-validation.md).

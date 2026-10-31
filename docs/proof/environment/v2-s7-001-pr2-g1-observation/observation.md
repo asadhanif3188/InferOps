@@ -17,15 +17,16 @@ no run identifier, and it states no result of any experiment.
 
 | Attempt | Date | What happened | File |
 |---|---|---|---|
-| `g1-1` | 2026-10-30 | Stopped at the import of the model seed image. No release was installed. | [transcript](attempt-g1-1-transcript.txt) |
+| `g1-1` | 2026-10-30 | Stopped at the import of the model seed image, with an error from the container engine. No release was installed. | [transcript](attempt-g1-1-transcript.txt) |
 | `g1-2` | 2026-10-31 | Each condition below held, and the cleanup restored the namespaces and the custom resource definitions. | [transcript](attempt-g1-2-transcript.txt) |
 
-**Why `g1-1` stopped.** The import failed with an error from the container engine. Windows
-recorded a low virtual memory condition at 11:18:54Z, and the log of the container engine
-records that its virtual machine stopped at 11:20:14Z and that the engine restarted. The two
-records are close in time. This does not establish that one caused the other. Other
-applications held much of the memory of the host at that time. The host restarted before
-`g1-2`, and the owner closed applications.
+**What `g1-1` recorded.** The transcript states that the import failed with an error from
+the container engine. The rest of this paragraph is what the operator read on the host. No
+file of this directory holds those reads. Windows recorded a low virtual memory condition
+at 11:18:54Z, and the log of the container engine states that its virtual machine stopped
+at 11:20:14Z and that the engine restarted. Other applications held much of the memory of
+the host. The two records are close in time, and this does not establish that one caused
+the other. The host restarted before `g1-2`, and the owner closed applications.
 
 ## The conditions of `g1-2`
 
@@ -67,9 +68,9 @@ the runs.
 | Largest working set of the virtual machine | 6.46 GB |
 | Largest page file use | 3,069 MB |
 
-The session identifier of the container engine did not change, so the engine did not
-restart during the attempt. No caller ran in this attempt, so these figures are not those of
-a run.
+The operator read the session identifier of the container engine before and after the
+attempt, and it did not change. No file of this directory holds those reads. No caller ran
+in this attempt, so these figures are not those of a run.
 
 ## What this establishes, and what it does not
 
