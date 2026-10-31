@@ -140,7 +140,9 @@ establish whether paging changed a figure of a run.
 | A scan of the public diff for local paths, account names, credentials, and private planning material | No finding. The first scan found one local path, which the first redaction missed, before any commit |
 | `git diff --check` | No finding |
 | `tools.reliability_runner` `read_record` with the plan of each run | Each caller record accepted, with the plan digest, and the target the API Service |
-| The full default lane, in a clean clone at the commit of the review fixes | Stated by the commit after that one |
+| `uv run --locked python -m pytest -q`, the full default lane, in a clean clone at `ee16338` | 23,508 passed, 42 skipped, 14 deselected, in 54 min 3 s |
+| `ruff check .`, `ruff format --check .`, `mypy`, and `mypy --platform linux`, at `1508610` | No finding. `ee16338` changes one test module, and ruff and mypy passed on it |
+| The repository listings of `tools.experiment_evidence`, `tools.analysis_replay`, and `tools.experiment_run`, at `1508610` | 5 conforming runs, 5 replayed, 5 conforming manifests, 0 refused |
 
 ## What the runs showed about the harness
 
@@ -185,6 +187,9 @@ The full lane then found one guard that neither review found. `test_no_applicati
 failed, because each run transcript holds the Application as the cluster returned it. The guard now names
 the three transcripts. It holds that each command whose output matches is a read of the verb
 `application`, and it holds each such output as it holds the other evidence files.
+
+Neither review read the commits that fix these findings. The layout check, the replay, and the full lane
+ran on them. Hosted CI runs when the pull request opens, so this record does not state it.
 
 **The assembly script and the observation driver stay as they ran**, so they remain the record of
 what executed. Their known limits are these. The script writes the two digests above. It copies
