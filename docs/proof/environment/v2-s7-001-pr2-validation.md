@@ -181,6 +181,11 @@ frozen input moved, and that no local path or credential is in the diff.
 | Six living pages still said that no run exists | Medium | The first sweep missed them | Updated |
 | Three wording and scope points of `E02A-AC1`, `AC5`, and `AC6` | Low | The pages did not state them | The correction of each run states them |
 
+The full lane then found one guard that neither review found. `test_no_application_set_and_no_cluster_registration_is_committed`
+failed, because each run transcript holds the Application as the cluster returned it. The guard now names
+the three transcripts. It holds that each command whose output matches is a read of the verb
+`application`, and it holds each such output as it holds the other evidence files.
+
 **The assembly script and the observation driver stay as they ran**, so they remain the record of
 what executed. Their known limits are these. The script writes the two digests above. It copies
 files before its last checks, it does not filter the pods stream on an answered read, and it does
