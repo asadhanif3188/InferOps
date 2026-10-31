@@ -1,0 +1,233 @@
+
+##### 0. The revision and the cluster before the run
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-30T11:12:28Z
+[exit 0]
+$ git rev-parse HEAD
+df5304a0230047da6a2856ab6954cfce1295714d
+[exit 0]
+$ git status --short
+[exit 0]
+$ git ls-remote origin refs/heads/main
+ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b	refs/heads/main
+[exit 0]
+$ kubectl version --context docker-desktop
+Client Version: v1.36.1
+Kustomize Version: v5.8.1
+Server Version: v1.36.1
+[exit 0]
+$ k get nodes -o name
+node/desktop-control-plane
+[exit 0]
+$ cat .artifacts/v2-s7-001-pr2/g1-1/namespaces.before
+namespace/default
+namespace/kube-node-lease
+namespace/kube-public
+namespace/kube-system
+namespace/local-path-storage
+[exit 0]
+$ cat .artifacts/v2-s7-001-pr2/g1-1/crds.before
+[exit 0]
+
+##### 1. One capacity reading
+$ bash scripts/environment/capacity-preflight.sh --into g1-1-before-install
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Capacity preflight on docker-desktop ===
+[inferops] release local-docker-desktop/support-assistant, namespace inferops-release
+[inferops] read nodes.json
+[inferops] read pods.json
+[inferops] read namespace-limits.json
+[inferops] read claims.json
+[inferops] read version.json
+[inferops] read engine.json
+[inferops] held          cluster-reads-complete: each of the four reads is a list
+[inferops] held          reads-well-formed: each node and each unfinished pod was read
+[inferops] held          quantities-readable: each stated quantity was read exactly
+[inferops] held          one-schedulable-node: the node desktop-control-plane
+[inferops] held          node-ready-without-pressure: Ready is True; conditions that are not reported as False: none
+[inferops] held          node-states-no-blocking-taint: blocking taints: none
+[inferops] held          release-states-no-placement-constraint: values that state a constraint: none
+[inferops] held          namespace-states-no-quota-or-limit-range: objects: none
+[inferops] held          release-is-not-installed: no unfinished pod of the release
+[inferops] held          pod-count-fits: 8 pods required, 101 pods available
+[inferops] held          cpu-requests-fit: 2110 millicores required, 11050 millicores available
+[inferops] held          memory-limits-fit: 6643777536 bytes required, 10125877248 bytes available
+[inferops] not-observed  model-cache-claim-holds-artifact: the namespace holds no claim named inferops-model-cache. Each serving runtime pod mounts that claim, and the release does not create it.
+[inferops] result: ACCEPTED
+[inferops] the collection and its record are in .artifacts/capacity-preflight/collections/g1-1-before-install
+[inferops] the cluster is ACCEPTED for this release. This is one reading of stated figures. It does not establish that a pod starts.
+[exit 0]
+
+##### 2. Preparation: the two images, built and loaded into the node
+$ bash scripts/environment/api-image.sh build
+
+[inferops] === docker build ===
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 30B 0.0s
+#1 transferring dockerfile: 3.84kB 0.3s done
+#1 DONE 0.4s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+#2 DONE 1.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2.69kB 0.1s
+#3 transferring context: 2.70kB 0.2s done
+#3 DONE 0.2s
+
+#4 [1/6] FROM docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+#4 resolve docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea 0.1s done
+#4 DONE 0.1s
+
+#5 [internal] load build context
+#5 transferring context: 860.72kB 3.8s done
+#5 DONE 3.9s
+
+#6 [5/6] COPY tools/api_carrier /opt/inferops/tools/api_carrier
+#6 CACHED
+
+#7 [2/6] WORKDIR /opt/inferops
+#7 CACHED
+
+#8 [3/6] COPY src/inferops /opt/inferops/src/inferops
+#8 CACHED
+
+#9 [4/6] COPY tools/__init__.py /opt/inferops/tools/__init__.py
+#9 CACHED
+
+#10 [6/6] COPY tools/api_container /opt/inferops/tools/api_container
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers 0.0s done
+#11 exporting manifest sha256:bba83fa7119d827f3a7c9f5e7803f8db430797f9dabdd2326b338283e005a5e5 done
+#11 exporting config sha256:cd65ca24f46a237b862b68b47e1f605a146ae52e875c8e6ca8118024c27cccd2 done
+#11 exporting attestation manifest sha256:67391eb01718f25b4f9ad9f56bf190a4040ca7a091ea43f39ae0e9a97b4abad4
+#11 exporting attestation manifest sha256:67391eb01718f25b4f9ad9f56bf190a4040ca7a091ea43f39ae0e9a97b4abad4 0.1s done
+#11 exporting manifest list sha256:7627af2a35fc498fb378bc17661e41b4940d641608438bd44e3f170331392198 0.1s done
+#11 naming to localhost/inferops-api:dev
+#11 naming to localhost/inferops-api:dev done
+#11 unpacking to localhost/inferops-api:dev 0.0s done
+#11 DONE 0.4s
+
+View build details: <local link removed>
+[inferops] built localhost/inferops-api:dev
+[inferops] digest sha256:7627af2a35fc498fb378bc17661e41b4940d641608438bd44e3f170331392198
+[inferops] load it into the cluster with: scripts/environment/api-image.sh load
+[exit 0]
+$ bash scripts/environment/api-image.sh load
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+localhost/inferops api:dev              	saved
+application/vnd.oci.image.index.v1+json sha256:7627af2a35fc498fb378bc17661e41b4940d641608438bd44e3f170331392198
+Importing	elapsed: 21.4s	total:   0.0 B	(0.0 B/s)
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-api@sha256:7627af2a35fc498fb378bc17661e41b4940d641608438bd44e3f170331392198' resolves inside 'desktop-control-plane'.
+[inferops] the real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched.
+[exit 0]
+$ bash scripts/environment/model-seed-image.sh build
+
+[inferops] === verify the artifact this image will carry ===
+[inferops] artifact verified: 1834426016 bytes, SHA-256 matches docs/serving/model-source.v1.json
+
+[inferops] === docker build ===
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.29kB 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+#2 DONE 3.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/2] FROM docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+#4 resolve docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 35.04MB 5.1s
+#5 transferring context: 77.71MB 10.1s
+#5 transferring context: 123.69MB 15.1s
+#5 transferring context: 167.25MB 20.2s
+#5 transferring context: 210.02MB 25.3s
+#5 transferring context: 225.45MB 30.3s
+#5 transferring context: 240.95MB 35.3s
+#5 transferring context: 269.17MB 40.4s
+#5 transferring context: 276.51MB 45.6s
+#5 transferring context: 303.03MB 50.7s
+#5 transferring context: 346.06MB 55.7s
+#5 transferring context: 399.12MB 60.8s
+#5 transferring context: 453.23MB 65.9s
+#5 transferring context: 496.13MB 70.9s
+#5 transferring context: 540.54MB 76.0s
+#5 transferring context: 592.72MB 81.1s
+#5 transferring context: 652.66MB 86.3s
+#5 transferring context: 701.33MB 91.3s
+#5 transferring context: 732.86MB 96.4s
+#5 transferring context: 764.58MB 101.4s
+#5 transferring context: 811.48MB 106.6s
+#5 transferring context: 842.55MB 111.6s
+#5 transferring context: 852.45MB 116.6s
+#5 transferring context: 864.25MB 121.6s
+#5 transferring context: 890.80MB 126.8s
+#5 transferring context: 918.85MB 131.9s
+#5 transferring context: 966.11MB 137.0s
+#5 transferring context: 998.62MB 142.1s
+#5 transferring context: 1.05GB 147.2s
+#5 transferring context: 1.11GB 152.3s
+#5 transferring context: 1.17GB 157.4s
+#5 transferring context: 1.22GB 162.5s
+#5 transferring context: 1.27GB 167.5s
+#5 transferring context: 1.33GB 172.6s
+#5 transferring context: 1.38GB 177.6s
+#5 transferring context: 1.43GB 182.6s
+#5 transferring context: 1.49GB 187.7s
+#5 transferring context: 1.54GB 192.8s
+#5 transferring context: 1.60GB 197.9s
+#5 transferring context: 1.66GB 203.0s
+#5 transferring context: 1.70GB 208.1s
+#5 transferring context: 1.72GB 213.1s
+#5 transferring context: 1.77GB 218.2s
+#5 transferring context: 1.80GB 223.3s
+#5 transferring context: 1.82GB 228.4s
+#5 transferring context: 1.83GB 230.6s done
+#5 DONE 230.7s
+
+#6 [2/2] COPY . /seed/
+#6 CACHED
+
+#7 exporting to image
+#7 exporting layers done
+#7 exporting manifest sha256:36fa1601de51adf1a03c4bd08cb584160f7103f1ef59ba000fb1171bfa307657 done
+#7 exporting config sha256:a00dd9e2d610e32b4f34014837f2b94b70faac0b2f66fa1edd50bb7b065cfe46 done
+#7 exporting attestation manifest sha256:c1b4565db9847512f6be7d801c47920864b89ba1b5e2288366f7bc21dacb8115
+#7 exporting attestation manifest sha256:c1b4565db9847512f6be7d801c47920864b89ba1b5e2288366f7bc21dacb8115 0.0s done
+#7 exporting manifest list sha256:93106fcdc2a2d09f6fa8dfa9c969798224711632a1f6aac3ecca7e52ea9f8a78 0.0s done
+#7 naming to localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077 done
+#7 unpacking to localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077 0.0s done
+#7 DONE 0.2s
+
+View build details: <local link removed>
+[inferops] built localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077
+[inferops] digest sha256:93106fcdc2a2d09f6fa8dfa9c969798224711632a1f6aac3ecca7e52ea9f8a78
+[exit 0]
+$ bash scripts/environment/model-seed-image.sh load
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.56/exec/de8f7405652e0fd445211e332408863b1aea4d2cd527c632f21ff773cf9b01e9/json, check if the server supports the requested API version
+write /dev/stdout: The pipe is being closed.
+[inferops] FAILED: the image could not be imported into 'desktop-control-plane'.
+[exit 1]
+ABORTED: a preparation step failed. Nothing after it was run, and nothing was cleaned up.
+To remove what the preparation left, run:
+  bash docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt down
