@@ -24,8 +24,8 @@ no run identifier, and it states no result of any experiment.
 recorded a low virtual memory condition at 11:18:54Z, and the log of the container engine
 records that its virtual machine stopped at 11:20:14Z and that the engine restarted. The two
 records are close in time. This does not establish that one caused the other. Other
-applications held much of the memory of the host at that time. The owner closed applications
-and restarted the host before `g1-2`.
+applications held much of the memory of the host at that time. The host restarted before
+`g1-2`, and the owner closed applications.
 
 ## The conditions of `g1-2`
 

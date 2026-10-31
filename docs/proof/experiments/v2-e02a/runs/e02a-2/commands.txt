@@ -1,0 +1,227 @@
+<repository>\.venv\Scripts\python.exe -m tools.experiment_freeze --check
+<repository>\.venv\Scripts\python.exe -m tools.experiment_preregistration --check
+<repository>\.venv\Scripts\python.exe -m tools.environment_qualification --check
+<repository>\.venv\Scripts\python.exe -m tools.experiment_bounds --check
+<repository>\.venv\Scripts\python.exe -m tools.experiment_freeze --changes docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json
+git ls-remote origin refs/heads/main
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb target
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb capacity e02a-2-before-install
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb capacity-record e02a-2-before-install
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb api-image
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb seed-image
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb prerequisites
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb model-cache
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb controller
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb api-image-digest
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb capacity e02a-2-before-apply
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb capacity-record e02a-2-before-apply
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application-apply sha256:4f0fb29c9a3c792531fb520150905aa79fb761c71a1803efcdfa86fd2b6c3d64
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb deployments
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb endpoints
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb deployments
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb endpoints
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application-verify
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb provenance ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runtime-pods
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb verify-log inferops-inferops-llm-runtime-6b4554dc64-4brfb
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb clock
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb timeline e02a-2 900 2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb telemetry e02a-2 120 15
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-start e02a-2 ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465 1500 10000
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-log e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb deployments
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb release-pods
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt fault e02a-2 inferops-inferops-llm-runtime-6b4554dc64-4brfb
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb nodes
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-pod e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb claims
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-job e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb clock
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-collect e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb runner-cleanup e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb run-objects e02a-2
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application-verify
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb deployments
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb application
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb release-remove
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb namespaces
+bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb crds

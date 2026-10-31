@@ -72,6 +72,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: attempt, added by V2-S5-006-PR1. Each is of the published layout. An attempt
 #: added later is a visible change of this tuple.
 INTEGRATION_RUNS = ("integration-1", "integration-2")
+E02A_DIRECTORY = "docs/proof/experiments/v2-e02a/runs"
+E02A_RUNS = ("e02a-1", "e02a-2", "e02a-3")
 INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
 CONTRACT_DIR = REPO_ROOT / "contracts" / "experiment"
 SCHEMA_PATH = CONTRACT_DIR / "experiment-run.v1alpha1.schema.json"
@@ -1148,12 +1150,16 @@ def test_a_pre_schema_manifest_states_the_kind_and_the_schema_refuses_it(ref: st
 
 def test_the_committed_tree_holds_three_pre_schema_manifests_and_the_attempts():
     """The three pre-schema manifests, and since V2-S5-006-PR1 the manifest of each
-    attempt of the Sprint 5 integration validation, which conforms."""
+    attempt of the Sprint 5 integration validation, which conforms. Since
+    V2-S7-001-PR2 the manifest of each run of V2-E02A, which conforms."""
     report = core.repository_report()
     assert not report.refused
     assert report.findings == ()
     assert [(entry.path, entry.status) for entry in report.manifests] == [
         (ref, core.PRE_SCHEMA) for ref in sorted(PRE_SCHEMA_RECORDS)
+    ] + [
+        (f"{E02A_DIRECTORY}/{run}/run.v1alpha1.json", core.CONFORMING)
+        for run in E02A_RUNS
     ] + [
         (f"{INTEGRATION_DIRECTORY}/{run}/run.v1alpha1.json", core.CONFORMING)
         for run in INTEGRATION_RUNS
@@ -1414,9 +1420,9 @@ def test_the_repository_command_lists_the_committed_manifests(
     assert command.main(["repository"]) == 0
     output = capsys.readouterr().out.splitlines()
     assert output[:3] == [f"pre-schema {ref}" for ref in sorted(PRE_SCHEMA_RECORDS)]
-    total = 3 + len(INTEGRATION_RUNS)
+    conforming = len(E02A_RUNS) + len(INTEGRATION_RUNS)
     assert output[-1] == (
-        f"manifests  {total}: 3 pre-schema, {len(INTEGRATION_RUNS)} conforming, 0 refused"
+        f"manifests  {3 + conforming}: 3 pre-schema, {conforming} conforming, 0 refused"
     )
 
 

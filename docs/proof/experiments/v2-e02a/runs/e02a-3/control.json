@@ -1,0 +1,200 @@
+{
+  "clockReadings": {
+    "boundMs": 675,
+    "end": {
+      "hostAfter": "2026-10-31T16:10:10.747Z",
+      "hostBefore": "2026-10-31T16:10:10.178Z",
+      "node": "2026-10-31T16:10:10.641Z"
+    },
+    "reason": null,
+    "start": {
+      "hostAfter": "2026-10-31T15:43:50.564Z",
+      "hostBefore": "2026-10-31T15:43:50.229Z",
+      "node": "2026-10-31T15:43:50.503Z"
+    }
+  },
+  "dryRun": false,
+  "experimentId": "V2-E02A",
+  "finishedAt": "2026-10-31T16:42:32.812Z",
+  "freezeRecord": {
+    "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+    "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+    "revision": 4
+  },
+  "kept": [
+    "evidence/argo.jsonl",
+    "evidence/deployments.jsonl",
+    "evidence/endpoints.jsonl",
+    "evidence/pods.jsonl",
+    "evidence/resources.jsonl",
+    "evidence/telemetry.jsonl",
+    "evidence/caller.jsonl",
+    "evidence/plan.json",
+    "evidence/capacity-before-install.json",
+    "evidence/capacity-before-apply.json"
+  ],
+  "outcome": {
+    "reason": null,
+    "state": "OBSERVED",
+    "statement": "The control states no result of a run that reached the fault. The review of the run judges each criterion.",
+    "step": "C4"
+  },
+  "runId": "e02a-3",
+  "stableWindowChecks": [
+    {
+      "at": "2026-10-31T15:47:23.794Z",
+      "holds": true,
+      "offsetSeconds": 150,
+      "why": "27 successful requests in the last 60 s, the last succeeded"
+    }
+  ],
+  "startedAt": "2026-10-31T15:36:41.116Z",
+  "steps": [
+    {
+      "at": "2026-10-31T15:36:54.674Z",
+      "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "findings": [],
+      "held": true,
+      "step": "P1"
+    },
+    {
+      "at": "2026-10-31T15:36:55.989Z",
+      "desiredRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "desiredStateFiles": {
+        "rendered-workload-release.yaml": "f7eaab845c29ecfc1014005d570721e4d2e0f4d5e6b63aab92b8e52a7aea876e",
+        "values.generated.yaml": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+      },
+      "findings": [],
+      "held": true,
+      "step": "P2"
+    },
+    {
+      "at": "2026-10-31T15:37:02.155Z",
+      "findings": [],
+      "held": true,
+      "step": "P3"
+    },
+    {
+      "at": "2026-10-31T15:37:10.926Z",
+      "collection": "e02a-3-before-install",
+      "findings": [],
+      "held": true,
+      "step": "P4 before-install"
+    },
+    {
+      "at": "2026-10-31T15:42:54.990Z",
+      "collection": "e02a-3-before-apply",
+      "findings": [],
+      "held": true,
+      "step": "P4 before-apply"
+    },
+    {
+      "apiImageDigest": "sha256:cc51601568efd0c3fdc465f0c8c94ef0b79218ecc294b886c6bfed3bff896df3",
+      "at": "2026-10-31T15:43:37.772Z",
+      "findings": [],
+      "held": true,
+      "step": "P5"
+    },
+    {
+      "at": "2026-10-31T15:43:48.507Z",
+      "findings": [],
+      "held": true,
+      "step": "P6"
+    },
+    {
+      "at": "2026-10-31T15:43:50.156Z",
+      "findings": [],
+      "held": true,
+      "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
+      "step": "P7"
+    },
+    {
+      "at": "2026-10-31T15:44:47.243Z",
+      "findings": [],
+      "held": true,
+      "step": "collection"
+    },
+    {
+      "at": "2026-10-31T15:47:24.476Z",
+      "findings": [],
+      "held": true,
+      "pods": [
+        {
+          "name": "inferops-inferops-llm-7577cd98d-bz5b9",
+          "tier": "platform-api",
+          "uid": "fa8f1878-16f5-4cc0-81f5-68cbba71d3a0"
+        },
+        {
+          "name": "inferops-inferops-llm-7577cd98d-g9s5x",
+          "tier": "platform-api",
+          "uid": "71ef785b-34e4-42e1-b003-08e7ab0bd367"
+        },
+        {
+          "name": "inferops-inferops-llm-runtime-6b4554dc64-jzh6j",
+          "tier": "serving-runtime",
+          "uid": "01890cfb-0ce9-4a52-bf11-f6308494d342"
+        }
+      ],
+      "step": "F1",
+      "target": {
+        "name": "inferops-inferops-llm-runtime-6b4554dc64-jzh6j",
+        "uid": "01890cfb-0ce9-4a52-bf11-f6308494d342"
+      }
+    },
+    {
+      "at": "2026-10-31T15:47:25.285Z",
+      "command": [
+        "kubectl",
+        "--context",
+        "docker-desktop",
+        "delete",
+        "pod",
+        "inferops-inferops-llm-runtime-6b4554dc64-jzh6j",
+        "--namespace",
+        "inferops-release",
+        "--wait=false"
+      ],
+      "exitStatus": 0,
+      "findings": [],
+      "held": true,
+      "step": "F2-F4"
+    },
+    {
+      "at": "2026-10-31T15:59:25.975Z",
+      "findings": [],
+      "held": true,
+      "observationLimit": "2026-10-31T15:57:25.285Z",
+      "step": "observation",
+      "windowEnd": "2026-10-31T15:59:25.285Z"
+    },
+    {
+      "at": "2026-10-31T16:10:10.784Z",
+      "findings": [],
+      "held": true,
+      "step": "C1"
+    },
+    {
+      "at": "2026-10-31T16:40:13.905Z",
+      "collectorExits": {
+        "telemetry": 0,
+        "timeline": 0
+      },
+      "findings": [],
+      "held": true,
+      "step": "C2"
+    },
+    {
+      "at": "2026-10-31T16:40:36.985Z",
+      "findings": [],
+      "held": true,
+      "recordedAsDrift": true,
+      "step": "C3"
+    },
+    {
+      "at": "2026-10-31T16:42:32.812Z",
+      "findings": [],
+      "held": true,
+      "step": "C4"
+    }
+  ]
+}

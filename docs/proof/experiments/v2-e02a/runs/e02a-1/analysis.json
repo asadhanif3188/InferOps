@@ -1,0 +1,929 @@
+{
+  "analysis": {
+    "aborts": [],
+    "caller": {
+      "failureEpisodes": {
+        "callerFailureEpisodeMs": 4276,
+        "count": 1,
+        "episodes": [
+          {
+            "end": {
+              "finishedAt": "2026-10-31T13:42:10.152Z",
+              "sequence": 87,
+              "tied": false
+            },
+            "failedRequests": 2,
+            "index": 1,
+            "ms": 4276,
+            "open": false,
+            "start": {
+              "finishedAt": "2026-10-31T13:42:05.876Z",
+              "sequence": 86,
+              "tied": false
+            },
+            "successAfterWindow": null
+          }
+        ],
+        "open": 0,
+        "reason": null,
+        "startsBeforeWindow": false
+      },
+      "firstImpact": {
+        "finishedAt": "2026-10-31T13:42:05.876Z",
+        "outcome": "http-error",
+        "searchedFrom": "2026-10-31T13:41:35.149Z",
+        "sequence": 86,
+        "startedAt": "2026-10-31T13:41:40.257Z",
+        "state": "observed"
+      },
+      "maxSuccessGap": {
+        "from": {
+          "finishedAt": "2026-10-31T13:41:40.256Z",
+          "sequence": 84
+        },
+        "ms": 29896,
+        "reason": null,
+        "state": "computed",
+        "successes": 363,
+        "to": {
+          "finishedAt": "2026-10-31T13:42:10.152Z",
+          "sequence": 87
+        }
+      },
+      "order": {
+        "completionsSharingAnInstant": 0,
+        "rule": "Completed requests are ordered by finishedAt. Two requests with one finishedAt are ordered by the position of their lines in the record."
+      },
+      "reason": null,
+      "record": {
+        "coversWindow": true,
+        "endState": "duration",
+        "finishedAt": "2026-10-31T14:04:04.315Z",
+        "mode": "in-cluster",
+        "requests": 717,
+        "startedAt": "2026-10-31T13:39:01.892Z"
+      },
+      "requests": {
+        "completed": 365,
+        "failed": 2,
+        "largestTimeWithNoCompletionMs": 25620,
+        "outsideWindow": 352,
+        "successful": 363
+      },
+      "state": "computed"
+    },
+    "clocks": {
+      "caller": "the clock of the pod of the reliability runner",
+      "events": "the clock of the host that recorded each event",
+      "readings": "the clock of the host that ran the timeline collector",
+      "skew": "not-measured"
+    },
+    "doesNotEstablish": [
+      "The result state of a run. No figure here is compared with a bound.",
+      "An availability percentage, an error rate, a percentile, a confidence interval, or a statistical significance.",
+      "A production SLO. The stabilization rule is a definition for an experiment.",
+      "The cause of a failure, of a gap, or of a recovery.",
+      "An order of two instants from two clocks that are less than one second apart.",
+      "That a signal detects a problem in another run, on another topology, or in another environment.",
+      "That the inputs are the evidence of a real run. The analysis reads the files that it is given."
+    ],
+    "expected": {
+      "desiredRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "readyReplicas": {
+        "platform-api": 2,
+        "serving-runtime": 1
+      },
+      "runtimeReadyEndpoints": 1
+    },
+    "experimentId": "V2-E02A",
+    "fault": {
+      "code": "delete-runtime-pod",
+      "notAfter": "2026-10-31T13:41:35.914Z",
+      "notBefore": "2026-10-31T13:41:35.149Z",
+      "state": "stated"
+    },
+    "inputs": {
+      "argo": "read",
+      "caller": "read",
+      "deployments": "read",
+      "endpoints": "read",
+      "operator-events": "read",
+      "pods": "read"
+    },
+    "limitations": [
+      "A caller instant is on the clock of the runner's pod. A reading is on the clock of the collecting host. An event is on the clock of the recording host. The difference between the clocks is not measured. Each figure that compares a caller instant with a reading or an event holds that difference.",
+      "A request is counted at its completion. A request that fails after a long time is counted at the end of that time. The first caller impact is the completion of the first failed request, and the request started earlier.",
+      "A failure episode ends at the first successful completion after it, from any worker. With two workers, a request that was sent before the failure can end the episode.",
+      "A stream states a value at a read and states nothing between two reads. The inner figure of an interval holds no change that no read gave. The outer figure holds each read on both sides. Neither is the exact time.",
+      "The stabilization rule needs one reading of each condition inside the span, and it sets no limit for the time between two readings. A span can hold a long time with no reading. The document states the longest such time for each condition.",
+      "With no stated fault the search for the first caller impact and for the stabilized recovery starts at the start of the window. A recovery that is found then can be a state that no fault disturbed.",
+      "A reading whose value was not read is not healthy and is not a problem. A Deployment count that the API omitted is such a value, and the API omits a count of zero. So a signal of a Deployment count has no value in a reading in which the count is zero.",
+      "The analysis reads the instant at which the tool recorded an event. It does not read the second instant that an event can state for another clock.",
+      "The declaration is an input. The analysis does not hold a threshold, an expected count, or a window to a frozen record of an experiment.",
+      "The document does not state the digest of an input, and it does not state the revision of the code that computed it.",
+      "No signal is read from a telemetry stream."
+    ],
+    "manualActions": [],
+    "runId": "e02a-1",
+    "schema": "inferops.io/reliability-analysis/v1alpha1",
+    "signals": [
+      {
+        "byState": {
+          "healthy": 166,
+          "not-observed": 0,
+          "problem": 0
+        },
+        "changed": false,
+        "declared": {
+          "problemBelow": 2,
+          "tier": "platform-api"
+        },
+        "detectionLag": {
+          "firstIndication": null,
+          "lagNotAboveMs": null,
+          "lagNotBelowMs": null,
+          "notAfter": null,
+          "notBefore": null,
+          "order": null,
+          "reason": "never-indicated",
+          "state": "not-computable"
+        },
+        "falseHealthy": {
+          "callerMs": 4276,
+          "innerMs": 4276,
+          "outerMs": 4276,
+          "reason": null,
+          "signalNotObservedMs": 0,
+          "state": "computed"
+        },
+        "falseUnavailable": {
+          "callerMs": 748231,
+          "innerMs": 0,
+          "outerMs": 0,
+          "reason": null,
+          "signalNotObservedMs": 3594,
+          "state": "computed"
+        },
+        "id": "api-ready-endpoints",
+        "readings": {
+          "inWindow": 166,
+          "largestTimeBetweenReadsMs": 4021,
+          "outsideWindow": 734,
+          "withValue": 166,
+          "withoutValue": 0
+        },
+        "reason": null,
+        "source": "endpoints-ready",
+        "state": "computed",
+        "stream": "endpoints"
+      },
+      {
+        "byState": {
+          "healthy": 160,
+          "not-observed": 0,
+          "problem": 6
+        },
+        "changed": true,
+        "declared": {
+          "problemBelow": 1,
+          "tier": "serving-runtime"
+        },
+        "detectionLag": {
+          "firstIndication": {
+            "finishedAt": "2026-10-31T13:41:36.775Z",
+            "index": 53,
+            "startedAt": "2026-10-31T13:41:35.531Z"
+          },
+          "lagNotAboveMs": -29101,
+          "lagNotBelowMs": -35030,
+          "notAfter": "2026-10-31T13:41:36.775Z",
+          "notBefore": "2026-10-31T13:41:30.846Z",
+          "order": "signal-first",
+          "reason": null,
+          "state": "computed"
+        },
+        "falseHealthy": {
+          "callerMs": 4276,
+          "innerMs": 4276,
+          "outerMs": 4276,
+          "reason": null,
+          "signalNotObservedMs": 0,
+          "state": "computed"
+        },
+        "falseUnavailable": {
+          "callerMs": 748231,
+          "innerMs": 3481,
+          "outerMs": 9410,
+          "reason": null,
+          "signalNotObservedMs": 3594,
+          "state": "computed"
+        },
+        "id": "runtime-ready-endpoints",
+        "readings": {
+          "inWindow": 166,
+          "largestTimeBetweenReadsMs": 4021,
+          "outsideWindow": 734,
+          "withValue": 166,
+          "withoutValue": 0
+        },
+        "reason": null,
+        "source": "endpoints-ready",
+        "state": "computed",
+        "stream": "endpoints"
+      },
+      {
+        "byState": {
+          "healthy": 166,
+          "not-observed": 0,
+          "problem": 0
+        },
+        "changed": false,
+        "declared": {
+          "problemBelow": 2,
+          "tier": "platform-api"
+        },
+        "detectionLag": {
+          "firstIndication": null,
+          "lagNotAboveMs": null,
+          "lagNotBelowMs": null,
+          "notAfter": null,
+          "notBefore": null,
+          "order": null,
+          "reason": "never-indicated",
+          "state": "not-computable"
+        },
+        "falseHealthy": {
+          "callerMs": 4276,
+          "innerMs": 4276,
+          "outerMs": 4276,
+          "reason": null,
+          "signalNotObservedMs": 0,
+          "state": "computed"
+        },
+        "falseUnavailable": {
+          "callerMs": 748231,
+          "innerMs": 0,
+          "outerMs": 0,
+          "reason": null,
+          "signalNotObservedMs": 3594,
+          "state": "computed"
+        },
+        "id": "api-ready-pods",
+        "readings": {
+          "inWindow": 166,
+          "largestTimeBetweenReadsMs": 4021,
+          "outsideWindow": 734,
+          "withValue": 166,
+          "withoutValue": 0
+        },
+        "reason": null,
+        "source": "pods-ready",
+        "state": "computed",
+        "stream": "pods"
+      },
+      {
+        "byState": {
+          "healthy": 166,
+          "not-observed": 0,
+          "problem": 0
+        },
+        "changed": false,
+        "declared": {
+          "problemBelow": 1,
+          "tier": "serving-runtime"
+        },
+        "detectionLag": {
+          "firstIndication": null,
+          "lagNotAboveMs": null,
+          "lagNotBelowMs": null,
+          "notAfter": null,
+          "notBefore": null,
+          "order": null,
+          "reason": "never-indicated",
+          "state": "not-computable"
+        },
+        "falseHealthy": {
+          "callerMs": 4276,
+          "innerMs": 4276,
+          "outerMs": 4276,
+          "reason": null,
+          "signalNotObservedMs": 0,
+          "state": "computed"
+        },
+        "falseUnavailable": {
+          "callerMs": 748231,
+          "innerMs": 0,
+          "outerMs": 0,
+          "reason": null,
+          "signalNotObservedMs": 3594,
+          "state": "computed"
+        },
+        "id": "runtime-ready-pods",
+        "readings": {
+          "inWindow": 166,
+          "largestTimeBetweenReadsMs": 4021,
+          "outsideWindow": 734,
+          "withValue": 166,
+          "withoutValue": 0
+        },
+        "reason": null,
+        "source": "pods-ready",
+        "state": "computed",
+        "stream": "pods"
+      },
+      {
+        "byState": {
+          "healthy": 166,
+          "not-observed": 0,
+          "problem": 0
+        },
+        "changed": false,
+        "declared": {
+          "problemBelow": 2,
+          "tier": "platform-api"
+        },
+        "detectionLag": {
+          "firstIndication": null,
+          "lagNotAboveMs": null,
+          "lagNotBelowMs": null,
+          "notAfter": null,
+          "notBefore": null,
+          "order": null,
+          "reason": "never-indicated",
+          "state": "not-computable"
+        },
+        "falseHealthy": {
+          "callerMs": 4276,
+          "innerMs": 4276,
+          "outerMs": 4276,
+          "reason": null,
+          "signalNotObservedMs": 0,
+          "state": "computed"
+        },
+        "falseUnavailable": {
+          "callerMs": 748231,
+          "innerMs": 0,
+          "outerMs": 0,
+          "reason": null,
+          "signalNotObservedMs": 3594,
+          "state": "computed"
+        },
+        "id": "api-ready-replicas",
+        "readings": {
+          "inWindow": 166,
+          "largestTimeBetweenReadsMs": 4021,
+          "outsideWindow": 734,
+          "withValue": 166,
+          "withoutValue": 0
+        },
+        "reason": null,
+        "source": "deployment-ready-replicas",
+        "state": "computed",
+        "stream": "deployments"
+      },
+      {
+        "byState": {
+          "healthy": 160,
+          "not-observed": 6,
+          "problem": 0
+        },
+        "changed": false,
+        "declared": {
+          "problemBelow": 1,
+          "tier": "serving-runtime"
+        },
+        "detectionLag": {
+          "firstIndication": null,
+          "lagNotAboveMs": null,
+          "lagNotBelowMs": null,
+          "notAfter": null,
+          "notBefore": null,
+          "order": null,
+          "reason": "never-indicated",
+          "state": "not-computable"
+        },
+        "falseHealthy": {
+          "callerMs": 4276,
+          "innerMs": 4276,
+          "outerMs": 4276,
+          "reason": null,
+          "signalNotObservedMs": 0,
+          "state": "computed"
+        },
+        "falseUnavailable": {
+          "callerMs": 748231,
+          "innerMs": 0,
+          "outerMs": 0,
+          "reason": null,
+          "signalNotObservedMs": 11804,
+          "state": "computed"
+        },
+        "id": "runtime-ready-replicas",
+        "readings": {
+          "inWindow": 166,
+          "largestTimeBetweenReadsMs": 25104,
+          "outsideWindow": 734,
+          "withValue": 160,
+          "withoutValue": 6
+        },
+        "reason": null,
+        "source": "deployment-ready-replicas",
+        "state": "computed",
+        "stream": "deployments"
+      },
+      {
+        "byState": {
+          "healthy": 166,
+          "not-observed": 0,
+          "problem": 0
+        },
+        "changed": false,
+        "declared": {
+          "healthyValues": [
+            "Synced"
+          ]
+        },
+        "detectionLag": {
+          "firstIndication": null,
+          "lagNotAboveMs": null,
+          "lagNotBelowMs": null,
+          "notAfter": null,
+          "notBefore": null,
+          "order": null,
+          "reason": "never-indicated",
+          "state": "not-computable"
+        },
+        "falseHealthy": {
+          "callerMs": 4276,
+          "innerMs": 4276,
+          "outerMs": 4276,
+          "reason": null,
+          "signalNotObservedMs": 0,
+          "state": "computed"
+        },
+        "falseUnavailable": {
+          "callerMs": 748231,
+          "innerMs": 0,
+          "outerMs": 0,
+          "reason": null,
+          "signalNotObservedMs": 2310,
+          "state": "computed"
+        },
+        "id": "application-sync",
+        "readings": {
+          "inWindow": 166,
+          "largestTimeBetweenReadsMs": 4911,
+          "outsideWindow": 734,
+          "withValue": 166,
+          "withoutValue": 0
+        },
+        "reason": null,
+        "source": "application-sync-status",
+        "state": "computed",
+        "stream": "argo"
+      },
+      {
+        "byState": {
+          "healthy": 161,
+          "not-observed": 0,
+          "problem": 5
+        },
+        "changed": true,
+        "declared": {
+          "healthyValues": [
+            "Healthy"
+          ]
+        },
+        "detectionLag": {
+          "firstIndication": {
+            "finishedAt": "2026-10-31T13:41:42.121Z",
+            "index": 54,
+            "startedAt": "2026-10-31T13:41:41.472Z"
+          },
+          "lagNotAboveMs": -23755,
+          "lagNotBelowMs": -28931,
+          "notAfter": "2026-10-31T13:41:42.121Z",
+          "notBefore": "2026-10-31T13:41:36.945Z",
+          "order": "signal-first",
+          "reason": null,
+          "state": "computed"
+        },
+        "falseHealthy": {
+          "callerMs": 4276,
+          "innerMs": 4276,
+          "outerMs": 4276,
+          "reason": null,
+          "signalNotObservedMs": 0,
+          "state": "computed"
+        },
+        "falseUnavailable": {
+          "callerMs": 748231,
+          "innerMs": 0,
+          "outerMs": 3311,
+          "reason": null,
+          "signalNotObservedMs": 2310,
+          "state": "computed"
+        },
+        "id": "application-health",
+        "readings": {
+          "inWindow": 166,
+          "largestTimeBetweenReadsMs": 4911,
+          "outsideWindow": 734,
+          "withValue": 166,
+          "withoutValue": 0
+        },
+        "reason": null,
+        "source": "application-health-status",
+        "state": "computed",
+        "stream": "argo"
+      }
+    ],
+    "stabilizedRecovery": {
+      "conditions": {
+        "desiredRevision": {
+          "held": 166,
+          "notHeld": 0,
+          "readings": {
+            "inWindow": 166,
+            "largestTimeBetweenReadsMs": 4911,
+            "outsideWindow": 734,
+            "withValue": 166,
+            "withoutValue": 0
+          },
+          "state": "read"
+        },
+        "readyReplicas": {
+          "held": 160,
+          "notHeld": 0,
+          "readings": {
+            "inWindow": 166,
+            "largestTimeBetweenReadsMs": 25104,
+            "outsideWindow": 734,
+            "withValue": 160,
+            "withoutValue": 6
+          },
+          "state": "read"
+        },
+        "runtimeReadyEndpoints": {
+          "held": 160,
+          "notHeld": 6,
+          "readings": {
+            "inWindow": 166,
+            "largestTimeBetweenReadsMs": 4021,
+            "outsideWindow": 734,
+            "withValue": 166,
+            "withoutValue": 0
+          },
+          "state": "read"
+        }
+      },
+      "longestSuccessRun": {
+        "spanMs": 61466,
+        "successes": 33
+      },
+      "reason": null,
+      "requestsFailedSinceFault": 2,
+      "rule": {
+        "consecutiveSuccesses": 10,
+        "revisionPresent": "A reading of the argo stream holds the expected revision when it reports a resolvedRevision that is the declared commit and a syncStatus of Synced.",
+        "spanMs": 60000
+      },
+      "searchedFrom": "2026-10-31T13:41:35.914Z",
+      "sinceFault": {
+        "faultFinishedAt": "2026-10-31T13:41:35.914Z",
+        "faultStartedAt": "2026-10-31T13:41:35.149Z",
+        "fromFaultFinishedMs": 95704,
+        "fromFaultStartedMs": 96469
+      },
+      "span": {
+        "first": {
+          "finishedAt": "2026-10-31T13:42:10.152Z",
+          "sequence": 87
+        },
+        "largestTimeWithNoReadingMs": {
+          "desiredRevision": 3924,
+          "readyReplicas": 3677,
+          "runtimeReadyEndpoints": 3677
+        },
+        "last": {
+          "finishedAt": "2026-10-31T13:43:11.618Z",
+          "sequence": 119
+        },
+        "ms": 61466,
+        "readingsInside": {
+          "desiredRevision": 13,
+          "readyReplicas": 13,
+          "runtimeReadyEndpoints": 13
+        },
+        "successes": 33
+      },
+      "stabilized": true,
+      "stabilizedAt": "2026-10-31T13:43:11.618Z",
+      "state": "computed"
+    },
+    "window": {
+      "effectiveTo": "2026-10-31T13:53:35.914Z",
+      "endedBy": "declared",
+      "from": "2026-10-31T13:40:35.149Z",
+      "to": "2026-10-31T13:53:35.914Z"
+    },
+    "withoutValue": [
+      "signals.api-ready-endpoints.detectionLag",
+      "signals.api-ready-pods.detectionLag",
+      "signals.runtime-ready-pods.detectionLag",
+      "signals.api-ready-replicas.detectionLag",
+      "signals.runtime-ready-replicas.detectionLag",
+      "signals.application-sync.detectionLag"
+    ],
+    "zeroReadyEndpoints": {
+      "reason": null,
+      "state": "computed",
+      "tiers": {
+        "platform-api": {
+          "count": 0,
+          "intervals": [],
+          "maxInnerMs": 0,
+          "maxOuterMs": 0,
+          "notObservedMs": 4409,
+          "readings": {
+            "inWindow": 166,
+            "largestTimeBetweenReadsMs": 4021,
+            "outsideWindow": 734,
+            "withValue": 166,
+            "withoutValue": 0
+          },
+          "reason": null,
+          "state": "observed",
+          "totalInnerMs": 0,
+          "totalOuterMs": 0
+        },
+        "serving-runtime": {
+          "count": 1,
+          "intervals": [
+            {
+              "boundedAfter": {
+                "finishedAt": "2026-10-31T13:41:57.659Z",
+                "index": 59,
+                "startedAt": "2026-10-31T13:41:57.150Z"
+              },
+              "boundedBefore": {
+                "finishedAt": "2026-10-31T13:41:32.046Z",
+                "index": 52,
+                "startedAt": "2026-10-31T13:41:30.846Z"
+              },
+              "firstReading": {
+                "finishedAt": "2026-10-31T13:41:36.775Z",
+                "index": 53,
+                "startedAt": "2026-10-31T13:41:35.531Z"
+              },
+              "innerMs": 17342,
+              "lastReading": {
+                "finishedAt": "2026-10-31T13:41:54.539Z",
+                "index": 58,
+                "startedAt": "2026-10-31T13:41:54.117Z"
+              },
+              "notObservedReadingsInside": 0,
+              "outerMs": 26813,
+              "readings": 6
+            }
+          ],
+          "maxInnerMs": 17342,
+          "maxOuterMs": 26813,
+          "notObservedMs": 4409,
+          "readings": {
+            "inWindow": 166,
+            "largestTimeBetweenReadsMs": 4021,
+            "outsideWindow": 734,
+            "withValue": 166,
+            "withoutValue": 0
+          },
+          "reason": null,
+          "state": "observed",
+          "totalInnerMs": 17342,
+          "totalOuterMs": 26813
+        }
+      }
+    }
+  },
+  "analysisCode": {
+    "revision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+    "sourceSha256": "97ce37b0e37c2ec3f67b85beaaca4f424f1264c08d3c60f8ea14a7cc5c3eb02e",
+    "sources": [
+      {
+        "path": "tools/analysis_replay/__init__.py",
+        "sha256": "b252ad6f540be7926aca810a00f7ec8204d11a45d7bc037667e2469f75ad53c2"
+      },
+      {
+        "path": "tools/analysis_replay/__main__.py",
+        "sha256": "f2680e3ec028334f06f0a5fadeb10c40104ec19a2e7084179c3d6e252a22c8a8"
+      },
+      {
+        "path": "tools/analysis_replay/core.py",
+        "sha256": "891191484a079d93ce6f79dc6bc2965486163b38837da79f7babca9966ce89db"
+      },
+      {
+        "path": "tools/experiment_events/__init__.py",
+        "sha256": "7644b009851cc014ac5e68994d05c1a8dd35726f0a3318b1b356b1d22a6b48ec"
+      },
+      {
+        "path": "tools/experiment_events/__main__.py",
+        "sha256": "86b66597f76cc87bcdfbde9a65f2dd3170f948d135b7764f2bb6885bb6349e05"
+      },
+      {
+        "path": "tools/experiment_events/core.py",
+        "sha256": "8b66e1952478aeac517150bc106efb74e5c39a0a07a487385c2e66cff45cdf07"
+      },
+      {
+        "path": "tools/experiment_timeline/__init__.py",
+        "sha256": "3050cf91f4155406336804155469e54d89eb0675a25ab5cea35ec3e50e8135aa"
+      },
+      {
+        "path": "tools/experiment_timeline/__main__.py",
+        "sha256": "4ccc711a33b4968df4e8e0122996383989f410bac6f0e356eaebdc39d7e37f4d"
+      },
+      {
+        "path": "tools/experiment_timeline/core.py",
+        "sha256": "2cdf718bf897a8556823cb8752f9086703e6828f41807d545d7c3a63c50bf556"
+      },
+      {
+        "path": "tools/reliability_analysis/__init__.py",
+        "sha256": "2b9d501ea66e430708f074a5cb10a0254537a05b88719bc76dcbdca08c527e08"
+      },
+      {
+        "path": "tools/reliability_analysis/__main__.py",
+        "sha256": "7ce7ea1f27a4634932a08ba7eede54bcf8d84acb2146838a7260bca2ded9034f"
+      },
+      {
+        "path": "tools/reliability_analysis/core.py",
+        "sha256": "e4bb5454bcb9b5ea19451bbf722b8ddbba276d3c68f20c679cd33445df65d7af"
+      },
+      {
+        "path": "tools/reliability_profile/__init__.py",
+        "sha256": "f7ec32f9067c2dd9fb20b56f6ff320646d0ed77357bc70770acc48a912a82e76"
+      },
+      {
+        "path": "tools/reliability_profile/__main__.py",
+        "sha256": "004b427fd2c0ad45bd1596082422b27271fd6c9bef9bd0edb0a279daeb69ca56"
+      },
+      {
+        "path": "tools/reliability_profile/core.py",
+        "sha256": "42043378966c0a39c54fed6d253f828a81848aaaf8248332d553d4c8aa04d2a9"
+      },
+      {
+        "path": "tools/reliability_runner/__init__.py",
+        "sha256": "c7153b466df80f2a221179c92e992fe5d19fdc3f8f39e64666b243a49ea8928d"
+      },
+      {
+        "path": "tools/reliability_runner/__main__.py",
+        "sha256": "02783a1e567780393c61e211edadd67dd0bd30bb13599a8a84e02ce172f3d55a"
+      },
+      {
+        "path": "tools/reliability_runner/core.py",
+        "sha256": "86929fcb26e2c6490f8070f6b78c80e0d6f5f99d88d3869f4917133fc1cb2ba0"
+      },
+      {
+        "path": "tools/reliability_runner/incluster.py",
+        "sha256": "e319bfaa31c1994d92d99cb521f053e04608bb70e06e1c0bba2dd85f57933ebb"
+      },
+      {
+        "path": "tools/service_endpoint_state/__init__.py",
+        "sha256": "69696d4c5b270bb075e5618401f874f0106216243a21390d21e9b4b5010df105"
+      },
+      {
+        "path": "tools/service_endpoint_state/__main__.py",
+        "sha256": "fdc26db193b38dc0df63b9b0db9aeaf8302fb81d77f45e5e2620576f0ff546bb"
+      },
+      {
+        "path": "tools/service_endpoint_state/core.py",
+        "sha256": "643bfbe3585ba9ee032f73003ee582b545967ba4d053bc099212b380809315f4"
+      }
+    ]
+  },
+  "authority": "A replay computes this document from the manifest, the evidence files, and the declaration below. A copy that a replay does not reproduce byte for byte is not an analysis of the run.",
+  "declaration": {
+    "expected": {
+      "desiredRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "readyReplicas": {
+        "platform-api": 2,
+        "serving-runtime": 1
+      },
+      "runtimeReadyEndpoints": 1
+    },
+    "experimentId": "V2-E02A",
+    "runId": "e02a-1",
+    "schema": "inferops.io/reliability-analysis-declaration/v1alpha1",
+    "signals": [
+      {
+        "id": "api-ready-endpoints",
+        "problemBelow": 2,
+        "source": "endpoints-ready",
+        "tier": "platform-api"
+      },
+      {
+        "id": "runtime-ready-endpoints",
+        "problemBelow": 1,
+        "source": "endpoints-ready",
+        "tier": "serving-runtime"
+      },
+      {
+        "id": "api-ready-pods",
+        "problemBelow": 2,
+        "source": "pods-ready",
+        "tier": "platform-api"
+      },
+      {
+        "id": "runtime-ready-pods",
+        "problemBelow": 1,
+        "source": "pods-ready",
+        "tier": "serving-runtime"
+      },
+      {
+        "id": "api-ready-replicas",
+        "problemBelow": 2,
+        "source": "deployment-ready-replicas",
+        "tier": "platform-api"
+      },
+      {
+        "id": "runtime-ready-replicas",
+        "problemBelow": 1,
+        "source": "deployment-ready-replicas",
+        "tier": "serving-runtime"
+      },
+      {
+        "healthyValues": [
+          "Synced"
+        ],
+        "id": "application-sync",
+        "source": "application-sync-status"
+      },
+      {
+        "healthyValues": [
+          "Healthy"
+        ],
+        "id": "application-health",
+        "source": "application-health-status"
+      }
+    ],
+    "window": {
+      "from": "2026-10-31T13:40:35.149Z",
+      "to": "2026-10-31T13:53:35.914Z"
+    }
+  },
+  "doesNotEstablish": [
+    "That the evidence files are the evidence of a real run. A replay reads the files of a run directory.",
+    "The result state of the run. The manifest states it, and no figure here is compared with a bound.",
+    "A claim status or an evidence level. A document that replays registers no claim and certifies none.",
+    "That the declared window, expected state, and signals are those that an experiment froze.",
+    "That the stated commit is the code that computed the document, when the commit is not in the clone that replays it."
+  ],
+  "experimentId": "V2-E02A",
+  "inputs": [
+    {
+      "name": "caller",
+      "path": "caller.jsonl",
+      "sha256": "9d1c2a2379518a957926a11a707fae9094e7e42ed9f543850ec3fb4f855d8a46"
+    },
+    {
+      "name": "endpoints",
+      "path": "endpoints.jsonl",
+      "sha256": "8c6c5430687c61302c01d4aae42cff79d297851d5be8339457dad0ac4f19581f"
+    },
+    {
+      "name": "pods",
+      "path": "pods.jsonl",
+      "sha256": "a23d2c0be11d78b55e4b4daaf4cf9f9b72597c2ef80ff389843e4f1e65f75eec"
+    },
+    {
+      "name": "deployments",
+      "path": "deployments.jsonl",
+      "sha256": "56a78057a6b820d19d56e6c5d4592447c54ad6cab86259ca18101c87af6c3398"
+    },
+    {
+      "name": "argo",
+      "path": "argo.jsonl",
+      "sha256": "0cff8e32c55ca4e8bfa1beec25cc70310f265dc8173b5b97cf10facbf3bfd22e"
+    },
+    {
+      "name": "operator-events",
+      "path": "operator-events.jsonl",
+      "sha256": "fbfa064f9f1eb71bd05a3c08d7193daa95b938ce30bb81150db9f93d9199a31f"
+    }
+  ],
+  "limitations": [
+    "The declaration is a part of this document, and it is not held to a frozen record of an experiment. A document with another declaration replays as another analysis.",
+    "The source digest covers the Python files of the registered source packages. It does not cover a module of another package that those files import, the interpreter, or a library.",
+    "The commit identifier is the one that the command read from its checkout. A replay compares it with Git only when the commit is in the clone.",
+    "A replay with source files that differ from the stated ones compares the document with what the present code computes. It does not run the stated code.",
+    "A run directory, its manifest, and this document, replaced together, replay. A replay reads one tree and not Git.",
+    "A replay reads the files that the manifest names. It reads no correction of the run.",
+    "The document does not state the digest of the manifest, because the manifest states the digest of this document."
+  ],
+  "notGiven": [],
+  "rawEvidence": {
+    "files": 14,
+    "sha256": "8c84bbc2c68dd4ff4c7b5878c2fbfbc4c92d51e93f6c1cdade515478fda142dd"
+  },
+  "runDirectory": "docs/proof/experiments/v2-e02a/runs/e02a-1",
+  "runId": "e02a-1",
+  "schema": "inferops.io/run-analysis/v1alpha1"
+}

@@ -61,6 +61,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: attempt, added by V2-S5-006-PR1. Each is of the published layout. An attempt
 #: added later is a visible change of this tuple.
 INTEGRATION_RUNS = ("integration-1", "integration-2")
+E02A_DIRECTORY = "docs/proof/experiments/v2-e02a/runs"
+E02A_RUNS = ("e02a-1", "e02a-2", "e02a-3")
 #: The qualifications that the proof tree holds: the Q1 qualification since
 #: V2-S6-001-PR2, the Q2 characterization since V2-S6-002-PR1, the Q3
 #: characterization since V2-S6-002-PR2, and the next Q1, Q2, and Q3 runs of
@@ -1565,7 +1567,8 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
     layout and conform. Since V2-S6-001-PR2 it holds the Q1 qualifications, which
     are listed with the text rules applied to their files, and since V2-S6-002-PR1
     the Q2 characterizations, which are listed in the same way, and since
-    V2-S6-002-PR2 the Q3 characterizations."""
+    V2-S6-002-PR2 the Q3 characterizations. Since V2-S7-001-PR2 it holds the runs of
+    V2-E02A, which conform."""
     report = core.repository_report()
     assert [(run.path, run.status) for run in report.runs] == [
         (f"docs/proof/experiments/v2-e01/runs/{run_id}", run_core.PRE_SCHEMA)
@@ -1574,13 +1577,14 @@ def test_the_repository_holds_three_earlier_run_directories_and_the_attempts() -
             "20261003-e01-abc-1",
             "20261006-e01-d-1",
         )
-    ] + [(run, core.QUALIFICATION) for run in QUALIFICATION_RUNS] + [
+    ] + [(f"{E02A_DIRECTORY}/{run}", "conforming") for run in E02A_RUNS] + [
+        (run, core.QUALIFICATION) for run in QUALIFICATION_RUNS
+    ] + [
         (f"{INTEGRATION_DIRECTORY}/{run}", "conforming") for run in INTEGRATION_RUNS
     ]
     assert report.findings == () and not report.refused
-    unchecked = 3 + len(QUALIFICATION_RUNS)
-    assert all(run.digests is None for run in report.runs[:unchecked])
-    assert all(run.digests is not None for run in report.runs[unchecked:])
+    for run in report.runs:
+        assert (run.digests is not None) == (run.status == "conforming")
 
 
 def _qualification(root: Path, name: str = "q1-1") -> Path:
@@ -1941,11 +1945,12 @@ def test_the_command_passes_the_repository_and_names_what_it_did_not_check(
 ) -> None:
     assert command.main(["repository"]) == command.EXIT_OK
     out = capsys.readouterr().out.splitlines()
-    total = 3 + len(QUALIFICATION_RUNS) + len(INTEGRATION_RUNS)
+    conforming = len(E02A_RUNS) + len(INTEGRATION_RUNS)
+    total = 3 + len(QUALIFICATION_RUNS) + conforming
     assert out[-1] == (
         f"runs       {total}: 3 pre-schema and not checked, "
         f"{len(QUALIFICATION_RUNS)} qualification(s) with the text rules only, "
-        f"{len(INTEGRATION_RUNS)} conforming, 0 refused"
+        f"{conforming} conforming, 0 refused"
     )
     assert sum(1 for line in out if line.endswith("(not checked)")) == 3
     assert [line.split()[1] for line in out if line.startswith("qualification ")] == [

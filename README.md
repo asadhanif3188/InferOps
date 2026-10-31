@@ -244,8 +244,10 @@ or a benchmark. Since `V2-S5-001-PR2` an
 whose pod sends the request to the API Service and writes one line of JSON for each
 request, with no prompt text and no completion text. The runner has no code that reads
 a readiness answer or a state of Argo CD. Its loop was executed against scripted
-answers and a loopback server, which is substituted execution. No result-bearing run
-executed under RP-1. Since `V2-S5-006-PR1` the runner ran in a cluster in the two
+answers and a loopback server, which is substituted execution. The first
+result-bearing runs under RP-1 are the three
+[V2-E02A runs](docs/proof/experiments/README.md#the-v2-e02a-runs) of `V2-S7-001-PR2`.
+Since `V2-S5-006-PR1` the runner ran in a cluster in the two
 attempts of [a non-result integration validation](docs/proof/experiments/README.md#the-sprint-5-integration-validation),
 on the docker-desktop provider with one node, while one API pod was deleted: in the
 first no request reached the API, and in the second each of 98 requests succeeded.
@@ -276,8 +278,9 @@ events. It reads no telemetry stream. The figures are the caller failure episode
 the intervals with no Ready endpoint, the detection lag of a declared signal, the
 time in which a signal and the caller disagree, and the stabilized recovery. A value
 that was not read is not read as zero or as healthy. The analysis decides no result and
-states no percentage. No result-bearing run was analysed. The two attempts were, and
-no figure of either is compared with a bound. (Until `V2-S5-006-PR1` this paragraph
+states no percentage. The three V2-E02A runs are the first result-bearing runs that it
+analysed, and no criterion of those runs compares a figure with a bound. The two
+attempts were analysed too, and no figure of either is compared with a bound. (Until `V2-S5-006-PR1` this paragraph
 said that the analysis was executed on synthetic files only and that no run was
 analysed.) Since `V2-S5-004-PR2`
 [the replay of an analysis](docs/testing/analysis-replay.md) binds those figures to
@@ -362,16 +365,22 @@ not authorize, and revision 3 has no such exclusion: a valid run with no such sp
 `FAILED`. A controller that never discovers an accepted reversal fails that criterion
 too: its discovery is part of the recovery, not a condition of a valid run. An outcome
 reference applies the rule to declared inputs.
-No run of any of them exists. Since `V2-S7-001-PR1` the baseline record pins
+Since `V2-S7-001-PR2` the baseline record has
+[three counted runs](docs/proof/experiments/README.md#the-v2-e02a-runs), each `PASSED`
+on the docker-desktop provider at C2. V2-E02A is a characterization with validity
+criteria alone, so that state says that a run is valid. It is not a reliability pass:
+two requests failed in each run. No run of the other four exists. The set is not yet
+classified, and its eligibility for the comparison with V2-E02B is not decided.
+Since `V2-S7-001-PR1` the baseline record pins
 [its driver and its control](docs/testing/experiment-e02a-control.md), and since
 `V2-S7-003-PR1` it is at revision 4, registered by the change that switches the desired
-state to the baseline. The control has run against scenario files, and the fault phase
-of the driver against a stub `kubectl`; neither has run on a cluster. P2 refuses a run
-at a commit of `main` whose desired-state files are not the baseline's, so a run waits
-for the merge of the switch, which needs the authorization of the repository owner. No
-other experiment has a driver. (Until `V2-S7-003-PR1` this paragraph said that the
-record is at revision 3 and that a run refuses while the desired state on `main` is the
-2+2 target.)
+state to the baseline. The three runs are the first that the control and the driver
+executed on a cluster. P2 refuses a run at a commit of `main` whose desired-state files
+are not the baseline's. No other experiment has a driver. (Until `V2-S7-003-PR1` this
+paragraph said that the record is at revision 3 and that a run refuses while the
+desired state on `main` is the 2+2 target, and until `V2-S7-001-PR2` it said that no
+run of any of them exists and that neither the control nor the driver has run on a
+cluster.)
 
 Since `V2-S6-006-PR1` the two analysis experiments are
 [frozen before any of their source runs](docs/proof/experiments/README.md#the-analysis-experiment-freezes):

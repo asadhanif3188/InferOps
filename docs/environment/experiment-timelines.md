@@ -469,11 +469,13 @@ prints a warning for each sample with a read that did not answer.
 
 ## What is not done
 
-- No result-bearing run read a cluster. The collector read one only in the two
-  attempts of the integration validation, on one provider with one node. In the
-  suites it ran against stand-ins for `kubectl`, and the tool read collections
-  that the suites built. (Until `V2-S5-006-PR1` this item said that no cluster
-  was read.)
+- Result-bearing runs read a cluster only in
+  [the three V2-E02A runs](../proof/experiments/README.md#the-v2-e02a-runs). The collector
+  also read one in the two attempts of the integration validation. Each is on one
+  provider with one node. In the suites it ran against stand-ins for `kubectl`, and the
+  tool read collections that the suites built. (Until `V2-S5-006-PR1` this item said
+  that no cluster was read, and until `V2-S7-001-PR2` that no result-bearing run read
+  one.)
 - Two run directories hold the streams, those of the two attempts, and neither
   is of a result-bearing run. (Until `V2-S5-006-PR1` this item said that no run
   directory holds a stream.)

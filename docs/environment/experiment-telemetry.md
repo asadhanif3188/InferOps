@@ -525,9 +525,10 @@ answer.
 
 ## What is not done
 
-- No result-bearing run read a cluster or a telemetry collector. The script read
-  one only in the two attempts of the integration validation, on one provider
-  with one node. In the suites it ran against stand-ins for `kubectl`, and the
+- Result-bearing runs read a cluster and a telemetry collector only in
+  [the three V2-E02A runs](../proof/experiments/README.md#the-v2-e02a-runs). The script
+  also read one in the two attempts of the integration validation. Each is on one
+  provider with one node. In the suites it ran against stand-ins for `kubectl`, and the
   tool read collections that the suites built. The form of an answer is the one
   that the query API documents. (Until `V2-S5-006-PR1` this item said that no
   cluster and no telemetry collector was read, and that no answer of a running

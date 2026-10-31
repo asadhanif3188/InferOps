@@ -1,6 +1,6 @@
 # The replay of an experiment analysis
 
-Status: **the tool is implemented, and run directories that the test suite builds show the binding, each refusal, and the replay at evidence level C0. No result-bearing run was analysed. One synthetic run directory with its run analysis is committed as an example, outside the proof tree. Since `V2-S5-006-PR1` the proof tree holds two run directories of the published layout, the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation), and each holds a run analysis that replays. Its three earlier run directories were written before the schema, and none names an analysis. No claim is registered, and no claim status changed.** (Until `V2-S5-006-PR1` this status said that no run was analysed and that the proof tree holds no run directory of the published layout.)
+Status: **the tool is implemented, and run directories that the test suite builds show the binding, each refusal, and the replay at evidence level C0. The three V2-E02A runs of `V2-S7-001-PR2` are the first result-bearing runs that it analysed. One synthetic run directory with its run analysis is committed as an example, outside the proof tree. Since `V2-S5-006-PR1` the proof tree holds two run directories of the published layout, the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation), and each holds a run analysis that replays. Its three earlier run directories were written before the schema, and none names an analysis. No claim is registered, and no claim status changed.** (Until `V2-S5-006-PR1` this status said that no run was analysed and that the proof tree holds no run directory of the published layout.)
 
 [The reliability analysis](reliability-analysis.md) computes the figures of one
 run from files that a command names. Its document states no digest of an input
@@ -639,10 +639,11 @@ it printed three `pre-schema` lines only.)
 
 ## What is not done
 
-- No result-bearing run was analysed. Each run directory of the suite is built by
-  the suite. The two run analyses of the proof tree are of the attempts of a
-  non-result integration validation, and no figure of either is compared with a
-  bound. (Until `V2-S5-006-PR1` this item said that no run was analysed.)
+- Each run directory of the suite is built by the suite. The proof tree holds the two
+  run analyses of a non-result integration validation and the three of
+  [the V2-E02A runs](../proof/experiments/README.md#the-v2-e02a-runs). No figure of any
+  of them is compared with a bound. (Until `V2-S5-006-PR1` this item said that no run
+  was analysed, and until `V2-S7-001-PR2` that no result-bearing run was analysed.)
 - No check holds a declaration to a frozen record. Since `V2-S6-003-PR1` the
   [freeze records of the reliability experiments](../proof/experiments/README.md#the-reliability-experiment-freezes)
   state the window, the expected state, and the signals of a declaration as a rule, and

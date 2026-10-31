@@ -1,0 +1,69 @@
+{
+  "expected": {
+    "desiredRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+    "readyReplicas": {
+      "platform-api": 2,
+      "serving-runtime": 1
+    },
+    "runtimeReadyEndpoints": 1
+  },
+  "experimentId": "V2-E02A",
+  "runId": "e02a-1",
+  "schema": "inferops.io/reliability-analysis-declaration/v1alpha1",
+  "signals": [
+    {
+      "id": "api-ready-endpoints",
+      "problemBelow": 2,
+      "source": "endpoints-ready",
+      "tier": "platform-api"
+    },
+    {
+      "id": "runtime-ready-endpoints",
+      "problemBelow": 1,
+      "source": "endpoints-ready",
+      "tier": "serving-runtime"
+    },
+    {
+      "id": "api-ready-pods",
+      "problemBelow": 2,
+      "source": "pods-ready",
+      "tier": "platform-api"
+    },
+    {
+      "id": "runtime-ready-pods",
+      "problemBelow": 1,
+      "source": "pods-ready",
+      "tier": "serving-runtime"
+    },
+    {
+      "id": "api-ready-replicas",
+      "problemBelow": 2,
+      "source": "deployment-ready-replicas",
+      "tier": "platform-api"
+    },
+    {
+      "id": "runtime-ready-replicas",
+      "problemBelow": 1,
+      "source": "deployment-ready-replicas",
+      "tier": "serving-runtime"
+    },
+    {
+      "healthyValues": [
+        "Synced"
+      ],
+      "id": "application-sync",
+      "source": "application-sync-status"
+    },
+    {
+      "healthyValues": [
+        "Healthy"
+      ],
+      "id": "application-health",
+      "source": "application-health-status"
+    }
+  ],
+  "window": {
+    "from": "2026-10-31T13:40:35.149Z",
+    "to": "2026-10-31T13:53:35.914Z"
+  }
+}
