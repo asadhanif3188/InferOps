@@ -111,6 +111,13 @@ not show that.
 | The same modules of the fix: the gate test, the index, the review gate, the matrix, and the dashboard | 3,470 passed |
 | `ruff check .`, `ruff format --check .`, and `uv run --locked mypy` | No finding. The mypy of the host, a different version, reports one error in a file that this change does not touch |
 | `git diff --check`, and a scan of the diff for local paths, account names, credentials, and private planning material | No finding |
+| The default lane, `pytest -q`, first run, in a clean clone of `1280076` | **11 failed**, 23,785 passed, 42 skipped, 14 deselected, in 1 h 19 min. The next paragraph says what failed |
+
+The 11 failures have one cause. The three new records cite this page, so the evidence index holds
+its digest and the digest of the evidence set. The commit `1280076` edited this page and did not
+write the index again. Each of the 11 tests reads that drift: the committed index, the digest of
+this page, or the gate command, which refuses a drifted index and exits 1. The fix writes the index
+again and updates the two digests on the index page. It changes no code, no test, and no record.
 
 The first run of the inventory suite failed: its table of number words ended at ninety-nine, and
 this change adds the hundredth suite with no claim. The table now holds one hundred.
