@@ -786,7 +786,7 @@
       "implemented": [
         {
           "itemId": "every-exception-names-a-compensating-control",
-          "statement": "Seven weaknesses are accepted rather than fixed, and each names where it was accepted, a compensating control the baseline declares, the residual risk, and when to revisit it.",
+          "statement": "Eight weaknesses are accepted rather than fixed, and each names where it was accepted, a compensating control the baseline declares, the residual risk, and when to revisit it.",
           "controlIds": [],
           "claimIds": [
             "a-security-control-cannot-claim-enforcement-it-does-not-have"
@@ -827,6 +827,10 @@
             {
               "kind": "record",
               "ref": "docs/proof/security/ex-07-runtime-image-exception.md"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/ex-08-runtime-image-exception.md"
             }
           ],
           "evidenceLabel": "local-static"
@@ -852,7 +856,8 @@
             "EX-04",
             "EX-05",
             "EX-06",
-            "EX-07"
+            "EX-07",
+            "EX-08"
           ],
           "notClaimed": "No exception is described as closed, and none is cited as a control in its own right."
         }

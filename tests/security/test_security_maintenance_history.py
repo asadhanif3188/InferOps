@@ -13,7 +13,7 @@ This module holds that shape:
   sit after the sentence they amend, inside that sentence's section;
 - the note states ``EX-07``'s finding, acceptance date, and deadline as the
   reconciliation pinned them, and while ``EX-07`` stands the live baseline is
-  held to the same pinned scope, so the two agree through it;
+  held to the same pinned scope apart from the two dates that its renewal moved;
 - the surfaces that describe the current register state the count the data
   produces, so the restoration cannot be mistaken for rolling the current
   count back;
@@ -87,6 +87,11 @@ POST_RELEASE_NOTES = (
         "V2-S3-001-PR2",
         "67a485152bc48a614e639421ca963ddaf6053f9a79f6bd4c059592b52b56dbb6",
     ),
+    (
+        "> **Note, 2026-11-01: an eighth exception, and `EX-07` renewed.**",
+        "fix/runtime-image-scan-exceptions",
+        "131fd9f4486e664c86555eb67a9221ef413a2b268555fe5a922ec9c5103d9218",
+    ),
 )
 D11_NOTE = POST_RELEASE_NOTES[1][0]
 CONSEQUENCES_NOTE = POST_RELEASE_NOTES[2][0]
@@ -118,7 +123,8 @@ RELEASED_EXCEPTION_IDS = ("EX-01", "EX-02", "EX-03", "EX-04", "EX-05", "EX-06")
 # compare it with the live data, as a tripwire: if a later change rotates the
 # image, retires `EX-07`, or moves its deadline, those two fail, and that change
 # says so in its own record and updates them. The 2026-10-01 reconciliation
-# stays as it was written.
+# stays as it was written. The renewal of 2026-11-01 was such a change, and
+# RENEWED_EX07_SCOPE below is what those two now compare.
 RECONCILED_EX07_SCOPE = {
     "scanner": "trivy",
     "findingId": "CVE-2026-84782",
@@ -135,6 +141,18 @@ RECONCILED_EX07_SCOPE = {
     "acceptedOn": "2026-09-30",
     "reviewBy": "2026-10-30",
 }
+
+# `EX-07` as docs/proof/security/ex-08-runtime-image-exception.md renewed it: the
+# reconciled scope with two new dates. Each other fact is unchanged.
+RENEWED_EX07_SCOPE = {
+    **RECONCILED_EX07_SCOPE,
+    "acceptedOn": "2026-11-01",
+    "reviewBy": "2026-12-01",
+}
+
+# The one other scan exception, and the expiry of the entry that accepts it.
+EX08_FINDING = "CVE-2026-111497"
+EX08_REVIEW_BY = "2026-12-01"
 
 # SHA-256 of the EX-07 assessment as pull request #103 merged it - git blob
 # fcccf2e5 at 51cddd1 - with LF line endings. Everything before its later
@@ -392,13 +410,17 @@ def test_ex07_keeps_the_scope_it_was_reconciled_with() -> None:
 
     It also holds the identifiers the note relies on: EX-01 to EX-06 are the six
     the released sentence counted, none a scan exception, and EX-07 follows them.
+    Since 2026-11-01 EX-07 is held to its renewed scope, and EX-08 is the one other
+    scan exception, with a record of its own.
     """
     assert sorted(EXCEPTIONS)[:7] == [*RELEASED_EXCEPTION_IDS, "EX-07"]
     assert all("scanFinding" not in EXCEPTIONS[name] for name in RELEASED_EXCEPTION_IDS)
-    assert EXCEPTIONS["EX-07"]["scanFinding"] == RECONCILED_EX07_SCOPE
+    assert EXCEPTIONS["EX-07"]["scanFinding"] == RENEWED_EX07_SCOPE
     assert [name for name, row in EXCEPTIONS.items() if "scanFinding" in row] == [
-        "EX-07"
-    ], "a second scan exception exists; it needs its own record, not this one's"
+        "EX-07",
+        "EX-08",
+    ], "a third scan exception exists; it needs its own record, not this one's"
+    assert EXCEPTIONS["EX-08"]["acceptedIn"] != EXCEPTIONS["EX-07"]["acceptedIn"]
 
 
 def _entries(path: Path) -> list[str]:
@@ -406,10 +428,11 @@ def _entries(path: Path) -> list[str]:
     return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
 
 
-def test_the_ignore_files_accept_exactly_what_was_reconciled() -> None:
-    scope = RECONCILED_EX07_SCOPE
+def test_the_ignore_files_accept_exactly_what_was_renewed_and_accepted() -> None:
+    scope = RENEWED_EX07_SCOPE
     assert _entries(RUNTIME_IGNORE_PATH) == [
-        f"{scope['findingId']} exp:{scope['reviewBy']}"
+        f"{scope['findingId']} exp:{scope['reviewBy']}",
+        f"{EX08_FINDING} exp:{EX08_REVIEW_BY}",
     ]
     assert f"# assessed-image: {scope['subject']}" in RUNTIME_IGNORE_PATH.read_text(
         encoding="utf-8"

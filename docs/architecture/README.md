@@ -237,7 +237,7 @@ control is counted as an enforced one.
 It establishes **nothing about whether anything running is defended**. Thirty-four of
 its forty-four controls are enforced by something and ten are not; fourteen risks are
 carried rather than reduced, twelve of them blocking production use (until
-2026-10-03 this sentence said twenty-nine of thirty-eight, nine, twelve, and ten); seven exceptions are
+2026-10-03 this sentence said twenty-nine of thirty-eight, nine, twelve, and ten); eight exceptions are
 recorded with a compensating control each; and the pod-security properties hold over
 five YAML files and two committed renders, read as files — a release has since been
 installed from those renders and no check here reads a pod that resulted. A secret

@@ -1,0 +1,67 @@
+image index: sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+linux/amd64 manifest: sha256:fa09617a8e077f327dbf823fc1bafecc82c1bff6503a53416d8c2197d86c85ba
+ELF files in the image: 1270
+ELF files under /app: 29
+
+# The load closure of every ELF file under /app, followed through DT_NEEDED
+files outside /app:
+   usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+   usr/lib/x86_64-linux-gnu/libc.so.6
+   usr/lib/x86_64-linux-gnu/libcrypto.so.3
+   usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+   usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0
+   usr/lib/x86_64-linux-gnu/libm.so.6
+   usr/lib/x86_64-linux-gnu/libssl.so.3
+   usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33
+sonames with no file: []
+a brotli file in the closure: False
+
+# CVE-2026-84782: OpenSSL use under /app
+files linking libssl.so.3 or libcrypto.so.3: ['app/libllama-common.so.0.2.0', 'app/libllama-server-impl.so']
+   app/libllama-common.so.0.2.0 method imports: ['TLS_client_method', 'TLS_server_method']
+   app/libllama-server-impl.so method imports: ['TLS_client_method', 'TLS_server_method']
+files importing a DTLS symbol: []
+files importing dlsym: ['app/libggml.so.0.21.0']
+files importing dlopen: ['app/libggml.so.0.21.0']
+
+# CVE-2026-111497: Brotli
+ELF files naming a brotli library in DT_NEEDED:
+   usr/lib/x86_64-linux-gnu/libbrotlidec.so.1.1.0 ['libbrotlicommon.so.1']
+   usr/lib/x86_64-linux-gnu/libbrotlienc.so.1.1.0 ['libbrotlicommon.so.1']
+   usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0 ['libbrotlidec.so.1']
+   usr/lib/x86_64-linux-gnu/libfreetype.so.6.20.1 ['libbrotlidec.so.1']
+   usr/lib/x86_64-linux-gnu/libjxl.so.0.7.0 ['libbrotlidec.so.1', 'libbrotlienc.so.1']
+ELF files that reach a brotli library through DT_NEEDED: 59
+of them, under /app: []
+of them, executables under usr/bin or usr/sbin:
+   usr/bin/broadwayd
+   usr/bin/curl
+   usr/bin/fc-cache
+   usr/bin/fc-cat
+   usr/bin/fc-conflist
+   usr/bin/fc-list
+   usr/bin/fc-match
+   usr/bin/fc-pattern
+   usr/bin/fc-query
+   usr/bin/fc-scan
+   usr/bin/fc-validate
+   usr/bin/ffmpeg
+   usr/bin/ffplay
+   usr/bin/ffprobe
+   usr/bin/gtk-builder-tool
+   usr/bin/gtk-encode-symbolic-svg
+   usr/bin/gtk-launch
+   usr/bin/gtk-query-settings
+files under /app importing a Brotli symbol: []
+files under /app holding the Brotli static dictionary: []
+text matching brotli under /app:
+   app/libllama-common.so.0.2.0 ['_ZN7httplib6detail18is_brotli_encodingERKNSt7__cxx1112basic_']
+   app/libllama-server-impl.so ['_ZN7httplib6detail18is_brotli_encodingERKNSt7__cxx1112basic_']
+
+# Packages, from var/lib/dpkg/status
+installed: libbrotli1 1.1.0-2build2
+depends on libbrotli1: libcurl4t64 8.5.0-2ubuntu10.12
+depends on libbrotli1: libfreetype6 2.13.2+dfsg-1ubuntu0.1
+depends on libbrotli1: libjxl0.7 0.7.0-10.2ubuntu6.1
+installed: libssl3t64 3.0.13-0ubuntu3.12
+installed: openssl 3.0.13-0ubuntu3.12

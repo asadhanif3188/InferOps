@@ -1870,7 +1870,7 @@
       "acceptedIn": "docs/proof/security/ex-07-runtime-image-exception.md",
       "compensatingControl": "pin-image-by-digest",
       "residualRisk": "The vulnerable code ships in the image and is not called: the only two files in /app that link libssl.so.3 create their contexts with TLS_client_method and TLS_server_method, import no DTLS function, and the committed runtime arguments serve plain HTTP from a mounted model file, so even the TLS paths are idle. That was read from the binaries' dynamic imports, not from a running process, and it is an argument about this image's bytes only. The image also ships the openssl command-line tool, which can speak DTLS; anyone able to run it inside the container already executes code there. The ignore entry names the identifier, not the packages, so it would accept the same identifier in any package of the image; in this image only these two carry it. Every other HIGH or CRITICAL finding in the image still blocks, and a finding published after the assessment is read by the scan like any other.",
-      "revisitedWhen": "The runtime pin moves, at which point the image guard refuses to scan until this finding is re-assessed against the new image, or on 2026-10-30, when the ignore entry expires and the finding blocks again, whichever comes first. Upstream's server-b11277 build, ghcr.io/ggml-org/llama.cpp@sha256:6d607629e3dd5e85f45c43d1494648126cb3f93f2122c9cd53f43242c94cde14, scanned with no HIGH or CRITICAL finding on 2026-09-30 and is the candidate a rotation would evaluate.",
+      "revisitedWhen": "The runtime pin moves, at which point the image guard refuses to scan until this finding is re-assessed against the new image, or on 2026-12-01, when the ignore entry expires and the finding blocks again, whichever comes first. Upstream's server build, ghcr.io/ggml-org/llama.cpp@sha256:d9e9e74ba3f7ef119b1939162b1631f99b75ec703c310d140cfa2fdac8907389, scanned with no HIGH or CRITICAL finding on 2026-11-01 and is the candidate a rotation would evaluate. The candidate first named here, server-b11277, now carries the finding of EX-08.",
       "deferredRiskRef": null,
       "scanFinding": {
         "scanner": "trivy",
@@ -1885,8 +1885,32 @@
         "fixedVersion": "3.0.13-0ubuntu3.16",
         "ignoreFile": "scripts/security/runtime-image.trivyignore",
         "owner": "security",
-        "acceptedOn": "2026-09-30",
-        "reviewBy": "2026-10-30"
+        "acceptedOn": "2026-11-01",
+        "reviewBy": "2026-12-01"
+      }
+    },
+    {
+      "exceptionId": "EX-08",
+      "statement": "The pinned runtime image carries libbrotli1 1.1.0-2build2, which has CVE-2026-111497, a HIGH out-of-bounds write in the Brotli decoder, and the image guard accepts that one finding for that one image digest until its review deadline.",
+      "acceptedIn": "docs/proof/security/ex-08-runtime-image-exception.md",
+      "compensatingControl": "pin-image-by-digest",
+      "residualRisk": "The vulnerable code ships in the image and nothing under /app links it: no ELF file under /app names a Brotli library, reaches one through DT_NEEDED, imports a Brotli symbol, or holds the Brotli static dictionary, and the only text matching brotli there is the cpp-httplib symbol is_brotli_encoding. That was read from the binaries of the linux/amd64 manifest, not from a running process, and it is an argument about this image's bytes only. libggml imports dlopen to load its back-ends, and what a library loads at run time by a path it builds was not read. The image also ships programs that do reach libbrotli, among them curl and ffmpeg; anyone able to run them inside the container already executes code there, and no probe or argument of the committed chart runs them. The ignore entry names the identifier, not the package, so it would accept the same identifier in any package of the image; in this image only libbrotli1 carries it. Every other HIGH or CRITICAL finding in the image still blocks, and a finding published after the assessment is read by the scan like any other.",
+      "revisitedWhen": "The runtime pin moves, at which point the image guard refuses to scan until this finding is re-assessed against the new image, or on 2026-12-01, when the ignore entry expires and the finding blocks again, whichever comes first. Upstream's server build, ghcr.io/ggml-org/llama.cpp@sha256:d9e9e74ba3f7ef119b1939162b1631f99b75ec703c310d140cfa2fdac8907389, scanned with no HIGH or CRITICAL finding on 2026-11-01 and is the candidate a rotation would evaluate.",
+      "deferredRiskRef": null,
+      "scanFinding": {
+        "scanner": "trivy",
+        "findingId": "CVE-2026-111497",
+        "severity": "HIGH",
+        "subject": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+        "packages": [
+          "libbrotli1"
+        ],
+        "installedVersion": "1.1.0-2build2",
+        "fixedVersion": "1.1.0-2ubuntu0.1",
+        "ignoreFile": "scripts/security/runtime-image.trivyignore",
+        "owner": "security",
+        "acceptedOn": "2026-11-01",
+        "reviewBy": "2026-12-01"
       }
     }
   ],

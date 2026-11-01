@@ -381,7 +381,7 @@ calling it. No vulnerability database is read and no image is scanned.
 `tests/security/test_security_maintenance_history.py` reads only committed files: it
 holds ADR 0008 to a pinned digest of the text `v1.0.0` released, so a later state can
 be added to that record only as a dated note, and holds `EX-07` to the scope recorded
-when it was reconciled.
+when it was reconciled, apart from the two dates that its renewal moved.
 
 ### `real-runtime-smoke` — [`tests/realruntime/`](../../tests/realruntime/)
 

@@ -20,4 +20,7 @@
 # ExperimentalModifiedFindings, because the guard passes --show-suppressed.
 
 # EX-07: OpenSSL DTLS retransmission out-of-bounds read, in openssl and libssl3t64.
-CVE-2026-84782 exp:2026-10-30
+CVE-2026-84782 exp:2026-12-01
+
+# EX-08: Brotli decoder out-of-bounds write, in libbrotli1.
+CVE-2026-111497 exp:2026-12-01
