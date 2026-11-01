@@ -57,6 +57,7 @@ DRIVER = REPO_ROOT / "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
 PACKAGE = REPO_ROOT / "tools" / "experiment_e02a"
 Q1_2_CAPACITY = "docs/proof/experiments/v2-q1/runs/q1-2/capacity/record.v1alpha1.json"
 E02B_R2 = "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json"
+E02B_R3 = "docs/proof/experiments/v2-e02b/freeze-r3.v1alpha1.json"
 CONTROLLER = "delivery-controller"
 HEAD = "a" * 40
 DESIRED = "b" * 40
@@ -450,10 +451,24 @@ def test_revision_3_pins_the_driver_and_every_module_of_the_control() -> None:
 #: that with the cost stated, and no revision classifies them.
 LEDGER_LIST = {"tools/evidence_index/__init__.py", "tools/evidence_index/core.py"}
 
+#: The pins of revision 4 that the G3 switch moved: the two desired-state files and
+#: the declaration, restored to the target. Rule G2 holds each run to the baseline.
+G3_MOVED = {
+    "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+    "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
+    "tools/gitops_desired_state/core.py",
+}
+#: The pins of revision 3 that the G1 switch moved and the G3 switch did not restore.
+BASELINE_TOOL = {
+    "tools/baseline_profile/__init__.py",
+    "tools/baseline_profile/__main__.py",
+    "tools/baseline_profile/core.py",
+}
 
-def test_the_only_moved_inputs_of_revision_4_are_the_list_of_ledgers() -> None:
+
+def test_the_moved_inputs_of_revision_4_are_the_g3_switch_and_the_ledgers() -> None:
     """A tripwire. A file that moves after the three runs fails here, unless a test
-    names it. So a further run would refuse at P1, and no further run is planned."""
+    names it. So a further run refuses at P1, and no further run is planned."""
     document = _read(R4)
     files = freeze.material_files(document["materialScope"], REPO_ROOT)
     pinned = {pin["path"]: pin["sha256"] for pin in document["pinnedInputs"]}
@@ -463,7 +478,7 @@ def test_the_only_moved_inputs_of_revision_4_are_the_list_of_ledgers() -> None:
         for path in files
         if freeze.content_digest((REPO_ROOT / path).read_bytes()) != pinned[path]
     }
-    assert moved == LEDGER_LIST
+    assert moved == G3_MOVED | LEDGER_LIST
 
 
 def test_revision_3_classifies_each_pin_that_moved_from_revision_2() -> None:
@@ -584,14 +599,15 @@ def test_revision_4_classifies_each_pin_that_the_g1_switch_moved() -> None:
 
 
 def test_a_switch_without_revision_4_is_refused_at_p1(tmp_path: Path) -> None:
-    """The switched files of this tree, with no revision that classifies them.
+    """Pins that moved, with no revision that classifies them.
 
     A registry that does not register revision 4 gives the plan of revision 3.
     Revision 3 states the baseline digests, so P2 alone would accept the switched
-    files; but the freeze tool lists the six files of the switch against revision
-    3, so P1 refuses the run before any cluster read. An unregistered switch is
-    therefore never run under. Since V2-S7-002-PR1 the tool also lists the two files
-    of the list of ledgers.
+    files; but the freeze tool listed the six files of the G1 switch against
+    revision 3, so P1 refused the run before any cluster read. An unregistered
+    switch is therefore never run under. Since V2-S7-002-PR1 the tool also lists the
+    two files of the list of ledgers, and since V2-S7-003-PR2, which restored three
+    of the six, it lists the three files of the baseline-profile tool and those two.
     """
     root = _tree_with(tmp_path)
     registry = json.loads((root / freeze.REGISTRY_PATH).read_text("utf-8"))
@@ -602,7 +618,7 @@ def test_a_switch_without_revision_4_is_refused_at_p1(tmp_path: Path) -> None:
     assert (plan.record_path, plan.revision) == (R3, 3)
     assert dict(plan.desired_state_files) == dict(PLAN.desired_state_files)
     moved = freeze.changed_inputs(_read(R3), REPO_ROOT)
-    assert {change.path for change in moved} == set(G1_MOVED) | LEDGER_LIST
+    assert {change.path for change in moved} == BASELINE_TOOL | LEDGER_LIST
     findings = core.repository_findings(
         head=HEAD,
         clean=True,
@@ -612,9 +628,9 @@ def test_a_switch_without_revision_4_is_refused_at_p1(tmp_path: Path) -> None:
     assert findings == ["the freeze tool lists a moved input of the record"]
 
 
-def test_revision_3_lists_the_g1_switch_and_the_list_of_ledgers_alone() -> None:
+def test_revision_3_lists_the_baseline_tool_and_the_list_of_ledgers_alone() -> None:
     changes = freeze.changed_inputs(_read(R3), REPO_ROOT)
-    assert {change.path for change in changes} == set(G1_MOVED) | LEDGER_LIST
+    assert {change.path for change in changes} == BASELINE_TOOL | LEDGER_LIST
 
 
 def test_g1_and_g4_of_revision_4_state_the_switch_that_registers_it() -> None:
@@ -663,28 +679,32 @@ def test_the_procedure_members_shared_with_e02b_are_unchanged() -> None:
     assert three["definition"]["executables"] == target["definition"]["executables"]
 
 
-def test_the_desired_state_at_head_is_the_baseline_that_p2_accepts() -> None:
-    """Since the G1 switch, P2 accepts the desired state of the commit it reads: its
-    two files have the digests of the baseline that revision 4 states. The 2+2
-    files of the target, which revision 2 of V2-E02B states, are refused."""
+def test_the_desired_state_at_head_is_the_target_that_p2_refuses() -> None:
+    """Since the G3 switch, P2 refuses the desired state of the commit it reads: its
+    two files have the digests of the target that V2-E02B states, and revision 4
+    states the digests of the baseline. So no further run starts under revision 4.
+    The digests of the baseline stay accepted: rule G2 held each run to them."""
     repository = ports.LocalRepository(REPO_ROOT, PLAN)
     head = repository.head()
     if head is None:
         pytest.skip("git is not usable here")
     digests = repository.desired_state_digests(head, PLAN.desired_state_path)
-    assert digests == dict(PLAN.desired_state_files)
-    assert (
-        core.desired_state_findings(
-            PLAN, desired=head, paths_equal=True, digests=digests
-        )
-        == []
-    )
-    target = _read(E02B_R2)["fields"]["topology"][0]["value"]["release"]
+    target = _read(E02B_R3)["fields"]["topology"][0]["value"]["release"]
+    assert digests == target["desiredStateFiles"]
     findings = core.desired_state_findings(
-        PLAN, desired=head, paths_equal=True, digests=target["desiredStateFiles"]
+        PLAN, desired=head, paths_equal=True, digests=digests
     )
     assert len(findings) == 2
     assert all("and the record states" in finding for finding in findings)
+    assert (
+        core.desired_state_findings(
+            PLAN,
+            desired=head,
+            paths_equal=True,
+            digests=dict(PLAN.desired_state_files),
+        )
+        == []
+    )
 
 
 # --------------------------------------------------------------------------

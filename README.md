@@ -189,12 +189,12 @@ the chart states the API Deployment's rolling-update bounds, which the platform
 defaults own. Since `V2-S4-002-PR1` it also declares two serving runtime replicas,
 from a contract version that states them, and the chart states the runtime
 Deployment's rolling-update bounds: one pod unavailable and no pod above the replica
-count. Since `V2-S7-003-PR1` the committed release is the single-runtime baseline, two
-API replicas and one runtime replica: rule G1 of the V2-E02A freeze record switches it
-before the first V2-E02A run, and rule G3 restores the two runtime replicas after the
-last one. Each switch merges only with the explicit authorization of the repository
-owner. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
-release once, and two pods of each tier became Ready on one node:
+count. From `V2-S7-003-PR1` the committed release was the single-runtime baseline, two
+API replicas and one runtime replica, for the runs of V2-E02A: rule G1 of the V2-E02A
+freeze record switched it. `V2-S7-003-PR2` restores the two runtime replicas by rule G3,
+with the bytes that the target had before the switch. Each switch merges only with the
+explicit authorization of the repository owner. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
+two-replica release of chart `0.5.0` once, and two pods of each tier became Ready on one node:
 [the record](docs/proof/environment/v2-s4-002-pr2-validation.md). It establishes
 nothing about what a caller observes when an API pod or a runtime pod is lost.
 Since `V2-S4-003-PR1` a
@@ -376,12 +376,17 @@ fault in each of the three runs. That verdict states no comparison and no percen
 it does not authorize a run of V2-E02B. The register holds one claim of the runs, certified
 at `C2`, which states that requests failed. (Until `V2-S7-002-PR1` this paragraph said that
 the set is not yet classified.)
+Since `V2-S7-003-PR2` the record of V2-E02B is at
+[revision 3](docs/proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b),
+registered by the change that restores its target. That revision changes no criterion and
+adds no driver, and no run of V2-E02B exists.
 Since `V2-S7-001-PR1` the baseline record pins
 [its driver and its control](docs/testing/experiment-e02a-control.md), and since
 `V2-S7-003-PR1` it is at revision 4, registered by the change that switches the desired
 state to the baseline. The three runs are the first that the control and the driver
 executed on a cluster. P2 refuses a run at a commit of `main` whose desired-state files
-are not the baseline's. No other experiment has a driver. (Until `V2-S7-003-PR1` this
+are not the baseline's, so since `V2-S7-003-PR2`, which restores the target, a further
+run of the baseline refuses. No other experiment has a driver. (Until `V2-S7-003-PR1` this
 paragraph said that the record is at revision 3 and that a run refuses while the
 desired state on `main` is the 2+2 target, and until `V2-S7-001-PR2` it said that no
 run of any of them exists and that neither the control nor the driver has run on a
@@ -400,14 +405,18 @@ price. Since `V2-S6-008-PR1` V2-E03 binds revision 3 of the bad-release record a
 counts only the runs that execute under it. Since `V2-S7-003-PR1` V2-E03 is at revision
 4 and V2-E06 at revision 3: each binds revision 4 of the baseline record, which the G1
 switch registers, and V2-E06 also classifies the two desired-state files that the switch
-moved. No figure of either exists, the code that computes either analysis in full
-does not exist, and the validation of `V2-S7-003-PR1` states
-[what each latest freeze still owes](docs/proof/environment/v2-s7-003-pr1-validation.md#what-each-latest-freeze-owes) before
+moved. Since `V2-S7-003-PR2` V2-E03 is at revision 5 and V2-E06 at revision 4: each binds
+revision 3 of V2-E02B, which the G3 switch registers, and V2-E06 pins the restored files
+of the target. No figure of either exists, the code that computes either analysis in full
+does not exist, and the validation of `V2-S7-003-PR2` states
+[what each latest freeze still owes](docs/proof/environment/v2-s7-003-pr2-validation.md#what-each-latest-freeze-owes) before
 its first run. (Until `V2-S6-008-PR1` this paragraph linked the review of
 `V2-S6-006-PR1`, until `V2-S7-001-PR1` it said that V2-E03 is at revision 2 and
 linked [the readiness review of `V2-S6-008-PR1`](docs/proof/environment/v2-s6-008-pr1-validation.md#the-consolidated-pre-run-readiness-review),
-and until `V2-S7-003-PR1` it said that V2-E03 is at revision 3 and V2-E06 at revision 2
-and linked [the validation of `V2-S7-001-PR1`](docs/proof/environment/v2-s7-001-pr1-validation.md#what-each-latest-freeze-owes).)
+until `V2-S7-003-PR1` it said that V2-E03 is at revision 3 and V2-E06 at revision 2
+and linked [the validation of `V2-S7-001-PR1`](docs/proof/environment/v2-s7-001-pr1-validation.md#what-each-latest-freeze-owes),
+and until `V2-S7-003-PR2` it linked
+[the validation of `V2-S7-003-PR1`](docs/proof/environment/v2-s7-003-pr1-validation.md#what-each-latest-freeze-owes).)
 
 ## Prerequisites
 

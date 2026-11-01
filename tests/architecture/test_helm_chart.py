@@ -3294,26 +3294,67 @@ def test_the_workload_policy_accepts_a_render_that_holds_both_budgets() -> None:
     assert not check_documents(documents)
 
 
-def test_the_desired_state_of_this_tree_renders_the_baseline_that_g1_selects() -> None:
-    """Rule G1 of the V2-E02A record switched the desired state to the baseline.
-
-    The desired-state values file is the baseline profile's, byte for byte. Its
-    render holds one runtime replica and the API tier's budget alone, and each
-    kind of it is a kind that the Application's project admits.
-
-    This renders files. No Application was applied.
-    """
-    assert DESIRED_STATE_VALUES.read_bytes() == BASELINE_PROFILE_VALUES.read_bytes()
-    render = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
-    documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
-    assert sorted(_budgets(documents)) == ["platform-api"]
-    replicas = {
+def _rendered_deployment_replicas(
+    documents: list[dict[str, Any]],
+) -> dict[str, int]:
+    return {
         d["metadata"]["labels"]["app.kubernetes.io/component"]: d["spec"]["replicas"]
         for d in documents
         if d["kind"] == "Deployment"
     }
+
+
+def test_the_baseline_renders_one_runtime_replica_and_the_api_budget_alone() -> None:
+    """The render that the G1 switch of the V2-E02A record delivered.
+
+    This renders files. No Application was applied.
+    """
+    render = _template(BASELINE_PROFILE_VALUES, HAND_WRITTEN_VALUES)
+    documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
+    assert sorted(_budgets(documents)) == ["platform-api"]
+    replicas = _rendered_deployment_replicas(documents)
     assert replicas["platform-api"] == 2
     assert replicas["serving-runtime"] == 1
+
+
+def test_the_restored_target_adds_one_object_to_the_render_of_the_baseline() -> None:
+    """Rule G3 of the V2-E02A record takes no object out of the render.
+
+    The Application does not prune, so an object that left the render would stay
+    in a cluster. The restored render holds every object of the baseline's, and the
+    runtime PodDisruptionBudget beside them.
+    """
+
+    def objects(values: Path) -> set[tuple[str, str]]:
+        render = _template(values, HAND_WRITTEN_VALUES)
+        return {
+            (d["kind"], d["metadata"]["name"])
+            for d in yaml.safe_load_all(render)
+            if isinstance(d, dict)
+        }
+
+    baseline = objects(BASELINE_PROFILE_VALUES)
+    target = objects(DESIRED_STATE_VALUES)
+    assert baseline < target
+    assert [kind for kind, _name in target - baseline] == ["PodDisruptionBudget"]
+
+
+def test_the_desired_state_of_this_tree_renders_the_target_that_g3_restored() -> None:
+    """Rule G3 of the V2-E02A record restored the two-replica target.
+
+    The desired-state values file is not the baseline profile's. Its render holds
+    two replicas and one budget for each tier, and each kind of it is a kind that
+    the Application's project admits.
+
+    This renders files. No Application was applied.
+    """
+    assert DESIRED_STATE_VALUES.read_bytes() != BASELINE_PROFILE_VALUES.read_bytes()
+    render = _template(DESIRED_STATE_VALUES, HAND_WRITTEN_VALUES)
+    documents = [d for d in yaml.safe_load_all(render) if isinstance(d, dict)]
+    assert sorted(_budgets(documents)) == ["platform-api", "serving-runtime"]
+    replicas = _rendered_deployment_replicas(documents)
+    assert replicas["platform-api"] == 2
+    assert replicas["serving-runtime"] == 2
     rendered = {
         (d["apiVersion"].rpartition("/")[0], d["kind"])
         for d in documents

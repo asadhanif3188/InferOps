@@ -44,7 +44,7 @@ from typing import Any
 import pytest
 import yaml
 
-from tests.support.target_tree import G1_MOVED, target_root
+from tests.support.target_tree import target_root
 from tools import environment_qualification as q1
 from tools.capacity_preflight import core as capacity_core
 from tools.environment_qualification import __main__ as cli
@@ -1631,9 +1631,9 @@ def test_the_target_is_the_desired_state_release_with_two_and_two_replicas() -> 
     """Q1 qualifies the two-replica target, at its desired-state key.
 
     Rule G1 of the V2-E02A record switched the desired state of this tree to the
-    single-runtime baseline. So the target is read from a copy of the delivery
-    inputs that holds it, and a qualification at this tree would not read its
-    target: the desired state holds one runtime replica.
+    single-runtime baseline, and rule G3 restored the target. A qualification at a
+    commit between the two would not read its target. The target is read from a copy
+    of the delivery inputs too, and the copy holds the values of this tree.
     """
     from tools.gitops_desired_state import DESIRED_STATE_RELEASES, release_key
 
@@ -1644,7 +1644,7 @@ def test_the_target_is_the_desired_state_release_with_two_and_two_replicas() -> 
     assert values["api"]["replicaCount"] == q1.TARGET_API_REPLICAS == 2
     assert values["runtime"]["replicaCount"] == q1.TARGET_RUNTIME_REPLICAS == 2
     selected = yaml.safe_load(VALUES.read_text("utf-8"))
-    assert selected["runtime"]["replicaCount"] == 1
+    assert selected == values
 
 
 def test_the_model_rules_that_q1_reads_are_rules_of_the_observation() -> None:
@@ -1743,9 +1743,9 @@ def test_revision_2_supersedes_revision_1_and_changes_no_criterion() -> None:
     assert "no memory figure" in identity["value"]["recordedPerQualification"]
     assert "Q1-AC9" in identity["value"]["capacity"]
     assert (ROOT / identity["value"]["decision"]).is_file()
-    # The G1 switch of the V2-E02A record moved three pinned files, and nothing else.
-    moved = freeze.changed_inputs(r2)
-    assert sorted(change.path for change in moved) == sorted(G1_MOVED)
+    # The G1 switch of the V2-E02A record moved three pinned files, and nothing else,
+    # and the G3 switch restored each of them to its pin.
+    assert freeze.changed_inputs(r2) == []
 
 
 def test_revision_1_can_no_longer_govern_a_new_qualification() -> None:

@@ -136,11 +136,14 @@ Eight of the nine kinds are the kinds of the committed render of the chart's rea
 profile, without the `helm test` pod. That render has one replica for each tier.
 The ninth kind is PodDisruptionBudget. Since chart `0.6.0` the chart renders one
 for a tier of two or more replicas, and the two-replica target declares two
-replicas for each tier. A test compares the sets. Since `V2-S7-003-PR1` the
-desired-state release is the single-runtime baseline, by [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4). Its render holds
-the API tier's budget alone, and a test holds that each kind of it is a kind that the
-project admits. (Until `V2-S7-003-PR1` this paragraph said that the desired-state release
-declares two replicas for each tier.)
+replicas for each tier. A test compares the sets. From `V2-S7-003-PR1` until
+`V2-S7-003-PR2` the desired-state release was the single-runtime baseline, by
+[the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4), and its
+render held the API tier's budget alone. [The G3 switch](../proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b) restores the
+two-replica target, so the render holds both budgets again, and a test holds that each
+kind of it is a kind that the project admits. (Until `V2-S7-003-PR1` this paragraph said
+that the desired-state release declares two replicas for each tier, and until
+`V2-S7-003-PR2` it said that the desired-state release is the baseline.)
 
 The project is not desired state. A cluster where the project was applied before
 it admitted PodDisruptionBudget keeps the eight kinds until an operator runs

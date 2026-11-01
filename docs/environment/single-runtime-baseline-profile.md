@@ -10,11 +10,12 @@ to the comparison. That digest is a declared comparison input. It is not an
 install input, and it is not an observed runtime identity.**
 
 The two-replica target declares two platform API replicas and two serving
-runtime replicas. Since `V2-S7-003-PR1` the desired-state release is the baseline
-itself: [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4) put the two files of this profile at the desired-state path, byte for
-byte, and the Application delivers the baseline until rule G3 restores the target.
-(Until `V2-S7-003-PR1` this paragraph began "The desired-state release declares two
-platform API replicas".) The baseline exists so that the loss of one runtime pod under
+runtime replicas. From `V2-S7-003-PR1` until `V2-S7-003-PR2` the desired-state release was
+the baseline itself: [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4) put the two files of this profile at the desired-state path, byte for
+byte, and the Application delivered the baseline for the three runs of V2-E02A.
+[The G3 switch](../proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b) restores the target. (Until `V2-S7-003-PR1` this
+paragraph began "The desired-state release declares two platform API replicas", and until
+`V2-S7-003-PR2` it said that the desired-state release is the baseline.) The baseline exists so that the loss of one runtime pod under
 that topology can be compared with the loss of the one runtime pod of a release
 with one. Since `V2-S6-003-PR1` the [freeze records of V2-E02A and
 V2-E02B](../proof/experiments/README.md#the-reliability-experiment-freezes) define that
@@ -30,7 +31,7 @@ comparison record does not establish.
 | Property | Value |
 |---|---|
 | Baseline topology | Two API replicas and one serving runtime replica |
-| Target topology | Two API replicas and two serving runtime replicas: the declaration of the [desired-state release](git-desired-state.md), key `local-docker-desktop/support-assistant`, with the two-replica contract that this tool states. Since `V2-S7-003-PR1` the desired state selects the baseline, and the target is not in the tree |
+| Target topology | Two API replicas and two serving runtime replicas: the declaration of the [desired-state release](git-desired-state.md), key `local-docker-desktop/support-assistant`, with the two-replica contract that this tool states. The desired state selects it since `V2-S7-003-PR2`. From `V2-S7-003-PR1` until that change the desired state selected the baseline, and the target was not in the tree |
 | Profile directory | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline` |
 | Comparison record | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.comparison.v1alpha1.json` |
 | Install description | `tests/domain/fixtures/experiment-profiles/single-runtime-baseline.install.v1alpha1.yaml`. A person writes it |
@@ -46,14 +47,15 @@ comparison record does not establish.
 declaration of the desired-state release and replaces its contract with
 `synchronous-llm-two-replicas.yaml`, which the tool states as `TARGET_CONTRACT`. So the
 desired-state declaration owns the directory, the binding, the platform defaults, and
-both revisions, and this tool owns the two contracts of the comparison. Since
-`V2-S7-003-PR1` the desired-state declaration names the baseline's contract, by
-[the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4), and the target is still the two-replica release. The target is never derived from
-the contract that the desired state selects: a comparison of the baseline with a
+both revisions, and this tool owns the two contracts of the comparison. From
+`V2-S7-003-PR1` until `V2-S7-003-PR2` the desired-state declaration named the baseline's
+contract, by [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4), and the target stayed the two-replica release. [The G3 switch](../proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b)
+restores the declaration, so both name one contract, and the tool still states its own.
+The target is never derived from the contract that the desired state selects: a comparison of the baseline with a
 release of one runtime replica is refused by `baseline-topology-not-declared` and by
 `baseline-version-not-distinct`, and a test holds both. The record of the comparison is
 the same, byte for byte, whichever side the desired state selects, and a test holds that
-too. (Until `V2-S7-003-PR1` the target was the desired-state declaration as it stood.)
+too. (Until `V2-S7-003-PR1` the target was the desired-state declaration as it stood, and until `V2-S7-003-PR2` this paragraph said that the declaration names the baseline's contract.)
 
 **The baseline is the target's declaration with two fields replaced.** The tool
 takes the declaration of the target and replaces the contract and
@@ -647,11 +649,11 @@ comparison, and it is a decision.
 | Not applied | Why | What it needs |
 |---|---|---|
 | An Application, or a desired-state path, for the baseline | No Application reads the profile directory. The one Application reads the desired-state path, and the Git desired state holds one release | Applied since `V2-S7-003-PR1`: [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4) puts this profile's two files at the desired-state path, byte for byte, with revision 4 of the V2-E02A record, so the one Application delivers the baseline once the change is merged. A cluster delivers it only after that merge, which needs the authorization of the repository owner. (Until `V2-S7-003-PR1` this cell said that the change that makes the switch is still needed, and until `V2-S6-003-PR1` that a decision is needed) |
-| A procedure that installs the baseline from its install description | The description is compared, and nothing reads it to install a release | The Application delivers the baseline after the switch, so no procedure installs it from its description. P2 of each V2-E02A run holds the two desired-state files to the digests that the record states. Still needed: a run. (Until `V2-S7-003-PR1` this cell said that the switch is still needed, and until `V2-S6-003-PR1` that a decision on how a run selects the baseline is needed) |
+| A procedure that installs the baseline from its install description | The description is compared, and nothing reads it to install a release | The Application delivered the baseline after the G1 switch, so no procedure installs it from its description. P2 of each V2-E02A run held the two desired-state files to the digests that the record states. Still needed: nothing for the three runs of V2-E02A. (Until `V2-S7-003-PR1` this cell said that the switch is still needed, until `V2-S6-003-PR1` that a decision on how a run selects the baseline is needed, and until `V2-S7-003-PR2` that a run is needed) |
 | A check that a run installs both sides with the declared API image digest | The digest is a declared comparison input. The procedure that applies the Application takes its digest from the operator, and it does not read the comparison inputs | A run that gives both sides the declared digest, a record of the digest that each side's pods reported, and a check of the two |
 | A check of the caller profile | [The RP-1 reliability workload](../serving/reliability-workload-rp-1.md) is defined since `V2-S5-001-PR1`, and [a runner](../serving/reliability-runner.md) sends it since `V2-S5-001-PR2`. This tool reads neither | A check that both sides are given the one revision of it |
-| The footprint of the baseline in the capacity preflight | [The capacity preflight](capacity-preflight.md) derives the footprint from the Application and the generated values at the desired-state path | Since `V2-S7-003-PR1` those are the baseline's generated values, so the gate derives the footprint of the baseline, one runtime pod fewer than the target, and a test holds it. Not observed: no gate has read a cluster for it. (Until `V2-S7-003-PR1` this cell said that no switch was made) |
-| A run of the baseline | The profile is a render | A run under revision 4 of the V2-E02A record, at a merged commit that holds the switch. The record is frozen since `V2-S6-003-PR1`, and the environment is that of `q1-2`. (Until `V2-S7-003-PR1` this cell also named the switch) |
+| The footprint of the baseline in the capacity preflight | [The capacity preflight](capacity-preflight.md) derives the footprint from the Application and the generated values at the desired-state path | From `V2-S7-003-PR1` until `V2-S7-003-PR2` those were the baseline's generated values, so the gate derived the footprint of the baseline, one runtime pod fewer than the target, and a test holds that. The G3 switch restores the target's values. (Until `V2-S7-003-PR1` this cell said that no switch was made, and until `V2-S7-003-PR2` that those are the baseline's values) |
+| A run of the baseline | The profile is a render | Applied since `V2-S7-001-PR2`: [three runs](../proof/experiments/README.md#the-v2-e02a-runs) under revision 4 of the V2-E02A record, at a merged commit that held the switch. Still needed: nothing. No further run is planned, and a further run refuses since the G3 switch. (Until `V2-S7-003-PR1` this cell also named the switch, and until `V2-S7-003-PR2` it said that a run is needed) |
 | A frozen experiment that names the profile | Applied since `V2-S6-003-PR1`: the freeze records of V2-E02A and V2-E02B pin the profile, its comparison record, and the baseline contract. (Until then this row said that no experiment that uses the baseline is frozen) | A run under them |
 | A baseline that follows a changed target contract | The baseline is the `0.1.0` contract, which a freeze record pins | A decision, when the target's contract changes at a path that is not permitted |
 | A profile directory in the desired state | A rule and a test refuse it | None for the switch: the switch puts the profile's files at the target's path, not the profile directory. (Until `V2-S6-003-PR1` this cell said that the decision on how a run selects the baseline is needed) |
@@ -708,9 +710,9 @@ not part of the parsed document.
 
 **One line is not true while the desired state selects the baseline.** "The capacity
 preflight derives the footprint of the target only" describes a tree whose desired state
-is the target. Since `V2-S7-003-PR1` the preflight derives the footprint of the
-desired-state release, which is the baseline, and P4 of a V2-E02A run reads that
-footprint. The record is not written again, because the record of V2-E02B pins its
+is the target. From `V2-S7-003-PR1` until `V2-S7-003-PR2` the preflight derived the
+footprint of the desired-state release, which was the baseline, and P4 of a V2-E02A run
+read that footprint. The line is true again since the G3 switch. The record is not written again, because the record of V2-E02B pins its
 bytes, and revision 4 of the V2-E02A record states this limitation. The line "No
 Application reads the profile directory" still holds: the Application reads the
 desired-state path, which holds copies of the profile's files.

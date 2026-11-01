@@ -2,8 +2,8 @@
 
 The desired-state release of ``local-docker-desktop/support-assistant`` selects one
 side of the controlled comparison of V2-E02A and V2-E02B. Rule G1 of the V2-E02A
-freeze record switches it to the single-runtime baseline before the first V2-E02A
-run, and rule G3 restores the two-replica target after the last one. Each switch
+freeze record switched it to the single-runtime baseline before the first V2-E02A
+run, and rule G3 restored the two-replica target after the last one. Each switch
 is a reviewed change to ``main``.
 
 Some suites test how a tool reads the two-replica topology: two runtime pods, two
@@ -12,7 +12,8 @@ side that the desired state selects. :func:`target_root` gives them a copy of th
 delivery inputs of this tree in which the desired-state directory holds the target
 release, derived again from its declared sources by
 ``tools.baseline_profile.target_release``. A suite passes that root to a tool that
-takes one, or reads the target's generated values from it.
+takes one, or reads the target's generated values from it. While the tree selects
+the target, that derivation writes nothing in the copy.
 
 **What this is not.** The copy is a test fixture under a temporary directory. It is
 not desired state, no Application reads it, and nothing here writes this tree. A
@@ -50,17 +51,6 @@ COPIED: tuple[str, ...] = (
 #: The desired-state directory of the target key.
 DESIRED_STATE_DIRECTORY = (
     "gitops/environments/local-docker-desktop/workloads/support-assistant"
-)
-
-#: The files that the G1 switch moved and that a record pins when its scope holds
-#: the desired-state tree and the desired-state tool: the two generated files and
-#: the declaration. A record that also pins ``tools/baseline_profile`` lists its
-#: three modules too. A record registered before the switch lists these until a
-#: later revision of it classifies them.
-G1_MOVED: tuple[str, ...] = (
-    f"{DESIRED_STATE_DIRECTORY}/rendered-workload-release.yaml",
-    f"{DESIRED_STATE_DIRECTORY}/values.generated.yaml",
-    "tools/gitops_desired_state/core.py",
 )
 
 _IGNORED = shutil.ignore_patterns("__pycache__", "*.pyc", "*.egg-info", ".terraform")

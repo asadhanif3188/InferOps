@@ -35,12 +35,15 @@ controller at the desired revision, with both runtime replicas on the pinned
 model, and with the caller runner completing real requests through the API
 Service. The result is `QUALIFIED` or `REFUSED`. There is no third result.
 
-Since `V2-S7-003-PR1` the desired state holds the single-runtime baseline, by
-[the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4). Q1 qualifies the two-replica target, so a qualification at a commit that
-holds the switch reads one runtime replica where its target states two, and it is not a
-qualification of its target. The committed qualifications `q1-1` and `q1-2` ran before
-the switch. Revision 2 of the Q1 record also lists the three pinned files that the
-switch moved, and a later qualification needs a revision that classifies them.
+From `V2-S7-003-PR1` until `V2-S7-003-PR2` the desired state held the single-runtime
+baseline, by
+[the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4). Q1 qualifies the two-replica target, so a qualification at a commit of that time
+reads one runtime replica where its target states two, and it is not a qualification of
+its target. The committed qualifications `q1-1` and `q1-2` ran before the switch.
+[The G3 switch](../proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b) restores the three pinned files that the G1 switch
+moved to their pins, so revision 2 of the Q1 record lists no moved file. (Until
+`V2-S7-003-PR2` this paragraph said that the desired state holds the baseline, and that a
+later qualification needs a revision that classifies those three files.)
 
 | Property | Value |
 |---|---|
