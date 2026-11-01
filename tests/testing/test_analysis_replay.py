@@ -2704,10 +2704,12 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
     revision 2 unchanged, and revision 3 of V2-E03 and revision 2 of V2-E06 register
     none. The three records added by V2-S7-003-PR1 follow it too: revision 4 of
     V2-E02A registers the reasons of revision 3 unchanged, and revision 4 of V2-E03
-    and revision 3 of V2-E06 register none.
+    and revision 3 of V2-E06 register none. The three records added by V2-S7-003-PR2
+    follow it too: revision 3 of V2-E02B registers the reasons of revision 2 unchanged,
+    and revision 5 of V2-E03 and revision 4 of V2-E06 register none.
     """
     records = sorted((REPO_ROOT / "docs" / "proof" / "experiments").rglob("freeze-r*"))
-    assert len(records) == 32
+    assert len(records) == 35
     reliability = {"v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05"}
     registering = []
     for record in records:
@@ -2720,7 +2722,7 @@ def test_only_the_reliability_experiment_records_register_exclusion_reasons() ->
         else:
             assert core.EXCLUSION_REASONS_MEMBER not in document
     assert sorted(registering) == sorted(
-        [*reliability, *reliability, "v2-e04", "v2-e02a", "v2-e02a"]
+        [*reliability, *reliability, "v2-e04", "v2-e02a", "v2-e02a", "v2-e02b"]
     )
     reasons = {
         record.name: [

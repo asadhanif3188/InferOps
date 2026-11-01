@@ -19,7 +19,9 @@ and the dry runs execute the control against scenario files, and the tests execu
 fault phase of the driver against a stub `kubectl`. `V2-S7-003-PR1` switched the desired
 state to the baseline and registered revision 4 of the record, which the control loads
 as the latest. P2 reads the remote main, so a run refuses at P2 when the desired state is
-not the baseline. (Until `V2-S7-003-PR1` this paragraph said that the desired state on
+not the baseline. `V2-S7-003-PR2` restores the target, so a further run refuses at P1 and
+at P2 from the merge of that change. No further run is planned. (Until `V2-S7-003-PR1`
+this paragraph said that the desired state on
 `main` is still the target topology of V2-E02B and that a later change registers
 revision 4, and until `V2-S7-001-PR2` it said that neither has run on a cluster and that
 no run of V2-E02A exists.)
@@ -157,7 +159,8 @@ A scenario that states no repository member reads that member from the checkout:
 `git` and the four checks of P1, which read files and contact no network, and it reads the
 local tracking branch of the remote main and the files of the desired-state path at it. So
 a dry run of this checkout that states no repository member refuses at P2 while the remote
-main holds the 2+2 target, which it does until the change of the G1 switch is merged. The schema of a scenario is
+main holds the 2+2 target: until the change of the G1 switch merged, and again after the
+change of the G3 switch merges. The schema of a scenario is
 `inferops.io/experiment-e02a-dry-run-scenario/v1alpha1`. Each read answers the latest
 entry whose act has happened, at least `from` seconds before, and the scenario states the
 requests of the runner as an interval of at least 1 ms and failing intervals.

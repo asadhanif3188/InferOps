@@ -109,7 +109,6 @@ from inferops.domain.workload import (
     set_matrix_loader,
 )
 from inferops.domain.workload.versions import SUPPORTED_CONTRACT_VERSIONS
-from tests.support.target_tree import target_root
 
 pytestmark = pytest.mark.unit
 
@@ -139,6 +138,16 @@ DESIRED_STATE_VALUES = (
     / "local-docker-desktop"
     / "workloads"
     / "support-assistant"
+    / "values.generated.yaml"
+)
+#: The generated values of the single-runtime baseline profile.
+BASELINE_PROFILE_VALUES = (
+    REPO_ROOT
+    / "tests"
+    / "domain"
+    / "fixtures"
+    / "experiment-profiles"
+    / "single-runtime-baseline"
     / "values.generated.yaml"
 )
 DOC = REPO_ROOT / "docs" / "domain" / "helm-values-renderer.md"
@@ -394,24 +403,18 @@ def at(document: Mapping[str, Any], path: tuple[str, ...] | str) -> Any:
     ("workload", "name", "golden"),
     [
         ("synchronous-llm-local", "local-kind", GOLDEN),
-        (TWO_REPLICAS, "local-docker-desktop", None),
-        ("synchronous-llm-local", "local-docker-desktop", DESIRED_STATE_VALUES),
+        (TWO_REPLICAS, "local-docker-desktop", DESIRED_STATE_VALUES),
+        ("synchronous-llm-local", "local-docker-desktop", BASELINE_PROFILE_VALUES),
     ],
 )
 def test_the_reference_workload_renders_the_committed_golden_file(
-    workload: str, name: str, golden: Path | None
+    workload: str, name: str, golden: Path
 ) -> None:
     """Three renders: the fixture release, from the one-replica contract on the
-    first binding; the two-replica target, from the two-replica contract on the
-    binding whose destination holds the desired state; and the desired-state
-    release of this tree, the single-runtime baseline that rule G1 of the
-    V2-E02A record selects, from the one-replica contract on that binding.
-
-    Rule G1 switched the desired state of this tree to the baseline, so the
-    target is not in it. ``None`` names the target's generated values, which a
-    copy of the delivery inputs holds, read when the test runs."""
-    if golden is None:
-        golden = target_root() / DESIRED_STATE_VALUES.relative_to(REPO_ROOT)
+    first binding; the desired-state release of this tree, the two-replica target
+    that rule G3 of the V2-E02A record restored, from the two-replica contract on
+    the binding whose destination holds the desired state; and the single-runtime
+    baseline, from the one-replica contract on that binding."""
     bindings = [binding("local-kind"), binding("local-docker-desktop")]
     values = render(contract(workload), bindings=bindings, binding_name=name)
     assert values.to_yaml() == golden.read_bytes().decode("utf-8")

@@ -33,7 +33,6 @@ from typing import Any
 
 import pytest
 
-from tests.support.target_tree import G1_MOVED
 from tools import caller_characterization as q3
 from tools import experiment_bounds as q4
 from tools.caller_characterization import __main__ as cli
@@ -1230,17 +1229,13 @@ def test_the_scope_of_q3_holds_the_scope_of_q1() -> None:
     assert set(q1_record["materialScope"]["entryModules"]) <= set(scope["entryModules"])
 
 
-def test_the_freeze_record_lists_only_the_files_of_the_g1_switch() -> None:
+def test_the_freeze_record_lists_no_moved_file_since_the_g3_switch() -> None:
     """Rule G1 of the V2-E02A record moved three files that this record pins.
 
-    The record was registered before the switch, and it is not revised: the
-    qualification runs under it are complete. A run under it would refuse until
-    a later revision classifies them, and a run of this qualification needs the
-    two-replica target in the desired state.
+    Rule G3 restored each of them to its pin, so the record is not revised: the
+    two desired-state files and the declaration have the digests that it pins.
     """
-    changed = freeze.changed_inputs(_freeze())
-    assert sorted(change.path for change in changed) == sorted(G1_MOVED)
-    assert {change.kind for change in changed} == {"changed"}
+    assert freeze.changed_inputs(_freeze()) == []
 
 
 def test_the_page_restates_each_rule_and_each_category() -> None:

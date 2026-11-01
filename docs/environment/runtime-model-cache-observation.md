@@ -2,11 +2,13 @@
 
 Status: **one run is recorded. On the `docker-desktop` provider, two runtime pods on one node read one verified artifact from the one claim, and the record of that run has the result `PASSED`. One run on one node does not establish node-loss resilience, and `kind` executed none of it.**
 
-The two-replica target declares two serving runtime replicas. Since `V2-S7-003-PR1`
-the desired-state release is the single-runtime baseline, by [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4), so the
-expected identity read from a tree that holds the switch states one runtime replica, and
-a collection there is read against one. The recorded run read the target. (Until
-`V2-S7-003-PR1` this paragraph began "The desired-state release declares".) A Deployment has
+The two-replica target declares two serving runtime replicas. From `V2-S7-003-PR1` until
+`V2-S7-003-PR2` the desired-state release was the single-runtime baseline, by [the G1 switch](../proof/experiments/README.md#the-g1-switch-and-revision-4), so the
+expected identity read from a tree of that time states one runtime replica, and a
+collection there is read against one. [The G3 switch](../proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b) restores the
+target, and the recorded run read the target. (Until `V2-S7-003-PR1` this paragraph began
+"The desired-state release declares", and until `V2-S7-003-PR2` it said that the
+desired-state release is the baseline.) A Deployment has
 one pod template, so both replicas are declared to mount one claim, to verify one
 pinned artifact, and to load it. This page describes how that is observed on a
 cluster, which rules decide the result, and what a record does not establish.

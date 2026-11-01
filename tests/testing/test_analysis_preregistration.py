@@ -104,6 +104,13 @@ E03_R4_PIN = "2883e87ff3e97e65c3f29ee25fc84f4a4dd7a45c54f7c039248c23443f836df2"
 E06_R3 = "docs/proof/experiments/v2-e06/freeze-r3.v1alpha1.json"
 E06_R3_PIN = "baa4c3814088bf1ac7bb6e57369c10e162751c5e19fb48eddc480cf38f5bb331"
 LATEST = (E02A_R4, E03_R4, E06_R3)
+#: The records that V2-S7-003-PR2 added with the G3 switch: revision 3 of V2-E02B,
+#: which pins the restored desired-state files, and revision 5 of V2-E03 and revision
+#: 4 of V2-E06, which bind it. Every copy leaves them out except :func:`restored_root`.
+E02B_R3 = "docs/proof/experiments/v2-e02b/freeze-r3.v1alpha1.json"
+E03_R5 = "docs/proof/experiments/v2-e03/freeze-r5.v1alpha1.json"
+E06_R4 = "docs/proof/experiments/v2-e06/freeze-r4.v1alpha1.json"
+RESTORED = (E02B_R3, E03_R5, E06_R4)
 #: The files that the G1 switch moved, by the tools whose scope pins them.
 DESIRED_STATE_FILES = (
     "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
@@ -175,14 +182,16 @@ def test_each_revision_1_keeps_the_row_it_was_registered_with() -> None:
         assert metadata["supersedes"] is None
         assert metadata["registeredBy"] == "V2-S6-006-PR1"
     # No earlier row moved, the two rows of V2-S6-008-PR1 follow, then the three
-    # rows of V2-S7-001-PR1, and then the three rows of V2-S7-003-PR1.
-    assert [row["path"] for row in registry[-10:]] == [
+    # rows of V2-S7-001-PR1, the three rows of V2-S7-003-PR1, and the three of
+    # V2-S7-003-PR2.
+    assert [row["path"] for row in registry[-13:]] == [
         E03_RECORD,
         E06_RECORD,
         E04_R3,
         E03_R2,
         *LATER,
         *LATEST,
+        *RESTORED,
     ]
     for path, pin, story in (
         (E04_R3, E04_R3_PIN, "V2-S6-008-PR1"),
@@ -211,6 +220,14 @@ def test_each_record_binds_the_latest_source_revisions_by_digest() -> None:
         E06_R2: (core.E06_SOURCES, {**SOURCE_RECORDS, "V2-E02A": E02A_R3}),
         E03_R4: (core.E03_SOURCES, {**LATEST_SOURCES, "V2-E02A": E02A_R4}),
         E06_R3: (core.E06_SOURCES, {**SOURCE_RECORDS, "V2-E02A": E02A_R4}),
+        E03_R5: (
+            core.E03_SOURCES,
+            {**LATEST_SOURCES, "V2-E02A": E02A_R4, "V2-E02B": E02B_R3},
+        ),
+        E06_R4: (
+            core.E06_SOURCES,
+            {**SOURCE_RECORDS, "V2-E02A": E02A_R4, "V2-E02B": E02B_R3},
+        ),
     }
     for path, (expected, bound) in roles.items():
         sources = load(path)["definition"]["sources"]
@@ -293,7 +310,10 @@ def test_each_record_pins_exactly_its_material_scope() -> None:
     which revision 3 of V2-E03 and revision 2 of V2-E06 pin. Since V2-S7-003-PR1
     each earlier revision also differs by revision 4 of V2-E02A, and each earlier
     revision of V2-E06 by the two desired-state files that the G1 switch moved. Since
-    V2-S7-002-PR1 each record, the latest too, differs by the list of ledgers."""
+    V2-S7-002-PR1 each record differs by the list of ledgers. Since V2-S7-003-PR2 each
+    earlier revision also differs by revision 3 of V2-E02B, revision 3 of V2-E06 by the
+    two desired-state files that the G3 switch restored, and revisions 1 and 2 of
+    V2-E06 no longer by those two files. The latest record of each differs in nothing."""
     ledgers = [(path, "changed") for path in LEDGER_LIST]
     checks = [
         ("tools/analysis_preregistration/core.py", "changed"),
@@ -301,15 +321,18 @@ def test_each_record_pins_exactly_its_material_scope() -> None:
     ]
     later = (E02A_R3, "added")
     latest = (E02A_R4, "added")
+    restored = (E02B_R3, "added")
     switched = [(path, "changed") for path in DESIRED_STATE_FILES]
     expected = {
-        E03_R4: [*ledgers],
-        E06_R3: [*ledgers],
-        E03_R3: [latest, *ledgers],
-        E06_R2: [latest, *switched, *ledgers],
-        E03_R2: [later, latest, *ledgers],
-        E03_RECORD: [(E04_R3, "added"), later, latest, *checks, *ledgers],
-        E06_RECORD: [later, latest, *switched, *checks, *ledgers],
+        E03_R5: [],
+        E06_R4: [],
+        E03_R4: [restored, *ledgers],
+        E06_R3: [restored, *switched, *ledgers],
+        E03_R3: [latest, restored, *ledgers],
+        E06_R2: [latest, restored, *ledgers],
+        E03_R2: [later, latest, restored, *ledgers],
+        E03_RECORD: [(E04_R3, "added"), later, latest, restored, *checks, *ledgers],
+        E06_RECORD: [later, latest, restored, *checks, *ledgers],
     }
     for path, moved in expected.items():
         document = load(path)
@@ -348,11 +371,13 @@ def test_the_only_runs_and_the_one_procedure_are_of_v2_e02a() -> None:
         "freeze-r2.v1alpha1.json",
         "freeze-r3.v1alpha1.json",
         "freeze-r4.v1alpha1.json",
+        "freeze-r5.v1alpha1.json",
     ]
     assert sorted(p.name for p in (experiments / "v2-e06").iterdir()) == [
         "freeze-r1.v1alpha1.json",
         "freeze-r2.v1alpha1.json",
         "freeze-r3.v1alpha1.json",
+        "freeze-r4.v1alpha1.json",
     ]
 
 
@@ -371,31 +396,33 @@ def test_each_source_record_differs_from_its_pins_in_the_check_alone() -> None:
     desired-state files and the desired-state tool, and for V2-E02A and V2-E02B the
     baseline-profile tool. Revision 4 of V2-E02A differed in none until V2-S7-002-PR1
     added a ledger, and since then each record lists the two files of the list of
-    ledgers."""
+    ledgers. Since V2-S7-003-PR2 the G3 switch restores the files of the switch, so an
+    earlier record no longer lists them and revision 4 of V2-E02A does."""
     switched = [*DESIRED_STATE_FILES, DESIRED_STATE_TOOL, *LEDGER_LIST]
-    with_baseline = [*switched, *BASELINE_TOOL]
+    with_baseline = [*LEDGER_LIST, *BASELINE_TOOL]
     moved = {
         "V2-E02A": [DRIVER, PREREGISTRATION_CORE, *with_baseline],
         "V2-E02B": [PREREGISTRATION_CORE, *with_baseline],
-        "V2-E02C": [PREREGISTRATION_CORE, *switched],
-        "V2-E04": [PREREGISTRATION_CORE, *switched],
+        "V2-E02C": [PREREGISTRATION_CORE, *LEDGER_LIST],
+        "V2-E04": [PREREGISTRATION_CORE, *LEDGER_LIST],
     }
     for experiment, path in SOURCE_RECORDS.items():
         changes = changed_inputs(load(path), REPO_ROOT)
         assert sorted(c.path for c in changes) == sorted(moved[experiment]), path
         assert {c.kind for c in changes if c.path != DRIVER} == {"changed"}
     assert sorted(c.path for c in changed_inputs(load(E04_R3), REPO_ROOT)) == sorted(
-        switched
+        LEDGER_LIST
     )
     assert sorted(c.path for c in changed_inputs(load(E02A_R3), REPO_ROOT)) == sorted(
         with_baseline
     )
     assert sorted(c.path for c in changed_inputs(load(E02A_R4), REPO_ROOT)) == sorted(
-        LEDGER_LIST
+        switched
     )
+    assert changed_inputs(load(E02B_R3), REPO_ROOT) == []
     e05 = load("docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json")
     assert sorted(c.path for c in changed_inputs(e05, REPO_ROOT)) == sorted(
-        [PREREGISTRATION_CORE, *switched]
+        [PREREGISTRATION_CORE, *LEDGER_LIST]
     )
 
 
@@ -433,13 +460,22 @@ def test_no_public_text_names_a_section_of_another_document() -> None:
 
 
 def _copy(
-    tmp_path: Path, *, added: bool, later: bool = False, latest: bool = False
+    tmp_path: Path,
+    *,
+    added: bool,
+    later: bool = False,
+    latest: bool = False,
+    restored: bool = False,
 ) -> Path:
     """The registry and the freeze records that the check reads. Without ``added``,
     the records and the rows of V2-S6-008-PR1 are left out, without ``later`` those
-    of V2-S7-001-PR1, and without ``latest`` those of V2-S7-003-PR1."""
+    of V2-S7-001-PR1, without ``latest`` those of V2-S7-003-PR1, and without
+    ``restored`` those of V2-S7-003-PR2."""
     left_out = (
-        (() if added else ADDED) + (() if later else LATER) + (() if latest else LATEST)
+        (() if added else ADDED)
+        + (() if later else LATER)
+        + (() if latest else LATEST)
+        + (() if restored else RESTORED)
     )
     registry = load(REGISTRY)
     registry["records"] = [r for r in registry["records"] if r["path"] not in left_out]
@@ -482,8 +518,16 @@ def later_root(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def latest_root(tmp_path: Path) -> Path:
-    """A root that holds the registry and every committed freeze record."""
+    """A root that holds the registry and every freeze record of the check as they
+    were after V2-S7-003-PR1 and before V2-S7-003-PR2: revision 4 of V2-E03 is the
+    latest one in it."""
     return _copy(tmp_path, added=True, later=True, latest=True)
+
+
+@pytest.fixture
+def restored_root(tmp_path: Path) -> Path:
+    """A root that holds the registry and every committed freeze record."""
+    return _copy(tmp_path, added=True, later=True, latest=True, restored=True)
 
 
 def test_the_later_records_hold_every_rule_in_a_copy(later_root: Path) -> None:
@@ -492,6 +536,32 @@ def test_the_later_records_hold_every_rule_in_a_copy(later_root: Path) -> None:
 
 def test_the_latest_records_hold_every_rule_in_a_copy(latest_root: Path) -> None:
     assert core.check_records(latest_root) == []
+
+
+def test_the_restored_records_hold_every_rule_in_a_copy(restored_root: Path) -> None:
+    assert core.check_records(restored_root) == []
+
+
+def test_revision_4_of_v2_e03_is_stale_once_revision_3_of_v2_e02b_is_registered(
+    restored_root: Path,
+) -> None:
+    """Without the rebinding records, the check refuses the analysis records: the
+    reason that V2-S7-003-PR2 registers revision 5 of V2-E03 and revision 4 of
+    V2-E06."""
+    registry = load(REGISTRY, restored_root)
+    registry["records"] = [
+        row for row in registry["records"] if row["path"] not in (E03_R5, E06_R4)
+    ]
+    (restored_root / REGISTRY).write_text(
+        json.dumps(registry, indent=2) + "\n", encoding="utf-8"
+    )
+    (restored_root / E03_R5).unlink()
+    (restored_root / E06_R4).unlink()
+    findings = core.check_records(restored_root)
+    stale = {f.rule_id: f for f in findings if f.rule_id.endswith("-sources-stale")}
+    assert set(stale) == {"e03-sources-stale", "e06-sources-stale"}
+    for finding in stale.values():
+        assert "revision 2 is superseded by revision 3" in finding.detail
 
 
 def test_revision_3_of_v2_e03_is_stale_once_revision_4_of_v2_e02a_is_registered(
@@ -1531,8 +1601,8 @@ def test_e03_revision_2_differs_from_revision_1_only_in_the_listed_members() -> 
 def test_e03_revision_1_is_read_under_its_own_rules_and_unchanged() -> None:
     """Revision 1 states none of what the three later rules read, and they do not
     read it: it keeps its pin and its row, and it holds every rule it was read under,
-    except that it is no longer the latest: its V2-E04 binding and, since
-    V2-S7-001-PR1, its V2-E02A binding are superseded."""
+    except that it is no longer the latest: its V2-E04 binding, since V2-S7-001-PR1
+    its V2-E02A binding, and since V2-S7-003-PR2 its V2-E02B binding are superseded."""
     assert content_digest((REPO_ROOT / E03_RECORD).read_bytes()) == E03_PIN
     findings = core._record_findings(
         REPO_ROOT,
@@ -1554,6 +1624,7 @@ def test_e03_revision_1_is_read_under_its_own_rules_and_unchanged() -> None:
     assert found(latest) == {
         ("e03-sources-stale", f"{E04_BINDING}.revision"),
         ("e03-sources-stale", "definition.sources[0].revision"),
+        ("e03-sources-stale", "definition.sources[1].revision"),
     }
     assert "executedUnder" not in _extension(load(E03_RECORD))
     assert "changesFromSupersededRevision" not in load(E03_RECORD)["definition"]

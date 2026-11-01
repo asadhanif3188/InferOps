@@ -43,12 +43,17 @@ from tests.support.target_tree import target_root
 from tools import capacity_preflight as gate
 from tools.capacity_preflight import core
 from tools.capacity_preflight.__main__ import main
+from tools.generated_release import GENERATED_FILES
 from tools.gitops_desired_state import DESIRED_STATE_RELEASES, release_key
 from tools.kubernetes_certification import multi_replica_cli
 
 pytestmark = pytest.mark.unit
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+#: The two files of the single-runtime baseline profile.
+BASELINE_PROFILE_DIRECTORY = (
+    "tests/domain/fixtures/experiment-profiles/single-runtime-baseline"
+)
 DOCUMENT_PATH = REPO_ROOT / "docs" / "environment" / "capacity-preflight.md"
 KEY = "local-docker-desktop/support-assistant"
 NAMESPACE = "inferops-release"
@@ -2241,13 +2246,29 @@ def test_with_as_collected_exit_status_0_does_not_say_accepted(
     assert json.loads(capsys.readouterr().out)["result"] == gate.REFUSED
 
 
-def test_the_desired_state_of_this_tree_gives_the_footprint_of_the_baseline() -> None:
-    """Rule G1 of the V2-E02A record switched the desired state to the baseline.
+def test_the_desired_state_of_this_tree_gives_the_footprint_of_the_target() -> None:
+    """Rule G3 of the V2-E02A record restored the two-replica target."""
+    selected = gate.declared_footprint()
+    assert selected["topology"] == {"apiReplicas": 2, "runtimeReplicas": 2}
+    assert selected == target_footprint()
 
-    So the gate of this tree derives one runtime pod fewer than the target, and
-    every other component of the two footprints is the same.
+
+def test_a_desired_state_of_the_baseline_gives_one_runtime_pod_fewer(
+    tmp_path: Path,
+) -> None:
+    """The state that rule G1 of the V2-E02A record made, and P4 of its runs read.
+
+    The gate derives the footprint of the files at the desired-state path. With the
+    files of the baseline there, it derives one runtime pod fewer than the target,
+    and every other component of the two footprints is the same.
     """
-    selected, target = gate.declared_footprint(), target_footprint()
+    root = tmp_path / "baseline"
+    shutil.copytree(target_root(), root)
+    values = gate.declared_footprint()["sources"]["generatedValues"]["path"]
+    directory = (root / values).parent
+    for name in GENERATED_FILES:
+        shutil.copyfile(REPO_ROOT / BASELINE_PROFILE_DIRECTORY / name, directory / name)
+    selected, target = gate.declared_footprint(root=root), target_footprint()
     assert selected["topology"] == {"apiReplicas": 2, "runtimeReplicas": 1}
     assert target["topology"] == {"apiReplicas": 2, "runtimeReplicas": 2}
     for mine, theirs in zip(selected["components"], target["components"], strict=True):

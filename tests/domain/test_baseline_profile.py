@@ -278,7 +278,7 @@ def test_the_check_command_passes_on_the_committed_profile() -> None:
     assert f"OK       {RECORD_PATH}" in result.stdout
     assert f"OK       {INSTALL_PATH}" in result.stdout
     assert (
-        f"OK       the desired state selects the baseline: {BASELINE_CONTRACT}"
+        f"OK       the desired state selects the target: {TARGET_CONTRACT}"
     ) in result.stdout
 
 
@@ -399,8 +399,8 @@ def test_the_intended_variable_is_the_runtime_replica_count_alone() -> None:
 def test_the_committed_values_are_the_targets_but_for_two_lines() -> None:
     """The comparison read as bytes: two lines differ, and every other line is one.
 
-    The target is derived again, because the desired state of this tree selects
-    the baseline.
+    The target is derived again, so this holds whichever side the desired state of
+    this tree selects.
     """
     baseline = (REPO_ROOT / PROFILE_DIRECTORY / VALUES).read_bytes()
     target = target_files()[VALUES]
@@ -1988,7 +1988,7 @@ def test_a_hand_edit_of_the_committed_desired_state_values_is_refused(
     """The comparison derives the generated values. The check holds that the file
     the target's description names is the derived one of the selected side."""
     path = root / TARGET_DIRECTORY / VALUES
-    edit(path, "  replicaCount: 1\n  resources:", "  replicaCount: 7\n  resources:")
+    edit(path, "  replicaCount: 2\n  resources:", "  replicaCount: 7\n  resources:")
     assert build_record(root) == build_record()
     assert {f.rule_id for f in verify_profile(root)} == {
         "baseline-desired-state-drifted"
@@ -2482,38 +2482,54 @@ def _select(monkeypatch: pytest.MonkeyPatch, contract: str) -> DeclaredRelease:
 
 
 def test_the_target_is_declared_apart_from_the_desired_state() -> None:
-    """Rule G1 of the V2-E02A record: the desired state selects the baseline.
+    """Rule G3 of the V2-E02A record: the desired state selects the target again.
 
-    The target keeps the two-replica contract that this tool states. Every other
-    field of the target is the desired-state declaration's, so one owner states
-    the directory, the binding, the platform defaults, and both revisions.
+    The target keeps the two-replica contract that this tool states, so it does not
+    follow the declaration: a declaration of the baseline's contract, as rule G1
+    made, leaves the target a two-replica release. Every other field of the target
+    is the desired-state declaration's, so one owner states the directory, the
+    binding, the platform defaults, and both revisions.
     """
     selected = desired_state_release(TARGET_KEY)
     assert core.TARGET_CONTRACT == TARGET_CONTRACT
-    assert selected.contract == BASELINE_CONTRACT
-    assert selected_side(selected) == "baseline"
-    assert target_release().contract == TARGET_CONTRACT
-    assert replace(target_release(), contract=BASELINE_CONTRACT) == selected
-    assert selected_side(target_release()) == "target"
+    assert selected.contract == TARGET_CONTRACT
+    assert selected_side(selected) == "target"
+    assert target_release() == selected
+    assert selected_side(replace(selected, contract=BASELINE_CONTRACT)) == "baseline"
     assert selected_side(replace(selected, contract=OTHER_CONTRACT)) is None
 
 
-def test_the_desired_state_holds_the_baseline_profile_byte_for_byte() -> None:
-    """The switch put the profile's two files at the desired-state path."""
+def test_the_target_does_not_follow_a_declaration_of_the_baseline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The state that rule G1 made: the comparison keeps its two sides."""
+    before = target_release()
+    declared = _select(monkeypatch, BASELINE_CONTRACT)
+    assert selected_side(declared) == "baseline"
+    assert target_release() == before
+    assert target_release().contract == TARGET_CONTRACT
+    assert replace(target_release(), contract=BASELINE_CONTRACT) == declared
+
+
+def test_the_desired_state_holds_the_target_and_not_the_baseline_profile() -> None:
+    """Rule G3 restored the two files that the derived target gives."""
     for name in GENERATED_FILES:
-        assert (REPO_ROOT / TARGET_DIRECTORY / name).read_bytes() == (
-            REPO_ROOT / PROFILE_DIRECTORY / name
-        ).read_bytes(), name
+        committed = (REPO_ROOT / TARGET_DIRECTORY / name).read_bytes()
+        assert committed == target_files()[name], name
+        assert committed != (REPO_ROOT / PROFILE_DIRECTORY / name).read_bytes(), name
 
 
-def test_a_target_that_follows_the_desired_state_is_refused() -> None:
+def test_a_target_that_follows_the_desired_state_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The baseline is never compared with itself.
 
-    Were the target taken from the desired-state declaration as it stands, the
-    comparison would be of two one-replica releases. It is refused, by the
-    topology rule and by the version rule, and it is never COMPARABLE.
+    Were the target taken from a declaration that selects the baseline, as rule G1
+    made, the comparison would be of two one-replica releases. It is refused, by
+    the topology rule and by the version rule, and it is never COMPARABLE.
     """
-    for target in (desired_state_release(TARGET_KEY), baseline_profile()):
+    declared = _select(monkeypatch, BASELINE_CONTRACT)
+    for target in (declared, baseline_profile()):
         record = build_record(target=target)
         assert record["result"] == REFUSED
         broken = {rule for rule, _subject in found(record)}
@@ -2549,46 +2565,49 @@ def test_a_target_contract_lost_to_the_baseline_is_refused_by_the_check(
 def test_the_record_is_the_same_whichever_side_the_desired_state_selects(
     root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Before the switch the desired state selected the target; now the baseline.
+    """Rule G1 selected the baseline, and rule G3 selected the target again.
 
     The record derives both sides from their declarations, so it is the same in
     both states, byte for byte. So is the check, once the desired-state files
-    are the derived ones of the side it selects. The switch back, rule G3, needs
-    no new record either.
+    are the derived ones of the side it selects. Neither switch needs a new record.
     """
-    assert selected_side(desired_state_release(TARGET_KEY)) == "baseline"
-    after = record_text(build_record(root))
+    assert selected_side(desired_state_release(TARGET_KEY)) == "target"
+    restored = record_text(build_record(root))
     assert verify_profile(root) == ()
-    _select(monkeypatch, TARGET_CONTRACT)
+    declared = _select(monkeypatch, BASELINE_CONTRACT)
     assert {f.rule_id for f in verify_profile(root)} == {
         "baseline-desired-state-drifted"
     }
-    assert regenerate(target_release(), root) is True
-    assert record_text(build_record(root)) == after
+    assert regenerate(declared, root) is True
+    assert record_text(build_record(root)) == restored
     assert verify_profile(root) == ()
     for name in GENERATED_FILES:
-        assert (root / TARGET_DIRECTORY / name).read_bytes() == target_files()[name]
+        assert (root / TARGET_DIRECTORY / name).read_bytes() == (
+            root / PROFILE_DIRECTORY / name
+        ).read_bytes()
 
 
-def test_target_files_left_in_place_while_the_baseline_is_selected_are_refused(
-    root: Path,
-) -> None:
-    """A switch of the declaration without its files is stale desired state."""
-    assert regenerate(target_release(), root) is True
+def test_a_declaration_restored_without_its_files_is_refused(root: Path) -> None:
+    """Rule G3 made in one part: the declaration names the target, and the files
+    are still the baseline's."""
+    for name in GENERATED_FILES:
+        (root / TARGET_DIRECTORY / name).write_bytes(
+            (root / PROFILE_DIRECTORY / name).read_bytes()
+        )
     assert build_record(root)["result"] == COMPARABLE
     findings = verify_profile(root)
     assert {f.rule_id for f in findings} == {"baseline-desired-state-drifted"}
     assert all(f.subject.startswith(TARGET_DIRECTORY) for f in findings)
 
 
-def test_baseline_files_put_in_place_while_the_target_is_selected_are_refused(
+def test_files_restored_without_the_declaration_are_refused(
     root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A switch of the files by hand, with no change to the declaration."""
-    _select(monkeypatch, TARGET_CONTRACT)
+    """Rule G3 made in the other part: the files are the target's, and the
+    declaration still names the baseline's contract."""
+    _select(monkeypatch, BASELINE_CONTRACT)
     for name in GENERATED_FILES:
-        before = (root / PROFILE_DIRECTORY / name).read_bytes()
-        assert (root / TARGET_DIRECTORY / name).read_bytes() == before
+        assert (root / TARGET_DIRECTORY / name).read_bytes() == target_files()[name]
     assert {f.rule_id for f in verify_profile(root)} == {
         "baseline-desired-state-drifted"
     }
@@ -2615,25 +2634,27 @@ def test_a_desired_state_that_selects_neither_side_is_refused(
 
 
 def test_a_hand_edit_of_the_switched_values_is_refused(root: Path) -> None:
-    """The desired-state values file is the baseline's while G1 holds."""
+    """The desired-state values file is the target's since rule G3, and a hand edit
+    of its runtime replica count is the drift of an unapproved switch."""
     path = root / TARGET_DIRECTORY / VALUES
-    edit(path, "  replicaCount: 1\n  resources:", "  replicaCount: 2\n  resources:")
+    edit(path, "  replicaCount: 2\n  resources:", "  replicaCount: 1\n  resources:")
     assert build_record(root) == build_record()
     assert {f.rule_id for f in verify_profile(root)} == {
         "baseline-desired-state-drifted"
     }
 
 
-def test_after_the_switch_a_target_digest_or_readiness_drift_is_still_refused(
-    root: Path,
+@pytest.mark.parametrize("contract", [TARGET_CONTRACT, BASELINE_CONTRACT])
+def test_a_target_digest_or_readiness_drift_is_refused_on_either_side(
+    root: Path, monkeypatch: pytest.MonkeyPatch, contract: str
 ) -> None:
     """The target side of the comparison is not the desired state's side.
 
-    While the desired state selects the baseline, a declared API image digest of
-    the target that differs, and a readiness input set in the target's
-    Application alone, each still refuse the comparison.
+    Whichever side the desired state selects, a declared API image digest of the
+    target that differs, and a readiness input set in the target's Application
+    alone, each refuse the comparison.
     """
-    assert selected_side(desired_state_release(TARGET_KEY)) == "baseline"
+    _select(monkeypatch, contract)
     edit(root / INPUTS, f"  target: {DECLARED_DIGEST}", f"  target: {OTHER_DIGEST}")
     record = refused_by(root)
     assert {rule for rule, _subject in found(record)} == {

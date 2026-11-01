@@ -10,6 +10,25 @@ from `1.0.0`.
 
 ### Added
 
+- **The G3 switch of the desired state to the two-replica target, and revision 3 of the
+  V2-E02B record.** `V2-S7-003-PR2` executes rule G3 of the V2-E02A record: the two files at
+  `gitops/environments/local-docker-desktop/workloads/support-assistant` and the declaration
+  of the desired-state release return to the bytes that they had before the G1 switch, so
+  the release is again `b5457f49…`, two API replicas and two runtime replicas. It changes no
+  Application manifest, chart, binding, or platform default, and the comparison record is
+  unchanged. Revision 3 of the V2-E02B record is registered in the same change. It pins the
+  restored files, classifies the six pins of revision 2 that moved as not material, names the
+  last run of V2-E02A in `definition.g3Provenance`, and restates the limitation that the
+  baseline release has never been installed, which the runs made false. It changes no
+  criterion, bound, window, fault, measurement, outcome rule, set rule, or topology, and it
+  adds no driver. Revision 5 of V2-E03 and revision 4 of V2-E06 bind it, because the check
+  holds each to the latest revision of each source. No run of V2-E02B exists, and no record
+  of V2-E02A changes. The merge is the switch, so it needs the explicit authorization of the
+  repository owner, separate from G1. The observation after the merge is not in this change.
+  Revision 4 of the V2-E02A record now refuses a further run at P1 and at P2. See
+  [the G3 switch](docs/proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b) and
+  [the validation record](docs/proof/environment/v2-s7-003-pr2-validation.md).
+
 - **The classification of the V2-E02A runs and the comparison eligibility.**
   `V2-S7-002-PR1` classifies the three runs and applies the eligibility rule of revision 4.
   Each run stays bound to the commit `ff45093` and to revision 4. Each run analysis is

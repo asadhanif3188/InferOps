@@ -342,26 +342,21 @@ def test_the_expected_identity_is_the_two_pin_records() -> None:
     assert f"{EXPECTED['mountPath']}/{MODEL['fileName']}" == PATH
 
 
-def test_the_desired_state_of_this_tree_expects_the_one_runtime_replica_of_g1() -> None:
-    """Rule G1 of the V2-E02A record switched the desired state to the baseline.
+def test_the_desired_state_of_this_tree_expects_the_two_replicas_of_the_target() -> (
+    None
+):
+    """Rule G3 of the V2-E02A record restored the two-replica target.
 
-    A collection made at this tree expects one runtime replica. Each other member
-    of the identity is the target's, except the digest of the values file: the
-    two releases differ in the replica count and the workload version alone, and
-    the identity states no workload version.
+    A collection made at this tree expects two runtime replicas, and the identity
+    is the target's, the digest of the values file with it.
     """
     selected = expected_identity()
-    assert selected["runtimeReplicas"] == 1
+    assert selected["runtimeReplicas"] == 2
     assert pin_findings(selected) == []
     assert selected["release"]["valuesFileSha256"] == (
-        "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
-    )
-    assert EXPECTED["release"]["valuesFileSha256"] == (
         "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
     )
-    for name, value in EXPECTED.items():
-        if name not in ("release", "runtimeReplicas"):
-            assert selected[name] == value, name
+    assert selected == EXPECTED
 
 
 @pytest.mark.parametrize(
