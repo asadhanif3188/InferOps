@@ -49,7 +49,7 @@ from tools.comparison_eligibility import (
     record_text,
 )
 from tools.comparison_eligibility import core as module
-from tools.reliability_analysis import AGGREGATE_METRICS
+from tools.reliability_analysis import AGGREGATE_METRICS, RunResult
 
 pytestmark = pytest.mark.docs
 
@@ -503,6 +503,20 @@ def test_a_run_document_with_an_unusable_member_is_refused(
     change(document)
     with pytest.raises(EligibilityRefused, match=r"eligibility-(document|instant)"):
         module._facts(tmp_path, "PASSED", document)
+
+
+def test_a_run_that_two_rules_count_differently_is_refused() -> None:
+    results = {
+        "e02a-1": RunResult(state="PASSED"),
+        "e02a-2": RunResult(state="REFUSED"),
+    }
+    module._hold_counted(
+        results, {"e02a-1": {"counted": True}, "e02a-2": {"counted": False}}
+    )
+    with pytest.raises(EligibilityRefused, match="counted by one rule"):
+        module._hold_counted(
+            results, {"e02a-1": {"counted": True}, "e02a-2": {"counted": True}}
+        )
 
 
 def test_a_correction_of_another_manifest_is_refused(tmp_path: Path) -> None:

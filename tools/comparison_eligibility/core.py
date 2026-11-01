@@ -673,6 +673,17 @@ def _attempt(
     }
 
 
+def _hold_counted(
+    results: Mapping[str, RunResult], listed: Mapping[str, Mapping[str, Any]]
+) -> None:
+    """Refuse a run that the aggregate and this module count differently."""
+    for run_id, result in results.items():
+        if listed[run_id]["counted"] != (result.state in COUNTED_STATES):
+            raise EligibilityRefused(
+                "eligibility-run", f"{run_id} is counted by one rule and not another"
+            )
+
+
 def _runs_of(
     root: Path,
     directories: Sequence[Path],
@@ -713,13 +724,7 @@ def _runs_of(
         metric: {row["runId"]: row for row in document["runs"]}
         for metric, document in aggregates.items()
     }
-    for run_id, result in results.items():
-        if values[FAILURES_METRIC][run_id]["counted"] != (
-            result.state in COUNTED_STATES
-        ):
-            raise EligibilityRefused(
-                "eligibility-run", f"{run_id} is counted by one rule and not another"
-            )
+    _hold_counted(results, values[FAILURES_METRIC])
     attempts = []
     for run_dir in directories:
         run_id = run_dir.name

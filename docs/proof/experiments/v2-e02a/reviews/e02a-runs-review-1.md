@@ -48,8 +48,9 @@ are not committed, so the repository does not prove what they said.
 
 - It compared the digest of each file with the manifest of its run, and each of the 16 listed
   files of each run equals.
-- It judged `E02A-AC1` to `E02A-AC7` from the raw files, and it applied the clock policy where a
-  verdict crosses two clocks. No verdict fell inside a margin in a way that changes it.
+- It judged `E02A-AC1` to `E02A-AC6` from the raw files, and the part of `E02A-AC7` that files
+  decide. It applied the clock policy where a verdict crosses two clocks. No verdict fell inside a
+  margin in a way that changes it.
 - It computed the clock bound of each run: 817 ms, 979 ms, and 675 ms.
 - It computed the failed requests, each failure episode, the largest gap between two successes,
   the requests failed since the fault, the stabilized recovery, and the zero-Ready intervals.

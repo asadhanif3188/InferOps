@@ -82,7 +82,7 @@
   "conclusions": {
     "frozenRun": {
       "verdict": "no-defect-found",
-      "statement": "The reviewer applied each criterion to the raw files and judged the state of the run on the stream reading of E02A-AC2: PASSED. AC1 to AC7 held on the reviewer's reading. The first pods reading after the event, reading 56, shows the target UID with a deletion timestamp. Each of the endpoints, pods, and deployments streams answered 188 of 188 readings inside the window, and argo answered 189 of 189. The largest time between two readings is 3.969 s. 340 requests complete after fault-injection-finished, by more than the margin. stabilizedAt is 14:48:35.794Z, and 307 successes follow it. The clock bound that it computed from the two P8 readings is 979 ms, and no verdict was not judged. AC7 rests on two tool commands that it did not run."
+      "statement": "The reviewer applied each criterion to the raw files and judged the state of the run on the stream reading of E02A-AC2: PASSED. AC1 to AC7 held on the reviewer's reading. The first pods reading after the event, reading 56, shows the target UID with a deletion timestamp. Each of the endpoints, pods, and deployments streams answered 188 of 188 readings inside the window, and argo answered 189 of 189. The largest time between two readings is 3.969 s. 340 requests complete after fault-injection-finished, by more than the margin. stabilizedAt is 14:48:35.794Z, and 307 successes follow it. The clock bound that it computed from the two P8 readings is 979 ms. Each verdict that crosses the two clocks is outside the margin, or it does not depend on the order. AC7 rests on two tool commands that it did not run."
     },
     "figures": {
       "verdict": "no-difference",

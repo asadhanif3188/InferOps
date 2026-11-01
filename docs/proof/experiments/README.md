@@ -2130,10 +2130,10 @@ evidence was read, and on the readings of one count no run would be counted.
 [an eleventh ledger](../testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json), certified at `C2` with one record of each run.
 
 **That moved two pinned inputs.** The list of ledgers is in `tools/evidence_index/core.py`, and that
-file and `__init__.py` of the package are pinned by each record of V2-E02A, V2-E02B, V2-E02C,
-V2-E03, V2-E04, V2-E05, and V2-E06, and by both Sprint 5 integration records. So each of those
-records differs from its pin in these two files, whatever its row above says, and no revision
-classifies them. A run under one of them refuses until a later revision classifies them. The
+file and `__init__.py` of the package are pinned by 23 records: revision 3 of V2-E01, each record of
+V2-E02A, V2-E02B, V2-E02C, V2-E03, V2-E04, V2-E05, and V2-E06, and both Sprint 5 integration records.
+So each of those records differs from its pin in these two files, whatever its row above says, and
+no revision classifies them. A run under one of them refuses until a later revision classifies them. The
 repository owner chose this on 2026-11-01, with that cost stated, and no tool reads that choice.
 The three runs are not affected: each names its executing commit, and no file of a run changed.
 

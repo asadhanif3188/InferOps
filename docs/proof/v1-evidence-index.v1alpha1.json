@@ -31,8 +31,8 @@
   "packSources": [
     {
       "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
-      "sha256": "27d0f50b20014a9a7cc8262403c72b3848f81b5a5e50c382050c7e9d5aed7f58",
-      "gitBlob": "20bd0f152ea0786f5e8bb5c6e88a83a33a633854"
+      "sha256": "6cce5035b784a3c980a7cd931d02a8f94b0449d055420ca8cc90275a64c82af7",
+      "gitBlob": "6c4721bce72fe483e2a62a26887c2a86beecb28a"
     },
     {
       "path": "docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
@@ -86,8 +86,8 @@
     },
     {
       "path": "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json",
-      "sha256": "c87826cad73f4463b2ffe479cb78f21e20b01461d29e4d923dafaee6b3fe7791",
-      "gitBlob": "a8a4362bc3999c4fd0411287389888269d156467"
+      "sha256": "f497b461c5477df8294168bf14c47633b7b7f25b086c800d65287c6404c1af0c",
+      "gitBlob": "dca33f43e976fe1669e0d3607bb59483b233b55c"
     }
   ],
   "summary": {
@@ -159,8 +159,8 @@
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
     "postReleaseRegisterChanges": 24,
-    "evidenceSetSha256": "cb906ea4e5b9fb211da8e31997ac23c27c1937f165445a1b6e4fc249a78e5b99",
-    "evidencePackSha256": "acebd00f81949c5a0af4e390af2cb303327d9d4aa0a6c8fb02db2801f6857cae",
+    "evidenceSetSha256": "89daa79e41bba456b1cf79eb7f12f716e7f96e760cb588a913145e8a3fd4554d",
+    "evidencePackSha256": "ca540266e6060122690b527f6abe35810f0ffb0b72cc9c8b2e9fdbdd0620d801",
     "releasedPack": {
       "tag": "v1.0.0",
       "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
@@ -239,19 +239,19 @@
           "ledger": "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json",
           "runPath": "docs/proof/experiments/v2-e02a/runs/e02a-1",
           "reviewRef": "docs/proof/experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json",
-          "reviewSha256": "33294a145050bfd78e5d02384926ccbe905b12487ff6429aacd8ffa4b68abd7d"
+          "reviewSha256": "62921ce4406f5548531e07410197093301b9c6a51cf6d6e7246bd8bb9dcad0b9"
         },
         {
           "ledger": "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json",
           "runPath": "docs/proof/experiments/v2-e02a/runs/e02a-2",
           "reviewRef": "docs/proof/experiments/v2-e02a/reviews/e02a-2-review-1.v1alpha1.json",
-          "reviewSha256": "5128b2cbc1837abcb68428dce820c58ae4bd565327c3cccc7e87ab6317be9daf"
+          "reviewSha256": "62e819a026cf29c468f60e32a53c24fafbe31c8922b89238cafac221ac563fa4"
         },
         {
           "ledger": "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json",
           "runPath": "docs/proof/experiments/v2-e02a/runs/e02a-3",
           "reviewRef": "docs/proof/experiments/v2-e02a/reviews/e02a-3-review-1.v1alpha1.json",
-          "reviewSha256": "1191db875497bd6f9a6cce7f4e9b895955fecf3f121e74a7f72af29e85a22460"
+          "reviewSha256": "3af201f87773e88226d57a39d87ff6a833f049a8caa971b4515dc4de4b185a23"
         }
       ],
       "registeredBeforeTheGate": [
@@ -1565,7 +1565,7 @@
       "area": "reliability",
       "status": "certified",
       "assertsRealBehaviour": true,
-      "statement": "In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes.",
+      "statement": "In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, on the reading of E02A-AC2 that the repository owner approved after the evidence was read, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes.",
       "limitation": "Runtime, C2, about three runs, e02a-1, e02a-2, and e02a-3, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one release, one model, and one caller workload. The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read: the freeze record does not state that reading, no tool reads the approval, and on the readings of the runtime readyReplicas count no run would be counted and this claim would not stand. The eligibility rests on the failure episodes alone. The zero-Ready condition holds on the first reading that gave zero and not on the outer start, and the record does not state which applies. The start of a failure episode is the completion of its first failed request: the failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time. The failure count is 2 in each run, and the caller profile has 2 workers. The model file of each replacement pod was not compared directly. The host paged, and no record establishes whether that changed a figure. The review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. It read no register statement about these runs, it ran no tool of this repository, and it does not establish that this claim is correct. Registration, 2026-11-01: V2-S7-001-PR2 ran the three runs and registered no claim. V2-S7-002-PR1 classified them and added this claim. No run executed in that change, and no file of a run changed.",
       "doesNotEstablish": "That the service stayed available; that one runtime replica is or is not acceptable for any service; a comparison with two runtime replicas, an improvement, or a percentage, since no run of V2-E02B exists; an authorization of a run of V2-E02B or of a change of the desired state; node failure, overload, sustained capacity, or production availability; the cause of a failure, of a gap, or of a recovery; a figure of the V1 pod-loss evidence; that the model file of a replacement pod is the file of the record; that paging on the host changed no figure; a service-level objective; behaviour on another provider, Kubernetes version, node count, release, or caller workload; representative evidence, C3, or operational evidence, C4; a cost, a saving, a return on investment, or a business effect; that a person reviewed the result; or production readiness.",
       "claimMaterialComponents": [
@@ -11617,7 +11617,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/62/evidenceRecords/0",
-      "registerEntrySha256": "9b1819b5d705c4ca7933f2e043ed1b7209775d5effec0a62233c17af33694912",
+      "registerEntrySha256": "93c48e3715aeb505718300fcdd3bb2d9210fa4b169fc4eb254e5f2b5da0365d5",
       "summary": "On 2026-10-31 run e02a-1 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 365 requests in the window failed, in one failure episode of 4276 ms, the largest time between two successes is 29896 ms, and the runtime tier has one zero-Ready interval with an inner figure of 17342 ms and an outer figure of 26813 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -11797,7 +11797,7 @@
       "results": [
         {
           "resultId": "e02a-ac1",
-          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-l7tth. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one."
+          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-l7tth. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one. pods.jsonl lists the API and the runtime pods, and it counts each other pod of the namespace and does not list it."
         },
         {
           "resultId": "e02a-ac2",
@@ -11805,7 +11805,7 @@
         },
         {
           "resultId": "e02a-ac3",
-          "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 332 requests complete inside the window after fault-injection-finished, by more than the margin."
+          "statement": "The review of the run ran the reader of the caller record with the plan that release.txt states, and the reader accepted it: the mode is in-cluster, the target is the API Service, and the end state is duration. The assembly script did not check that. The record covers the window. 1 completion(s) are inside the margin of the window start, and each request that could be the last before the window succeeded, so the verdict needs no order of those instants. 332 requests complete inside the window after fault-injection-finished, by more than the margin."
         },
         {
           "resultId": "e02a-ac4",
@@ -11813,15 +11813,15 @@
         },
         {
           "resultId": "e02a-ac5",
-          "statement": "295 successful requests complete after stabilizedAt inside the window, and the last completes 621.663 s after it."
+          "statement": "295 successful requests complete after stabilizedAt inside the window, and the last completes 621.663 s after it. A success at 0.529 s before the window end is inside the margin of 818 ms, so the page leaves it out: it states 295 successes and a last success 621.663 s after stabilizedAt, where the count with that request is 296 and 623.767 s. The criterion holds on either count."
         },
         {
           "resultId": "e02a-ac6",
-          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 21 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window."
+          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 21 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window. The collector pod and the runner pod are not compared by identity in pods.jsonl."
         },
         {
           "resultId": "e02a-ac7",
-          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis."
+          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. The layout check accepts the run directory, and the replay reproduces its run analysis. The validation record of the change that added the runs states the two commands."
         }
       ],
       "limitations": [
@@ -12004,16 +12004,16 @@
         },
         {
           "path": "docs/proof/experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json",
-          "sha256": "33294a145050bfd78e5d02384926ccbe905b12487ff6429aacd8ffa4b68abd7d",
-          "gitBlob": "86ec637cb1c28367950c7b056d5f2c81633b284f",
+          "sha256": "62921ce4406f5548531e07410197093301b9c6a51cf6d6e7246bd8bb9dcad0b9",
+          "gitBlob": "6983dc0bc05b6d69894c6d8e5a9017119811b2ea",
           "recordedDate": null,
           "authorisationSection": null,
           "corrections": []
         },
         {
           "path": "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
-          "sha256": "89d6b246724fb6c284d38834087e39f2d1cec8dcc942740307faa539dd5f67f4",
-          "gitBlob": "19ff5ca1d789fc656e675e5db848267e6941261c",
+          "sha256": "9114794040ae5c74062a797df34acc7efa707e6696d4685a0b132ad07fe38f99",
+          "gitBlob": "6666188e71aef6bb5b8ef56ab84592f5c0cfc0d6",
           "recordedDate": {
             "label": "Date",
             "value": "2026-11-01"
@@ -12023,8 +12023,8 @@
         },
         {
           "path": "docs/proof/environment/v2-s7-002-pr1-validation.md",
-          "sha256": "aa45adba6b9b2ba99b3522f3c0f96a18416af1c2a5b0cf1e186de423b34a0b99",
-          "gitBlob": "02f837f23b63f142a714bb0e347a983f755bf8d3",
+          "sha256": "568c3c004cf3c619bb4cb0137ab1f026898871ae4b53dd31c3f3dcc78dd470c8",
+          "gitBlob": "9b5f2501d9d4f04ddd1791f3aa352eb948d938f3",
           "recordedDate": null,
           "authorisationSection": false,
           "corrections": []
@@ -12041,7 +12041,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/62/evidenceRecords/1",
-      "registerEntrySha256": "21a4fe237e37c48ada99cd697c1a608152b554e61501a8f57f6b026fefbf2da4",
+      "registerEntrySha256": "a45b55866d201188c812acb5f57481d8dc4989fbd8414941dea2e3a50304157e",
       "summary": "On 2026-10-31 run e02a-2 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 366 requests in the window failed, in one failure episode of 3682 ms, the largest time between two successes is 30427 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14837 ms and an outer figure of 23792 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -12221,7 +12221,7 @@
       "results": [
         {
           "resultId": "e02a-ac1",
-          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-4brfb. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one."
+          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-4brfb. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one. pods.jsonl lists the API and the runtime pods, and it counts each other pod of the namespace and does not list it."
         },
         {
           "resultId": "e02a-ac2",
@@ -12229,7 +12229,7 @@
         },
         {
           "resultId": "e02a-ac3",
-          "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 340 requests complete inside the window after fault-injection-finished, by more than the margin."
+          "statement": "The review of the run ran the reader of the caller record with the plan that release.txt states, and the reader accepted it: the mode is in-cluster, the target is the API Service, and the end state is duration. The assembly script did not check that. The record covers the window. 1 completion(s) are inside the margin of the window start, and each request that could be the last before the window succeeded, so the verdict needs no order of those instants. 340 requests complete inside the window after fault-injection-finished, by more than the margin."
         },
         {
           "resultId": "e02a-ac4",
@@ -12237,15 +12237,15 @@
         },
         {
           "resultId": "e02a-ac5",
-          "statement": "307 successful requests complete after stabilizedAt inside the window, and the last completes 624.813 s after it."
+          "statement": "307 successful requests complete after stabilizedAt inside the window, and the last completes 624.813 s after it. The last success counted is 1.209 s before the window end, and the margin is 980 ms. The criterion holds with a large remainder."
         },
         {
           "resultId": "e02a-ac6",
-          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window."
+          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window. The collector pod and the runner pod are not compared by identity in pods.jsonl."
         },
         {
           "resultId": "e02a-ac7",
-          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis."
+          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. The layout check accepts the run directory, and the replay reproduces its run analysis. The validation record of the change that added the runs states the two commands."
         }
       ],
       "limitations": [
@@ -12428,16 +12428,16 @@
         },
         {
           "path": "docs/proof/experiments/v2-e02a/reviews/e02a-2-review-1.v1alpha1.json",
-          "sha256": "5128b2cbc1837abcb68428dce820c58ae4bd565327c3cccc7e87ab6317be9daf",
-          "gitBlob": "90b335ee075dcac07467c967954b4a9d5d6210d5",
+          "sha256": "62e819a026cf29c468f60e32a53c24fafbe31c8922b89238cafac221ac563fa4",
+          "gitBlob": "5880c267e5e8c81ae1bddaff364775e7987da68d",
           "recordedDate": null,
           "authorisationSection": null,
           "corrections": []
         },
         {
           "path": "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
-          "sha256": "89d6b246724fb6c284d38834087e39f2d1cec8dcc942740307faa539dd5f67f4",
-          "gitBlob": "19ff5ca1d789fc656e675e5db848267e6941261c",
+          "sha256": "9114794040ae5c74062a797df34acc7efa707e6696d4685a0b132ad07fe38f99",
+          "gitBlob": "6666188e71aef6bb5b8ef56ab84592f5c0cfc0d6",
           "recordedDate": {
             "label": "Date",
             "value": "2026-11-01"
@@ -12447,8 +12447,8 @@
         },
         {
           "path": "docs/proof/environment/v2-s7-002-pr1-validation.md",
-          "sha256": "aa45adba6b9b2ba99b3522f3c0f96a18416af1c2a5b0cf1e186de423b34a0b99",
-          "gitBlob": "02f837f23b63f142a714bb0e347a983f755bf8d3",
+          "sha256": "568c3c004cf3c619bb4cb0137ab1f026898871ae4b53dd31c3f3dcc78dd470c8",
+          "gitBlob": "9b5f2501d9d4f04ddd1791f3aa352eb948d938f3",
           "recordedDate": null,
           "authorisationSection": false,
           "corrections": []
@@ -12465,7 +12465,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/62/evidenceRecords/2",
-      "registerEntrySha256": "64d904f68897ef85363c50e2d86c8cb3a38862590db893ddde2597254a941bd6",
+      "registerEntrySha256": "d252d2d094324fba7533844d7e7060bbf37a0e7b3c129bceaadf8c9b8054d809",
       "summary": "On 2026-10-31 run e02a-3 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 342 requests in the window failed, in one failure episode of 4065 ms, the largest time between two successes is 29893 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14949 ms and an outer figure of 23448 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -12645,7 +12645,7 @@
       "results": [
         {
           "resultId": "e02a-ac1",
-          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-jzh6j. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one."
+          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-jzh6j. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one. pods.jsonl lists the API and the runtime pods, and it counts each other pod of the namespace and does not list it."
         },
         {
           "resultId": "e02a-ac2",
@@ -12653,7 +12653,7 @@
         },
         {
           "resultId": "e02a-ac3",
-          "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 315 requests complete inside the window after fault-injection-finished, by more than the margin."
+          "statement": "The review of the run ran the reader of the caller record with the plan that release.txt states, and the reader accepted it: the mode is in-cluster, the target is the API Service, and the end state is duration. The assembly script did not check that. The record covers the window. 0 completion(s) are inside the margin of the window start, and each request that could be the last before the window succeeded, so the verdict needs no order of those instants. 315 requests complete inside the window after fault-injection-finished, by more than the margin."
         },
         {
           "resultId": "e02a-ac4",
@@ -12661,15 +12661,15 @@
         },
         {
           "resultId": "e02a-ac5",
-          "statement": "279 successful requests complete after stabilizedAt inside the window, and the last completes 623.001 s after it."
+          "statement": "279 successful requests complete after stabilizedAt inside the window, and the last completes 623.001 s after it. The last success counted is 0.924 s before the window end, and the margin is 676 ms. The criterion holds with a large remainder."
         },
         {
           "resultId": "e02a-ac6",
-          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window."
+          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window. The collector pod and the runner pod are not compared by identity in pods.jsonl."
         },
         {
           "resultId": "e02a-ac7",
-          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis."
+          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. The layout check accepts the run directory, and the replay reproduces its run analysis. The validation record of the change that added the runs states the two commands."
         }
       ],
       "limitations": [
@@ -12852,16 +12852,16 @@
         },
         {
           "path": "docs/proof/experiments/v2-e02a/reviews/e02a-3-review-1.v1alpha1.json",
-          "sha256": "1191db875497bd6f9a6cce7f4e9b895955fecf3f121e74a7f72af29e85a22460",
-          "gitBlob": "47405e7381e8ae185c9e28a77daa42dcc4761da8",
+          "sha256": "3af201f87773e88226d57a39d87ff6a833f049a8caa971b4515dc4de4b185a23",
+          "gitBlob": "5d4e9436a6502e34019c6fc00c2a8548cacc4849",
           "recordedDate": null,
           "authorisationSection": null,
           "corrections": []
         },
         {
           "path": "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
-          "sha256": "89d6b246724fb6c284d38834087e39f2d1cec8dcc942740307faa539dd5f67f4",
-          "gitBlob": "19ff5ca1d789fc656e675e5db848267e6941261c",
+          "sha256": "9114794040ae5c74062a797df34acc7efa707e6696d4685a0b132ad07fe38f99",
+          "gitBlob": "6666188e71aef6bb5b8ef56ab84592f5c0cfc0d6",
           "recordedDate": {
             "label": "Date",
             "value": "2026-11-01"
@@ -12871,8 +12871,8 @@
         },
         {
           "path": "docs/proof/environment/v2-s7-002-pr1-validation.md",
-          "sha256": "aa45adba6b9b2ba99b3522f3c0f96a18416af1c2a5b0cf1e186de423b34a0b99",
-          "gitBlob": "02f837f23b63f142a714bb0e347a983f755bf8d3",
+          "sha256": "568c3c004cf3c619bb4cb0137ab1f026898871ae4b53dd31c3f3dcc78dd470c8",
+          "gitBlob": "9b5f2501d9d4f04ddd1791f3aa352eb948d938f3",
           "recordedDate": null,
           "authorisationSection": false,
           "corrections": []

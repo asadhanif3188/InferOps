@@ -10263,7 +10263,7 @@
     {
       "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
       "area": "reliability",
-      "statement": "In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes.",
+      "statement": "In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, on the reading of E02A-AC2 that the repository owner approved after the evidence was read, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes.",
       "status": "certified",
       "notClaimedReason": null,
       "assertsRealBehaviour": true,
@@ -10463,7 +10463,7 @@
           "results": [
             {
               "resultId": "e02a-ac1",
-              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-l7tth. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one.",
+              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-l7tth. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one. pods.jsonl lists the API and the runtime pods, and it counts each other pod of the namespace and does not list it.",
               "criterionId": "e02a-ac1"
             },
             {
@@ -10473,7 +10473,7 @@
             },
             {
               "resultId": "e02a-ac3",
-              "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 332 requests complete inside the window after fault-injection-finished, by more than the margin.",
+              "statement": "The review of the run ran the reader of the caller record with the plan that release.txt states, and the reader accepted it: the mode is in-cluster, the target is the API Service, and the end state is duration. The assembly script did not check that. The record covers the window. 1 completion(s) are inside the margin of the window start, and each request that could be the last before the window succeeded, so the verdict needs no order of those instants. 332 requests complete inside the window after fault-injection-finished, by more than the margin.",
               "criterionId": "e02a-ac3"
             },
             {
@@ -10483,17 +10483,17 @@
             },
             {
               "resultId": "e02a-ac5",
-              "statement": "295 successful requests complete after stabilizedAt inside the window, and the last completes 621.663 s after it.",
+              "statement": "295 successful requests complete after stabilizedAt inside the window, and the last completes 621.663 s after it. A success at 0.529 s before the window end is inside the margin of 818 ms, so the page leaves it out: it states 295 successes and a last success 621.663 s after stabilizedAt, where the count with that request is 296 and 623.767 s. The criterion holds on either count.",
               "criterionId": "e02a-ac5"
             },
             {
               "resultId": "e02a-ac6",
-              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 21 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window.",
+              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 21 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window. The collector pod and the runner pod are not compared by identity in pods.jsonl.",
               "criterionId": "e02a-ac6"
             },
             {
               "resultId": "e02a-ac7",
-              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. The layout check accepts the run directory, and the replay reproduces its run analysis. The validation record of the change that added the runs states the two commands.",
               "criterionId": "e02a-ac7"
             }
           ],
@@ -10730,7 +10730,7 @@
           "results": [
             {
               "resultId": "e02a-ac1",
-              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-4brfb. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one.",
+              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-4brfb. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one. pods.jsonl lists the API and the runtime pods, and it counts each other pod of the namespace and does not list it.",
               "criterionId": "e02a-ac1"
             },
             {
@@ -10740,7 +10740,7 @@
             },
             {
               "resultId": "e02a-ac3",
-              "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 340 requests complete inside the window after fault-injection-finished, by more than the margin.",
+              "statement": "The review of the run ran the reader of the caller record with the plan that release.txt states, and the reader accepted it: the mode is in-cluster, the target is the API Service, and the end state is duration. The assembly script did not check that. The record covers the window. 1 completion(s) are inside the margin of the window start, and each request that could be the last before the window succeeded, so the verdict needs no order of those instants. 340 requests complete inside the window after fault-injection-finished, by more than the margin.",
               "criterionId": "e02a-ac3"
             },
             {
@@ -10750,17 +10750,17 @@
             },
             {
               "resultId": "e02a-ac5",
-              "statement": "307 successful requests complete after stabilizedAt inside the window, and the last completes 624.813 s after it.",
+              "statement": "307 successful requests complete after stabilizedAt inside the window, and the last completes 624.813 s after it. The last success counted is 1.209 s before the window end, and the margin is 980 ms. The criterion holds with a large remainder.",
               "criterionId": "e02a-ac5"
             },
             {
               "resultId": "e02a-ac6",
-              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window.",
+              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window. The collector pod and the runner pod are not compared by identity in pods.jsonl.",
               "criterionId": "e02a-ac6"
             },
             {
               "resultId": "e02a-ac7",
-              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. The layout check accepts the run directory, and the replay reproduces its run analysis. The validation record of the change that added the runs states the two commands.",
               "criterionId": "e02a-ac7"
             }
           ],
@@ -10997,7 +10997,7 @@
           "results": [
             {
               "resultId": "e02a-ac1",
-              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-jzh6j. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one.",
+              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-jzh6j. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one. pods.jsonl lists the API and the runtime pods, and it counts each other pod of the namespace and does not list it.",
               "criterionId": "e02a-ac1"
             },
             {
@@ -11007,7 +11007,7 @@
             },
             {
               "resultId": "e02a-ac3",
-              "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 315 requests complete inside the window after fault-injection-finished, by more than the margin.",
+              "statement": "The review of the run ran the reader of the caller record with the plan that release.txt states, and the reader accepted it: the mode is in-cluster, the target is the API Service, and the end state is duration. The assembly script did not check that. The record covers the window. 0 completion(s) are inside the margin of the window start, and each request that could be the last before the window succeeded, so the verdict needs no order of those instants. 315 requests complete inside the window after fault-injection-finished, by more than the margin.",
               "criterionId": "e02a-ac3"
             },
             {
@@ -11017,17 +11017,17 @@
             },
             {
               "resultId": "e02a-ac5",
-              "statement": "279 successful requests complete after stabilizedAt inside the window, and the last completes 623.001 s after it.",
+              "statement": "279 successful requests complete after stabilizedAt inside the window, and the last completes 623.001 s after it. The last success counted is 0.924 s before the window end, and the margin is 676 ms. The criterion holds with a large remainder.",
               "criterionId": "e02a-ac5"
             },
             {
               "resultId": "e02a-ac6",
-              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window.",
+              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window. The collector pod and the runner pod are not compared by identity in pods.jsonl.",
               "criterionId": "e02a-ac6"
             },
             {
               "resultId": "e02a-ac7",
-              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. The layout check accepts the run directory, and the replay reproduces its run analysis. The validation record of the change that added the runs states the two commands.",
               "criterionId": "e02a-ac7"
             }
           ],

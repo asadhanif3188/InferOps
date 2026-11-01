@@ -1171,6 +1171,7 @@ def test_the_baseline_claim_says_that_requests_failed_and_cites_each_run() -> No
     assert claim["status"] == "certified"
     assert "two requests failed" in claim["statement"]
     assert "not that the service stayed available" in claim["statement"]
+    assert "on the reading of E02A-AC2 that the repository owner" in claim["statement"]
     assert "the repository owner approved" in claim["limitation"]
     assert [record["evidenceLevel"] for record in claim["evidenceRecords"]] == [
         "C2"

@@ -21,9 +21,9 @@ from `1.0.0`.
   reads are the medians 2 and 4,065 ms. No percentage is stated, and no V1 figure is a value
   of this baseline. An independent review recomputed each figure from the raw files, and
   each run has a review record. An eleventh ledger adds one claim, certified at `C2` with one
-  record of each run. The ledger list is a pinned input, so each V2-E02A to V2-E06 record and
-  both Sprint 5 integration records differ from their pins in the two files of
-  `tools/evidence_index`, and the owner chose that with the cost stated. The change hands the
+  record of each run. The ledger list is a pinned input, so 23 freeze records differ from
+  their pins in the two files of `tools/evidence_index`, and the owner chose that with the
+  moved pin stated. The change hands the
   inventory of the last run to rule G3. It makes no GitOps switch and registers no freeze
   record. See
   [the baseline report](docs/proof/experiments/v2-e02a/baseline-report.md) and

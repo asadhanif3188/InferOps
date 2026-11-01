@@ -73,14 +73,15 @@ outer start. The analysis measures the outer figure from the start of that read.
 
 The story of this change owes a claim and evidence update. The register changes only through a
 ledger, and the list of ledgers is in `tools/evidence_index/core.py`. That file and
-`tools/evidence_index/__init__.py` are pinned inputs of each record of V2-E02A, V2-E02B, V2-E02C,
-V2-E03, V2-E04, V2-E05, and V2-E06, and of the two Sprint 5 integration records, because the layout
-check and the replay import them. So a ledger cannot be added without moving a pin, and the rule
+`tools/evidence_index/__init__.py` are pinned inputs of 23 freeze records: revision 3 of V2-E01,
+each record of V2-E02A, V2-E02B, V2-E02C, V2-E03, V2-E04, V2-E05, and V2-E06, and the two Sprint 5
+integration records. The layout check and the replay import them. So a ledger cannot be added without moving a pin, and the rule
 of those records says that a change that moves a pin is a later revision. This change may register
 no freeze record.
 
-The repository owner was asked, with that cost stated, and chose on 2026-11-01 to register the
-claim in this change. No tool reads that choice.
+The repository owner was asked, with the moved pin of revision 4 stated, and chose on 2026-11-01 to
+register the claim in this change. No tool reads that choice. The question did not state that six
+tests would need to name the two files, because that was found afterwards.
 
 | What moved | Effect |
 |---|---|
@@ -88,7 +89,9 @@ claim in this change. No tool reads that choice.
 | The three runs | None. Each run names the commit `ff45093`, each run analysis names the digest of its seven source packages, and `tools/evidence_index` is not one of them. No file of a run changed |
 | A further run of V2-E02A | It refuses at P1 until a later revision classifies the two files. No further run is planned: three runs are counted |
 | V2-E02B | Its revision 2 already differs from its pins, in seven files. The change of rule G3 registers revision 3 and inventories these two with the others |
-| The checks | `python -m tools.experiment_freeze --check`, `tools.experiment_preregistration --check`, and `tools.analysis_preregistration --check` each pass. None reads a moved pin |
+| The checks | `python -m tools.experiment_freeze --check`, `tools.experiment_preregistration --check`, and `tools.analysis_preregistration --check` each pass. None of these commands reads a moved pin |
+| The analysis gate | It reads each run that a ledger bears on, so it now holds the three V2-E02A runs. They are the first runs in the register that name a run analysis, and each replays |
+| The suites | Six tests held that no pin of a latest record moved, and they failed on this ledger. Each now names the two files, so a third file that moves still fails it. A test that names these two files accepts them: that is a decision of this change, and no test decides it |
 
 The claim is `the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod`. It is certified at `C2`, on one record of each
 run, and it states that requests failed. The status is a claim status and not a reliability result.
@@ -101,9 +104,13 @@ not show that.
 | Command | Result |
 |---|---|
 | `python -m tools.comparison_eligibility --check` | PASSED: the record is what the runs give, and the commit `ff45093` holds the 2+1 desired state and revision 4 |
-| `python -m pytest tests/testing/test_comparison_eligibility.py` | 68 passed |
-| `python -m pytest tests/testing/test_test_inventory.py tests/testing/test_document_links.py tests/testing/test_experiment_freeze.py` | 1,989 passed, 1 skipped |
-| `ruff check`, `ruff format --check`, and `mypy` on the new package and suite | No finding |
+| `python -m tools.evidence_index --check` and `python -m tools.proof_dashboard --check` | OK: each generated file is what the register and the ledgers produce |
+| `python -m tools.experiment_freeze --check`, `tools.experiment_preregistration --check`, and `tools.analysis_preregistration --check` | PASSED: 32 freeze records, unchanged, none registered |
+| `python -m tools.experiment_freeze --changes` for revision 4 of V2-E02A | Lists two files, the two of `tools/evidence_index`, and exits 1. It printed `UNCHANGED` before this change |
+| `python -m pytest` on 15 modules: the suites of this tool, the control, both preregistrations, the freeze, the layout, the replay, the review gate, the index, the post-release ledgers, the completeness check, the matrix, the dashboard, the inventory, and the links | 6,709 passed, 3 skipped, 1 failed. The failure named the runs of the analysis gate, and the fix follows |
+| The same modules of the fix: the gate test, the index, the review gate, the matrix, and the dashboard | 3,470 passed |
+| `ruff check .`, `ruff format --check .`, and `uv run --locked mypy` | No finding. The mypy of the host, a different version, reports one error in a file that this change does not touch |
+| `git diff --check`, and a scan of the diff for local paths, account names, credentials, and private planning material | No finding |
 
 The first run of the inventory suite failed: its table of number words ended at ninety-nine, and
 this change adds the hundredth suite with no claim. The table now holds one hundred.
@@ -132,8 +139,25 @@ code, the tests, and the documents.
 The reviewer of the code also reported that the earlier entry of `CHANGELOG.md` says that the set
 is not classified. That entry is dated by its change and stays as written.
 
-Neither review read the commit that fixes these findings. The tests, the check, and the full lane ran
-on it.
+Neither review read the commit that fixes these findings.
+
+## Independent review of the registration
+
+A third automated session read the two commits after `6abac97`: the fixes and the registration.
+
+| Finding | Severity | What the commit got wrong | Disposition |
+|---|---|---|---|
+| Seven tests were red at the commit, and this record did not say so | High | The ledger moved the pins that six of them hold, and a directory listing in the seventh did not name the new files. The record said that no check reads a moved pin, which is true of the commands and not of the suites. The suites run before that commit did not include these modules | Each test states the exact moved set. The section on the register states this |
+| The outcome of `E02A-AC2` reads as plain `met` | Medium | The schema has no value for a criterion that holds on one reading and not on another, and the statement of the claim said that the seven criteria hold with no condition | The outcome stays `met`, and the ledger states why. The statement of the claim now names the reading |
+| The results omitted what the corrections add | Medium | `E02A-AC1`, `AC3`, `AC5`, and `AC6` read without the qualifications that the correction of each run states | Each result states them |
+| One new refusal had no test | Medium | The refusal of a run that two rules count differently could be deleted with no test failing | It has a test |
+| The list of records that pin the two files missed one | Medium | It omitted revision 3 of V2-E01 | The list names it, and 23 records are stated. The count is from the pins of each record |
+| Three small statements | Low | The review page said that the reviewer judged `E02A-AC7`, three records held a garbled sentence, and a test count here was stale | Each is corrected. The review records change in the commit that fixes them, so the ledger states their new digests |
+
+The reviewer also reported that the status of the claim rests on a reading adopted after the
+evidence was read, as a judgement for the owner and not as a defect. The limitation states it.
+
+No review read the commit that fixes these findings.
 
 ## What this does not establish
 

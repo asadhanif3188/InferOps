@@ -445,15 +445,25 @@ def test_revision_3_pins_the_driver_and_every_module_of_the_control() -> None:
     )
 
 
-def test_no_material_input_of_revision_4_has_moved() -> None:
+#: The two files that hold the list of ledgers. V2-S7-002-PR1 added a ledger after the
+#: three runs, so each differs from its pin in revision 4. The repository owner chose
+#: that with the cost stated, and no revision classifies them.
+LEDGER_LIST = {"tools/evidence_index/__init__.py", "tools/evidence_index/core.py"}
+
+
+def test_the_only_moved_inputs_of_revision_4_are_the_list_of_ledgers() -> None:
+    """A tripwire. A file that moves after the three runs fails here, unless a test
+    names it. So a further run would refuse at P1, and no further run is planned."""
     document = _read(R4)
     files = freeze.material_files(document["materialScope"], REPO_ROOT)
     pinned = {pin["path"]: pin["sha256"] for pin in document["pinnedInputs"]}
     assert set(files) == set(pinned)
-    for path in files:
-        assert freeze.content_digest((REPO_ROOT / path).read_bytes()) == pinned[path], (
-            path
-        )
+    moved = {
+        path
+        for path in files
+        if freeze.content_digest((REPO_ROOT / path).read_bytes()) != pinned[path]
+    }
+    assert moved == LEDGER_LIST
 
 
 def test_revision_3_classifies_each_pin_that_moved_from_revision_2() -> None:
@@ -580,7 +590,8 @@ def test_a_switch_without_revision_4_is_refused_at_p1(tmp_path: Path) -> None:
     Revision 3 states the baseline digests, so P2 alone would accept the switched
     files; but the freeze tool lists the six files of the switch against revision
     3, so P1 refuses the run before any cluster read. An unregistered switch is
-    therefore never run under.
+    therefore never run under. Since V2-S7-002-PR1 the tool also lists the two files
+    of the list of ledgers.
     """
     root = _tree_with(tmp_path)
     registry = json.loads((root / freeze.REGISTRY_PATH).read_text("utf-8"))
@@ -591,7 +602,7 @@ def test_a_switch_without_revision_4_is_refused_at_p1(tmp_path: Path) -> None:
     assert (plan.record_path, plan.revision) == (R3, 3)
     assert dict(plan.desired_state_files) == dict(PLAN.desired_state_files)
     moved = freeze.changed_inputs(_read(R3), REPO_ROOT)
-    assert {change.path for change in moved} == set(G1_MOVED)
+    assert {change.path for change in moved} == set(G1_MOVED) | LEDGER_LIST
     findings = core.repository_findings(
         head=HEAD,
         clean=True,
@@ -601,9 +612,9 @@ def test_a_switch_without_revision_4_is_refused_at_p1(tmp_path: Path) -> None:
     assert findings == ["the freeze tool lists a moved input of the record"]
 
 
-def test_revision_3_lists_the_files_of_the_g1_switch_and_nothing_else() -> None:
+def test_revision_3_lists_the_g1_switch_and_the_list_of_ledgers_alone() -> None:
     changes = freeze.changed_inputs(_read(R3), REPO_ROOT)
-    assert {change.path for change in changes} == set(G1_MOVED)
+    assert {change.path for change in changes} == set(G1_MOVED) | LEDGER_LIST
 
 
 def test_g1_and_g4_of_revision_4_state_the_switch_that_registers_it() -> None:

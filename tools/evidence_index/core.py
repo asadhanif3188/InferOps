@@ -125,8 +125,10 @@ compliant.
 evidence files. ``analysis_gate`` reads each run that a register change of any ledger
 bears on. A run whose manifest names such a file must replay: the run directory
 conforms to the evidence layout, and each run analysis is, byte for byte, what the
-tool computes again. A run whose manifest names no such file is not held, and none of
-the three committed runs names one. The gate refuses and promotes nothing: a run
+tool computes again. A run whose manifest names no such file is not held, and the
+three E01 runs that the register bears on name none. Each of the three V2-E02A runs
+names one, so those three are the runs that the gate holds. The gate refuses and
+promotes nothing: a run
 analysis that replays adds no claim, changes no claim status, and assigns no evidence
 level, and the index states nothing about it.
 
