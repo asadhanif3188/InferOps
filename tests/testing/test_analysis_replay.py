@@ -85,6 +85,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: added later is a visible change of this tuple.
 INTEGRATION_RUNS = ("integration-1", "integration-2")
 INTEGRATION_DIRECTORY = "docs/proof/experiments/v2-s5-integration/runs"
+E02A_RUN_DIRECTORIES = tuple(
+    f"docs/proof/experiments/v2-e02a/runs/e02a-{number}" for number in (1, 2, 3)
+)
 if __name__ == "__main__":
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -3086,7 +3089,8 @@ def test_the_repository_command_replays_the_committed_attempts(
 ) -> None:
     """Three committed run directories were written before the schema. Since
     V2-S5-006-PR1 each attempt of the Sprint 5 integration validation is replayed:
-    its analysis is computed again with the same bytes.
+    its analysis is computed again with the same bytes. Since V2-S7-001-PR2 each run
+    of V2-E02A is replayed too.
 
     Where the clone holds the commit that an attempt states, the command states
     that the revision held; otherwise it states that it did not check it. The
@@ -3094,13 +3098,15 @@ def test_the_repository_command_replays_the_committed_attempts(
     stated commit. Which commits the clone holds is read here with Git itself, not
     with the function of the command. This test does not require that any clone
     holds them."""
+    directories = [
+        *E02A_RUN_DIRECTORIES,
+        *(f"{INTEGRATION_DIRECTORY}/{run}" for run in INTEGRATION_RUNS),
+    ]
     stated = [
-        json.loads(
-            (REPO_ROOT / INTEGRATION_DIRECTORY / run / "analysis.json").read_text(
-                encoding="utf-8"
-            )
-        )["analysisCode"]["revision"]
-        for run in INTEGRATION_RUNS
+        json.loads((REPO_ROOT / run / "analysis.json").read_text(encoding="utf-8"))[
+            "analysisCode"
+        ]["revision"]
+        for run in directories
     ]
     present = sum(
         subprocess.run(
@@ -3121,14 +3127,14 @@ def test_the_repository_command_replays_the_committed_attempts(
     assert all(path.startswith("tools/reliability_runner/") for path in differs)
     assert [line.split()[0] for line in lines if line.split()[0] != "source"] == [
         "pre-schema"
-    ] * 3 + ["replayed", "revision"] * len(INTEGRATION_RUNS) + ["runs"]
+    ] * 3 + ["replayed", "revision"] * len(directories) + ["runs"]
     assert sum(line.endswith("revision  held") for line in lines) == present
-    unchecked = len(INTEGRATION_RUNS) - present
+    unchecked = len(directories) - present
     assert sum("revision  not-checked" in line for line in lines) == unchecked
-    total = 3 + len(INTEGRATION_RUNS)
+    total = 3 + len(directories)
     assert lines[-1].endswith(
         f"{total}: 3 pre-schema and not replayed, 0 with no analysis, "
-        f"{len(INTEGRATION_RUNS)} replayed, 0 refused"
+        f"{len(directories)} replayed, 0 refused"
     )
 
 
@@ -3315,12 +3321,13 @@ def test_the_example_is_what_the_suite_builds_but_for_its_code(tmp_path: Path) -
 def test_the_example_is_outside_the_proof_tree() -> None:
     """The example is not in ``docs/proof/experiments``. Since V2-S5-006-PR1 the
     run directories of the layout there are the attempts of the Sprint 5
-    integration validation, and no other."""
+    integration validation, and since V2-S7-001-PR2 the runs of V2-E02A, and no
+    other."""
     assert not (REPO_ROOT / EXPERIMENT_REF).exists()
     listing = run_core.repository_report(REPO_ROOT)
     assert [entry.status for entry in listing.manifests] == [
         run_core.PRE_SCHEMA
-    ] * 3 + [run_core.CONFORMING] * len(INTEGRATION_RUNS)
+    ] * 3 + [run_core.CONFORMING] * (len(E02A_RUN_DIRECTORIES) + len(INTEGRATION_RUNS))
 
 
 # --------------------------------------------------------------------------

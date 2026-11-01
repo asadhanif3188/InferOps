@@ -1,6 +1,6 @@
 # The operator events of an experiment run
 
-Status: **the tool is implemented, and logs that the test suite writes show each kind of event, each refusal, and the stored form at evidence level C0. No result-bearing run recorded an event. Since `V2-S5-006-PR1` the logs of the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation) are committed: in each, the control process recorded one `fault-injection-started` and one `fault-injection-finished`, and no operator recorded an event. No claim is registered.** (Until `V2-S5-006-PR1` this status said that no run recorded an event and that no log of a real run is committed.)
+Status: **the tool is implemented, and logs that the test suite writes show each kind of event, each refusal, and the stored form at evidence level C0. The three V2-E02A runs of `V2-S7-001-PR2` are the first result-bearing runs that recorded an event. Since `V2-S5-006-PR1` the logs of the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation) are committed: in each, the control process recorded one `fault-injection-started` and one `fault-injection-finished`, and no operator recorded an event. No claim is registered.** (Until `V2-S5-006-PR1` this status said that no run recorded an event and that no log of a real run is committed.)
 
 An experiment run has events that no cluster object and no metric holds. The
 program that controls the run injects a fault. An operator reviews the signals
@@ -272,10 +272,12 @@ log that takes one more event has another digest.
 
 ## What is not done
 
-- No result-bearing run recorded an event. The suite wrote each log in a
-  temporary directory. The two committed logs are of the attempts of the
-  integration validation. (Until `V2-S5-006-PR1` this item said that no run
-  recorded an event.)
+- The suite wrote each of its logs in a temporary directory. The committed logs
+  are of the two attempts of the integration validation and of
+  [the three V2-E02A runs](../proof/experiments/README.md#the-v2-e02a-runs), which are
+  the first result-bearing runs that recorded an event. (Until `V2-S5-006-PR1` this
+  item said that no run recorded an event, and until `V2-S7-001-PR2` it said that no
+  result-bearing run recorded an event.)
 - One procedure calls the tool:
   [the driver of the integration validation](../proof/experiments/v2-s5-integration/procedure/run-driver.txt)
   opens the log, records the fault injection, and closes the log. No procedure

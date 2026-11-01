@@ -1,6 +1,6 @@
 # The reliability analysis of an experiment run
 
-Status: **the tool is implemented, and files that the test suite builds show each definition, the ends of each interval, each refusal, and the stored form at evidence level C0. No result-bearing run was analysed. Since `V2-S5-006-PR1` the analyses of two real attempts are committed, inside their run analyses: the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation). No bound was compared with a figure, and no claim is registered.** (Until `V2-S5-006-PR1` this status said that no run was analysed and that no analysis of a real run is committed.)
+Status: **the tool is implemented, and files that the test suite builds show each definition, the ends of each interval, each refusal, and the stored form at evidence level C0. The three V2-E02A runs of `V2-S7-001-PR2` are the first result-bearing runs that it analysed. Since `V2-S5-006-PR1` the analyses of two real attempts are committed, inside their run analyses: the two attempts of [a non-result integration validation](../proof/experiments/README.md#the-sprint-5-integration-validation). No bound was compared with a figure, and no claim is registered.** (Until `V2-S5-006-PR1` this status said that no run was analysed and that no analysis of a real run is committed.)
 
 An experiment run leaves files: the caller record of the
 [reliability runner](../serving/reliability-runner.md), the four
@@ -30,9 +30,11 @@ value states one of 17 reasons, and the document lists each such metric in
 [ExperimentRun manifest](../contracts/experiment-run.md), and the criteria are
 those of a frozen record of the experiment. Since `V2-S6-003-PR1` the
 [freeze records of the reliability experiments](../proof/experiments/README.md#the-reliability-experiment-freezes)
-state the bounds that some of these figures are compared with, and no run of them
-exists. A figure here is an input to that decision. (Until then this paragraph said
-that no frozen record states a bound for one of these figures.)
+state the bounds that some of these figures are compared with. Only V2-E02A has runs,
+and [its criteria](../proof/experiments/README.md#the-v2-e02a-runs) compare no figure with a bound. A figure here
+is an input to that decision. (Until then this paragraph said that no frozen record
+states a bound for one of these figures, and until `V2-S7-001-PR2` that no run of them
+exists.)
 
 **It is not a measurement of a cluster.** The analysis reads files. It contacts
 no cluster and no caller, and it writes no file.
@@ -601,10 +603,11 @@ Both commands print one JSON document with sorted members and LF line endings.
 
 ## What is not done
 
-- No result-bearing run was analysed. Each input of the suite is built by the
-  suite. The two analyses of real attempts are of a non-result integration
-  validation, and no figure of either is compared with a bound. (Until
-  `V2-S5-006-PR1` this item said that no run was analysed.)
+- Each input of the suite is built by the suite. The real analyses are the two of a
+  non-result integration validation and the three of [the V2-E02A runs](../proof/experiments/README.md#the-v2-e02a-runs).
+  No figure of any of them is compared with a bound. (Until `V2-S5-006-PR1` this item
+  said that no run was analysed, and until `V2-S7-001-PR2` that no result-bearing run
+  was analysed.)
 - The document does not state the digest of an input or the revision of the
   code, and nothing computes a committed document again from committed raw
   files of a run. A later change owns both. (Since `V2-S5-004-PR2`

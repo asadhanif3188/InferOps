@@ -56,7 +56,9 @@ states, and from G, by formulas that this freeze fixes before any Q3 characteriz
 runs. A later freeze record of a reliability experiment holds its runs to those bounds.
 Since `V2-S6-003-PR1` the [freeze records of the reliability
 experiments](../proof/experiments/README.md#the-reliability-experiment-freezes) name the
-bound record `bounds-r1`, and no run of them exists.
+bound record `bounds-r1`. Only [V2-E02A has runs](../proof/experiments/README.md#the-v2-e02a-runs), since
+`V2-S7-001-PR2`, and it uses no bound in a criterion. (Until then this sentence said
+that no run of them exists.)
 
 Q3 is a qualification and not a reliability experiment. It injects no fault. G is not a
 throughput figure, a capacity figure, a latency target, or a service level, and no claim

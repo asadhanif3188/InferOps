@@ -1,0 +1,619 @@
+"""Assemble one reviewed V2-E02A run directory from its work directory.
+
+It ran in V2-S7-001-PR2 after the three runs, from the repository root. It is not a tool
+of the repository, and it is not an input of a freeze record. It is kept as the record of
+how the pages were computed, so its code stays as it ran. The review of the change found
+that it writes two digests of the wrong kind: the correction of each run states them.
+
+Usage (from the repository root, on the branch of the change):
+    uv run --locked python <this file> RUN TARGET_ROOT
+
+TARGET_ROOT is the root of the tree that receives docs/proof/experiments/v2-e02a/runs/RUN.
+Each criterion is computed from the evidence. A criterion that does not hold ends the
+script with its reason, so that no page states Held for it. Nothing here decides a
+criterion that the freeze record does not state.
+"""
+import json
+import math
+import re
+import shutil
+import subprocess
+import sys
+from collections import Counter
+from datetime import datetime, timedelta
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+
+from tools.analysis_replay import core as replay  # noqa: E402
+from tools.experiment_e02a import core as e02a  # noqa: E402
+from tools.experiment_evidence import core as layout  # noqa: E402
+from tools.experiment_freeze.core import content_digest  # noqa: E402
+from tools.reliability_analysis import core as analysis  # noqa: E402
+
+RUN, TARGET_ROOT = sys.argv[1], Path(sys.argv[2]).resolve()
+REPOSITORY = Path.cwd().resolve()
+WORK = REPOSITORY / ".artifacts/v2-e02a/runs" / RUN
+EVIDENCE = WORK / "evidence"
+RECORD = "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json"
+TARGET = TARGET_ROOT / "docs/proof/experiments/v2-e02a/runs" / RUN
+REVISION = "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+LIMIT_SECONDS = 600
+
+
+def instant(text: str) -> datetime:
+    return datetime.fromisoformat(text.replace("Z", "+00:00"))
+
+
+def clock(when: datetime) -> str:
+    return when.strftime("%H:%M:%S.") + f"{when.microsecond // 1000:03d}Z"
+
+
+def seconds(ms: float) -> str:
+    return f"{ms / 1000:,.1f} s"
+
+
+def clean(text: str) -> str:
+    text = re.sub(r"\x1b\[[0-9;?]*[ -/]*[@-~]", "", text).replace("\r", "")
+    windows = str(REPOSITORY)
+    posix = REPOSITORY.as_posix()
+    forms = {
+        windows,
+        windows.replace("\\", "\\\\"),
+        posix,
+        "/" + posix[0].lower() + posix[2:],
+        posix[0].lower() + posix[1:],
+    }
+    for form in sorted(forms, key=len, reverse=True):
+        text = text.replace(form, "<repository>")
+    text = text.replace("C:/Program Files/Git/usr/bin/bash.exe", "bash")
+    text = text.replace("C:\\Program Files\\Git\\usr\\bin\\bash.exe", "bash")
+    text = re.sub(
+        r"^View build details: docker-desktop://.*$",
+        "View build details: <local link removed>",
+        text,
+        flags=re.MULTILINE,
+    )
+    return "\n".join(line.rstrip() for line in text.split("\n"))
+
+
+def jsonl(path: Path) -> list[dict]:
+    return [
+        json.loads(line)
+        for line in path.read_text("utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def write(name: str, text: str) -> None:
+    (TARGET / name).write_bytes(text.encode("utf-8"))
+
+
+class NotHeld(SystemExit):
+    pass
+
+
+def must(condition: bool, statement: str) -> None:
+    if not condition:
+        raise NotHeld(f"NOT HELD for {RUN}: {statement}")
+
+
+plan = e02a.load_plan(REPOSITORY)
+control = json.loads((WORK / "control.json").read_text("utf-8"))
+must(control["outcome"]["state"] == "OBSERVED", f"the control states {control['outcome']}")
+steps = {step["step"]: step for step in control["steps"]}
+must(all(step["held"] for step in control["steps"]), "a step of the control did not hold")
+declaration = (WORK / "declaration.json").read_text("utf-8")
+texts = {
+    role: (EVIDENCE / f"{role}.jsonl").read_text("utf-8")
+    for role in ("caller", "endpoints", "pods", "deployments", "argo")
+}
+texts[analysis.EVENTS] = (WORK / "operator-events.jsonl").read_text("utf-8")
+document = analysis.analyze(declaration, texts)
+must(document["aborts"] == [] and document["manualActions"] == [], "an abort or a manual action")
+
+bound_ms = control["clockReadings"]["boundMs"]
+must(isinstance(bound_ms, int), "the clock bound is not computable")
+margin = timedelta(milliseconds=bound_ms + 1)
+window = document["window"]
+start, end = instant(window["from"]), instant(window["to"])
+must(window["endedBy"] == "declared", "the window did not end as declared")
+events = jsonl(WORK / "operator-events.jsonl")
+fault_started = next(e for e in events if e.get("kind") == "fault-injection-started")
+fault_finished = next(e for e in events if e.get("kind") == "fault-injection-finished")
+started_at, finished_at = instant(fault_started["recordedAt"]), instant(fault_finished["recordedAt"])
+target = steps["F1"]["target"]
+limit = finished_at + timedelta(seconds=LIMIT_SECONDS)
+
+# AC1 ------------------------------------------------------------------------------
+commands = (WORK / "commands.txt").read_text("utf-8").splitlines()
+fault_commands = [line for line in commands if re.search(r" fault e02a-\d+ ", line)]
+must(len(fault_commands) == 1, "commands.txt does not hold one delete command")
+must(target["name"] in fault_commands[0], "the delete command names another pod")
+must(fault_started["subject"]["name"] == target["name"], "the event names another pod")
+must(steps["F2-F4"]["exitStatus"] == 0, "the fault command failed")
+pod_rows = [r for r in jsonl(EVIDENCE / "pods.jsonl") if r.get("record") == "reading"]
+
+
+def field(pod: dict, name: str):
+    value = pod.get(name)
+    return value.get("value") if isinstance(value, dict) else value
+
+
+before_pods, identities, deletions, restarts = set(), {}, {}, {}
+gone_or_deleting = None
+for reading in pod_rows:
+    read_start = instant(reading["read"]["startedAt"])
+    read_end = instant(reading["read"]["finishedAt"])
+    uids = set()
+    for pod in reading["pods"]:
+        uid = field(pod, "uid")
+        uids.add(uid)
+        if read_end < started_at:
+            before_pods.add(uid)
+        identities.setdefault(uid, {"name": field(pod, "name"), "tier": field(pod, "tier"), "first": read_end, "ready": None})
+        identities[uid]["last"] = read_end
+        if field(pod, "ready") == "True" and identities[uid]["ready"] is None:
+            identities[uid]["ready"] = read_end
+        deletion = field(pod, "deletionTimestamp")
+        if deletion:
+            deletions.setdefault(uid, deletion)
+            if uid == target["uid"] and read_start >= started_at and gone_or_deleting is None:
+                gone_or_deleting = (reading["index"], clock(read_end))
+        for key in ("restartCount", "initRestartCount"):
+            count = field(pod, key)
+            if count:
+                restarts[(uid, key)] = max(count, restarts.get((uid, key), 0))
+    if read_start >= started_at and target["uid"] not in uids and gone_or_deleting is None:
+        gone_or_deleting = (reading["index"], clock(read_end))
+must(gone_or_deleting is not None, "no pods reading shows the deleted UID deleting or absent")
+must(set(deletions) <= {target["uid"]}, f"another pod has a deletion timestamp: {deletions}")
+
+# AC2 ------------------------------------------------------------------------------
+stream_figures = {}
+for role in ("endpoints", "pods", "deployments", "argo"):
+    rows = [r for r in jsonl(EVIDENCE / f"{role}.jsonl") if r.get("record") == "reading"]
+    inside = [
+        r for r in rows
+        if start <= instant(r["read"]["startedAt"]) and instant(r["read"]["finishedAt"]) <= end
+    ]
+    answered = [r for r in inside if r["read"]["state"] == "answered"]
+    must(bool(inside) and inside[0]["read"]["state"] == "answered", f"{role}: first reading")
+    must(inside[-1]["read"]["state"] == "answered", f"{role}: last reading")
+    gaps = [
+        (instant(b["read"]["startedAt"]) - instant(a["read"]["finishedAt"])).total_seconds()
+        for a, b in zip(answered, answered[1:])
+    ]
+    must(max(gaps) <= 10, f"{role}: {max(gaps)} s between two readings")
+    stream_figures[role] = (len(inside), len(answered), max(gaps))
+
+# AC3 ------------------------------------------------------------------------------
+requests = [r for r in jsonl(EVIDENCE / "caller.jsonl") if r.get("record") == "request"]
+requests.sort(key=lambda r: r["finishedAt"])
+record = document["caller"]["record"]
+must(record["mode"] == "in-cluster" and record["endState"] == "duration", "the caller mode or end")
+must(record["coversWindow"] is True, "the caller record does not cover the window")
+must(instant(record["startedAt"]) + margin < start, "the caller start is inside the clock margin")
+must(instant(record["finishedAt"]) - margin > end, "the caller end is inside the clock margin")
+# The last completion before the window is one of the completions that can be before it:
+# each inside the margin of the start, and the last that is before the start by more.
+certain = [r for r in requests if instant(r["finishedAt"]) + margin < start]
+inside_margin = [r for r in requests if abs(instant(r["finishedAt"]) - start) <= margin]
+candidates = ([certain[-1]] if certain else []) + inside_margin
+must(bool(candidates), "no completion before the window")
+must(all(r["outcome"] == "success" for r in candidates), f"a candidate failed: {candidates}")
+after_fault = [r for r in requests if finished_at + margin < instant(r["finishedAt"]) and instant(r["finishedAt"]) + margin < end]
+must(len(after_fault) >= 1, "no request completes after the fault inside the window")
+
+# AC4 and AC5 ----------------------------------------------------------------------
+recovery = document["stabilizedRecovery"]
+must(recovery["stabilized"] is True, "no stabilized recovery")
+stabilized = instant(recovery["stabilizedAt"])
+must(stabilized + margin < limit, "the stabilized recovery is not inside the observation limit")
+new_uids = [
+    uid for uid, info in identities.items()
+    if uid not in before_pods and info["tier"] == e02a.RUNTIME_TIER and info["first"] > started_at
+]
+ready_new = [uid for uid in new_uids if identities[uid]["ready"] is not None]
+must(len(new_uids) == 1 and bool(ready_new), f"the replacement pods are {new_uids}")
+replacement = identities[ready_new[0]]
+after_stable = [
+    r for r in requests
+    if r["outcome"] == "success" and stabilized < instant(r["finishedAt"]) and instant(r["finishedAt"]) + margin < end
+]
+must(len(after_stable) >= 10, "fewer than 10 successes after the stabilized instant")
+last_after = (instant(after_stable[-1]["finishedAt"]) - stabilized).total_seconds()
+must(last_after >= 60, "the last success is less than 60 s after the stabilized instant")
+
+# AC6 ------------------------------------------------------------------------------
+must(not restarts, f"a container restarted: {restarts}")
+others = {uid: info for uid, info in identities.items() if uid != target["uid"] and uid not in new_uids}
+must(all(info["first"] < started_at and info["last"] > end for info in others.values()), "a pod that the fault did not target was replaced")
+must(len(new_uids) == 1, "more than one pod was added")
+api_pods = [i["name"] for i in others.values() if i["tier"] == e02a.API_TIER]
+must(len(api_pods) == 2, f"the API pods are {api_pods}")
+
+# The reads that the review compares ------------------------------------------------
+raw_blocks = clean((WORK / "transcript.txt").read_text("utf-8")).split(chr(10) + "$ ")
+
+
+def read_blocks(verb: str) -> list[dict]:
+    documents = []
+    for block in raw_blocks:
+        if f" verb {verb}" in block.split(chr(10), 1)[0]:
+            body = block.split(chr(10), 1)[1]
+            documents.append(json.loads(body[: body.rfind("[exit")]))
+    return documents
+
+
+node_reads = read_blocks("nodes")
+node_states = {
+    condition["status"]
+    for document in node_reads
+    for item in document["items"]
+    for condition in item["status"]["conditions"]
+    if condition["type"] == "Ready"
+}
+must(bool(node_reads) and node_states == {"True"}, f"the node reads state {node_states}")
+claim_reads = read_blocks("claims")
+claims = {
+    (item["metadata"]["name"], item["metadata"]["uid"], item["status"].get("phase"))
+    for document in claim_reads
+    for item in document["items"]
+}
+must(len(claims) == 1 and next(iter(claims))[2] == "Bound", f"the claims are {claims}")
+rebuilt = e02a.declaration(
+    plan,
+    run_id=RUN,
+    desired=steps["P2"]["desiredRevision"],
+    started=started_at,
+    finished=finished_at,
+)
+must(rebuilt == json.loads(declaration), "the stored declaration differs from the rule")
+init = [
+    pod
+    for reading in pod_rows
+    for pod in reading["pods"]
+    if field(pod, "uid") == ready_new[0]
+][-1]
+verify = next(c for c in field(init, "initContainers") if field(c, "name") == "verify-model")
+must(field(verify, "ready") is True and field(verify, "restartCount") == 0, "verify-model")
+
+# The run directory ----------------------------------------------------------------
+tracked = subprocess.run(
+    ["git", "ls-files", "--error-unmatch", str(TARGET / "run.v1alpha1.json")],
+    cwd=REPOSITORY, capture_output=True, check=False,
+)
+if tracked.returncode == 0:
+    raise SystemExit(f"{TARGET} is committed. A committed run directory is never edited.")
+TARGET.mkdir(parents=True, exist_ok=True)
+for role in ("caller", "endpoints", "pods", "deployments", "argo", "telemetry", "resources"):
+    shutil.copyfile(EVIDENCE / f"{role}.jsonl", TARGET / f"{role}.jsonl")
+shutil.copyfile(WORK / "operator-events.jsonl", TARGET / "operator-events.jsonl")
+shutil.copyfile(WORK / "declaration.json", TARGET / "declaration.json")
+write("control.json", clean((WORK / "control.json").read_text("utf-8")))
+write("commands.txt", clean((WORK / "commands.txt").read_text("utf-8")))
+transcript = clean((WORK / "transcript.txt").read_text("utf-8"))
+write("transcript.txt", transcript)
+
+readings = control["clockReadings"]
+
+
+def offset_midpoint(reading: dict) -> float:
+    node = instant(reading["node"])
+    low = (node - instant(reading["hostAfter"])).total_seconds() * 1000
+    high = (node - instant(reading["hostBefore"])).total_seconds() * 1000
+    return (low + high) / 2
+
+
+net_change = offset_midpoint(readings["end"]) - offset_midpoint(readings["start"])
+lines = ["##### The stable environment identity of each capacity reading"]
+for name in ("before-install", "before-apply"):
+    capacity = json.loads((EVIDENCE / f"capacity-{name}.json").read_text("utf-8"))
+    identity = e02a.stable_environment_identity(e02a._capacity_sources(capacity))
+    digest = e02a.environment_digest(identity)
+    must(digest == plan.environment_sha256, f"{name}: identity {digest}")
+    lines += [f"{name}: {digest}"]
+lines += [f"The record states: {plan.environment_sha256}", "", "##### The clock readings of P8"]
+for name in ("start", "end"):
+    reading = readings[name]
+    lines += [f"{name}: host {reading['hostBefore']} node {reading['node']} host {reading['hostAfter']}"]
+lines += [
+    f"clock bound: {bound_ms} ms",
+    f"net change of the offset from the start reading to the end reading: {net_change:+.1f} ms",
+    "",
+]
+for name in ("before-install", "before-apply"):
+    text = (EVIDENCE / f"capacity-{name}.json").read_text("utf-8")
+    lines += [f"##### The capacity record, reading {name}", clean(text).rstrip("\n"), ""]
+write("environment.txt", "\n".join(lines).rstrip("\n") + "\n")
+
+blocks = transcript.split("\n$ ")
+provenance = next(b for b in blocks if " verb provenance " in b.split("\n", 1)[0])
+plan_text = (EVIDENCE / "plan.json").read_text("utf-8")
+write(
+    "release.txt",
+    "\n".join(
+        [
+            "##### The API image that this run built",
+            steps["P5"]["apiImageDigest"],
+            "",
+            "##### The provenance of the release key at the desired revision",
+            "$ " + provenance.rstrip("\n"),
+            "",
+            "##### The plan of the caller",
+            plan_text.rstrip("\n"),
+            "",
+        ]
+    ),
+)
+
+binding = REPOSITORY / "contracts/environment/examples/valid/local-docker-desktop.yaml"
+manifest = {
+    "apiVersion": "inferops.io/v1alpha1",
+    "kind": "ExperimentRun",
+    "metadata": {
+        "experimentId": "V2-E02A",
+        "runId": RUN,
+        "spec": {
+            "freezeRecord": RECORD,
+            "freezeRevision": 4,
+            "freezeContentSha256": plan.record_sha256,
+        },
+        "executingRevision": steps["P1"]["executingRevision"],
+        "startedAt": control["startedAt"][:19] + "Z",
+        "finishedAt": control["finishedAt"][:19] + "Z",
+    },
+    "environment": {
+        "binding": {
+            "environment": "local",
+            "name": "local-docker-desktop",
+            "sha256": content_digest(binding.read_bytes()),
+        },
+        "provider": "docker-desktop",
+        "kubernetesVersion": "v1.36.1",
+        "nodeCount": 1,
+    },
+    "release": {
+        "releaseId": plan.release_id,
+        "contractSha256": "74b20b71e4cdafd79378e21f881b216588625de867cd8ba029b4be1308a8fb7a",
+        "helmValuesSha256": plan.desired_state_files["values.generated.yaml"],
+        "desiredStateRevision": steps["P2"]["desiredRevision"],
+    },
+    "runtime": {
+        "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+    },
+    "model": {
+        "identifier": "qwen3-1-7b-q8-0",
+        "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+        "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    },
+    "callerProfile": {
+        "applies": True,
+        "profileId": "RP-1",
+        "profileRevision": 1,
+        "contentSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+        "concurrency": 2,
+    },
+    "fault": {
+        "registered": True,
+        "type": "delete-runtime-pod",
+        "injected": True,
+        "target": f"pod/{target['name']}",
+        "injectedAt": fault_started["recordedAt"],
+    },
+    "result": {"state": "PASSED"},
+    "evidenceLevel": {"intended": "C2"},
+    "cleanup": {"state": "verified"},
+    "limitations": [
+        "One run, on one provider, one node, one Kubernetes version, one release, one model, and one caller workload. A result is bounded to that execution.",
+        "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so the state PASSED states that the run is valid. It does not state that the service stayed available.",
+        "The readings and the events are on the host clock, and the caller instants and the Kubernetes timestamps are on the node clock. The clock bound holds between the two P8 readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
+        "A stream reads a state at intervals of at least 2 s, so a state that lasts less than one interval can be missed. The analysis states an inner and an outer figure, and neither is the exact time.",
+        "The host of this run had 15.7 GB of physical memory, and other applications ran on it. The capacity gate does not read the host. The operator read the host memory each minute, and the validation record of the change states the lowest figures.",
+        "The API omits a count of a Deployment that is zero, so the runtime readyReplicas count has no value while no runtime pod is Ready. The result page states that interval. E02A-AC2 was judged on the readings of each stream.",
+    ],
+    "doesNotEstablish": [
+        "That one runtime replica is or is not acceptable for any service.",
+        "Node failure, overload, sustained capacity, or production availability.",
+        "The cause of a failure, of a gap, or of a recovery.",
+        "Anything about another provider, node, release, or caller workload.",
+        "The classification of the set of runs, or that the baseline is eligible for the comparison with V2-E02B.",
+    ],
+    "evidence": {"files": []},
+}
+ROLES = [
+    ("caller", "caller.jsonl"),
+    ("endpoints", "endpoints.jsonl"),
+    ("pods", "pods.jsonl"),
+    ("deployments", "deployments.jsonl"),
+    ("argo", "argo.jsonl"),
+    ("telemetry", "telemetry.jsonl"),
+    ("resources", "resources.jsonl"),
+    ("operator-events", "operator-events.jsonl"),
+    ("commands", "commands.txt"),
+    ("transcript", "transcript.txt"),
+    ("transcript", "control.json"),
+    ("transcript", "declaration.json"),
+    ("environment", "environment.txt"),
+    ("release", "release.txt"),
+]
+
+
+def entry(role: str, path: str) -> dict:
+    return {
+        "role": role,
+        "path": path,
+        "sha256": content_digest((TARGET / path).read_bytes()),
+    }
+
+
+def write_manifest() -> None:
+    write(layout.MANIFEST_NAME if hasattr(layout, "MANIFEST_NAME") else "run.v1alpha1.json", json.dumps(manifest, indent=2) + "\n")
+
+
+manifest["evidence"]["files"] = [entry(role, path) for role, path in ROLES]
+write_manifest()
+bound = replay.bind_run(TARGET, declaration, REVISION, TARGET_ROOT)
+write("analysis.json", replay.record_text(bound))
+manifest["evidence"]["files"].append(entry("analysis", "analysis.json"))
+
+caller_lines = jsonl(EVIDENCE / "caller.jsonl")
+ending = next(line for line in caller_lines if line.get("record") == "end")
+statuses = Counter(str(r["httpStatus"]) for r in requests)
+conditions = Counter(
+    (r["errorCode"], r["errorCondition"]) for r in requests if r.get("errorCode")
+)
+latencies = sorted(r["latencyMs"] for r in requests if r["outcome"] == "success")
+must(len(latencies) >= 100, "fewer than 100 requests succeeded")
+
+
+def nearest(percent: int) -> int:
+    return latencies[math.ceil(percent / 100 * len(latencies)) - 1]
+
+
+longest_failed = current_failed = 0
+for request in requests:
+    current_failed = current_failed + 1 if request["outcome"] != "success" else 0
+    longest_failed = max(longest_failed, current_failed)
+failures = [r for r in requests if r["outcome"] != "success"]
+must(bool(failures), "no request failed, so the page has no first failure")
+first_success_after = next(
+    r for r in requests
+    if r["outcome"] == "success" and instant(r["finishedAt"]) > instant(failures[0]["finishedAt"])
+)
+to_first_success = (instant(first_success_after["finishedAt"]) - started_at).total_seconds()
+last_replacement = [
+    pod for reading in pod_rows for pod in reading["pods"] if field(pod, "uid") == ready_new[0]
+][-1]
+created_at = field(last_replacement, "createdAt")
+ready_transition = field(last_replacement, "readyTransitionAt")
+to_ready = (instant(ready_transition) - instant(created_at)).total_seconds()
+api_zero = document["zeroReadyEndpoints"]["tiers"]["platform-api"]
+impact = document["caller"]["firstImpact"]
+caller = document["caller"]
+episodes = caller["failureEpisodes"]
+gap = caller["maxSuccessGap"]
+zero = document["zeroReadyEndpoints"]["tiers"]["serving-runtime"]
+requests_window = caller["requests"]
+outcomes = sorted({r["outcome"] for r in requests})
+deployment_gap = recovery["conditions"]["readyReplicas"]["readings"]["largestTimeBetweenReadsMs"]
+window_failures = [
+    r for r in requests if r["outcome"] != "success" and start <= instant(r["finishedAt"]) <= end
+]
+page = f"""# Run {RUN}: PASSED
+
+Run `{RUN}` of [V2-E02A](../../freeze-r4.v1alpha1.json), under revision 4, on 2026-10-31 from
+{control['startedAt'][11:19]}Z to {control['finishedAt'][11:19]}Z, at the commit
+`{REVISION}`, on the docker-desktop provider, with one node.
+
+**State: PASSED.** Each of the seven criteria held. V2-E02A is a baseline characterization,
+and all seven are validity criteria. So this state says that the run is valid evidence of
+what the loss of the one runtime pod looks like. It is not a reliability pass. **Requests
+failed in this run**, and that does not change the state. The intended evidence level is C2.
+
+## What the run did
+
+The control deleted the one runtime pod, `{target['name']}`, once, while the RP-1 runner sent
+requests. `fault-injection-started` was recorded at {clock(started_at)}, and
+`fault-injection-finished` at {clock(finished_at)}. The window is {clock(start)} to {clock(end)}.
+
+## The criteria
+
+The clock bound of this run is {bound_ms} ms, so the margin of a cross-clock order is
+{bound_ms + 1} ms.
+
+| Criterion | Kind | Verdict | Evidence |
+|---|---|---|---|
+| `E02A-AC1` | validity | Held | `commands.txt` holds one fault command. It names the pod that F1 in `control.json` selected, with the UID `{target['uid']}`. `operator-events.jsonl` names that pod. `pods.jsonl`, reading {gone_or_deleting[0]}, finished at {gone_or_deleting[1]}, is the first reading after the event that shows that UID deleting or absent. No other pod has a deletion timestamp. |
+| `E02A-AC2` | validity | Held | Inside the window: endpoints {stream_figures['endpoints'][1]} of {stream_figures['endpoints'][0]} readings answered, largest time between two {stream_figures['endpoints'][2]:.3f} s. Pods {stream_figures['pods'][1]} of {stream_figures['pods'][0]}, {stream_figures['pods'][2]:.3f} s. Deployments {stream_figures['deployments'][1]} of {stream_figures['deployments'][0]}, {stream_figures['deployments'][2]:.3f} s. Argo {stream_figures['argo'][1]} of {stream_figures['argo'][0]}, {stream_figures['argo'][2]:.3f} s. The first and the last reading of each stream answered. |
+| `E02A-AC3` | validity | Held | The runner collection accepted the record with the plan: mode `in-cluster`, end state `duration`. The record starts at {record['startedAt'][11:23]}Z and finishes at {record['finishedAt'][11:23]}Z, so it covers the window by more than the margin. {len(inside_margin)} completion(s) are inside the margin of the window start, so the last completion before the window is one of {len(candidates)} request(s). Each of them succeeded, so the verdict needs no order of those instants. {len(after_fault)} requests complete inside the window after `fault-injection-finished`, by more than the margin. |
+| `E02A-AC4` | validity | Held | A pod with a new UID, `{replacement['name']}`, is Ready in `pods.jsonl` from {clock(replacement['ready'])}. The analysis states a stabilized recovery at {clock(stabilized)}, before the observation limit at {clock(limit)} by more than the margin. |
+| `E02A-AC5` | validity | Held | {len(after_stable)} successful requests complete after `stabilizedAt` inside the window, and the last completes {last_after:.3f} s after it. |
+| `E02A-AC6` | validity | Held | `pods.jsonl` states no restart of any container. The two API pods are the same two pods in each reading from before the fault to after the window. The one pod added is the runtime replacement. `control.json` records no abort. `transcript.txt` holds {len(node_reads)} reads of the node during the run, and each states Ready `True`. |
+| `E02A-AC7` | validity | Held | Each file of the evidence paths is present and named by the manifest. The event log is closed. `tools.experiment_evidence check` accepts this directory, and `tools.analysis_replay verify` reproduces `analysis.json`. The validation record of the change states the commands. |
+
+## What the files show
+
+These are readings of this run. No criterion compares them with a bound, and this page
+states no cause.
+
+| Reading | Value |
+|---|---:|
+| Requests completed inside the window | {requests_window['completed']} |
+| Successful | {requests_window['successful']} |
+| Failed | {requests_window['failed']} |
+| Failure episodes | {episodes['count']} |
+| Caller failure episode, total | {seconds(episodes['callerFailureEpisodeMs'])} |
+| Largest time between two successful completions | {seconds(gap['ms'])} |
+| Runtime tier at zero Ready endpoints, inner figure | {seconds(zero['totalInnerMs'])} |
+| Runtime tier at zero Ready endpoints, outer figure | {seconds(zero['totalOuterMs'])} |
+| Stabilized recovery after `fault-injection-started` | {seconds(recovery['sinceFault']['fromFaultStartedMs'])} |
+| First caller impact, the completion of the first failed request | {impact['finishedAt'][11:23]}Z |
+| Failed requests since the fault | {recovery['requestsFailedSinceFault']} |
+| API tier at zero Ready endpoints | {api_zero['count']} intervals |
+
+From the whole caller record, not the window alone:
+
+| Reading | Value |
+|---|---:|
+| Requests started | {ending['dispatched']} |
+| Requests completed | {ending['recorded']} |
+| HTTP status | {', '.join(f"{status}: {count}" for status, count in sorted(statuses.items()))} |
+| Canonical error code and condition | {', '.join(f"`{code}`, `{condition}`: {count}" for (code, condition), count in sorted(conditions.items()))} |
+| Latency of the successful requests, nearest-rank p50 | {nearest(50):,} ms |
+| Latency of the successful requests, nearest-rank p95 | {nearest(95):,} ms |
+| Latency of the successful requests, nearest-rank p99 | {nearest(99):,} ms |
+| Latency of the successful requests, minimum | {latencies[0]:,} ms |
+| Latency of the successful requests, maximum | {latencies[-1]:,} ms |
+| Longest run of failed completions with no success between them | {longest_failed} |
+| From `fault-injection-started` to the first successful completion after the first failure, an event on the host clock to a completion on the node clock | {to_first_success:.3f} s |
+
+For the replacement pod, `createdAt` is {created_at} and `readyTransitionAt` is
+{ready_transition}, so its time from creation to its first Ready condition is {to_ready:.0f} s,
+to one second. Each signal of the declaration states its detection lag, its false-healthy time,
+and its false-unavailable time in `analysis.json`.
+
+- **The failed requests:** {', '.join(f"request {r['sequence']} at {r['finishedAt'][11:23]}Z, `{r['outcome']}`" for r in window_failures) or 'none'}.
+- **The stabilized recovery is a rule of the analysis, not a measured recovery of the service.**
+  It is the end of the first span of at least 10 successes over at least 60 s after the fault,
+  with the conditions held. So it is at least 60 s later than the first success of its span.
+- **The runtime readyReplicas count:** the API omits a count that is zero, so this count has no
+  value in {recovery['conditions']['readyReplicas']['readings']['withoutValue']} readings, and the
+  largest time between two readings with a value of this count is {seconds(deployment_gap)}.
+  E02A-AC2 states a limit for the readings of a stream, and the stream states other values in
+  those readings. The classification of the set of runs reads this statement.
+- **The net change of the clock offset** from the start reading to the end reading is
+  {net_change:+.1f} ms. No verdict reads it.
+
+## What the review compared
+
+The control leaves these comparisons to the review of the run.
+
+| Comparison | Outcome |
+|---|---|
+| The stored declaration and the rule of the record | Equal. The rule, with the desired revision and the two fault events of this run, gives the stored document. |
+| The freeze record of the manifest and the registry | Equal. The manifest names revision 4 with the digest that the registry pins. |
+| A change that a person made | None. `operator-events.jsonl` holds the two fault events and no other event, and the analysis states no manual action. |
+| The cleanup | `control.json` states that the removal exited 0, and that the namespaces and the custom resource definitions equal those read before P5. |
+| **The model file of the replacement pod** | **Not compared directly.** The procedure read the model verification log of the first runtime pod alone, and the cluster was removed, so the digest that the replacement pod verified was not read. The indirect evidence is this: the chart verifies the byte count and the SHA-256 at each pod start, the Application sets `verifyOnStart: sha256`, `pods.jsonl` states that the `verify-model` init container of the replacement pod completed with 0 restarts, and {len(claim_reads)} reads of the model cache claim state one UID, `Bound`. |
+
+## What this establishes, and what it does not
+
+For one run, on one provider, it shows what the caller, the endpoints, and the pods showed when
+the one runtime pod was deleted while RP-1 ran.
+
+It does not establish that one runtime replica is or is not acceptable for any service; node
+failure, overload, sustained capacity, or production availability; the cause of a failure, of a
+gap, or of a recovery; or anything about another provider, node, release, or caller workload. It
+does not classify the set of runs, and it does not decide that the baseline is eligible for the
+comparison with V2-E02B.
+"""
+write("result.md", page)
+manifest["evidence"]["files"].append(entry("result", "result.md"))
+write_manifest()
+report = replay.replay_run(TARGET, TARGET_ROOT)
+must(report.status == "replayed", f"the replay: {report.findings}")
+print(f"ASSEMBLED {RUN}: replay {report.status}; failed {requests_window['failed']}; "
+      f"episode {episodes['callerFailureEpisodeMs']} ms; recovery "
+      f"{recovery['sinceFault']['fromFaultStartedMs']} ms")

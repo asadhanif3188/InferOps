@@ -19,9 +19,10 @@ that topology can be compared with the loss of the one runtime pod of a release
 with one. Since `V2-S6-003-PR1` the [freeze records of V2-E02A and
 V2-E02B](../proof/experiments/README.md#the-reliability-experiment-freezes) define that
 comparison, pin this profile and its comparison record, and preregister the Git switch
-that delivers the baseline through the target's Application. No run of either exists.
+that delivers the baseline through the target's Application. [V2-E02A has three runs](../proof/experiments/README.md#the-v2-e02a-runs)
+since `V2-S7-001-PR2`, and no run of V2-E02B exists, so no comparison has been made.
 (Until then this paragraph said that no experiment that makes the comparison is
-defined.) Such a comparison means something only while the runtime replica
+defined, and until `V2-S7-001-PR2` that no run of either exists.) Such a comparison means something only while the runtime replica
 count is the one variable that differs. This page describes the baseline, each difference that it
 is permitted to have, the check that refuses any other difference, and what a
 comparison record does not establish.

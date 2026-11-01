@@ -1,0 +1,39 @@
+[
+  {
+    "chart": {
+      "appVersion": "0.1.0",
+      "name": "inferops-llm",
+      "path": "charts/inferops-llm",
+      "version": "0.6.0"
+    },
+    "desiredState": {
+      "directory": "gitops/environments/local-docker-desktop/workloads/support-assistant",
+      "key": "local-docker-desktop/support-assistant",
+      "releasePath": "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+      "valuesPath": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+    },
+    "git": {
+      "revision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+    },
+    "release": {
+      "contractSha256": "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d",
+      "environmentBinding": {
+        "environment": "local",
+        "name": "local-docker-desktop",
+        "sha256": "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
+      },
+      "platformDefaultsRevision": "cdcfd62baf6fff56ca179711855510c93194ce80",
+      "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
+      "rendererRevision": "cdcfd62baf6fff56ca179711855510c93194ce80",
+      "valuesSha256": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6",
+      "workloadId": "support-assistant",
+      "workloadVersion": "0.1.0"
+    },
+    "schema": "inferops.io/desired-state-provenance/v1alpha1",
+    "workloadLabels": {
+      "app.kubernetes.io/version": "0.1.0",
+      "helm.sh/chart": "inferops-llm-0.6.0",
+      "inferops.io/workload": "support-assistant"
+    }
+  }
+]

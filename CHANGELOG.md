@@ -10,6 +10,20 @@ from `1.0.0`.
 
 ### Added
 
+- **The three runs of V2-E02A.** `V2-S7-001-PR2` executed the runs under revision 4 at the
+  merged commit `ff45093`, on the docker-desktop provider, at C2. In each run the control
+  deleted the one runtime pod once while RP-1 ran. All seven validity criteria held in
+  each, so `e02a-1`, `e02a-2`, and `e02a-3` are `PASSED` and counted. V2-E02A is a
+  characterization, so that state says that a run is valid and is not a reliability pass:
+  two requests failed in each run, in one failure episode of about 4 s. The first evidence
+  of the change is a bounded observation of the G1 switch, with 2 API replicas and 1 runtime
+  replica at the merged revision. One correction of each run fixes two digests in its
+  manifest and records that the owner approved the reading of `E02A-AC2` after the
+  evidence was read. No GitOps switch, freeze registration, or frozen input is
+  changed. The set is not classified, and its comparison eligibility is not decided. See
+  [the runs](docs/proof/experiments/README.md#the-v2-e02a-runs) and
+  [the validation record](docs/proof/environment/v2-s7-001-pr2-validation.md).
+
 - **The G1 switch of the desired state to the single-runtime baseline, and revision 4
   of the V2-E02A record.** `V2-S7-003-PR1` executes rule G1 of the V2-E02A record: the
   two files at `gitops/environments/local-docker-desktop/workloads/support-assistant`

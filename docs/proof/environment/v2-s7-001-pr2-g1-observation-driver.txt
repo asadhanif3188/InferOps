@@ -1,0 +1,259 @@
+#!/usr/bin/env bash
+# Drives one bounded observation of the G1 switch on the docker-desktop provider
+# and prints one transcript. Run it from the repository root, with a run name as
+# the one argument. The transcript goes to standard output.
+#
+# It installs the release that the Application delivers from main, reads that
+# release, and removes it. It sends no caller request, injects no fault, and
+# changes no object that the Application manages. It is not a run of V2-E02A, and
+# it spends no run identifier. This file is not an input of a freeze record.
+#
+# The preparation is the preparation of P5 of the E02A freeze record, in the same
+# order. The E02A driver holds those commands too, and it refuses a verb outside
+# its phase run, so this file states them again.
+#
+# The observation holds when each of these is read:
+#   the remote main is the merge of the G1 switch
+#   the two desired-state files at that commit have the digests of the record
+#   the Application reports Synced and Healthy at that commit
+#   the API Deployment reports 2 ready replicas, and the runtime Deployment 1
+#   the API Service has 2 Ready endpoints, and the runtime Service 1
+#   the Application verification passes
+#   the provenance of the release key gives the release identifier of the record
+# Otherwise the driver prints OBSERVATION NOT HELD and exits 1, and the next change
+# stops: no run starts on an observation that does not hold.
+#
+# A preparation step that fails ends the driver, and nothing is cleaned up: the
+# operator reads the state first. The message names the procedure that removes it.
+set -u
+
+RUN="${1:?give a run name: lowercase letters, digits, and hyphens}"
+
+G1_REVISION="ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+RELEASE_FILE_SHA256="f7eaab845c29ecfc1014005d570721e4d2e0f4d5e6b63aab92b8e52a7aea876e"
+VALUES_FILE_SHA256="e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+RELEASE_ID="ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+DESIRED_PATH="gitops/environments/local-docker-desktop/workloads/support-assistant"
+
+NAMESPACE="inferops-release"
+CONTROLLER_NAMESPACE="argocd"
+APPLICATION="local-docker-desktop-support-assistant"
+RELEASE_KEY="local-docker-desktop/support-assistant"
+API_DEPLOYMENT="inferops-inferops-llm"
+RUNTIME_DEPLOYMENT="inferops-inferops-llm-runtime"
+INSTANCE_SELECTOR="app.kubernetes.io/instance=inferops"
+KINDS="deployments,replicasets,pods,jobs,services,configmaps,serviceaccounts,networkpolicies,roles,rolebindings,poddisruptionbudgets"
+SCRIPT="scripts/environment/argocd-application.sh"
+BOOTSTRAP="scripts/environment/argocd-bootstrap.sh"
+PREREQUISITES="scripts/environment/terraform-prerequisites.sh"
+CAPACITY="scripts/environment/capacity-preflight.sh"
+OBSERVATIONS=".artifacts/argocd-application/observations"
+WORK=".artifacts/v2-s7-001-pr2/${RUN}"
+
+TOPOLOGY_BOUND_SECONDS=1800
+TOPOLOGY_POLL_SECONDS=10
+
+export INFEROPS_PROVIDER=docker-desktop
+unset INFEROPS_KIND_CLUSTER_NAME
+export PATH="$(pwd)/.venv/Scripts:$(pwd)/.venv/bin:${PATH}"
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
+mkdir -p "${WORK}"
+
+k() { kubectl --context docker-desktop "$@"; }
+
+step() { printf '\n##### %s\n' "$*"; }
+
+run() {
+  printf '$ %s\n' "$*"
+  "$@"
+  printf '[exit %s]\n' "$?"
+}
+
+abort() {
+  printf 'ABORTED: %s. Nothing after it was run, and nothing was cleaned up.\n' "$1"
+  printf 'To remove what the preparation left, run:\n'
+  printf '  bash docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt down\n'
+  exit 1
+}
+
+prepare() {
+  printf '$ %s\n' "$*"
+  "$@"
+  local status=$?
+  printf '[exit %s]\n' "${status}"
+  [ "${status}" -eq 0 ] || abort "a preparation step failed"
+}
+
+findings=0
+held() {
+  if [ "$1" = "$2" ]; then
+    printf 'held      %s: %s\n' "$3" "$1"
+  else
+    printf 'NOT HELD  %s: read %s, expected %s\n' "$3" "${1:-nothing}" "$2"
+    findings=$((findings + 1))
+  fi
+}
+
+ready_replicas() { k get deployment "$1" -n "${NAMESPACE}" -o 'jsonpath={.status.readyReplicas}'; }
+
+# The Ready endpoints of one Service, from its EndpointSlices.
+ready_endpoints() {
+  k get endpointslices.discovery.k8s.io -n "${NAMESPACE}" \
+    -l "kubernetes.io/service-name=$1" \
+    -o 'jsonpath={range .items[*]}{range .endpoints[*]}{.conditions.ready}{"\n"}{end}{end}' |
+    tr -d '\r' | grep -c '^true$'
+}
+
+application_state() {
+  k get application "${APPLICATION}" -n "${CONTROLLER_NAMESPACE}" \
+    -o 'jsonpath={.status.sync.status}|{.status.health.status}|{.status.sync.revision}'
+}
+
+model_cache_fill() {
+  bash scripts/environment/api-image.sh values >"${WORK}/api-image-values.yaml" || return 1
+  bash scripts/environment/model-seed-image.sh values >"${WORK}/model-seed-values.yaml" || return 1
+  helm --kube-context docker-desktop install inferops charts/inferops-llm \
+    --namespace "${NAMESPACE}" \
+    --values charts/inferops-llm/ci/real-values.yaml \
+    --values "${WORK}/api-image-values.yaml" \
+    --values "${WORK}/model-seed-values.yaml" \
+    --set model.acquisition.resources.limits.memory=2Gi \
+    --wait --timeout 15m || return 1
+  helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" \
+    --wait --timeout 600s || return 1
+  local left="unread"
+  for _ in $(seq 1 120); do
+    left="$(k get "${KINDS}" -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" -o name)" || return 1
+    [ -n "${left}" ] || break
+    sleep 2
+  done
+  printf 'What the preparation release left: %s\n' "${left:-nothing}"
+  [ -z "${left}" ]
+}
+
+step "0. The revision and the cluster before the run"
+run date -u +%Y-%m-%dT%H:%M:%SZ
+run git rev-parse HEAD
+run git status --short
+run git ls-remote origin refs/heads/main
+run kubectl version --context docker-desktop
+run k get nodes -o name
+k get namespaces -o name | tr -d '\r' | sort >"${WORK}/namespaces.before"
+k get customresourcedefinitions -o name | tr -d '\r' | sort >"${WORK}/crds.before"
+run cat "${WORK}/namespaces.before"
+run cat "${WORK}/crds.before"
+main_before="$(git ls-remote origin refs/heads/main | cut -f1)"
+[ "${main_before}" = "${G1_REVISION}" ] || abort "the remote main is not the merge of the G1 switch"
+for namespace in "${NAMESPACE}" "${CONTROLLER_NAMESPACE}"; do
+  grep -q "^namespace/${namespace}\$" "${WORK}/namespaces.before" &&
+    abort "the cluster already holds the namespace ${namespace}"
+done
+
+step "1. One capacity reading"
+prepare bash "${CAPACITY}" --into "${RUN}-before-install"
+
+step "2. Preparation: the two images, built and loaded into the node"
+prepare bash scripts/environment/api-image.sh build
+prepare bash scripts/environment/api-image.sh load
+prepare bash scripts/environment/model-seed-image.sh build
+prepare bash scripts/environment/model-seed-image.sh load
+API_IMAGE_DIGEST="$(bash scripts/environment/api-image.sh digest)" ||
+  abort "the API image digest was not read"
+printf 'API image digest on this host: %s\n' "${API_IMAGE_DIGEST}"
+
+step "3. Preparation: the prerequisite layer"
+prepare bash "${PREREQUISITES}" apply
+
+step "4. Preparation: fill the model cache claim with one preparation release"
+prepare model_cache_fill
+
+step "5. Preparation: the delivery controller"
+prepare bash "${BOOTSTRAP}" install
+prepare bash "${BOOTSTRAP}" verify
+
+step "6. Apply the Application. The Application follows main"
+prepare bash "${SCRIPT}" apply --api-image-digest "${API_IMAGE_DIGEST}"
+
+step "7. Wait for the topology, bounded at ${TOPOLOGY_BOUND_SECONDS} s"
+deadline=$((SECONDS + TOPOLOGY_BOUND_SECONDS))
+waited="no"
+while [ "${SECONDS}" -lt "${deadline}" ]; do
+  state="$(application_state)"
+  api="$(ready_replicas "${API_DEPLOYMENT}")"
+  runtime="$(ready_replicas "${RUNTIME_DEPLOYMENT}")"
+  if [ "${state}" = "Synced|Healthy|${G1_REVISION}" ] && [ "${api}" = "2" ] && [ "${runtime}" = "1" ]; then
+    waited="yes"
+    break
+  fi
+  sleep "${TOPOLOGY_POLL_SECONDS}"
+done
+printf 'the wait ended after %s s; the state was reached: %s\n' "${SECONDS}" "${waited}"
+
+step "8. The observation of the controller, five samples"
+run bash "${SCRIPT}" observe --samples 5 --interval 2 --into "${RUN}"
+printf '$ python -m tools.reconciliation_evidence %s/%s > %s/reconciliation.json\n' \
+  "${OBSERVATIONS}" "${RUN}" "${WORK}"
+uv run --locked python -m tools.reconciliation_evidence "${OBSERVATIONS}/${RUN}" \
+  >"${WORK}/reconciliation.json"
+printf '[exit %s]\n' "$?"
+
+step "9. The reads of the observation"
+printf '$ bash %s verify
+' "${SCRIPT}"
+bash "${SCRIPT}" verify
+verify_status=$?
+printf '[exit %s]
+' "${verify_status}"
+run k get deployments -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" \
+  -o 'custom-columns=NAME:.metadata.name,SPEC:.spec.replicas,READY:.status.readyReplicas'
+run k get pods -n "${NAMESPACE}" -l "${INSTANCE_SELECTOR}" \
+  -o 'custom-columns=NAME:.metadata.name,COMPONENT:.metadata.labels.app\.kubernetes\.io/component,PHASE:.status.phase'
+run k get poddisruptionbudgets -n "${NAMESPACE}" -o name
+run k get endpointslices.discovery.k8s.io -n "${NAMESPACE}" \
+  -o 'custom-columns=NAME:.metadata.name,SERVICE:.metadata.labels.kubernetes\.io/service-name'
+printf '$ uv run --locked python -m tools.desired_state_provenance --revision %s %s\n' \
+  "${G1_REVISION}" "${RELEASE_KEY}"
+uv run --locked python -m tools.desired_state_provenance --revision "${G1_REVISION}" \
+  "${RELEASE_KEY}" >"${WORK}/provenance.json"
+printf '[exit %s]\n' "$?"
+provenance_release="$(uv run --locked python -c \
+  'import json,sys; print(json.load(open(sys.argv[1],encoding="utf-8"))[0]["release"]["releaseId"])' \
+  "${WORK}/provenance.json" | tr -d '\r')"
+
+step "10. The verdict of the observation"
+held "$(git ls-remote origin refs/heads/main | cut -f1)" "${G1_REVISION}" "the remote main"
+held "$(git show "${G1_REVISION}:${DESIRED_PATH}/rendered-workload-release.yaml" | sha256sum | cut -d' ' -f1)" \
+  "${RELEASE_FILE_SHA256}" "the release document at that commit"
+held "$(git show "${G1_REVISION}:${DESIRED_PATH}/values.generated.yaml" | sha256sum | cut -d' ' -f1)" \
+  "${VALUES_FILE_SHA256}" "the generated values at that commit"
+held "$(application_state)" "Synced|Healthy|${G1_REVISION}" "the Application"
+held "$(ready_replicas "${API_DEPLOYMENT}")" "2" "API readyReplicas"
+held "$(ready_replicas "${RUNTIME_DEPLOYMENT}")" "1" "runtime readyReplicas"
+held "$(ready_endpoints "${API_DEPLOYMENT}")" "2" "API Ready endpoints"
+held "$(ready_endpoints "${RUNTIME_DEPLOYMENT}")" "1" "runtime Ready endpoints"
+held "${verify_status}" "0" "the Application verification"
+held "${provenance_release}" "${RELEASE_ID}" "the release identifier"
+if [ "${findings}" -eq 0 ]; then
+  printf 'OBSERVATION HELD\n'
+else
+  printf 'OBSERVATION NOT HELD: %s finding(s)\n' "${findings}"
+fi
+
+step "11. Cleanup: the Application, the release, the controller, the prerequisite layer"
+run bash "${SCRIPT}" remove --confirm
+run helm --kube-context docker-desktop uninstall inferops --namespace "${NAMESPACE}" \
+  --ignore-not-found --wait --timeout 600s
+run bash "${BOOTSTRAP}" remove --confirm
+run bash "${PREREQUISITES}" destroy --confirm
+
+step "12. The cluster after the run, asked independently"
+k get namespaces -o name | tr -d '\r' | sort >"${WORK}/namespaces.after"
+k get customresourcedefinitions -o name | tr -d '\r' | sort >"${WORK}/crds.after"
+run diff "${WORK}/namespaces.before" "${WORK}/namespaces.after"
+run diff "${WORK}/crds.before" "${WORK}/crds.after"
+run git status --short
+run date -u +%Y-%m-%dT%H:%M:%SZ
+
+[ "${findings}" -eq 0 ]

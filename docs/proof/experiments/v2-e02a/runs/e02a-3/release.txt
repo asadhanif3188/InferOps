@@ -1,0 +1,113 @@
+##### The API image that this run built
+sha256:cc51601568efd0c3fdc465f0c8c94ef0b79218ecc294b886c6bfed3bff896df3
+
+##### The provenance of the release key at the desired revision
+$ bash <repository>\docs\proof\experiments\v2-e02a\procedure\e02a-driver.txt verb provenance ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b
+[
+  {
+    "chart": {
+      "appVersion": "0.1.0",
+      "name": "inferops-llm",
+      "path": "charts/inferops-llm",
+      "version": "0.6.0"
+    },
+    "desiredState": {
+      "directory": "gitops/environments/local-docker-desktop/workloads/support-assistant",
+      "key": "local-docker-desktop/support-assistant",
+      "releasePath": "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
+      "valuesPath": "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml"
+    },
+    "git": {
+      "revision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+    },
+    "release": {
+      "contractSha256": "56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d",
+      "environmentBinding": {
+        "environment": "local",
+        "name": "local-docker-desktop",
+        "sha256": "8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee"
+      },
+      "platformDefaultsRevision": "cdcfd62baf6fff56ca179711855510c93194ce80",
+      "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
+      "rendererRevision": "cdcfd62baf6fff56ca179711855510c93194ce80",
+      "valuesSha256": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6",
+      "workloadId": "support-assistant",
+      "workloadVersion": "0.1.0"
+    },
+    "schema": "inferops.io/desired-state-provenance/v1alpha1",
+    "workloadLabels": {
+      "app.kubernetes.io/version": "0.1.0",
+      "helm.sh/chart": "inferops-llm-0.6.0",
+      "inferops.io/workload": "support-assistant"
+    }
+  }
+]
+[exit 0]
+
+##### The plan of the caller
+{
+  "answerMembers": {
+    "adapterKind": "adapterKind",
+    "errorConditionId": "conditionId",
+    "errorDetails": "details",
+    "extension": "x_inferops",
+    "modelRef": "modelRef"
+  },
+  "boundary": "RP-1 is a reliability workload: one fixed public request, sent by two closed-loop workers. It is not a representative production workload, an overload test, or a benchmark. Concurrency 2 is a fixed choice and not a measured threshold. No figure from a run under it is a portable capacity figure or a production SLO.",
+  "bounds": {
+    "durationSeconds": 1500,
+    "pauseAfterNonSuccessMs": 1000,
+    "requestCeiling": 10000
+  },
+  "caller": {
+    "concurrency": 2
+  },
+  "experimentId": "V2-E02A",
+  "kind": "ReliabilityRunPlan",
+  "mode": "in-cluster",
+  "profile": {
+    "profileId": "RP-1",
+    "profileRevision": 1,
+    "profileSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+  },
+  "release": {
+    "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
+    "source": "declared"
+  },
+  "request": {
+    "body": {
+      "messages": [
+        {
+          "content": "You are a terse assistant. Answer in at most two sentences. Name three things a Kubernetes readiness probe is for.",
+          "role": "user"
+        }
+      ],
+      "model": "qwen3-1-7b-q8-0",
+      "stream": false
+    },
+    "contentType": "application/json",
+    "correlationIdHeader": "X-InferOps-Correlation-ID",
+    "method": "POST",
+    "path": "/v1/chat/completions",
+    "requestIdHeader": "X-InferOps-Request-ID"
+  },
+  "runId": "e02a-3",
+  "schemaVersion": "inferops.io/reliability-run-plan/v1alpha1",
+  "success": {
+    "requireChoice": true,
+    "requireUsage": true,
+    "requiredAdapterKind": "real",
+    "requiredModelRef": "qwen3-1-7b-q8-0",
+    "requiredStatus": 200
+  },
+  "target": {
+    "baseUrl": "http://inferops-inferops-llm.inferops-release.svc:8090",
+    "kind": "api-service",
+    "namespace": "inferops-release",
+    "port": 8090,
+    "service": "inferops-inferops-llm"
+  },
+  "timeouts": {
+    "requestTimeoutMs": 150000
+  }
+}

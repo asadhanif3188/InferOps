@@ -1,0 +1,162 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRun",
+  "metadata": {
+    "experimentId": "V2-E02A",
+    "runId": "e02a-3",
+    "spec": {
+      "freezeRecord": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+      "freezeRevision": 4,
+      "freezeContentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+    },
+    "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+    "startedAt": "2026-10-31T15:36:41Z",
+    "finishedAt": "2026-10-31T16:42:32Z"
+  },
+  "environment": {
+    "binding": {
+      "environment": "local",
+      "name": "local-docker-desktop",
+      "sha256": "06c8c8aa1617516900ee74e35e73a9a60d1e6d44a5c2fdd9068e4a2027384249"
+    },
+    "provider": "docker-desktop",
+    "kubernetesVersion": "v1.36.1",
+    "nodeCount": 1
+  },
+  "release": {
+    "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
+    "contractSha256": "74b20b71e4cdafd79378e21f881b216588625de867cd8ba029b4be1308a8fb7a",
+    "helmValuesSha256": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6",
+    "desiredStateRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+  },
+  "runtime": {
+    "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+  },
+  "model": {
+    "identifier": "qwen3-1-7b-q8-0",
+    "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+  },
+  "callerProfile": {
+    "applies": true,
+    "profileId": "RP-1",
+    "profileRevision": 1,
+    "contentSha256": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3",
+    "concurrency": 2
+  },
+  "fault": {
+    "registered": true,
+    "type": "delete-runtime-pod",
+    "injected": true,
+    "target": "pod/inferops-inferops-llm-runtime-6b4554dc64-jzh6j",
+    "injectedAt": "2026-10-31T15:47:24.552Z"
+  },
+  "result": {
+    "state": "PASSED"
+  },
+  "evidenceLevel": {
+    "intended": "C2"
+  },
+  "cleanup": {
+    "state": "verified"
+  },
+  "limitations": [
+    "One run, on one provider, one node, one Kubernetes version, one release, one model, and one caller workload. A result is bounded to that execution.",
+    "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so the state PASSED states that the run is valid. It does not state that the service stayed available.",
+    "The readings and the events are on the host clock, and the caller instants and the Kubernetes timestamps are on the node clock. The clock bound holds between the two P8 readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
+    "A stream reads a state at intervals of at least 2 s, so a state that lasts less than one interval can be missed. The analysis states an inner and an outer figure, and neither is the exact time.",
+    "The host of this run had 15.7 GB of physical memory, and other applications ran on it. The capacity gate does not read the host. The operator read the host memory each minute, and the validation record of the change states the lowest figures.",
+    "The API omits a count of a Deployment that is zero, so the runtime readyReplicas count has no value while no runtime pod is Ready. The result page states that interval. E02A-AC2 was judged on the readings of each stream."
+  ],
+  "doesNotEstablish": [
+    "That one runtime replica is or is not acceptable for any service.",
+    "Node failure, overload, sustained capacity, or production availability.",
+    "The cause of a failure, of a gap, or of a recovery.",
+    "Anything about another provider, node, release, or caller workload.",
+    "The classification of the set of runs, or that the baseline is eligible for the comparison with V2-E02B."
+  ],
+  "evidence": {
+    "files": [
+      {
+        "role": "caller",
+        "path": "caller.jsonl",
+        "sha256": "a95f44e9a00a16d3a1def271db18e325c1c8b1dc4528eb72d7ff969ed968c2d3"
+      },
+      {
+        "role": "endpoints",
+        "path": "endpoints.jsonl",
+        "sha256": "5e551c23dd4d42e0ede3de6e93f752c9c7188ff81cde0f3eaaf1b52f0e77e4c5"
+      },
+      {
+        "role": "pods",
+        "path": "pods.jsonl",
+        "sha256": "23891c7744a620e11b0ae1c18a0cfca37ab8772ed859229946c87b4c83ab97f2"
+      },
+      {
+        "role": "deployments",
+        "path": "deployments.jsonl",
+        "sha256": "4adaabb9795cb5424d174f77a15dc89b5600d27298469046a2882d1ec3c9df4c"
+      },
+      {
+        "role": "argo",
+        "path": "argo.jsonl",
+        "sha256": "67751e899af6bf56850ba2cb286076cf83a252d12e35717c6e5d68c3f1adef22"
+      },
+      {
+        "role": "telemetry",
+        "path": "telemetry.jsonl",
+        "sha256": "93ba1db655c57a680d84acccde1eff51ec0d19b45ff0f310a6199a457165301c"
+      },
+      {
+        "role": "resources",
+        "path": "resources.jsonl",
+        "sha256": "5a003264a3607cf8000a49cbed6775b561109261eb3783aa829e5af2211dc265"
+      },
+      {
+        "role": "operator-events",
+        "path": "operator-events.jsonl",
+        "sha256": "1c2f971f8821d5e410908a009380a0df3ed11a1b283e3940cbdbed9cb07dc10c"
+      },
+      {
+        "role": "commands",
+        "path": "commands.txt",
+        "sha256": "50b5eebb74d0ec5e135fafaf118a77caa15f8271754ee5a4d30472fe8da1bbb5"
+      },
+      {
+        "role": "transcript",
+        "path": "transcript.txt",
+        "sha256": "9bd2e6ee540a27e1d2155c3721ac79f4b74387393e9e6ce08ba542c9c98ae2e1"
+      },
+      {
+        "role": "transcript",
+        "path": "control.json",
+        "sha256": "9a7aadbcaccfed6aa7362c6b02efdecf0351925a6a598972d8d19d0feaf4c8d2"
+      },
+      {
+        "role": "transcript",
+        "path": "declaration.json",
+        "sha256": "71d9470bb4f957b9df384c9265c9717b9e79fd68584e115633e890466bfc0fa0"
+      },
+      {
+        "role": "environment",
+        "path": "environment.txt",
+        "sha256": "93279416e89beb5aed13bfe6862110f71d3e8e75f2b2ab50fa9740f29db196bd"
+      },
+      {
+        "role": "release",
+        "path": "release.txt",
+        "sha256": "e75f83e9d6b5be648bc16bf579a84fc856c89e45e3200776a299d40b06a22e3d"
+      },
+      {
+        "role": "analysis",
+        "path": "analysis.json",
+        "sha256": "547bda5ec0910165b1b664dc2e9a0940bf113d0ebc3c6ed86e720c26d5924d28"
+      },
+      {
+        "role": "result",
+        "path": "result.md",
+        "sha256": "bc92bb8c834249bb5006345b266e64beaf5729ee642644de7375fd533015e9e1"
+      }
+    ]
+  }
+}

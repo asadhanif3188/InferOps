@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentRunCorrection",
+  "experimentId": "V2-E02A",
+  "runId": "e02a-1",
+  "number": 1,
+  "recordedAt": "2026-10-31T17:26:28Z",
+  "manifestSha256": "01b45844c6a7d5d96bfd6c7bfd0fbe98a586202b7e39a3cb53d6d9faf8c9eb1b",
+  "previousCorrectionSha256": null,
+  "corrects": [
+    {
+      "path": "result.md",
+      "sha256": "2b9ed4093ecd1352db6583e0ee89feed08b325633a044edfaf3e2a4390d58aff"
+    },
+    {
+      "path": "run.v1alpha1.json",
+      "sha256": "01b45844c6a7d5d96bfd6c7bfd0fbe98a586202b7e39a3cb53d6d9faf8c9eb1b"
+    }
+  ],
+  "statements": [
+    "run.v1alpha1.json states two digests of the wrong kind. environment.binding.sha256 holds 06c8c8aa1617516900ee74e35e73a9a60d1e6d44a5c2fdd9068e4a2027384249, the SHA-256 of the file bytes of the binding. The field is the digest that the release records for the binding, 8a6903d85ffae7555a22fb1935a66f85d2dbbc4248ab871541ed5f8d59f7d5ee. release.contractSha256 holds 74b20b71e4cdafd79378e21f881b216588625de867cd8ba029b4be1308a8fb7a, the SHA-256 of the file bytes of the contract. The field is source.contract.sha256 of the release, 56f73f78a6d741db15b28061b01f323935365c0d63b4d84b936e5ca6ca709c0d. release.txt states the two right values in the provenance of the release. No check reads either field, so the layout check and the replay accepted them. Each other member of the manifest stands.",
+    "The verdict of E02A-AC2 rests on a reading that the freeze record does not state, and the first draft of result.md stated a bare Held. The record limits the time between two consecutive readings of a stream that have a value. It does not state whether a reading with one omitted field has a value. Each reading of the four streams inside the window answered, and those are the times that the row states. The API omits a Deployment count of zero, so the runtime readyReplicas count has no value in 6 readings, and the largest time between two readings with a value of that one count is 25.1 s. On the readings of that one count this run would be INCONCLUSIVE for the reason stream-incomplete, and it would not be counted, as would each run of a one-replica release. The reading was chosen after the evidence was read. The repository owner approved the stream reading on 2026-10-31, in the session of the change. No tool reads that approval. The state of this run stands on it.",
+    "The row of E02A-AC3 states that the runner collection accepted the record with the plan. That statement is true, and the assembly script did not check it. The review ran read_record of tools/reliability_runner on caller.jsonl with the plan that release.txt states. It accepted the record, and the header names the API Service as the target.",
+    "The row of E02A-AC5 does not state how close its count is to the end of the window. A success at 0.529 s before the window end is inside the margin of 818 ms, so the page leaves it out: it states 295 successes and a last success 621.663 s after stabilizedAt, where the count with that request is 296 and 623.767 s. The criterion holds on either count.",
+    "The rows of E02A-AC1 and E02A-AC6 need two statements. commands.txt holds one fault phase of the driver, and control.json, step F2-F4, states the delete command that it ran. The 21 reads of the node are samples, 30 s to 60 s apart, and they do not read each instant of the window. pods.jsonl lists the API and the runtime pods. It counts each other pod of the namespace in otherPods and does not list it, so the collector pod and the runner pod are not compared by identity there."
+  ],
+  "files": []
+}

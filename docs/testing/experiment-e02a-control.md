@@ -12,15 +12,17 @@ procedure. This page describes the code that runs that procedure:
 - [`tools/experiment_e02a`](../../tools/experiment_e02a/control.py), the control. It
   runs the steps in the order of the record and decides each one.
 
-Revisions 3 and 4 of the record pin both, with the same digests. **Neither has run on
-a cluster.** The tests and the dry runs executed the control against scenario files, and
-the tests executed the fault phase of the driver against a stub `kubectl`; no cluster
-command and no fault was executed. No run of V2-E02A exists. `V2-S7-003-PR1` switches the
-desired state to the baseline and registers revision 4 of the record, which the control
-loads as the latest. P2 reads the remote main, so a run refuses at P2 until that change
-is merged with the authorization of the repository owner. (Until `V2-S7-003-PR1` this
-paragraph said that the desired state on `main` is still the target topology of V2-E02B
-and that a later change registers revision 4.)
+Revisions 3 and 4 of the record pin both, with the same digests. **Both have run on a
+cluster.** `V2-S7-001-PR2` executed them in
+[three runs](../proof/experiments/README.md#the-v2-e02a-runs) under revision 4. The tests
+and the dry runs execute the control against scenario files, and the tests execute the
+fault phase of the driver against a stub `kubectl`. `V2-S7-003-PR1` switched the desired
+state to the baseline and registered revision 4 of the record, which the control loads
+as the latest. P2 reads the remote main, so a run refuses at P2 when the desired state is
+not the baseline. (Until `V2-S7-003-PR1` this paragraph said that the desired state on
+`main` is still the target topology of V2-E02B and that a later change registers
+revision 4, and until `V2-S7-001-PR2` it said that neither has run on a cluster and that
+no run of V2-E02A exists.)
 
 ## How the parts fit
 
@@ -162,8 +164,13 @@ requests of the runner as an interval of at least 1 ms and failing intervals.
 
 ## What it does not do
 
-- **It has not run on a cluster.** No verb has been executed against a cluster in this
-  change.
+- **It does not keep what it cannot clean.** `transcript.txt` of a work directory can hold
+  the repository path in the doubled-backslash form that Terraform prints, which the
+  cleaning of the live port does not replace. The assembly of a run directory replaces it.
+- **It does not read the model verification log of a replacement pod.** It reads the log
+  of each runtime pod at P7 alone, and the record leaves that comparison to the review. So
+  the review of a run has indirect evidence and not the digest. Each result page states
+  this.
 - **It does not judge a criterion or state a result** of a run that reached the fault.
 - **It reads six of the nine abort conditions at each check**: a changed checkout, a
   node not Ready or an API that does not answer for more than 60 s, a namespace or a

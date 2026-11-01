@@ -118,8 +118,10 @@ digest `sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c`
 memory, 10,429,972,480 bytes for the engine and the node, is a capacity fact of its
 reading, which the gate accepted, and each later run is held to the gate on its own
 reading. (Until `V2-S6-004-PR2` this said that until `q1-2` is `QUALIFIED` no
-environment is selected.) No run of E02A or E02B exists, so no comparison of identities
-with one has been made. This is a rule of the freeze record. Since `V2-S6-003-PR1` the
+environment is selected.) Each of [the three V2-E02A runs](../proof/experiments/README.md#the-v2-e02a-runs) compared its
+stable identity with the selected one at both capacity readings, and each held. No run
+of E02B exists. (Until `V2-S7-001-PR2` this said that no run of E02A or E02B exists.)
+This is a rule of the freeze record. Since `V2-S6-003-PR1` the
 [freeze records of E02A and E02B](../proof/experiments/README.md#the-reliability-experiment-freezes)
 name `q1-2` and its stable identity. (Until then this paragraph said that no freeze record
 of E02A or E02B exists. Until `V2-S6-004-PR1` it also said that no tool compares two

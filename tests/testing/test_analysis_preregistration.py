@@ -323,12 +323,18 @@ def test_every_source_revision_file_is_in_the_scope_so_a_later_one_is_added() ->
             assert pattern in paths
 
 
-def test_no_run_analysis_or_procedure_exists() -> None:
-    """Nothing ran: no source run, no analysis, and no analysis code. The one
-    procedure is the driver of V2-E02A, which V2-S7-001-PR1 added."""
+def test_the_only_runs_and_the_one_procedure_are_of_v2_e02a() -> None:
+    """No analysis ran, and no analysis code exists. The one procedure is the driver
+    of V2-E02A, which V2-S7-001-PR1 added. The only source runs are the three of
+    V2-E02A, which V2-S7-001-PR2 executed."""
     experiments = REPO_ROOT / "docs" / "proof" / "experiments"
+    assert sorted(p.name for p in (experiments / "v2-e02a" / "runs").iterdir()) == [
+        "e02a-1",
+        "e02a-2",
+        "e02a-3",
+    ]
     for directory in (*EXPERIMENT_DIRECTORIES, "v2-e03", "v2-e06"):
-        assert not (experiments / directory / "runs").exists()
+        assert (experiments / directory / "runs").exists() == (directory == "v2-e02a")
         assert (experiments / directory / "procedure").exists() == (
             directory == "v2-e02a"
         )

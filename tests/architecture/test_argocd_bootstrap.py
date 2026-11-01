@@ -117,6 +117,13 @@ ARGOCD_CUSTOM_RESOURCE = re.compile(
     flags=re.MULTILINE,
 )
 
+#: The transcripts of the V2-E02A runs, added by V2-S7-001-PR2. Each holds the
+#: Application as the cluster returned it, in the reads of the verb `application` of
+#: the E02A driver, among the output of each other command of the run.
+ARGOCD_RESOURCE_TRANSCRIPTS = tuple(
+    f"docs/proof/experiments/v2-e02a/runs/e02a-{n}/transcript.txt" for n in (1, 2, 3)
+)
+
 #: Tracked files that hold an Argo CD custom resource as evidence: the object as a
 #: cluster returned it, written by a run. Nothing applies such a file. The first
 #: experiment's freeze record registers the one below as a file of a real-deployment
@@ -759,6 +766,11 @@ def test_no_application_set_and_no_cluster_registration_is_committed() -> None:
     nothing applies one: no procedure reads those directories, and the procedure
     suite holds which files the procedure applies. (Until V2-S6-001-PR2 one such
     file existed.)
+
+    Since V2-S7-001-PR2 the transcript of each V2-E02A run matches too. A transcript
+    is not one JSON object, so this test splits it at each command. It holds that
+    each command whose output matches is a read of the verb `application`, and it
+    holds each such output as it holds the files above.
     """
     quoting = {THIS_MODULE, REPO_ROOT / APPLICATION_MODULE_REL}
     files = [path for path in tracked_files() if path not in quoting]
@@ -768,18 +780,36 @@ def test_no_application_set_and_no_cluster_registration_is_committed() -> None:
         for path in files
         if ARGOCD_CUSTOM_RESOURCE.search(text_of(path))
     ]
-    assert declaring == sorted([*ARGOCD_RESOURCE_EVIDENCE, *ARGOCD_MANIFESTS]), (
-        declaring
-    )
-    for relative in ARGOCD_RESOURCE_EVIDENCE:
-        assert relative.startswith("docs/proof/"), relative
-        observed = json.loads(text_of(REPO_ROOT / relative))
+    assert declaring == sorted(
+        [
+            *ARGOCD_RESOURCE_EVIDENCE,
+            *ARGOCD_RESOURCE_TRANSCRIPTS,
+            *ARGOCD_MANIFESTS,
+        ]
+    ), declaring
+    committed = yaml.safe_load(text_of(REPO_ROOT / ARGOCD_MANIFESTS[0]))
+
+    def hold_observed(observed: dict[str, Any], relative: str) -> None:
         assert observed["kind"] == "Application", relative
         assert observed["status"]["sync"]["revision"], relative
         assert observed["metadata"]["uid"], relative
-        committed = yaml.safe_load(text_of(REPO_ROOT / ARGOCD_MANIFESTS[0]))
         assert observed["metadata"]["name"] == committed["metadata"]["name"], relative
+
+    for relative in ARGOCD_RESOURCE_EVIDENCE:
+        assert relative.startswith("docs/proof/"), relative
+        hold_observed(json.loads(text_of(REPO_ROOT / relative)), relative)
         assert "argocd.argoproj.io/secret-type" not in text_of(REPO_ROOT / relative)
+    for relative in ARGOCD_RESOURCE_TRANSCRIPTS:
+        assert relative.startswith("docs/proof/"), relative
+        body = text_of(REPO_ROOT / relative)
+        assert "argocd.argoproj.io/secret-type" not in body, relative
+        commands = body.replace("\r\n", "\n").split("\n$ ")
+        reads = [c for c in commands if ARGOCD_CUSTOM_RESOURCE.search(c)]
+        assert reads, relative
+        for read in reads:
+            command, printed = read.split("\n", 1)
+            assert command.endswith(" verb application"), command
+            hold_observed(json.loads(printed[: printed.rfind("[exit")]), relative)
 
     kinds = []
     for relative in ARGOCD_MANIFESTS:

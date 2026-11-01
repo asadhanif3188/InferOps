@@ -109,6 +109,9 @@ which pins the switched files, and revision 4 of the record of V2-E03 and revisi
 the record of V2-E06, which bind it. Revisions 1 to 3 of V2-E02A, revisions 1 to 3 of
 V2-E03, and revisions 1 and 2 of V2-E06 are kept unchanged. No run exists, and nothing
 ran in that change.
+**Three runs added by `V2-S7-001-PR2`**: [the V2-E02A runs](#the-v2-e02a-runs) under
+revision 4, each `PASSED`, which for this characterization says that the run is valid.
+That change registers no record.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -1244,8 +1247,10 @@ freezes](#the-reliability-experiment-freezes) cite them so.
 
 `V2-S6-003-PR1` registered five freeze records on 2026-10-18, revision 1 each, one
 for each reliability experiment, in its own directory. They fix each experiment
-before its first result-bearing run. **No run of any of them exists, and nothing ran
-in that change**: no Git switch, no commit to `main`, no fault, and no cluster read.
+before its first result-bearing run. **No run of any of them existed then, and nothing
+ran in that change**: no Git switch, no commit to `main`, no fault, and no cluster read.
+[The V2-E02A runs](#the-v2-e02a-runs) came later. (Until `V2-S7-001-PR2` this paragraph
+said that no run of any of them exists.)
 
 | Experiment | Record | Topology | Fault | Counted runs | Bounds in a criterion | Level |
 |---|---|---|---|---|---|---|
@@ -1374,7 +1379,9 @@ order and decides each step, and it holds each command through which the control
 or changes the cluster
 as one verb, and the fault as its own phase; the scripts that it calls run their own
 commands. [The control page](../../testing/experiment-e02a-control.md) describes both.
-Neither has run on a cluster.
+Neither ran on a cluster in that change. [The V2-E02A runs](#the-v2-e02a-runs) are the
+first that executed them on one. (Until `V2-S7-001-PR2` this paragraph said that neither
+has run on a cluster.)
 
 - **What revision 3 changes.** It pins the driver and the five modules of the control, adds
   the control to its material scope, names the driver in its limitations, adds one history
@@ -1641,7 +1648,8 @@ classifies the three files of the check that differ from its pins. (Until
 again, to add rule set 3, after these four records had pinned it. `--changes` lists it as
 changed for each of them, no revision classifies it, and the P1 of each refuses a run
 until a later revision of it classifies the file. Rule set 2 itself is not edited, so the
-check reads each of them as before. No run of any of them is authorized yet.
+check reads each of them as before. No run of any of them was authorized then. The
+[V2-E02A runs](#the-v2-e02a-runs) executed under its revision 4.
 
 ### The reversal timing of V2-E04, and rule set 3
 
@@ -2034,6 +2042,49 @@ the committed records. Not enforced:
   later revision that pins code which computes the selection from evidence must pin that
   code before the first result-bearing run. No check compares a run's selection with the
   reference.
+
+## The V2-E02A runs
+
+`V2-S7-001-PR2` executed the runs of V2-E02A under revision 4, at the merged commit
+`ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b`, on the docker-desktop provider with one node, on
+2026-10-31. Each run has one fault: the delete of the one runtime pod while RP-1 ran. The
+review of each run judged the seven validity criteria, and each held. Three runs are counted,
+so the set that the repetition rule requires is complete, and three of the six runs that
+one revision allows were started.
+
+**One verdict rests on a reading that the owner approved after the evidence was read.**
+`E02A-AC2` limits the time between readings of a stream that have a value. The record does
+not state whether a reading with one omitted field has a value. Kubernetes omits a
+`readyReplicas` of zero, so that one count has no value for 22 s to 25 s in each run. On
+the readings of each stream the largest time is 5.796 s, and on that one count each run
+would be `INCONCLUSIVE` and none would be counted. The repository owner approved the
+stream reading on 2026-10-31. One correction of each run states this and four other
+statements, under [`v2-e02a/corrections`](v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json).
+
+**`PASSED` is not a reliability pass here.** V2-E02A is a characterization with validity
+criteria alone. The state says that a run is valid. Requests failed in each run.
+
+| Run | State | Failed in the window | Caller failure episode | Largest time between two successes | Runtime at zero Ready endpoints, inner and outer | Stabilized recovery |
+|---|---|---:|---:|---:|---:|---:|
+| [`e02a-1`](v2-e02a/runs/e02a-1/result.md) | `PASSED` | 2 of 365 | 4,276 ms | 29,896 ms | 17,342 ms, 26,813 ms | 96,469 ms |
+| [`e02a-2`](v2-e02a/runs/e02a-2/result.md) | `PASSED` | 2 of 366 | 3,682 ms | 30,427 ms | 14,837 ms, 23,792 ms | 94,752 ms |
+| [`e02a-3`](v2-e02a/runs/e02a-3/result.md) | `PASSED` | 2 of 342 | 4,065 ms | 29,893 ms | 14,949 ms, 23,448 ms | 96,808 ms |
+
+`python -m tools.analysis_replay aggregate` states the median of the three: 2 failed requests,
+4,065 ms of caller failure episode, 29,896 ms between two successes, and 96,469 ms to the
+stabilized recovery. The stabilized recovery is a rule of the analysis. It is not a measured
+recovery of the service. No criterion of V2-E02A compares any of these figures with a bound.
+
+The [validation record](../environment/v2-s7-001-pr2-validation.md) states what ran before
+the runs: the checks of each prerequisite and [the observation of the G1
+switch](../environment/v2-s7-001-pr2-g1-observation/observation.md), with 2 API replicas and
+1 runtime replica at the merged revision. It also states the host, the kept attempt of that
+observation, and what the review could not compare.
+
+These runs do not classify the set. They do not decide that the baseline is eligible for the
+comparison with V2-E02B, and they do not establish that one runtime replica is or is not
+acceptable for any service. The desired state on `main` stays at the baseline until rule G3
+restores it.
 
 ## The analysis experiment freezes
 
