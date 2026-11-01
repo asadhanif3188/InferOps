@@ -1,0 +1,222 @@
+"""Read what the pinned runtime image links, from its layers. Nothing in the image is run.
+
+The reading behind the renewal of EX-07 and the acceptance of EX-08. It fetches the
+image by digest from the public registry, reads each ELF file of the linux/amd64
+manifest from the layers, and prints what the record states. It needs pyelftools,
+which is not a dependency of the project.
+
+Usage: python -I ex-08-reachability-reader.txt WORK_DIRECTORY
+"""
+
+import io
+import json
+import re
+import sys
+import tarfile
+import urllib.request
+from pathlib import Path
+
+from elftools.elf.dynamic import DynamicSection
+from elftools.elf.elffile import ELFFile
+from elftools.elf.sections import SymbolTableSection
+
+INDEX = "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+BASE = "https://ghcr.io/v2/ggml-org/llama.cpp"
+# The opening of the static dictionary that each Brotli decoder carries, with or
+# without its symbols.
+BROTLI_DICTIONARY = b"timedownlifeleftback"
+ACCEPT = ",".join(
+    (
+        "application/vnd.oci.image.index.v1+json",
+        "application/vnd.oci.image.manifest.v1+json",
+        "application/vnd.docker.distribution.manifest.list.v2+json",
+        "application/vnd.docker.distribution.manifest.v2+json",
+    )
+)
+
+work = Path(sys.argv[1])
+token = json.load(
+    urllib.request.urlopen("https://ghcr.io/token?scope=repository:ggml-org/llama.cpp:pull")
+)["token"]
+
+
+def fetch(path: str, accept: str = ACCEPT) -> urllib.request.addinfourl:
+    request = urllib.request.Request(
+        f"{BASE}/{path}", headers={"Authorization": f"Bearer {token}", "Accept": accept}
+    )
+    return urllib.request.urlopen(request)
+
+
+index = json.load(fetch(f"manifests/{INDEX}"))
+(entry,) = [
+    row
+    for row in index["manifests"]
+    if row.get("platform", {}).get("architecture") == "amd64"
+    and row.get("platform", {}).get("os") == "linux"
+]
+print("image index:", INDEX)
+print("linux/amd64 manifest:", entry["digest"])
+manifest = json.load(fetch(f"manifests/{entry['digest']}"))
+config = json.load(fetch(f"blobs/{manifest['config']['digest']}", "*/*")).get("config", {})
+print("image Entrypoint:", config.get("Entrypoint"))
+print("image Cmd:", config.get("Cmd"))
+print("image User:", config.get("User"))
+
+needed: dict[str, list[str]] = {}
+imports: dict[str, set[str]] = {}
+dictionary: set[str] = set()
+brotli_text: dict[str, set[bytes]] = {}
+status = b""
+regular = hard_links = whiteouts = 0
+
+
+def forget(prefix: str) -> None:
+    """A whiteout removes a file, or a directory with each file under it, of a lower layer."""
+    for name in [n for n in needed if n == prefix or n.startswith(prefix + "/")]:
+        del needed[name], imports[name]
+        dictionary.discard(name)
+        brotli_text.pop(name, None)
+
+
+for number, layer in enumerate(manifest["layers"]):
+    path = work / f"layer-{number}.tar"
+    with fetch(f"blobs/{layer['digest']}", "*/*") as response, path.open("wb") as out:
+        while chunk := response.read(1 << 20):
+            out.write(chunk)
+    with tarfile.open(path, "r:*") as archive:
+        members = archive.getmembers()
+        for member in members:
+            name = member.name.removeprefix("./")
+            base = name.rsplit("/", 1)[-1]
+            if base == ".wh..wh..opq":
+                whiteouts += 1
+                directory = name.rsplit("/", 1)[0]
+                for lower in [n for n in needed if n.startswith(directory + "/")]:
+                    forget(lower)
+            elif base.startswith(".wh."):
+                whiteouts += 1
+                forget(name.replace(".wh.", "", 1))
+        for member in members:
+            name = member.name.removeprefix("./")
+            if not (member.isfile() or member.islnk()):
+                continue
+            regular += member.isfile()
+            hard_links += member.islnk()
+            # extractfile follows a hard link to the file that it names.
+            stream = archive.extractfile(member)
+            head = stream.read(4)
+            if name == "var/lib/dpkg/status":
+                status = head + stream.read()
+                continue
+            if head != b"\x7fELF":
+                continue
+            forget(name)
+            body = head + stream.read()
+            elf = ELFFile(io.BytesIO(body))
+            needed[name] = []
+            imports[name] = set()
+            for section in elf.iter_sections():
+                if isinstance(section, DynamicSection):
+                    needed[name] = [
+                        tag.needed
+                        for tag in section.iter_tags()
+                        if tag.entry.d_tag == "DT_NEEDED"
+                    ]
+                if isinstance(section, SymbolTableSection) and section.name == ".dynsym":
+                    imports[name] = {
+                        symbol.name
+                        for symbol in section.iter_symbols()
+                        if symbol["st_shndx"] == "SHN_UNDEF" and symbol.name
+                    }
+            if name.startswith("app/"):
+                if BROTLI_DICTIONARY in body:
+                    dictionary.add(name)
+                for found in re.finditer(rb"[A-Za-z0-9_]*brotli[A-Za-z0-9_]*", body, re.IGNORECASE):
+                    brotli_text.setdefault(name, set()).add(found.group()[:60])
+    path.unlink()
+
+
+def files_for(library: str) -> list[str]:
+    """A soname is usually a symlink, so match the versioned file as well."""
+    return [
+        name
+        for name in needed
+        if name.rsplit("/", 1)[-1] == library or name.rsplit("/", 1)[-1].startswith(library + ".")
+    ]
+
+
+app = sorted(name for name in needed if name.startswith("app/"))
+seen: set[str] = set()
+unresolved: set[str] = set()
+queue = list(app)
+while queue:
+    current = queue.pop()
+    if current in seen:
+        continue
+    seen.add(current)
+    for library in needed[current]:
+        found = files_for(library)
+        if not found:
+            unresolved.add(library)
+        queue.extend(found)
+
+print("layers:", len(manifest["layers"]))
+print("regular files:", regular, " hard links:", hard_links, " whiteouts:", whiteouts)
+print("ELF files in the image:", len(needed))
+print("ELF files under /app:", len(app))
+print("\n# The load closure of every ELF file under /app, followed through DT_NEEDED")
+print("files outside /app:")
+for name in sorted(seen - set(app)):
+    print("  ", name)
+print("sonames with no file:", sorted(unresolved))
+print("a brotli file in the closure:", any("brotli" in name.lower() for name in seen))
+
+print("\n# CVE-2026-84782: OpenSSL use under /app")
+ssl_users = [name for name in app if {"libssl.so.3", "libcrypto.so.3"} & set(needed[name])]
+print("files linking libssl.so.3 or libcrypto.so.3:", ssl_users)
+for name in ssl_users:
+    methods = sorted(symbol for symbol in imports[name] if symbol.endswith("_method"))
+    print("  ", name, "method imports:", methods)
+print("files importing a DTLS symbol:", [n for n in app if any("DTLS" in s for s in imports[n])])
+print("files importing dlsym:", [n for n in app if "dlsym" in imports[n]])
+print("files importing dlopen:", [n for n in app if "dlopen" in imports[n]])
+
+print("\n# CVE-2026-111497: Brotli")
+linking = {name: libs for name, libs in needed.items() if any("brotli" in lib for lib in libs)}
+print("ELF files naming a brotli library in DT_NEEDED:")
+for name, libraries in sorted(linking.items()):
+    print("  ", name, [lib for lib in libraries if "brotli" in lib])
+providers = {
+    library: set(files_for(library)) for libraries in needed.values() for library in libraries
+}
+reaching: set[str] = set(linking)
+growing = True
+while growing:
+    growing = False
+    for name, libraries in needed.items():
+        if name not in reaching and any(providers[lib] & reaching for lib in libraries):
+            reaching.add(name)
+            growing = True
+print("ELF files that reach a brotli library through DT_NEEDED:", len(reaching))
+print("of them, under /app:", sorted(name for name in reaching if name.startswith("app/")))
+print("of them, executables under usr/bin or usr/sbin:")
+for name in sorted(reaching):
+    if name.startswith(("usr/bin/", "usr/sbin/", "bin/", "sbin/")):
+        print("  ", name)
+print("files under /app importing a Brotli symbol:", [
+    name for name in app if any(symbol.startswith("Brotli") for symbol in imports[name])
+])
+print("files under /app holding the Brotli static dictionary:", sorted(dictionary))
+print("text matching brotli under /app:")
+for name, words in sorted(brotli_text.items()):
+    print("  ", name, sorted(word.decode("ascii", "replace") for word in words))
+
+print("\n# Packages, from var/lib/dpkg/status")
+for block in status.decode("utf-8", "replace").split("\n\n"):
+    fields = dict(re.findall(r"^(Package|Version|Depends|Pre-Depends): (.*)$", block, re.M))
+    package = fields.get("Package", "")
+    depends = fields.get("Depends", "") + " " + fields.get("Pre-Depends", "")
+    if package in {"libbrotli1", "libssl3t64", "openssl"}:
+        print("installed:", package, fields.get("Version"))
+    elif "libbrotli1" in depends:
+        print("depends on libbrotli1:", package, fields.get("Version"))

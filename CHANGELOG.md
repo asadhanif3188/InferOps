@@ -1942,6 +1942,20 @@ from `1.0.0`.
 
 ### Security
 
+- **`EX-07` is renewed and `CVE-2026-111497` is accepted as `EX-08`, both until 2026-12-01.**
+  The image scan gate failed on 2026-11-01 for two reasons: the entry of `EX-07` expired on
+  2026-10-30 as designed, and the vulnerability database had gained a second `HIGH`
+  finding, an out-of-bounds write in the Brotli decoder, in the `libbrotli1` package of
+  the pinned llama.cpp image. The image was not rotated: the bytes that the evidence
+  measured are unchanged, and no freeze record of an experiment still to run pins a file
+  that this change edits. The repository owner accepted both findings on 2026-11-01. A new
+  reading of the image binaries repeats the OpenSSL reading and finds that no file under
+  `/app` links or holds the Brotli decoder. `curl` and `ffmpeg` in the image do reach
+  `libbrotli`, and no probe or argument of the chart runs them. Both entries are bound to
+  the pinned digest and expire, and a rotation is still owed.
+  [The record](docs/proof/security/ex-08-runtime-image-exception.md) states the findings,
+  the reading, what it does not establish, and the candidate image. No claim moved.
+
 - **`CVE-2026-84782` in the pinned runtime image is accepted as `EX-07`, until
   2026-10-30.** The vulnerability database gained a `HIGH` out-of-bounds read in
   OpenSSL's DTLS handshake retransmission on 2026-09-29, in the `openssl` and

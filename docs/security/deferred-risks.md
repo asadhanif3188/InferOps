@@ -2,7 +2,7 @@
 
 Status: **accepted register**, in
 [ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). Fourteen risks
-V1 carries rather than reduces, and seven weaknesses it accepts with a compensating
+V1 carries rather than reduces, and eight weaknesses it accepts with a compensating
 control. Twelve of the fourteen block production use.
 
 This is the document that makes the rest of the security baseline honest. A control
@@ -402,13 +402,13 @@ bootstrap owns.
 
 ## Accepted exceptions
 
-Seven weaknesses this project accepts rather than fixes. Each names where it was
+Eight weaknesses this project accepts rather than fixes. Each names where it was
 accepted, the compensating control that makes it tolerable, what remains undefended
 anyway, and the condition under which it should be revisited. A test refuses an
 exception missing any of them, and refuses one whose compensating control is not a
 control the baseline declares.
 
-One of them, `EX-07`, is the only one whose revisit a tool enforces. A
+Two of them, `EX-07` and `EX-08`, are the only ones whose revisit a tool enforces. A
 vulnerability-scan exception names the finding, the image it was assessed against, an
 owner and a review deadline, and the scan guard reads it from a committed ignore file:
 the deadline is an expiry the scanner enforces, and the guard refuses to apply the
@@ -424,7 +424,8 @@ read by the secret scanner too, and nothing makes it narrow.
 | EX-04 | The pod-security properties are enforced over apparatus, not over a serving path | `run-as-non-root` | DR-05 |
 | EX-05 | The local network plugin was measured not to enforce the rendered network policy | `least-exposure-no-manifest-publishes-a-service` | DR-04 |
 | EX-06 | The Docker Desktop identity guard is satisfied by a kind cluster the operator named `desktop` | `refuse-to-act-on-a-cluster-this-project-did-not-create` | — |
-| EX-07 | The pinned runtime image carries an OpenSSL build with CVE-2026-84782, and the image guard accepts it until 2026-10-30 | `pin-image-by-digest` | — |
+| EX-07 | The pinned runtime image carries an OpenSSL build with CVE-2026-84782, and the image guard accepts it until 2026-12-01 | `pin-image-by-digest` | — |
+| EX-08 | The pinned runtime image carries a Brotli build with CVE-2026-111497, and the image guard accepts it until 2026-12-01 | `pin-image-by-digest` | — |
 
 ### EX-01 — The transport is not authenticated
 
@@ -555,7 +556,9 @@ not do.
 
 Accepted in
 [the EX-07 assessment](../proof/security/ex-07-runtime-image-exception.md), on
-2026-09-30. Owner: `security`.
+2026-09-30. It lapsed on 2026-10-30, and the image scan blocked. It was renewed in
+[the EX-08 record](../proof/security/ex-08-runtime-image-exception.md), on 2026-11-01.
+Owner: `security`.
 
 **What is accepted.** `CVE-2026-84782`, a `HIGH` out-of-bounds read in OpenSSL's DTLS
 handshake retransmission, in the `openssl` and `libssl3t64` packages at
@@ -574,16 +577,49 @@ read from the binaries' dynamic imports, not observed in a running process. The 
 also ships the `openssl` command-line tool, which can speak DTLS; anyone able to run it
 inside the container already executes code there.
 
-**Why not the fix.** A patched upstream build exists and scanned clean on 2026-09-30.
-Moving the pin to it means re-measuring the evidence recorded on this image and writing
-the refresh procedure ADR 0002 asks for, which is more than a change unblocking a gate
-should carry. The assessment names the candidate.
+**Why not the fix.** A patched upstream build exists. The build the assessment named
+now carries the finding of `EX-08`, and a later build scanned with no `HIGH` or
+`CRITICAL` finding on 2026-11-01. Moving the pin to it means re-measuring the evidence
+recorded on this image, writing the refresh procedure ADR 0002 asks for, and moving an
+input of fourteen experiment freeze records, which is more than a change unblocking a
+gate should carry. [The EX-08 record](../proof/security/ex-08-runtime-image-exception.md)
+names the candidate.
 
-**Revisit when** the runtime pin moves, or on **2026-10-30**, whichever comes first.
+**Revisit when** the runtime pin moves, or on **2026-12-01**, whichever comes first.
 Neither depends on anyone remembering: the ignore entry expires on that date and the
 finding blocks again, and while the entry stands the image guard refuses to scan any
 image but the one it was assessed against, so a rotated pin has to re-assess it or
 drop it.
+
+### EX-08 — The runtime image ships a vulnerable Brotli decoder its server does not link
+
+Accepted in
+[the EX-08 record](../proof/security/ex-08-runtime-image-exception.md), on 2026-11-01.
+Owner: `security`.
+
+**What is accepted.** `CVE-2026-111497`, a `HIGH` out-of-bounds write in the Brotli
+decoder, in the `libbrotli1` package at `1.1.0-2build2` in the pinned runtime image. It
+is fixed in `1.1.0-2ubuntu0.1`. Ubuntu rates it `HIGH`, and the National Vulnerability
+Database scores it `9.8`, for a program that decodes a stream from an attacker. The
+image guard accepts this one identifier, in this one image, and nothing else: every
+other `HIGH` or `CRITICAL` finding still blocks, and the finding stays in the scan
+output, marked as suppressed. The entry names the identifier, not the package, so it
+would accept the same identifier in any package of the image; in this image only
+`libbrotli1` carries it, and the binding to the digest keeps that true.
+
+**Residual risk.** The vulnerable code ships, and nothing under `/app` links it. No ELF
+file there names a Brotli library, reaches one through `DT_NEEDED`, imports a Brotli
+symbol, or holds the Brotli static dictionary. That was read from the binaries, not
+observed in a running process. `libggml` imports `dlopen` to load its back-ends, and
+what a library loads at run time by a path it builds was not read. The image also ships
+programs that reach `libbrotli`, among them `curl` and `ffmpeg`; anyone able to run them
+inside the container already executes code there, and no probe or argument of the
+committed chart runs them.
+
+**Why not the fix.** The same reasons as `EX-07`, and the same candidate.
+
+**Revisit when** the runtime pin moves, or on **2026-12-01**, whichever comes first.
+The guard enforces both, as it does for `EX-07`.
 
 ## What this register does not do
 

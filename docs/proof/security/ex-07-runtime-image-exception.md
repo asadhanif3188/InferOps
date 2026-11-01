@@ -304,3 +304,14 @@ record this digest. Read from the claim register at this change's parent and on
 2026-10-01, twenty-four records across seventeen claims name it - twenty-three in a
 version field and one in an executed component's note: twenty-three, across sixteen
 claims, as the runtime they measured, and one, the scan record, as the image it scanned.
+
+## Renewal
+
+Added on 2026-11-01. Nothing above this heading was changed.
+
+`EX-07` lapsed on 2026-10-30, as its table states, and the image scan blocked. On
+2026-11-01 the repository owner renewed it, for `CVE-2026-84782` in the same image
+digest, until 2026-12-01. Its last accepted day is 2026-11-30.
+[The `EX-08` record](ex-08-runtime-image-exception.md) states the reading that the
+renewal rests on. The candidate that this record names, `server-b11277`, now carries
+the finding of `EX-08`, and that record names a later candidate.

@@ -241,9 +241,12 @@ not one identifier and an expiry, and an image exception assessed against any im
 the pinned one; [a test](../../tests/security/test_vulnerability_scan_exceptions.py)
 holds the ignore files and the baseline to each other in both directions.
 
-One scan exception exists: `EX-07`, `CVE-2026-84782` in the pinned runtime image, until
-2026-10-30. [Its assessment](../proof/security/ex-07-runtime-image-exception.md) records
-why it is accepted rather than fixed.
+Two scan exceptions exist, both in the pinned runtime image and both until 2026-12-01:
+`EX-07`, `CVE-2026-84782`, and `EX-08`, `CVE-2026-111497`.
+[The `EX-07` assessment](../proof/security/ex-07-runtime-image-exception.md) and
+[the `EX-08` record](../proof/security/ex-08-runtime-image-exception.md) state why each
+is accepted rather than fixed. (Until 2026-11-01 this paragraph named `EX-07` alone,
+until 2026-10-30.)
 
 This paragraph said until 2026-09-30 that no exception existed, which was true, and the
 description of the two scanners above said they block on a finding "with no recorded

@@ -362,6 +362,15 @@ was really done.
 > was accepted, a compensating control, its residual risk, and a revisit condition,
 > and the same test holds it to all four.
 
+> **Note, 2026-11-01: an eighth exception, and `EX-07` renewed.** The note above is
+> dated, and the register has moved since it. `EX-07` lapsed on 2026-10-30, and on
+> 2026-11-01 it was renewed until 2026-12-01, on the same image digest. `EX-08` —
+> `CVE-2026-111497` in the same image — was accepted on 2026-11-01, until 2026-12-01,
+> so the register now records eight.
+> [The `EX-08` record](../../proof/security/ex-08-runtime-image-exception.md) states
+> both. The decision is unchanged: each names where it was accepted, a compensating
+> control, its residual risk, and a revisit condition.
+
 ## D12 — Reserved vocabulary
 
 Twelve terms — the adjectives of a posture rather than the names of properties — may
