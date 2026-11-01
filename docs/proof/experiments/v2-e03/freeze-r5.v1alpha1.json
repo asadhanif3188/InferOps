@@ -29,7 +29,7 @@
         "role": "initial",
         "path": "docs/proof/experiments/v2-e02b/freeze-r3.v1alpha1.json",
         "revision": 3,
-        "contentSha256": "c5f7acdad2e7c7686ae794bcff1c46dc8aa7ecfb832432d1c721ce9acf9d7840",
+        "contentSha256": "86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a",
         "preregistrationRules": 2
       },
       {
@@ -821,7 +821,7 @@
     },
     {
       "path": "docs/proof/experiments/v2-e02b/freeze-r3.v1alpha1.json",
-      "sha256": "c5f7acdad2e7c7686ae794bcff1c46dc8aa7ecfb832432d1c721ce9acf9d7840",
+      "sha256": "86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a",
       "role": "a freeze record of a source experiment"
     },
     {
@@ -1399,7 +1399,7 @@
     {
       "path": "docs/proof/experiments/v2-e02b/freeze-r3.v1alpha1.json",
       "from": null,
-      "to": "c5f7acdad2e7c7686ae794bcff1c46dc8aa7ecfb832432d1c721ce9acf9d7840",
+      "to": "86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a",
       "material": true,
       "reason": "Revision 3 of V2-E02B, which this revision binds. It is registered by the G3 switch: it pins the restored desired-state files of the target and classifies the pins of its revision 2 that moved. It changes no criterion, measurement, window, or topology of V2-E02B, and no run of V2-E02B exists."
     },

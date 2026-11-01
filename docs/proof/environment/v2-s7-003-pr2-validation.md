@@ -9,8 +9,9 @@ caller request was sent, and no run identifier was taken. A freeze record is not
 no claim is registered.
 
 **The merge is the switch.** The Argo CD Application follows `main`. On a cluster where an
-operator applied the Application, the merge of this change delivers two API replicas and two
-runtime replicas. Rule G4 of the V2-E02A record requires the explicit authorization of the
+operator applied the Application, the merge of this change makes two API replicas and two
+runtime replicas the desired state. Whether that cluster delivers them is observed after the
+merge, and it is not in this change. Rule G4 of the V2-E02A record requires the explicit authorization of the
 repository owner for that merge, separate from the authorization of the G1 merge. An open
 change, an implementation instruction, a passing suite, or the authorization of G1 is not that
 authorization.
@@ -40,7 +41,7 @@ no record of V2-E02A, no file of a run, no correction, no review, and not the cl
 | The classification is merged | Merged as pull request #162. The verdict is `eligible`, and its `handoff` member names the last run and both desired states |
 | Revision 2 is the latest V2-E02B record | The registry held revisions 1 and 2 and no later one |
 | The desired state on `main` is the baseline of revision 4 of V2-E02A | `rendered-workload-release.yaml` had `f7eaab84…` and `values.generated.yaml` had `e0b2507c…` |
-| The delivery path did not move after the runs | Between `ff45093` and `4249226`, the chart, the contracts, the deploy files, the Application, the Terraform layer, the environment scripts, the source package, the lock file, and the tools that a run executes have no difference. One scanner exception file differs, which a run does not read |
+| The delivery path did not move after the runs | Between `ff45093` and `4249226`, the chart, the contracts, the deploy files, the Application, the Terraform layer, the environment scripts, the source package, and the lock file have no difference. One scanner exception file differs, which a run does not read. Of the tools that a run executes, the two files of `tools/evidence_index` differ, which `tools/analysis_replay` and `tools/experiment_evidence` import: the path of one ledger and the list that holds it, and no rule |
 
 ## The preflight in a scratch tree
 
@@ -91,7 +92,7 @@ not observed on a cluster.
 | `metadata` | Revision 3, registered on 2026-11-01 by `V2-S7-003-PR2`, superseding revision 2 by path and digest. Rule set 2 |
 | `definition.gitTransitions` | The first item names rule G3 of revision 4 of V2-E02A. The second states that the change that registers revision 3 executes the switch, and it keeps word for word the sentence of rule G4 of V2-E02A on the authorization of each switch |
 | `definition.g3Provenance` | New: the governing record, the last run, the classification, and the release that the switch leaves |
-| `definition.limitations` | One item restated and four added: 15 items |
+| `definition.limitations` | Three items restated and five added: 16 items |
 | `definition.history` | One entry states when and why revision 3 was written, and which runs it was written after |
 | `fields.experimentIdVersion` | The freeze revision is 3 |
 | `fields.gitRevision` | Prepared from `4249226` |
@@ -105,8 +106,16 @@ the material scope, and every member that V2-E02B shares with V2-E02A are those 
 baseline release has never been installed" held when it was written. The three runs of V2-E02A
 installed that release. Revision 3 restates the limitation, and revision 2 is not edited.
 
-**The four added limitations state:** that no tool checks the authorization of the merge or the
-delivery after it; that no check reads `definition.g3Provenance`; that the owner's reading of
+**Two limitations are restated for this experiment.** Revision 2 states that no code holds a
+declaration of the analysis, and that no tool checks that a run executes the latest revision.
+Each sentence named every experiment. V2-E02A has a control since its revision 3, so revision 3
+states each of V2-E02B, which has none.
+
+**The five added limitations state:** how to read the sentence of
+`fields.derivedNumericBounds` that no characterization of the baseline exists, which stays
+because the check holds the two records equal in that field; that no tool checks the
+authorization of the merge or the delivery after it; that no check reads
+`definition.g3Provenance`; that the owner's reading of
 `E02A-AC2` is about those three runs, `E02B-AC2` has the same words, and a later revision decides
 its reading before the first run; and that this revision was written after the figures of
 V2-E02A were read, changes no set rule, and leaves the two limits of those figures with a reader
@@ -123,7 +132,7 @@ those of revision 1.
 |---|---|---|
 | `tools/baseline_profile/__init__.py` | no | Two names exported. No decision changes |
 | `tools/baseline_profile/__main__.py` | no | `--check` prints the selected side. No exit status changes |
-| `tools/baseline_profile/core.py` | no | The target is declared apart from the desired state. The comparison record is unchanged, and P1 does not run this check |
+| `tools/baseline_profile/core.py` | no | The target is declared apart from the desired state, and the check gains `baseline-desired-state-not-compared` and `baseline-desired-state-drifted`, so it accepts a declaration of either side and refuses a third. The comparison record is unchanged, and P1 does not run this check |
 | `tools/evidence_index/__init__.py` | no | The path of the eleventh ledger is exported. No function changes |
 | `tools/evidence_index/core.py` | no | One more ledger in the list. No rule of the index changes, and the procedure reads no ledger |
 | `tools/experiment_preregistration/core.py` | no | Rule sets 3 and 4 read a V2-E04 record alone. This record is read under the rules of revision 2 |
@@ -139,8 +148,8 @@ lists these six files, and a run refuses under revision 2 because revision 3 is 
 
 Every file that both revision 4 of V2-E02A and revision 3 of V2-E02B pin has one digest, except
 five: the three switched files and the two files of the list of ledgers. A test holds that set.
-So a change to the chart, a contract, a script, or a tool between the last run of V2-E02A and
-revision 3 fails that test.
+So a change to the chart, a contract, a script, or any other pinned tool between the last run of
+V2-E02A and revision 3 fails that test.
 
 ## Revision 5 of V2-E03 and revision 4 of V2-E06
 
@@ -166,16 +175,17 @@ The V2-E02A binding of each stays revision 4, the revision that the runs execute
 This table supersedes, for the records that this change moves,
 [the table of `V2-S7-003-PR1`](v2-s7-003-pr1-validation.md#what-each-latest-freeze-owes).
 `python -m tools.experiment_freeze --changes` was read for each latest record in the tree of
-this change. A test holds each of the moved sets below. P1 of each record refuses a run while
-a file is listed, so a stale record cannot run. The materiality in this table is the assessment
-of this change. The revision that classifies a moved pin decides it, before the run that it
-governs.
+this change. A test holds each of the moved sets below, except the row of V2-E01. P1 of each
+record states that a run refuses while a file is listed. Only V2-E02A has a control that applies
+P1, so for each other record the review of the run holds it until that record has a driver. The
+materiality in this table is the assessment of this change. The revision that classifies a moved
+pin decides it, before the run that it governs.
 
 | Latest record | Files that `--changes` lists | What it owes before its next run |
 |---|---|---|
 | V2-E02B, revision 3 | None: UNCHANGED | Its driver in a later revision, which also decides the reading of `E02B-AC2`, and a run authorization of the repository owner |
 | V2-E02A, revision 4 | The three switched files, and the two of the list of ledgers | Nothing: no further run is planned. A further run refuses at P1 and at P2, and rule G2 requires that |
-| V2-E02C, revision 2 | `core.py` of the preregistration check, and the two of the list of ledgers | Its driver, and a revision that classifies each listed file and binds the two-replica target of this tree |
+| V2-E02C, revision 2 | `core.py` of the preregistration check, and the two of the list of ledgers | Its driver, and a revision that classifies each listed file |
 | V2-E04, revision 3 | The two of the list of ledgers | Its driver, the bad-release fixture, the known-good identity record, and a revision that classifies each listed file |
 | V2-E05, revision 2 | `core.py` of the preregistration check, and the two of the list of ledgers | Its driver and its drift injector, and a revision that classifies each listed file |
 | V2-E03, revision 5 | None: UNCHANGED | A revision that binds the source revisions under which the counted runs execute, and its analysis code |
@@ -222,7 +232,7 @@ leave the three new records out of the copies that read an earlier state.
 | `uv run --locked python -m tools.experiment_bounds --check` | PASSED: 1 committed bound record(s) |
 | `uv run --locked python -m tools.comparison_eligibility --check` | PASSED: the classification is what the runs give |
 | `uv run --locked python -m tools.experiment_freeze --changes` of each latest record | As [the table above](#what-each-latest-freeze-owes) states |
-| `uv run --locked python -m tools.evidence_index --check`, and `tools.proof_dashboard --check` | OK. No claim, record, or cited file changed |
+| `uv run --locked python -m tools.evidence_index --check`, and `tools.proof_dashboard --check` | OK. No claim or record changed. Ledgers cite the experiments page, which this change edits, and the check passes |
 | `helm lint charts/inferops-llm` | One chart linted, none failed. The chart did not change |
 | `uv run --locked ruff check .`, `ruff format --check .` | Passed |
 | `uv run --locked python -m mypy`, and with `--platform linux` | Passed, 453 source files |
@@ -236,7 +246,53 @@ lane needs the first commit, as it did for the G1 switch. The lane is recorded a
 
 ## Independent review of the first commit
 
-The review of this commit is recorded by the commit that follows it.
+Two independent reviewers read the first commit, `01bb664`: one for the code, the tests, and
+safety, and one for the records, the claims of the documents, and private information. Neither
+changed a file. Neither found a blocking defect in a record: each reviewer compared the three new
+records with the records that they supersede, and no criterion, bound, window, fault,
+measurement, outcome rule, set rule, exclusion reason, abort condition, cleanup, repetition rule,
+topology, or material scope differs. The first reviewer found that the three restored files are
+byte for byte those of the commit before the G1 switch, that no other file of the delivery path
+moved, that no test went weaker, and that planted edits of a restored file, of the declaration, of
+a classification, of a pin, and of the provenance each fail a test. The second reviewer ran each
+row of the table of `--changes`, repeated the preflight, and found no later story identifier, no
+private text, and no local path. The second commit fixed each finding below. It changed revision
+3, so the three records were registered again; the digests of the first commit are superseded and
+no file states them.
+
+**What the first commit got wrong:**
+
+- **A false claim.** [The desired-state page](../../environment/git-desired-state.md) said that the
+  run of 2026-10-08 applied the release that the tree holds now. That release first appears on
+  2026-10-09, and that run has another values digest, on chart `0.5.0`. The page now names the
+  two qualifications, each of which reconciled it. Two older sentences had the same looseness, one
+  of that page and one of the README, and each now names the chart of that run.
+- **A statement of the preflight that was too wide.** This page said that the tools that a run
+  executes have no difference between `ff45093` and `4249226`. The two files of
+  `tools/evidence_index` differ, and `tools/analysis_replay` and `tools/experiment_evidence` import
+  it. The statement now names them.
+- **Text carried from revision 2 that stopped being true as written.** The first commit restated
+  one limitation. Two more were true of V2-E02B alone, because V2-E02A has a control, and they are
+  restated. `fields.derivedNumericBounds` states that no characterization of the baseline exists,
+  while the record names V2-E02A a baseline characterization. That field stays, because the check
+  holds the two records equal in it, and a fifth added limitation reads the sentence.
+- **Overclaims of what is enforced.** This page said that a test holds each moved set, and no test
+  held the rows of Sprint 5 and V2-E01. A test now holds the first, and the table states that none
+  holds the second. It also said that a stale record cannot run. P1 states that a run refuses, and
+  only V2-E02A has a control that applies it.
+- **A pin reason less specific than it could be.** The reason of `tools/baseline_profile/core.py`
+  omitted the two rules of the check that changed.
+- **Smaller defects:** the experiments page said that V2-E02C and V2-E05 owe a classification and
+  omitted V2-E04, said that revision 4 differs from the tree in the three switched files where five
+  differ, stated "Frozen before any run" for revision 3 with no qualification, and named no table
+  for the latest freezes; the opening of this page stated what the merge delivers with no
+  qualification; the row of V2-E02C said that it owes a binding of the target, which it holds; the
+  validation table said that no cited file changed, where the experiments page is cited and
+  changed; and a negative test wrote text where the suite writes bytes.
+
+**What stays as it is.** The tests of the Q1, Q2, and Q3 records assert that no file moved. They
+no longer show that the G1 switch had moved those files. Git history and the record of that change
+show it.
 
 ## What this does not establish
 

@@ -194,7 +194,7 @@ API replicas and one runtime replica, for the runs of V2-E02A: rule G1 of the V2
 freeze record switched it. `V2-S7-003-PR2` restores the two runtime replicas by rule G3,
 with the bytes that the target had before the switch. Each switch merges only with the
 explicit authorization of the repository owner. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
-release once, and two pods of each tier became Ready on one node:
+two-replica release of chart `0.5.0` once, and two pods of each tier became Ready on one node:
 [the record](docs/proof/environment/v2-s4-002-pr2-validation.md). It establishes
 nothing about what a caller observes when an API pod or a runtime pod is lost.
 Since `V2-S4-003-PR1` a

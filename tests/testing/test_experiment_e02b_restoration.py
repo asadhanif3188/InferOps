@@ -50,6 +50,7 @@ E06_R4 = f"{EXPERIMENTS}/v2-e06/freeze-r4.v1alpha1.json"
 Q1_R2 = f"{EXPERIMENTS}/v2-q1/freeze-r2.v1alpha1.json"
 Q2_R3 = f"{EXPERIMENTS}/v2-q2/freeze-r3.v1alpha1.json"
 Q3_R2 = f"{EXPERIMENTS}/v2-q3/freeze-r2.v1alpha1.json"
+S5_R2 = f"{EXPERIMENTS}/v2-s5-integration/freeze-r2.v1alpha1.json"
 CLASSIFICATION = f"{EXPERIMENTS}/v2-e02a/classification.v1alpha1.json"
 
 KEY = "local-docker-desktop/support-assistant"
@@ -64,6 +65,11 @@ BASELINE_TOOL = {
     "tools/baseline_profile/__init__.py",
     "tools/baseline_profile/__main__.py",
     "tools/baseline_profile/core.py",
+}
+EVIDENCE_TOOL = {
+    "tools/experiment_evidence/__init__.py",
+    "tools/experiment_evidence/__main__.py",
+    "tools/experiment_evidence/core.py",
 }
 PREREGISTRATION_CORE = "tools/experiment_preregistration/core.py"
 #: The pins of revision 2 of V2-E02B that revision 3 classifies.
@@ -106,6 +112,17 @@ STALE_LIMITATION = (
     "The single-runtime baseline release has never been installed. Its install "
     "inputs are compared with those of the target by the committed comparison "
     "record, and no cluster has run it."
+)
+
+
+#: Two sentences of revision 2 that named every experiment. V2-E02A has a control.
+DECLARATION_LIMITATION = (
+    "No code holds a declaration of the analysis to "
+    "definition.analysisDeclaration. The review of each run compares them."
+)
+LATEST_LIMITATION = (
+    "No tool checks that a run executes the latest registered revision of its "
+    "experiment. P1 states it, and the review of each run compares it."
 )
 
 
@@ -307,17 +324,16 @@ def test_the_target_of_the_handoff_is_the_restored_release() -> None:
     assert handoff["files"] == release["desiredStateFiles"]
 
 
-def test_one_limitation_is_restated_and_four_are_added() -> None:
+def test_three_limitations_are_restated_and_five_are_added() -> None:
     two = read(E02B_R2)["definition"]["limitations"]
     three = read(E02B_R3)["definition"]["limitations"]
-    assert STALE_LIMITATION in two
-    assert STALE_LIMITATION not in three
-    index = two.index(STALE_LIMITATION)
-    assert three[:index] == two[:index]
-    assert three[index + 1 : len(two)] == two[index + 1 :]
-    assert "installed the single-runtime baseline release" in three[index]
-    assert len(three) == len(two) + 4
+    restated = {item for item, kept in zip(two, three, strict=False) if item != kept}
+    assert restated == {DECLARATION_LIMITATION, STALE_LIMITATION, LATEST_LIMITATION}
+    assert "installed the single-runtime baseline release" in " ".join(three)
+    assert sum("This experiment has no control" in item for item in three) == 2
+    assert len(three) == len(two) + 5
     added = "\n".join(three[len(two) :])
+    assert "no characterization of the single-runtime baseline release" in added
     assert "no tool checks that the controller delivered the target" in added
     assert "E02B-AC2" in added
     assert "B_failures is 2 and B_episode is 4,065 ms" in added
@@ -434,14 +450,15 @@ def test_a_record_that_the_switch_restores_or_registers_lists_no_moved_file(
         (E02C_R2, LEDGER_LIST | {PREREGISTRATION_CORE}),
         (E04_R3, LEDGER_LIST),
         (E05_R2, LEDGER_LIST | {PREREGISTRATION_CORE}),
+        (S5_R2, LEDGER_LIST | EVIDENCE_TOOL),
     ],
-    ids=["e02a-r4", "e02b-r2", "e02c-r2", "e04-r3", "e05-r2"],
+    ids=["e02a-r4", "e02b-r2", "e02c-r2", "e04-r3", "e05-r2", "s5-r2"],
 )
 def test_a_record_that_owes_a_revision_lists_each_moved_file(
     record: str, moved: set[str]
 ) -> None:
-    """A tripwire. P1 of each record refuses a run while a file is listed, so each
-    record here cannot run while it is stale. A file that moves later fails here."""
+    """A tripwire. P1 of each record states that a run refuses while a file is listed.
+    Only V2-E02A has a control that applies P1. A file that moves later fails here."""
     assert moved_paths(record) == moved
 
 
@@ -486,11 +503,12 @@ def test_a_declaration_left_at_the_baseline_is_listed_against_revision_3(
     pinned_tree: Path,
 ) -> None:
     path = pinned_tree / DECLARATION
-    text = path.read_text(encoding="utf-8")
-    assert text.count("synchronous-llm-two-replicas.yaml") == 1
-    path.write_text(
-        text.replace("synchronous-llm-two-replicas.yaml", "synchronous-llm-local.yaml"),
-        encoding="utf-8",
+    data = path.read_bytes()
+    assert data.count(b"synchronous-llm-two-replicas.yaml") == 1
+    path.write_bytes(
+        data.replace(
+            b"synchronous-llm-two-replicas.yaml", b"synchronous-llm-local.yaml"
+        )
     )
     changes = changed_inputs(read(E02B_R3), pinned_tree)
     assert [change.path for change in changes] == [DECLARATION]

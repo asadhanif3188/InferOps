@@ -149,7 +149,7 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E02A, controlled single-runtime baseline | 3 | [`v2-e02a/freeze-r3.v1alpha1.json`](v2-e02a/freeze-r3.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 2: it pins [the driver and its control](#the-e02a-driver-and-revision-3), states that the switch change registers revision 4, and classifies the moved pin of `core.py` as not material. It changes no criterion, bound, window, fault, collection, measurement, outcome rule, exclusion reason, abort condition, cleanup, or repetition rule. No run exists. Superseded by revision 4 on 2026-10-23, and kept unchanged. Since `V2-S7-003-PR1`, six pinned inputs differ from its pins: the two desired-state files and `core.py` of `tools/gitops_desired_state`, which the [G1 switch](#the-g1-switch-and-revision-4) of `V2-S7-003-PR1` moved, and the three files of `tools/baseline_profile`. Revision 4 classifies them. Since `V2-S7-003-PR2` the first three have its pins again. (Until `V2-S7-003-PR1` this cell ended "the desired state on `main` is still the 2+2 target, so a run refuses at P2 until a later change switches it and registers revision 4.") [See below](#the-e02a-driver-and-revision-3) |
 | V2-E02A, controlled single-runtime baseline | 4 | [`v2-e02a/freeze-r4.v1alpha1.json`](v2-e02a/freeze-r4.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2, and registered by the change that executes rule G1. It supersedes revision 3: it pins the two switched desired-state files, classifies the six pins that the switch moved, and states in G1 and G4 that its registering change is the switch. The driver, the control, the criteria, the bounds, the window, the fault, and the topology are those of revision 3. Since `V2-S7-001-PR2`, [three runs](#the-v2-e02a-runs) executed under it, each `PASSED`, and since `V2-S7-002-PR1` [the set is classified](#the-classification-of-the-v2-e02a-set). Since `V2-S7-002-PR1`, the two files of `tools/evidence_index` differ from its pins, and no revision classifies them. Since `V2-S7-003-PR2`, the [G3 switch](#the-g3-switch-and-revision-3-of-v2-e02b) moves the two desired-state files and `core.py` of `tools/gitops_desired_state` away from its pins too, so a further run refuses at P1 and at P2. No further run is planned. (Until `V2-S7-002-PR1` this cell ended "No run exists.", and until `V2-S7-003-PR2` it ended with the two files of `tools/evidence_index`.) [See below](#the-g1-switch-and-revision-4) |
 | V2-E02B, multi-runtime pod loss | 2 | [`v2-e02b/freeze-r2.v1alpha1.json`](v2-e02b/freeze-r2.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. From `V2-S7-003-PR1` until `V2-S7-003-PR2`, the two desired-state files and `core.py` of `tools/gitops_desired_state`, which the [G1 switch](#the-g1-switch-and-revision-4) of `V2-S7-003-PR1` moved, differed from its pins, and the three files of `tools/baseline_profile` differ from its pins since that change. Superseded by revision 3 on 2026-11-01, and kept unchanged: it states that no switch is executed by the change that registers it, and revision 3 classifies its moved pins. (Until `V2-S6-005-PR1` this cell ended "No run exists.", and until `V2-S7-003-PR2` it did not state a superseding revision.) [See below](#the-clock-policy-of-rule-set-2) |
-| V2-E02B, multi-runtime pod loss | 3 | [`v2-e02b/freeze-r3.v1alpha1.json`](v2-e02b/freeze-r3.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run, under rule set 2, and registered by the change that executes rule G3 of V2-E02A. It supersedes revision 2: it pins the restored desired-state files, classifies the six pins of revision 2 that moved, names the last run of V2-E02A in `definition.g3Provenance`, restates one limitation that stopped being true, and adds four. It changes no criterion, bound, window, fault, collection, measurement, outcome rule, set rule, exclusion reason, abort condition, cleanup, repetition rule, or topology, and it adds no driver. No run exists. [See below](#the-g3-switch-and-revision-3-of-v2-e02b) |
+| V2-E02B, multi-runtime pod loss | 3 | [`v2-e02b/freeze-r3.v1alpha1.json`](v2-e02b/freeze-r3.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run of V2-E02B and after the runs of V2-E02A, under rule set 2, and registered by the change that executes rule G3 of V2-E02A. It supersedes revision 2: it pins the restored desired-state files, classifies the six pins of revision 2 that moved, names the last run of V2-E02A in `definition.g3Provenance`, restates three limitations, and adds five. It changes no criterion, bound, window, fault, collection, measurement, outcome rule, set rule, exclusion reason, abort condition, cleanup, repetition rule, or topology, and it adds no driver. No run exists. [See below](#the-g3-switch-and-revision-3-of-v2-e02b) |
 | V2-E02C, API pod loss | 2 | [`v2-e02c/freeze-r2.v1alpha1.json`](v2-e02c/freeze-r2.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. From `V2-S7-003-PR1` until `V2-S7-003-PR2`, the two desired-state files and `core.py` of `tools/gitops_desired_state`, which the [G1 switch](#the-g1-switch-and-revision-4) moved, differed from its pins too, and the [G3 switch](#the-g3-switch-and-revision-3-of-v2-e02b) restores them. (Until `V2-S6-005-PR1` this cell ended "No run exists.", and until `V2-S7-003-PR2` it said that those three differ.) [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E04, bad release and Git reversal | 2 | [`v2-e04/freeze-r2.v1alpha1.json`](v2-e04/freeze-r2.v1alpha1.json) | One part, E04, at C2 | Frozen before any run, under rule set 3. It supersedes revision 1 with the clock policy of rule set 2 and the reversal timing as the repository owner amended it: E04-AC12 judges the recovery from Git visibility to the onset of the stabilization span against the unchanged 52,000 ms, and E04-AC8 ends its window when the desired state is restored. No run exists. Superseded by revision 3 on 2026-10-20, and kept unchanged: its reason `recovery-onset-not-after-reversal` is not authorized by the amended definition. Since `V2-S6-008-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin, and revision 3 classifies it. (Until `V2-S6-008-PR1` this cell ended "No run exists.") [See below](#the-reversal-timing-of-v2-e04-and-rule-set-3) |
 | V2-E04, bad release and Git reversal | 3 | [`v2-e04/freeze-r3.v1alpha1.json`](v2-e04/freeze-r3.v1alpha1.json) | One part, E04, at C2 | Frozen before any run, under rule set 4. It supersedes revision 2: it removes the reason `recovery-onset-not-after-reversal` and selects the span of E04-AC12, the first span that starts after `reversalStart` and then completes inside the observation limit, by one preregistered rule, and it pins the outcome reference `tools/reversal_outcome`. A valid run with no such span is `FAILED`. The bound, the reversal-start definition, the window of E04-AC8, the observation limit, and the clock policy are those of revision 2. No run exists. From `V2-S7-003-PR1` until `V2-S7-003-PR2`, the two desired-state files and `core.py` of `tools/gitops_desired_state`, which the [G1 switch](#the-g1-switch-and-revision-4) moved, differed from its pins, and the [G3 switch](#the-g3-switch-and-revision-3-of-v2-e02b) restores them. (Until `V2-S7-003-PR1` this cell ended "No run exists.", and until `V2-S7-003-PR2` it said that those three differ.) [See below](#the-selection-of-the-span-of-v2-e04-and-rule-set-4) |
@@ -2235,7 +2235,7 @@ what each owes.
 
 `V2-S7-003-PR2` executes rule G3 of revision 4 of the V2-E02A record and registers revision
 3 of the V2-E02B record, [`v2-e02b/freeze-r3.v1alpha1.json`](v2-e02b/freeze-r3.v1alpha1.json),
-with the registered digest `c5f7acdad2e7c7686ae794bcff1c46dc8aa7ecfb832432d1c721ce9acf9d7840`, in the same change. The change merges into `main`
+with the registered digest `86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a`, in the same change. The change merges into `main`
 only with the explicit authorization of the repository owner for that merge, which is
 separate from the authorization of G1. The Argo CD Application follows `main`, so the merge
 is the switch on a cluster where an operator applied the Application. No run of V2-E02B
@@ -2256,15 +2256,17 @@ exists, no fault was injected, and no cluster was read or changed by this change
 - **What the runs of V2-E02A keep.** No file of a run, no correction, no review, the
   classification, and no revision of V2-E02A change. Each run stays bound to its executing
   commit, `ff45093`, and to revision 4. Revision 4 now differs from the tree in the three
-  switched files, so a further run refuses at P1 and at P2. That is what rule G2 states.
+  switched files, beside the two files of the list of ledgers, so a further run refuses at
+  P1 and at P2. That is what rule G2 states.
 - **What revision 3 changes.** It pins each moved input and classifies the six pins of
   revision 2 that moved, each as not material. Rule G3 is a transition, so
   `definition.gitTransitions` states that the change that registers revision 3 executes the
   switch, and it keeps word for word the requirement that each switch needs the explicit
   authorization of the repository owner. `definition.g3Provenance` names the governing
   record, the last run, the classification, and the release that the switch leaves. A
-  test holds each of those values. Revision 3 restates one limitation that stopped being
-  true, that the baseline release has never been installed, and adds four. It changes no
+  test holds each of those values. Revision 3 restates three limitations and adds five.
+  One that it restates, that the baseline release has never been installed, stopped being
+  true when the runs installed that release. It changes no
   criterion, bound, window, fault, collection, measurement, outcome rule, set rule,
   exclusion reason, abort condition, cleanup, repetition rule, or topology, and it adds no
   driver. Revision 3 was written after the figures of V2-E02A were read, and it states that.
@@ -2298,7 +2300,7 @@ and the content digest of its latest registered freeze record:
 |---|---|---|---|---|
 | V2-E03, revisions 1 and 2 | V2-E02A | initial | 2 | `edd57be9aca1574d975592f3152c6ad67acfcfd705c4d6478c96a56f5faa4562` |
 | V2-E03, revisions 1 to 4 | V2-E02B | initial | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
-| V2-E03, revision 5 | V2-E02B | initial | 3 | `c5f7acdad2e7c7686ae794bcff1c46dc8aa7ecfb832432d1c721ce9acf9d7840` |
+| V2-E03, revision 5 | V2-E02B | initial | 3 | `86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a` |
 | V2-E03 | V2-E02C | initial | 2 | `abcf6af5e3d3c050df5b028ac94163c6bda9de5ee1bfe557fe725de87ea3a818` |
 | V2-E03, revision 1 | V2-E04 | extension | 2 | `fae41b8b244cda76e1325ff36e305705d620163bcfac8c1e7bffec2c61b1e619` |
 | V2-E03, revision 2 | V2-E04 | extension | 3 | `41fa69cd4a84940f587577a3278083d86f9c2b970e7ba5179aded10a07fc1f05` |
@@ -2308,7 +2310,7 @@ and the content digest of its latest registered freeze record:
 | V2-E06, revision 2 | V2-E02A | baseline | 3 | `2e9ed0950a22f4793b12af051b5602d75b335c8ad017d121c86fb1db017bbbaf` |
 | V2-E06, revision 3 | V2-E02A | baseline | 4 | `3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e` |
 | V2-E06, revisions 1 to 3 | V2-E02B | target | 2 | `be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c` |
-| V2-E06, revision 4 | V2-E02B | target | 3 | `c5f7acdad2e7c7686ae794bcff1c46dc8aa7ecfb832432d1c721ce9acf9d7840` |
+| V2-E06, revision 4 | V2-E02B | target | 3 | `86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a` |
 
 Revision 3 of V2-E03 and revision 2 of V2-E06, registered by `V2-S7-001-PR1` on
 2026-10-22, bind revision 3 of V2-E02A. The check holds the latest revision of each
@@ -2354,13 +2356,15 @@ file of each source, `freeze-r*.v1alpha1.json`, so
 the check refuses a binding that is not the latest revision. **A run under a later source
 revision is not in the population of either record until a later revision of that record
 binds the source revision.** The sources will need such revisions before their first run:
-each source other than V2-E02A owes its driver, and V2-E02C owes a classification of a
-moved pin, as V2-E05 does, which neither analysis reads. (Until `V2-S7-001-PR1` this sentence
+each source other than V2-E02A owes its driver, and V2-E02C and V2-E04 owe a classification
+of moved pins, as V2-E05 does, which neither analysis reads. (Until `V2-S7-001-PR1` this sentence
 said that each owes its driver and that four owe a classification, and until `V2-S7-003-PR2`
 it said that V2-E02A owes the switch of its desired state and that V2-E02B owes a
-classification.) Since `V2-S7-001-PR1`
-[its validation](../environment/v2-s7-001-pr1-validation.md#what-each-latest-freeze-owes)
-states what each latest freeze owes ([before it, see the
+classification.) Since `V2-S7-003-PR2`
+[its validation](../environment/v2-s7-003-pr2-validation.md#what-each-latest-freeze-owes)
+states what each latest freeze owes ([before it, see
+the validation of `V2-S7-003-PR1`](../environment/v2-s7-003-pr1-validation.md#what-each-latest-freeze-owes),
+[of `V2-S7-001-PR1`](../environment/v2-s7-001-pr1-validation.md#what-each-latest-freeze-owes), and the
 readiness review](../environment/v2-s6-008-pr1-validation.md#the-consolidated-pre-run-readiness-review),
 which since `V2-S6-008-PR1` supersedes
 [the review of `V2-S6-006-PR1`](../environment/v2-s6-006-pr1-validation.md#the-consolidated-pre-run-readiness-review)

@@ -146,8 +146,8 @@ From `V2-S4-001-PR1` until `V2-S4-002-PR1` the tree held the release
 `f23c37d81fbb297643af9e6005cffd805ac05bc98847a6360894fdd238b41d8c`, rendered at
 `9bc07a57ca112f5e578914d2265c8e7ab2ae4fb0` for chart `0.4.0`, with two API replicas and
 one runtime replica. No recorded run reconciled that release. The release that the tree
-holds now was applied by [one run on 2026-10-08](../proof/environment/v2-s4-002-pr2-validation.md)
-and reconciled by the qualification
+holds now was reconciled by the qualifications
+[`q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md) and
 [`q1-2`](../proof/experiments/v2-q1/runs/q1-2/result.md). (Until `V2-S7-003-PR2` this
 paragraph ended "No run reconciled the release that the tree holds now.")
 
@@ -174,7 +174,7 @@ the release identifier.
 tier. The counts do not establish that two API pods or two runtime pods run, that a
 rollout leaves a caller served, or what a caller observes when a pod is deleted or a
 node is lost. When the count was declared, chart `0.5.0` was installed nowhere. On
-2026-10-08 one run applied this release on `docker-desktop`, and two pods of each tier
+2026-10-08 one run applied the two-replica release of chart `0.5.0` on `docker-desktop`, and two pods of each tier
 became Ready on one node. Both API pods were restarted once by their startup probe
 while the two runtime pods verified the artifact:
 [the record of that run](../proof/environment/v2-s4-002-pr2-validation.md).
