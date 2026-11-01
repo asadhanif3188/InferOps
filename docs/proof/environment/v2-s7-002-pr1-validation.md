@@ -14,6 +14,8 @@ the three runs. It states no comparison, and it authorizes nothing.
 - [`tools/comparison_eligibility`](../../../tools/comparison_eligibility/core.py), with
   [its page](../../testing/comparison-eligibility.md) and
   [its suite](../../../tests/testing/test_comparison_eligibility.py).
+- [The review of the three runs](../experiments/v2-e02a/reviews/e02a-runs-review-1.md), with one
+  record of each run under [`reviews/`](../experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json).
 - Statements in the documentation that said that the set is not classified are updated.
 
 The change makes no GitOps switch and registers no freeze record. It edits no file of a run
@@ -25,7 +27,7 @@ topology, profile, or exclusion.
 | Prerequisite | How it was checked | Outcome |
 |---|---|---|
 | `V2-S7-001-PR2` is merged | `git log origin/main` | Held: `6db8161`, pull request #160 |
-| Every attempt of V2-E02A is retained | The run directories `e02a-1` to `e02a-3`. The tool refuses a gap in the identifiers. The work directory `.artifacts/v2-e02a/runs` on the host holds the same three identifiers, and it is not committed | Held |
+| Every attempt of V2-E02A is retained | The run directories `e02a-1` to `e02a-3`. The tool refuses a gap in the identifiers. The operator read the work directory of the driver on the host, and it holds the same three identifiers. No committed file holds that read | Held |
 
 ## The frozen analysis version
 
@@ -75,6 +77,33 @@ outer start. The analysis measures the outer figure from the start of that read.
 
 The first run of the inventory suite failed: its table of number words ended at ninety-nine, and
 this change adds the hundredth suite with no claim. The table now holds one hundred.
+
+## Independent review of the first commit
+
+Two automated sessions read the commit `6abac97`. Each is another session of the assistant that
+wrote it. One reviewed the result: with code of its own, importing nothing from this repository, it
+judged each criterion and computed each figure from the raw files. [Its review
+page](../experiments/v2-e02a/reviews/e02a-runs-review-1.md) states what it did, what it found, and
+what it could not verify. It found no value that disagrees with the raw files. The other reviewed the
+code, the tests, and the documents.
+
+| Finding | Severity | What the first draft got wrong | Disposition |
+|---|---|---|---|
+| A figure that was not judged became a negative result | High | `decide` counted only a start after the fault, so three runs inside the margin, or with no clock bound, gave `not-eligible` and the sentence that narrows the claim of V2-E02B. The tests held that wrong result. It does not change the committed verdict | A figure that is not judged is neither held nor failed. A set is `not-decided` when such a figure could reach two runs. The record states `runsNotJudged` |
+| A run document with a null member did not refuse | Medium | A null fault instant ended in an assertion, a null instant could enter the record, and an absent `environment.txt` raised an uncaught error | `_facts` refuses a null instant and a count that is not a whole number. A missing file gives no clock bound |
+| Tests missed mutations | Medium | No test built a run with two episodes or two intervals, two `held` flags were not held on fewer than three runs, the limit of six starts was not enforced, the test of the medians could not fail, and the V1 test named five strings | Each is added or replaced. The V1 test reads each timing of both V1 records. The tool refuses a seventh start, and it refuses a run that two rules count differently |
+| A sentence read as a statement of the records | Medium | The report said that no V1 figure is a denominator of V2-E02B, beside a statement of the record. Neither record says it | Reworded as what follows from the records |
+| The start of an episode read as the start of the caller impact | Non-material | The report said that an episode starts about 30 s after the fault. The failed requests were in flight from about the fault, and the 4 s figure does not hold that time | The report states the send instants and the time in flight, and it states the limit of `B_episode` |
+| The failure count equals the number of workers | Non-material | The report did not state it | The report and the record state it as a limit of `B_failures` |
+| A sentence on the zero-Ready condition | Non-material | It could be read as saying that the verdict took a figure that is not held | Reworded |
+| The limitation named one count | Non-material | `availableReplicas` has the same gaps | Both name it, and they state that the record does not say which fields a reading has to hold |
+| The V1 definition was not named, and three statements were stale or unverifiable | Low | The report said "another definition". The inventory and one docstring still said that no run exists. The validation record named a work directory as if a reader could check it | The definition is named, and the stale text is corrected. The read is stated as an operator read |
+
+The reviewer of the code also reported that the earlier entry of `CHANGELOG.md` says that the set
+is not classified. That entry is dated by its change and stays as written.
+
+Neither review read the commit that fixes these findings. The tests, the check, and the full lane ran
+on it.
 
 ## What this does not establish
 

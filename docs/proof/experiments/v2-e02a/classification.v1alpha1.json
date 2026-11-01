@@ -210,6 +210,7 @@
       "countedRuns": 3,
       "failureEpisode": {
         "held": true,
+        "runsNotJudged": 0,
         "runsShowing": 3
       },
       "leastRunsShowing": 2,
@@ -291,13 +292,16 @@
   },
   "limitations": [
     "Three runs give a median and individual values. This record states no confidence interval and no statistical significance.",
-    "The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. On the readings of the runtime readyReplicas count alone, each run would be INCONCLUSIVE, no run would be counted, and this record would decide nothing.",
+    "The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. On the readings of the runtime readyReplicas count alone, each run would be INCONCLUSIVE, no run would be counted, and this record would decide nothing. The runtime availableReplicas count has the same gaps. The record does not state which fields a reading has to hold.",
     "The model file of a replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone. The evidence for each replacement pod is indirect.",
     "The available physical memory of the host was low in each run, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure of a run.",
     "Each manifest states two digests of the wrong kind: the binding and the contract. The correction of each run states the right values. No check reads either field, and no figure of this record reads them.",
     "The clock policy of revision 4 does not declare the set rules. This record applies the margin of the policy to the start of each failure episode. A start inside the margin does not count.",
     "Revision 4 does not state which instant starts a zero-Ready interval. A reading is at most a few seconds from the next, so the state can change between two readings. This record states the first reading that gave zero and the outer start of the interval. The verdict does not rest on the first reading.",
-    "The analysis puts a failure episode at the completion of its first failed request. This record states no cause of an episode and no cause of an interval.",
+    "The analysis puts a failure episode at the completion of its first failed request. So the start of an episode is not the time at which the caller was first affected. The failed requests were sent up to about 5 s after the fault, one of them 111 ms before it, and each was in flight for about 26 s to 31 s. No request completed in that time.",
+    "caller-failure-episode-ms does not hold that time. It runs from the completion of the first failed request to the next success. max-success-gap-ms holds it, and each run states it. The record of V2-E02B reads the first and not the second.",
+    "requests-failed-since-fault is 2 in each run, and the caller profile has 2 workers. This record does not establish that the count can exceed the number of workers, so a later reader does not take the count as a measure of the length of the failure.",
+    "This record states no cause of an episode and no cause of an interval.",
     "One provider, one node, one Kubernetes version, one release of each side, one model, and one caller workload. A result is bounded to that execution."
   ],
   "schema": "inferops.io/comparison-eligibility/v1alpha1",

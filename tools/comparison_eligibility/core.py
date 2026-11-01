@@ -22,6 +22,11 @@ Each median comes from the aggregate of ``tools.reliability_analysis``, after
   eligible is not decided.
 - A set with fewer than three counted runs is not decided.
 
+**A figure that is not judged is neither held nor failed.** A set is ``not-eligible``
+only when the rule is shown not to hold. When a run that was not judged could reach
+the two runs that the rule asks for, the set is ``not-decided``, so evidence that this
+module declined to read does not become a negative result.
+
 **No percentage is computed here, and no record states one.** The figure that a
 later comparison reads is stated with its basis: ``positive``, ``zero``, or
 ``no-value``. A later comparison computes no percentage over a zero or an absent
@@ -163,20 +168,23 @@ RULES: Final[Mapping[str, str]] = {
     "eligibility-instant": "An instant is not a UTC instant to the millisecond.",
     "eligibility-too-many": "More than three runs are counted.",
     "eligibility-record": "A freeze record is not the registered one, or differs.",
-    "eligibility-run-set": "The run identifiers are not 1 to N with no gap.",
+    "eligibility-run-set": "The run identifiers are not 1 to N, at most 6, with no gap.",
     "eligibility-run": "A run directory does not replay, or it names another record.",
     "eligibility-document": "A run document does not have the member that is read.",
 }
 
 LIMITATIONS: Final[tuple[str, ...]] = (
     "Three runs give a median and individual values. This record states no confidence interval and no statistical significance.",
-    "The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. On the readings of the runtime readyReplicas count alone, each run would be INCONCLUSIVE, no run would be counted, and this record would decide nothing.",
+    "The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. On the readings of the runtime readyReplicas count alone, each run would be INCONCLUSIVE, no run would be counted, and this record would decide nothing. The runtime availableReplicas count has the same gaps. The record does not state which fields a reading has to hold.",
     "The model file of a replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone. The evidence for each replacement pod is indirect.",
     "The available physical memory of the host was low in each run, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure of a run.",
     "Each manifest states two digests of the wrong kind: the binding and the contract. The correction of each run states the right values. No check reads either field, and no figure of this record reads them.",
     "The clock policy of revision 4 does not declare the set rules. This record applies the margin of the policy to the start of each failure episode. A start inside the margin does not count.",
     "Revision 4 does not state which instant starts a zero-Ready interval. A reading is at most a few seconds from the next, so the state can change between two readings. This record states the first reading that gave zero and the outer start of the interval. The verdict does not rest on the first reading.",
-    "The analysis puts a failure episode at the completion of its first failed request. This record states no cause of an episode and no cause of an interval.",
+    "The analysis puts a failure episode at the completion of its first failed request. So the start of an episode is not the time at which the caller was first affected. The failed requests were sent up to about 5 s after the fault, one of them 111 ms before it, and each was in flight for about 26 s to 31 s. No request completed in that time.",
+    "caller-failure-episode-ms does not hold that time. It runs from the completion of the first failed request to the next success. max-success-gap-ms holds it, and each run states it. The record of V2-E02B reads the first and not the second.",
+    "requests-failed-since-fault is 2 in each run, and the caller profile has 2 workers. This record does not establish that the count can exceed the number of workers, so a later reader does not take the count as a measure of the length of the failure.",
+    "This record states no cause of an episode and no cause of an interval.",
     "One provider, one node, one Kubernetes version, one release of each side, one model, and one caller workload. A result is bounded to that execution.",
 )
 
@@ -298,11 +306,29 @@ def judge_interval(interval: Interval, run: RunFacts) -> dict[str, bool]:
     }
 
 
+def _shows_episode(run: RunFacts) -> bool:
+    return any(judge_episode(episode, run) == AFTER for episode in run.episodes)
+
+
+def _not_judged(run: RunFacts) -> bool:
+    """Whether a run that shows no failure episode has a figure that was not judged.
+
+    A start inside the margin, a run with no clock bound, and a run with no fault
+    event each leave a figure with no stated order.
+    """
+    if _shows_episode(run):
+        return False
+    return any(
+        judge_episode(episode, run) == NOT_JUDGED for episode in run.episodes
+    ) or (run.fault_started is None and bool(run.intervals))
+
+
 def decide(runs: Sequence[RunFacts]) -> dict[str, Any]:
     """Apply the rule to one set of runs.
 
     Only a counted run is read. A set that has more than three counted runs is
-    refused, and one that has fewer is not decided.
+    refused, and one that has fewer is not decided. A run that was not judged can
+    keep a set from being decided, and it does not make a set not eligible.
 
     Raises:
         EligibilityRefused: more than three runs are counted.
@@ -312,10 +338,8 @@ def decide(runs: Sequence[RunFacts]) -> dict[str, Any]:
         raise EligibilityRefused(
             "eligibility-too-many", f"{len(counted)} runs are counted"
         )
-    episodes = sum(
-        any(judge_episode(episode, run) == AFTER for episode in run.episodes)
-        for run in counted
-    )
+    episodes = sum(_shows_episode(run) for run in counted)
+    not_judged = sum(_not_judged(run) for run in counted)
     readings = [
         [judge_interval(interval, run) for interval in run.intervals] for run in counted
     ]
@@ -327,6 +351,7 @@ def decide(runs: Sequence[RunFacts]) -> dict[str, Any]:
         "leastRunsShowing": LEAST_SHOWING,
         "failureEpisode": {
             "runsShowing": episodes,
+            "runsNotJudged": not_judged,
             "held": complete and episodes >= LEAST_SHOWING,
         },
         "zeroReadyInterval": {
@@ -363,6 +388,12 @@ def decide(runs: Sequence[RunFacts]) -> dict[str, Any]:
             NOT_DECIDED,
             [],
             "The zero-Ready condition holds on the first reading alone. The record does not state that reading, so a person decides it.",
+        )
+    elif episodes + not_judged >= LEAST_SHOWING:
+        verdict, rests_on, statement = (
+            NOT_DECIDED,
+            [],
+            f"{not_judged} of the 3 counted runs have a figure that was not judged, and it could reach the 2 runs that the rule asks for. A figure that is not judged is neither held nor failed.",
         )
     else:
         verdict, rests_on, statement = NOT_ELIGIBLE, [], NOT_ELIGIBLE_RULE
@@ -481,6 +512,10 @@ def _run_directories(root: Path) -> list[Path]:
         found[int(match.group(1))] = path
     if not found or sorted(found) != list(range(1, len(found) + 1)):
         raise EligibilityRefused("eligibility-run-set", "an identifier is missing")
+    if len(found) > START_LIMIT:
+        raise EligibilityRefused(
+            "eligibility-run-set", f"more than {START_LIMIT} runs started"
+        )
     return [found[number] for number in sorted(found)]
 
 
@@ -505,39 +540,63 @@ def _corrections(root: Path, run_id: str, manifest_sha256: str) -> list[dict[str
 
 
 def _clock_bound(run_dir: Path) -> int | None:
-    text = (run_dir / "environment.txt").read_text(encoding="utf-8")
+    try:
+        text = (run_dir / "environment.txt").read_text(encoding="utf-8")
+    except OSError:
+        return None
     bounds = _CLOCK_BOUND.findall(text.replace("\r\n", "\n"))
     return int(bounds[0]) if len(bounds) == 1 else None
 
 
+def _instant(document: object, *path: str) -> str:
+    """An instant of a run document, refused unless it is a UTC instant."""
+    text: str = _dig(document, *path)
+    instant_ms(text)
+    return text
+
+
+def _whole(document: object, *path: str) -> int:
+    """A count of a run document, refused unless it is a whole number."""
+    value = _dig(document, *path)
+    if type(value) is not int:
+        raise EligibilityRefused(
+            "eligibility-document", f"{'.'.join(path)} is not a whole number"
+        )
+    return value
+
+
 def _facts(run_dir: Path, state: str, analysis: Mapping[str, Any]) -> RunFacts:
-    """The figures that the rule reads, from one reproduced run analysis."""
-    fault = _dig(analysis, "fault")
+    """The figures that the rule reads, from one reproduced run analysis.
+
+    A run analysis with no fault instant is refused here: it has no event to
+    order an episode with, and a counted run has one.
+    """
+    fault = _instant(analysis, "fault", "notBefore")
     episodes = tuple(
         Episode(
-            start=_dig(episode, "start", "finishedAt"),
+            start=_instant(episode, "start", "finishedAt"),
             open=_dig(episode, "open"),
             ms=_dig(episode, "ms"),
-            failed_requests=_dig(episode, "failedRequests"),
+            failed_requests=_whole(episode, "failedRequests"),
         )
         for episode in _dig(analysis, "caller", "failureEpisodes", "episodes")
     )
     tier = _dig(analysis, "zeroReadyEndpoints", "tiers", "serving-runtime")
     intervals = tuple(
         Interval(
-            first_reading=_dig(interval, "firstReading", "startedAt"),
+            first_reading=_instant(interval, "firstReading", "startedAt"),
             outer_start=None
             if interval.get("boundedBefore") is None
-            else _dig(interval, "boundedBefore", "startedAt"),
-            inner_ms=_dig(interval, "innerMs"),
-            outer_ms=_dig(interval, "outerMs"),
+            else _instant(interval, "boundedBefore", "startedAt"),
+            inner_ms=_whole(interval, "innerMs"),
+            outer_ms=_whole(interval, "outerMs"),
         )
         for interval in _dig(tier, "intervals")
     )
     return RunFacts(
         run_id=_dig(analysis, "runId"),
         state=state,
-        fault_started=_dig(fault, "notBefore"),
+        fault_started=fault,
         clock_bound_ms=_clock_bound(run_dir),
         episodes=episodes,
         intervals=intervals,
@@ -653,6 +712,13 @@ def _runs_of(
         metric: {row["runId"]: row for row in document["runs"]}
         for metric, document in aggregates.items()
     }
+    for run_id, result in results.items():
+        if values[FAILURES_METRIC][run_id]["counted"] != (
+            result.state in COUNTED_STATES
+        ):
+            raise EligibilityRefused(
+                "eligibility-run", f"{run_id} is counted by one rule and not another"
+            )
     attempts = []
     for run_dir in directories:
         run_id = run_dir.name
@@ -790,7 +856,7 @@ def build_record(root: Path = REPO_ROOT) -> dict[str, Any]:
         "set": {
             "runsStarted": len(attempts),
             "startLimit": START_LIMIT,
-            "countedRuns": sum(row["counted"] for row in attempts),
+            "countedRuns": decided["conditions"]["countedRuns"],
             "requiredCountedRuns": REQUIRED_COUNTED,
         },
         "evidenceLevel": "C2",

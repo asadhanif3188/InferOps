@@ -2096,6 +2096,8 @@ run executed in that change. [The baseline report](v2-e02a/baseline-report.md) s
 result, and [the classification record](v2-e02a/classification.v1alpha1.json) states each
 figure. `python -m tools.comparison_eligibility --check` builds that record again from the
 run directories. [The tool page](../../testing/comparison-eligibility.md) states what it holds.
+[One independent review](v2-e02a/reviews/e02a-runs-review-1.md) of the three runs recomputed each
+figure from the raw files and found no value that differs. It is an automated session.
 
 **The baseline is eligible for the comparison with V2-E02B.** The rule asks that 2 of the 3
 counted runs show one of two conditions. A failure episode starts after the fault event in
@@ -2107,6 +2109,11 @@ interval is sampled, so its start lies between two reads. The first read that ga
 after the event in each run, and the read before it started before the event in each run. On
 the first reading the condition holds in 3 of 3, and on the outer start in 0 of 3. The record
 keeps both, and the verdict does not use the first.
+
+**The two figures have limits.** The caller failure episode, about 4 s, does not hold the time
+in which no request completed, about 26 s. The largest time between two successes, about 30 s,
+holds it. The failure count is 2 in each run, and the caller profile has 2 workers. The report
+states both limits.
 
 **No percentage exists.** The two figures that the record of V2-E02B reads are the medians
 `B_failures`, 2, and `B_episode`, 4,065 ms. Both are above zero. No run of V2-E02B exists, so

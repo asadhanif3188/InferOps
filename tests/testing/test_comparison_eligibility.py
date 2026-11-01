@@ -49,6 +49,7 @@ from tools.comparison_eligibility import (
     record_text,
 )
 from tools.comparison_eligibility import core as module
+from tools.reliability_analysis import AGGREGATE_METRICS
 
 pytestmark = pytest.mark.docs
 
@@ -111,6 +112,7 @@ def test_a_failure_episode_in_two_or_three_runs_makes_the_set_eligible(
     assert decided["restsOn"] == ["failureEpisode"]
     assert decided["conditions"]["failureEpisode"] == {
         "runsShowing": count,
+        "runsNotJudged": 0,
         "held": True,
     }
 
@@ -157,14 +159,71 @@ def test_the_start_of_an_episode_is_ordered_outside_the_margin_alone(
     assert judge_episode(episode(start), run()) == order
 
 
-def test_a_start_inside_the_margin_does_not_count() -> None:
-    inside = "2026-10-31T13:41:35.500Z"
-    assert decide(showing(3, episodes=[episode(inside)]))["verdict"] == NOT_ELIGIBLE
+INSIDE_MARGIN = "2026-10-31T13:41:35.500Z"
 
 
-def test_no_clock_bound_judges_no_episode() -> None:
-    facts = showing(3, episodes=[episode()], bound=None)
-    assert decide(facts)["conditions"]["failureEpisode"]["runsShowing"] == 0
+def test_a_start_inside_the_margin_is_not_a_negative_result() -> None:
+    """A figure that is not judged is neither held nor failed."""
+    decided = decide(showing(3, episodes=[episode(INSIDE_MARGIN)]))
+    assert decided["verdict"] == NOT_DECIDED
+    assert decided["conditions"]["failureEpisode"] == {
+        "runsShowing": 0,
+        "runsNotJudged": 3,
+        "held": False,
+    }
+
+
+def test_one_run_shown_and_one_not_judged_could_reach_two() -> None:
+    facts = [
+        run(1, episodes=[episode()]),
+        run(2, episodes=[episode(INSIDE_MARGIN)]),
+        run(3),
+    ]
+    assert decide(facts)["verdict"] == NOT_DECIDED
+
+
+def test_one_run_not_judged_cannot_reach_two() -> None:
+    facts = [run(1, episodes=[episode(INSIDE_MARGIN)]), run(2), run(3)]
+    assert decide(facts)["verdict"] == NOT_ELIGIBLE
+
+
+def test_no_clock_bound_decides_nothing() -> None:
+    decided = decide(showing(3, episodes=[episode()], bound=None))
+    assert decided["verdict"] == NOT_DECIDED
+    assert decided["conditions"]["failureEpisode"]["runsShowing"] == 0
+    assert decided["conditions"]["failureEpisode"]["runsNotJudged"] == 3
+
+
+def test_no_fault_event_decides_nothing() -> None:
+    assert (
+        decide(showing(3, episodes=[episode()], fault=None))["verdict"] == NOT_DECIDED
+    )
+    assert (
+        decide(showing(3, intervals=[interval()], fault=None))["verdict"] == NOT_DECIDED
+    )
+
+
+def test_a_later_episode_of_a_run_counts() -> None:
+    both = [episode(EARLIER), episode()]
+    decided = decide(showing(2, episodes=both))
+    assert decided["verdict"] == ELIGIBLE
+    assert decided["conditions"]["failureEpisode"]["runsShowing"] == 2
+
+
+def test_a_later_interval_of_a_run_counts() -> None:
+    both = [interval(outer=EARLIER), interval(outer=FIRST_READING)]
+    decided = decide(showing(2, intervals=both))
+    assert decided["restsOn"] == ["zeroReadyInterval.onTheOuterStart"]
+    assert (
+        decided["conditions"]["zeroReadyInterval"]["onTheOuterStart"]["runsShowing"]
+        == 2
+    )
+
+
+def test_an_episode_after_one_inside_the_margin_shows_the_run() -> None:
+    decided = decide(showing(2, episodes=[episode(INSIDE_MARGIN), episode()]))
+    assert decided["verdict"] == ELIGIBLE
+    assert decided["conditions"]["failureEpisode"]["runsNotJudged"] == 0
 
 
 def test_no_fault_event_judges_nothing() -> None:
@@ -214,6 +273,18 @@ def test_a_set_with_fewer_than_three_counted_runs_is_not_decided() -> None:
     assert decided["verdict"] == NOT_DECIDED
     assert decided["conditions"]["countedRuns"] == 2
     assert decided["conditions"]["failureEpisode"]["held"] is False
+
+
+def test_no_condition_is_held_on_fewer_than_three_counted_runs() -> None:
+    shown: dict[str, Any] = {
+        "episodes": [episode()],
+        "intervals": [interval(outer=FIRST_READING)],
+    }
+    facts = [run(1, **shown), run(2, **shown), run(3, "ABORTED", **shown)]
+    conditions = decide(facts)["conditions"]
+    assert conditions["failureEpisode"]["held"] is False
+    assert conditions["zeroReadyInterval"]["onTheFirstReading"]["held"] is False
+    assert conditions["zeroReadyInterval"]["onTheOuterStart"]["held"] is False
 
 
 def test_a_run_that_is_not_counted_is_not_read() -> None:
@@ -351,9 +422,87 @@ def test_no_run_directory_is_refused(tmp_path: Path) -> None:
 
 
 def test_the_runs_are_read_in_the_order_of_their_numbers(tmp_path: Path) -> None:
-    layout(tmp_path, *(f"e02a-{number}" for number in range(1, 11)))
+    layout(tmp_path, *(f"e02a-{number}" for number in (2, 1, 3, 4, 5, 6)))
     names = [path.name for path in module._run_directories(tmp_path)]
-    assert names == [f"e02a-{number}" for number in range(1, 11)]
+    assert names == [f"e02a-{number}" for number in range(1, 7)]
+
+
+def test_a_seventh_start_is_refused(tmp_path: Path) -> None:
+    """The repetition rule allows six starts under one revision."""
+    layout(tmp_path, *(f"e02a-{number}" for number in range(1, 8)))
+    with pytest.raises(EligibilityRefused, match="more than 6 runs"):
+        module._run_directories(tmp_path)
+
+
+def analysis_document() -> dict[str, Any]:
+    """The members that the rule reads, as a run analysis states them."""
+    return {
+        "runId": "e02a-1",
+        "fault": {"notBefore": FAULT},
+        "caller": {
+            "failureEpisodes": {
+                "episodes": [
+                    {
+                        "start": {"finishedAt": LATER},
+                        "open": False,
+                        "ms": 4276,
+                        "failedRequests": 2,
+                    }
+                ]
+            }
+        },
+        "zeroReadyEndpoints": {
+            "tiers": {
+                "serving-runtime": {
+                    "intervals": [
+                        {
+                            "firstReading": {"startedAt": FIRST_READING},
+                            "boundedBefore": {"startedAt": EARLIER},
+                            "innerMs": 17342,
+                            "outerMs": 26813,
+                        }
+                    ]
+                }
+            }
+        },
+    }
+
+
+def test_a_run_document_gives_the_figures_of_the_rule(tmp_path: Path) -> None:
+    facts = module._facts(tmp_path, "PASSED", analysis_document())
+    assert facts.fault_started == FAULT
+    assert facts.clock_bound_ms is None, "this directory holds no environment.txt"
+    assert facts.episodes == (Episode(LATER, False, 4276, 2),)
+    assert facts.intervals == (interval(),)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda d: d["fault"].update(notBefore=None),
+        lambda d: d["fault"].pop("notBefore"),
+        lambda d: d["caller"]["failureEpisodes"]["episodes"][0]["start"].update(
+            finishedAt=None
+        ),
+        lambda d: d["caller"]["failureEpisodes"]["episodes"][0].update(
+            failedRequests="2"
+        ),
+        lambda d: d["zeroReadyEndpoints"]["tiers"]["serving-runtime"]["intervals"][
+            0
+        ].update(firstReading={"startedAt": None}),
+        lambda d: d["zeroReadyEndpoints"]["tiers"]["serving-runtime"]["intervals"][
+            0
+        ].update(outerMs=None),
+        lambda d: d["zeroReadyEndpoints"]["tiers"].pop("serving-runtime"),
+    ],
+)
+def test_a_run_document_with_an_unusable_member_is_refused(
+    tmp_path: Path, change: Callable[[dict[str, Any]], Any]
+) -> None:
+    document = analysis_document()
+    change(document)
+    with pytest.raises(EligibilityRefused, match=r"eligibility-(document|instant)"):
+        module._facts(tmp_path, "PASSED", document)
 
 
 def test_a_correction_of_another_manifest_is_refused(tmp_path: Path) -> None:
@@ -383,6 +532,7 @@ def test_an_absent_freeze_record_is_refused(tmp_path: Path) -> None:
 
 
 def test_a_clock_bound_that_is_absent_or_repeated_is_no_bound(tmp_path: Path) -> None:
+    assert module._clock_bound(tmp_path) is None
     file = tmp_path / "environment.txt"
     file.write_text("no reading\n", encoding="utf-8")
     assert module._clock_bound(tmp_path) is None
@@ -441,7 +591,11 @@ def test_the_verdict_rests_on_the_failure_episodes(committed: dict[str, Any]) ->
     decided = committed["eligibility"]
     assert decided["verdict"] == ELIGIBLE
     assert decided["restsOn"] == ["failureEpisode"]
-    assert decided["conditions"]["failureEpisode"] == {"runsShowing": 3, "held": True}
+    assert decided["conditions"]["failureEpisode"] == {
+        "runsShowing": 3,
+        "runsNotJudged": 0,
+        "held": True,
+    }
 
 
 def test_the_zero_ready_condition_is_stated_on_both_readings(
@@ -452,6 +606,7 @@ def test_the_zero_ready_condition_is_stated_on_both_readings(
         "onTheFirstReading": {"runsShowing": 3, "held": True},
         "onTheOuterStart": {"runsShowing": 0, "held": False},
     }
+    assert committed["set"]["countedRuns"] == 3
 
 
 def test_each_episode_starts_outside_the_margin_of_its_run(
@@ -473,24 +628,33 @@ def test_the_figures_of_the_later_comparison_are_the_two_medians(
     assert committed["statistics"]["medians"]["caller-failure-episode-ms"] == 4065
 
 
-def test_no_median_of_the_zero_ready_intervals_is_stated(
-    committed: dict[str, Any],
-) -> None:
-    assert not any(
-        "zero" in metric.lower() for metric in committed["statistics"]["medians"]
-    )
+def test_only_the_registered_metrics_have_a_median(committed: dict[str, Any]) -> None:
+    """The aggregate states no zero-Ready figure, so the record states no median of it."""
+    assert set(committed["statistics"]["medians"]) == set(AGGREGATE_METRICS)
 
 
 def test_the_record_states_no_percentage(committed: dict[str, Any]) -> None:
     assert "%" not in record_text(committed)
 
 
-@pytest.mark.parametrize("figure", ["31960", "31,960", "2832", "2,832", "33665"])
-def test_the_record_states_no_v1_figure(committed: dict[str, Any], figure: str) -> None:
-    assert (
-        re.search(rf"(?<![0-9a-f,]){figure}(?![0-9a-f,])", record_text(committed))
-        is None
-    )
+V1_RECORDS = (
+    "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+    "docs/proof/environment/v1-s5-001-pr2-recovery-record.v1alpha1.json",
+)
+
+
+@pytest.mark.parametrize("path", V1_RECORDS)
+def test_the_record_states_no_timing_of_a_v1_record(
+    committed: dict[str, Any], path: str
+) -> None:
+    timings = json.loads((REPO_ROOT / path).read_text(encoding="utf-8"))["timings"]
+    figures = [value for value in timings.values() if type(value) is int]
+    assert 2832 in figures or 31960 in figures, "the field of the V1 figure moved"
+    text = record_text(committed)
+    for figure in figures:
+        written = f"{figure:,}"
+        for form in (str(figure), written):
+            assert re.search(rf"(?<![0-9a-f,]){form}(?![0-9a-f,])", text) is None
 
 
 def test_the_handoff_names_the_last_run_and_both_desired_states(
@@ -517,7 +681,16 @@ def test_the_record_states_what_it_does_not_establish(
     assert "does not authorize a run of V2-E02B" in text
     assert "No V1 figure is a value of V2-E02A" in text
     limits = " ".join(committed["limitations"])
-    for phrase in ("E02A-AC2", "model file", "paged", "two digests of the wrong kind"):
+    for phrase in (
+        "E02A-AC2",
+        "availableReplicas",
+        "model file",
+        "paged",
+        "two digests of the wrong kind",
+        "in flight",
+        "max-success-gap-ms holds it",
+        "2 workers",
+    ):
         assert phrase in limits
 
 

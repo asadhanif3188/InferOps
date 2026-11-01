@@ -9,7 +9,7 @@ needs a fault, it passes a double that records the pod it was asked to delete an
 deletes nothing. The driver tests execute the driver file with bash against a stub
 ``kubectl`` that records its arguments.
 
-No test contacts a cluster, and no run of V2-E02A exists. The analysis test builds
+No test contacts a cluster or reads a run of V2-E02A. The analysis test builds
 a synthetic 2+1 run with the builders of the reliability-analysis suite and replays
 it with ``tools.analysis_replay``.
 """

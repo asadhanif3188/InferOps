@@ -6,7 +6,8 @@ of [the freeze record](freeze-r4.v1alpha1.json). No run executed in that change.
 
 [The classification record](classification.v1alpha1.json) states each figure of this page, and
 `python -m tools.comparison_eligibility --check` builds that record again from the run directories.
-[The tool page](../../../testing/comparison-eligibility.md) states what the tool holds.
+[The tool page](../../../testing/comparison-eligibility.md) states what the tool holds, and
+[one independent review](reviews/e02a-runs-review-1.md) recomputed each figure from the raw files.
 
 ## The result
 
@@ -14,8 +15,10 @@ of [the freeze record](freeze-r4.v1alpha1.json). No run executed in that change.
   `INCONCLUSIVE`, `ABORTED`, or `FAILED`, so no run has an exclusion reason.
 - **`PASSED` is not a reliability pass here.** V2-E02A is a characterization with validity
   criteria alone. The state says that a run is valid. Two requests failed in each run.
-- **The baseline is eligible.** In each of the three runs, a failure episode starts about 30 s
-  after the `fault-injection-started` event. The rule asks for two of the three.
+- **The baseline is eligible.** In each of the three runs, the analysis puts the start of a failure
+  episode about 30 s after the `fault-injection-started` event. That start is the completion of
+  the first failed request, and those requests were in flight from about the time of the fault.
+  The rule asks for two of the three runs.
 - **This page states no comparison.** No run of V2-E02B exists. An eligibility verdict does not
   authorize a run of V2-E02B.
 
@@ -41,6 +44,17 @@ The two failed requests of each run have the code `internal-error` and the condi
 `runtime-error-response`. The stabilized recovery is a rule of the analysis. It is not a measured
 recovery of the service. This page states no cause of a failure, a gap, or a recovery, and no
 cause of the differences between the runs.
+
+**The failed requests were in flight for most of the gap.** The caller record states this.
+
+| Run | Two failed requests, sent after the fault | Time in flight | Largest time with no completion in the window |
+|---|---:|---:|---:|
+| `e02a-1` | 2,601 ms, 5,108 ms | 28,128 ms, 25,619 ms | 25,620 ms |
+| `e02a-2` | -111 ms, 4,021 ms | 30,877 ms, 26,745 ms | 26,745 ms |
+| `e02a-3` | 1,740 ms, 4,864 ms | 28,951 ms, 25,827 ms | 25,828 ms |
+
+So the caller failure episode, about 4 s, does not hold the time in which no request completed.
+The largest time between two successes, about 30 s, holds it.
 
 ## The classification
 
@@ -79,7 +93,13 @@ starts an interval. A reading before the fault reported the Ready endpoint, and 
 after the fault reported none. The state changed between the two. In each run the first of those
 two reads started before the event, so the readings do not exclude a change before the event. The
 first reading that gave zero started after the event in each run. This classification states both
-figures. It takes the stricter one for the verdict, and that one is not held.
+figures. Only the outer start can make a set eligible, and on the outer start this condition is
+not held. The verdict rests on the other condition.
+
+**The failure-episode condition also holds on the send instants.** The rule reads the start of an
+episode from the analysis. If a reader took the send of the first failed request instead, two runs
+hold by more than the margin. In `e02a-2` that request was sent 111 ms before the event, inside
+the margin of 980 ms, so no order is stated. Two of three still hold.
 
 **The baseline comparison record states another thing.** Its `experimentEligibility` stays
 `not-established`. That record compares committed inputs, and it reads no run. It is pinned,
@@ -117,17 +137,28 @@ median that the aggregate does not state, and tests hold both. No percentage is 
 because no run of V2-E02B exists. V2-E02B computes an improvement after its own runs, under its
 own record.
 
+**Two limits of these figures.** A reader of a later comparison needs both.
+
+- `B_episode` does not hold the time in which no request completed. The section on each run
+  states that time. The record of V2-E02B names this metric, and this page does not change it.
+- `B_failures` is 2 in each run, and the caller profile has 2 workers. This page does not
+  establish that the count can exceed the number of workers. It is not a measure of the length of
+  the failure.
+
 ## The V1 pod-loss evidence stays apart
 
-The record of V2-E02A keeps the controlled baseline apart from the V1 pod-loss evidence. No V1
-figure is a value of V2-E02A, and no V1 figure is a denominator of V2-E02B.
+The record of V2-E02A keeps the controlled baseline apart from the V1 pod-loss evidence, and it
+states that no V1 figure is a value of V2-E02A. The record of V2-E02B reads its two figures from
+V2-E02A, so no V1 figure enters that comparison.
 
-Two V1 records state a caller-visible outage:
+Two V1 records state `callerVisibleOutageMs`:
 [31,960 ms](../../serving/v1-s4-006-pr1-recovery-record.v1alpha1.json) and
 [2,832 ms](../../environment/v1-s5-001-pr2-recovery-record.v1alpha1.json). Each is one pod lost
-once, under a V1 tool, a V1 load profile, and a V1 release with one replica of the API and of the
-runtime. That tool measures the outage by another definition. The figures of this page are not
-comparable with them, and this page draws no conclusion from any difference.
+once, under a V1 tool, a V1 load profile, and a V1 release with one API replica and one runtime
+replica. That field measures from the first request after the delete that was not served. The
+caller failure episode of this page measures from the completion of the first failed request.
+The figures of this page are not comparable with those two, and this page draws no conclusion
+from any difference.
 
 ## Known limitations
 
@@ -136,8 +167,9 @@ comparable with them, and this page draws no conclusion from any difference.
   does not state whether a reading with one omitted field has a value. The repository owner
   approved the stream reading on 2026-10-31. No tool reads that approval. On the readings of the
   runtime `readyReplicas` count alone, each run would be `INCONCLUSIVE`, no run would be counted,
-  and the verdict above would not exist. V2-E02B has the same criterion, so a later record states
-  this reading or does not, and this page does not decide that.
+  and the verdict above would not exist. The `availableReplicas` count has the same gaps. The record
+  does not state which fields a reading has to hold. V2-E02B has the same criterion, so a later
+  record states this reading or does not, and this page does not decide that.
 - **The model file of a replacement pod was not compared directly.** The procedure read the model
   verification log of the first runtime pod alone. The evidence for each replacement pod is
   indirect, and each result page states it.
