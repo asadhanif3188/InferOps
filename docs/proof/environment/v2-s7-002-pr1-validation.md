@@ -112,12 +112,21 @@ not show that.
 | `ruff check .`, `ruff format --check .`, and `uv run --locked mypy` | No finding. The mypy of the host, a different version, reports one error in a file that this change does not touch |
 | `git diff --check`, and a scan of the diff for local paths, account names, credentials, and private planning material | No finding |
 | The default lane, `pytest -q`, first run, in a clean clone of `1280076` | **11 failed**, 23,785 passed, 42 skipped, 14 deselected, in 1 h 19 min. The next paragraph says what failed |
+| The seven modules of the index and the gate, at the fix `c59d6f1`, which include each of the 11 tests | 1,183 passed |
+| The default lane, `pytest -q`, second run, in the same clone at `c59d6f1` | **0 failed**, 23,796 passed, 42 skipped, 14 deselected, in 1 h 3 min, exit 0. The skipped and deselected tests are not passes |
+| The suite of this tool and its `--check`, in a clone of depth one at `1280076`, as a hosted checkout has | 81 passed, 1 skipped. `--check` prints `NOT COMPARED` for the commit that the clone lacks, and PASSED. Neither the tool nor its suite changed after that commit |
 
 The 11 failures have one cause. The three new records cite this page, so the evidence index holds
 its digest and the digest of the evidence set. The commit `1280076` edited this page and did not
 write the index again. Each of the 11 tests reads that drift: the committed index, the digest of
 this page, or the gate command, which refuses a drifted index and exits 1. The fix writes the index
 again and updates the two digests on the index page. It changes no code, no test, and no record.
+
+After the second run, its figures were written into this table, and the index and those two digests
+were written again, because the records cite this page. The seven modules then ran again at that
+commit, and the pull request states their result. This page cannot state it, because each edit of
+this page moves the index. The hosted checks start when the pull request opens, and this record
+does not state their result.
 
 The first run of the inventory suite failed: its table of number words ended at ninety-nine, and
 this change adds the hundredth suite with no claim. The table now holds one hundred.
