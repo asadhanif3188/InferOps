@@ -198,11 +198,21 @@ inventory for `V2-S7-003-PR2`.
 | The merge that holds the run evidence | `6db8161`, pull request #160 |
 | The desired state on `main` now | 2 API + 1 runtime: `f7eaab84…` and `e0b2507c…` |
 | The desired state that rule G3 restores | 2 API + 2 runtime, as revision 2 of V2-E02B states: `810b4b27…` and `6a1304a8…` |
+| Pinned inputs that this change moves | `tools/evidence_index/__init__.py` and `core.py`. Each record that pins them differs from its pin. No revision classifies them yet, so `V2-S7-003-PR2` inventories them for revision 3 of V2-E02B |
 
 Rule G3 restores the two files in one change merged into `main`, before the first V2-E02B run. That
 change needs the explicit authorization of the repository owner. This page does not give it, and
 this change makes no switch and registers no freeze record. No row of the classification record
 changes when `main` returns to the target: it reads no desired state of the working tree.
+
+## The claim
+
+The register holds one claim of these runs, `the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod`, with one record at `C2` of
+each run. Its status is `certified`, which says that executed records support the statement inside
+the boundary that its limitation states. That is a claim status. It is not a reliability result:
+the statement says that requests failed. The repository owner chose on 2026-11-01 to register it
+in this change, and no tool reads that choice. See
+[the ledger](../../testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json).
 
 ## What this establishes, and what it does not
 

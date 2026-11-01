@@ -35,6 +35,7 @@ from tools.evidence_index import (
     COMPLETENESS_PATH,
     DISPOSITIONS,
     E01_D_REGISTRATION_PATH,
+    E02A_REGISTRATION_PATH,
     INDEX_PATH,
     LEDGER_PATH,
     LEDGER_PATHS,
@@ -610,6 +611,7 @@ ADDED_CLAIM_LEVELS = {
     "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal": "C0",
     "the-second-e01-static-run-recorded-its-frozen-path-identical-renders-and-every-registered-refusal": "C0",
     "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git": "C2",
+    "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod": "C2",
 }
 
 
@@ -623,11 +625,12 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
     and only on a record it adds itself, because the release it states did not exist
     when the pack was frozen. No ledger moves any record's level.
 
-    Three ledgers add a claim rather than moving one. Each E01 static proof ledger
+    Four ledgers add a claim rather than moving one. Each E01 static proof ledger
     adds a claim certified only on the records it brings with it, every one at `C0`.
     The E01-D registration ledger adds a claim certified only on the one record it
-    brings with it, at `C2`, the level the run's own manifest records. None moves a
-    claim the migration left. A later ledger may set a field of an added claim, as it
+    brings with it, at `C2`, the level the run's own manifest records. The E02A
+    registration ledger adds a claim certified only on the three records it brings
+    with it, each at `C2`. None moves a claim the migration left. A later ledger may set a field of an added claim, as it
     may of any other, and never its status: the claim the register holds is the claim
     as added with exactly those changes applied.
     """
@@ -930,6 +933,7 @@ E01_D_RECORD_ID = (
     "reconciled-from-git-c2"
 )
 REGISTRATION_INDEX = LEDGER_PATHS.index(E01_D_REGISTRATION_PATH)
+E02A_REGISTRATION_INDEX = LEDGER_PATHS.index(E02A_REGISTRATION_PATH)
 
 
 def test_a_record_added_after_the_release_states_how_it_identifies_its_code() -> None:
@@ -962,7 +966,7 @@ def test_a_record_added_after_the_release_states_how_it_identifies_its_code() ->
         for index, ledger in enumerate(LEDGERS)
         if index >= len(RELEASED_LEDGER_PATHS) and ledger.get("codeIdentity")
     ]
-    assert stating == [REGISTRATION_INDEX]
+    assert stating == [REGISTRATION_INDEX, E02A_REGISTRATION_INDEX]
 
 
 def _with_registration(mutate: Any) -> list[dict[str, Any]]:
@@ -1092,8 +1096,8 @@ NOT_ADDED = "not a record that ledger adds"
 
 
 def test_the_registration_ledger_states_the_revision_of_the_record_it_adds() -> None:
-    """The one post-release ledger with a revision reading is the registration
-    ledger, the reading is of the E01-D record, and the committed index is built
+    """The two post-release ledgers with a revision reading are the registration
+    ledgers. The first reads the E01-D record, and the committed index is built
     with it."""
     (row,) = LEDGERS[REGISTRATION_INDEX]["codeRevisions"]
     assert row["recordId"] == E01_D_RECORD_ID
@@ -1102,7 +1106,7 @@ def test_the_registration_ledger_states_the_revision_of_the_record_it_adds() -> 
         for index, ledger in enumerate(LEDGERS)
         if index >= len(RELEASED_LEDGER_PATHS) and ledger["codeRevisions"]
     ]
-    assert stating == [REGISTRATION_INDEX]
+    assert stating == [REGISTRATION_INDEX, E02A_REGISTRATION_INDEX]
     built = build_index(REGISTER, LEDGERS)
     (entry,) = [e for e in built["records"] if e["recordId"] == E01_D_RECORD_ID]
     assert entry["codeRevision"] == {
@@ -1120,9 +1124,8 @@ def test_the_registration_ledger_states_the_revision_of_the_record_it_adds() -> 
 def test_another_ledger_cannot_state_the_revision_of_the_e01_d_record(
     offset: int, keep_the_own_row: bool
 ) -> None:
-    """The registration ledger is the last ledger, so each other post-release
-    ledger is an earlier one. The refusal does not depend on the position: it
-    names the ledger's own added records."""
+    """Each ledger of this test is earlier than the registration ledger. The refusal
+    does not depend on the position: it names the ledger's own added records."""
     (row,) = LEDGERS[REGISTRATION_INDEX]["codeRevisions"]
     ledgers = json.loads(json.dumps(LEDGERS))
     assert REGISTRATION_INDEX + offset >= len(RELEASED_LEDGER_PATHS)
@@ -1434,3 +1437,21 @@ def test_a_code_identity_row_of_an_added_record_that_executed_nothing_is_refused
 
     with pytest.raises(ValueError, match=r"code identity .* not an executed record"):
         _later_identity_rows(_with_registration(not_executed)[REGISTRATION_INDEX])
+
+
+def test_the_baseline_registration_states_the_code_of_each_of_its_three_records() -> (
+    None
+):
+    """Each record is a run, and each run names the commit that it executed."""
+    ledger = LEDGERS[E02A_REGISTRATION_INDEX]
+    identities = {row["recordId"]: row for row in ledger["codeIdentity"]}
+    revisions = {row["recordId"]: row for row in ledger["codeRevisions"]}
+    assert len(identities) == len(revisions) == 3
+    for record_id, row in identities.items():
+        record = RECORD_BY_ID[record_id]
+        assert row["identity"] == "stated-revision"
+        executed = {c["componentId"] for c in record["execution"]["executedComponents"]}
+        assert set(row["executedClaimMaterialComponents"]) <= executed
+        (entry,) = revisions[record_id]["entries"]
+        manifest = (REPO_ROOT / entry["path"]).read_text(encoding="utf-8")
+        assert entry["quote"] in manifest

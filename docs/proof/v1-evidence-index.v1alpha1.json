@@ -31,8 +31,8 @@
   "packSources": [
     {
       "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
-      "sha256": "ade1235e3fe00f589841f8d8f20ba514016b7bfd93355b11b6baee612e61ca3a",
-      "gitBlob": "709593cb923028087a35da573be419be4a8a1570"
+      "sha256": "27d0f50b20014a9a7cc8262403c72b3848f81b5a5e50c382050c7e9d5aed7f58",
+      "gitBlob": "20bd0f152ea0786f5e8bb5c6e88a83a33a633854"
     },
     {
       "path": "docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
@@ -83,40 +83,45 @@
       "path": "docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json",
       "sha256": "9cf34ee2a40c436fd439f66b5f0af4b9c2768c7ee8d90554d41a045ca109e374",
       "gitBlob": "41250c8ac6776706f3b05c9ac241a64307546953"
+    },
+    {
+      "path": "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json",
+      "sha256": "c87826cad73f4463b2ffe479cb78f21e20b01461d29e4d923dafaee6b3fe7791",
+      "gitBlob": "a8a4362bc3999c4fd0411287389888269d156467"
     }
   ],
   "summary": {
-    "claims": 62,
+    "claims": 63,
     "claimsByStatus": {
-      "certified": 45,
+      "certified": 46,
       "deferred": 1,
       "not-claimed": 9,
       "planned": 7
     },
-    "records": 68,
+    "records": 71,
     "recordsByLevel": {
       "C0": 29,
       "C1": 8,
-      "C2": 31,
+      "C2": 34,
       "C3": 0,
       "C4": 0
     },
     "recordsByEnvironment": {
       "local-container": 4,
-      "local-kubernetes": 27,
+      "local-kubernetes": 30,
       "local-process": 10,
       "repository-only": 27
     },
     "recordsByWorkloadSource": {
       "none": 31,
       "operator-issued": 32,
-      "synthetic": 5
+      "synthetic": 8
     },
     "recordsWithASubstitution": 9,
     "recordsWithAClaimMaterialSubstitution": 8,
-    "executedRecords": 39,
-    "executedRecordsNamingTheRevisionThatRan": 21,
-    "evidenceFiles": 116,
+    "executedRecords": 42,
+    "executedRecordsNamingTheRevisionThatRan": 24,
+    "evidenceFiles": 172,
     "findingsByDisposition": {
       "corrected-authoritative-metadata": 7,
       "additive-historical-correction": 4,
@@ -127,7 +132,7 @@
     "historicalCorrections": 9,
     "registerChanges": 25,
     "executedRecordsByCodeIdentity": {
-      "stated-revision": 21,
+      "stated-revision": 24,
       "content-pinned": 4,
       "no-repository-code": 4,
       "unidentified": 10
@@ -153,9 +158,9 @@
     "publicationRegisterChanges": 4,
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
-    "postReleaseRegisterChanges": 22,
-    "evidenceSetSha256": "549946afa25095d7a7239360f48529dd4ba91421fee6ac659ca41102e7cbefcc",
-    "evidencePackSha256": "06e214dc5891f94098e5ce3988039a11eca768aef3ca8414614ae4e98a3d0720",
+    "postReleaseRegisterChanges": 24,
+    "evidenceSetSha256": "cb906ea4e5b9fb211da8e31997ac23c27c1937f165445a1b6e4fc249a78e5b99",
+    "evidencePackSha256": "acebd00f81949c5a0af4e390af2cb303327d9d4aa0a6c8fb02db2801f6857cae",
     "releasedPack": {
       "tag": "v1.0.0",
       "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
@@ -167,7 +172,8 @@
         "docs/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json",
         "docs/proof/testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json",
         "docs/proof/testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json",
-        "docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json"
+        "docs/proof/testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json",
+        "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json"
       ],
       "claims": 59,
       "claimsByStatus": {
@@ -228,6 +234,24 @@
           "runPath": "docs/proof/experiments/v2-e01/runs/20261006-e01-d-1",
           "reviewRef": "docs/proof/experiments/v2-e01/reviews/20261006-e01-d-1-review-1.v1alpha1.json",
           "reviewSha256": "46d2b99abc3b09391a56dd652ec0980cda61538dd0c80f05dc8129dba9e55080"
+        },
+        {
+          "ledger": "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json",
+          "runPath": "docs/proof/experiments/v2-e02a/runs/e02a-1",
+          "reviewRef": "docs/proof/experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json",
+          "reviewSha256": "33294a145050bfd78e5d02384926ccbe905b12487ff6429aacd8ffa4b68abd7d"
+        },
+        {
+          "ledger": "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json",
+          "runPath": "docs/proof/experiments/v2-e02a/runs/e02a-2",
+          "reviewRef": "docs/proof/experiments/v2-e02a/reviews/e02a-2-review-1.v1alpha1.json",
+          "reviewSha256": "5128b2cbc1837abcb68428dce820c58ae4bd565327c3cccc7e87ab6317be9daf"
+        },
+        {
+          "ledger": "docs/proof/testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json",
+          "runPath": "docs/proof/experiments/v2-e02a/runs/e02a-3",
+          "reviewRef": "docs/proof/experiments/v2-e02a/reviews/e02a-3-review-1.v1alpha1.json",
+          "reviewSha256": "1191db875497bd6f9a6cce7f4e9b895955fecf3f121e74a7f72af29e85a22460"
         }
       ],
       "registeredBeforeTheGate": [
@@ -1531,6 +1555,36 @@
       ],
       "recordIds": [
         "the-e01-real-deployment-run-served-one-completion-from-the-release-reconciled-from-git-c2"
+      ],
+      "codeIdentity": null,
+      "releaseBlockers": [],
+      "closedBlockers": []
+    },
+    {
+      "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
+      "area": "reliability",
+      "status": "certified",
+      "assertsRealBehaviour": true,
+      "statement": "In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes.",
+      "limitation": "Runtime, C2, about three runs, e02a-1, e02a-2, and e02a-3, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one release, one model, and one caller workload. The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read: the freeze record does not state that reading, no tool reads the approval, and on the readings of the runtime readyReplicas count no run would be counted and this claim would not stand. The eligibility rests on the failure episodes alone. The zero-Ready condition holds on the first reading that gave zero and not on the outer start, and the record does not state which applies. The start of a failure episode is the completion of its first failed request: the failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time. The failure count is 2 in each run, and the caller profile has 2 workers. The model file of each replacement pod was not compared directly. The host paged, and no record establishes whether that changed a figure. The review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. It read no register statement about these runs, it ran no tool of this repository, and it does not establish that this claim is correct. Registration, 2026-11-01: V2-S7-001-PR2 ran the three runs and registered no claim. V2-S7-002-PR1 classified them and added this claim. No run executed in that change, and no file of a run changed.",
+      "doesNotEstablish": "That the service stayed available; that one runtime replica is or is not acceptable for any service; a comparison with two runtime replicas, an improvement, or a percentage, since no run of V2-E02B exists; an authorization of a run of V2-E02B or of a change of the desired state; node failure, overload, sustained capacity, or production availability; the cause of a failure, of a gap, or of a recovery; a figure of the V1 pod-loss evidence; that the model file of a replacement pod is the file of the record; that paging on the host changed no figure; a service-level objective; behaviour on another provider, Kubernetes version, node count, release, or caller workload; representative evidence, C3, or operational evidence, C4; a cost, a saving, a return on investment, or a business effect; that a person reviewed the result; or production readiness.",
+      "claimMaterialComponents": [
+        "argo-cd",
+        "inferops-llm-chart",
+        "docker-desktop-cluster",
+        "inferops-api",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0",
+        "reliability-runner",
+        "reliability-analysis"
+      ],
+      "levels": [
+        "C2"
+      ],
+      "recordIds": [
+        "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-1-c2",
+        "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-2-c2",
+        "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-3-c2"
       ],
       "codeIdentity": null,
       "releaseBlockers": [],
@@ -11554,6 +11608,1278 @@
       ],
       "findings": [
         "d-f01-the-register-holds-no-claim-for-the-reviewed-e01-d-run"
+      ]
+    },
+    {
+      "recordId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-1-c2",
+      "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
+      "claimStatus": "certified",
+      "evidenceLevel": "C2",
+      "migrationState": "migrated",
+      "registerPointer": "/claims/62/evidenceRecords/0",
+      "registerEntrySha256": "9b1819b5d705c4ca7933f2e043ed1b7209775d5effec0a62233c17af33694912",
+      "summary": "On 2026-10-31 run e02a-1 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 365 requests in the window failed, in one failure episode of 4276 ms, the largest time between two successes is 29896 ms, and the runtime tier has one zero-Ready interval with an inner figure of 17342 ms and an outer figure of 26813 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+      "execution": {
+        "targetBehaviourExecuted": true,
+        "executedComponents": [
+          {
+            "componentId": "argo-cd",
+            "role": "other"
+          },
+          {
+            "componentId": "inferops-llm-chart",
+            "role": "chart"
+          },
+          {
+            "componentId": "docker-desktop-cluster",
+            "role": "cluster"
+          },
+          {
+            "componentId": "inferops-api",
+            "role": "api"
+          },
+          {
+            "componentId": "llama-cpp-server",
+            "role": "inference-runtime"
+          },
+          {
+            "componentId": "qwen3-1-7b-q8-0",
+            "role": "model"
+          },
+          {
+            "componentId": "reliability-runner",
+            "role": "load-generator"
+          },
+          {
+            "componentId": "reliability-analysis",
+            "role": "tool"
+          },
+          {
+            "componentId": "experiment-e02a-control",
+            "role": "tool"
+          }
+        ],
+        "substitutions": []
+      },
+      "workload": {
+        "source": "synthetic",
+        "representativenessDeclared": null,
+        "shape": {
+          "concurrency": 2,
+          "requestCount": 717
+        }
+      },
+      "environment": {
+        "environmentId": "local-kubernetes",
+        "provider": "docker-desktop",
+        "hardwareClass": "cpu",
+        "region": null
+      },
+      "identifiers": {
+        "artifact-hash": [
+          {
+            "component": "qwen3-1-7b-q8-0, model file",
+            "value": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+          },
+          {
+            "component": "generated values file",
+            "value": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+          },
+          {
+            "component": "rendered workload release, releaseId",
+            "value": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+          },
+          {
+            "component": "freeze revision 4, content digest",
+            "value": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+          },
+          {
+            "component": "RP-1 profile, content digest",
+            "value": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+          }
+        ],
+        "commit": [
+          {
+            "component": "inferops repository",
+            "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+          }
+        ],
+        "image-digest": [
+          {
+            "component": "llama-cpp-server",
+            "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+          }
+        ],
+        "model-revision": [
+          {
+            "component": "qwen3-1-7b-q8-0",
+            "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+          }
+        ]
+      },
+      "versionsRecordedIn": "docs/proof/experiments/v2-e02a/runs/e02a-1/run.v1alpha1.json",
+      "codeRevision": {
+        "entries": [
+          {
+            "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+            "relation": "stated-revision",
+            "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/run.v1alpha1.json"
+          }
+        ],
+        "statedRevision": true,
+        "note": "The run manifest names the commit it executed. Each run started from a clean checkout of main at that commit. The API image was built at that commit, and the run records its digest."
+      },
+      "codeIdentity": {
+        "identity": "stated-revision",
+        "repositoryCode": [
+          "inferops-llm-chart",
+          "inferops-api",
+          "reliability-runner",
+          "reliability-analysis"
+        ]
+      },
+      "procedure": {
+        "commands": [
+          "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt verb target",
+          "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt fault e02a-1 inferops-inferops-llm-runtime-6b4554dc64-l7tth"
+        ],
+        "workflowRef": null,
+        "scriptRefs": [
+          "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt",
+          "scripts/environment/reliability-runner.sh",
+          "scripts/environment/experiment-timeline.sh",
+          "scripts/environment/experiment-telemetry.sh",
+          "scripts/environment/argocd-application.sh"
+        ]
+      },
+      "acceptanceCriteria": [
+        {
+          "criterionId": "e02a-ac1",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac2",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac3",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac4",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac5",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac6",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac7",
+          "declaredBefore": true,
+          "outcome": "met"
+        }
+      ],
+      "observationPeriod": {
+        "start": "2026-10-31T13:27:58Z",
+        "end": "2026-10-31T14:33:10Z",
+        "durationSeconds": 3912
+      },
+      "results": [
+        {
+          "resultId": "e02a-ac1",
+          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-l7tth. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one."
+        },
+        {
+          "resultId": "e02a-ac2",
+          "statement": "On the readings of each stream, each of the four streams answered each reading inside the window, and the largest time between two readings is 4.911 s. The repository owner approved that reading on 2026-10-31, after the evidence was read. On the readings of the runtime readyReplicas count alone, the largest time is 25.1 s."
+        },
+        {
+          "resultId": "e02a-ac3",
+          "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 332 requests complete inside the window after fault-injection-finished, by more than the margin."
+        },
+        {
+          "resultId": "e02a-ac4",
+          "statement": "A runtime pod with a new UID is Ready in pods.jsonl from 13:41:57.659Z. The analysis states a stabilized recovery at 2026-10-31T13:43:11.618Z, inside the observation limit."
+        },
+        {
+          "resultId": "e02a-ac5",
+          "statement": "295 successful requests complete after stabilizedAt inside the window, and the last completes 621.663 s after it."
+        },
+        {
+          "resultId": "e02a-ac6",
+          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 21 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window."
+        },
+        {
+          "resultId": "e02a-ac7",
+          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis."
+        }
+      ],
+      "limitations": [
+        "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
+        "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
+        "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+        "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
+        "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
+        "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
+        "A stream reads a state at intervals of at least 2 s. The analysis states an inner and an outer figure for each sampled interval, and neither is the exact time.",
+        "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
+        "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
+        "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
+        "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+      ],
+      "doesNotEstablish": [
+        "That the service stayed available. Requests failed in this run.",
+        "That one runtime replica is or is not acceptable for any service.",
+        "A comparison with two runtime replicas, an improvement, or a percentage. No run of V2-E02B exists.",
+        "Node failure, overload, sustained capacity, or production availability.",
+        "The cause of a failure, of a gap, or of a recovery.",
+        "A figure of the V1 pod-loss evidence. No V1 figure is a value of V2-E02A.",
+        "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
+        "That paging on the host changed no figure.",
+        "That a person reviewed the result.",
+        "Anything about another provider, node, release, or caller workload."
+      ],
+      "evidence": [
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/result.md",
+          "sha256": "2b9ed4093ecd1352db6583e0ee89feed08b325633a044edfaf3e2a4390d58aff",
+          "gitBlob": "73c245a0c89384a3f1cf202a3edf4bbc51c7f9ae",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/run.v1alpha1.json",
+          "sha256": "01b45844c6a7d5d96bfd6c7bfd0fbe98a586202b7e39a3cb53d6d9faf8c9eb1b",
+          "gitBlob": "09687ec9072a352b3d18b5b13061445d17396b81",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/analysis.json",
+          "sha256": "673c4028b9164792cf873e44d76e7ad7b925191f60616510bb514aa46207a3b5",
+          "gitBlob": "b4846eeb155425873e4f6eae0b2413c1640b6a76",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/caller.jsonl",
+          "sha256": "9d1c2a2379518a957926a11a707fae9094e7e42ed9f543850ec3fb4f855d8a46",
+          "gitBlob": "624400638109510e97de802c01a8cfef3bacb247",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/endpoints.jsonl",
+          "sha256": "8c6c5430687c61302c01d4aae42cff79d297851d5be8339457dad0ac4f19581f",
+          "gitBlob": "670c8b9ef0d6807b48b09a8ba264240ed7fbe81d",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/pods.jsonl",
+          "sha256": "a23d2c0be11d78b55e4b4daaf4cf9f9b72597c2ef80ff389843e4f1e65f75eec",
+          "gitBlob": "e3063eb5a3517c205c527b1121ab8822435753dc",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/deployments.jsonl",
+          "sha256": "56a78057a6b820d19d56e6c5d4592447c54ad6cab86259ca18101c87af6c3398",
+          "gitBlob": "7d9efdb5d0faab03fd596c9833c81528be28a6b7",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/argo.jsonl",
+          "sha256": "0cff8e32c55ca4e8bfa1beec25cc70310f265dc8173b5b97cf10facbf3bfd22e",
+          "gitBlob": "386c38e5a74bcaf682f7cd9727015e44a4efe6a2",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/operator-events.jsonl",
+          "sha256": "fbfa064f9f1eb71bd05a3c08d7193daa95b938ce30bb81150db9f93d9199a31f",
+          "gitBlob": "ba30318dbbef5057ade71c30b77dcf451bb7a47f",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/commands.txt",
+          "sha256": "4fe0cc1022e5fe23549b2b858ee42c221a76fa18007af4d827d6a7659bb7bfee",
+          "gitBlob": "9d98c55574830528f21a7635969865df18ce49ac",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/transcript.txt",
+          "sha256": "4257526ca05d3ddb87d657d17bd1f03e2feaa69366c932e3ba5931e9ef8d728d",
+          "gitBlob": "edebf77f5dcb4cddc173ae37c72dbbf33ace1e1b",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/control.json",
+          "sha256": "06c554d3d4b416dad5b0a59bc9eaf2469786174e6ecd1455ec1800951780d793",
+          "gitBlob": "01535fd53080e1ecb5b6d1c7ab52e8ad9cd1f72d",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/declaration.json",
+          "sha256": "77775397c6ff652bc81937973b501188ebc1bd7676e867b88a6b275d2981a394",
+          "gitBlob": "97f57f2a1aa5e5e3f97318835d04f2bb830469cb",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/environment.txt",
+          "sha256": "2a44dc5e6d76f2a649ea4bbd42d7119bfbdc5ffc2d9764da6ef91de0ce59373a",
+          "gitBlob": "56e202fe0812d2df6b80e01af2585d518098eb89",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-1/release.txt",
+          "sha256": "9258820d4cfe131ef5c5322a2666075682894a38f4df0f365068cc01196a7f7f",
+          "gitBlob": "dda9c122d75175579add8b741fb6acd53c7bb2ea",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json",
+          "sha256": "c0111c7ef61569a53fabcca77023c008e5851cf90b99c5debd0e3912dad9ebfd",
+          "gitBlob": "df8bdfbad9d19fca71cbebf38537b7478a32d9df",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+          "sha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+          "gitBlob": "d2e82ed8016f77a9ad08d53b0a2c99f5010be3d6",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/classification.v1alpha1.json",
+          "sha256": "6268507b790642b34e56a75703b5ee4c2ca6ec330f9cfe6fcd08346cc6042da9",
+          "gitBlob": "6cd5d2c3ded254d12c12db82a9e0ee2d8f4b700f",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/baseline-report.md",
+          "sha256": "c09feffd46c474071fc4c2f5dbc13d845fc3f1090fb66fa538152aa7ef4c690d",
+          "gitBlob": "8fddd5d3efa9e76f9c1ad31d54a02bbf3143992c",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json",
+          "sha256": "33294a145050bfd78e5d02384926ccbe905b12487ff6429aacd8ffa4b68abd7d",
+          "gitBlob": "86ec637cb1c28367950c7b056d5f2c81633b284f",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
+          "sha256": "89d6b246724fb6c284d38834087e39f2d1cec8dcc942740307faa539dd5f67f4",
+          "gitBlob": "19ff5ca1d789fc656e675e5db848267e6941261c",
+          "recordedDate": {
+            "label": "Date",
+            "value": "2026-11-01"
+          },
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/environment/v2-s7-002-pr1-validation.md",
+          "sha256": "aa45adba6b9b2ba99b3522f3c0f96a18416af1c2a5b0cf1e186de423b34a0b99",
+          "gitBlob": "02f837f23b63f142a714bb0e347a983f755bf8d3",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        }
+      ],
+      "findings": [
+        "e-f01-the-register-holds-no-claim-for-the-classified-e02a-runs"
+      ]
+    },
+    {
+      "recordId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-2-c2",
+      "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
+      "claimStatus": "certified",
+      "evidenceLevel": "C2",
+      "migrationState": "migrated",
+      "registerPointer": "/claims/62/evidenceRecords/1",
+      "registerEntrySha256": "21a4fe237e37c48ada99cd697c1a608152b554e61501a8f57f6b026fefbf2da4",
+      "summary": "On 2026-10-31 run e02a-2 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 366 requests in the window failed, in one failure episode of 3682 ms, the largest time between two successes is 30427 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14837 ms and an outer figure of 23792 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+      "execution": {
+        "targetBehaviourExecuted": true,
+        "executedComponents": [
+          {
+            "componentId": "argo-cd",
+            "role": "other"
+          },
+          {
+            "componentId": "inferops-llm-chart",
+            "role": "chart"
+          },
+          {
+            "componentId": "docker-desktop-cluster",
+            "role": "cluster"
+          },
+          {
+            "componentId": "inferops-api",
+            "role": "api"
+          },
+          {
+            "componentId": "llama-cpp-server",
+            "role": "inference-runtime"
+          },
+          {
+            "componentId": "qwen3-1-7b-q8-0",
+            "role": "model"
+          },
+          {
+            "componentId": "reliability-runner",
+            "role": "load-generator"
+          },
+          {
+            "componentId": "reliability-analysis",
+            "role": "tool"
+          },
+          {
+            "componentId": "experiment-e02a-control",
+            "role": "tool"
+          }
+        ],
+        "substitutions": []
+      },
+      "workload": {
+        "source": "synthetic",
+        "representativenessDeclared": null,
+        "shape": {
+          "concurrency": 2,
+          "requestCount": 700
+        }
+      },
+      "environment": {
+        "environmentId": "local-kubernetes",
+        "provider": "docker-desktop",
+        "hardwareClass": "cpu",
+        "region": null
+      },
+      "identifiers": {
+        "artifact-hash": [
+          {
+            "component": "qwen3-1-7b-q8-0, model file",
+            "value": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+          },
+          {
+            "component": "generated values file",
+            "value": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+          },
+          {
+            "component": "rendered workload release, releaseId",
+            "value": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+          },
+          {
+            "component": "freeze revision 4, content digest",
+            "value": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+          },
+          {
+            "component": "RP-1 profile, content digest",
+            "value": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+          }
+        ],
+        "commit": [
+          {
+            "component": "inferops repository",
+            "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+          }
+        ],
+        "image-digest": [
+          {
+            "component": "llama-cpp-server",
+            "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+          }
+        ],
+        "model-revision": [
+          {
+            "component": "qwen3-1-7b-q8-0",
+            "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+          }
+        ]
+      },
+      "versionsRecordedIn": "docs/proof/experiments/v2-e02a/runs/e02a-2/run.v1alpha1.json",
+      "codeRevision": {
+        "entries": [
+          {
+            "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+            "relation": "stated-revision",
+            "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/run.v1alpha1.json"
+          }
+        ],
+        "statedRevision": true,
+        "note": "The run manifest names the commit it executed. Each run started from a clean checkout of main at that commit. The API image was built at that commit, and the run records its digest."
+      },
+      "codeIdentity": {
+        "identity": "stated-revision",
+        "repositoryCode": [
+          "inferops-llm-chart",
+          "inferops-api",
+          "reliability-runner",
+          "reliability-analysis"
+        ]
+      },
+      "procedure": {
+        "commands": [
+          "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt verb target",
+          "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt fault e02a-2 inferops-inferops-llm-runtime-6b4554dc64-4brfb"
+        ],
+        "workflowRef": null,
+        "scriptRefs": [
+          "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt",
+          "scripts/environment/reliability-runner.sh",
+          "scripts/environment/experiment-timeline.sh",
+          "scripts/environment/experiment-telemetry.sh",
+          "scripts/environment/argocd-application.sh"
+        ]
+      },
+      "acceptanceCriteria": [
+        {
+          "criterionId": "e02a-ac1",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac2",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac3",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac4",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac5",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac6",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac7",
+          "declaredBefore": true,
+          "outcome": "met"
+        }
+      ],
+      "observationPeriod": {
+        "start": "2026-10-31T14:35:34Z",
+        "end": "2026-10-31T15:35:58Z",
+        "durationSeconds": 3624
+      },
+      "results": [
+        {
+          "resultId": "e02a-ac1",
+          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-4brfb. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one."
+        },
+        {
+          "resultId": "e02a-ac2",
+          "statement": "On the readings of each stream, each of the four streams answered each reading inside the window, and the largest time between two readings is 3.969 s. The repository owner approved that reading on 2026-10-31, after the evidence was read. On the readings of the runtime readyReplicas count alone, the largest time is 22.4 s."
+        },
+        {
+          "resultId": "e02a-ac3",
+          "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 340 requests complete inside the window after fault-injection-finished, by more than the margin."
+        },
+        {
+          "resultId": "e02a-ac4",
+          "statement": "A runtime pod with a new UID is Ready in pods.jsonl from 14:47:23.782Z. The analysis states a stabilized recovery at 2026-10-31T14:48:35.794Z, inside the observation limit."
+        },
+        {
+          "resultId": "e02a-ac5",
+          "statement": "307 successful requests complete after stabilizedAt inside the window, and the last completes 624.813 s after it."
+        },
+        {
+          "resultId": "e02a-ac6",
+          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window."
+        },
+        {
+          "resultId": "e02a-ac7",
+          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis."
+        }
+      ],
+      "limitations": [
+        "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
+        "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
+        "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+        "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
+        "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
+        "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
+        "A stream reads a state at intervals of at least 2 s. The analysis states an inner and an outer figure for each sampled interval, and neither is the exact time.",
+        "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
+        "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
+        "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
+        "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+      ],
+      "doesNotEstablish": [
+        "That the service stayed available. Requests failed in this run.",
+        "That one runtime replica is or is not acceptable for any service.",
+        "A comparison with two runtime replicas, an improvement, or a percentage. No run of V2-E02B exists.",
+        "Node failure, overload, sustained capacity, or production availability.",
+        "The cause of a failure, of a gap, or of a recovery.",
+        "A figure of the V1 pod-loss evidence. No V1 figure is a value of V2-E02A.",
+        "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
+        "That paging on the host changed no figure.",
+        "That a person reviewed the result.",
+        "Anything about another provider, node, release, or caller workload."
+      ],
+      "evidence": [
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/result.md",
+          "sha256": "76f4425f0f3959291ad44fe893fb2301c1952a72a257ed58d181f5611c56c8e0",
+          "gitBlob": "7a3f7d58a7fbe5e466f43537884044b1a5e4b870",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/run.v1alpha1.json",
+          "sha256": "24b9bfdbff27a8fb777d5d40259eef756d8c1c7882eb7c60f0fe2045dccb7534",
+          "gitBlob": "06aa48e6285cd5571854f38cd0b4f17f1b82ad41",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/analysis.json",
+          "sha256": "ae88cd32f2c45c15b7bf5e2e95a473d8b824f47ca7f60ebd1e3dc8c717200daf",
+          "gitBlob": "4542cbb6112525aecc5c031df928d1ecfc96b890",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/caller.jsonl",
+          "sha256": "907da8441fb4d9da705ad61e364da1d5a9a1e902a28680ccc9d724892c8fe06b",
+          "gitBlob": "f2f1de9d933f4b62d663116959acf8aecb87ab6c",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/endpoints.jsonl",
+          "sha256": "e0b6880a2088f6926452b2a90c5f5ccfa55b35673f1e61cb979ab2d7ad86762a",
+          "gitBlob": "2a93dbedd3332125ecd6a5dd6dd04dbf235b118f",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/pods.jsonl",
+          "sha256": "8d38059200f873d7ea1e4dcc8ba5d1c53a3304cfb5500718322e92423790a26e",
+          "gitBlob": "c659d2be79a6e7b3347cab9e802138913b84e2d3",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/deployments.jsonl",
+          "sha256": "57d3deba848c42fcb23cb6208c8e6a2149004f092100d07329180f368423ef61",
+          "gitBlob": "035cada25271de547d0801a1c5bebf8d42be2ec9",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/argo.jsonl",
+          "sha256": "a75496c58dfacaae4354b166157b3f44abcd75cfda117bc68847b896be5d967d",
+          "gitBlob": "ab6a05bd468a8f25ea970bed8c7246586db453be",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/operator-events.jsonl",
+          "sha256": "8eb5c4623a304423f9092b90f17c1d5385fa7e291938e2ddf376195409e52cb1",
+          "gitBlob": "057f5a994c9c3e4ed5139ee8fc33cefcafb771a0",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/commands.txt",
+          "sha256": "d26c44c1f52f772d8c5784905c92b7064dae5426dbe4ec775118077d393739b2",
+          "gitBlob": "ad6ad71f0b0485f3e5eea53eb47116e6a9059af4",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/transcript.txt",
+          "sha256": "b606add930805273667210c2e4e86fd35496a70cf73a8229aabd8c18d10b5c2d",
+          "gitBlob": "9ef2d3f24aa25e185dba3ac14053dc3e28c1f076",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/control.json",
+          "sha256": "d22b1bedfd040439c39dfbb33d18e7d3a297ad010906b03dabd06bae8f38d48b",
+          "gitBlob": "1a671eba1ec51fb3a83900668b979bcf42f2a46c",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/declaration.json",
+          "sha256": "bec3182560a8b02c9f1366faee91aa70fb6573394f0936ef185fedd7f07d821e",
+          "gitBlob": "95fe7148cfb8e7eb124dc952e4484962e7b74295",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/environment.txt",
+          "sha256": "cfdc66aca8ea72fdf20418e0c41e1e1064dbcdeee390ab46dc1be6e5ecc9fbf5",
+          "gitBlob": "a12af0e2184d08a47b4764307c7246bad8736e8f",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-2/release.txt",
+          "sha256": "9a8fb186fc9f5379cd72682605b2ecdb3c3f77d295698f3d2beb6f22be44d4f5",
+          "gitBlob": "9cc645f67a30eae0578be7d9ec045e0a116629a7",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/corrections/e02a-2/correction-1.v1alpha1.json",
+          "sha256": "73f2c2133b09ea4382cddcb49a8ad72676d20504fa16e9247c482cf42255dc82",
+          "gitBlob": "c548b925eec62cdbd7606901e7dca90e632868a5",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+          "sha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+          "gitBlob": "d2e82ed8016f77a9ad08d53b0a2c99f5010be3d6",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/classification.v1alpha1.json",
+          "sha256": "6268507b790642b34e56a75703b5ee4c2ca6ec330f9cfe6fcd08346cc6042da9",
+          "gitBlob": "6cd5d2c3ded254d12c12db82a9e0ee2d8f4b700f",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/baseline-report.md",
+          "sha256": "c09feffd46c474071fc4c2f5dbc13d845fc3f1090fb66fa538152aa7ef4c690d",
+          "gitBlob": "8fddd5d3efa9e76f9c1ad31d54a02bbf3143992c",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/reviews/e02a-2-review-1.v1alpha1.json",
+          "sha256": "5128b2cbc1837abcb68428dce820c58ae4bd565327c3cccc7e87ab6317be9daf",
+          "gitBlob": "90b335ee075dcac07467c967954b4a9d5d6210d5",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
+          "sha256": "89d6b246724fb6c284d38834087e39f2d1cec8dcc942740307faa539dd5f67f4",
+          "gitBlob": "19ff5ca1d789fc656e675e5db848267e6941261c",
+          "recordedDate": {
+            "label": "Date",
+            "value": "2026-11-01"
+          },
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/environment/v2-s7-002-pr1-validation.md",
+          "sha256": "aa45adba6b9b2ba99b3522f3c0f96a18416af1c2a5b0cf1e186de423b34a0b99",
+          "gitBlob": "02f837f23b63f142a714bb0e347a983f755bf8d3",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        }
+      ],
+      "findings": [
+        "e-f01-the-register-holds-no-claim-for-the-classified-e02a-runs"
+      ]
+    },
+    {
+      "recordId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-3-c2",
+      "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
+      "claimStatus": "certified",
+      "evidenceLevel": "C2",
+      "migrationState": "migrated",
+      "registerPointer": "/claims/62/evidenceRecords/2",
+      "registerEntrySha256": "64d904f68897ef85363c50e2d86c8cb3a38862590db893ddde2597254a941bd6",
+      "summary": "On 2026-10-31 run e02a-3 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 342 requests in the window failed, in one failure episode of 4065 ms, the largest time between two successes is 29893 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14949 ms and an outer figure of 23448 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+      "execution": {
+        "targetBehaviourExecuted": true,
+        "executedComponents": [
+          {
+            "componentId": "argo-cd",
+            "role": "other"
+          },
+          {
+            "componentId": "inferops-llm-chart",
+            "role": "chart"
+          },
+          {
+            "componentId": "docker-desktop-cluster",
+            "role": "cluster"
+          },
+          {
+            "componentId": "inferops-api",
+            "role": "api"
+          },
+          {
+            "componentId": "llama-cpp-server",
+            "role": "inference-runtime"
+          },
+          {
+            "componentId": "qwen3-1-7b-q8-0",
+            "role": "model"
+          },
+          {
+            "componentId": "reliability-runner",
+            "role": "load-generator"
+          },
+          {
+            "componentId": "reliability-analysis",
+            "role": "tool"
+          },
+          {
+            "componentId": "experiment-e02a-control",
+            "role": "tool"
+          }
+        ],
+        "substitutions": []
+      },
+      "workload": {
+        "source": "synthetic",
+        "representativenessDeclared": null,
+        "shape": {
+          "concurrency": 2,
+          "requestCount": 615
+        }
+      },
+      "environment": {
+        "environmentId": "local-kubernetes",
+        "provider": "docker-desktop",
+        "hardwareClass": "cpu",
+        "region": null
+      },
+      "identifiers": {
+        "artifact-hash": [
+          {
+            "component": "qwen3-1-7b-q8-0, model file",
+            "value": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+          },
+          {
+            "component": "generated values file",
+            "value": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+          },
+          {
+            "component": "rendered workload release, releaseId",
+            "value": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+          },
+          {
+            "component": "freeze revision 4, content digest",
+            "value": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+          },
+          {
+            "component": "RP-1 profile, content digest",
+            "value": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+          }
+        ],
+        "commit": [
+          {
+            "component": "inferops repository",
+            "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+          }
+        ],
+        "image-digest": [
+          {
+            "component": "llama-cpp-server",
+            "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+          }
+        ],
+        "model-revision": [
+          {
+            "component": "qwen3-1-7b-q8-0",
+            "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+          }
+        ]
+      },
+      "versionsRecordedIn": "docs/proof/experiments/v2-e02a/runs/e02a-3/run.v1alpha1.json",
+      "codeRevision": {
+        "entries": [
+          {
+            "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+            "relation": "stated-revision",
+            "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/run.v1alpha1.json"
+          }
+        ],
+        "statedRevision": true,
+        "note": "The run manifest names the commit it executed. Each run started from a clean checkout of main at that commit. The API image was built at that commit, and the run records its digest."
+      },
+      "codeIdentity": {
+        "identity": "stated-revision",
+        "repositoryCode": [
+          "inferops-llm-chart",
+          "inferops-api",
+          "reliability-runner",
+          "reliability-analysis"
+        ]
+      },
+      "procedure": {
+        "commands": [
+          "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt verb target",
+          "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt fault e02a-3 inferops-inferops-llm-runtime-6b4554dc64-jzh6j"
+        ],
+        "workflowRef": null,
+        "scriptRefs": [
+          "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt",
+          "scripts/environment/reliability-runner.sh",
+          "scripts/environment/experiment-timeline.sh",
+          "scripts/environment/experiment-telemetry.sh",
+          "scripts/environment/argocd-application.sh"
+        ]
+      },
+      "acceptanceCriteria": [
+        {
+          "criterionId": "e02a-ac1",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac2",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac3",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac4",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac5",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac6",
+          "declaredBefore": true,
+          "outcome": "met"
+        },
+        {
+          "criterionId": "e02a-ac7",
+          "declaredBefore": true,
+          "outcome": "met"
+        }
+      ],
+      "observationPeriod": {
+        "start": "2026-10-31T15:36:41Z",
+        "end": "2026-10-31T16:42:32Z",
+        "durationSeconds": 3951
+      },
+      "results": [
+        {
+          "resultId": "e02a-ac1",
+          "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-jzh6j. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one."
+        },
+        {
+          "resultId": "e02a-ac2",
+          "statement": "On the readings of each stream, each of the four streams answered each reading inside the window, and the largest time between two readings is 5.796 s. The repository owner approved that reading on 2026-10-31, after the evidence was read. On the readings of the runtime readyReplicas count alone, the largest time is 22.0 s."
+        },
+        {
+          "resultId": "e02a-ac3",
+          "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 315 requests complete inside the window after fault-injection-finished, by more than the margin."
+        },
+        {
+          "resultId": "e02a-ac4",
+          "statement": "A runtime pod with a new UID is Ready in pods.jsonl from 15:47:46.324Z. The analysis states a stabilized recovery at 2026-10-31T15:49:01.360Z, inside the observation limit."
+        },
+        {
+          "resultId": "e02a-ac5",
+          "statement": "279 successful requests complete after stabilizedAt inside the window, and the last completes 623.001 s after it."
+        },
+        {
+          "resultId": "e02a-ac6",
+          "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window."
+        },
+        {
+          "resultId": "e02a-ac7",
+          "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis."
+        }
+      ],
+      "limitations": [
+        "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
+        "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
+        "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+        "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
+        "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
+        "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
+        "A stream reads a state at intervals of at least 2 s. The analysis states an inner and an outer figure for each sampled interval, and neither is the exact time.",
+        "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
+        "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
+        "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
+        "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+      ],
+      "doesNotEstablish": [
+        "That the service stayed available. Requests failed in this run.",
+        "That one runtime replica is or is not acceptable for any service.",
+        "A comparison with two runtime replicas, an improvement, or a percentage. No run of V2-E02B exists.",
+        "Node failure, overload, sustained capacity, or production availability.",
+        "The cause of a failure, of a gap, or of a recovery.",
+        "A figure of the V1 pod-loss evidence. No V1 figure is a value of V2-E02A.",
+        "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
+        "That paging on the host changed no figure.",
+        "That a person reviewed the result.",
+        "Anything about another provider, node, release, or caller workload."
+      ],
+      "evidence": [
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/result.md",
+          "sha256": "bc92bb8c834249bb5006345b266e64beaf5729ee642644de7375fd533015e9e1",
+          "gitBlob": "5e7dbf4c4342f3d49c489820ac7b886562aa1cc2",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/run.v1alpha1.json",
+          "sha256": "9e1e8f129fc1be8fc3617161ca73b7a3327bc11ff5bb92b596fc760d73b1e0be",
+          "gitBlob": "3d277fb147d951837f1496587d39a479b71b73e0",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/analysis.json",
+          "sha256": "547bda5ec0910165b1b664dc2e9a0940bf113d0ebc3c6ed86e720c26d5924d28",
+          "gitBlob": "4dd93777e7325daf74d223926551831eb6146d54",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/caller.jsonl",
+          "sha256": "a95f44e9a00a16d3a1def271db18e325c1c8b1dc4528eb72d7ff969ed968c2d3",
+          "gitBlob": "750780d750eaaadd7160307af1a28865448440e7",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/endpoints.jsonl",
+          "sha256": "5e551c23dd4d42e0ede3de6e93f752c9c7188ff81cde0f3eaaf1b52f0e77e4c5",
+          "gitBlob": "9f321a71cae7638576e414f1b17fa4da4eb4a88d",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/pods.jsonl",
+          "sha256": "23891c7744a620e11b0ae1c18a0cfca37ab8772ed859229946c87b4c83ab97f2",
+          "gitBlob": "3860138ee56881f26271e7ad53ebb2f7ce513b23",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/deployments.jsonl",
+          "sha256": "4adaabb9795cb5424d174f77a15dc89b5600d27298469046a2882d1ec3c9df4c",
+          "gitBlob": "2277e4c92b36641523aa1e98a8eea015d7bd261e",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/argo.jsonl",
+          "sha256": "67751e899af6bf56850ba2cb286076cf83a252d12e35717c6e5d68c3f1adef22",
+          "gitBlob": "1d10c94e68b17f7ef4c63f4337454d14c03d751a",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/operator-events.jsonl",
+          "sha256": "1c2f971f8821d5e410908a009380a0df3ed11a1b283e3940cbdbed9cb07dc10c",
+          "gitBlob": "4f67f223d56260f146e773e688652613dc7f11dc",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/commands.txt",
+          "sha256": "50b5eebb74d0ec5e135fafaf118a77caa15f8271754ee5a4d30472fe8da1bbb5",
+          "gitBlob": "e88361c7d5ff11ed70aaf6a3359bd6870233542e",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/transcript.txt",
+          "sha256": "9bd2e6ee540a27e1d2155c3721ac79f4b74387393e9e6ce08ba542c9c98ae2e1",
+          "gitBlob": "20b106b6d93276ebd0ec52da80b1bea9b9b8bc3a",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/control.json",
+          "sha256": "9a7aadbcaccfed6aa7362c6b02efdecf0351925a6a598972d8d19d0feaf4c8d2",
+          "gitBlob": "809b16a0cf12041b3c6f89f5affc851c8ffe8844",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/declaration.json",
+          "sha256": "71d9470bb4f957b9df384c9265c9717b9e79fd68584e115633e890466bfc0fa0",
+          "gitBlob": "1732a996335d966d2ab88b8a44faf3946226c177",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/environment.txt",
+          "sha256": "93279416e89beb5aed13bfe6862110f71d3e8e75f2b2ab50fa9740f29db196bd",
+          "gitBlob": "1e863da74e0dfe7af33377205aed197bce6e581e",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/runs/e02a-3/release.txt",
+          "sha256": "e75f83e9d6b5be648bc16bf579a84fc856c89e45e3200776a299d40b06a22e3d",
+          "gitBlob": "6cd2ace6c9d9199543d249aec40c96874a886fb8",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/corrections/e02a-3/correction-1.v1alpha1.json",
+          "sha256": "4ee6f26c2750c4dd487e211c136619fd7f88f9ee02293c1505cce207bbfb73cc",
+          "gitBlob": "07328808ba93c6e98377b956a8a610e3d2981cc5",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+          "sha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+          "gitBlob": "d2e82ed8016f77a9ad08d53b0a2c99f5010be3d6",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/classification.v1alpha1.json",
+          "sha256": "6268507b790642b34e56a75703b5ee4c2ca6ec330f9cfe6fcd08346cc6042da9",
+          "gitBlob": "6cd5d2c3ded254d12c12db82a9e0ee2d8f4b700f",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/baseline-report.md",
+          "sha256": "c09feffd46c474071fc4c2f5dbc13d845fc3f1090fb66fa538152aa7ef4c690d",
+          "gitBlob": "8fddd5d3efa9e76f9c1ad31d54a02bbf3143992c",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/reviews/e02a-3-review-1.v1alpha1.json",
+          "sha256": "1191db875497bd6f9a6cce7f4e9b895955fecf3f121e74a7f72af29e85a22460",
+          "gitBlob": "47405e7381e8ae185c9e28a77daa42dcc4761da8",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
+          "sha256": "89d6b246724fb6c284d38834087e39f2d1cec8dcc942740307faa539dd5f67f4",
+          "gitBlob": "19ff5ca1d789fc656e675e5db848267e6941261c",
+          "recordedDate": {
+            "label": "Date",
+            "value": "2026-11-01"
+          },
+          "authorisationSection": false,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/environment/v2-s7-002-pr1-validation.md",
+          "sha256": "aa45adba6b9b2ba99b3522f3c0f96a18416af1c2a5b0cf1e186de423b34a0b99",
+          "gitBlob": "02f837f23b63f142a714bb0e347a983f755bf8d3",
+          "recordedDate": null,
+          "authorisationSection": false,
+          "corrections": []
+        }
+      ],
+      "findings": [
+        "e-f01-the-register-holds-no-claim-for-the-classified-e02a-runs"
       ]
     }
   ]

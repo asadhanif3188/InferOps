@@ -211,6 +211,7 @@ _HANDOFF_STATEMENTS: Final[tuple[str, ...]] = (
     "Rule G3 of revision 4 restores the two desired-state files to the digests of targetDesiredState, in one change merged into main, before the first V2-E02B run. That change needs the explicit authorization of the repository owner. This record does not give it.",
     "The desired state on main stays at baselineDesiredState until that change merges.",
     "No row of this record changes when main returns to the target. Each run stays bound to its executing commit and to revision 4.",
+    "The change that adds this record registers a claim through an eleventh ledger. So the two files tools/evidence_index/__init__.py and tools/evidence_index/core.py differ from the pins of revision 4 and of each other record that pins them. No revision classifies them yet. The change of rule G3 inventories them for the next revision of V2-E02B.",
 )
 
 

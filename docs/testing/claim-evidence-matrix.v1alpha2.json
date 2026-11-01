@@ -10259,6 +10259,849 @@
       "readmeRefs": [
         "docs/proof/experiments/README.md"
       ]
+    },
+    {
+      "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
+      "area": "reliability",
+      "statement": "In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes.",
+      "status": "certified",
+      "notClaimedReason": null,
+      "assertsRealBehaviour": true,
+      "limitation": "Runtime, C2, about three runs, e02a-1, e02a-2, and e02a-3, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one release, one model, and one caller workload. The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read: the freeze record does not state that reading, no tool reads the approval, and on the readings of the runtime readyReplicas count no run would be counted and this claim would not stand. The eligibility rests on the failure episodes alone. The zero-Ready condition holds on the first reading that gave zero and not on the outer start, and the record does not state which applies. The start of a failure episode is the completion of its first failed request: the failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time. The failure count is 2 in each run, and the caller profile has 2 workers. The model file of each replacement pod was not compared directly. The host paged, and no record establishes whether that changed a figure. The review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. It read no register statement about these runs, it ran no tool of this repository, and it does not establish that this claim is correct. Registration, 2026-11-01: V2-S7-001-PR2 ran the three runs and registered no claim. V2-S7-002-PR1 classified them and added this claim. No run executed in that change, and no file of a run changed.",
+      "doesNotEstablish": "That the service stayed available; that one runtime replica is or is not acceptable for any service; a comparison with two runtime replicas, an improvement, or a percentage, since no run of V2-E02B exists; an authorization of a run of V2-E02B or of a change of the desired state; node failure, overload, sustained capacity, or production availability; the cause of a failure, of a gap, or of a recovery; a figure of the V1 pod-loss evidence; that the model file of a replacement pod is the file of the record; that paging on the host changed no figure; a service-level objective; behaviour on another provider, Kubernetes version, node count, release, or caller workload; representative evidence, C3, or operational evidence, C4; a cost, a saving, a return on investment, or a business effect; that a person reviewed the result; or production readiness.",
+      "claimMaterialComponents": [
+        "argo-cd",
+        "inferops-llm-chart",
+        "docker-desktop-cluster",
+        "inferops-api",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0",
+        "reliability-runner",
+        "reliability-analysis"
+      ],
+      "evidenceRecords": [
+        {
+          "recordId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-1-c2",
+          "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
+          "migrationState": "migrated",
+          "evidenceLevel": "C2",
+          "summary": "On 2026-10-31 run e02a-1 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 365 requests in the window failed, in one failure episode of 4276 ms, the largest time between two successes is 29896 ms, and the runtime tier has one zero-Ready interval with an inner figure of 17342 ms and an outer figure of 26813 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+          "execution": {
+            "targetBehaviourExecuted": true,
+            "executedComponents": [
+              {
+                "componentId": "argo-cd",
+                "role": "other",
+                "note": "Argo CD v3.5.3, installed by the driver from the pinned manifest. It delivered the release of the executing commit. Its readings are recorded, and they are not a caller conclusion."
+              },
+              {
+                "componentId": "inferops-llm-chart",
+                "role": "chart",
+                "note": "charts/inferops-llm 0.6.0 at the executing commit, rendered by Argo CD with the generated values file of the single-runtime baseline."
+              },
+              {
+                "componentId": "docker-desktop-cluster",
+                "role": "cluster",
+                "note": "The Docker Desktop cluster, one node, Kubernetes v1.36.1."
+              },
+              {
+                "componentId": "inferops-api",
+                "role": "api",
+                "note": "Two replicas of the API Deployment, with the image that the run built at the executing commit, sha256:4b535298371d6aebd8f0a5d74acc97a123a12602f886d1662c2f5957cb642db6."
+              },
+              {
+                "componentId": "llama-cpp-server",
+                "role": "inference-runtime",
+                "note": "One replica of the runtime Deployment, and the replacement pod that the Deployment controller created after the fault."
+              },
+              {
+                "componentId": "qwen3-1-7b-q8-0",
+                "role": "model",
+                "note": "Qwen3-1.7B-Q8_0.gguf. The model verification log of the first runtime pod states its digest. The replacement pod was not compared directly."
+              },
+              {
+                "componentId": "reliability-runner",
+                "role": "load-generator",
+                "note": "tools/reliability_runner/incluster.py in one Job of the release namespace. It sent the RP-1 request through the API Service with two closed-loop workers."
+              },
+              {
+                "componentId": "reliability-analysis",
+                "role": "tool",
+                "note": "tools/reliability_analysis and tools/analysis_replay, at the source digest that the run analysis states. They computed each figure from the evidence files."
+              },
+              {
+                "componentId": "experiment-e02a-control",
+                "role": "tool",
+                "note": "The driver of the freeze record and tools/experiment_e02a, which ran the procedure and issued the one fault command."
+              }
+            ],
+            "substitutions": []
+          },
+          "workload": {
+            "source": "synthetic",
+            "description": "The fixed RP-1 request, sent through the API Service by two closed-loop workers for the frozen duration. The prompt and the completion are not kept.",
+            "shape": {
+              "concurrency": 2,
+              "requestCount": 717
+            }
+          },
+          "environment": {
+            "environmentId": "local-kubernetes",
+            "provider": "docker-desktop",
+            "hardwareClass": "cpu",
+            "note": "One Windows host. One Kubernetes cluster of one node, server v1.36.1, CPU only. Two API replicas and one runtime replica in the namespace inferops-release. 2026-10-31. Revision 4 names this environment by the identity sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c, and each capacity reading of the run states that identity."
+          },
+          "versions": [
+            {
+              "component": "inferops repository",
+              "kind": "commit",
+              "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+            },
+            {
+              "component": "llama-cpp-server",
+              "kind": "image-digest",
+              "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+            },
+            {
+              "component": "qwen3-1-7b-q8-0",
+              "kind": "model-revision",
+              "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+            },
+            {
+              "component": "qwen3-1-7b-q8-0, model file",
+              "kind": "artifact-hash",
+              "value": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+            },
+            {
+              "component": "generated values file",
+              "kind": "artifact-hash",
+              "value": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+            },
+            {
+              "component": "rendered workload release, releaseId",
+              "kind": "artifact-hash",
+              "value": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+            },
+            {
+              "component": "freeze revision 4, content digest",
+              "kind": "artifact-hash",
+              "value": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+            },
+            {
+              "component": "RP-1 profile, content digest",
+              "kind": "artifact-hash",
+              "value": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+            }
+          ],
+          "versionsRecordedIn": "docs/proof/experiments/v2-e02a/runs/e02a-1/run.v1alpha1.json",
+          "procedure": {
+            "commands": [
+              "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt verb target",
+              "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt fault e02a-1 inferops-inferops-llm-runtime-6b4554dc64-l7tth"
+            ],
+            "scriptRefs": [
+              "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt",
+              "scripts/environment/reliability-runner.sh",
+              "scripts/environment/experiment-timeline.sh",
+              "scripts/environment/experiment-telemetry.sh",
+              "scripts/environment/argocd-application.sh"
+            ]
+          },
+          "measurement": {
+            "method": "The caller record states each request. The timeline collector read the endpoints, pods, deployments, and argo streams. tools/reliability_analysis computed each figure from those files, and tools/analysis_replay binds the result to the evidence.",
+            "instrument": "The reliability runner, the timeline collector, the telemetry collector, the operator event log, and the reliability analysis.",
+            "observationPeriod": {
+              "start": "2026-10-31T13:27:58Z",
+              "end": "2026-10-31T14:33:10Z",
+              "durationSeconds": 3912
+            }
+          },
+          "acceptanceCriteria": [
+            {
+              "criterionId": "e02a-ac1",
+              "statement": "The control deleted exactly the pod that the rule of fault.target selected (the first Ready runtime pod by name), once, by name: commands.txt holds one delete command, the fault-injection-started event names that pod, and a pods reading after the event shows that UID with a deletion timestamp or absent. No other pod of the release has a deletion timestamp before the end of the observation, except a pod that the Deployment controller removes.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac2",
+              "statement": "The endpoints, pods, deployments, and argo streams are each accepted by their reader, each states a value in its first and its last reading inside the window, and each has at most 10 s between two consecutive readings with a value inside the window.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac3",
+              "statement": "The caller record is accepted by its reader with the plan, in the mode in-cluster, with the API Service as its target and the end state duration. It covers the window, its last completion before the window succeeded, so the window does not start inside a failure episode, and at least one request completes inside the window after the fault-injection-finished event.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac4",
+              "statement": "Either a pod of the tier of the fault with a UID that no pod had before the fault is Ready in a pods reading and the analysis states a stabilized recovery inside the observation limit, or the observation limit is reached. The result page states which.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac5",
+              "statement": "When the analysis states a stabilized recovery inside the observation limit, at least 10 successful requests complete after the stabilizedAt instant inside the window, and the last of them completes at least 60 s after it.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac6",
+              "statement": "No unrelated failure occurs inside the window: no container of a pod that the fault did not target restarts, no pod that the fault did not target is replaced, and the node stays Ready.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac7",
+              "statement": "Every file that evidencePaths lists is present and named by the manifest, the operator event log is closed, python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "declaredBefore": true,
+              "outcome": "met"
+            }
+          ],
+          "results": [
+            {
+              "resultId": "e02a-ac1",
+              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-l7tth. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one.",
+              "criterionId": "e02a-ac1"
+            },
+            {
+              "resultId": "e02a-ac2",
+              "statement": "On the readings of each stream, each of the four streams answered each reading inside the window, and the largest time between two readings is 4.911 s. The repository owner approved that reading on 2026-10-31, after the evidence was read. On the readings of the runtime readyReplicas count alone, the largest time is 25.1 s.",
+              "criterionId": "e02a-ac2"
+            },
+            {
+              "resultId": "e02a-ac3",
+              "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 332 requests complete inside the window after fault-injection-finished, by more than the margin.",
+              "criterionId": "e02a-ac3"
+            },
+            {
+              "resultId": "e02a-ac4",
+              "statement": "A runtime pod with a new UID is Ready in pods.jsonl from 13:41:57.659Z. The analysis states a stabilized recovery at 2026-10-31T13:43:11.618Z, inside the observation limit.",
+              "criterionId": "e02a-ac4"
+            },
+            {
+              "resultId": "e02a-ac5",
+              "statement": "295 successful requests complete after stabilizedAt inside the window, and the last completes 621.663 s after it.",
+              "criterionId": "e02a-ac5"
+            },
+            {
+              "resultId": "e02a-ac6",
+              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 21 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window.",
+              "criterionId": "e02a-ac6"
+            },
+            {
+              "resultId": "e02a-ac7",
+              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "criterionId": "e02a-ac7"
+            }
+          ],
+          "evidenceRefs": [
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/result.md",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/run.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/analysis.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/caller.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/endpoints.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/pods.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/deployments.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/argo.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/operator-events.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/commands.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/transcript.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/control.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/declaration.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/environment.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-1/release.txt",
+            "docs/proof/experiments/v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/classification.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/baseline-report.md",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
+            "docs/proof/environment/v2-s7-002-pr1-validation.md"
+          ],
+          "limitations": [
+            "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
+            "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
+            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+            "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
+            "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
+            "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
+            "A stream reads a state at intervals of at least 2 s. The analysis states an inner and an outer figure for each sampled interval, and neither is the exact time.",
+            "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
+            "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
+            "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
+            "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+          ],
+          "doesNotEstablish": [
+            "That the service stayed available. Requests failed in this run.",
+            "That one runtime replica is or is not acceptable for any service.",
+            "A comparison with two runtime replicas, an improvement, or a percentage. No run of V2-E02B exists.",
+            "Node failure, overload, sustained capacity, or production availability.",
+            "The cause of a failure, of a gap, or of a recovery.",
+            "A figure of the V1 pod-loss evidence. No V1 figure is a value of V2-E02A.",
+            "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
+            "That paging on the host changed no figure.",
+            "That a person reviewed the result.",
+            "Anything about another provider, node, release, or caller workload."
+          ]
+        },
+        {
+          "recordId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-2-c2",
+          "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
+          "migrationState": "migrated",
+          "evidenceLevel": "C2",
+          "summary": "On 2026-10-31 run e02a-2 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 366 requests in the window failed, in one failure episode of 3682 ms, the largest time between two successes is 30427 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14837 ms and an outer figure of 23792 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+          "execution": {
+            "targetBehaviourExecuted": true,
+            "executedComponents": [
+              {
+                "componentId": "argo-cd",
+                "role": "other",
+                "note": "Argo CD v3.5.3, installed by the driver from the pinned manifest. It delivered the release of the executing commit. Its readings are recorded, and they are not a caller conclusion."
+              },
+              {
+                "componentId": "inferops-llm-chart",
+                "role": "chart",
+                "note": "charts/inferops-llm 0.6.0 at the executing commit, rendered by Argo CD with the generated values file of the single-runtime baseline."
+              },
+              {
+                "componentId": "docker-desktop-cluster",
+                "role": "cluster",
+                "note": "The Docker Desktop cluster, one node, Kubernetes v1.36.1."
+              },
+              {
+                "componentId": "inferops-api",
+                "role": "api",
+                "note": "Two replicas of the API Deployment, with the image that the run built at the executing commit, sha256:4f0fb29c9a3c792531fb520150905aa79fb761c71a1803efcdfa86fd2b6c3d64."
+              },
+              {
+                "componentId": "llama-cpp-server",
+                "role": "inference-runtime",
+                "note": "One replica of the runtime Deployment, and the replacement pod that the Deployment controller created after the fault."
+              },
+              {
+                "componentId": "qwen3-1-7b-q8-0",
+                "role": "model",
+                "note": "Qwen3-1.7B-Q8_0.gguf. The model verification log of the first runtime pod states its digest. The replacement pod was not compared directly."
+              },
+              {
+                "componentId": "reliability-runner",
+                "role": "load-generator",
+                "note": "tools/reliability_runner/incluster.py in one Job of the release namespace. It sent the RP-1 request through the API Service with two closed-loop workers."
+              },
+              {
+                "componentId": "reliability-analysis",
+                "role": "tool",
+                "note": "tools/reliability_analysis and tools/analysis_replay, at the source digest that the run analysis states. They computed each figure from the evidence files."
+              },
+              {
+                "componentId": "experiment-e02a-control",
+                "role": "tool",
+                "note": "The driver of the freeze record and tools/experiment_e02a, which ran the procedure and issued the one fault command."
+              }
+            ],
+            "substitutions": []
+          },
+          "workload": {
+            "source": "synthetic",
+            "description": "The fixed RP-1 request, sent through the API Service by two closed-loop workers for the frozen duration. The prompt and the completion are not kept.",
+            "shape": {
+              "concurrency": 2,
+              "requestCount": 700
+            }
+          },
+          "environment": {
+            "environmentId": "local-kubernetes",
+            "provider": "docker-desktop",
+            "hardwareClass": "cpu",
+            "note": "One Windows host. One Kubernetes cluster of one node, server v1.36.1, CPU only. Two API replicas and one runtime replica in the namespace inferops-release. 2026-10-31. Revision 4 names this environment by the identity sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c, and each capacity reading of the run states that identity."
+          },
+          "versions": [
+            {
+              "component": "inferops repository",
+              "kind": "commit",
+              "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+            },
+            {
+              "component": "llama-cpp-server",
+              "kind": "image-digest",
+              "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+            },
+            {
+              "component": "qwen3-1-7b-q8-0",
+              "kind": "model-revision",
+              "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+            },
+            {
+              "component": "qwen3-1-7b-q8-0, model file",
+              "kind": "artifact-hash",
+              "value": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+            },
+            {
+              "component": "generated values file",
+              "kind": "artifact-hash",
+              "value": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+            },
+            {
+              "component": "rendered workload release, releaseId",
+              "kind": "artifact-hash",
+              "value": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+            },
+            {
+              "component": "freeze revision 4, content digest",
+              "kind": "artifact-hash",
+              "value": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+            },
+            {
+              "component": "RP-1 profile, content digest",
+              "kind": "artifact-hash",
+              "value": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+            }
+          ],
+          "versionsRecordedIn": "docs/proof/experiments/v2-e02a/runs/e02a-2/run.v1alpha1.json",
+          "procedure": {
+            "commands": [
+              "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt verb target",
+              "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt fault e02a-2 inferops-inferops-llm-runtime-6b4554dc64-4brfb"
+            ],
+            "scriptRefs": [
+              "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt",
+              "scripts/environment/reliability-runner.sh",
+              "scripts/environment/experiment-timeline.sh",
+              "scripts/environment/experiment-telemetry.sh",
+              "scripts/environment/argocd-application.sh"
+            ]
+          },
+          "measurement": {
+            "method": "The caller record states each request. The timeline collector read the endpoints, pods, deployments, and argo streams. tools/reliability_analysis computed each figure from those files, and tools/analysis_replay binds the result to the evidence.",
+            "instrument": "The reliability runner, the timeline collector, the telemetry collector, the operator event log, and the reliability analysis.",
+            "observationPeriod": {
+              "start": "2026-10-31T14:35:34Z",
+              "end": "2026-10-31T15:35:58Z",
+              "durationSeconds": 3624
+            }
+          },
+          "acceptanceCriteria": [
+            {
+              "criterionId": "e02a-ac1",
+              "statement": "The control deleted exactly the pod that the rule of fault.target selected (the first Ready runtime pod by name), once, by name: commands.txt holds one delete command, the fault-injection-started event names that pod, and a pods reading after the event shows that UID with a deletion timestamp or absent. No other pod of the release has a deletion timestamp before the end of the observation, except a pod that the Deployment controller removes.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac2",
+              "statement": "The endpoints, pods, deployments, and argo streams are each accepted by their reader, each states a value in its first and its last reading inside the window, and each has at most 10 s between two consecutive readings with a value inside the window.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac3",
+              "statement": "The caller record is accepted by its reader with the plan, in the mode in-cluster, with the API Service as its target and the end state duration. It covers the window, its last completion before the window succeeded, so the window does not start inside a failure episode, and at least one request completes inside the window after the fault-injection-finished event.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac4",
+              "statement": "Either a pod of the tier of the fault with a UID that no pod had before the fault is Ready in a pods reading and the analysis states a stabilized recovery inside the observation limit, or the observation limit is reached. The result page states which.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac5",
+              "statement": "When the analysis states a stabilized recovery inside the observation limit, at least 10 successful requests complete after the stabilizedAt instant inside the window, and the last of them completes at least 60 s after it.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac6",
+              "statement": "No unrelated failure occurs inside the window: no container of a pod that the fault did not target restarts, no pod that the fault did not target is replaced, and the node stays Ready.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac7",
+              "statement": "Every file that evidencePaths lists is present and named by the manifest, the operator event log is closed, python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "declaredBefore": true,
+              "outcome": "met"
+            }
+          ],
+          "results": [
+            {
+              "resultId": "e02a-ac1",
+              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-4brfb. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one.",
+              "criterionId": "e02a-ac1"
+            },
+            {
+              "resultId": "e02a-ac2",
+              "statement": "On the readings of each stream, each of the four streams answered each reading inside the window, and the largest time between two readings is 3.969 s. The repository owner approved that reading on 2026-10-31, after the evidence was read. On the readings of the runtime readyReplicas count alone, the largest time is 22.4 s.",
+              "criterionId": "e02a-ac2"
+            },
+            {
+              "resultId": "e02a-ac3",
+              "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 340 requests complete inside the window after fault-injection-finished, by more than the margin.",
+              "criterionId": "e02a-ac3"
+            },
+            {
+              "resultId": "e02a-ac4",
+              "statement": "A runtime pod with a new UID is Ready in pods.jsonl from 14:47:23.782Z. The analysis states a stabilized recovery at 2026-10-31T14:48:35.794Z, inside the observation limit.",
+              "criterionId": "e02a-ac4"
+            },
+            {
+              "resultId": "e02a-ac5",
+              "statement": "307 successful requests complete after stabilizedAt inside the window, and the last completes 624.813 s after it.",
+              "criterionId": "e02a-ac5"
+            },
+            {
+              "resultId": "e02a-ac6",
+              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window.",
+              "criterionId": "e02a-ac6"
+            },
+            {
+              "resultId": "e02a-ac7",
+              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "criterionId": "e02a-ac7"
+            }
+          ],
+          "evidenceRefs": [
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/result.md",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/run.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/analysis.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/caller.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/endpoints.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/pods.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/deployments.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/argo.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/operator-events.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/commands.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/transcript.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/control.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/declaration.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/environment.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-2/release.txt",
+            "docs/proof/experiments/v2-e02a/corrections/e02a-2/correction-1.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/classification.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/baseline-report.md",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-2-review-1.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
+            "docs/proof/environment/v2-s7-002-pr1-validation.md"
+          ],
+          "limitations": [
+            "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
+            "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
+            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+            "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
+            "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
+            "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
+            "A stream reads a state at intervals of at least 2 s. The analysis states an inner and an outer figure for each sampled interval, and neither is the exact time.",
+            "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
+            "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
+            "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
+            "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+          ],
+          "doesNotEstablish": [
+            "That the service stayed available. Requests failed in this run.",
+            "That one runtime replica is or is not acceptable for any service.",
+            "A comparison with two runtime replicas, an improvement, or a percentage. No run of V2-E02B exists.",
+            "Node failure, overload, sustained capacity, or production availability.",
+            "The cause of a failure, of a gap, or of a recovery.",
+            "A figure of the V1 pod-loss evidence. No V1 figure is a value of V2-E02A.",
+            "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
+            "That paging on the host changed no figure.",
+            "That a person reviewed the result.",
+            "Anything about another provider, node, release, or caller workload."
+          ]
+        },
+        {
+          "recordId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod-e02a-3-c2",
+          "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
+          "migrationState": "migrated",
+          "evidenceLevel": "C2",
+          "summary": "On 2026-10-31 run e02a-3 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 342 requests in the window failed, in one failure episode of 4065 ms, the largest time between two successes is 29893 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14949 ms and an outer figure of 23448 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+          "execution": {
+            "targetBehaviourExecuted": true,
+            "executedComponents": [
+              {
+                "componentId": "argo-cd",
+                "role": "other",
+                "note": "Argo CD v3.5.3, installed by the driver from the pinned manifest. It delivered the release of the executing commit. Its readings are recorded, and they are not a caller conclusion."
+              },
+              {
+                "componentId": "inferops-llm-chart",
+                "role": "chart",
+                "note": "charts/inferops-llm 0.6.0 at the executing commit, rendered by Argo CD with the generated values file of the single-runtime baseline."
+              },
+              {
+                "componentId": "docker-desktop-cluster",
+                "role": "cluster",
+                "note": "The Docker Desktop cluster, one node, Kubernetes v1.36.1."
+              },
+              {
+                "componentId": "inferops-api",
+                "role": "api",
+                "note": "Two replicas of the API Deployment, with the image that the run built at the executing commit, sha256:cc51601568efd0c3fdc465f0c8c94ef0b79218ecc294b886c6bfed3bff896df3."
+              },
+              {
+                "componentId": "llama-cpp-server",
+                "role": "inference-runtime",
+                "note": "One replica of the runtime Deployment, and the replacement pod that the Deployment controller created after the fault."
+              },
+              {
+                "componentId": "qwen3-1-7b-q8-0",
+                "role": "model",
+                "note": "Qwen3-1.7B-Q8_0.gguf. The model verification log of the first runtime pod states its digest. The replacement pod was not compared directly."
+              },
+              {
+                "componentId": "reliability-runner",
+                "role": "load-generator",
+                "note": "tools/reliability_runner/incluster.py in one Job of the release namespace. It sent the RP-1 request through the API Service with two closed-loop workers."
+              },
+              {
+                "componentId": "reliability-analysis",
+                "role": "tool",
+                "note": "tools/reliability_analysis and tools/analysis_replay, at the source digest that the run analysis states. They computed each figure from the evidence files."
+              },
+              {
+                "componentId": "experiment-e02a-control",
+                "role": "tool",
+                "note": "The driver of the freeze record and tools/experiment_e02a, which ran the procedure and issued the one fault command."
+              }
+            ],
+            "substitutions": []
+          },
+          "workload": {
+            "source": "synthetic",
+            "description": "The fixed RP-1 request, sent through the API Service by two closed-loop workers for the frozen duration. The prompt and the completion are not kept.",
+            "shape": {
+              "concurrency": 2,
+              "requestCount": 615
+            }
+          },
+          "environment": {
+            "environmentId": "local-kubernetes",
+            "provider": "docker-desktop",
+            "hardwareClass": "cpu",
+            "note": "One Windows host. One Kubernetes cluster of one node, server v1.36.1, CPU only. Two API replicas and one runtime replica in the namespace inferops-release. 2026-10-31. Revision 4 names this environment by the identity sha256:6a219b3ff959a0020d982d967abeed6696aa0f0d1b594bdf3ad86b9aeda8cd5c, and each capacity reading of the run states that identity."
+          },
+          "versions": [
+            {
+              "component": "inferops repository",
+              "kind": "commit",
+              "value": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b"
+            },
+            {
+              "component": "llama-cpp-server",
+              "kind": "image-digest",
+              "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+            },
+            {
+              "component": "qwen3-1-7b-q8-0",
+              "kind": "model-revision",
+              "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+            },
+            {
+              "component": "qwen3-1-7b-q8-0, model file",
+              "kind": "artifact-hash",
+              "value": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+            },
+            {
+              "component": "generated values file",
+              "kind": "artifact-hash",
+              "value": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+            },
+            {
+              "component": "rendered workload release, releaseId",
+              "kind": "artifact-hash",
+              "value": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465"
+            },
+            {
+              "component": "freeze revision 4, content digest",
+              "kind": "artifact-hash",
+              "value": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+            },
+            {
+              "component": "RP-1 profile, content digest",
+              "kind": "artifact-hash",
+              "value": "ff3cbab5a3bde8d4e25defe940cbcfb4ea3ff1ba028f1bc25c577636c261c1c3"
+            }
+          ],
+          "versionsRecordedIn": "docs/proof/experiments/v2-e02a/runs/e02a-3/run.v1alpha1.json",
+          "procedure": {
+            "commands": [
+              "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt verb target",
+              "bash <repository>\\docs\\proof\\experiments\\v2-e02a\\procedure\\e02a-driver.txt fault e02a-3 inferops-inferops-llm-runtime-6b4554dc64-jzh6j"
+            ],
+            "scriptRefs": [
+              "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt",
+              "scripts/environment/reliability-runner.sh",
+              "scripts/environment/experiment-timeline.sh",
+              "scripts/environment/experiment-telemetry.sh",
+              "scripts/environment/argocd-application.sh"
+            ]
+          },
+          "measurement": {
+            "method": "The caller record states each request. The timeline collector read the endpoints, pods, deployments, and argo streams. tools/reliability_analysis computed each figure from those files, and tools/analysis_replay binds the result to the evidence.",
+            "instrument": "The reliability runner, the timeline collector, the telemetry collector, the operator event log, and the reliability analysis.",
+            "observationPeriod": {
+              "start": "2026-10-31T15:36:41Z",
+              "end": "2026-10-31T16:42:32Z",
+              "durationSeconds": 3951
+            }
+          },
+          "acceptanceCriteria": [
+            {
+              "criterionId": "e02a-ac1",
+              "statement": "The control deleted exactly the pod that the rule of fault.target selected (the first Ready runtime pod by name), once, by name: commands.txt holds one delete command, the fault-injection-started event names that pod, and a pods reading after the event shows that UID with a deletion timestamp or absent. No other pod of the release has a deletion timestamp before the end of the observation, except a pod that the Deployment controller removes.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac2",
+              "statement": "The endpoints, pods, deployments, and argo streams are each accepted by their reader, each states a value in its first and its last reading inside the window, and each has at most 10 s between two consecutive readings with a value inside the window.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac3",
+              "statement": "The caller record is accepted by its reader with the plan, in the mode in-cluster, with the API Service as its target and the end state duration. It covers the window, its last completion before the window succeeded, so the window does not start inside a failure episode, and at least one request completes inside the window after the fault-injection-finished event.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac4",
+              "statement": "Either a pod of the tier of the fault with a UID that no pod had before the fault is Ready in a pods reading and the analysis states a stabilized recovery inside the observation limit, or the observation limit is reached. The result page states which.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac5",
+              "statement": "When the analysis states a stabilized recovery inside the observation limit, at least 10 successful requests complete after the stabilizedAt instant inside the window, and the last of them completes at least 60 s after it.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac6",
+              "statement": "No unrelated failure occurs inside the window: no container of a pod that the fault did not target restarts, no pod that the fault did not target is replaced, and the node stays Ready.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "e02a-ac7",
+              "statement": "Every file that evidencePaths lists is present and named by the manifest, the operator event log is closed, python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "declaredBefore": true,
+              "outcome": "met"
+            }
+          ],
+          "results": [
+            {
+              "resultId": "e02a-ac1",
+              "statement": "commands.txt holds one fault phase of the driver, and control.json states the one delete command of pod/inferops-inferops-llm-runtime-6b4554dc64-jzh6j. The first pods reading after the event shows its UID with a deletion timestamp. No other listed pod has one.",
+              "criterionId": "e02a-ac1"
+            },
+            {
+              "resultId": "e02a-ac2",
+              "statement": "On the readings of each stream, each of the four streams answered each reading inside the window, and the largest time between two readings is 5.796 s. The repository owner approved that reading on 2026-10-31, after the evidence was read. On the readings of the runtime readyReplicas count alone, the largest time is 22.0 s.",
+              "criterionId": "e02a-ac2"
+            },
+            {
+              "resultId": "e02a-ac3",
+              "statement": "The caller record has the mode in-cluster, the API Service as its target, and the end state duration, and it covers the window. 315 requests complete inside the window after fault-injection-finished, by more than the margin.",
+              "criterionId": "e02a-ac3"
+            },
+            {
+              "resultId": "e02a-ac4",
+              "statement": "A runtime pod with a new UID is Ready in pods.jsonl from 15:47:46.324Z. The analysis states a stabilized recovery at 2026-10-31T15:49:01.360Z, inside the observation limit.",
+              "criterionId": "e02a-ac4"
+            },
+            {
+              "resultId": "e02a-ac5",
+              "statement": "279 successful requests complete after stabilizedAt inside the window, and the last completes 623.001 s after it.",
+              "criterionId": "e02a-ac5"
+            },
+            {
+              "resultId": "e02a-ac6",
+              "statement": "pods.jsonl states no restart of any listed container. The two API pods are the same in each reading. transcript.txt holds 22 reads of the node, and each states Ready True. Those reads are samples, and they do not read each instant of the window.",
+              "criterionId": "e02a-ac6"
+            },
+            {
+              "resultId": "e02a-ac7",
+              "statement": "Each file of the evidence paths is present and named by the manifest, and the event log is closed. python -m tools.experiment_evidence check accepts the run directory, and python -m tools.analysis_replay verify reproduces its run analysis.",
+              "criterionId": "e02a-ac7"
+            }
+          ],
+          "evidenceRefs": [
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/result.md",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/run.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/analysis.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/caller.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/endpoints.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/pods.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/deployments.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/argo.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/operator-events.jsonl",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/commands.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/transcript.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/control.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/declaration.json",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/environment.txt",
+            "docs/proof/experiments/v2-e02a/runs/e02a-3/release.txt",
+            "docs/proof/experiments/v2-e02a/corrections/e02a-3/correction-1.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/classification.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/baseline-report.md",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-3-review-1.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
+            "docs/proof/environment/v2-s7-002-pr1-validation.md"
+          ],
+          "limitations": [
+            "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
+            "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
+            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+            "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
+            "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
+            "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
+            "A stream reads a state at intervals of at least 2 s. The analysis states an inner and an outer figure for each sampled interval, and neither is the exact time.",
+            "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
+            "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
+            "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
+            "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+          ],
+          "doesNotEstablish": [
+            "That the service stayed available. Requests failed in this run.",
+            "That one runtime replica is or is not acceptable for any service.",
+            "A comparison with two runtime replicas, an improvement, or a percentage. No run of V2-E02B exists.",
+            "Node failure, overload, sustained capacity, or production availability.",
+            "The cause of a failure, of a gap, or of a recovery.",
+            "A figure of the V1 pod-loss evidence. No V1 figure is a value of V2-E02A.",
+            "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
+            "That paging on the host changed no figure.",
+            "That a person reviewed the result.",
+            "Anything about another provider, node, release, or caller workload."
+          ]
+        }
+      ],
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/reliability_runner/incluster.py",
+        "tools/reliability_analysis/core.py",
+        "tools/analysis_replay/core.py",
+        "tools/experiment_e02a/core.py",
+        "tools/comparison_eligibility/core.py"
+      ],
+      "automatedTestRefs": [
+        "tests/testing/test_comparison_eligibility.py",
+        "tests/testing/test_analysis_replay.py",
+        "tests/testing/test_experiment_e02a_control.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "readmeRefs": [
+        "docs/proof/experiments/v2-e02a/baseline-report.md"
+      ]
     }
   ],
   "nonClaimSurfaces": [
@@ -10296,7 +11139,7 @@
     },
     {
       "path": "docs/proof/v1-evidence-index.md",
-      "reason": "A generated projection of this register and the ten ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+      "reason": "A generated projection of this register and the eleven ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
     },
     {
       "path": "docs/testing/evidence-levels.md",

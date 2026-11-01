@@ -1,9 +1,9 @@
 # Validation: the classification of V2-E02A (V2-S7-002-PR1)
 
 Status: **C0 for this change, about C2 runs.** This change classifies the three runs of V2-E02A
-under revision 4 of its freeze record and applies the eligibility rule. It executes no run, no
-fault, and no cluster command. The verdict is `eligible`, and it rests on the failure episodes of
-the three runs. It states no comparison, and it authorizes nothing.
+under revision 4 of its freeze record, applies the eligibility rule, and registers one claim. It
+executes no run, no fault, and no cluster command. The verdict is `eligible`, and it rests on the
+failure episodes of the three runs. It states no comparison, and it authorizes nothing.
 
 ## What the change adds
 
@@ -16,11 +16,14 @@ the three runs. It states no comparison, and it authorizes nothing.
   [its suite](../../../tests/testing/test_comparison_eligibility.py).
 - [The review of the three runs](../experiments/v2-e02a/reviews/e02a-runs-review-1.md), with one
   record of each run under [`reviews/`](../experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json).
+- [The eleventh ledger](../testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json), which adds one claim
+  with one record at `C2` of each run.
 - Statements in the documentation that said that the set is not classified are updated.
 
 The change makes no GitOps switch and registers no freeze record. It edits no file of a run
 directory, no correction, and no freeze record. It changes no criterion, bound, window, fault,
-topology, profile, or exclusion.
+topology, profile, or exclusion. **It moves two pinned inputs**, and the section on the register
+states which.
 
 ## The prerequisite
 
@@ -65,6 +68,33 @@ applies the margin anyway. It only removes a start from the count.
 **The first draft read the wrong interval edge.** It took the finish of the bounding read as the
 outer start. The analysis measures the outer figure from the start of that read. On the finish,
 `e02a-2` would have counted, 19 ms after the event, and on the start it does not.
+
+## The register, and the two moved pins
+
+The story of this change owes a claim and evidence update. The register changes only through a
+ledger, and the list of ledgers is in `tools/evidence_index/core.py`. That file and
+`tools/evidence_index/__init__.py` are pinned inputs of each record of V2-E02A, V2-E02B, V2-E02C,
+V2-E03, V2-E04, V2-E05, and V2-E06, and of the two Sprint 5 integration records, because the layout
+check and the replay import them. So a ledger cannot be added without moving a pin, and the rule
+of those records says that a change that moves a pin is a later revision. This change may register
+no freeze record.
+
+The repository owner was asked, with that cost stated, and chose on 2026-11-01 to register the
+claim in this change. No tool reads that choice.
+
+| What moved | Effect |
+|---|---|
+| `tools/evidence_index/core.py` and `__init__.py` | `python -m tools.experiment_freeze --changes` for revision 4 of V2-E02A lists these two files, and no revision classifies them. It printed `UNCHANGED` before this change |
+| The three runs | None. Each run names the commit `ff45093`, each run analysis names the digest of its seven source packages, and `tools/evidence_index` is not one of them. No file of a run changed |
+| A further run of V2-E02A | It refuses at P1 until a later revision classifies the two files. No further run is planned: three runs are counted |
+| V2-E02B | Its revision 2 already differs from its pins, in seven files. The change of rule G3 registers revision 3 and inventories these two with the others |
+| The checks | `python -m tools.experiment_freeze --check`, `tools.experiment_preregistration --check`, and `tools.analysis_preregistration --check` each pass. None reads a moved pin |
+
+The claim is `the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod`. It is certified at `C2`, on one record of each
+run, and it states that requests failed. The status is a claim status and not a reliability result.
+The index builds with the review gate satisfied by the three review records. The gate reads one
+repository state. Those records entered the branch one commit before the ledger, and the gate does
+not show that.
 
 ## Validation
 

@@ -16,7 +16,7 @@ which is asked of a Prometheus and shows nothing when nothing is running. This
 page reads committed files, says the same thing on every machine, and does not
 change when a cluster does.
 
-**Certified: 45 of 62 claims.** The remaining 17 are the rows worth
+**Certified: 46 of 63 claims.** The remaining 17 are the rows worth
 reading, and they are listed in full under [what V1 does not
 claim](#what-v1-does-not-claim) rather than summarised away. Every number on
 this page is counted from the register at render time; there is no field
@@ -25,7 +25,7 @@ anywhere in this tool that a count could be typed into.
 > [!IMPORTANT]
 > **A claim's status and an evidence level are different things.** The status
 > says whether this project publishes a property at all. A level belongs to
-> one evidence record — 68 of them sit behind these claims — and
+> one evidence record — 71 of them sit behind these claims — and
 > says only how that record was obtained. The levels `C0` to `C4` are
 > [InferOps Evidence Levels](../testing/evidence-levels.md): **project-defined,
 > and not an ISO, NIST, regulatory, or industry certification standard.** Nobody
@@ -70,7 +70,7 @@ provider certifies that provider alone.
 | [Kubernetes deployment](#kubernetes-deployment) | 5 | 0 | 0 | 1 | `C2` | `docker-desktop`, `kind` |
 | [Clean-clone reproduction](#clean-clone-reproduction) | 1 | 0 | 0 | 0 | `C2` | `docker-desktop` |
 | [Model integrity](#model-integrity) | 4 | 0 | 0 | 0 | `C2` | `docker-desktop` |
-| [Pod recovery](#pod-recovery) | 2 | 0 | 0 | 0 | `C2` | `docker-desktop` |
+| [Pod recovery](#pod-recovery) | 3 | 0 | 0 | 0 | `C2` | `docker-desktop` |
 | [Rollback and release recovery](#rollback-and-release-recovery) | 1 | 0 | 0 | 0 | `C2` | `docker-desktop` |
 | [Telemetry, dashboard, and alerts](#telemetry-dashboard-and-alerts) | 6 | 1 | 0 | 1 | `C2` | `docker-desktop` |
 | [Performance evidence](#performance-evidence) | 3 | 0 | 1 | 0 | `C2` | `docker-desktop` |
@@ -88,7 +88,7 @@ between a promise, a decision, and a measured absence.
 
 | Status | Claims | May be published as a capability | What it means |
 |---|---|---|---|
-| `certified` | 45 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
+| `certified` | 46 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
 | `planned` | 7 | no | V1 intends it and nothing has proven it. It may be published only as an intention, and it may cite no evidence record. |
 | `deferred` | 1 | no | Out of V1 scope by an accepted decision. It may not be published as a capability at all, and it may cite no evidence record. |
 | `not-claimed` | 9 | no | A reader would reasonably expect it and V1 states that it does not have it. It may cite the record that measured the absence, because an absence somebody measured is worth more than one nobody mentions. |
@@ -107,7 +107,7 @@ record at that level.
 |---|---|---|---|
 | `C0` | 29 | 25 | [Static Evidence](../testing/evidence-levels.md#c0--static-evidence) |
 | `C1` | 8 | 5 | [Substituted Execution Evidence](../testing/evidence-levels.md#c1--substituted-execution-evidence) |
-| `C2` | 31 | 21 | [Runtime Evidence](../testing/evidence-levels.md#c2--runtime-evidence) |
+| `C2` | 34 | 22 | [Runtime Evidence](../testing/evidence-levels.md#c2--runtime-evidence) |
 | `C3` | 0 | 0 | [Representative Evidence](../testing/evidence-levels.md#c3--representative-evidence) |
 | `C4` | 0 | 0 | [Operational Evidence](../testing/evidence-levels.md#c4--operational-evidence) |
 
@@ -128,7 +128,7 @@ interchangeable, so the environment is counted per record.
 | Environment | Provider | Hardware | Records |
 |---|---|---|---|
 | `local-container` | `not-applicable` | `cpu` | 4 |
-| `local-kubernetes` | `docker-desktop` | `cpu` | 23 |
+| `local-kubernetes` | `docker-desktop` | `cpu` | 26 |
 | `local-kubernetes` | `kind` | `cpu` | 1 |
 | `local-kubernetes` | `unrecorded` | `cpu` | 3 |
 | `local-process` | `not-applicable` | `cpu` | 10 |
@@ -143,7 +143,7 @@ all of it.
 
 | Provider | Records naming it | Claims holding one |
 |---|---|---|
-| `docker-desktop` | 23 | 17 |
+| `docker-desktop` | 26 | 18 |
 | `kind` | 1 | 1 |
 
 3 records ran on a Kubernetes cluster whose source
@@ -163,7 +163,7 @@ Until `V1-S5-012-PR2` the register stored one level per claim, under
 meanings ADR 0016 supersedes. Every claim still carries that value as
 history, and the levels on its records are the result of reading each
 record against the current definitions. 43 claims carried a level;
-14 claims now hold records at a level other than the one they
+15 claims now hold records at a level other than the one they
 carried, or hold a level where they carried none. They are listed here.
 [The migration report](testing/v1-s5-012-pr2-migration-report.md) says why each one it moved did;
 a claim that gained a record after the migration, through a later ledger, is
@@ -189,6 +189,7 @@ every status the migration changed, with the measurement that required it.
 | The committed evidence of the first run of the frozen E01 static parts holds two renders of the V1 synchronous reference contract on its local binding, written by two processes, that are byte-identical and record their sources; a render after a replica-range change that differs only in the values and release fields that change owns; and, for each of six registered invalid or conflicting inputs, two identical refusals that match the registered one and no output directory. | `certified` | none | `C0` |
 | The committed evidence of the second run of the frozen E01 static parts, the first under freeze revision 2, records that the runner and the inferops package were imported from the merged checkout it executed and that every repository module file it loaded was a pinned input, and holds two renders of the V1 synchronous reference contract on its local binding, written by two processes, that are byte-identical and record their sources; no hand-written string that contains a generated workload-intent value of eight characters or more; a render after a replica-range change that differs only in the values and release fields that change owns; and, for each of seven registered invalid or conflicting inputs, two identical refusals that match the registered one and no output directory. | `certified` | none | `C0` |
 | In one run on 2026-10-06, on the docker-desktop provider, on one cluster with one node, the release rendered from the unmodified V1 synchronous reference contract on the local-docker-desktop binding was accepted into Git, was read by the run at commit ad725905a7838e8210e54a29de7913bc0c7c49e5, was reconciled by Argo CD into Kubernetes, and answered one completion request through the InferOps API with HTTP 200 and one choice whose assistant message is not empty, with the real runtime and the real model that the generated values name. The run answers the criteria E01-AC8, E01-AC9, and E01-AC10 that freeze revision 3 registers for E01-D, and each holds. | `certified` | none | `C2` |
+| In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes. | `certified` | none | `C2` |
 
 ## The capabilities
 
@@ -259,11 +260,12 @@ absence is not one status.
 
 *What does a caller see when the serving pod goes away?*
 
-**Tally:** 2 `certified`.
+**Tally:** 3 `certified`.
 
 | Claim | Status | Evidence records | Limitation |
 |---|---|---|---|
 | One serving pod deleted by name mid-load produced a 31,960 ms caller-visible outage in which 40 of 41 dispatched requests were refused with `capability-unavailable`, the replacement reported itself Ready 33,665 ms after the delete, and the workflow issued no mutating command between the delete and its closing uninstall. | `certified` | `C2` · `local-kubernetes` on `docker-desktop`, `cpu` · workload `synthetic` · [`serving/v1-s4-006-pr1-inference-pod-recovery.md`](serving/v1-s4-006-pr1-inference-pod-recovery.md), [`serving/v1-s4-006-pr1-environment.v1alpha1.json`](serving/v1-s4-006-pr1-environment.v1alpha1.json) | One provider, one host, one single-replica release, one load profile, one pod lost once on 2026-09-16, as a bounded observation under ADR 0013. One replica is the cause of the outage. The forward is in every latency, and the readiness sampler takes 1.7 to 5.4 seconds to answer. |
+| In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes. | `certified` | `C2` · `local-kubernetes` on `docker-desktop`, `cpu` · workload `synthetic` · [`experiments/v2-e02a/runs/e02a-1/result.md`](experiments/v2-e02a/runs/e02a-1/result.md), [`experiments/v2-e02a/runs/e02a-1/run.v1alpha1.json`](experiments/v2-e02a/runs/e02a-1/run.v1alpha1.json), [`experiments/v2-e02a/runs/e02a-1/analysis.json`](experiments/v2-e02a/runs/e02a-1/analysis.json), [`experiments/v2-e02a/runs/e02a-1/caller.jsonl`](experiments/v2-e02a/runs/e02a-1/caller.jsonl), [`experiments/v2-e02a/runs/e02a-1/endpoints.jsonl`](experiments/v2-e02a/runs/e02a-1/endpoints.jsonl), [`experiments/v2-e02a/runs/e02a-1/pods.jsonl`](experiments/v2-e02a/runs/e02a-1/pods.jsonl), [`experiments/v2-e02a/runs/e02a-1/deployments.jsonl`](experiments/v2-e02a/runs/e02a-1/deployments.jsonl), [`experiments/v2-e02a/runs/e02a-1/argo.jsonl`](experiments/v2-e02a/runs/e02a-1/argo.jsonl), [`experiments/v2-e02a/runs/e02a-1/operator-events.jsonl`](experiments/v2-e02a/runs/e02a-1/operator-events.jsonl), [`experiments/v2-e02a/runs/e02a-1/commands.txt`](experiments/v2-e02a/runs/e02a-1/commands.txt), [`experiments/v2-e02a/runs/e02a-1/transcript.txt`](experiments/v2-e02a/runs/e02a-1/transcript.txt), [`experiments/v2-e02a/runs/e02a-1/control.json`](experiments/v2-e02a/runs/e02a-1/control.json), [`experiments/v2-e02a/runs/e02a-1/declaration.json`](experiments/v2-e02a/runs/e02a-1/declaration.json), [`experiments/v2-e02a/runs/e02a-1/environment.txt`](experiments/v2-e02a/runs/e02a-1/environment.txt), [`experiments/v2-e02a/runs/e02a-1/release.txt`](experiments/v2-e02a/runs/e02a-1/release.txt), [`experiments/v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json`](experiments/v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json), [`experiments/v2-e02a/freeze-r4.v1alpha1.json`](experiments/v2-e02a/freeze-r4.v1alpha1.json), [`experiments/v2-e02a/classification.v1alpha1.json`](experiments/v2-e02a/classification.v1alpha1.json), [`experiments/v2-e02a/baseline-report.md`](experiments/v2-e02a/baseline-report.md), [`experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json`](experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json), [`experiments/v2-e02a/reviews/e02a-runs-review-1.md`](experiments/v2-e02a/reviews/e02a-runs-review-1.md), [`environment/v2-s7-002-pr1-validation.md`](environment/v2-s7-002-pr1-validation.md)<br>`C2` · `local-kubernetes` on `docker-desktop`, `cpu` · workload `synthetic` · [`experiments/v2-e02a/runs/e02a-2/result.md`](experiments/v2-e02a/runs/e02a-2/result.md), [`experiments/v2-e02a/runs/e02a-2/run.v1alpha1.json`](experiments/v2-e02a/runs/e02a-2/run.v1alpha1.json), [`experiments/v2-e02a/runs/e02a-2/analysis.json`](experiments/v2-e02a/runs/e02a-2/analysis.json), [`experiments/v2-e02a/runs/e02a-2/caller.jsonl`](experiments/v2-e02a/runs/e02a-2/caller.jsonl), [`experiments/v2-e02a/runs/e02a-2/endpoints.jsonl`](experiments/v2-e02a/runs/e02a-2/endpoints.jsonl), [`experiments/v2-e02a/runs/e02a-2/pods.jsonl`](experiments/v2-e02a/runs/e02a-2/pods.jsonl), [`experiments/v2-e02a/runs/e02a-2/deployments.jsonl`](experiments/v2-e02a/runs/e02a-2/deployments.jsonl), [`experiments/v2-e02a/runs/e02a-2/argo.jsonl`](experiments/v2-e02a/runs/e02a-2/argo.jsonl), [`experiments/v2-e02a/runs/e02a-2/operator-events.jsonl`](experiments/v2-e02a/runs/e02a-2/operator-events.jsonl), [`experiments/v2-e02a/runs/e02a-2/commands.txt`](experiments/v2-e02a/runs/e02a-2/commands.txt), [`experiments/v2-e02a/runs/e02a-2/transcript.txt`](experiments/v2-e02a/runs/e02a-2/transcript.txt), [`experiments/v2-e02a/runs/e02a-2/control.json`](experiments/v2-e02a/runs/e02a-2/control.json), [`experiments/v2-e02a/runs/e02a-2/declaration.json`](experiments/v2-e02a/runs/e02a-2/declaration.json), [`experiments/v2-e02a/runs/e02a-2/environment.txt`](experiments/v2-e02a/runs/e02a-2/environment.txt), [`experiments/v2-e02a/runs/e02a-2/release.txt`](experiments/v2-e02a/runs/e02a-2/release.txt), [`experiments/v2-e02a/corrections/e02a-2/correction-1.v1alpha1.json`](experiments/v2-e02a/corrections/e02a-2/correction-1.v1alpha1.json), [`experiments/v2-e02a/freeze-r4.v1alpha1.json`](experiments/v2-e02a/freeze-r4.v1alpha1.json), [`experiments/v2-e02a/classification.v1alpha1.json`](experiments/v2-e02a/classification.v1alpha1.json), [`experiments/v2-e02a/baseline-report.md`](experiments/v2-e02a/baseline-report.md), [`experiments/v2-e02a/reviews/e02a-2-review-1.v1alpha1.json`](experiments/v2-e02a/reviews/e02a-2-review-1.v1alpha1.json), [`experiments/v2-e02a/reviews/e02a-runs-review-1.md`](experiments/v2-e02a/reviews/e02a-runs-review-1.md), [`environment/v2-s7-002-pr1-validation.md`](environment/v2-s7-002-pr1-validation.md)<br>`C2` · `local-kubernetes` on `docker-desktop`, `cpu` · workload `synthetic` · [`experiments/v2-e02a/runs/e02a-3/result.md`](experiments/v2-e02a/runs/e02a-3/result.md), [`experiments/v2-e02a/runs/e02a-3/run.v1alpha1.json`](experiments/v2-e02a/runs/e02a-3/run.v1alpha1.json), [`experiments/v2-e02a/runs/e02a-3/analysis.json`](experiments/v2-e02a/runs/e02a-3/analysis.json), [`experiments/v2-e02a/runs/e02a-3/caller.jsonl`](experiments/v2-e02a/runs/e02a-3/caller.jsonl), [`experiments/v2-e02a/runs/e02a-3/endpoints.jsonl`](experiments/v2-e02a/runs/e02a-3/endpoints.jsonl), [`experiments/v2-e02a/runs/e02a-3/pods.jsonl`](experiments/v2-e02a/runs/e02a-3/pods.jsonl), [`experiments/v2-e02a/runs/e02a-3/deployments.jsonl`](experiments/v2-e02a/runs/e02a-3/deployments.jsonl), [`experiments/v2-e02a/runs/e02a-3/argo.jsonl`](experiments/v2-e02a/runs/e02a-3/argo.jsonl), [`experiments/v2-e02a/runs/e02a-3/operator-events.jsonl`](experiments/v2-e02a/runs/e02a-3/operator-events.jsonl), [`experiments/v2-e02a/runs/e02a-3/commands.txt`](experiments/v2-e02a/runs/e02a-3/commands.txt), [`experiments/v2-e02a/runs/e02a-3/transcript.txt`](experiments/v2-e02a/runs/e02a-3/transcript.txt), [`experiments/v2-e02a/runs/e02a-3/control.json`](experiments/v2-e02a/runs/e02a-3/control.json), [`experiments/v2-e02a/runs/e02a-3/declaration.json`](experiments/v2-e02a/runs/e02a-3/declaration.json), [`experiments/v2-e02a/runs/e02a-3/environment.txt`](experiments/v2-e02a/runs/e02a-3/environment.txt), [`experiments/v2-e02a/runs/e02a-3/release.txt`](experiments/v2-e02a/runs/e02a-3/release.txt), [`experiments/v2-e02a/corrections/e02a-3/correction-1.v1alpha1.json`](experiments/v2-e02a/corrections/e02a-3/correction-1.v1alpha1.json), [`experiments/v2-e02a/freeze-r4.v1alpha1.json`](experiments/v2-e02a/freeze-r4.v1alpha1.json), [`experiments/v2-e02a/classification.v1alpha1.json`](experiments/v2-e02a/classification.v1alpha1.json), [`experiments/v2-e02a/baseline-report.md`](experiments/v2-e02a/baseline-report.md), [`experiments/v2-e02a/reviews/e02a-3-review-1.v1alpha1.json`](experiments/v2-e02a/reviews/e02a-3-review-1.v1alpha1.json), [`experiments/v2-e02a/reviews/e02a-runs-review-1.md`](experiments/v2-e02a/reviews/e02a-runs-review-1.md), [`environment/v2-s7-002-pr1-validation.md`](environment/v2-s7-002-pr1-validation.md) | Runtime, C2, about three runs, e02a-1, e02a-2, and e02a-3, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one release, one model, and one caller workload. The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read: the freeze record does not state that reading, no tool reads the approval, and on the readings of the runtime readyReplicas count no run would be counted and this claim would not stand. The eligibility rests on the failure episodes alone. The zero-Ready condition holds on the first reading that gave zero and not on the outer start, and the record does not state which applies. The start of a failure episode is the completion of its first failed request: the failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time. The failure count is 2 in each run, and the caller profile has 2 workers. The model file of each replacement pod was not compared directly. The host paged, and no record establishes whether that changed a figure. The review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. It read no register statement about these runs, it ran no tool of this repository, and it does not establish that this claim is correct. Registration, 2026-11-01: V2-S7-001-PR2 ran the three runs and registered no claim. V2-S7-002-PR1 classified them and added this claim. No run executed in that change, and no file of a run changed. |
 | A release starved of processor time started, bound its port, began loading the model and did not finish for 179,755 ms; four request surfaces were asked and readiness sampled from four places throughout; and dropping the overlay and upgrading returned it to a served completion. | `certified` | `C2` · `local-kubernetes` on `docker-desktop`, `cpu` · workload `operator-issued` · [`serving/v1-s4-007-pr1-unready-model-recovery.md`](serving/v1-s4-007-pr1-unready-model-recovery.md), [`serving/v1-s4-007-pr1-environment.v1alpha1.json`](serving/v1-s4-007-pr1-environment.v1alpha1.json) | One provider, one host, one single-replica release, one misconfiguration applied once on 2026-09-16, as a bounded observation under ADR 0013. The model did not become ready inside the registered observation window, which is not the same as proving it never would: the load was starved rather than failed. The recovery is an operator changing a value and issuing an upgrade. |
 
 ### Rollback and release recovery
@@ -463,7 +465,7 @@ weaker form of the capability.
 - The capability grouping is a reading. Which claims belong under *model
   integrity* rather than *real serving* is a judgement made in
   `tools/proof_dashboard/core.py`, and no check decides it.
-- **Every one of the 62 claims is shown as a row.** Each
+- **Every one of the 63 claims is shown as a row.** Each
   is named by exactly one capability group, so nothing on this page is
   counted in a total and absent from every table. That is a property of the
   grouping today, not a rule: a claim added to the register and named by no
