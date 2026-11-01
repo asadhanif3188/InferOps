@@ -1277,6 +1277,14 @@
       "note": "Deliberately no claim: no run of V2-E02A exists, and the control has never run on a cluster. It establishes that the control and the driver decide and order each step as revisions 3 and 4 state, against scenario files and a stub kubectl, never that a cluster answers as a scenario does. It reads the committed records, writes under pytest's temporary directory, and starts bash and a stub kubectl."
     },
     {
+      "module": "tests/testing/test_comparison_eligibility.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The classification of the V2-E02A runs and the comparison eligibility rule of revision 4 of its record, tools/comparison_eligibility. On synthetic sets it holds that a failure episode in two or three of three counted runs makes the set eligible, open or closed; that a set with no failure is not eligible, and the verdict is the sentence of the record; that one run of three is not enough; that a start before the fault or inside the clock margin does not count, and that no clock bound judges no episode; that a zero-Ready interval makes a set eligible on its outer start, and that a set that the first reading alone would make eligible is not decided; that a set with fewer than three counted runs is not decided and one with more is refused; that a run that is not counted is not read; and that a zero median, a median that the aggregate does not state, and a set that is not eligible give no percentage. On the inputs it holds that the module states the rule of revision 4 word for word and refuses another rule; that a gap in the run identifiers, an entry that is not a run, a correction of another manifest, and a freeze record with another digest are refused. On the committed files it holds that the check passes, that each attempted run is listed with its state, its executing commit, and revision 4, that the verdict rests on the failure episodes, that the zero-Ready condition is stated on both readings, that the record states no percentage and no V1 figure, that the handoff names the last run and both desired states, and that the executing commit holds the baseline when the clone holds that commit. It also holds that no other tool imports the package.",
+      "claims": [],
+      "note": "Deliberately no claim: it holds the classification of three runs, never the runs. It reads committed files and objects of the clone. It starts no run, contacts no cluster, and reads no desired state of the working tree."
+    },
+    {
       "module": "tests/testing/test_experiment_e01.py",
       "layer": "documentation",
       "marker": "docs",

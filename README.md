@@ -369,8 +369,12 @@ Since `V2-S7-001-PR2` the baseline record has
 [three counted runs](docs/proof/experiments/README.md#the-v2-e02a-runs), each `PASSED`
 on the docker-desktop provider at C2. V2-E02A is a characterization with validity
 criteria alone, so that state says that a run is valid. It is not a reliability pass:
-two requests failed in each run. No run of the other four exists. The set is not yet
-classified, and its eligibility for the comparison with V2-E02B is not decided.
+two requests failed in each run. No run of the other four exists. Since `V2-S7-002-PR1`
+[the set is classified](docs/proof/experiments/v2-e02a/baseline-report.md): the baseline
+is eligible for the comparison with V2-E02B, because a failure episode starts after the
+fault in each of the three runs. That verdict states no comparison and no percentage, and
+it does not authorize a run of V2-E02B. (Until `V2-S7-002-PR1` this paragraph said that
+the set is not yet classified.)
 Since `V2-S7-001-PR1` the baseline record pins
 [its driver and its control](docs/testing/experiment-e02a-control.md), and since
 `V2-S7-003-PR1` it is at revision 4, registered by the change that switches the desired

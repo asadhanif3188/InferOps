@@ -112,6 +112,9 @@ ran in that change.
 **Three runs added by `V2-S7-001-PR2`**: [the V2-E02A runs](#the-v2-e02a-runs) under
 revision 4, each `PASSED`, which for this characterization says that the run is valid.
 That change registers no record.
+**One classification added by `V2-S7-002-PR1`**: [the classification of the three
+runs](#the-classification-of-the-v2-e02a-set), which decides that the baseline is eligible
+for the comparison with V2-E02B. That change registers no freeze record.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -137,7 +140,7 @@ a pass. A run is evidence, and it is kept whatever its outcome.
 | V2-E05, drift reconciliation | 1 | [`v2-e05/freeze-r1.v1alpha1.json`](v2-e05/freeze-r1.v1alpha1.json) | One part, E05, at C2 | Frozen before any run. No run exists. Superseded by revision 2 on 2026-10-18, and kept unchanged: its clock statements contradicted its P8. The three files of `tools/experiment_preregistration` differ from its pins, and revision 2 classifies them. (Until `V2-S6-007-PR1` this cell said only that it was frozen before any run and that no run exists.) [See below](#the-reliability-experiment-freezes) |
 | V2-E02A, controlled single-runtime baseline | 2 | [`v2-e02a/freeze-r2.v1alpha1.json`](v2-e02a/freeze-r2.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Superseded by revision 3 on 2026-10-22, and kept unchanged: it pins no driver, and its rule G1 names revision 2 as the revision that the switch change registers. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin, and since `V2-S7-001-PR1` its scope also holds the driver, which it does not pin. Revision 3 classifies both. (Until `V2-S6-005-PR1` this cell ended "No run exists." Until `V2-S7-001-PR1` it said that no revision classifies `core.py`.) [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E02A, controlled single-runtime baseline | 3 | [`v2-e02a/freeze-r3.v1alpha1.json`](v2-e02a/freeze-r3.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2. It supersedes revision 2: it pins [the driver and its control](#the-e02a-driver-and-revision-3), states that the switch change registers revision 4, and classifies the moved pin of `core.py` as not material. It changes no criterion, bound, window, fault, collection, measurement, outcome rule, exclusion reason, abort condition, cleanup, or repetition rule. No run exists. Superseded by revision 4 on 2026-10-23, and kept unchanged. Since `V2-S7-003-PR1`, six pinned inputs differ from its pins: the two desired-state files and `core.py` of `tools/gitops_desired_state`, which the [G1 switch](#the-g1-switch-and-revision-4) of `V2-S7-003-PR1` moved, and the three files of `tools/baseline_profile`. Revision 4 classifies them. (Until `V2-S7-003-PR1` this cell ended "the desired state on `main` is still the 2+2 target, so a run refuses at P2 until a later change switches it and registers revision 4.") [See below](#the-e02a-driver-and-revision-3) |
-| V2-E02A, controlled single-runtime baseline | 4 | [`v2-e02a/freeze-r4.v1alpha1.json`](v2-e02a/freeze-r4.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2, and registered by the change that executes rule G1. It supersedes revision 3: it pins the two switched desired-state files, classifies the six pins that the switch moved, and states in G1 and G4 that its registering change is the switch. The driver, the control, the criteria, the bounds, the window, the fault, and the topology are those of revision 3. No run exists. [See below](#the-g1-switch-and-revision-4) |
+| V2-E02A, controlled single-runtime baseline | 4 | [`v2-e02a/freeze-r4.v1alpha1.json`](v2-e02a/freeze-r4.v1alpha1.json) | One part, E02A, at C2 | Frozen before any run, under rule set 2, and registered by the change that executes rule G1. It supersedes revision 3: it pins the two switched desired-state files, classifies the six pins that the switch moved, and states in G1 and G4 that its registering change is the switch. The driver, the control, the criteria, the bounds, the window, the fault, and the topology are those of revision 3. Since `V2-S7-001-PR2`, [three runs](#the-v2-e02a-runs) executed under it, each `PASSED`, and since `V2-S7-002-PR1` [the set is classified](#the-classification-of-the-v2-e02a-set). (Until `V2-S7-002-PR1` this cell ended "No run exists.") [See below](#the-g1-switch-and-revision-4) |
 | V2-E02B, multi-runtime pod loss | 2 | [`v2-e02b/freeze-r2.v1alpha1.json`](v2-e02b/freeze-r2.v1alpha1.json) | One part, E02B, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. Since `V2-S7-003-PR1`, the two desired-state files and `core.py` of `tools/gitops_desired_state`, which the [G1 switch](#the-g1-switch-and-revision-4) of `V2-S7-003-PR1` moved, and the three files of `tools/baseline_profile` differ from its pins too. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E02C, API pod loss | 2 | [`v2-e02c/freeze-r2.v1alpha1.json`](v2-e02c/freeze-r2.v1alpha1.json) | One part, E02C, at C2 | Frozen before any run, under rule set 2. It supersedes revision 1 with one clock policy and changes no criterion, bound, window, fault, or repetition rule. No run exists. Since `V2-S6-005-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin and no revision classifies it, so a run refuses to start until a later revision classifies it. Since `V2-S7-003-PR1`, the two desired-state files and `core.py` of `tools/gitops_desired_state`, which the [G1 switch](#the-g1-switch-and-revision-4) of `V2-S7-003-PR1` moved, differ from its pins too. (Until `V2-S6-005-PR1` this cell ended "No run exists.") [See below](#the-clock-policy-of-rule-set-2) |
 | V2-E04, bad release and Git reversal | 2 | [`v2-e04/freeze-r2.v1alpha1.json`](v2-e04/freeze-r2.v1alpha1.json) | One part, E04, at C2 | Frozen before any run, under rule set 3. It supersedes revision 1 with the clock policy of rule set 2 and the reversal timing as the repository owner amended it: E04-AC12 judges the recovery from Git visibility to the onset of the stabilization span against the unchanged 52,000 ms, and E04-AC8 ends its window when the desired state is restored. No run exists. Superseded by revision 3 on 2026-10-20, and kept unchanged: its reason `recovery-onset-not-after-reversal` is not authorized by the amended definition. Since `V2-S6-008-PR1`, `core.py` of `tools/experiment_preregistration` differs from its pin, and revision 3 classifies it. (Until `V2-S6-008-PR1` this cell ended "No run exists.") [See below](#the-reversal-timing-of-v2-e04-and-rule-set-3) |
@@ -2081,10 +2084,38 @@ switch](../environment/v2-s7-001-pr2-g1-observation/observation.md), with 2 API 
 1 runtime replica at the merged revision. It also states the host, the kept attempt of that
 observation, and what the review could not compare.
 
-These runs do not classify the set. They do not decide that the baseline is eligible for the
-comparison with V2-E02B, and they do not establish that one runtime replica is or is not
-acceptable for any service. The desired state on `main` stays at the baseline until rule G3
-restores it.
+These runs do not establish that one runtime replica is or is not acceptable for any service.
+The desired state on `main` stays at the baseline until rule G3 restores it. (Until
+`V2-S7-002-PR1` this paragraph said that these runs do not classify the set and do not decide
+that the baseline is eligible. The next section does that.)
+
+### The classification of the V2-E02A set
+
+`V2-S7-002-PR1` classified the three runs and applied the eligibility rule of revision 4. No
+run executed in that change. [The baseline report](v2-e02a/baseline-report.md) states the
+result, and [the classification record](v2-e02a/classification.v1alpha1.json) states each
+figure. `python -m tools.comparison_eligibility --check` builds that record again from the
+run directories. [The tool page](../../testing/comparison-eligibility.md) states what it holds.
+
+**The baseline is eligible for the comparison with V2-E02B.** The rule asks that 2 of the 3
+counted runs show one of two conditions. A failure episode starts after the fault event in
+each of the three runs, about 30 s after it, by more than the clock margin. The verdict rests
+on that condition alone.
+
+**The second condition depends on a reading that the record does not state.** A zero-Ready
+interval is sampled, so its start lies between two reads. The first read that gave zero started
+after the event in each run, and the read before it started before the event in each run. On
+the first reading the condition holds in 3 of 3, and on the outer start in 0 of 3. The record
+keeps both, and the verdict does not use the first.
+
+**No percentage exists.** The two figures that the record of V2-E02B reads are the medians
+`B_failures`, 2, and `B_episode`, 4,065 ms. Both are above zero. No run of V2-E02B exists, so
+no comparison exists, and the V1 pod-loss figures are no part of this baseline.
+
+An eligibility verdict does not authorize a run of V2-E02B. It does not restore the desired
+state. The report hands the inventory of the last run to `V2-S7-003-PR2`, and each
+limitation of the runs stands: the owner approved the reading of `E02A-AC2` after the
+evidence was read, and on the readings of one count no run would be counted.
 
 ## The analysis experiment freezes
 
