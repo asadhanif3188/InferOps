@@ -272,15 +272,20 @@ there, so this change leaves the check as it is.
 
 ## Validation
 
-Run from Git Bash.
+Run from Git Bash, at `f12f371`, the commit before the one that adds this table. That
+commit changes this file only. The last three rows were run on the tree with this table.
 
 | Check | Result |
 |---|---|
+| `pytest`, the default lane, in a clean clone | 23,505 passed, 42 skipped, 14 deselected, in 1:09:37 |
 | `ruff check .` | All checks passed |
 | `ruff format --check .` | 810 files already formatted |
-| `pytest tests/security tests/testing/test_published_methods.py tests/testing/test_test_inventory.py` | 3,030 passed |
-| `scripts/security/scan-runtime-image.sh`, `scan-dependencies.sh`, real Trivy | Both exit `0` |
+| `scripts/security/scan-runtime-image.sh`, `scan-dependencies.sh`, Trivy 0.74.0, database of `2026-11-01 01:13:06 UTC` | Both exit `0` |
 | `python -m tools.evidence_index --gate` | Exit `0` |
 | `python -m tools.experiment_freeze --check` | 32 records, each rule held |
 | `--changes` of revision 4 of V2-E02A | `UNCHANGED` |
-| `git diff --check` | Clean |
+| `pytest tests/security tests/testing/test_published_methods.py tests/testing/test_test_inventory.py tests/testing/test_document_links.py` | 3,393 passed |
+| `mypy`, and `mypy --platform linux` | No issue in 448 source files, each |
+| `uv build --wheel` | Built |
+
+The hosted checks start when the pull request opens, and this record does not state them.
