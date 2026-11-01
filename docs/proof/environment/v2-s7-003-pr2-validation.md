@@ -236,13 +236,17 @@ leave the three new records out of the copies that read an earlier state.
 | `helm lint charts/inferops-llm` | One chart linted, none failed. The chart did not change |
 | `uv run --locked ruff check .`, `ruff format --check .` | Passed |
 | `uv run --locked python -m mypy`, and with `--platform linux` | Passed, 453 source files |
-| `git diff --check` | No finding |
+| `git diff --check 4249226 HEAD` | No finding |
 
 Terraform and the Kubernetes schema gates were not run for this change: it edits no file that
 they read.
 
 The suites that read `HEAD` hold the restored release only once it is committed, so the default
-lane needs the first commit, as it did for the G1 switch. The lane is recorded after the review.
+lane needs the first commit, as it did for the G1 switch. `uv run --locked pytest` ran on the
+second commit, `8b05802`, which holds the fixes of the review: 23,850 passed, 42 skipped, and
+14 deselected, in 1:04:21, on Windows. Every command in the table above also ran on that
+commit. The commit that adds this paragraph edits this page alone. The hosted lane has not
+run: it starts when the pull request opens.
 
 ## Independent review of the first commit
 
