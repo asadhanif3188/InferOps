@@ -1,6 +1,11 @@
 image index: sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
 linux/amd64 manifest: sha256:fa09617a8e077f327dbf823fc1bafecc82c1bff6503a53416d8c2197d86c85ba
-ELF files in the image: 1270
+image Entrypoint: ['/app/llama-server']
+image Cmd: None
+image User: None
+layers: 5
+regular files: 15463  hard links: 2  whiteouts: 5
+ELF files in the image: 1271
 ELF files under /app: 29
 
 # The load closure of every ELF file under /app, followed through DT_NEEDED

@@ -23,7 +23,8 @@ are `EX-07`, renewed, and `EX-08`, new, in
 unexploitable in every configuration of this image: the argument covers the committed
 runtime arguments and the ELF files of the `linux/amd64` manifest. It does not read what
 a library loads at run time by a path that it builds, and `libggml` imports `dlopen` to
-load its back-ends. It does not observe a running process. It does not establish that
+load its back-ends. It does not consider what glibc itself may load while it runs, such
+as name-service modules. It does not observe a running process. It does not establish that
 the image is free of any other finding tomorrow. It does not state when the database
 gained `CVE-2026-111497`: the entry was published on 2026-10-22, and the scan of `main`
 passed on 2026-10-23. It verifies no build signature or attestation. It does not rotate
@@ -89,19 +90,23 @@ candidate above is where that change would start.
 
 Method: [the reader](ex-08-reachability-reader.txt) fetched the `linux/amd64` manifest,
 `sha256:fa09617a8e077f327dbf823fc1bafecc82c1bff6503a53416d8c2197d86c85ba`, from the
-pinned index digest. It read each ELF file of the layers with `pyelftools`, and each
-`dpkg` entry from `/var/lib/dpkg/status`. [Its output](ex-08-reachability-output.txt) is
-committed. It read 1,270 ELF files, 29 of them under `/app`.
+pinned index digest. It read the image configuration, each ELF file of the five layers
+with `pyelftools`, and each `dpkg` entry from `/var/lib/dpkg/status`.
+[Its output](ex-08-reachability-output.txt) is committed. It read 1,271 ELF files, 29 of
+them under `/app`. It reads regular files and hard links, it does not read a symbolic
+link as a file, and it applies the five whiteouts, so a file that a later layer removed
+or replaced is not counted.
 
 The closure below starts from all 29 files under `/app`, not from the executable alone,
 so it covers each back-end that ggml can load from there. A soname is usually a symbolic
-link, and the reader matches the versioned file too. Its first version did not, and it
-left `libstdc++` and `libgomp` out of the closure. That difference from the `EX-07`
-assessment showed the defect.
+link, so the reader matches a soname to a file by name, in any directory: a name, or a
+name followed by a version. That can include a file the loader would not choose, and it
+cannot leave one out while each soname resolves. Each did. The reader does not read
+`RUNPATH` or the loader's search order.
 
 | Question | Answer |
 |---|---|
-| Entrypoint | `/app/llama-server`, as the runtime contract also declares |
+| Entrypoint | `/app/llama-server`. The configuration of the image states it, `deploy/serving/runtime/container-package.v1.json` declares it, and the rendered chart sets it as the command |
 | The closure outside `/app` | Eight files: `ld-linux-x86-64.so.2`, `libc.so.6`, `libcrypto.so.3`, `libgcc_s.so.1`, `libgomp.so.1.0.0`, `libm.so.6`, `libssl.so.3`, `libstdc++.so.6.0.33`. Each soname resolved to a file. These are the libraries that the `EX-07` assessment names |
 | Files that link OpenSSL | Two: `libllama-common.so.0.2.0` and `libllama-server-impl.so`, as on 2026-09-30 |
 | OpenSSL method functions they import | `TLS_client_method` and `TLS_server_method`, and nothing else ending in `method`, as on 2026-09-30 |
@@ -112,18 +117,20 @@ assessment showed the defect.
 | A decoder linked statically into a file under `/app` | None found: no file there holds the opening of the Brotli static dictionary, which each decoder carries with or without its symbols |
 | Other text that matches `brotli` under `/app` | One symbol, `httplib::detail::is_brotli_encoding`, in the two files that link OpenSSL. It is a cpp-httplib helper that compares a header value. No decoder is present for it to call |
 | Packages that depend on `libbrotli1` | `libcurl4t64`, `libfreetype6`, `libjxl0.7` |
-| Whether the committed configuration runs a program that reaches Brotli | No. The container starts `/app/llama-server`, each probe is `httpGet`, and no file under `charts` or `gitops` names `curl` or `ffmpeg` |
+| Whether the committed configuration runs a program that reaches Brotli | No. The container starts `/app/llama-server`, no probe of the chart runs a command in the runtime container, and no file under `charts` or `gitops` names `curl` or `ffmpeg` |
 
 The vulnerable code of both findings ships in the image and is not on a path from the
 serving process that this reading can see. The reasons differ. For OpenSSL the library
-is loaded, and the DTLS code is not called. For Brotli the library is not linked at all.
+is loaded, and the DTLS code is not called. For Brotli no file of the closure names the
+library.
 
 **What remains.** The image ships `curl`, `ffmpeg`, `ffprobe`, the `fc-*` tools, and some
 GTK tools, and these reach `libbrotli`. None is the entrypoint. The container runs
 read-only, as uid `65534`, with each capability dropped, so reaching them means already
 running a command inside the container. `libggml` imports `dlopen` and `dlsym`, and this
 reading does not follow a path that it builds at run time; its back-ends are files under
-`/app`, and those are in the closure. The argument is about these bytes: a different
+`/app`, and those are in the closure. What glibc itself may load while it runs was not
+considered. The argument is about these bytes: a different
 image needs its own reading, which is why each exception is bound to the digest.
 
 ## The exceptions
@@ -132,7 +139,7 @@ image needs its own reading, which is why each exception is bound to the digest.
 |---|---|---|
 | Finding | `CVE-2026-84782` | `CVE-2026-111497` |
 | Accepted on | 2026-09-30, lapsed on 2026-10-30, renewed on 2026-11-01 | 2026-11-01 |
-| Accepted by | The repository owner, in the session of this change. No tool reads that acceptance | The same |
+| Accepted by | The repository owner, on 2026-11-01. No tool reads that acceptance | The same |
 | Owner | `security` | `security` |
 | Compensating control | `pin-image-by-digest` | `pin-image-by-digest` |
 | Review deadline | **2026-12-01**, enforced: the entry carries `exp:2026-12-01`. The last accepted day is 2026-11-30 | The same |
@@ -203,14 +210,36 @@ Both exited `0`.
 | ADR 0008 | A new dated note after the `D11` note. The released text and each earlier note are unchanged |
 | `docs/proof/security/ex-07-runtime-image-exception.md` | A dated `Renewal` section at the end. The text above it is unchanged |
 | This record, its reader, and its output | New |
-| `tests/security/test_security_maintenance_history.py` | The new note is registered. The two tripwires compare the renewed scope, as their comment requires of a change that moves the deadline |
-| `docs/proof/README.md`, `docs/testing/test-inventory.md`, `CHANGELOG.md` | This record, the changed test, and a `Security` entry |
+| `tests/security/test_security_maintenance_history.py` | The new note is registered. The two tripwires compare the renewed scope, as their comment requires of a change that moves the deadline, and one is renamed for that reason |
+| `docs/proof/README.md`, `docs/testing/test-inventory.md` and its data, `CHANGELOG.md` | This record, the changed test, and a `Security` entry |
 
 The reconciliation of 2026-10-01 and the note of that date under `D11` stay as written,
 and the pinned scope stays in the test beside the renewed one. No image, chart, contract,
 script, workflow, or tool changed. Revision 4 of the V2-E02A record is unchanged:
 `--changes` prints `UNCHANGED`. Among the experiment records, only revision 3 of V2-E01,
 whose runs are complete, names a file that this change edits. No claim moved.
+
+## What the independent review found
+
+Two reviewers read the first commit, `c36dd1b`. Neither found a way to make the guard
+accept more than these two findings, for another image, or past the deadline. Each count
+and date of this record that they recomputed agreed.
+
+| Finding | Severity | What the first commit had | What was done |
+|---|---|---|---|
+| The reader skipped hard links, and the record said that it read each ELF file | medium-low | `member.isfile()` is false for a hard link, so the count was 1,270 | The reader follows hard links. The count is 1,271. No other line of the output changed |
+| The reader ignored whiteouts, and the record did not say so | low | A file that a later layer removed stayed in the sets. That can only over-include, and the record was silent | The reader applies them, and the record states what it reads |
+| `lstrip("./")` strips characters, not a prefix | low | A name that starts with a dot at the root loses it, which hides a root whiteout | `removeprefix` |
+| The entrypoint row did not follow from the output | low | The reader never read the image configuration. The row was true, from other files | The reader prints the configuration, and the row names its three sources |
+| The closing argument named `dlopen` alone | low | It left out what glibc may load, which the `EX-07` assessment states. "Not linked at all" said more than a `DT_NEEDED` reading shows | The caveat is carried over, and the sentence states what was read |
+| The first commit said that each probe is `httpGet` | low | The liveness probe of the runtime is `tcpSocket` | The row now says that no probe runs a command in the runtime container |
+| The inventory data was not edited | medium | `test-inventory.md` had the renewal, and its data did not | The data states it |
+| The name of one tripwire was no longer true | low | `test_ex07_keeps_the_scope_it_was_reconciled_with` compared the renewed scope | Renamed, and its docstring and two references follow |
+| The change column of the note used a branch name | cosmetic | A branch name does not last | `EX-08` |
+
+Before the first commit, the reader's closure left out `libstdc++` and `libgomp`,
+because a soname is usually a symbolic link. The difference from the `EX-07` assessment
+showed the defect.
 
 ## Mutation check
 

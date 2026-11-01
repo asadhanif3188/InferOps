@@ -89,7 +89,7 @@ POST_RELEASE_NOTES = (
     ),
     (
         "> **Note, 2026-11-01: an eighth exception, and `EX-07` renewed.**",
-        "fix/runtime-image-scan-exceptions",
+        "EX-08",
         "131fd9f4486e664c86555eb67a9221ef413a2b268555fe5a922ec9c5103d9218",
     ),
 )
@@ -119,7 +119,7 @@ RELEASED_EXCEPTION_IDS = ("EX-01", "EX-02", "EX-03", "EX-04", "EX-05", "EX-06")
 # The scope `EX-07` was accepted with, as the reconciliation records it. The
 # dated note and the reconciliation are compared with this table, never with
 # the live baseline, because they stay true after `EX-07` is gone. Only
-# `test_ex07_keeps_the_scope_it_was_reconciled_with` and the ignore-file test
+# `test_ex07_keeps_its_reconciled_scope_with_renewed_dates` and the ignore-file test
 # compare it with the live data, as a tripwire: if a later change rotates the
 # image, retires `EX-07`, or moves its deadline, those two fail, and that change
 # says so in its own record and updates them. The 2026-10-01 reconciliation
@@ -328,7 +328,7 @@ def test_the_note_states_ex07_as_it_was_reconciled() -> None:
     They are compared with the reconciled scope, which is pinned, not with the
     live baseline: the note is dated and stays true after EX-07 is rotated or
     retired. The live baseline is compared with the same pinned scope by
-    ``test_ex07_keeps_the_scope_it_was_reconciled_with``, so while EX-07 stands
+    ``test_ex07_keeps_its_reconciled_scope_with_renewed_dates``, so while EX-07 stands
     the note and the register agree through it. The note says EX-07 is bound to
     the image's digest without quoting it; the digest itself is compared there,
     not here.
@@ -405,8 +405,8 @@ def test_the_current_facing_surfaces_state_the_current_count(
 # --------------------------------------------------------------------------
 
 
-def test_ex07_keeps_the_scope_it_was_reconciled_with() -> None:
-    """Tripwire: the live baseline against the scope the reconciliation records.
+def test_ex07_keeps_its_reconciled_scope_with_renewed_dates() -> None:
+    """Tripwire: the live baseline against the reconciled scope with its renewed dates.
 
     It also holds the identifiers the note relies on: EX-01 to EX-06 are the six
     the released sentence counted, none a scan exception, and EX-07 follows them.

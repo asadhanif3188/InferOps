@@ -57,22 +57,52 @@ index = json.load(fetch(f"manifests/{INDEX}"))
 print("image index:", INDEX)
 print("linux/amd64 manifest:", entry["digest"])
 manifest = json.load(fetch(f"manifests/{entry['digest']}"))
+config = json.load(fetch(f"blobs/{manifest['config']['digest']}", "*/*")).get("config", {})
+print("image Entrypoint:", config.get("Entrypoint"))
+print("image Cmd:", config.get("Cmd"))
+print("image User:", config.get("User"))
 
 needed: dict[str, list[str]] = {}
 imports: dict[str, set[str]] = {}
-dictionary: list[str] = []
+dictionary: set[str] = set()
 brotli_text: dict[str, set[bytes]] = {}
 status = b""
+regular = hard_links = whiteouts = 0
+
+
+def forget(prefix: str) -> None:
+    """A whiteout removes a file, or a directory with each file under it, of a lower layer."""
+    for name in [n for n in needed if n == prefix or n.startswith(prefix + "/")]:
+        del needed[name], imports[name]
+        dictionary.discard(name)
+        brotli_text.pop(name, None)
+
+
 for number, layer in enumerate(manifest["layers"]):
     path = work / f"layer-{number}.tar"
     with fetch(f"blobs/{layer['digest']}", "*/*") as response, path.open("wb") as out:
         while chunk := response.read(1 << 20):
             out.write(chunk)
     with tarfile.open(path, "r:*") as archive:
-        for member in archive:
-            name = member.name.lstrip("./")
-            if not member.isfile():
+        members = archive.getmembers()
+        for member in members:
+            name = member.name.removeprefix("./")
+            base = name.rsplit("/", 1)[-1]
+            if base == ".wh..wh..opq":
+                whiteouts += 1
+                directory = name.rsplit("/", 1)[0]
+                for lower in [n for n in needed if n.startswith(directory + "/")]:
+                    forget(lower)
+            elif base.startswith(".wh."):
+                whiteouts += 1
+                forget(name.replace(".wh.", "", 1))
+        for member in members:
+            name = member.name.removeprefix("./")
+            if not (member.isfile() or member.islnk()):
                 continue
+            regular += member.isfile()
+            hard_links += member.islnk()
+            # extractfile follows a hard link to the file that it names.
             stream = archive.extractfile(member)
             head = stream.read(4)
             if name == "var/lib/dpkg/status":
@@ -80,6 +110,7 @@ for number, layer in enumerate(manifest["layers"]):
                 continue
             if head != b"\x7fELF":
                 continue
+            forget(name)
             body = head + stream.read()
             elf = ELFFile(io.BytesIO(body))
             needed[name] = []
@@ -99,7 +130,7 @@ for number, layer in enumerate(manifest["layers"]):
                     }
             if name.startswith("app/"):
                 if BROTLI_DICTIONARY in body:
-                    dictionary.append(name)
+                    dictionary.add(name)
                 for found in re.finditer(rb"[A-Za-z0-9_]*brotli[A-Za-z0-9_]*", body, re.IGNORECASE):
                     brotli_text.setdefault(name, set()).add(found.group()[:60])
     path.unlink()
@@ -129,6 +160,8 @@ while queue:
             unresolved.add(library)
         queue.extend(found)
 
+print("layers:", len(manifest["layers"]))
+print("regular files:", regular, " hard links:", hard_links, " whiteouts:", whiteouts)
 print("ELF files in the image:", len(needed))
 print("ELF files under /app:", len(app))
 print("\n# The load closure of every ELF file under /app, followed through DT_NEEDED")
@@ -173,7 +206,7 @@ for name in sorted(reaching):
 print("files under /app importing a Brotli symbol:", [
     name for name in app if any(symbol.startswith("Brotli") for symbol in imports[name])
 ])
-print("files under /app holding the Brotli static dictionary:", dictionary)
+print("files under /app holding the Brotli static dictionary:", sorted(dictionary))
 print("text matching brotli under /app:")
 for name, words in sorted(brotli_text.items()):
     print("  ", name, sorted(word.decode("ascii", "replace") for word in words))
