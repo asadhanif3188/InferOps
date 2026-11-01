@@ -128,6 +128,9 @@ E02A_R4_PIN = "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
 #: The files that the G1 switch moved, by the tools whose scope pins them: the two
 #: desired-state files and the desired-state tool, and for V2-E02A and V2-E02B the
 #: baseline-profile tool.
+#: The two files that hold the list of ledgers. V2-S7-002-PR1 added a ledger, so each
+#: record that pins them differs from its pin, and no revision classifies them.
+LEDGER_LIST = ["tools/evidence_index/__init__.py", "tools/evidence_index/core.py"]
 SWITCHED = [
     "gitops/environments/local-docker-desktop/workloads/support-assistant/rendered-workload-release.yaml",
     "gitops/environments/local-docker-desktop/workloads/support-assistant/values.generated.yaml",
@@ -375,14 +378,23 @@ def test_v2_e02a_alone_has_runs_and_the_one_driver_is_its_own() -> None:
     that of V2-E02A, and revision 3 of its record pins it. Revisions 1 and 2 of
     V2-E02A list it as added. No other experiment has a driver. Since V2-S7-003-PR1
     V2-E02A has a revision 4. Since V2-S7-001-PR2 it has three runs, each under
-    that revision, with their corrections, and no other experiment has a run."""
+    that revision, with their corrections, and no other experiment has a run. Since
+    V2-S7-002-PR1 it has the classification of those runs, their report, and their
+    reviews."""
     revisions_of = {"V2-E04": 3, "V2-E02A": 4}
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
         revisions = revisions_of.get(experiment.experiment_id, 2)
         names = [f"freeze-r{n}.v1alpha1.json" for n in range(1, revisions + 1)]
         if experiment.experiment_id == "V2-E02A":
-            names += ["corrections", "procedure", "runs"]
+            names += [
+                "baseline-report.md",
+                "classification.v1alpha1.json",
+                "corrections",
+                "procedure",
+                "reviews",
+                "runs",
+            ]
             assert [p.name for p in (directory / "procedure").iterdir()] == [
                 "e02a-driver.txt"
             ]
@@ -1494,11 +1506,14 @@ def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
     V2-E02A also list the driver as added, and revision 3 of V2-E02A pins the driver
     and classifies the move of core.py. Since V2-S7-003-PR1 each record before it
     also lists the files of the G1 switch that its scope pins, and revision 4 of
-    V2-E02A pins them and classifies each move."""
+    V2-E02A pins them and classifies each move. Since V2-S7-002-PR1 each record also
+    lists the two files of the list of ledgers, and revision 4 of V2-E02A lists those
+    alone. No revision classifies them."""
 
     def switched(experiment: str) -> list[str]:
         with_baseline = experiment in ("V2-E02A", "V2-E02B")
-        return SWITCHED_WITH_BASELINE if with_baseline else SWITCHED
+        files = SWITCHED_WITH_BASELINE if with_baseline else SWITCHED
+        return [*files, *LEDGER_LIST]
 
     for experiment, path in REVISION_ONE.items():
         changes = changed_inputs(load(path), REPO_ROOT)
@@ -1521,12 +1536,14 @@ def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
             ]
         ), path
     assert sorted(c.path for c in changed_inputs(load(E04_R3), REPO_ROOT)) == sorted(
-        SWITCHED
+        [*SWITCHED, *LEDGER_LIST]
     )
     assert sorted(c.path for c in changed_inputs(load(E02A_R3), REPO_ROOT)) == sorted(
-        SWITCHED_WITH_BASELINE
+        [*SWITCHED_WITH_BASELINE, *LEDGER_LIST]
     )
-    assert changed_inputs(load(E02A_R4), REPO_ROOT) == []
+    assert sorted(c.path for c in changed_inputs(load(E02A_R4), REPO_ROOT)) == sorted(
+        LEDGER_LIST
+    )
 
 
 def test_the_reconciliation_bound_of_e05_is_on_the_host_clock_alone() -> None:

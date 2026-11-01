@@ -937,7 +937,9 @@ index without it. Merge the review first, in a change of its own: the check read
 repository state and cannot see which of two files was committed first. Plan the
 register change when you plan the run. The E01-D run and its review merged in one change,
 which left the register change to a later one. The claim was registered a day later, by
-a change of its own, and the register states both dates.
+a change of its own, and the register states both dates. A ledger is listed in
+`tools/evidence_index/core.py`, which the reliability freeze records pin, so a new ledger
+moves a pin of each of them. Plan that too.
 
 ### Serving adapters
 

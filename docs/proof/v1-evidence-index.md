@@ -13,7 +13,8 @@ by `python -m tools.evidence_index --write` from
 [the `V2-S2-003-PR2` E01 static proof ledger](testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json),
 [the `V2-S2-004-PR2` corrected E01 static proof ledger](testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json),
 [the `V2-S2-005-PR2` E01 claim correction ledger](testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json),
-and [the `V2-S3-005-PR1` E01-D registration ledger](testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json).
+[the `V2-S3-005-PR1` E01-D registration ledger](testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json),
+and [the `V2-S7-002-PR1` E02A baseline registration ledger](testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json).
 It states nothing they do not, and
 [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py)
 regenerates it and fails on any difference.
@@ -97,9 +98,16 @@ planned with no record, replaced one clause of what the second static run's clai
 not establish, and replaced this page's reason again. It is the first post-release
 ledger to add a record that executed its target behaviour, so it is the first to state
 how a record it adds identifies the code that ran.
+Then `V2-S7-002-PR1` added a fourth claim,
+`the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod`,
+certified at `C2` on one record of each of the three runs of V2-E02A, through a seventh
+post-release ledger, the E02A baseline registration ledger. Those runs executed on 2026-10-31 in
+`V2-S7-001-PR2`, which registered no claim; the registration is dated 2026-11-01. The ledger
+references one review record of each run, by an automated session of the assistant that drove
+the runs. It also replaced this page's reason again.
 Each moves the pack
 `main` holds, and it is expected: the released pack is the frozen one, and the index
-recomputes it, by undoing all six post-release ledgers, rather than copying it.
+recomputes it, by undoing all seven post-release ledgers, rather than copying it.
 `--gate` prints both pairs.
 
 **The result review gate.** Since `V2-S2-005-PR2` the index is not built when a ledger
@@ -124,18 +132,20 @@ role `analysis` must replay:
 [the replay tool](../testing/analysis-replay.md#the-evidence-index) computes each run
 analysis of the run again from the manifest and the evidence files, and the index is
 not built while one differs. A run whose manifest names no such file is not held, and
-none of the three committed runs names one. The gate adds nothing to the index:
+the three E01 runs that the register bears on name none. Each of the three V2-E02A runs
+names one, so since `V2-S7-002-PR1` the gate holds those three. (Until then this
+paragraph said that none of the committed runs names one.) The gate adds nothing to the index:
 `summary` states nothing about a run analysis, and the two digests are unchanged. The
 gate promotes nothing. A run analysis that replays adds no claim, changes no claim
 status, and assigns no evidence level. The gate reads one repository state and no Git
 object.
 
-How the 39 records that executed their target behaviour identify the repository code
+How the 42 records that executed their target behaviour identify the repository code
 that ran:
 
 | Code identity | Records | Meaning |
 |---|---|---|
-| `stated-revision` | 21 | The record names the commit that ran |
+| `stated-revision` | 24 | The record names the commit that ran |
 | `content-pinned` | 4 | A named base commit, plus the LF-normalised SHA-256 of every file that decided the run, each equal to that file at a named commit |
 | `no-repository-code` | 4 | No repository code among the claim-material components that executed; the third-party ones are pinned |
 | `unidentified` | 10 | Repository code executed and nothing the record cites identifies which; nine of these are under claims another record settles, four of those by a `V1-S5-013-PR1` rerun, and one is under the `kind` helper's claim, which is now not claimed |
@@ -158,9 +168,9 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after the six post-release ledgers, which no release quotes | `549946afa25095d7a7239360f48529dd4ba91421fee6ac659ca41102e7cbefcc` | `06e214dc5891f94098e5ce3988039a11eca768aef3ca8414614ae4e98a3d0720` |
+| **Current:** `main` after the seven post-release ledgers, which no release quotes | `56cbeeb218ffe44dcd46b8b27c90d18f0f953e95c7c84610f24f83f1602fded1` | `80e7a92d7d6e324113734f3f742303352519f1225d0601b2a1241f2d3be2016b` |
 
-The released pair is not read from a ledger. The index undoes the six post-release
+The released pair is not read from a ledger. The index undoes the seven post-release
 ledgers' changes, last first, renders the register as it was, and takes both digests
 over that register, the four ledgers before the post-release ones, and the files that
 register cites, read from this checkout; the first post-release ledger states the pair,
@@ -172,7 +182,7 @@ which a test checks where the clone holds the tag.
 
 ## What one entry holds
 
-For each of the **68 evidence records** in the register:
+For each of the **71 evidence records** in the register:
 
 | Field | What it says | Where it comes from |
 |---|---|---|
@@ -208,22 +218,22 @@ version.
 
 ## What the index shows today
 
-- **68 evidence records** under 62 claims: 29 at `C0`, 8 at `C1`, 31 at `C2`, and none
-  at `C3` or `C4`. Every one of the **45 certified claims** holds at least one record,
+- **71 evidence records** under 63 claims: 29 at `C0`, 8 at `C1`, 34 at `C2`, and none
+  at `C3` or `C4`. Every one of the **46 certified claims** holds at least one record,
   and every record states its limitations and what it does not establish. The pack
-  `v1.0.0` was cut over held 64 records and 41 certified claims; the difference is four
-  records, each added after it with a claim certified after it: three at `C0`, which are
-  the release's own record and the records of the two E01 static runs, and one at `C2`,
-  which is the record of the one E01-D run.
-- **116 distinct committed files** are cited, all under `docs/proof/`, each hashed and
+  `v1.0.0` was cut over held 64 records and 41 certified claims; the difference is seven
+  records under five claims certified after it: three at `C0`, which are
+  the release's own record and the records of the two E01 static runs, and four at `C2`,
+  which are the record of the one E01-D run and the records of the three V2-E02A runs.
+- **172 distinct committed files** are cited, all under `docs/proof/`, each hashed and
   each named by its git blob. Twelve of them carry a correction recorded beside them
   rather than inside them.
-- **39 records executed their target behaviour, and 21 of them name the repository
+- **42 records executed their target behaviour, and 24 of them name the repository
   revision that ran.** The other 18 name the base their working tree started from, a
   revision with the change's own files uncommitted, a commit the repository's history
   dates after the run, a branch, or nothing at all. The table above says which of them
   still leave their code unidentified.
-- **Workload source and substitution are separate fields.** 5 records use a
+- **Workload source and substitution are separate fields.** 8 records use a
   synthetic workload; 8 have a claim-material substitution, and 1 more has a
   substitution recorded as immaterial. Neither field decides the other.
 

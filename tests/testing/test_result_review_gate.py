@@ -53,6 +53,7 @@ from tools.evidence_index import (
     E01_CORRECTED_PROOF_PATH,
     E01_D_REGISTRATION_PATH,
     E01_STATIC_PROOF_PATH,
+    E02A_REGISTRATION_PATH,
     LEDGER_PATHS,
     POST_RELEASE_LEDGER_PATHS,
     PRE_GATE_LEDGER_PATHS,
@@ -89,6 +90,11 @@ FINDINGS = {row["findingId"]: row for row in LEDGER["findings"]}
 #: The tenth ledger, which registers the E01-D run. It is written after this one.
 REGISTRATION = load_ledger(E01_D_REGISTRATION_PATH)
 REGISTRATION_NAME = E01_D_REGISTRATION_PATH.relative_to(REPO_ROOT).as_posix()
+#: The eleventh ledger, which registers the three V2-E02A runs.
+E02A_REGISTRATION = load_ledger(E02A_REGISTRATION_PATH)
+E02A_REGISTRATION_NAME = E02A_REGISTRATION_PATH.relative_to(REPO_ROOT).as_posix()
+E02A_DIRECTORY = "docs/proof/experiments/v2-e02a"
+E02A_RUNS = tuple(f"{E02A_DIRECTORY}/runs/e02a-{number}" for number in (1, 2, 3))
 #: The ledgers that reference the review of the second static run, by position.
 SECOND_RUN_REVIEW_LEDGERS = (
     LEDGER_PATHS.index(E01_CLAIM_CORRECTION_PATH),
@@ -121,6 +127,10 @@ E01_D_CLAIM_ID = (
 REVIEWED = [
     {"ledger": LEDGER_NAME, **REVIEW_ROW},
     *({"ledger": REGISTRATION_NAME, **row} for row in REGISTRATION["resultReviews"]),
+    *(
+        {"ledger": E02A_REGISTRATION_NAME, **row}
+        for row in E02A_REGISTRATION["resultReviews"]
+    ),
 ]
 REVIEW_REF = (
     "docs/proof/experiments/v2-e01/reviews/20261003-e01-abc-1-review-1.v1alpha1.json"
@@ -295,8 +305,8 @@ def test_the_correction_note_is_appended_and_keeps_every_earlier_word() -> None:
 def test_nothing_else_of_the_claim_moved_and_no_claim_was_added() -> None:
     """Status, level, record, and every other field are the eighth ledger's. The
     tenth ledger, written later, replaced one clause of what the claim does not
-    establish; that ledger is undone first, so this reads the register as the ninth
-    ledger left it."""
+    establish; that ledger is undone first, with the one after it, so this reads the
+    register as the ninth ledger left it."""
     claim = _claim(REGISTER)
     assert [key for key in claim if claim[key] != ADDED["claim"][key]] == [
         "statement",
@@ -305,7 +315,9 @@ def test_nothing_else_of_the_claim_moved_and_no_claim_was_added() -> None:
     ]
     assert claim["status"] == "certified"
     assert [record["evidenceLevel"] for record in claim["evidenceRecords"]] == ["C0"]
-    after_this_ledger = restore_migrated_register(REGISTER, REGISTRATION)
+    after_this_ledger = restore_migrated_register(
+        REGISTER, [REGISTRATION, E02A_REGISTRATION]
+    )
     held = _claim(after_this_ledger)
     assert [key for key in held if held[key] != ADDED["claim"][key]] == [
         "statement",
@@ -420,17 +432,27 @@ def test_only_the_e01_ledgers_bear_on_a_run() -> None:
         *PRE_GATE_LEDGER_PATHS,
         E01_CLAIM_CORRECTION_PATH,
         E01_D_REGISTRATION_PATH,
+        E02A_REGISTRATION_PATH,
     ]
 
 
-def _tree(tmp_path: Path) -> Path:
+def _tree(tmp_path: Path, *, with_e02a: bool = False) -> Path:
     """A copy of the three things the gate reads for each reviewed run: the review,
-    the run, and the freeze record."""
-    for relative in (REVIEW_REF, FREEZE_R2, E01_D_REVIEW_REF, FREEZE_R3):
+    the run, and the freeze record.
+
+    The E02A runs are large, and a refusal of an earlier ledger stops the gate before
+    it reads them, so only a test that reaches the last ledger copies them."""
+    files = [REVIEW_REF, FREEZE_R2, E01_D_REVIEW_REF, FREEZE_R3]
+    runs = [SECOND_RUN, E01_D_RUN]
+    if with_e02a:
+        files.append(f"{E02A_DIRECTORY}/freeze-r4.v1alpha1.json")
+        files.extend(row["reviewRef"] for row in E02A_REGISTRATION["resultReviews"])
+        runs.extend(E02A_RUNS)
+    for relative in files:
         copied = tmp_path / relative
         copied.parent.mkdir(parents=True, exist_ok=True)
         copied.write_bytes((REPO_ROOT / relative).read_bytes())
-    for run in (SECOND_RUN, E01_D_RUN):
+    for run in runs:
         shutil.copytree(REPO_ROOT / run, tmp_path / run)
     return tmp_path
 
@@ -467,7 +489,8 @@ def _rewrite_review(root: Path, mutate: Callable[[dict[str, Any]], None]) -> str
 
 def test_the_gate_passes_a_copy_of_what_it_reads(tmp_path: Path) -> None:
     """The control for every refusal below: the unedited copy is accepted."""
-    assert review_gate(REGISTER, LEDGERS, _tree(tmp_path))["reviewed"] == REVIEWED
+    tree = _tree(tmp_path, with_e02a=True)
+    assert review_gate(REGISTER, LEDGERS, tree)["reviewed"] == REVIEWED
 
 
 def test_a_result_bearing_ledger_with_no_review_reference_is_refused(
@@ -874,8 +897,10 @@ def test_ledgers_that_do_not_match_their_paths_are_refused() -> None:
 def test_the_registration_ledger_is_the_sixth_after_the_release() -> None:
     assert POST_RELEASE_LEDGER_PATHS[5] == E01_D_REGISTRATION_PATH
     assert LEDGER_PATHS.index(E01_D_REGISTRATION_PATH) == 9
-    assert len(POST_RELEASE_LEDGER_PATHS) == 6
-    assert len(LEDGER_PATHS) == 10
+    assert POST_RELEASE_LEDGER_PATHS[6] == E02A_REGISTRATION_PATH
+    assert LEDGER_PATHS.index(E02A_REGISTRATION_PATH) == 10
+    assert len(POST_RELEASE_LEDGER_PATHS) == 7
+    assert len(LEDGER_PATHS) == 11
     assert REGISTRATION["contractVersion"] == "inferops.io/v1alpha1"
     assert REGISTRATION["priorLedgerRef"] == LEDGER_NAME
     for key in ("registerRef", "priorLedgerRef", "reportRef", "indexRef"):
@@ -1076,7 +1101,7 @@ def test_the_added_claim_is_the_only_claim_that_cites_the_real_deployment_run() 
         for change in REGISTRATION["registerChanges"]
         if change["operation"] == "add-claim"
     ]
-    assert added["position"] == len(REGISTER["claims"]) - 1
+    assert added["position"] == len(REGISTER["claims"]) - 2
     assert _claim(REGISTER, E01_D_CLAIM_ID) == added["claim"]
 
 
@@ -1101,3 +1126,56 @@ def test_the_pages_state_the_correction_as_later_and_the_gates_limits() -> None:
         "No part of E01 ran",
     ):
         assert phrase in validation, phrase
+
+
+# ------------------------------------- the V2-E02A registration under the gate
+
+
+def test_the_baseline_ledger_bears_on_the_three_runs_and_names_each_review() -> None:
+    assert result_runs(REGISTER, E02A_REGISTRATION) == list(E02A_RUNS)
+    assert [row["runPath"] for row in E02A_REGISTRATION["resultReviews"]] == list(
+        E02A_RUNS
+    )
+    for row in E02A_REGISTRATION["resultReviews"]:
+        assert row["reviewSha256"] == content_sha256(REPO_ROOT / row["reviewRef"])
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda ledger: ledger["resultReviews"].pop(), "references no independent"),
+        (
+            lambda ledger: ledger["resultReviews"][0].update(reviewSha256="0" * 64),
+            "has the content digest",
+        ),
+    ],
+    ids=["a-run-with-no-review", "another-digest"],
+)
+def test_the_baseline_ledger_is_refused_without_its_reviews(
+    tmp_path: Path, mutate: Callable[[dict[str, Any]], Any], message: str
+) -> None:
+    ledgers = copy.deepcopy(LEDGERS)
+    mutate(ledgers[LEDGER_PATHS.index(E02A_REGISTRATION_PATH)])
+    with pytest.raises(ValueError, match=message):
+        review_gate(REGISTER, ledgers, _tree(tmp_path, with_e02a=True))
+
+
+def test_the_baseline_claim_says_that_requests_failed_and_cites_each_run() -> None:
+    """The status is a claim status, and the statement keeps the failure beside it."""
+    (added,) = [
+        change
+        for change in E02A_REGISTRATION["registerChanges"]
+        if change["operation"] == "add-claim"
+    ]
+    claim = added["claim"]
+    assert claim["status"] == "certified"
+    assert "two requests failed" in claim["statement"]
+    assert "not that the service stayed available" in claim["statement"]
+    assert "on the reading of E02A-AC2 that the repository owner" in claim["statement"]
+    assert "the repository owner approved" in claim["limitation"]
+    assert [record["evidenceLevel"] for record in claim["evidenceRecords"]] == [
+        "C2"
+    ] * 3
+    for run, record in zip(E02A_RUNS, claim["evidenceRecords"], strict=True):
+        assert f"{run}/result.md" in record["evidenceRefs"]
+        assert record["versionsRecordedIn"] == f"{run}/run.v1alpha1.json"

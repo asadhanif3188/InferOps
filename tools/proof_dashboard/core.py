@@ -187,6 +187,7 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
         question="What does a caller see when the serving pod goes away?",
         claim_ids=(
             "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+            "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
             "an-unready-model-was-held-unready-and-recovered-by-an-operator",
         ),
     ),

@@ -117,6 +117,9 @@ BASELINE_TOOL = (
 )
 DRIVER = "docs/proof/experiments/v2-e02a/procedure/e02a-driver.txt"
 SUPERSEDED_E02A = "docs/proof/experiments/v2-e02a/freeze-r1.v1alpha1.json"
+#: The two files that hold the list of ledgers. V2-S7-002-PR1 added a ledger, so each
+#: record that pins them differs from its pin, and no revision classifies them.
+LEDGER_LIST = ("tools/evidence_index/__init__.py", "tools/evidence_index/core.py")
 PREREGISTRATION_CORE = "tools/experiment_preregistration/core.py"
 EXPERIMENT_DIRECTORIES = ("v2-e02a", "v2-e02b", "v2-e02c", "v2-e04", "v2-e05")
 
@@ -289,7 +292,9 @@ def test_each_record_pins_exactly_its_material_scope() -> None:
     Since V2-S7-001-PR1 each earlier revision also differs by revision 3 of V2-E02A,
     which revision 3 of V2-E03 and revision 2 of V2-E06 pin. Since V2-S7-003-PR1
     each earlier revision also differs by revision 4 of V2-E02A, and each earlier
-    revision of V2-E06 by the two desired-state files that the G1 switch moved."""
+    revision of V2-E06 by the two desired-state files that the G1 switch moved. Since
+    V2-S7-002-PR1 each record, the latest too, differs by the list of ledgers."""
+    ledgers = [(path, "changed") for path in LEDGER_LIST]
     checks = [
         ("tools/analysis_preregistration/core.py", "changed"),
         (PREREGISTRATION_CORE, "changed"),
@@ -298,13 +303,13 @@ def test_each_record_pins_exactly_its_material_scope() -> None:
     latest = (E02A_R4, "added")
     switched = [(path, "changed") for path in DESIRED_STATE_FILES]
     expected = {
-        E03_R4: [],
-        E06_R3: [],
-        E03_R3: [latest],
-        E06_R2: [latest, *switched],
-        E03_R2: [later, latest],
-        E03_RECORD: [(E04_R3, "added"), later, latest, *checks],
-        E06_RECORD: [later, latest, *switched, *checks],
+        E03_R4: [*ledgers],
+        E06_R3: [*ledgers],
+        E03_R3: [latest, *ledgers],
+        E06_R2: [latest, *switched, *ledgers],
+        E03_R2: [later, latest, *ledgers],
+        E03_RECORD: [(E04_R3, "added"), later, latest, *checks, *ledgers],
+        E06_RECORD: [later, latest, *switched, *checks, *ledgers],
     }
     for path, moved in expected.items():
         document = load(path)
@@ -364,8 +369,10 @@ def test_each_source_record_differs_from_its_pins_in_the_check_alone() -> None:
     revision 2 of V2-E02A also lists the driver of V2-E02A as added. Since
     V2-S7-003-PR1 each lists the files of the G1 switch that its scope pins: the two
     desired-state files and the desired-state tool, and for V2-E02A and V2-E02B the
-    baseline-profile tool. Revision 4 of V2-E02A differs in none."""
-    switched = [*DESIRED_STATE_FILES, DESIRED_STATE_TOOL]
+    baseline-profile tool. Revision 4 of V2-E02A differed in none until V2-S7-002-PR1
+    added a ledger, and since then each record lists the two files of the list of
+    ledgers."""
+    switched = [*DESIRED_STATE_FILES, DESIRED_STATE_TOOL, *LEDGER_LIST]
     with_baseline = [*switched, *BASELINE_TOOL]
     moved = {
         "V2-E02A": [DRIVER, PREREGISTRATION_CORE, *with_baseline],
@@ -383,7 +390,9 @@ def test_each_source_record_differs_from_its_pins_in_the_check_alone() -> None:
     assert sorted(c.path for c in changed_inputs(load(E02A_R3), REPO_ROOT)) == sorted(
         with_baseline
     )
-    assert changed_inputs(load(E02A_R4), REPO_ROOT) == []
+    assert sorted(c.path for c in changed_inputs(load(E02A_R4), REPO_ROOT)) == sorted(
+        LEDGER_LIST
+    )
     e05 = load("docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json")
     assert sorted(c.path for c in changed_inputs(e05, REPO_ROOT)) == sorted(
         [PREREGISTRATION_CORE, *switched]

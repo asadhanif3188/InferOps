@@ -10,6 +10,25 @@ from `1.0.0`.
 
 ### Added
 
+- **The classification of the V2-E02A runs and the comparison eligibility.**
+  `V2-S7-002-PR1` classifies the three runs and applies the eligibility rule of revision 4.
+  Each run stays bound to the commit `ff45093` and to revision 4. Each run analysis is
+  reproduced with its frozen analysis version. The baseline is eligible for the comparison
+  with V2-E02B: a failure episode starts after the fault in 3 of the 3 counted runs. The
+  zero-Ready condition depends on a reading that the record does not state, so the record
+  keeps both readings, and the verdict does not rest on it. `tools/comparison_eligibility`
+  builds the record, and no freeze record pins that tool. The two figures that V2-E02B
+  reads are the medians 2 and 4,065 ms. No percentage is stated, and no V1 figure is a value
+  of this baseline. An independent review recomputed each figure from the raw files, and
+  each run has a review record. An eleventh ledger adds one claim, certified at `C2` with one
+  record of each run. The ledger list is a pinned input, so 23 freeze records differ from
+  their pins in the two files of `tools/evidence_index`, and the owner chose that with the
+  moved pin stated. The change hands the
+  inventory of the last run to rule G3. It makes no GitOps switch and registers no freeze
+  record. See
+  [the baseline report](docs/proof/experiments/v2-e02a/baseline-report.md) and
+  [the validation record](docs/proof/environment/v2-s7-002-pr1-validation.md).
+
 - **The three runs of V2-E02A.** `V2-S7-001-PR2` executed the runs under revision 4 at the
   merged commit `ff45093`, on the docker-desktop provider, at C2. In each run the control
   deleted the one runtime pod once while RP-1 ran. All seven validity criteria held in

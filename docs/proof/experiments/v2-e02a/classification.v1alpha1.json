@@ -1,0 +1,328 @@
+{
+  "attempts": [
+    {
+      "clockBoundMs": 817,
+      "corrections": [
+        {
+          "path": "docs/proof/experiments/v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json",
+          "sha256": "c0111c7ef61569a53fabcca77023c008e5851cf90b99c5debd0e3912dad9ebfd"
+        }
+      ],
+      "counted": true,
+      "directory": "docs/proof/experiments/v2-e02a/runs/e02a-1",
+      "exclusion": null,
+      "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "failureEpisodes": [
+        {
+          "failedRequests": 2,
+          "fromFaultStartedMs": 30727,
+          "ms": 4276,
+          "open": false,
+          "orderWithFault": "after",
+          "startedAt": "2026-10-31T13:42:05.876Z"
+        }
+      ],
+      "faultStartedAt": "2026-10-31T13:41:35.149Z",
+      "figures": {
+        "caller-failure-episode-ms": 4276,
+        "max-success-gap-ms": 29896,
+        "requests-failed-in-window": 2,
+        "requests-failed-since-fault": 2,
+        "stabilized-since-fault-started-ms": 96469
+      },
+      "finishedAt": "2026-10-31T14:33:10Z",
+      "freezeRecord": {
+        "freezeContentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+        "freezeRecord": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+        "freezeRevision": 4
+      },
+      "manifestSha256": "01b45844c6a7d5d96bfd6c7bfd0fbe98a586202b7e39a3cb53d6d9faf8c9eb1b",
+      "marginMs": 818,
+      "rawEvidenceSha256": "8c84bbc2c68dd4ff4c7b5878c2fbfbc4c92d51e93f6c1cdade515478fda142dd",
+      "runAnalysis": {
+        "path": "analysis.json",
+        "revision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+        "sha256": "673c4028b9164792cf873e44d76e7ad7b925191f60616510bb514aa46207a3b5",
+        "sourceSha256": "97ce37b0e37c2ec3f67b85beaaca4f424f1264c08d3c60f8ea14a7cc5c3eb02e"
+      },
+      "runId": "e02a-1",
+      "runtimeZeroReadyIntervals": [
+        {
+          "firstReadingAfterFault": true,
+          "firstReadingStartedAt": "2026-10-31T13:41:35.531Z",
+          "innerMs": 17342,
+          "outerMs": 26813,
+          "outerStartAfterFault": false,
+          "outerStartedAt": "2026-10-31T13:41:30.846Z"
+        }
+      ],
+      "startedAt": "2026-10-31T13:27:58Z",
+      "state": "PASSED"
+    },
+    {
+      "clockBoundMs": 979,
+      "corrections": [
+        {
+          "path": "docs/proof/experiments/v2-e02a/corrections/e02a-2/correction-1.v1alpha1.json",
+          "sha256": "73f2c2133b09ea4382cddcb49a8ad72676d20504fa16e9247c482cf42255dc82"
+        }
+      ],
+      "counted": true,
+      "directory": "docs/proof/experiments/v2-e02a/runs/e02a-2",
+      "exclusion": null,
+      "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "failureEpisodes": [
+        {
+          "failedRequests": 2,
+          "fromFaultStartedMs": 30766,
+          "ms": 3682,
+          "open": false,
+          "orderWithFault": "after",
+          "startedAt": "2026-10-31T14:47:31.808Z"
+        }
+      ],
+      "faultStartedAt": "2026-10-31T14:47:01.042Z",
+      "figures": {
+        "caller-failure-episode-ms": 3682,
+        "max-success-gap-ms": 30427,
+        "requests-failed-in-window": 2,
+        "requests-failed-since-fault": 2,
+        "stabilized-since-fault-started-ms": 94752
+      },
+      "finishedAt": "2026-10-31T15:35:58Z",
+      "freezeRecord": {
+        "freezeContentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+        "freezeRecord": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+        "freezeRevision": 4
+      },
+      "manifestSha256": "24b9bfdbff27a8fb777d5d40259eef756d8c1c7882eb7c60f0fe2045dccb7534",
+      "marginMs": 980,
+      "rawEvidenceSha256": "46ade7e317f3498253ba13743c5204c8a4adcbf948c2c580b8bc6774a9e3bff6",
+      "runAnalysis": {
+        "path": "analysis.json",
+        "revision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+        "sha256": "ae88cd32f2c45c15b7bf5e2e95a473d8b824f47ca7f60ebd1e3dc8c717200daf",
+        "sourceSha256": "97ce37b0e37c2ec3f67b85beaaca4f424f1264c08d3c60f8ea14a7cc5c3eb02e"
+      },
+      "runId": "e02a-2",
+      "runtimeZeroReadyIntervals": [
+        {
+          "firstReadingAfterFault": true,
+          "firstReadingStartedAt": "2026-10-31T14:47:04.365Z",
+          "innerMs": 14837,
+          "outerMs": 23792,
+          "outerStartAfterFault": false,
+          "outerStartedAt": "2026-10-31T14:46:59.990Z"
+        }
+      ],
+      "startedAt": "2026-10-31T14:35:34Z",
+      "state": "PASSED"
+    },
+    {
+      "clockBoundMs": 675,
+      "corrections": [
+        {
+          "path": "docs/proof/experiments/v2-e02a/corrections/e02a-3/correction-1.v1alpha1.json",
+          "sha256": "4ee6f26c2750c4dd487e211c136619fd7f88f9ee02293c1505cce207bbfb73cc"
+        }
+      ],
+      "counted": true,
+      "directory": "docs/proof/experiments/v2-e02a/runs/e02a-3",
+      "exclusion": null,
+      "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "failureEpisodes": [
+        {
+          "failedRequests": 2,
+          "fromFaultStartedMs": 30691,
+          "ms": 4065,
+          "open": false,
+          "orderWithFault": "after",
+          "startedAt": "2026-10-31T15:47:55.243Z"
+        }
+      ],
+      "faultStartedAt": "2026-10-31T15:47:24.552Z",
+      "figures": {
+        "caller-failure-episode-ms": 4065,
+        "max-success-gap-ms": 29893,
+        "requests-failed-in-window": 2,
+        "requests-failed-since-fault": 2,
+        "stabilized-since-fault-started-ms": 96808
+      },
+      "finishedAt": "2026-10-31T16:42:32Z",
+      "freezeRecord": {
+        "freezeContentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+        "freezeRecord": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+        "freezeRevision": 4
+      },
+      "manifestSha256": "9e1e8f129fc1be8fc3617161ca73b7a3327bc11ff5bb92b596fc760d73b1e0be",
+      "marginMs": 676,
+      "rawEvidenceSha256": "c12da92c870192e09a76a6b6d5acdb5a6b1d5cdd8bdab5f3d22f42d5bcfdccc1",
+      "runAnalysis": {
+        "path": "analysis.json",
+        "revision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+        "sha256": "547bda5ec0910165b1b664dc2e9a0940bf113d0ebc3c6ed86e720c26d5924d28",
+        "sourceSha256": "97ce37b0e37c2ec3f67b85beaaca4f424f1264c08d3c60f8ea14a7cc5c3eb02e"
+      },
+      "runId": "e02a-3",
+      "runtimeZeroReadyIntervals": [
+        {
+          "firstReadingAfterFault": true,
+          "firstReadingStartedAt": "2026-10-31T15:47:27.140Z",
+          "innerMs": 14949,
+          "outerMs": 23448,
+          "outerStartAfterFault": false,
+          "outerStartedAt": "2026-10-31T15:47:22.876Z"
+        }
+      ],
+      "startedAt": "2026-10-31T15:36:41Z",
+      "state": "PASSED"
+    }
+  ],
+  "comparisonFigures": {
+    "episode": {
+      "basis": "positive",
+      "median": 4065,
+      "metric": "caller-failure-episode-ms",
+      "percentageOverThisBasisPossible": true,
+      "statement": "The median is above zero."
+    },
+    "failures": {
+      "basis": "positive",
+      "median": 2,
+      "metric": "requests-failed-since-fault",
+      "percentageOverThisBasisPossible": true,
+      "statement": "The median is above zero."
+    }
+  },
+  "doesNotEstablish": [
+    "A comparison. No run of V2-E02B exists, and this record states no result of it.",
+    "An improvement, a reduction, or a percentage. This record states none.",
+    "That the desired state is restored. This record changes no desired state.",
+    "An authorization. An eligibility verdict does not authorize a run of V2-E02B, the G3 switch, or a later sprint.",
+    "That one runtime replica is or is not acceptable for any service.",
+    "Node failure, overload, sustained capacity, or production availability.",
+    "The cause of a failure, of a gap, or of a recovery.",
+    "Anything about another provider, node, release, or caller workload.",
+    "A figure of the V1 pod-loss evidence. No V1 figure is a value of V2-E02A."
+  ],
+  "eligibility": {
+    "conditions": {
+      "countedRuns": 3,
+      "failureEpisode": {
+        "held": true,
+        "runsNotJudged": 0,
+        "runsShowing": 3
+      },
+      "leastRunsShowing": 2,
+      "zeroReadyInterval": {
+        "onTheFirstReading": {
+          "held": true,
+          "runsShowing": 3
+        },
+        "onTheOuterStart": {
+          "held": false,
+          "runsShowing": 0
+        }
+      }
+    },
+    "restsOn": [
+      "failureEpisode"
+    ],
+    "statement": "3 of the 3 counted runs show a failure episode that starts after the fault-injection-started event, by more than the margin. The rule asks for 2.",
+    "verdict": "eligible"
+  },
+  "evidenceLevel": "C2",
+  "experimentId": "V2-E02A",
+  "governingRecord": {
+    "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+    "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+    "revision": 4
+  },
+  "handoff": {
+    "baselineDesiredState": {
+      "apiReplicas": 2,
+      "files": {
+        "rendered-workload-release.yaml": "f7eaab845c29ecfc1014005d570721e4d2e0f4d5e6b63aab92b8e52a7aea876e",
+        "values.generated.yaml": "e0b2507cb53b502a00a911d3169ca7ec959e87e06bb21e0f77d8462a4a5c11e6"
+      },
+      "freezeRecord": {
+        "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+        "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+        "revision": 4
+      },
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant",
+      "releaseId": "ecc4b9cf2d8c2e137e743dcf9e99dcdad12ec297821bc0115694dc703f88a465",
+      "runtimeReplicas": 1
+    },
+    "lastRun": {
+      "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "finishedAt": "2026-10-31T16:42:32Z",
+      "manifestSha256": "9e1e8f129fc1be8fc3617161ca73b7a3327bc11ff5bb92b596fc760d73b1e0be",
+      "rawEvidenceSha256": "c12da92c870192e09a76a6b6d5acdb5a6b1d5cdd8bdab5f3d22f42d5bcfdccc1",
+      "runAnalysis": {
+        "path": "analysis.json",
+        "revision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+        "sha256": "547bda5ec0910165b1b664dc2e9a0940bf113d0ebc3c6ed86e720c26d5924d28",
+        "sourceSha256": "97ce37b0e37c2ec3f67b85beaaca4f424f1264c08d3c60f8ea14a7cc5c3eb02e"
+      },
+      "runId": "e02a-3",
+      "state": "PASSED"
+    },
+    "statements": [
+      "The last run of V2-E02A is lastRun. No further run is planned under revision 4: three runs are counted.",
+      "Rule G3 of revision 4 restores the two desired-state files to the digests of targetDesiredState, in one change merged into main, before the first V2-E02B run. That change needs the explicit authorization of the repository owner. This record does not give it.",
+      "The desired state on main stays at baselineDesiredState until that change merges.",
+      "No row of this record changes when main returns to the target. Each run stays bound to its executing commit and to revision 4.",
+      "The change that adds this record registers a claim through an eleventh ledger. So the two files tools/evidence_index/__init__.py and tools/evidence_index/core.py differ from the pins of revision 4 and of each other record that pins them. No revision classifies them yet. The change of rule G3 inventories them for the next revision of V2-E02B."
+    ],
+    "targetDesiredState": {
+      "apiReplicas": 2,
+      "files": {
+        "rendered-workload-release.yaml": "810b4b27e40ec0cf1514d97caa5a7a27818aa12598b1c7b441e4b0ae3c5cb31a",
+        "values.generated.yaml": "6a1304a8f7a2c629a20a2b2ee6697f29a05d9963be43b470c82589c7f469b930"
+      },
+      "freezeRecord": {
+        "contentSha256": "be4cc00beaa93fee52eb1625fd6c71a1ff31bade06cd726a9d7958fa44a94e0c",
+        "path": "docs/proof/experiments/v2-e02b/freeze-r2.v1alpha1.json",
+        "revision": 2
+      },
+      "path": "gitops/environments/local-docker-desktop/workloads/support-assistant",
+      "releaseId": "b5457f49092c578496738973a8786a95428517e7ddf755303b4f6842dcb8c9db",
+      "runtimeReplicas": 2
+    }
+  },
+  "limitations": [
+    "Three runs give a median and individual values. This record states no confidence interval and no statistical significance.",
+    "The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. On the readings of the runtime readyReplicas count alone, each run would be INCONCLUSIVE, no run would be counted, and this record would decide nothing. The runtime availableReplicas count has the same gaps. The record does not state which fields a reading has to hold.",
+    "The model file of a replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone. The evidence for each replacement pod is indirect.",
+    "The available physical memory of the host was low in each run, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure of a run.",
+    "Each manifest states two digests of the wrong kind: the binding and the contract. The correction of each run states the right values. No check reads either field, and no figure of this record reads them.",
+    "The clock policy of revision 4 does not declare the set rules. This record applies the margin of the policy to the start of each failure episode. A start inside the margin does not count.",
+    "Revision 4 does not state which instant starts a zero-Ready interval. A reading is at most a few seconds from the next, so the state can change between two readings. This record states the first reading that gave zero and the outer start of the interval. The verdict does not rest on the first reading.",
+    "The analysis puts a failure episode at the completion of its first failed request. So the start of an episode is not the time at which the caller was first affected. The failed requests were sent up to about 5 s after the fault, one of them 111 ms before it, and each was in flight for about 26 s to 31 s. No request completed in that time.",
+    "caller-failure-episode-ms does not hold that time. It runs from the completion of the first failed request to the next success. max-success-gap-ms holds it, and each run states it. The record of V2-E02B reads the first and not the second.",
+    "requests-failed-since-fault is 2 in each run, and the caller profile has 2 workers. This record does not establish that the count can exceed the number of workers, so a later reader does not take the count as a measure of the length of the failure.",
+    "This record states no cause of an episode and no cause of an interval.",
+    "One provider, one node, one Kubernetes version, one release of each side, one model, and one caller workload. A result is bounded to that execution."
+  ],
+  "schema": "inferops.io/comparison-eligibility/v1alpha1",
+  "set": {
+    "countedRuns": 3,
+    "requiredCountedRuns": 3,
+    "runsStarted": 3,
+    "startLimit": 6
+  },
+  "statistics": {
+    "medians": {
+      "caller-failure-episode-ms": 4065,
+      "max-success-gap-ms": 29896,
+      "requests-failed-in-window": 2,
+      "requests-failed-since-fault": 2,
+      "stabilized-since-fault-started-ms": 96469
+    },
+    "notAggregated": "The zero-Ready intervals. The aggregate command does not state them, so each run states its own.",
+    "rule": "median-of-three",
+    "statement": "The median of three runs is the one aggregate. Three observations do not support a confidence interval or a statistical significance, and the document states neither. Each run is listed with its own value."
+  },
+  "v1Evidence": "The controlled baseline is kept apart from the V1 pod-loss evidence. No V1 figure is a value of V2-E02A, and this record states no V1 figure. A later comparison reads the two figures of comparisonFigures and no V1 figure."
+}

@@ -2919,8 +2919,20 @@ def test_the_evidence_index_is_built_through_the_gate_and_states_nothing_of_it()
     register = load_register()
     runs = index_core.analysis_gate(register, evidence_index.load_ledgers())
     assert runs == sorted(
-        f"docs/proof/experiments/v2-e01/runs/{name}"
-        for name in ("20261002-e01-abc-1", "20261003-e01-abc-1", "20261006-e01-d-1")
+        [
+            *(
+                f"docs/proof/experiments/v2-e01/runs/{name}"
+                for name in (
+                    "20261002-e01-abc-1",
+                    "20261003-e01-abc-1",
+                    "20261006-e01-d-1",
+                )
+            ),
+            *(
+                f"docs/proof/experiments/v2-e02a/runs/e02a-{number}"
+                for number in (1, 2, 3)
+            ),
+        ]
     )
     index = index_core.build_index()
     assert index_core.render_index(index) == index_core.INDEX_PATH.read_text("utf-8")

@@ -1,0 +1,159 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentResultReview",
+  "metadata": {
+    "reviewId": "e02a-1-review-1",
+    "experiment": "V2-E02A",
+    "publishedBy": "V2-S7-002-PR1",
+    "page": "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
+    "hashing": "SHA-256 of the file's bytes with every CRLF replaced by LF, as the freeze records and the evidence index compute it."
+  },
+  "subject": {
+    "runId": "e02a-1",
+    "runPath": "docs/proof/experiments/v2-e02a/runs/e02a-1",
+    "parts": [
+      "E02A"
+    ],
+    "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+    "freeze": {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+      "revision": 4,
+      "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+    },
+    "registry": {
+      "path": "docs/proof/experiments/registry.v1alpha1.json",
+      "contentSha256": "3ca17126dba668ea60e0e181b1d19e5f4c6d68c6cefd4a7c03d8e6e7ea028984"
+    },
+    "files": {
+      "analysis.json": "673c4028b9164792cf873e44d76e7ad7b925191f60616510bb514aa46207a3b5",
+      "argo.jsonl": "0cff8e32c55ca4e8bfa1beec25cc70310f265dc8173b5b97cf10facbf3bfd22e",
+      "caller.jsonl": "9d1c2a2379518a957926a11a707fae9094e7e42ed9f543850ec3fb4f855d8a46",
+      "commands.txt": "4fe0cc1022e5fe23549b2b858ee42c221a76fa18007af4d827d6a7659bb7bfee",
+      "control.json": "06c554d3d4b416dad5b0a59bc9eaf2469786174e6ecd1455ec1800951780d793",
+      "declaration.json": "77775397c6ff652bc81937973b501188ebc1bd7676e867b88a6b275d2981a394",
+      "deployments.jsonl": "56a78057a6b820d19d56e6c5d4592447c54ad6cab86259ca18101c87af6c3398",
+      "endpoints.jsonl": "8c6c5430687c61302c01d4aae42cff79d297851d5be8339457dad0ac4f19581f",
+      "environment.txt": "2a44dc5e6d76f2a649ea4bbd42d7119bfbdc5ffc2d9764da6ef91de0ce59373a",
+      "operator-events.jsonl": "fbfa064f9f1eb71bd05a3c08d7193daa95b938ce30bb81150db9f93d9199a31f",
+      "pods.jsonl": "a23d2c0be11d78b55e4b4daaf4cf9f9b72597c2ef80ff389843e4f1e65f75eec",
+      "release.txt": "9258820d4cfe131ef5c5322a2666075682894a38f4df0f365068cc01196a7f7f",
+      "resources.jsonl": "3077b16a3c5f3a75bc6d41f75f9c6e904b29cb96fce0faefb5d860dd3232f112",
+      "result.md": "2b9ed4093ecd1352db6583e0ee89feed08b325633a044edfaf3e2a4390d58aff",
+      "run.v1alpha1.json": "01b45844c6a7d5d96bfd6c7bfd0fbe98a586202b7e39a3cb53d6d9faf8c9eb1b",
+      "telemetry.jsonl": "197819abf8327d99a3c0a4b25b70a83ce89fdbed3bff21064def1ffd2608da9e",
+      "transcript.txt": "4257526ca05d3ddb87d657d17bd1f03e2feaa69366c932e3ba5931e9ef8d728d"
+    }
+  },
+  "review": {
+    "reviewedRevision": "6abac971a0d24e7a8de27d5c0a0ec726144594d1",
+    "reviewedRevisionIs": "The first commit of V2-S7-002-PR1. It is not merged. It holds the three run directories as they merged, the classification record, the baseline report, and the tool. It holds no register change, no ledger, and no review record.",
+    "treeStateBefore": "git status --porcelain --untracked-files=all printed no line",
+    "treeStateAfter": "git status --porcelain --untracked-files=all printed no line",
+    "startedAt": "2026-11-01T07:39:00Z",
+    "finishedAt": "2026-11-01T07:48:11Z",
+    "timeSource": "The reviewer's report. No repository file proves these times.",
+    "reviewer": {
+      "kind": "automated",
+      "description": "One automated reviewing session, given a written brief. The session took no part in the runs or in the classification, and it received the brief and nothing else from the session that started it.",
+      "independenceLimits": [
+        "The reviewer is a separate session of the same automated assistant that drove the runs, wrote the classification, and wrote this record. It is not another tool, another model, or a person.",
+        "The session that wrote the classification wrote the brief and started the reviewing session. The maintainer asked for a second review of the change.",
+        "The brief named the files, nine items, and the order: derive each figure first, and read the classification record and the baseline report last. It named no expected finding and no figure. The brief is not committed, so the repository does not prove what it said.",
+        "The reviewer worked in the same checkout, on the same host. The brief told it not to read files that Git ignores, and it reports that it read none.",
+        "This record was written by the session that wrote the classification, from the reviewer's report. The report itself is not committed."
+      ]
+    },
+    "access": "read-only",
+    "executed": [
+      "git read commands",
+      "file reads with cat, sed, grep, awk, head, and ls",
+      "Python of the reviewer's own, from the standard library, which imports nothing from tools/ or src/"
+    ],
+    "notExecuted": [
+      "any step of a run",
+      "kubectl, docker, or any request to a cluster or to the network",
+      "the test suites",
+      "any command of tools/, among them tools.experiment_evidence, tools.analysis_replay, and tools.comparison_eligibility"
+    ],
+    "registerAtReviewedRevision": {
+      "statement": "The reviewed revision holds no claim, no evidence record, and no ledger that bears on this run."
+    }
+  },
+  "conclusions": {
+    "frozenRun": {
+      "verdict": "no-defect-found",
+      "statement": "The reviewer applied each criterion to the raw files and judged the state of the run on the stream reading of E02A-AC2: PASSED. AC1 to AC7 held on the reviewer's reading. The first pods reading after the event, reading 53, shows the target UID with a deletion timestamp. Each stream answered 166 of 166 readings inside the window, and the largest time between two readings is 4.911 s. 332 requests complete after fault-injection-finished, by more than the margin. stabilizedAt is 13:43:11.618Z. 296 successes follow it, 295 outside the margin of the window end. The clock bound that it computed from the two P8 readings is 817 ms. Each verdict that crosses the two clocks is outside the margin, or it does not depend on the order. AC7 rests on two tool commands that it did not run."
+    },
+    "figures": {
+      "verdict": "no-difference",
+      "statement": "The reviewer computed each figure from caller.jsonl and endpoints.jsonl with code of its own, and each equals analysis.json and result.md. 2 of 365 failed. One closed episode from sequence 86 at 13:42:05.876Z to sequence 87, 4,276 ms. Largest gap 29,896 ms. Runtime zero-Ready interval inner 17,342 ms and outer 26,813 ms."
+    },
+    "readingOfAC2": {
+      "verdict": "two-readings",
+      "statement": "On the readings of each stream as a whole the run is PASSED. On the readings of a field that a later rule reads, the runtime readyReplicas and availableReplicas counts each have no value for more than 10 s, and the run is INCONCLUSIVE for the reason stream-incomplete. The reviewer did not decide which reading the record intends. The correction of the run states that the repository owner approved the first after the evidence was read."
+    },
+    "identity": {
+      "verdict": "held",
+      "statement": "The executing commit holds the freeze record with its digest and the two desired-state files with the digests of revision 4. No file of the run directory changed after the merge of the runs."
+    },
+    "registerStatementCorrectness": {
+      "verdict": "not-applicable",
+      "statement": "No register statement about this run existed when the review read the repository."
+    },
+    "rerunJustified": false
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "non-material",
+      "summary": "The report said that a failure episode starts about 30 s after the fault. That start is the completion of the first failed request. The failed requests were sent up to about 5 s after the fault, one of them 111 ms before it, and were in flight for about 26 s to 31 s. caller-failure-episode-ms does not hold that time. max-success-gap-ms holds it.",
+      "disposition": "corrected",
+      "where": "this change, in the baseline report and in the limitations of the classification record"
+    },
+    {
+      "id": "F2",
+      "severity": "non-material",
+      "summary": "requests-failed-since-fault is 2 in each run, and the caller profile has 2 workers. The report did not state that. The reviewer marked this as an interpretation, at about 80 percent confidence, that the count carries little information for a later comparison.",
+      "disposition": "corrected",
+      "where": "this change, as a limit of the figure. The record states the two facts and does not state the interpretation"
+    },
+    {
+      "id": "F3",
+      "severity": "non-material",
+      "summary": "A sentence of the report could be read as saying that the verdict took a figure that is not held.",
+      "disposition": "corrected",
+      "where": "this change, in the baseline report"
+    },
+    {
+      "id": "F4",
+      "severity": "non-material",
+      "summary": "The limitation named the readyReplicas count alone. availableReplicas has the same gaps, unavailableReplicas has no value in the first or the last reading, and no statement says which fields a reading has to hold.",
+      "disposition": "corrected",
+      "where": "this change, in the baseline report and in the limitations of the classification record, which name availableReplicas and state that the record does not say which fields"
+    }
+  ],
+  "authorNotes": [
+    "After the review, the session that wrote this record changed no file of the run directory. The digests under subject.files are those the reviewer reported, and a script compared them with the files when this record was written.",
+    "The findings are about the classification and the report, and each applies to the three runs. Each record of the three lists all four.",
+    "The corrections were made after the review and were not reviewed by this reviewer. They are in the commit that adds this record.",
+    "A second automated session reviewed the code, the tests, and the documents of the same commit. It is not a review of the result, and the validation record states what it found."
+  ],
+  "notVerified": [
+    "That python -m tools.experiment_evidence check accepts the run directory and that python -m tools.analysis_replay verify reproduces the run analysis byte for byte, which E02A-AC7 reads. The reviewer ran neither. It compared each digest and computed the figures with code of its own. The validation record states the two commands.",
+    "That the reader accepts the caller record with the plan, which E02A-AC3 reads. The reviewer checked the structure and the header.",
+    "That the node stayed Ready at each instant of the window. The transcript holds 21 or 22 reads with no read instant, and the Ready heartbeat times leave the first 35 s to 39 s and the last 15 s to 46 s of each window with no read.",
+    "The identity of the other pods of the namespace. pods.jsonl counts them.",
+    "That the repository owner approved the reading of E02A-AC2. The correction of each run states it, and no file holds it.",
+    "Which reading of E02A-AC2 the freeze record intends.",
+    "The memory of the host and whether paging changed a figure. The reviewer did not examine them.",
+    "That the cluster returned the streams as committed, and the instants in them. The reviewer contacted no cluster, and one earlier session wrote each file."
+  ],
+  "doesNotEstablish": [
+    "That a person reviewed the run. The reviewer is an automated session.",
+    "That the reviewer is independent of the assistant that drove the run. It is another session of it.",
+    "That the claim and the register statements about this run are correct. None existed at the reviewed revision.",
+    "That the corrections made after the review are correct. The reviewer did not read them.",
+    "That the owner approval of the reading of E02A-AC2 was right, or that the reading is the one the record intends.",
+    "Anything that the run itself does not establish: that one runtime replica is or is not acceptable for any service, node failure, overload, sustained capacity, production availability, a cause, or anything about another provider, node, release, or caller workload."
+  ]
+}
