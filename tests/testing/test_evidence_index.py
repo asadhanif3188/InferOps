@@ -632,7 +632,8 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
     registration ledger adds a claim certified only on the three records it brings
     with it, each at `C2`. None moves a claim the migration left. A later ledger may set a field of an added claim, as it
     may of any other, and never its status: the claim the register holds is the claim
-    as added with exactly those changes applied.
+    as added with exactly those changes applied. The E02A claim correction ledger also
+    sets fields of the records of an added claim, and never the level of a record.
     """
     migrated = restore_migrated_register(REGISTER, LEDGERS)
     before = {claim["claimId"]: claim for claim in migrated["claims"]}
@@ -654,10 +655,13 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         if change["operation"] == "add-claim"
     }
     field_changes: dict[str, list[dict[str, Any]]] = {}
+    record_changes: dict[str, list[dict[str, Any]]] = {}
     for ledger in LEDGERS:
         for change in ledger["registerChanges"]:
             if change["operation"] == "set-claim-field":
                 field_changes.setdefault(change["claimId"], []).append(change)
+            if change["operation"] == "set-record-field":
+                record_changes.setdefault(change["claimId"], []).append(change)
     rank = {row["statusId"]: row["rank"] for row in REGISTER["claimStatuses"]}
     for claim in REGISTER["claims"]:
         if claim["claimId"] not in before:
@@ -665,6 +669,15 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
             for change in field_changes.get(claim["claimId"], []):
                 assert expected[change["field"]] == change["before"]
                 expected[change["field"]] = change["after"]
+            for change in record_changes.get(claim["claimId"], []):
+                assert change["field"] != "evidenceLevel"
+                (record,) = [
+                    row
+                    for row in expected["evidenceRecords"]
+                    if row["recordId"] == change["recordId"]
+                ]
+                assert record[change["field"]] == change["before"]
+                record[change["field"]] = change["after"]
             assert claim == expected, claim["claimId"]
             assert claim["status"] == "certified", claim["claimId"]
             assert {r["evidenceLevel"] for r in claim["evidenceRecords"]} == {

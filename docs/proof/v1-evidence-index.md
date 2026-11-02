@@ -105,9 +105,14 @@ post-release ledger, the E02A baseline registration ledger. Those runs executed 
 `V2-S7-001-PR2`, which registered no claim; the registration is dated 2026-11-01. The ledger
 references one review record of each run, by an automated session of the assistant that drove
 the runs. It also replaced this page's reason again.
+Then `V2-S7-004-PR1` narrowed that claim through an eighth post-release ledger, the E02A claim
+correction ledger, dated 2026-11-02. It adds no claim and no record, it moves no status and no
+level, and it sets `E02A-AC2` to `not-evaluated` in each of the three records, because no source
+that predates the first fault settles that criterion. It references a later review of each run,
+by automated sessions of the same assistant, and it replaced this page's reason again.
 Each moves the pack
 `main` holds, and it is expected: the released pack is the frozen one, and the index
-recomputes it, by undoing all seven post-release ledgers, rather than copying it.
+recomputes it, by undoing all eight post-release ledgers, rather than copying it.
 `--gate` prints both pairs.
 
 **The result review gate.** Since `V2-S2-005-PR2` the index is not built when a ledger
@@ -168,9 +173,9 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after the seven post-release ledgers, which no release quotes | `f81dfa1b9c2648eb52e8aeae3ee17fe42845d5701cda37d44d6440b26695bd4e` | `8e76d82f5d2b28b85001c3361c2f46a67d80554ae2f31a87d3f7527b76ab2f44` |
+| **Current:** `main` after the eight post-release ledgers, which no release quotes | `fab589d7a2ee319a2745a2e5fe09245d1329deb15ea909b486719c9bb8421dbc` | `065fb568dc2e3332ae40b57a02cd819c44c3e7c4a79fd48a4a2773c87e12ada9` |
 
-The released pair is not read from a ledger. The index undoes the seven post-release
+The released pair is not read from a ledger. The index undoes the eight post-release
 ledgers' changes, last first, renders the register as it was, and takes both digests
 over that register, the four ledgers before the post-release ones, and the files that
 register cites, read from this checkout; the first post-release ledger states the pair,
@@ -225,7 +230,7 @@ version.
   records under five claims certified after it: three at `C0`, which are
   the release's own record and the records of the two E01 static runs, and four at `C2`,
   which are the record of the one E01-D run and the records of the three V2-E02A runs.
-- **172 distinct committed files** are cited, all under `docs/proof/`, each hashed and
+- **180 distinct committed files** are cited, all under `docs/proof/`, each hashed and
   each named by its git blob. Twelve of them carry a correction recorded beside them
   rather than inside them.
 - **42 records executed their target behaviour, and 24 of them name the repository

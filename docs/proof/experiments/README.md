@@ -2194,6 +2194,12 @@ source against its ruling, and the limits of the adjudicator.
 - The medians stay as measured figures of what executed, at C2. Without a valid baseline, no
   before and after statement is permitted, and no percentage is stated.
 
+**The register.** [A twelfth ledger](../testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json)
+narrows the claim of these runs to what executed and to the measured figures, and it sets
+`E02A-AC2` to `not-evaluated` in each of the three records. The claim status stays `certified`,
+which says that executed records support the narrowed statement. It rests on
+[a later review of each run](v2-e02a/reviews/e02a-correction-review-2.md), by automated sessions.
+
 **The change moves two pinned inputs again.** A ledger is listed in
 `tools/evidence_index/core.py` and `__init__.py`, so the twelfth ledger moves both. No record
 is edited, and no revision classifies them yet. Each successor is the next unused registered

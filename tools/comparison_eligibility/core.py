@@ -191,6 +191,8 @@ SCANNED_PAGES: Final[tuple[str, ...]] = (
     *CURRENT_PAGES,
     "docs/environment/git-desired-state.md",
     "docs/environment/single-runtime-baseline-profile.md",
+    "docs/proof/dashboard.md",
+    "docs/testing/claim-evidence-matrix.md",
 )
 
 #: The two sentences of the rule, word for word, and the phrases of the repetition

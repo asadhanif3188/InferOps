@@ -51,6 +51,7 @@ from tools.evidence_index import (
     E01_CORRECTED_PROOF_PATH,
     E01_D_REGISTRATION_PATH,
     E01_STATIC_PROOF_PATH,
+    E02A_CORRECTION_PATH,
     E02A_REGISTRATION_PATH,
     INDEX_PATH,
     LEDGER_PATHS,
@@ -89,8 +90,18 @@ CORRECTION = load_ledger(E01_CLAIM_CORRECTION_PATH)
 REGISTRATION = load_ledger(E01_D_REGISTRATION_PATH)
 #: The seventh post-release ledger, written after the sixth.
 E02A_REGISTRATION = load_ledger(E02A_REGISTRATION_PATH)
+#: The eighth post-release ledger, written after the seventh.
+E02A_CORRECTION = load_ledger(E02A_CORRECTION_PATH)
 #: Every post-release ledger written after this one, in the order applied.
-LATER_LEDGERS = [LATER, E01, CORRECTED, CORRECTION, REGISTRATION, E02A_REGISTRATION]
+LATER_LEDGERS = [
+    LATER,
+    E01,
+    CORRECTED,
+    CORRECTION,
+    REGISTRATION,
+    E02A_REGISTRATION,
+    E02A_CORRECTION,
+]
 AS_RELEASED = released_register(REGISTER, load_ledgers(POST_RELEASE_LEDGER_PATHS))
 #: The register as this ledger left it, before the later ones.
 AFTER_THIS_LEDGER = restore_migrated_register(REGISTER, LATER_LEDGERS)
@@ -303,6 +314,12 @@ def test_the_released_counts_differ_from_main_by_the_seven_records_added_since()
         | set(CORRECTED_RECORD["evidenceRefs"])
         | set(registered_record["evidenceRefs"])
         | {ref for r in baseline["evidenceRecords"] for ref in r["evidenceRefs"]}
+        | {
+            ref
+            for change in E02A_CORRECTION["registerChanges"]
+            if change.get("field") == "evidenceRefs"
+            for ref in change["after"]
+        }
     )
     assert released["evidenceFiles"] == SUMMARY["evidenceFiles"] - len(added_files)
 
@@ -624,15 +641,16 @@ E01_FINDINGS = {row["findingId"]: row for row in E01["findings"]}
 E01_RUN = "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1"
 #: The register as the E01 ledger left it, before the corrected one.
 AFTER_THE_E01_LEDGER = restore_migrated_register(
-    REGISTER, [CORRECTED, CORRECTION, REGISTRATION, E02A_REGISTRATION]
+    REGISTER, [CORRECTED, CORRECTION, REGISTRATION, E02A_REGISTRATION, E02A_CORRECTION]
 )
 #: The register as the reconciliation ledger left it, before the E01 ledger.
 AFTER_THIS_LEDGER_AND_RECONCILIATION = restore_migrated_register(
-    REGISTER, [E01, CORRECTED, CORRECTION, REGISTRATION, E02A_REGISTRATION]
+    REGISTER,
+    [E01, CORRECTED, CORRECTION, REGISTRATION, E02A_REGISTRATION, E02A_CORRECTION],
 )
 #: The register as the corrected ledger left it, before the claim correction.
 AFTER_THE_CORRECTED_LEDGER = restore_migrated_register(
-    REGISTER, [CORRECTION, REGISTRATION, E02A_REGISTRATION]
+    REGISTER, [CORRECTION, REGISTRATION, E02A_REGISTRATION, E02A_CORRECTION]
 )
 
 

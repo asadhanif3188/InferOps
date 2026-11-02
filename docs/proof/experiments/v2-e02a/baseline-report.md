@@ -269,7 +269,9 @@ the statement says that requests failed. The repository owner chose on 2026-11-0
 in this change, and no tool reads that choice. See
 [the ledger](../../testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json).
 `V2-S7-004-PR1` narrows it to what executed and to the measured figures, and it withdraws the
-statements of validity and eligibility, through a twelfth ledger. `E02A-AC2` becomes
+statements of validity and eligibility, through
+[a twelfth ledger](../../testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json), which rests on
+[a later review](reviews/e02a-correction-review-2.md). `E02A-AC2` becomes
 `not-evaluated` in each record. The status stays `certified`, which says that executed records
 support the narrowed statement.
 

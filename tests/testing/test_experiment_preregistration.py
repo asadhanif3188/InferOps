@@ -1520,7 +1520,9 @@ def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
     lists the two files of the list of ledgers, and revision 4 of V2-E02A lists those
     alone. No revision classifies them. Since V2-S7-003-PR2 the G3 switch restores the
     two desired-state files and the desired-state tool, so a record before it no longer
-    lists them, and revision 4 of V2-E02A does. Revision 3 of V2-E02B lists nothing."""
+    lists them, and revision 4 of V2-E02A does. Since V2-S7-004-PR1 a twelfth ledger
+    moves the two files of the list of ledgers again, so revision 3 of V2-E02B lists
+    those two alone."""
 
     def switched(experiment: str) -> list[str]:
         with_baseline = experiment in ("V2-E02A", "V2-E02B")
@@ -1555,7 +1557,9 @@ def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
     assert sorted(c.path for c in changed_inputs(load(E02A_R4), REPO_ROOT)) == sorted(
         [*SWITCHED, *LEDGER_LIST]
     )
-    assert changed_inputs(load(E02B_R3), REPO_ROOT) == []
+    assert sorted(c.path for c in changed_inputs(load(E02B_R3), REPO_ROOT)) == sorted(
+        LEDGER_LIST
+    )
 
 
 def test_the_reconciliation_bound_of_e05_is_on_the_host_clock_alone() -> None:

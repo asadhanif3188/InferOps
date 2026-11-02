@@ -313,7 +313,8 @@ def test_each_record_pins_exactly_its_material_scope() -> None:
     V2-S7-002-PR1 each record differs by the list of ledgers. Since V2-S7-003-PR2 each
     earlier revision also differs by revision 3 of V2-E02B, revision 3 of V2-E06 by the
     two desired-state files that the G3 switch restored, and revisions 1 and 2 of
-    V2-E06 no longer by those two files. The latest record of each differs in nothing."""
+    V2-E06 no longer by those two files. Since V2-S7-004-PR1 the latest record of each
+    differs by the list of ledgers too, and no revision classifies that yet."""
     ledgers = [(path, "changed") for path in LEDGER_LIST]
     checks = [
         ("tools/analysis_preregistration/core.py", "changed"),
@@ -324,8 +325,8 @@ def test_each_record_pins_exactly_its_material_scope() -> None:
     restored = (E02B_R3, "added")
     switched = [(path, "changed") for path in DESIRED_STATE_FILES]
     expected = {
-        E03_R5: [],
-        E06_R4: [],
+        E03_R5: ledgers,
+        E06_R4: ledgers,
         E03_R4: [restored, *ledgers],
         E06_R3: [restored, *switched, *ledgers],
         E03_R3: [latest, restored, *ledgers],
@@ -397,7 +398,9 @@ def test_each_source_record_differs_from_its_pins_in_the_check_alone() -> None:
     baseline-profile tool. Revision 4 of V2-E02A differed in none until V2-S7-002-PR1
     added a ledger, and since then each record lists the two files of the list of
     ledgers. Since V2-S7-003-PR2 the G3 switch restores the files of the switch, so an
-    earlier record no longer lists them and revision 4 of V2-E02A does."""
+    earlier record no longer lists them and revision 4 of V2-E02A does. Since
+    V2-S7-004-PR1 a twelfth ledger moves the two files of the list of ledgers again,
+    so revision 3 of V2-E02B lists them too."""
     switched = [*DESIRED_STATE_FILES, DESIRED_STATE_TOOL, *LEDGER_LIST]
     with_baseline = [*LEDGER_LIST, *BASELINE_TOOL]
     moved = {
@@ -419,7 +422,9 @@ def test_each_source_record_differs_from_its_pins_in_the_check_alone() -> None:
     assert sorted(c.path for c in changed_inputs(load(E02A_R4), REPO_ROOT)) == sorted(
         switched
     )
-    assert changed_inputs(load(E02B_R3), REPO_ROOT) == []
+    assert sorted(c.path for c in changed_inputs(load(E02B_R3), REPO_ROOT)) == sorted(
+        LEDGER_LIST
+    )
     e05 = load("docs/proof/experiments/v2-e05/freeze-r2.v1alpha1.json")
     assert sorted(c.path for c in changed_inputs(e05, REPO_ROOT)) == sorted(
         [PREREGISTRATION_CORE, *LEDGER_LIST]

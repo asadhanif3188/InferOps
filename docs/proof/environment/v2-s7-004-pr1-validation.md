@@ -57,6 +57,57 @@ settles the meaning of `E02A-AC2`. The validity of the three runs is not establi
 | A correction of each run | None. A new correction would change the classification record. The adjudicated record states that validity is not established |
 | Later story identifiers | None on a public page. The moved-pin inventory names each owner as the next revision of the record |
 
+## The register change
+
+[The twelfth ledger](../testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json), the eighth after
+the release, makes 16 changes to one claim, its three records, and one surface reason.
+
+| Change | Effect |
+|---|---|
+| The statement | The sentences of validity and eligibility are withdrawn, and what executed and each measured figure stay word for word |
+| The limitation | Two clauses that gave the old verdict are replaced, and a dated correction is appended |
+| What the claim does not establish | It now names the validity of any run, and which reading is right |
+| Each of the three records | The summary, two limitations, six more cited files, and `E02A-AC2` from `met` to `not-evaluated`, a value that the schema has. The six other outcomes stay |
+| The reason of the evidence index | It names twelve ledgers |
+
+The ledger adds no claim and no record, and it moves no status and no level. The claim stays
+`certified`, which says that executed records support the narrowed statement. The repository owner
+decided the narrowing, and no decision states the status, so this change keeps it and says so.
+The counts stay 63 claims, 46 certified, and 71 records. The cited files move from 172 to 180. The
+released pack does not move, and the current pack does.
+
+## The moved pins
+
+A ledger is listed in the two files `tools/evidence_index/core.py` and `__init__.py`, so this change
+moves both. It edits no freeze record, and no revision classifies them yet.
+
+| Record | `--changes` before this change | After |
+|---|---|---:|
+| V2-E02B, revision 3 | UNCHANGED | Both files |
+| V2-E03, revision 5 | UNCHANGED | Both files |
+| V2-E06, revision 4 | UNCHANGED | Both files |
+| V2-E02A, revision 4, V2-E02C, revision 2, V2-E04, revision 3, V2-E05, revision 2, and the other records that pin them | Both files, among others | The same files, with a new digest |
+
+[The experiments page](../experiments/README.md#the-adjudicated-verdict-of-the-v2-e02a-set) names who
+classifies them. A run under one of these records refuses until a later revision does. Each successor
+is the next unused registered revision at that time, read from the registry.
+
+## The independent review
+
+The review came before the claim change, in the order that the contribution guide asks for.
+[The page of the review](../experiments/v2-e02a/reviews/e02a-correction-review-2.md) states each round
+and each finding, and one record of each run holds them.
+
+| Round | Outcome | What it found |
+|---|---|---|
+| 1, the statements | Not fit to register | A current page that still said that the runs are valid, sentences that presupposed an authorization of G1, and an adjudication that misstated its limits |
+| 2, the code and the tests | No critical finding | Uncaught exceptions on malformed input, a gap logic that assumed the order of time, a reuse guard that did not cover the bound record, and five surviving mutants |
+| 3, the confirmation | Not fit to register | "No source selects those two counts" was false as worded: revision 4 predates the first fault and reads them. The earlier fix had written that sentence |
+| 4, a narrow re-check | Fit to register | Low findings, and no leakage |
+
+Each reviewer is an automated session of the same assistant. No review read the commit that closes
+the low findings of round 4, or the ledger.
+
 ## What this does not establish
 
 - That any run is valid, or that any run is not valid.

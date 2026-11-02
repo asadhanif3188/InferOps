@@ -1,0 +1,228 @@
+{
+  "apiVersion": "inferops.io/v1alpha1",
+  "kind": "ExperimentResultReview",
+  "metadata": {
+    "reviewId": "e02a-1-review-2",
+    "experiment": "V2-E02A",
+    "publishedBy": "V2-S7-004-PR1",
+    "page": "docs/proof/experiments/v2-e02a/reviews/e02a-correction-review-2.md",
+    "hashing": "SHA-256 of the file's bytes with every CRLF replaced by LF, as the freeze records and the evidence index compute it."
+  },
+  "subject": {
+    "runId": "e02a-1",
+    "runPath": "docs/proof/experiments/v2-e02a/runs/e02a-1",
+    "parts": [
+      "E02A"
+    ],
+    "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+    "freeze": {
+      "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+      "revision": 4,
+      "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e"
+    },
+    "registry": {
+      "path": "docs/proof/experiments/registry.v1alpha1.json",
+      "contentSha256": "3ca17126dba668ea60e0e181b1d19e5f4c6d68c6cefd4a7c03d8e6e7ea028984"
+    },
+    "files": {
+      "analysis.json": "673c4028b9164792cf873e44d76e7ad7b925191f60616510bb514aa46207a3b5",
+      "argo.jsonl": "0cff8e32c55ca4e8bfa1beec25cc70310f265dc8173b5b97cf10facbf3bfd22e",
+      "caller.jsonl": "9d1c2a2379518a957926a11a707fae9094e7e42ed9f543850ec3fb4f855d8a46",
+      "commands.txt": "4fe0cc1022e5fe23549b2b858ee42c221a76fa18007af4d827d6a7659bb7bfee",
+      "control.json": "06c554d3d4b416dad5b0a59bc9eaf2469786174e6ecd1455ec1800951780d793",
+      "declaration.json": "77775397c6ff652bc81937973b501188ebc1bd7676e867b88a6b275d2981a394",
+      "deployments.jsonl": "56a78057a6b820d19d56e6c5d4592447c54ad6cab86259ca18101c87af6c3398",
+      "endpoints.jsonl": "8c6c5430687c61302c01d4aae42cff79d297851d5be8339457dad0ac4f19581f",
+      "environment.txt": "2a44dc5e6d76f2a649ea4bbd42d7119bfbdc5ffc2d9764da6ef91de0ce59373a",
+      "operator-events.jsonl": "fbfa064f9f1eb71bd05a3c08d7193daa95b938ce30bb81150db9f93d9199a31f",
+      "pods.jsonl": "a23d2c0be11d78b55e4b4daaf4cf9f9b72597c2ef80ff389843e4f1e65f75eec",
+      "release.txt": "9258820d4cfe131ef5c5322a2666075682894a38f4df0f365068cc01196a7f7f",
+      "resources.jsonl": "3077b16a3c5f3a75bc6d41f75f9c6e904b29cb96fce0faefb5d860dd3232f112",
+      "result.md": "2b9ed4093ecd1352db6583e0ee89feed08b325633a044edfaf3e2a4390d58aff",
+      "run.v1alpha1.json": "01b45844c6a7d5d96bfd6c7bfd0fbe98a586202b7e39a3cb53d6d9faf8c9eb1b",
+      "telemetry.jsonl": "197819abf8327d99a3c0a4b25b70a83ce89fdbed3bff21064def1ffd2608da9e",
+      "transcript.txt": "4257526ca05d3ddb87d657d17bd1f03e2feaa69366c932e3ba5931e9ef8d728d"
+    }
+  },
+  "review": {
+    "reviewedRevision": "f6b8f39eb6b4c4ccdb539e964ef9dc5bd8e6cd39",
+    "reviewedRevisionIs": "The third commit of V2-S7-004-PR1. It is not merged. Reviews also read the first commit, 5878ee4c7d083e0e4e8500957e10e025a7eecfe5, and the second, 9e2211076d71545081fa9b65767f69e85039474b. Each reviewed revision holds the correction and no ledger of it, no change of the register, and no record of this review.",
+    "treeStateBefore": "git status --porcelain --untracked-files=all printed no line, at each review",
+    "treeStateAfter": "git status --porcelain --untracked-files=all printed no line, at each review",
+    "startedAt": "2026-11-02T08:45:55Z",
+    "finishedAt": "2026-11-02T11:31:07Z",
+    "timeSource": "The reports of the reviewers. No repository file proves these times.",
+    "reviewer": {
+      "kind": "automated",
+      "description": "Four automated reviewing sessions, each given a written brief. Two read the first commit: one the statements against the raw files, and one the code and the tests. A third read the second commit, and a fourth read the third commit. None took part in the runs, the adjudication, or the correction.",
+      "independenceLimits": [
+        "Each reviewer is a separate session of the same automated assistant that drove the runs, wrote the correction, and wrote this record. None is another tool, another model, or a person.",
+        "The session that wrote the correction wrote each brief and started each reviewing session. The maintainer asked for a second review of the change.",
+        "The brief of the first review named the requirements first, and they print most of the figures, so its derivation was blind to the record and not to those figures. Its code imported nothing from this repository.",
+        "The briefs of the third and the fourth review named the findings that they had to check, and they named no expected outcome. The briefs are not committed, so the repository does not prove what they said.",
+        "Each reviewer's context loaded an index of notes on this project, which names the owner's decisions.",
+        "The reviewers worked on the same host. The disk of that host filled during the third review, and that review could not finish a run of the page-reading suites.",
+        "This record was written by the session that wrote the correction, from the reports of the reviewers. The reports are not committed."
+      ]
+    },
+    "access": "read-only",
+    "executed": [
+      "git read commands and file reads",
+      "Python of the reviewer's own, from the standard library, which imports nothing from tools/ or src/, for the figures of the first review",
+      "python -m tools.comparison_eligibility, python -m tools.evidence_index --check, and python -m tools.experiment_freeze",
+      "tests/testing/test_comparison_eligibility.py, on the repository and on copies with planted mutations and malformed inputs",
+      "read-only requests to the public GitHub API, for the third review"
+    ],
+    "notExecuted": [
+      "any step of a run",
+      "kubectl, docker, or any request to a cluster",
+      "the default lane"
+    ],
+    "registerAtReviewedRevision": {
+      "statement": "The reviewed revisions hold the claim of these runs as the eleventh ledger left it. The reviewers read that claim and reported what a ledger must change. No reviewer read the ledger that this record serves."
+    }
+  },
+  "conclusions": {
+    "figures": {
+      "verdict": "no-difference",
+      "statement": "The first reviewer computed each reading figure of the adjudicated record from the raw streams, with code of its own, and a script compared each with the record: no difference. The third reviewer recomputed the runtime counts, and they match."
+    },
+    "immutability": {
+      "verdict": "held",
+      "statement": "No file of the run directory, no correction, no freeze record, no ledger, the registry, and the classification record differ from the base of the change."
+    },
+    "readingOfAC2": {
+      "verdict": "not-settled",
+      "statement": "No reviewer decided which reading the criterion intends. The first reviewer found the wording of the record not fully neutral, and the corrections answer that. The fourth reviewer found the wording fair to both readings, with two small residuals that the last commit answers. No review read that commit."
+    },
+    "correction": {
+      "verdict": "defects-found-and-corrected",
+      "statement": "The first review found the correction not fit to register, and so did the third. The fourth, a narrow re-check, found it fit to register, with no high or medium finding. Each round found defects in the fix of the round before."
+    },
+    "registerStatementCorrectness": {
+      "verdict": "not-reviewed",
+      "statement": "No reviewer read the register statements that the ledger writes."
+    },
+    "rerunJustified": false
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "summary": "The proof index still said that each run is valid. The check of the pages did not read that page.",
+      "disposition": "corrected",
+      "where": "the proof index, and the list of current pages"
+    },
+    {
+      "id": "F2",
+      "severity": "high",
+      "summary": "Current pages presupposed an authorization of G1, or said that a change merges only with an authorization, and the deviation page said that no page does.",
+      "disposition": "corrected",
+      "where": "the experiments page, the desired-state page, the profile page, the baseline report, the README, and the deviation page"
+    },
+    {
+      "id": "F3",
+      "severity": "high",
+      "summary": "The adjudication misstated who set it up, what its note said, and what was searched, and it omitted the candidates of its prompt, two commits outside its export, the first draft of the criterion, the strongest source against the ruling, and half of its sources.",
+      "disposition": "corrected",
+      "where": "the adjudication"
+    },
+    {
+      "id": "F4",
+      "severity": "high",
+      "summary": "The record said that no source selects the two runtime counts. Revision 4 predates the first fault and reads them, so the sentence was false as worded and leaned towards the stream reading. A confirming review found this in the fix of an earlier finding.",
+      "disposition": "corrected",
+      "where": "the record, its statement, and each page that repeated the sentence"
+    },
+    {
+      "id": "F5",
+      "severity": "medium",
+      "summary": "\"The field scope holds in 0 of 3\" rested on two counts that no source selects for the criterion, and each other count but unavailableReplicas is reported in each reading.",
+      "disposition": "corrected",
+      "where": "the members of the record, and each page"
+    },
+    {
+      "id": "F6",
+      "severity": "medium",
+      "summary": "The reuse guard refused only a caller who passed the adjudicated record. The classification record, which a freeze record binds, gave its figures.",
+      "disposition": "corrected",
+      "where": "usable_baseline, which reads the adjudicated record itself. A reader that opens the classification record directly still gets eligible, and the tool page says so"
+    },
+    {
+      "id": "F7",
+      "severity": "medium",
+      "summary": "The consumers overstated what is enforced, and they gave V2-E02B a population statement.",
+      "disposition": "corrected",
+      "where": "each consumer states its decision and that no tool enforces it"
+    },
+    {
+      "id": "F8",
+      "severity": "medium",
+      "summary": "Statements about the authorization of a switch did not name the merge commit and the deviation.",
+      "disposition": "corrected",
+      "where": "each current statement about an authorization. Pages that mention a switch and not an authorization were not swept, and the deviation page states this rule for authorization alone"
+    },
+    {
+      "id": "F9",
+      "severity": "medium",
+      "summary": "A page said without a condition that V2-E02B computes an improvement after its own runs.",
+      "disposition": "corrected",
+      "where": "the baseline report"
+    },
+    {
+      "id": "F10",
+      "severity": "medium",
+      "summary": "The deviation page was stronger than its search, and it did not attribute it.",
+      "disposition": "corrected",
+      "where": "the deviation page, whose counts and times were then read from the GitHub API"
+    },
+    {
+      "id": "F11",
+      "severity": "medium",
+      "summary": "Malformed stream lines, tiers, windows, instants, and registries raised uncaught exceptions, so a crash looked like a finding of the check.",
+      "disposition": "corrected",
+      "where": "the tool. Malformed corrections and a registry nested too deeply for tools/experiment_freeze are not corrected"
+    },
+    {
+      "id": "F12",
+      "severity": "medium",
+      "summary": "judge_reading assumed the order of time. A descending stream gave a negative gap and held.",
+      "disposition": "corrected",
+      "where": "the tool"
+    },
+    {
+      "id": "F13",
+      "severity": "medium",
+      "summary": "Five mutants survived, among them the four variants of the reading scope through reading_of, and the limit plus 1 ms.",
+      "disposition": "corrected",
+      "where": "the suite. A later review reports each requested mutant killed"
+    },
+    {
+      "id": "F14",
+      "severity": "low",
+      "summary": "Twelve smaller findings: stale wording, labels, a note in the wrong place, a wider exception of the check of the pages, and a record that omitted that the review chose the two counts after the evidence was read.",
+      "disposition": "corrected",
+      "where": "the commits named in this record. The last of them was read by no review"
+    }
+  ],
+  "authorNotes": [
+    "After the reviews, the session that wrote this record changed no file of the run directory. The digests under subject.files are those of the first review of this run, and a script compared them with the files when this record was written.",
+    "The findings are about the correction, and each applies to the three runs. Each record of the three lists all of them.",
+    "The last commit before this record, 63a953bbc6685150fdf27eedc300c417c5aec3f9, closes low findings of the fourth review. No review read it.",
+    "The commit that the third review read as 6621146 had its message reworded before it was published, so it is named here by its published identifier. Its tree did not change.",
+    "A review that this change adds after the ledger is stated in the validation record, if one ran."
+  ],
+  "notVerified": [
+    "The words and the time of the statement of 2026-10-30, and the scope of the search for an authorization. They rest on the report of the repository owner.",
+    "That the context of the adjudicator held what the adjudication says. No reviewer could see it.",
+    "That python -m tools.analysis_replay verify reproduces each run analysis. No reviewer ran it directly, and --check of the tool reads it."
+  ],
+  "doesNotEstablish": [
+    "That a person reviewed the correction. Each reviewer is an automated session.",
+    "That a reviewer is independent of the assistant that drove the runs. Each is another session of it.",
+    "That any run is valid, or that any run is not valid.",
+    "Which reading of E02A-AC2 is right.",
+    "That the register statements about this run are correct. No reviewer read them.",
+    "That the commit after the reviewed revision is correct. No review read it."
+  ]
+}

@@ -99,9 +99,18 @@ of what `V2-S7-002-PR1` changed to record the three runs of V2-E02A, which ran i
 at `C2`, added by an ``add-claim`` change, and one surface reason replaced. It is the
 seventh post-release ledger, and the first to add more than one executed record.
 
-The eleven ledgers are applied in order, and undone in reverse, so the register's
-history since the migration is the eleven of them together. The first four are the
-ones the `v1.0.0` pack covers; the seven after them are the post-release ledgers.
+**The E02A claim correction ledger** is
+`docs/proof/testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json`, the record of
+what `V2-S7-004-PR1` corrected after an independent adjudication of E02A-AC2: the claim
+of the three runs of V2-E02A is narrowed to what executed and to the measured figures,
+a dated correction is appended to its limitation, each of its three records is
+corrected, E02A-AC2 becomes not-evaluated in each, and one surface reason is replaced.
+It adds no claim and no record. It is the eighth post-release ledger, and the first to
+set a field of an executed record.
+
+The twelve ledgers are applied in order, and undone in reverse, so the register's
+history since the migration is the twelve of them together. The first four are the
+ones the `v1.0.0` pack covers; the eight after them are the post-release ledgers.
 
 **The result review gate.** A register change bears on an experiment run when the
 claim or record it adds, or the claim or record it changes, names a file under that
@@ -185,6 +194,7 @@ __all__ = [
     "E01_CORRECTED_PROOF_PATH",
     "E01_D_REGISTRATION_PATH",
     "E01_STATIC_PROOF_PATH",
+    "E02A_CORRECTION_PATH",
     "E02A_REGISTRATION_PATH",
     "FINAL_STATES",
     "FREEZE_DECISIONS",
@@ -327,6 +337,15 @@ E02A_REGISTRATION_PATH: Final = (
     / "v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json"
 )
 
+#: What V2-S7-004-PR1 corrected in the register after an adjudication of E02A-AC2.
+E02A_CORRECTION_PATH: Final = (
+    REPO_ROOT
+    / "docs"
+    / "proof"
+    / "testing"
+    / "v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json"
+)
+
 #: The ledgers the v1.0.0 evidence pack covers, in the order applied.
 RELEASED_LEDGER_PATHS: Final = (
     LEDGER_PATH,
@@ -346,6 +365,7 @@ POST_RELEASE_LEDGER_PATHS: Final = (
     E01_CLAIM_CORRECTION_PATH,
     E01_D_REGISTRATION_PATH,
     E02A_REGISTRATION_PATH,
+    E02A_CORRECTION_PATH,
 )
 
 #: Every ledger of register changes since the migration, in the order applied.

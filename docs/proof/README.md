@@ -60,8 +60,9 @@ cited file bound to its content by SHA-256 and to its git blob. It is generated 
 [the E01 static proof ledger](testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json),
 [the corrected E01 static proof ledger](testing/v2-s2-004-pr2-e01-corrected-static-proof.v1alpha1.json),
 [the E01 claim correction ledger](testing/v2-s2-005-pr2-e01-claim-correction.v1alpha1.json),
-[the E01-D registration ledger](testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json), and
-[the E02A baseline registration ledger](testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json),
+[the E01-D registration ledger](testing/v2-s3-005-pr1-e01-d-registration.v1alpha1.json),
+[the E02A baseline registration ledger](testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json), and
+[the E02A claim correction ledger](testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json),
 and a test regenerates it. Where a record here was found to say something its own evidence
 contradicts, the correction is in a ledger, beside the record, and the record is
 unchanged — the index lists each correction against the file it concerns.
@@ -86,7 +87,7 @@ reporting setting, and the register certifies on it, at `C0`, that the release e
 It is not part of the pack the release was cut over. Adding it moved both digests of
 the pack `main` holds; the gate prints the released pair, recomputed by undoing
 [the post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json) and the
-ledgers after it, and the current pair beside it. Six ledgers followed it.
+ledgers after it, and the current pair beside it. Seven ledgers followed it.
 [The claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json)
 adds no record: it replaces a planned claim's stale limitation once Helm values were
 generated. [The E01 static proof ledger](testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json) adds one claim and its one
@@ -111,6 +112,11 @@ planned claims, which stay planned.
 fourth claim and three records, at `C2`: [the three runs of V2-E02A](experiments/v2-e02a/baseline-report.md),
 in each of which requests failed. The ledger is dated 2026-11-01, after their classification, and
 it references the review of each run.
+[The E02A claim correction ledger](testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json) adds no claim
+and no record. It narrows that claim to what executed and to the measured figures, sets `E02A-AC2` to
+`not-evaluated` in each of the three records, and references a later review of each run. The ledger is
+dated 2026-11-02, and [the adjudicated record](experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json)
+states the current verdict.
 Each moves the current pack again; none moves the released one. (Until `V2-S2-003-PR2`
 this paragraph called the release record the only one the register had gained.)
 

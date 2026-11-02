@@ -1645,6 +1645,8 @@ def test_the_check_reads_each_page_that_states_the_verdict() -> None:
     for page in CURRENT_PAGES:
         assert page in SCANNED_PAGES
     assert "docs/environment/git-desired-state.md" in SCANNED_PAGES
+    assert "docs/proof/dashboard.md" in SCANNED_PAGES
+    assert "docs/testing/claim-evidence-matrix.md" in SCANNED_PAGES
     assert "docs/environment/single-runtime-baseline-profile.md" in SCANNED_PAGES
 
 
