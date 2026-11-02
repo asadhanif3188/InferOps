@@ -54,7 +54,7 @@
     "timeSource": "The reports of the reviewers. No repository file proves these times.",
     "reviewer": {
       "kind": "automated",
-      "description": "Four automated reviewing sessions before the ledger, each given a written brief. Two read the first commit: one the statements against the raw files, and one the code and the tests. A third read the second commit, and a fourth read the third commit. None took part in the runs, the adjudication, or the correction. The times and the findings of this record are those of these four rounds. A fifth session read the ledger after it was written, and the validation record states what it found.",
+      "description": "Four automated reviewing sessions before the ledger, each given a written brief. Two read the first commit: one the statements against the raw files, and one the code and the tests. A third read the second commit, and a fourth read the third commit. None took part in the runs, the adjudication, or the correction. The times and the findings of this record are those of these four rounds. Later sessions read the ledger after it was written, and the validation record states what they found.",
       "independenceLimits": [
         "Each reviewer is a separate session of the same automated assistant that drove the runs, wrote the correction, and wrote this record. None is another tool, another model, or a person.",
         "The session that wrote the correction wrote each brief and started each reviewing session. The maintainer asked for a second review of the change.",
@@ -93,11 +93,11 @@
     },
     "readingOfAC2": {
       "verdict": "not-settled",
-      "statement": "No reviewer decided which reading the criterion intends. The first reviewer found the wording of the record not fully neutral, and the corrections answer that. The fourth reviewer found the wording fair to both readings, with two small residuals that the last commit answers. No review read that commit."
+      "statement": "No reviewer decided which reading the criterion intends. The first reviewer found the wording of the record not fully neutral, and the corrections answer that. The fourth reviewer found the wording fair to both readings, with two small residuals that the commit 63a953b answers. These four rounds did not read it."
     },
     "correction": {
       "verdict": "defects-found-and-corrected",
-      "statement": "The first review found the correction not fit to register, and so did the third. The fourth, a narrow re-check, found it fit to register, with no high or medium finding. Each round found defects in the fix of the round before."
+      "statement": "The first review found the correction not fit to register, and so did the third. The fourth, a narrow re-check, found it fit to register, with no high or medium finding. Rounds 3 and 4 found defects in the fixes of the rounds before them."
     },
     "registerStatementCorrectness": {
       "verdict": "not-reviewed",
@@ -108,7 +108,7 @@
   "findings": [
     {
       "id": "F1",
-      "severity": "round 1, high",
+      "severity": "round 1, high, and round 2, medium",
       "summary": "The proof index still said that each run is valid. The check of the pages did not read that page.",
       "disposition": "corrected",
       "where": "the proof index, and the list of current pages"
@@ -160,7 +160,7 @@
       "severity": "round 1, medium",
       "summary": "Statements about the authorization of a switch did not name the merge commit and the deviation.",
       "disposition": "corrected",
-      "where": "each current page that mentions a switch. The fifth review found that this fix had narrowed the rule on the deviation page, and a later commit restored it"
+      "where": "each current page that mentions a switch. A later review found that this fix had narrowed the rule on the deviation page, and a later commit restored it"
     },
     {
       "id": "F9",
@@ -224,7 +224,7 @@
     "The findings are about the correction, and each applies to the three runs. Each record of the three lists all of them.",
     "The commit 63a953bbc6685150fdf27eedc300c417c5aec3f9 closes low findings of the fourth review. These four rounds did not read it.",
     "The commit that the third review read as 6621146 had its message reworded before it was published, so it is named here by its published identifier. Its tree did not change.",
-    "A fifth review read the ledger after it was written, and its findings changed the ledger. The validation record states it, and no record establishes that a review of the wording of the ledger preceded the register change."
+    "Later reviews read the ledger after it was written, and their findings changed its wording. The validation record states them, and no record establishes that a review of the wording of the ledger preceded the register change."
   ],
   "notVerified": [
     "The words and the time of the statement of 2026-10-30, and the scope of the search for an authorization. They rest on the report of the repository owner.",

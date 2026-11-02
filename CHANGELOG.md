@@ -14,7 +14,7 @@ from `1.0.0`.
   stated.** `V2-S7-004-PR1` corrects what the repository currently says, and so it corrects the
   entries of `V2-S7-001-PR2` and `V2-S7-002-PR1` below, which state a verdict and a validity
   that are withdrawn, and the two entries of the switches below, which state the rule and not
-  what happened at either merge. An independent adjudication ruled that no source that predates the first
+  what happened at either merge. An adjudication by a session with no role in any run ruled that no source that predates the first
   fault settles the meaning of `E02A-AC2`, and the repository owner chose the verdict
   `not-decided` on 2026-11-02. A new record at a new path states it, with what each reading gives
   on the raw streams: the reading scope holds in 3 of 3 runs, the two runtime counts that the

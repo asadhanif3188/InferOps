@@ -7,7 +7,7 @@ of validity and eligibility on 2026-11-02. It reads the three runs of revision 4
 
 > **Correction, 2026-11-02.** Until `V2-S7-004-PR1` this page gave the verdict of the
 > classification record as the current verdict, and it read each state as a statement of
-> validity. An independent adjudication ruled that no source that predates the first fault
+> validity. An adjudication by a session with no role in any run ruled that no source that predates the first fault
 > settles the meaning of `E02A-AC2`, and the repository owner chose the verdict `not-decided`.
 > [The adjudicated record](eligibility-adjudicated.v1alpha1.json) states it, with what each
 > reading of the criterion gives on the raw streams. The measured figures of this page stand.

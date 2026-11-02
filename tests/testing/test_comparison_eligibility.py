@@ -1658,6 +1658,7 @@ def test_the_check_reads_each_page_that_states_the_verdict() -> None:
     "page",
     [
         "README.md",
+        "docs/architecture/README.md",
         "docs/environment/argocd-application.md",
         "docs/environment/capacity-preflight.md",
         "docs/environment/environment-qualification.md",
@@ -1667,6 +1668,7 @@ def test_the_check_reads_each_page_that_states_the_verdict() -> None:
         "docs/environment/single-runtime-baseline-profile.md",
         "docs/proof/README.md",
         "docs/proof/experiments/README.md",
+        "docs/proof/experiments/v2-e02a/baseline-report.md",
         "docs/testing/README.md",
         "docs/testing/comparison-eligibility.md",
         "docs/testing/experiment-e02a-control.md",

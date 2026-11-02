@@ -33,7 +33,8 @@ The statement of 2026-10-30 is after the G1 merge. It is before the first instal
 release and before the first fault. It is not a pre-merge authorization.
 [The G1 observation](v2-s7-001-pr2-g1-observation/observation.md) and
 [the validation of the runs](v2-s7-001-pr2-validation.md) treated it as meeting the prerequisite,
-and each now carries a dated note.
+and each now carries a dated note. So does [the validation of the G1 switch](v2-s7-003-pr1-validation.md),
+which said that the review of the change and the record of the merge state the authorization.
 
 The acceptance below is not an authorization of the G3 merge either, and it does not say that one
 existed.

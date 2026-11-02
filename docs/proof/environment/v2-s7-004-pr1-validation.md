@@ -6,7 +6,7 @@ reads committed files and Git objects. It executes no run, no fault, no GitOps s
 command, and no image rotation.
 
 **The current E02A eligibility verdict is `not-decided`.** The repository owner chose that on
-2026-11-02, after an independent adjudication ruled that no source that predates the first fault
+2026-11-02, after an adjudication by a session with no role in any run ruled that no source that predates the first fault
 settles the meaning of `E02A-AC2`. The validity of the three runs is not established.
 
 ## What the change adds
@@ -28,24 +28,26 @@ settles the meaning of `E02A-AC2`. The validity of the three runs is not establi
 | The three run directories | Unchanged. Each manifest keeps the state `PASSED` |
 | The corrections of each run | Unchanged, and no correction is added: the classification record lists the corrections of each run, so a new one would change what the tool builds |
 | Each existing ledger | Unchanged |
-| The pages of past changes | Unchanged, but for the three pages with a dated note below. [The validation of the classification](v2-s7-002-pr1-validation.md) keeps its bytes as well: it still reports `eligible`, because a ledger cites it, and the adjudicated record and the baseline report state the current verdict |
+| The pages of past changes | Unchanged, but for the four pages with a dated note below. [The validation of the classification](v2-s7-002-pr1-validation.md) keeps its bytes as well. It still reports `eligible`, as a record of its date, and the adjudicated record and the baseline report state the current verdict |
 
 ## The pages that this change corrects
 
 | Page | Change |
 |---|---|
 | [`README.md`](../../../README.md) | The paragraph of the runs and the sentence of the switches |
-| [The proof index](../README.md) | The row of the experiments |
+| [The proof index](../README.md) | The row of the experiments, the ledger paragraph, and a dated line on the switches |
 | [The experiments page](../experiments/README.md) | The adjudicated verdict, the moved-pin inventory, a dated note on each switch, and each sentence that said a change merges only with an authorization |
 | [The baseline report](../experiments/v2-e02a/baseline-report.md) | A dated correction, the two readings, and each statement of validity and eligibility. It also corrects one label: "The desired state on `main` now" had been stale since the G3 merge. A ledger cites this page, so its digest moves in the evidence index, and the digest of the released pack does not |
-| [The tool page](../../testing/comparison-eligibility.md) | The adjudicated record, and what is enforced |
+| [The tool page](../../testing/comparison-eligibility.md) | The adjudicated record, what is enforced, and a dated line on the switches |
 | [The desired-state page](../../environment/git-desired-state.md) | The sentence of the G3 switch, which also said that `main` holds the baseline |
-| [The baseline profile page](../../environment/single-runtime-baseline-profile.md) | Two table cells |
+| [The baseline profile page](../../environment/single-runtime-baseline-profile.md) | Two table cells, and a dated line on the switches |
+| Six further pages that mention a switch: [the Application](../../environment/argocd-application.md), [the capacity preflight](../../environment/capacity-preflight.md), [the environment qualification](../../environment/environment-qualification.md), [the model cache storage](../../environment/model-cache-storage.md), [the runtime model cache observation](../../environment/runtime-model-cache-observation.md), and [the E02A control](../../testing/experiment-e02a-control.md), and [the architecture index](../../architecture/README.md) | A dated line on the switches. A test holds each page |
 | [The G1 observation](v2-s7-001-pr2-g1-observation/observation.md) | A dated note on the authorization. No ledger cites this page, so no digest of a ledger moves |
 | [The validation of the runs](v2-s7-001-pr2-validation.md) | A dated note at the top. No ledger cites this page |
 | [The validation of the G3 switch](v2-s7-003-pr2-validation.md) | A dated note at the top. No ledger cites this page |
-| [The changelog](../../../CHANGELOG.md), [the testing index](../../testing/README.md), and [the test inventory](../../testing/test-inventory.md) | One entry, one row, and the statement of the suite. The test inventory holds a second file, its JSON form |
-| [The evidence index](../v1-evidence-index.md), and its JSON form | The digests of each cited file that moved, and of the current pack |
+| [The validation of the G1 switch](v2-s7-003-pr1-validation.md) | A dated note at the top. No ledger cites this page |
+| [The changelog](../../../CHANGELOG.md), [the testing index](../../testing/README.md), and [the test inventory](../../testing/test-inventory.md) | One entry, one row and a dated line, and the statement of the suite. The test inventory holds a second file, its JSON form |
+| [The evidence index](../v1-evidence-index.md) and its JSON form, [the dashboard](../dashboard.md), and [the claim matrix](../../testing/claim-evidence-matrix.md) and its JSON form | The digests of each cited file that moved and of the current pack, the corrected claim, and the note of the ledger |
 
 ## The decisions of this change
 
@@ -65,7 +67,7 @@ the release, makes 19 changes to one claim, its three records, and one surface r
 | Change | Effect |
 |---|---|
 | The statement | The sentences of validity and eligibility are withdrawn, and what executed and each measured figure stay word for word |
-| The limitation | Two clauses that gave the old verdict are replaced, and a dated correction is appended |
+| The limitation | Two clauses that gave the old verdict are replaced, the sentence on the review names the first review, and a dated correction is appended |
 | What the claim does not establish | It now names the validity of any run, and which reading is right |
 | Each of the three records | The summary, three limitations, what the record does not establish, six more cited files, and `E02A-AC2` from `met` to `not-evaluated`, a value that the schema has. The six other outcomes stay |
 | The reason of the evidence index | It names twelve ledgers |
@@ -94,8 +96,9 @@ is the next unused registered revision at that time, read from the registry.
 
 ## The independent review
 
-The review came before the claim change, in the order that the contribution guide asks for.
-[The page of the review](../experiments/v2-e02a/reviews/e02a-correction-review-2.md) states each round
+Rounds 1 to 4 came before the ledger on this branch. They are in the same change as the ledger,
+so this is not the order that the contribution guide asks for, a review merged first in a change of
+its own. [The page of the review](../experiments/v2-e02a/reviews/e02a-correction-review-2.md) states each round
 and each finding, and one record of each run holds them.
 
 | Round | Outcome | What it found |
@@ -105,11 +108,13 @@ and each finding, and one record of each run holds them.
 | 3, the confirmation | Not fit to register | "No source selects those two counts" was false as worded: revision 4 predates the first fault and reads them. The earlier fix had written that sentence |
 | 4, a narrow re-check | Fit to register | Low findings, and no leakage |
 | 5, the ledger, after it was written | Not fit to push | Each ledger change replayed to the register, and no history moved. The limitation repeated the sentence of round 3, the deviation page had narrowed a rule of the owner, and the severities of the review page did not add up |
+| 6, a read of the commit that answered round 5 | Not fit to push | The replay held again, and each figure. The limitation said that a review had read wording that was written after that review, two sentences contradicted this page, and a page that mentions a switch was missing |
 
 Each reviewer is an automated session of the same assistant. Rounds 1 to 4 came before the ledger.
-Round 5 read the ledger after it was written, and its findings changed the ledger, so no record
-establishes that a review of the wording of the ledger preceded the register change. The review
-records state rounds 1 to 4. No review read the commit that closes round 5.
+Rounds 5 and 6 read the ledger after it was written, and their findings changed its wording, so no
+record establishes that a review of the wording of the ledger preceded the register change. The
+review records state rounds 1 to 4. No review read the commit that closes round 6. It changes
+wording, and a script of the author replayed the ledger on it.
 
 ## What this does not establish
 
