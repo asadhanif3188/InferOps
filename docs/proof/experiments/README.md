@@ -2164,10 +2164,19 @@ gap is 5,796 ms on the reading scope and 22,043 ms to 25,104 ms on the field sco
 | `e02a-2` | 5,036 ms | 23,488 ms | 10,000 ms |
 | `e02a-3` | 7,057 ms | 23,115 ms | 10,000 ms |
 
-The reading scope holds in 3 of 3 runs, and the field scope in 0 of 3. A reading omits a count
-of zero, and it states that count as missing, not as zero. No reading in the three windows
-reports each of the eight Deployment counts of both tiers, so a test of every count cannot
-hold in any run. This does not state which reading is right.
+The reading scope holds in 3 of 3 runs. The two runtime counts in the third column hold in
+0 of 3. No source selects those two counts: the review of each run reported on them after the
+evidence was read. A reading omits a count of zero, and it states that count as missing, not as
+zero. Each other count but `unavailableReplicas` is reported in each reading of each window, so a
+field reading of one of those counts would give another outcome. No reading in the three windows
+reports each of the eight Deployment counts of both tiers, so a test of every count cannot hold
+in any run. This does not state which reading is right.
+
+**One earlier wording names a field.** The first draft of the criterion, at commit `9a9f064`,
+said "states a Ready endpoint count of both tiers" for the endpoints stream. Commit `28351f8`
+replaced it before any run. It is context and not authority, and the adjudicator did not see it.
+[The adjudication](v2-e02a/eligibility-adjudication.v1alpha1.json) states this, the strongest
+source against its ruling, and the limits of the adjudicator.
 
 **What stays, and what does not.**
 
@@ -2195,6 +2204,7 @@ revision at that time, read from the registry.
 | V2-E04, revision 3 | Both files | Both files again | The next revision of V2-E04, before its first run |
 | V2-E05, revision 2 | `core.py` of `tools/experiment_preregistration`, and both files | Both files again | The next revision of V2-E05, before its first run |
 | V2-E06, revision 4 | None | Both files | The next revision of V2-E06, which states how its population treats the three runs |
+| Each other record that pins them, among them revision 4 of V2-E02A | Both files | Both files again | No run is planned under them, and each stays as it is |
 
 **The register holds one claim of these runs.** `V2-S7-002-PR1` adds
 `the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod` through
@@ -2231,14 +2241,14 @@ not part of this change.
 
 ### The G1 switch and revision 4
 
-> **2026-11-02:** the G1 merge had no authorization of the repository owner before it merged.
-> [The deviation page](../environment/v2-s7-004-pr1-switch-deviations.md) states the merge, and
-> this section states the rule.
+> **2026-11-02:** no authorization of the repository owner was found before the G1 merge,
+> `ff45093`. [The deviation page](../environment/v2-s7-004-pr1-switch-deviations.md) states the
+> merge, and this section states the rule.
 
 `V2-S7-003-PR1` executes rule G1 of the V2-E02A record and registers revision 4 of that
 record, [`v2-e02a/freeze-r4.v1alpha1.json`](v2-e02a/freeze-r4.v1alpha1.json), with the
-registered digest `3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e`, in the same change. The change merges into `main` only with
-the explicit authorization of the repository owner for that merge. The Argo CD
+registered digest `3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e`, in the same change. Rule G4 asks for the explicit authorization of the repository
+owner for that merge. The Argo CD
 Application follows `main`, so the merge is the switch on a cluster where an operator
 applied the Application. No run of V2-E02A or of any other experiment exists, no fault
 was injected, and no cluster was read or changed by this change.
@@ -2298,16 +2308,16 @@ what each owes.
 
 ### The G3 switch and revision 3 of V2-E02B
 
-> **2026-11-02:** the G3 merge had no authorization of the repository owner before it merged.
-> [The deviation page](../environment/v2-s7-004-pr1-switch-deviations.md) states the merge, and
-> this section states the rule. No record in this repository shows that the merge reached a
-> cluster.
+> **2026-11-02:** no authorization of the repository owner was found before the G3 merge,
+> `a3ed812`. [The deviation page](../environment/v2-s7-004-pr1-switch-deviations.md) states the
+> merge, and this section states the rule. No record in this repository shows that the merge
+> reached a cluster.
 
 `V2-S7-003-PR2` executes rule G3 of revision 4 of the V2-E02A record and registers revision
 3 of the V2-E02B record, [`v2-e02b/freeze-r3.v1alpha1.json`](v2-e02b/freeze-r3.v1alpha1.json),
-with the registered digest `86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a`, in the same change. The change merges into `main`
-only with the explicit authorization of the repository owner for that merge, which is
-separate from the authorization of G1. The Argo CD Application follows `main`, so the merge
+with the registered digest `86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a`, in the same change. Rule G4 asks for the explicit
+authorization of the repository owner for that merge, as it does for each switch. The Argo CD
+Application follows `main`, so the merge
 is the switch on a cluster where an operator applied the Application. No run of V2-E02B
 exists, no fault was injected, and no cluster was read or changed by this change.
 

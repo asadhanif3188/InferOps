@@ -192,10 +192,11 @@ Deployment's rolling-update bounds: one pod unavailable and no pod above the rep
 count. From `V2-S7-003-PR1` the committed release was the single-runtime baseline, two
 API replicas and one runtime replica, for the runs of V2-E02A: rule G1 of the V2-E02A
 freeze record switched it. `V2-S7-003-PR2` restores the two runtime replicas by rule G3,
-with the bytes that the target had before the switch. Rule G4 asks for the explicit
-authorization of the repository owner for each switch, and neither merge had one before it
-merged: [the two deviations](docs/proof/environment/v2-s7-004-pr1-switch-deviations.md) state
-each merge. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
+with the bytes that the target had before the switch. That is configuration. Rule G4 asks
+for the explicit authorization of the repository owner for each switch, and none was found
+before either merge, `ff45093` or `a3ed812`:
+[the two deviations](docs/proof/environment/v2-s7-004-pr1-switch-deviations.md) state each one.
+One run on `docker-desktop` on 2026-10-08 applied the
 two-replica release of chart `0.5.0` once, and two pods of each tier became Ready on one node:
 [the record](docs/proof/environment/v2-s4-002-pr2-validation.md). It establishes
 nothing about what a caller observes when an API pod or a runtime pod is lost.

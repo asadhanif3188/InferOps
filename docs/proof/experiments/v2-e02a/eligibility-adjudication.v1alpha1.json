@@ -3,10 +3,13 @@
     "description": "One automated session with no role in any run. It worked read-only, and it ran no code of this repository.",
     "independenceLimits": [
       "The adjudicator is an automated session and not a person. It may be the same model that wrote these tools, so their wording may seem more familiar to it.",
-      "The session that ran the runs set up the adjudication and checked each quote. It did not rule.",
-      "The input held no history of the repository, so the reason that revision 1 used these words is not known from the input.",
-      "The context of the session held a one-line note that the runs passed and that a reading of the criterion was later approved. The note did not say which reading. Knowing that an owner decided could bias it towards this ruling.",
-      "The adjudicator searched the files of the repository and did not read them all."
+      "The implementing session set up the adjudication and checked each quote, and it did not rule. The same assistant ran the three runs in earlier sessions.",
+      "The input held no Git history, so the reason that revision 1 used these words is not known from the input.",
+      "The context of the session held a one-line note that the three runs passed and that a stream reading of the criterion was later approved by the owner. That note could bias the session towards the approved reading, or, because it says that an owner decided, towards this ruling.",
+      "The session searched some evidence files of the input and did not read them all.",
+      "The prompt named three candidate readings and allowed others: a reading has a value when its read answered; when a named field or signal in it has a value; or when every field that it lists has a value.",
+      "Two commits of the run branch predate the first fault and were not in the export: df5304a and 9849d52. Their added text holds neither phrase of the criterion.",
+      "The first draft of the criterion, at commit 9a9f064, said \"states a Ready endpoint count of both tiers\" for the endpoints stream. Commit 28351f8 replaced it before any run, and the adjudicator did not see this. It is context and not authority, and it is the one wording in the public history that names a field."
     ],
     "input": "An export of the last commit of main before the first fault, ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, which holds no run of V2-E02A, and an export of the requirements of that date. It received the criterion, the question, and the test. It did not receive the run results, a list of sources, or a recommendation.",
     "kind": "automated"
@@ -20,11 +23,16 @@
     "Which reading of the criterion is right."
   ],
   "experimentId": "V2-E02A",
-  "reason": "No source that predates the first fault of V2-E02A, 2026-10-31T13:41:35Z, uniquely specifies what \"states a value\" and \"a reading with a value\" mean for E02A-AC2. The sources lean towards a reading-level test, and they do not settle it. So the validity of the three counted runs is not established, and the rule is not applied to them.",
+  "reason": "No source that predates the first fault of V2-E02A, 2026-10-31T13:41:35Z, uniquely specifies what \"states a value\" and \"a reading with a value\" mean for E02A-AC2. The sources lean towards a reading-level test, and they do not settle it. So the validity of the three counted runs is not established, and the verdict does not follow from the rule.",
   "ruling": "not-settled",
   "schema": "inferops.io/eligibility-adjudication/v1alpha1",
   "sourceRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
   "sources": [
+    {
+      "at": "tools/experiment_timeline/core.py:19-22",
+      "bearing": "Values sit in fields. No field is named for the criterion.",
+      "words": "A read that did not answer gives a reading with no value at all."
+    },
     {
       "at": "tools/experiment_timeline/core.py:307-308",
       "bearing": "Same verb, in the reader that the criterion names. It runs one way: an answered read is necessary, and the sentence does not say sufficient.",
@@ -36,14 +44,29 @@
       "words": "{member} states a value, and the read is {state}"
     },
     {
+      "at": "docs/environment/experiment-timelines.md:172",
+      "bearing": "An answered read can fail to count.",
+      "words": "Yes, unless a fault of the reading says why not"
+    },
+    {
       "at": "docs/environment/experiment-timelines.md:207-208",
       "bearing": "An answered read alone is not sufficient.",
       "words": "A reading that answered and cannot be reduced without a guess states no value"
     },
     {
       "at": "docs/environment/experiment-timelines.md:317-319",
-      "bearing": "The page treats a refused tier as no value, and the code at tools/experiment_timeline/core.py:1481 does not, so the two disagree at that boundary.",
+      "bearing": "The page treats a refused tier as no value, and the form check at tools/experiment_timeline/core.py:1481 does not, so the two disagree at that boundary.",
       "words": "A reading that answered and states no value for the stream gives a change to `refused`"
+    },
+    {
+      "at": "tests/domain/test_experiment_timeline.py:1101-1112",
+      "bearing": "By the form check this states a value. By the page above it does not.",
+      "words": "An answered list with no item is a reading: no pod, and two refused tiers."
+    },
+    {
+      "at": "tools/reliability_analysis/core.py:262",
+      "bearing": "The same words at signal scope.",
+      "words": "No reading in the window states a value for the signal."
     },
     {
       "at": "tools/reliability_analysis/core.py:374-376",
@@ -51,9 +74,19 @@
       "words": "So a signal of a Deployment count has no value in a reading in which the count is zero."
     },
     {
+      "at": "tools/reliability_analysis/core.py:1207-1210",
+      "bearing": "The only computation shaped like the third clause of the criterion. It is per tier or per signal, no figure is per stream, and nothing chooses among the eight declared signals.",
+      "words": "withValue, withoutValue, largestTimeBetweenReadsMs"
+    },
+    {
       "at": "tools/experiment_e02a/core.py:31-32",
       "bearing": "No code judges the criterion.",
       "words": "The review of the run judges the criteria"
+    },
+    {
+      "at": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json:574",
+      "bearing": "The record defines neither phrase and incorporates no definition from a tool, though it pins these files.",
+      "words": "states the purpose, the procedure, the measurements, and the acceptance criteria in full"
     },
     {
       "at": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json:998-1000",
@@ -61,5 +94,17 @@
       "words": "A stream that a criterion reads was refused by its reader, or has more than 10 s between two consecutive readings with a value inside the window."
     }
   ],
+  "sourcesStatement": "Each source that the adjudicator relied on and that this repository holds, at sourceRevision. One further source is a page of requirements that lists what to capture and defines no value.",
+  "strongestSourceAgainstTheRuling": {
+    "at": "tools/experiment_timeline/core.py:1632 and 1754-1755",
+    "case": "The reader rule, joined to these lines, points to a reading-level test, and the words \"their reader\" in the criterion point to that tool.",
+    "whyTheRulingStands": [
+      "\"Their reader\" attaches to the acceptance clause, and it incorporates no definition for the later clauses.",
+      "\"Only when\" runs one way.",
+      "The page and the code disagree at the refused-tier boundary, so applying these sources does not give exactly one reading.",
+      "A pinned sibling tool uses the same words at signal scope."
+    ],
+    "words": "Each tracked value of one reading, or the one state of the whole reading."
+  },
   "test": "A source settles the meaning only if a careful reader, applying that source to E02A-AC2, can reach exactly one reading. A source that is merely consistent with a reading does not settle it. A source that defines the same word for a different purpose settles it only if something connects that definition to this criterion."
 }

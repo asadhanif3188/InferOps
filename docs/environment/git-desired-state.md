@@ -87,9 +87,11 @@ has the bytes that it had before it. So
 [the V2-E02B record, revision 3](../proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b), which that change registers, pins
 each of the three with the digest of its revisions 1 and 2. The change edits no
 Application manifest, chart, binding, or platform default. The merge of the change is the
-switch on a cluster where the Application is applied, and it needs the explicit
-authorization of the repository owner, separate from the authorization of G1. Until such
-a merge, `main` holds the baseline. A test derives the target into a copy of the delivery
+switch on a cluster where the Application is applied. Rule G4 asks for the explicit
+authorization of the repository owner for each switch, and none was found before either
+merge, `ff45093` or `a3ed812`:
+[the two deviations](../proof/environment/v2-s7-004-pr1-switch-deviations.md) state each one.
+Since `a3ed812`, `main` holds the target. A test derives the target into a copy of the delivery
 inputs where a test needs a copy to change. The render of the target differs from the render
 of the baseline in one added object, the runtime PodDisruptionBudget, the runtime replica
 count, the workload version in one ConfigMap value, and the configuration checksum of the

@@ -84,21 +84,31 @@ The verdict string is the existing `not-decided`, and the schema has no other st
 record has a schema file: `schema` is a name, and the tool holds each member. Each attempt states
 `validityEstablished: false`, and that member is not a status.
 
-**The two readings.** `readingScope` asks whether a reading has a value, on the strictest of three
-variants: the read answered, with no fault, no null member, and no refused tier. `fieldScope` asks
-whether the reading reports runtime `readyReplicas` or `availableReplicas`. A count that a reading
-omits is missing, and it is not zero. `everyCount` asks whether it reports each of the eight
-Deployment counts of both tiers. Each states the gap from one start to the next and from one
-finish to the next start, and `held` reads the first, the larger. The tool states these figures,
-and it does not choose: the reading scope holds in 3 of 3 runs, and the field scope in 0 of 3.
+**The two readings.** `readingScope` asks whether a reading has a value, with three variants
+together: the read answered, with no fault, no null member, and no refused tier.
+`selectedRuntimeCounts` asks whether the reading reports runtime `readyReplicas` or
+`availableReplicas`. No source selects those two counts: the review of each run reported on them
+after the evidence was read. A count that a reading omits is missing, and it is not zero.
+`everyCount` asks whether it reports each of the eight Deployment counts of both tiers, and each
+run states which counts each reading reports and which no reading reports. Each states the gap
+from one start to the next and from one finish to the next start, and `held` reads the first, the
+larger. Fewer than two readings with a value hold nothing. `held` reads the second and the third
+clause of the criterion, and the replay of each run holds the first. The tool refuses readings
+that are out of order, or a reading that finished before it started. The tool states these
+figures, and it does not choose: the reading scope holds in 3 of 3 runs, and the two runtime
+counts in 0 of 3.
 
 **The consumers.** `consumers` states the latest revision of V2-E02B, V2-E03, and V2-E06 on
-2026-11-02, each with no run consumed. `usable_baseline` refuses to give a figure of a record whose
-verdict is not `eligible`, with the rule `eligibility-disputed`.
+2026-11-02, with what the repository owner decided for each. `consumesRuns` is an empty list that
+this tool writes, and it is a statement of that decision and not a reading of the record.
+`usable_baseline` gives the figures to a consumer only from the adjudicated record, and it refuses
+with the rule `eligibility-disputed` while that verdict is not `eligible`. It never reads the
+classification record, whose verdict stays `eligible`.
 
-**The current pages.** `--check` reads
-each page of `CURRENT_PAGES` for a sentence that the verdict withdrew, and for the name of the
-adjudicated record. A page of a past change keeps its text, so the check does not read one.
+**The current pages.** `--check` reads each page of `SCANNED_PAGES` for a sentence that the verdict
+withdrew or that presupposes an authorization of a switch, and each page of `CURRENT_PAGES` for
+the name of the adjudicated record. A page of a past change keeps its text, so the check does not
+read one.
 
 ## No percentage
 
@@ -142,9 +152,14 @@ for each other reader of the run.
   reads it. Nor does a tool read the acceptance of the adjudication: the input states it.
 - No tool reads the figures of the baseline yet, so nothing calls `usable_baseline`. A test holds
   the refusal for V2-E02B, V2-E03, and V2-E06. A later reader has to call it, and no test can
-  require that today.
-- The check of the current pages matches sentences. A page can state the withdrawn verdict in
-  other words and pass. The review of the page is what reads for that.
+  require that today. A reader that opens the classification record directly gets `eligible`.
+- No tool reads the population of a later revision, so no check holds that V2-E03 and V2-E06
+  consume none of the three runs. It is a decision of the repository owner.
+- The check of the pages matches sentences. A page can state the withdrawn verdict in other words
+  and pass, and a sentence that states the rule or quotes history can fail. The review of the page
+  is what reads for that, and such a sentence is reworded.
+- `check_adjudicated` reads the streams as they are on disk. `--check` first holds them to the
+  manifest of each run, by the replay, so run the command and not the function alone.
 - The freeze record of V2-E02B still says `eligible`, and no check can change that. A successor
   revision states the outcome.
 - No freeze record pins this package, and no tool that a run executes imports it. A test holds

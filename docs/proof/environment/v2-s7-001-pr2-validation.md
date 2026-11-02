@@ -1,5 +1,16 @@
 # Validation: the three runs of V2-E02A (V2-S7-001-PR2)
 
+> **Correction, 2026-11-02.** The state of each run on this page is not a statement of
+> validity, and this page is a record of its date. The current eligibility verdict is
+> `not-decided`, in
+> [the adjudicated record](../experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json).
+>
+> The row of the owner authorization in the prerequisites is not a pre-merge authorization, and
+> neither is the sentence on the second merge under what comes next. No authorization of the G1
+> merge, `ff45093`, was found before it merged, in the search that
+> [the deviation page](v2-s7-004-pr1-switch-deviations.md) states. The confirmation that the row
+> states came after the merge of 2026-10-23.
+
 Status: **C2, on one provider.** This change executed the runs of V2-E02A under revision 4 of
 its freeze record. Three runs are counted, and each state is `PASSED`. V2-E02A is a
 characterization with validity criteria alone, so that state says that a run is valid. It
@@ -26,15 +37,6 @@ changes no criterion, bound, window, fault, topology, profile, or exclusion. `py
 tools.experiment_freeze --changes` lists no moved input of revision 4.
 
 ## The prerequisites, checked before any run
-
-> **Correction, 2026-11-02.** The third row below is not a pre-merge authorization. The G1
-> merge, `ff45093`, had no authorization of the repository owner before it merged, and the
-> confirmation that the row states came seven days after the merge. See
-> [the deviation page](v2-s7-004-pr1-switch-deviations.md).
->
-> The state of each run below is not a statement of validity. On 2026-11-02 the current
-> eligibility verdict became `not-decided`, in
-> [the adjudicated record](../experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json).
 
 | Prerequisite | How it was checked | Outcome |
 |---|---|---|

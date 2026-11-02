@@ -1,6 +1,6 @@
 {
   "adjudication": {
-    "contentSha256": "cde9dc6ffae474d823dcb53711d1d9cf9136ee98209be86ef4981fd17bca37a7",
+    "contentSha256": "5236f3da100afa2ba5807e925dca4dbe76fe54208d84ad1ba648587ea66b80b6",
     "decidedBy": "The repository owner accepted the ruling on 2026-11-02, with its limits, and chose the verdict not-decided. No tool reads that choice.",
     "path": "docs/proof/experiments/v2-e02a/eligibility-adjudication.v1alpha1.json",
     "ruling": "not-settled"
@@ -64,7 +64,7 @@
       "experiment": "V2-E02B",
       "latestRevision": 3,
       "path": "docs/proof/experiments/v2-e02b/freeze-r3.v1alpha1.json",
-      "statement": "It consumes none of the three runs until the next unused registered revision of the record states how its population treats them."
+      "statement": "No run of V2-E02B exists. Revision 3 computes an improvement only when V2-E02A is eligible, and E02B-AC2 is settled in a merged revision before the first run. This is a decision of the repository owner, and no tool enforces it."
     },
     {
       "consumesRuns": [],
@@ -72,7 +72,7 @@
       "experiment": "V2-E03",
       "latestRevision": 5,
       "path": "docs/proof/experiments/v2-e03/freeze-r5.v1alpha1.json",
-      "statement": "It consumes none of the three runs until the next unused registered revision of the record states how its population treats them."
+      "statement": "Revision 5 states a population of valid, counted runs that names V2-E02A. It consumes none of the three runs until the next unused registered revision of the record states how its population treats them. This is a decision of the repository owner, and no tool enforces it."
     },
     {
       "consumesRuns": [],
@@ -80,7 +80,7 @@
       "experiment": "V2-E06",
       "latestRevision": 4,
       "path": "docs/proof/experiments/v2-e06/freeze-r4.v1alpha1.json",
-      "statement": "It consumes none of the three runs until the next unused registered revision of the record states how its population treats them."
+      "statement": "Revision 4 names V2-E02A as its baseline source. It consumes none of the three runs until the next unused registered revision of the record states how its population treats them. This is a decision of the repository owner, and no tool enforces it."
     }
   ],
   "decidedOn": "2026-11-02",
@@ -114,7 +114,7 @@
       }
     },
     "restsOn": [],
-    "statement": "No source that predates the first fault of V2-E02A, 2026-10-31T13:41:35Z, uniquely specifies what \"states a value\" and \"a reading with a value\" mean for E02A-AC2. The sources lean towards a reading-level test, and they do not settle it. So the validity of the three counted runs is not established, and the rule is not applied to them.",
+    "statement": "No source that predates the first fault of V2-E02A, 2026-10-31T13:41:35Z, uniquely specifies what \"states a value\" and \"a reading with a value\" mean for E02A-AC2. The sources lean towards a reading-level test, and they do not settle it. So the validity of the three counted runs is not established, and the verdict does not follow from the rule.",
     "verdict": "not-decided"
   },
   "evidenceLevel": "C2",
@@ -132,6 +132,8 @@
     "V2-E03 and V2-E06 consume none of the three runs until the next unused registered revision of each states how its population treats them.",
     "The medians are measured figures of what executed, at C2. Without a valid baseline, no before and after statement is permitted.",
     "The reading figures are computed from the raw streams, over the readings wholly inside the window of each run. A stream reads at intervals, so a gap is a bound on when a value changed and not the instant of the change.",
+    "The figures read the second and the third clause of E02A-AC2. The first clause, that each stream is accepted by its reader, is held by the replay of each run and not here.",
+    "No source selects the two runtime counts of selectedRuntimeCounts. The review of each run reported on them after the evidence was read. Each other count but unavailableReplicas is reported in each reading of each window, so a field reading of one of those counts would give another outcome.",
     "The adjudicator is one automated session and not a person. Its limits are in the adjudication."
   ],
   "measuredMedians": {
@@ -149,6 +151,23 @@
     "limitMs": 10000,
     "runs": [
       {
+        "countsReportedInEachReading": [
+          "platform-api.availableReplicas",
+          "platform-api.generation",
+          "platform-api.observedGeneration",
+          "platform-api.readyReplicas",
+          "platform-api.replicas",
+          "platform-api.specReplicas",
+          "platform-api.updatedReplicas",
+          "serving-runtime.generation",
+          "serving-runtime.observedGeneration",
+          "serving-runtime.replicas",
+          "serving-runtime.specReplicas",
+          "serving-runtime.updatedReplicas"
+        ],
+        "countsReportedInNoReading": [
+          "platform-api.unavailableReplicas"
+        ],
         "everyCount": {
           "firstAndLastHaveAValue": false,
           "held": false,
@@ -156,24 +175,6 @@
           "largestGapStartToStartMs": null,
           "readingsInWindow": 166,
           "readingsWithAValue": 0
-        },
-        "fieldScope": {
-          "serving-runtime.availableReplicas": {
-            "firstAndLastHaveAValue": true,
-            "held": false,
-            "largestGapFinishToNextStartMs": 25104,
-            "largestGapStartToStartMs": 26304,
-            "readingsInWindow": 166,
-            "readingsWithAValue": 160
-          },
-          "serving-runtime.readyReplicas": {
-            "firstAndLastHaveAValue": true,
-            "held": false,
-            "largestGapFinishToNextStartMs": 25104,
-            "largestGapStartToStartMs": 26304,
-            "readingsInWindow": 166,
-            "readingsWithAValue": 160
-          }
         },
         "readingScope": {
           "argo": {
@@ -183,7 +184,6 @@
             "largestGapFinishToNextStartMs": 4911,
             "largestGapStartToStartMs": 5789,
             "noNullMember": 166,
-            "noRefusedTier": 166,
             "readingsInWindow": 166,
             "readingsWithAValue": 166
           },
@@ -216,18 +216,52 @@
             "largestGapFinishToNextStartMs": 4021,
             "largestGapStartToStartMs": 6001,
             "noNullMember": 166,
-            "noRefusedTier": 166,
             "readingsInWindow": 166,
             "readingsWithAValue": 166
           }
         },
         "runId": "e02a-1",
+        "selectedRuntimeCounts": {
+          "serving-runtime.availableReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 25104,
+            "largestGapStartToStartMs": 26304,
+            "readingsInWindow": 166,
+            "readingsWithAValue": 160
+          },
+          "serving-runtime.readyReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 25104,
+            "largestGapStartToStartMs": 26304,
+            "readingsInWindow": 166,
+            "readingsWithAValue": 160
+          }
+        },
         "window": {
           "from": "2026-10-31T13:40:35.149Z",
           "to": "2026-10-31T13:53:35.914Z"
         }
       },
       {
+        "countsReportedInEachReading": [
+          "platform-api.availableReplicas",
+          "platform-api.generation",
+          "platform-api.observedGeneration",
+          "platform-api.readyReplicas",
+          "platform-api.replicas",
+          "platform-api.specReplicas",
+          "platform-api.updatedReplicas",
+          "serving-runtime.generation",
+          "serving-runtime.observedGeneration",
+          "serving-runtime.replicas",
+          "serving-runtime.specReplicas",
+          "serving-runtime.updatedReplicas"
+        ],
+        "countsReportedInNoReading": [
+          "platform-api.unavailableReplicas"
+        ],
         "everyCount": {
           "firstAndLastHaveAValue": false,
           "held": false,
@@ -235,24 +269,6 @@
           "largestGapStartToStartMs": null,
           "readingsInWindow": 188,
           "readingsWithAValue": 0
-        },
-        "fieldScope": {
-          "serving-runtime.availableReplicas": {
-            "firstAndLastHaveAValue": true,
-            "held": false,
-            "largestGapFinishToNextStartMs": 22417,
-            "largestGapStartToStartMs": 23488,
-            "readingsInWindow": 188,
-            "readingsWithAValue": 182
-          },
-          "serving-runtime.readyReplicas": {
-            "firstAndLastHaveAValue": true,
-            "held": false,
-            "largestGapFinishToNextStartMs": 22417,
-            "largestGapStartToStartMs": 23488,
-            "readingsInWindow": 188,
-            "readingsWithAValue": 182
-          }
         },
         "readingScope": {
           "argo": {
@@ -262,7 +278,6 @@
             "largestGapFinishToNextStartMs": 3969,
             "largestGapStartToStartMs": 4740,
             "noNullMember": 189,
-            "noRefusedTier": 189,
             "readingsInWindow": 189,
             "readingsWithAValue": 189
           },
@@ -295,18 +310,52 @@
             "largestGapFinishToNextStartMs": 3626,
             "largestGapStartToStartMs": 5036,
             "noNullMember": 188,
-            "noRefusedTier": 188,
             "readingsInWindow": 188,
             "readingsWithAValue": 188
           }
         },
         "runId": "e02a-2",
+        "selectedRuntimeCounts": {
+          "serving-runtime.availableReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 22417,
+            "largestGapStartToStartMs": 23488,
+            "readingsInWindow": 188,
+            "readingsWithAValue": 182
+          },
+          "serving-runtime.readyReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 22417,
+            "largestGapStartToStartMs": 23488,
+            "readingsInWindow": 188,
+            "readingsWithAValue": 182
+          }
+        },
         "window": {
           "from": "2026-10-31T14:46:01.042Z",
           "to": "2026-10-31T14:59:01.816Z"
         }
       },
       {
+        "countsReportedInEachReading": [
+          "platform-api.availableReplicas",
+          "platform-api.generation",
+          "platform-api.observedGeneration",
+          "platform-api.readyReplicas",
+          "platform-api.replicas",
+          "platform-api.specReplicas",
+          "platform-api.updatedReplicas",
+          "serving-runtime.generation",
+          "serving-runtime.observedGeneration",
+          "serving-runtime.replicas",
+          "serving-runtime.specReplicas",
+          "serving-runtime.updatedReplicas"
+        ],
+        "countsReportedInNoReading": [
+          "platform-api.unavailableReplicas"
+        ],
         "everyCount": {
           "firstAndLastHaveAValue": false,
           "held": false,
@@ -314,24 +363,6 @@
           "largestGapStartToStartMs": null,
           "readingsInWindow": 178,
           "readingsWithAValue": 0
-        },
-        "fieldScope": {
-          "serving-runtime.availableReplicas": {
-            "firstAndLastHaveAValue": true,
-            "held": false,
-            "largestGapFinishToNextStartMs": 22043,
-            "largestGapStartToStartMs": 23115,
-            "readingsInWindow": 178,
-            "readingsWithAValue": 172
-          },
-          "serving-runtime.readyReplicas": {
-            "firstAndLastHaveAValue": true,
-            "held": false,
-            "largestGapFinishToNextStartMs": 22043,
-            "largestGapStartToStartMs": 23115,
-            "readingsInWindow": 178,
-            "readingsWithAValue": 172
-          }
         },
         "readingScope": {
           "argo": {
@@ -341,7 +372,6 @@
             "largestGapFinishToNextStartMs": 5796,
             "largestGapStartToStartMs": 7057,
             "noNullMember": 178,
-            "noRefusedTier": 178,
             "readingsInWindow": 178,
             "readingsWithAValue": 178
           },
@@ -374,20 +404,38 @@
             "largestGapFinishToNextStartMs": 4198,
             "largestGapStartToStartMs": 6628,
             "noNullMember": 178,
-            "noRefusedTier": 178,
             "readingsInWindow": 178,
             "readingsWithAValue": 178
           }
         },
         "runId": "e02a-3",
+        "selectedRuntimeCounts": {
+          "serving-runtime.availableReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 22043,
+            "largestGapStartToStartMs": 23115,
+            "readingsInWindow": 178,
+            "readingsWithAValue": 172
+          },
+          "serving-runtime.readyReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 22043,
+            "largestGapStartToStartMs": 23115,
+            "readingsInWindow": 178,
+            "readingsWithAValue": 172
+          }
+        },
         "window": {
           "from": "2026-10-31T15:46:24.552Z",
           "to": "2026-10-31T15:59:25.285Z"
         }
       }
     ],
-    "runsHoldingTheFieldScope": 0,
-    "runsHoldingTheReadingScope": 3
+    "runsHoldingBothRuntimeCounts": 0,
+    "runsHoldingTheReadingScope": 3,
+    "statement": "readingScope asks whether a reading has a value, with all three variants together: the read answered, with no fault, no null member, and no refused tier. selectedRuntimeCounts asks whether a reading reports one runtime count, for the two counts that the review of each run reported on. No source selects those two counts. everyCount asks whether a reading reports each of the eight Deployment counts of both tiers. This record does not state which of these is the criterion."
   },
   "registration": "The change that adds this record registers the correction through a twelfth ledger. So tools/evidence_index/__init__.py and tools/evidence_index/core.py differ from their pins in each latest record of V2-E02A, V2-E02B, V2-E02C, V2-E03, V2-E04, V2-E05, and V2-E06, and in the other records that pin them. No revision classifies them yet, and this record edits no freeze record.",
   "schema": "inferops.io/comparison-eligibility-adjudicated/v1alpha1",

@@ -1,12 +1,12 @@
-# The G1 and G3 switches: two merges with no pre-merge authorization
+# The G1 and G3 switches: two merges with no pre-merge authorization found
 
 Dated 2026-11-02. This page is not backdated, and it cures nothing.
 
-**Neither switch had the explicit authorization of the repository owner before it merged.** Rule
+**No explicit authorization of the repository owner was found before either switch merged.** Rule
 G4 of [the V2-E02A freeze record](../experiments/v2-e02a/freeze-r4.v1alpha1.json) requires that
-authorization for each switch. An implementation instruction, a sprint approval, or an open pull
-request is not that authorization. The requirement was not met at merge time, and no later
-statement changes that.
+authorization for each switch, and an implementation instruction or an open pull request is not
+that authorization. The repository owner accepted on 2026-11-02 that the requirement was not met
+at merge time. No later statement changes that.
 
 ## The two merges
 
@@ -14,15 +14,18 @@ statement changes that.
 |---|---|---|
 | Pull request | [#159](https://github.com/asadhanif3188/InferOps/pull/159), `V2-S7-003-PR1` | [#163](https://github.com/asadhanif3188/InferOps/pull/163), `V2-S7-003-PR2` |
 | Merge commit | `ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b` | `a3ed8129f482820a503d6c37ea3d1395f2a7c269` |
-| Merged at | 2026-10-23T15:06:40Z, by the owner's account | 2026-11-01T16:53:26Z, by the owner's account |
+| Merged at, as GitHub states it | 2026-10-23T15:06:40Z | 2026-11-01T16:53:26Z |
 | Effect | The desired state became 2 API + 1 runtime, and revision 4 of V2-E02A was registered in the same merge | The desired state returned to 2 API + 2 runtime in Git, and revision 3 of V2-E02B was registered in the same merge |
-| Comments and reviews on the pull request, read on 2026-11-02 | 0 and 0 | 0 and 0 |
+| Comments, review comments, and reviews on the pull request, read from GitHub on 2026-11-02 | 0, 0, and 0 | 0, 0, and 0 |
 | The authorization item of the pull request | Unticked | Unticked |
 | Pre-merge authorization | None found | None found |
-| Later statement | On 2026-10-30T11:08:08Z, seven days after the merge, the repository owner selected "Yes, #159 was my authorization" | None before this page |
+| Later statement | On 2026-10-30T11:08:08Z, after the merge of 2026-10-23, the repository owner selected "Yes, #159 was my authorization" | None before this page |
 
-The search for an authorization covered both repositories, the two pull requests, and the local
-session records. It did not cover other conversations or email.
+The repository owner reports the search for an authorization. It covered the repository, the two
+pull requests, and the local session records. It did not cover other conversations or email. So
+"None found" is bounded by that search, and no file of this repository proves it. The time and the
+words of the later statement come from a local session record that is not committed. The page of
+the G1 observation confirms the date.
 
 ## What the later statement is
 
@@ -51,8 +54,9 @@ These facts limit the effect. They do not cure the timing.
 On 2026-11-02 the repository owner accepted both deviations prospectively, as recorded deviations
 with stated limits. The acceptance covers these two merges only.
 
-- No page states or implies that either switch was authorized before its merge.
-- A statement about either switch names the merge commit and this page.
+- A current page does not state or imply that either switch was authorized before its merge. A
+  page of a past change keeps its text, and the pages named above carry a dated note.
+- A statement about the authorization of either switch names the merge commit and this page.
 - No second merge is created to imitate a missing authorization.
 - This page does not state that the 2+2 desired state is delivered on a cluster. No record in this
   repository shows that delivery at the G3 merge.

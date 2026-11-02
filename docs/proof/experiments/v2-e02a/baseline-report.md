@@ -140,12 +140,18 @@ reading scope and 22,043 ms to 25,104 ms on the field scope.
 | `e02a-2` | 188 | 5,036 ms | 182 | 23,488 ms | 10,000 ms |
 | `e02a-3` | 178 | 7,057 ms | 172 | 23,115 ms | 10,000 ms |
 
-The reading scope holds in 3 of 3 runs, on its strictest variant: the read answered, with no
-fault, no null member, and no refused tier. The field scope holds in 0 of 3. A reading omits a
-count of zero, and it states that count as missing, not as zero. No reading in the three windows
-reports each of the eight Deployment counts of both tiers, because the count
-`unavailableReplicas` of the API tier is omitted in each of them. This does not state which
-reading is right.
+The reading scope holds in 3 of 3 runs, with its three variants together: the read answered,
+with no fault, no null member, and no refused tier. The two runtime counts hold in 0 of 3. No
+source selects those two counts: the review of each run reported on them after the evidence was
+read. A reading omits a count of zero, and it states that count as missing, not as zero. Each
+other count but `unavailableReplicas` is reported in each reading of each window, so a field
+reading of one of those counts would give another outcome. No reading in the three windows reports
+each of the eight Deployment counts of both tiers, because the count `unavailableReplicas` of the
+API tier is omitted in each of them.
+
+The first draft of the criterion, at commit `9a9f064`, said "states a Ready endpoint count of both
+tiers" for the endpoints stream, and commit `28351f8` replaced it before any run. That is context
+and not authority. This page does not state which reading is right.
 
 ## The permitted statistics
 
@@ -164,9 +170,11 @@ The aggregate command does not state the zero-Ready intervals, so this page stat
 them. Three runs do not support a confidence interval or a statistical significance, and this
 page states neither. No figure here is compared with a bound.
 
-## The figures that a later comparison reads
+## The figures that the record of V2-E02B names
 
-The record of V2-E02B names two medians of this baseline.
+The record of V2-E02B names two medians of this baseline. It computes an improvement only when
+V2-E02A is eligible, and the current verdict is `not-decided`, so neither figure is usable as a
+baseline today.
 
 | Figure of the record of V2-E02B | Metric | Value | Basis |
 |---|---|---:|---|
@@ -176,11 +184,10 @@ The record of V2-E02B names two medians of this baseline.
 **No percentage exists.** Neither figure is zero, so the rule that no percentage is computed over
 a zero baseline does not apply to this set. The tool states that case for a zero median and for a
 median that the aggregate does not state, and tests hold both. No percentage is stated here,
-because no run of V2-E02B exists. V2-E02B computes an improvement after its own runs, under its
-own record. In the adjudicated record `percentageOverThisBasisPossible` is false for both figures,
+because no run of V2-E02B exists and the verdict is not eligible. In the adjudicated record `percentageOverThisBasisPossible` is false for both figures,
 because the set is not decided.
 
-**Two limits of these figures.** A reader of a later comparison needs both.
+**Two limits of these figures.** Each stands as a statement of what was measured.
 
 - `B_episode` does not hold the time in which no request completed. The section on each run
   states that time. The record of V2-E02B names this metric, and this page does not change it.
@@ -210,7 +217,7 @@ from any difference.
   does not state whether a reading with one omitted field has a value. The repository owner
   approved the stream reading on 2026-10-31. No tool reads that approval. On the readings of the
   runtime `readyReplicas` count alone, each run would be `INCONCLUSIVE`, no run would be counted,
-  and the verdict above would not exist. The `availableReplicas` count has the same gaps. The record
+  and the classification record would decide nothing. The `availableReplicas` count has the same gaps. The record
   does not state which fields a reading has to hold. V2-E02B has the same criterion, so a later
   record states this reading or does not, and this page does not decide that. That approval
   is a post-result choice, and a later approval does not make it preregistered.
@@ -236,7 +243,7 @@ inventory for `V2-S7-003-PR2`.
 | Item | Value |
 |---|---|
 | The last run | `e02a-3`, `PASSED`, finished at 2026-10-31T16:42:32Z |
-| Its executing commit | `ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b`, the merge of the G1 switch |
+| Its executing commit | `ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b`, the merge of the G1 switch, with [no authorization found before it](../../environment/v2-s7-004-pr1-switch-deviations.md) |
 | Its manifest and its run analysis | `9e1e8f12…` and `547bda5e…` |
 | The governing record | Revision 4, `3630fbf2…`, which stays the authority for these three runs |
 | The merge that holds the run evidence | `6db8161`, pull request #160 |
@@ -244,10 +251,11 @@ inventory for `V2-S7-003-PR2`.
 | The desired state that rule G3 restores | 2 API + 2 runtime, as revision 2 of V2-E02B states: `810b4b27…` and `6a1304a8…` |
 | Pinned inputs that this change moves | `tools/evidence_index/__init__.py` and `core.py`. Each record that pins them differs from its pin. No revision classifies them yet, so `V2-S7-003-PR2` inventories them for revision 3 of V2-E02B |
 
-Rule G3 restores the two files in one change merged into `main`, before the first V2-E02B run. That
-change needs the explicit authorization of the repository owner. This page does not give it, and
-this change makes no switch and registers no freeze record. No row of the classification record
-changes when `main` returns to the target: it reads no desired state of the working tree.
+Rule G3 restored the two files in one change merged into `main`, `a3ed812`. Rule G4 asks for the
+explicit authorization of the repository owner for that merge, and
+[none was found before it](../../environment/v2-s7-004-pr1-switch-deviations.md). This page gives
+none. No row of the classification record changed when `main` returned to the target: it reads no
+desired state of the working tree.
 
 ## The claim
 
@@ -258,8 +266,9 @@ the statement says that requests failed. The repository owner chose on 2026-11-0
 in this change, and no tool reads that choice. See
 [the ledger](../../testing/v2-s7-002-pr1-e02a-baseline-registration.v1alpha1.json).
 `V2-S7-004-PR1` narrows it to what executed and to the measured figures, and it withdraws the
-statements of validity and eligibility, through a twelfth ledger. The status stays `certified`,
-which says that executed records support the narrowed statement.
+statements of validity and eligibility, through a twelfth ledger. `E02A-AC2` becomes
+`not-evaluated` in each record. The status stays `certified`, which says that executed records
+support the narrowed statement.
 
 ## What this establishes, and what it does not
 
