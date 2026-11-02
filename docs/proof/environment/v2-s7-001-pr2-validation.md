@@ -27,6 +27,15 @@ tools.experiment_freeze --changes` lists no moved input of revision 4.
 
 ## The prerequisites, checked before any run
 
+> **Correction, 2026-11-02.** The third row below is not a pre-merge authorization. The G1
+> merge, `ff45093`, had no authorization of the repository owner before it merged, and the
+> confirmation that the row states came seven days after the merge. See
+> [the deviation page](v2-s7-004-pr1-switch-deviations.md).
+>
+> The state of each run below is not a statement of validity. On 2026-11-02 the current
+> eligibility verdict became `not-decided`, in
+> [the adjudicated record](../experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json).
+
 | Prerequisite | How it was checked | Outcome |
 |---|---|---|
 | `V2-S7-001-PR1` is merged | `git merge-base --is-ancestor` | Held |

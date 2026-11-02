@@ -387,7 +387,8 @@ def test_v2_e02a_alone_has_runs_and_the_one_driver_is_its_own() -> None:
     V2-E02A has a revision 4. Since V2-S7-001-PR2 it has three runs, each under
     that revision, with their corrections, and no other experiment has a run. Since
     V2-S7-002-PR1 it has the classification of those runs, their report, and their
-    reviews. Since V2-S7-003-PR2 V2-E02B has a revision 3, with no driver and no run."""
+    reviews. Since V2-S7-003-PR2 V2-E02B has a revision 3, with no driver and no run.
+    Since V2-S7-004-PR1 V2-E02A has an adjudication and the record that it gives."""
     revisions_of = {"V2-E04": 3, "V2-E02A": 4, "V2-E02B": 3}
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
@@ -398,6 +399,8 @@ def test_v2_e02a_alone_has_runs_and_the_one_driver_is_its_own() -> None:
                 "baseline-report.md",
                 "classification.v1alpha1.json",
                 "corrections",
+                "eligibility-adjudicated.v1alpha1.json",
+                "eligibility-adjudication.v1alpha1.json",
                 "procedure",
                 "reviews",
                 "runs",

@@ -116,12 +116,13 @@ which bind it. Revisions 1 and 2 of V2-E02B, revisions 1 to 4 of V2-E03, revisio
 of V2-E06, and every record of V2-E02A are kept unchanged. No run of V2-E02B exists, and
 nothing ran in that change.
 **Three runs added by `V2-S7-001-PR2`**: [the V2-E02A runs](#the-v2-e02a-runs) under
-revision 4, each `PASSED`, which for this characterization says that the run is valid.
-That change registers no record.
+revision 4, each with the manifest state `PASSED`. That change registers no record.
 **One classification added by `V2-S7-002-PR1`**: [the classification of the three
-runs](#the-classification-of-the-v2-e02a-set), which decides that the baseline is eligible
-for the comparison with V2-E02B. That change registers no freeze record, and it moves two pinned
-inputs of the records below, [as its section states](#the-classification-of-the-v2-e02a-set).
+runs](#the-classification-of-the-v2-e02a-set). That change registers no freeze record, and it
+moves two pinned inputs of the records below, [as its section states](#the-classification-of-the-v2-e02a-set).
+**One adjudicated verdict added by `V2-S7-004-PR1`**: [`not-decided`, in a new
+record](#the-adjudicated-verdict-of-the-v2-e02a-set), so the validity of the three runs is
+not established. That change registers no freeze record and edits none.
 A freeze record fixes an experiment family before its first
 result-bearing run. A record is not evidence: it says what a run must do and what counts as
 a pass. A run is evidence, and it is kept whatever its outcome.
@@ -2062,9 +2063,9 @@ the committed records. Not enforced:
 `V2-S7-001-PR2` executed the runs of V2-E02A under revision 4, at the merged commit
 `ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b`, on the docker-desktop provider with one node, on
 2026-10-31. Each run has one fault: the delete of the one runtime pod while RP-1 ran. The
-review of each run judged the seven validity criteria, and each held. Three runs are counted,
-so the set that the repetition rule requires is complete, and three of the six runs that
-one revision allows were started.
+review of each run judged the seven validity criteria on one reading of `E02A-AC2`, which
+[no source settles](#the-adjudicated-verdict-of-the-v2-e02a-set). Three runs are counted in the
+classification record, and three of the six runs that one revision allows were started.
 
 **One verdict rests on a reading that the owner approved after the evidence was read.**
 `E02A-AC2` limits the time between readings of a stream that have a value. The record does
@@ -2074,9 +2075,11 @@ the readings of each stream the largest time is 5.796 s, and on that one count e
 would be `INCONCLUSIVE` and none would be counted. The repository owner approved the
 stream reading on 2026-10-31. One correction of each run states this and four other
 statements, under [`v2-e02a/corrections`](v2-e02a/corrections/e02a-1/correction-1.v1alpha1.json).
+That approval is a post-result choice, and a later approval does not make it preregistered.
 
 **`PASSED` is not a reliability pass here.** V2-E02A is a characterization with validity
-criteria alone. The state says that a run is valid. Requests failed in each run.
+criteria alone. The state of a manifest is the judgment of the review of that run, and the
+validity of each run is not established. Requests failed in each run.
 
 | Run | State | Failed in the window | Caller failure episode | Largest time between two successes | Runtime at zero Ready endpoints, inner and outer | Stabilized recovery |
 |---|---|---:|---:|---:|---:|---:|
@@ -2097,8 +2100,8 @@ observation, and what the review could not compare.
 
 These runs do not establish that one runtime replica is or is not acceptable for any service.
 The desired state on `main` stayed at the baseline until [rule G3](#the-g3-switch-and-revision-3-of-v2-e02b). (Until
-`V2-S7-002-PR1` this paragraph said that these runs do not classify the set and do not decide
-that the baseline is eligible. The next section does that.)
+`V2-S7-002-PR1` this paragraph said that these runs do not classify the set. The next section
+does that.)
 
 ### The classification of the V2-E02A set
 
@@ -2110,10 +2113,11 @@ run directories. [The tool page](../../testing/comparison-eligibility.md) states
 [One independent review](v2-e02a/reviews/e02a-runs-review-1.md) of the three runs recomputed each
 figure from the raw files and found no value that differs. It is an automated session.
 
-**The baseline is eligible for the comparison with V2-E02B.** The rule asks that 2 of the 3
-counted runs show one of two conditions. A failure episode starts after the fault event in
-each of the three runs, about 30 s after it, by more than the clock margin. The verdict rests
-on that condition alone.
+**The classification record states the verdict `eligible`, and that is not the current
+verdict.** [The next section](#the-adjudicated-verdict-of-the-v2-e02a-set) states the current
+one. The rule asks that 2 of the 3 counted runs show one of two conditions. A failure episode
+starts after the fault event in each of the three runs, about 30 s after it, by more than the
+clock margin. The verdict of that record rests on that condition alone.
 
 **The second condition depends on a reading that the record does not state.** A zero-Ready
 interval is sampled, so its start lies between two reads. The first read that gave zero started
@@ -2134,6 +2138,63 @@ An eligibility verdict does not authorize a run of V2-E02B. It does not restore 
 state. The report hands the inventory of the last run to `V2-S7-003-PR2`, and each
 limitation of the runs stands: the owner approved the reading of `E02A-AC2` after the
 evidence was read, and on the readings of one count no run would be counted.
+
+### The adjudicated verdict of the V2-E02A set
+
+**The current eligibility verdict is `not-decided`.** It is stated in
+[a new record](v2-e02a/eligibility-adjudicated.v1alpha1.json), dated 2026-11-02, which
+`V2-S7-004-PR1` adds. `python -m tools.comparison_eligibility --check` builds it again from
+[the adjudication](v2-e02a/eligibility-adjudication.v1alpha1.json), the classification record,
+and the raw streams. No run executed in that change.
+
+**Why.** An automated session with no role in any run read the repository as it stood before
+the first fault and ruled that no source settles what "states a value" and "a reading with a
+value" mean for `E02A-AC2`. The sources lean towards a reading-level test, and they do not
+reach the test of the adjudication. The repository owner accepted the ruling on 2026-11-02,
+with its limits, and chose this verdict. No criterion is rewritten.
+
+**The two readings give two outcomes.** Each figure is computed from the raw streams, over the
+readings wholly inside the window, from the start of one reading to the start of the next. From
+the finish of one reading to the start of the next, as the section above measures, the largest
+gap is 5,796 ms on the reading scope and 22,043 ms to 25,104 ms on the field scope.
+
+| Run | Reading scope: largest gap of the four streams | Field scope: largest gap of runtime `readyReplicas` and of `availableReplicas` | Limit |
+|---|---:|---:|---:|
+| `e02a-1` | 6,001 ms | 26,304 ms | 10,000 ms |
+| `e02a-2` | 5,036 ms | 23,488 ms | 10,000 ms |
+| `e02a-3` | 7,057 ms | 23,115 ms | 10,000 ms |
+
+The reading scope holds in 3 of 3 runs, and the field scope in 0 of 3. A reading omits a count
+of zero, and it states that count as missing, not as zero. No reading in the three windows
+reports each of the eight Deployment counts of both tiers, so a test of every count cannot
+hold in any run. This does not state which reading is right.
+
+**What stays, and what does not.**
+
+- Each manifest keeps the state `PASSED`, because a correction cannot change the state of a
+  manifest, and each attempt keeps `counted: true` in the classification record. Neither
+  establishes validity.
+- The classification record keeps its bytes. Revision 3 of V2-E02B binds its digest and its
+  verdict in `definition.g3Provenance`, so that revision still says `eligible` until a
+  successor revision. That binding is not the current verdict.
+- V2-E03 and V2-E06 consume none of the three runs until the next unused registered revision
+  of each states how its population treats them.
+- The medians stay as measured figures of what executed, at C2. Without a valid baseline, no
+  before and after statement is permitted, and no percentage is stated.
+
+**The change moves two pinned inputs again.** A ledger is listed in
+`tools/evidence_index/core.py` and `__init__.py`, so the twelfth ledger moves both. No record
+is edited, and no revision classifies them yet. Each successor is the next unused registered
+revision at that time, read from the registry.
+
+| Record on 2026-11-02 | Its moved pins before this change | Moved by this change | Who classifies them |
+|---|---|---|---|
+| V2-E02B, revision 3 | None | Both files | The next revision of V2-E02B, before its first run. It also settles `E02B-AC2` |
+| V2-E02C, revision 2 | `core.py` of `tools/experiment_preregistration`, and both files | Both files again | The next revision of V2-E02C, before its first run |
+| V2-E03, revision 5 | None | Both files | The next revision of V2-E03, which states how its population treats the three runs |
+| V2-E04, revision 3 | Both files | Both files again | The next revision of V2-E04, before its first run |
+| V2-E05, revision 2 | `core.py` of `tools/experiment_preregistration`, and both files | Both files again | The next revision of V2-E05, before its first run |
+| V2-E06, revision 4 | None | Both files | The next revision of V2-E06, which states how its population treats the three runs |
 
 **The register holds one claim of these runs.** `V2-S7-002-PR1` adds
 `the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod` through
@@ -2169,6 +2230,10 @@ not change or waive it. The freeze record of the external review experiment, V2-
 not part of this change.
 
 ### The G1 switch and revision 4
+
+> **2026-11-02:** the G1 merge had no authorization of the repository owner before it merged.
+> [The deviation page](../environment/v2-s7-004-pr1-switch-deviations.md) states the merge, and
+> this section states the rule.
 
 `V2-S7-003-PR1` executes rule G1 of the V2-E02A record and registers revision 4 of that
 record, [`v2-e02a/freeze-r4.v1alpha1.json`](v2-e02a/freeze-r4.v1alpha1.json), with the
@@ -2232,6 +2297,11 @@ It also lists each latest record of another experiment whose pins the switch mov
 what each owes.
 
 ### The G3 switch and revision 3 of V2-E02B
+
+> **2026-11-02:** the G3 merge had no authorization of the repository owner before it merged.
+> [The deviation page](../environment/v2-s7-004-pr1-switch-deviations.md) states the merge, and
+> this section states the rule. No record in this repository shows that the merge reached a
+> cluster.
 
 `V2-S7-003-PR2` executes rule G3 of revision 4 of the V2-E02A record and registers revision
 3 of the V2-E02B record, [`v2-e02b/freeze-r3.v1alpha1.json`](v2-e02b/freeze-r3.v1alpha1.json),

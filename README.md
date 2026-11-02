@@ -192,8 +192,10 @@ Deployment's rolling-update bounds: one pod unavailable and no pod above the rep
 count. From `V2-S7-003-PR1` the committed release was the single-runtime baseline, two
 API replicas and one runtime replica, for the runs of V2-E02A: rule G1 of the V2-E02A
 freeze record switched it. `V2-S7-003-PR2` restores the two runtime replicas by rule G3,
-with the bytes that the target had before the switch. Each switch merges only with the
-explicit authorization of the repository owner. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
+with the bytes that the target had before the switch. Rule G4 asks for the explicit
+authorization of the repository owner for each switch, and neither merge had one before it
+merged: [the two deviations](docs/proof/environment/v2-s7-004-pr1-switch-deviations.md) state
+each merge. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
 two-replica release of chart `0.5.0` once, and two pods of each tier became Ready on one node:
 [the record](docs/proof/environment/v2-s4-002-pr2-validation.md). It establishes
 nothing about what a caller observes when an API pod or a runtime pod is lost.
@@ -366,16 +368,19 @@ not authorize, and revision 3 has no such exclusion: a valid run with no such sp
 too: its discovery is part of the recovery, not a condition of a valid run. An outcome
 reference applies the rule to declared inputs.
 Since `V2-S7-001-PR2` the baseline record has
-[three counted runs](docs/proof/experiments/README.md#the-v2-e02a-runs), each `PASSED`
-on the docker-desktop provider at C2. V2-E02A is a characterization with validity
-criteria alone, so that state says that a run is valid. It is not a reliability pass:
-two requests failed in each run. No run of the other four exists. Since `V2-S7-002-PR1`
-[the set is classified](docs/proof/experiments/v2-e02a/baseline-report.md): the baseline
-is eligible for the comparison with V2-E02B, because a failure episode starts after the
-fault in each of the three runs. That verdict states no comparison and no percentage, and
-it does not authorize a run of V2-E02B. The register holds one claim of the runs, certified
-at `C2`, which states that requests failed. (Until `V2-S7-002-PR1` this paragraph said that
-the set is not yet classified.)
+[three counted runs](docs/proof/experiments/README.md#the-v2-e02a-runs), each with the
+manifest state `PASSED` on the docker-desktop provider at C2. V2-E02A is a characterization
+with validity criteria alone, and that state is not a reliability pass: two requests failed
+in each run. No run of the other four exists. Since `V2-S7-002-PR1`
+[the set is classified](docs/proof/experiments/v2-e02a/baseline-report.md). Since
+`V2-S7-004-PR1` [the current eligibility verdict is `not-decided`](docs/proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json):
+no source that predates the first fault settles the meaning of `E02A-AC2`, so the validity
+of the three runs is not established. Their figures stay as measured figures of what
+executed, at C2. That verdict states no comparison and no percentage, no before and after
+statement is permitted without a valid baseline, and it does not authorize a run of
+V2-E02B. The register holds one claim of the runs, certified at `C2`, which states what
+executed and that requests failed. (Until `V2-S7-004-PR1` this paragraph gave the verdict of
+the classification record, which keeps its bytes.)
 Since `V2-S7-003-PR2` the record of V2-E02B is at
 [revision 3](docs/proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b),
 registered by the change that restores its target. That revision changes no criterion and

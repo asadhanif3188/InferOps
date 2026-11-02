@@ -9,6 +9,10 @@ The second part reads the committed record and the committed runs. It holds that
 record is what the runs give, that each run is listed, and that the record states no
 percentage and no V1 figure.
 
+The third part holds the adjudicated record: the two readings of E02A-AC2 on the raw
+streams, a disputed criterion, counted runs that stay counted and give no percentage,
+a refused reuse of the baseline, and the summaries of the current pages.
+
 Every check reads files from this repository and objects of its clone. No test
 starts a run, contacts a cluster, or reads the desired state of the working tree.
 """
@@ -17,6 +21,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
@@ -29,7 +34,12 @@ from tools import comparison_eligibility as eligibility
 from tools.analysis_replay import History
 from tools.analysis_replay.__main__ import history
 from tools.comparison_eligibility import (
+    ADJUDICATED_PATH,
+    ADJUDICATION_PATH,
     BASELINE_RECORD,
+    CONSUMERS,
+    CURRENT_PAGES,
+    CURRENT_TARGET_RECORD,
     ELIGIBLE,
     NOT_DECIDED,
     NOT_ELIGIBLE,
@@ -39,20 +49,30 @@ from tools.comparison_eligibility import (
     EligibilityRefused,
     Episode,
     Interval,
+    Reading,
     RunFacts,
     basis_of,
+    build_adjudicated_record,
+    check_adjudicated,
     check_committed,
     check_executing_commits,
+    check_surfaces,
     decide,
     judge_episode,
     judge_interval,
+    judge_reading,
+    reading_of,
     record_text,
+    stale_statements,
+    usable_baseline,
 )
 from tools.comparison_eligibility import core as module
 from tools.reliability_analysis import AGGREGATE_METRICS, RunResult
 
 pytestmark = pytest.mark.docs
 
+AC2_LIMIT_MS = 10_000
+REGISTRY = "docs/proof/experiments/registry.v1alpha1.json"
 FAULT = "2026-10-31T13:41:35.149Z"
 LATER = "2026-10-31T13:42:05.876Z"
 EARLIER = "2026-10-31T13:41:30.000Z"
@@ -801,3 +821,561 @@ def test_the_check_passes_on_the_committed_record() -> None:
 
 def test_an_unusable_argument_exits_two() -> None:
     assert command("--unknown").returncode == 2
+
+
+# --------------------------------------------------------------------------
+# The adjudicated record, which states the current verdict
+# --------------------------------------------------------------------------
+
+REASON = "No source settles the criterion."
+AT = "2026-10-31T13:41:{:02}.000Z"
+
+
+def reading(
+    second: int,
+    *,
+    answered: bool = True,
+    fault: bool = False,
+    null_member: bool = False,
+    refused: bool = False,
+    counts: Sequence[str] = ("serving-runtime.readyReplicas",),
+) -> Reading:
+    return Reading(
+        started_at=AT.format(second),
+        finished_at=AT.format(second),
+        answered=answered,
+        no_fault=not fault,
+        no_null_member=not null_member,
+        no_refused_tier=not refused,
+        counts=frozenset(counts),
+    )
+
+
+def has_ready(item: Reading) -> bool:
+    return "serving-runtime.readyReplicas" in item.counts
+
+
+def by_reading_scope(item: Reading) -> bool:
+    return item.has_value
+
+
+@pytest.fixture(scope="module")
+def adjudicated() -> dict[str, Any]:
+    text = (REPO_ROOT / ADJUDICATED_PATH).read_text(encoding="utf-8")
+    record: dict[str, Any] = json.loads(text)
+    return record
+
+
+def adjudicated_tree(tmp_path: Path) -> Path:
+    """A copy of what the adjudicated record reads, with the raw streams."""
+    refs = {
+        ADJUDICATION_PATH,
+        BASELINE_RECORD,
+        RECORD_PATH,
+        REGISTRY,
+        *(ref for _, ref in CONSUMERS),
+        *CURRENT_PAGES,
+    }
+    for ref in refs:
+        copied = tmp_path / ref
+        copied.parent.mkdir(parents=True, exist_ok=True)
+        copied.write_bytes((REPO_ROOT / ref).read_bytes())
+    for number in (1, 2, 3):
+        directory = f"{module.RUNS_DIRECTORY}/e02a-{number}"
+        (tmp_path / directory).mkdir(parents=True)
+        for name in ("declaration.json", *(f"{s}.jsonl" for s in module.STREAMS)):
+            shutil.copyfile(REPO_ROOT / directory / name, tmp_path / directory / name)
+    return tmp_path
+
+
+def rewrite(root: Path, ref: str, mutate: Callable[[dict[str, Any]], None]) -> None:
+    path = root / ref
+    document = json.loads(path.read_text(encoding="utf-8"))
+    mutate(document)
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+
+def test_a_reading_that_omits_a_deployment_count_has_no_value_on_the_field_reading() -> (
+    None
+):
+    """An omitted count is missing and not zero, and it opens a gap on one reading."""
+    line = {
+        "faults": [],
+        "read": {
+            "state": "answered",
+            "startedAt": AT.format(1),
+            "finishedAt": AT.format(2),
+        },
+        "tiers": [
+            {
+                "tier": "serving-runtime",
+                "state": "observed",
+                "readyReplicas": {"state": "missing"},
+                "replicas": {"state": "reported", "value": 1},
+            }
+        ],
+    }
+    parsed = reading_of(line)
+    assert parsed.has_value
+    assert "serving-runtime.replicas" in parsed.counts
+    assert "serving-runtime.readyReplicas" not in parsed.counts
+    assert not has_ready(parsed)
+
+
+def test_a_count_of_zero_that_a_reading_reports_has_a_value() -> None:
+    line = {
+        "faults": [],
+        "read": {
+            "state": "answered",
+            "startedAt": AT.format(1),
+            "finishedAt": AT.format(2),
+        },
+        "tiers": [
+            {
+                "tier": "serving-runtime",
+                "state": "observed",
+                "readyReplicas": {"state": "reported", "value": 0},
+            }
+        ],
+    }
+    assert has_ready(reading_of(line))
+
+
+def test_the_two_readings_of_the_criterion_give_two_outcomes() -> None:
+    """One stream, with the count omitted in the middle: the shape of the real runs."""
+    readings = [
+        reading(0),
+        reading(5, counts=()),
+        reading(10, counts=()),
+        reading(15, counts=()),
+        reading(20),
+    ]
+    stream = judge_reading(readings, by_reading_scope)
+    field = judge_reading(readings, has_ready)
+    assert (stream["held"], stream["largestGapStartToStartMs"]) == (True, 5000)
+    assert (field["held"], field["largestGapStartToStartMs"]) == (False, 20000)
+    assert stream["readingsWithAValue"] == 5
+    assert field["readingsWithAValue"] == 2
+
+
+def test_a_gap_of_exactly_the_limit_holds_and_one_more_does_not() -> None:
+    held = judge_reading([reading(0), reading(10)], by_reading_scope)
+    assert held["largestGapStartToStartMs"] == AC2_LIMIT_MS
+    assert held["held"]
+    over = judge_reading(
+        [reading(0), reading(11)],
+        by_reading_scope,
+    )
+    assert not over["held"]
+
+
+@pytest.mark.parametrize(
+    "first_or_last",
+    [
+        [reading(0, answered=False), reading(5), reading(10)],
+        [reading(0), reading(5), reading(10, answered=False)],
+    ],
+    ids=["first", "last"],
+)
+def test_the_first_and_the_last_reading_must_each_have_a_value(
+    first_or_last: list[Reading],
+) -> None:
+    judged = judge_reading(first_or_last, by_reading_scope)
+    assert judged["firstAndLastHaveAValue"] is False
+    assert judged["held"] is False
+
+
+@pytest.mark.parametrize(
+    "shown",
+    [
+        {"answered": False},
+        {"fault": True},
+        {"null_member": True},
+        {"refused": True},
+    ],
+    ids=["unanswered", "a-fault", "a-null-member", "a-refused-tier"],
+)
+def test_each_variant_of_the_reading_scope_takes_a_value_away(
+    shown: dict[str, Any],
+) -> None:
+    assert not reading(0, **shown).has_value
+
+
+def test_a_stream_with_no_reading_in_the_window_holds_nothing() -> None:
+    judged = judge_reading([], by_reading_scope)
+    assert judged["held"] is False
+    assert judged["largestGapStartToStartMs"] is None
+
+
+def test_a_disputed_criterion_leaves_a_set_that_shows_the_rule_not_decided() -> None:
+    """The conditions hold, and the verdict does not follow from them."""
+    runs = showing(3, episodes=[episode()])
+    assert decide(runs)["verdict"] == ELIGIBLE
+    decided = decide(runs, REASON)
+    assert decided["verdict"] == NOT_DECIDED
+    assert decided["restsOn"] == []
+    assert decided["statement"] == REASON
+    assert decided["conditions"]["failureEpisode"]["held"] is True
+
+
+def test_a_disputed_criterion_does_not_become_a_negative_result() -> None:
+    assert decide(showing(0))["verdict"] == NOT_ELIGIBLE
+    assert decide(showing(0), REASON)["verdict"] == NOT_DECIDED
+
+
+@pytest.mark.parametrize("reason", ["", "   ", "\n"])
+def test_a_blank_reason_is_refused(reason: str) -> None:
+    with pytest.raises(EligibilityRefused, match="eligibility-adjudication"):
+        decide(showing(3), reason)
+
+
+def test_counted_runs_of_a_disputed_criterion_give_no_percentage() -> None:
+    """A run that stays counted does not carry a percentage with it."""
+    figure = basis_of("requests-failed-since-fault", 2, NOT_DECIDED)
+    assert figure["basis"] == "positive"
+    assert figure["percentageOverThisBasisPossible"] is False
+    assert "not decided" in figure["statement"]
+    assert "not eligible" not in figure["statement"]
+
+
+@pytest.mark.parametrize("consumer", ["V2-E02B", "V2-E03", "V2-E06"])
+def test_a_disputed_baseline_is_refused_to_each_consumer(
+    adjudicated: dict[str, Any], consumer: str
+) -> None:
+    with pytest.raises(EligibilityRefused, match="eligibility-disputed") as refused:
+        usable_baseline(adjudicated, consumer)
+    assert consumer in str(refused.value)
+    assert NOT_DECIDED in str(refused.value)
+
+
+def test_only_an_eligible_verdict_gives_the_figures(
+    adjudicated: dict[str, Any], committed: dict[str, Any]
+) -> None:
+    """The control of the refusal, and a reader of the old record is not refused it.
+
+    The old record says eligible, so a reader that reads it gets the figures. Only
+    the adjudicated record states the current verdict, and the two are held apart."""
+    assert usable_baseline(committed, "V2-E02B") == committed["comparisonFigures"]
+    assert committed["eligibility"]["verdict"] == ELIGIBLE
+    assert adjudicated["classificationRecord"]["verdict"] == ELIGIBLE
+    assert adjudicated["eligibility"]["verdict"] == NOT_DECIDED
+
+
+def test_no_record_of_a_consumer_reads_a_run_of_the_set(
+    adjudicated: dict[str, Any],
+) -> None:
+    rows = {row["experiment"]: row for row in adjudicated["consumers"]}
+    assert {name: row["latestRevision"] for name, row in rows.items()} == {
+        "V2-E02B": 3,
+        "V2-E03": 5,
+        "V2-E06": 4,
+    }
+    assert all(row["consumesRuns"] == [] for row in rows.values())
+    assert all(
+        "next unused registered revision" in r["statement"] for r in rows.values()
+    )
+    for experiment in ("v2-e02b", "v2-e03", "v2-e06"):
+        directory = REPO_ROOT / "docs/proof/experiments" / experiment
+        assert not (directory / "runs").exists(), f"{experiment} has a run"
+
+
+def test_the_adjudicated_record_is_what_its_inputs_give() -> None:
+    held = (REPO_ROOT / ADJUDICATED_PATH).read_text(encoding="utf-8")
+    assert record_text(build_adjudicated_record()) == held.replace("\r\n", "\n")
+    assert check_adjudicated() == []
+
+
+def test_the_verdict_is_the_existing_string_and_states_the_adjudicated_reason(
+    adjudicated: dict[str, Any],
+) -> None:
+    source = json.loads((REPO_ROOT / ADJUDICATION_PATH).read_text(encoding="utf-8"))
+    decided = adjudicated["eligibility"]
+    assert decided["verdict"] == NOT_DECIDED == "not-decided"
+    assert decided["restsOn"] == []
+    assert decided["statement"] == source["reason"]
+    assert source["ruling"] == "not-settled"
+    assert "verdict" not in source
+    assert adjudicated["adjudication"]["contentSha256"] == eligibility.core.lf_digest(
+        (REPO_ROOT / ADJUDICATION_PATH).read_bytes()
+    )
+
+
+def test_the_record_states_both_readings_of_the_raw_streams(
+    adjudicated: dict[str, Any],
+) -> None:
+    """The figures that the owner saw, computed again from the raw streams."""
+    readings = adjudicated["readingsOfTheCriterion"]
+    assert readings["runsHoldingTheReadingScope"] == 3
+    assert readings["runsHoldingTheFieldScope"] == 0
+    assert readings["limitMs"] == AC2_LIMIT_MS
+    rows = {row["runId"]: row for row in readings["runs"]}
+    expected = {
+        "e02a-1": (166, 160, 26304, 25104),
+        "e02a-2": (188, 182, 23488, 22417),
+        "e02a-3": (178, 172, 23115, 22043),
+    }
+    for run_id, (window, valued, start_gap, finish_gap) in expected.items():
+        row = rows[run_id]
+        for field in ("readyReplicas", "availableReplicas"):
+            count = row["fieldScope"][f"serving-runtime.{field}"]
+            assert count["readingsInWindow"] == window
+            assert count["readingsWithAValue"] == valued
+            assert count["largestGapStartToStartMs"] == start_gap
+            assert count["largestGapFinishToNextStartMs"] == finish_gap
+            assert count["held"] is False
+        assert row["everyCount"]["readingsWithAValue"] == 0
+        assert row["everyCount"]["held"] is False
+        for stream in row["readingScope"].values():
+            assert stream["held"] is True
+            assert stream["readingsWithAValue"] == stream["readingsInWindow"]
+            assert stream["answered"] == stream["readingsInWindow"]
+            assert stream["noNullMember"] == stream["readingsInWindow"]
+            assert stream["noRefusedTier"] == stream["readingsInWindow"]
+    assert (
+        max(
+            stream["largestGapStartToStartMs"]
+            for row in rows.values()
+            for stream in row["readingScope"].values()
+        )
+        == 7057
+    )
+
+
+def test_each_attempt_stays_counted_and_no_attempt_has_established_validity(
+    adjudicated: dict[str, Any], committed: dict[str, Any]
+) -> None:
+    for row, attempt in zip(
+        adjudicated["attempts"], committed["attempts"], strict=True
+    ):
+        assert row["runId"] == attempt["runId"]
+        assert row["counted"] is attempt["counted"] is True
+        assert row["state"] == attempt["state"] == "PASSED"
+        assert row["validityEstablished"] is False
+        assert row["manifestSha256"] == attempt["manifestSha256"]
+    assert "does not establish validity" in adjudicated["attemptsStatement"]
+
+
+def test_the_record_states_its_own_target_and_the_limit_of_that_target(
+    adjudicated: dict[str, Any], committed: dict[str, Any]
+) -> None:
+    target = adjudicated["targetRecord"]
+    assert target["path"] == CURRENT_TARGET_RECORD
+    assert TARGET_RECORD.endswith("freeze-r2.v1alpha1.json")
+    assert target["revision"] == 3
+    assert target["boundVerdict"] == ELIGIBLE
+    assert "still says eligible until a successor revision" in target["statement"]
+    assert committed["handoff"]["targetDesiredState"]["freezeRecord"]["revision"] == 2
+
+
+def test_the_record_gives_no_percentage_and_states_its_limits(
+    adjudicated: dict[str, Any],
+) -> None:
+    text = record_text(adjudicated)
+    assert "%" not in text
+    for figure in adjudicated["comparisonFigures"].values():
+        assert figure["percentageOverThisBasisPossible"] is False
+    limits = " ".join(adjudicated["limitations"])
+    for phrase in (
+        "not not-eligible",
+        "counted: true",
+        "post-result choice",
+        "still says eligible",
+        "next unused registered revision",
+        "no before and after statement is permitted",
+    ):
+        assert phrase in limits
+    assert any("is valid" in item for item in adjudicated["doesNotEstablish"])
+
+
+@pytest.mark.parametrize("path", V1_RECORDS)
+def test_the_adjudicated_record_states_no_timing_of_a_v1_record(
+    adjudicated: dict[str, Any], path: str
+) -> None:
+    timings = json.loads((REPO_ROOT / path).read_text(encoding="utf-8"))["timings"]
+    text = record_text(adjudicated)
+    for figure in (value for value in timings.values() if type(value) is int):
+        for form in (str(figure), f"{figure:,}"):
+            assert re.search(rf"(?<![0-9a-f,]){form}(?![0-9a-f,])", text) is None
+
+
+def test_the_built_record_needs_only_its_declared_inputs(tmp_path: Path) -> None:
+    """The control of each refusal below: the unedited copy gives the same record."""
+    root = adjudicated_tree(tmp_path)
+    assert build_adjudicated_record(root) == build_adjudicated_record()
+
+
+@pytest.mark.parametrize(
+    ("mutate", "rule"),
+    [
+        (lambda d: d.update(ruling="settled"), "eligibility-adjudication"),
+        (lambda d: d.update(verdict="eligible"), "eligibility-adjudication"),
+        (lambda d: d.pop("reason"), "eligibility-adjudication"),
+        (lambda d: d.update(reason="   "), "eligibility-adjudication"),
+        (lambda d: d.update(reason=3), "eligibility-adjudication"),
+        (lambda d: d.update(criterion="E02A-AC3"), "eligibility-adjudication"),
+        (lambda d: d.update(schema="another"), "eligibility-adjudication"),
+    ],
+    ids=[
+        "another-ruling",
+        "a-verdict",
+        "no-reason",
+        "a-blank-reason",
+        "a-reason-that-is-not-text",
+        "another-criterion",
+        "another-schema",
+    ],
+)
+def test_an_adjudication_input_that_is_not_the_one_ruling_is_refused(
+    tmp_path: Path, mutate: Callable[[dict[str, Any]], Any], rule: str
+) -> None:
+    root = adjudicated_tree(tmp_path)
+    rewrite(root, ADJUDICATION_PATH, mutate)
+    with pytest.raises(EligibilityRefused, match=rule):
+        build_adjudicated_record(root)
+
+
+def test_no_adjudication_input_is_refused(tmp_path: Path) -> None:
+    root = adjudicated_tree(tmp_path)
+    (root / ADJUDICATION_PATH).unlink()
+    with pytest.raises(EligibilityRefused, match="eligibility-adjudication"):
+        build_adjudicated_record(root)
+
+
+def test_a_classification_record_with_other_bytes_is_refused(tmp_path: Path) -> None:
+    """Revision 3 of V2-E02B binds the bytes, so an edit of the old verdict is refused."""
+    root = adjudicated_tree(tmp_path)
+    path = root / RECORD_PATH
+    text = path.read_text(encoding="utf-8")
+    assert text.count('"verdict": "eligible"') == 1
+    path.write_text(
+        text.replace('"verdict": "eligible"', '"verdict": "not-decided"'),
+        encoding="utf-8",
+    )
+    with pytest.raises(EligibilityRefused, match="eligibility-bound"):
+        build_adjudicated_record(root)
+
+
+def test_an_attempt_that_is_not_counted_is_refused(tmp_path: Path) -> None:
+    """The record says that each attempt stays counted, so that has to hold."""
+    root = adjudicated_tree(tmp_path)
+    path = root / RECORD_PATH
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["attempts"][0]["counted"] = False
+    path.write_text(record_text(document), encoding="utf-8")
+    bound = eligibility.core.lf_digest(path.read_bytes())
+
+    def retarget(record: dict[str, Any]) -> None:
+        record["definition"]["g3Provenance"]["classification"]["contentSha256"] = bound
+
+    rewrite(root, CURRENT_TARGET_RECORD, retarget)
+    registry = json.loads((root / REGISTRY).read_text(encoding="utf-8"))
+    for row in registry["records"]:
+        if row["path"] == CURRENT_TARGET_RECORD:
+            row["contentSha256"] = eligibility.core.lf_digest(
+                (root / CURRENT_TARGET_RECORD).read_bytes()
+            )
+    (root / REGISTRY).write_text(json.dumps(registry), encoding="utf-8")
+    with pytest.raises(EligibilityRefused, match="an attempt of the record"):
+        build_adjudicated_record(root)
+
+
+def test_a_freeze_record_that_states_another_criterion_is_refused() -> None:
+    record = {
+        "fields": {
+            "acceptanceCriteria": [
+                {"value": [{"id": module.AC2_ID, "statement": "Another sentence."}]}
+            ]
+        }
+    }
+    with pytest.raises(EligibilityRefused, match="eligibility-criterion"):
+        module._hold_criterion(record)
+
+
+def test_a_stream_with_no_reading_is_refused(tmp_path: Path) -> None:
+    root = adjudicated_tree(tmp_path)
+    path = root / module.RUNS_DIRECTORY / "e02a-2" / "argo.jsonl"
+    path.write_text('{"record":"end"}\n', encoding="utf-8")
+    with pytest.raises(EligibilityRefused, match="eligibility-stream"):
+        build_adjudicated_record(root)
+
+
+def test_a_stream_that_is_absent_is_refused(tmp_path: Path) -> None:
+    root = adjudicated_tree(tmp_path)
+    (root / module.RUNS_DIRECTORY / "e02a-3" / "pods.jsonl").unlink()
+    with pytest.raises(EligibilityRefused, match="eligibility-stream"):
+        build_adjudicated_record(root)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "The baseline is eligible for the comparison.",
+        "The set meets the rule.",
+        "The set is eligible.",
+        "The seven validity criteria hold in each run.",
+        "The seven criteria of the record hold.",
+        "Each of the seven criteria held.",
+        "The state says that a run is valid.",
+        "It says that the run is valid.",
+        "The baseline\nis eligible.",
+    ],
+)
+def test_a_summary_that_states_the_withdrawn_verdict_is_found(sentence: str) -> None:
+    assert stale_statements(sentence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "The current eligibility verdict is `not-decided`.",
+        "The classification record states the verdict `eligible`, and that is not the current verdict.",
+        "No input can make a set eligible.",
+    ],
+)
+def test_a_page_may_state_the_current_verdict(sentence: str) -> None:
+    assert stale_statements(sentence) == []
+
+
+def test_each_current_page_states_the_adjudicated_verdict() -> None:
+    assert check_surfaces() == []
+
+
+def test_a_current_page_with_a_stale_summary_fails_the_check(tmp_path: Path) -> None:
+    root = adjudicated_tree(tmp_path)
+    assert check_surfaces(root) == []
+    (page,) = [ref for ref in CURRENT_PAGES if ref == "README.md"]
+    with (root / page).open("a", encoding="utf-8") as stream:
+        stream.write("\nThe baseline is eligible.\n")
+    assert check_surfaces(root) == [f"{page}: baseline is eligible"]
+
+
+def test_a_current_page_that_loses_the_record_fails_the_check(tmp_path: Path) -> None:
+    root = adjudicated_tree(tmp_path)
+    page = "docs/testing/comparison-eligibility.md"
+    path = root / page
+    text = path.read_text(encoding="utf-8")
+    path.write_text(
+        text.replace("eligibility-adjudicated.v1alpha1.json", "other.json"),
+        encoding="utf-8",
+    )
+    assert check_surfaces(root) == [f"{page} does not name the adjudicated record"]
+
+
+def test_an_edited_adjudicated_record_fails_the_check(tmp_path: Path) -> None:
+    root = adjudicated_tree(tmp_path)
+    path = root / ADJUDICATED_PATH
+    shutil.copyfile(REPO_ROOT / ADJUDICATED_PATH, path)
+    assert check_adjudicated(root) == []
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text.replace('"not-decided"', '"eligible"'), encoding="utf-8")
+    assert check_adjudicated(root) == [f"{ADJUDICATED_PATH} is not what is built"]
+
+
+def test_the_command_prints_the_adjudicated_record() -> None:
+    done = command("--adjudicated")
+    assert done.returncode == 0, done.stderr
+    assert json.loads(done.stdout)["eligibility"]["verdict"] == NOT_DECIDED
+
+
+def test_the_two_options_exclude_each_other() -> None:
+    assert command("--adjudicated", "--check").returncode == 2

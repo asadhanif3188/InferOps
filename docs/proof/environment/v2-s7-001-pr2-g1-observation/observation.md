@@ -13,6 +13,12 @@ no run identifier, and it states no result of any experiment.
 - **The outcome:** OBSERVATION HELD in attempt `g1-2`. Attempt `g1-1` stopped in its
   preparation, and it is kept.
 
+> **Correction, 2026-11-02.** The third item above is not a pre-merge authorization. No
+> authorization of the G1 merge, `ff45093`, was given before it merged. The statement of
+> 2026-10-30 came seven days after the merge. It came before the first installation of the
+> release and before the first fault, and it does not change the time of the merge. See
+> [the deviation page](../v2-s7-004-pr1-switch-deviations.md).
+
 ## The two attempts
 
 | Attempt | Date | What happened | File |
@@ -85,7 +91,9 @@ It does not establish:
 - the behaviour of the release while a pod is lost;
 - that the host has enough memory for a run: a run adds the collectors, the runner, and the
   requests;
-- that the owner authorization is held by a tool: it is stated by the merge and by the owner.
+- that the owner authorization is held by a tool: it is stated by the merge and by the owner;
+- that the G1 merge was authorized before it merged (2026-11-02: it was not, and
+  [the deviation page](../v2-s7-004-pr1-switch-deviations.md) states the merge).
 
 ## How the files were prepared
 

@@ -159,8 +159,8 @@
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
     "postReleaseRegisterChanges": 24,
-    "evidenceSetSha256": "56cbeeb218ffe44dcd46b8b27c90d18f0f953e95c7c84610f24f83f1602fded1",
-    "evidencePackSha256": "80e7a92d7d6e324113734f3f742303352519f1225d0601b2a1241f2d3be2016b",
+    "evidenceSetSha256": "6cbb89b4d2a285be3fa92bf9aba5ac10bfd75fdb96c862874fa9de30659b2ddb",
+    "evidencePackSha256": "a22dffc61cde12816b5d7eb69c079d89a7962f5e488530d32490462bb7801fcf",
     "releasedPack": {
       "tag": "v1.0.0",
       "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
@@ -11996,8 +11996,8 @@
         },
         {
           "path": "docs/proof/experiments/v2-e02a/baseline-report.md",
-          "sha256": "c09feffd46c474071fc4c2f5dbc13d845fc3f1090fb66fa538152aa7ef4c690d",
-          "gitBlob": "8fddd5d3efa9e76f9c1ad31d54a02bbf3143992c",
+          "sha256": "fd672b25ad9c8b41447a0afab8eda1829bbdbdc0afc27cad84f8b469ce408314",
+          "gitBlob": "e77cebe6deec3f8bfe83b6356dd4804e8b259be1",
           "recordedDate": null,
           "authorisationSection": false,
           "corrections": []
@@ -12420,8 +12420,8 @@
         },
         {
           "path": "docs/proof/experiments/v2-e02a/baseline-report.md",
-          "sha256": "c09feffd46c474071fc4c2f5dbc13d845fc3f1090fb66fa538152aa7ef4c690d",
-          "gitBlob": "8fddd5d3efa9e76f9c1ad31d54a02bbf3143992c",
+          "sha256": "fd672b25ad9c8b41447a0afab8eda1829bbdbdc0afc27cad84f8b469ce408314",
+          "gitBlob": "e77cebe6deec3f8bfe83b6356dd4804e8b259be1",
           "recordedDate": null,
           "authorisationSection": false,
           "corrections": []
@@ -12844,8 +12844,8 @@
         },
         {
           "path": "docs/proof/experiments/v2-e02a/baseline-report.md",
-          "sha256": "c09feffd46c474071fc4c2f5dbc13d845fc3f1090fb66fa538152aa7ef4c690d",
-          "gitBlob": "8fddd5d3efa9e76f9c1ad31d54a02bbf3143992c",
+          "sha256": "fd672b25ad9c8b41447a0afab8eda1829bbdbdc0afc27cad84f8b469ce408314",
+          "gitBlob": "e77cebe6deec3f8bfe83b6356dd4804e8b259be1",
           "recordedDate": null,
           "authorisationSection": false,
           "corrections": []

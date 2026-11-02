@@ -168,7 +168,7 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after the seven post-release ledgers, which no release quotes | `56cbeeb218ffe44dcd46b8b27c90d18f0f953e95c7c84610f24f83f1602fded1` | `80e7a92d7d6e324113734f3f742303352519f1225d0601b2a1241f2d3be2016b` |
+| **Current:** `main` after the seven post-release ledgers, which no release quotes | `6cbb89b4d2a285be3fa92bf9aba5ac10bfd75fdb96c862874fa9de30659b2ddb` | `a22dffc61cde12816b5d7eb69c079d89a7962f5e488530d32490462bb7801fcf` |
 
 The released pair is not read from a ledger. The index undoes the seven post-release
 ledgers' changes, last first, renders the register as it was, and takes both digests

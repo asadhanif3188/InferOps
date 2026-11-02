@@ -1,0 +1,65 @@
+{
+  "adjudicator": {
+    "description": "One automated session with no role in any run. It worked read-only, and it ran no code of this repository.",
+    "independenceLimits": [
+      "The adjudicator is an automated session and not a person. It may be the same model that wrote these tools, so their wording may seem more familiar to it.",
+      "The session that ran the runs set up the adjudication and checked each quote. It did not rule.",
+      "The input held no history of the repository, so the reason that revision 1 used these words is not known from the input.",
+      "The context of the session held a one-line note that the runs passed and that a reading of the criterion was later approved. The note did not say which reading. Knowing that an owner decided could bias it towards this ruling.",
+      "The adjudicator searched the files of the repository and did not read them all."
+    ],
+    "input": "An export of the last commit of main before the first fault, ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, which holds no run of V2-E02A, and an export of the requirements of that date. It received the criterion, the question, and the test. It did not receive the run results, a list of sources, or a recommendation.",
+    "kind": "automated"
+  },
+  "criterion": "E02A-AC2",
+  "decidedBy": "The repository owner accepted the ruling on 2026-11-02, with its limits, and chose the verdict not-decided. No tool reads that choice.",
+  "decidedOn": "2026-11-02",
+  "doesNotEstablish": [
+    "That the field reading applies.",
+    "That any run failed a criterion.",
+    "Which reading of the criterion is right."
+  ],
+  "experimentId": "V2-E02A",
+  "reason": "No source that predates the first fault of V2-E02A, 2026-10-31T13:41:35Z, uniquely specifies what \"states a value\" and \"a reading with a value\" mean for E02A-AC2. The sources lean towards a reading-level test, and they do not settle it. So the validity of the three counted runs is not established, and the rule is not applied to them.",
+  "ruling": "not-settled",
+  "schema": "inferops.io/eligibility-adjudication/v1alpha1",
+  "sourceRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+  "sources": [
+    {
+      "at": "tools/experiment_timeline/core.py:307-308",
+      "bearing": "Same verb, in the reader that the criterion names. It runs one way: an answered read is necessary, and the sentence does not say sufficient.",
+      "words": "states a value only when its read answered"
+    },
+    {
+      "at": "tools/experiment_timeline/core.py:1481",
+      "bearing": "Here the phrase means a non-null member, in a form check.",
+      "words": "{member} states a value, and the read is {state}"
+    },
+    {
+      "at": "docs/environment/experiment-timelines.md:207-208",
+      "bearing": "An answered read alone is not sufficient.",
+      "words": "A reading that answered and cannot be reduced without a guess states no value"
+    },
+    {
+      "at": "docs/environment/experiment-timelines.md:317-319",
+      "bearing": "The page treats a refused tier as no value, and the code at tools/experiment_timeline/core.py:1481 does not, so the two disagree at that boundary.",
+      "words": "A reading that answered and states no value for the stream gives a change to `refused`"
+    },
+    {
+      "at": "tools/reliability_analysis/core.py:374-376",
+      "bearing": "The same words at signal scope, in a pinned sibling tool. Nothing connects them to the criterion.",
+      "words": "So a signal of a Deployment count has no value in a reading in which the count is zero."
+    },
+    {
+      "at": "tools/experiment_e02a/core.py:31-32",
+      "bearing": "No code judges the criterion.",
+      "words": "The review of the run judges the criteria"
+    },
+    {
+      "at": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json:998-1000",
+      "bearing": "The name is stream-level, which is consistent with a reading-level test. The sentence repeats the disputed words.",
+      "words": "A stream that a criterion reads was refused by its reader, or has more than 10 s between two consecutive readings with a value inside the window."
+    }
+  ],
+  "test": "A source settles the meaning only if a careful reader, applying that source to E02A-AC2, can reach exactly one reading. A source that is merely consistent with a reading does not settle it. A source that defines the same word for a different purpose settles it only if something connects that definition to this criterion."
+}
