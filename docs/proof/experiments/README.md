@@ -2165,10 +2165,11 @@ gap is 5,796 ms on the reading scope and 22,043 ms to 25,104 ms on the two runti
 | `e02a-3` | 7,057 ms | 23,115 ms | 10,000 ms |
 
 The reading scope holds in 3 of 3 runs. The two runtime counts in the third column hold in
-0 of 3. No source selects those two counts for `E02A-AC2`. Revision 4 predates the first fault:
-it names the signal `runtime-ready-replicas`, it reads `readyReplicas` in P6, in the stable
-window, and in the cleanup, and it lists both counts among its measurements. Nothing connects
-those uses to this criterion. A reading omits a count of zero, and it states that count as
+0 of 3. The review chose those two after the evidence was read, and no source selects them for
+`E02A-AC2`. Revision 4 predates the first fault: it names the signal `runtime-ready-replicas`, it
+reads `readyReplicas` in P6, in the stable window, and in the cleanup, and it lists both counts
+among its measurements. Those uses name no criterion, and the adjudication cites none of them. A
+reading omits a count of zero, and it states that count as
 missing, not as zero. Each other count but `unavailableReplicas` is reported in each reading of each window, so a
 field reading of one of those counts would give another outcome. No reading in the three windows
 reports each of the eight Deployment counts of both tiers, so a test of every count cannot hold

@@ -293,12 +293,11 @@ _ADJUDICATION_MEMBERS: Final = frozenset(
 _DATE: Final = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
 
 #: A sentence that a current page no longer states. A page of a past change is not
-#: read, and neither is a record of history. A list item that opens with "That the
-#: baseline" is an item of what a page does not establish.
+#: read, and neither is a record of history.
 _STALE_STATEMENTS: Final[tuple[re.Pattern[str], ...]] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
-        r"(?-i:(?<!- That the ))\bbaseline (?:is|was) [`*]*eligible\b",
+        r"\bbaseline (?:is|was) [`*]*eligible\b",
         r"\bset (?:(?:is|was) [`*]*eligible|meets)\b",
         r"\bseven (?:validity )?criteria (?:of the record )?(?:hold|held)\b",
         r"\bseven validity criteria, and each held\b",
@@ -313,6 +312,10 @@ _STALE_STATEMENTS: Final[tuple[re.Pattern[str], ...]] = tuple(
 _INSTANT: Final = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", re.ASCII)
 _RUN_ID: Final = re.compile(r"e02a-([1-9][0-9]*)")
 _CLOCK_BOUND: Final = re.compile(r"^clock bound: ([0-9]+) ms$", re.MULTILINE)
+
+#: One item of what the profile page does not establish. A test of that page holds
+#: these words, so the check does not read them.
+_PINNED_ITEM: Final = "- That the baseline is eligible for an experiment. The result is"
 
 #: Each refusal, by rule.
 RULES: Final[Mapping[str, str]] = {
@@ -396,11 +399,14 @@ _SELECTION_STATEMENT: Final = (
     "readingScope asks whether a reading has a value, with all three variants together: "
     "the read answered, with no fault, no null member, and no refused tier. "
     "selectedRuntimeCounts asks whether a reading reports one runtime count, for the two "
-    "counts that the review of each run reported on. No source selects those two "
-    "counts for E02A-AC2. Revision 4 predates the first fault. It names the signal "
-    "runtime-ready-replicas, it reads readyReplicas in P6, in the stable window, and in "
-    "the cleanup, and it lists both counts among its measurements. Nothing connects "
-    "those uses to this criterion. everyCount asks whether a reading reports each of "
+    "counts that the review of each run reported on. The review chose those two after "
+    "the evidence was read, and no source selects them for E02A-AC2. Revision 4 predates "
+    "the first fault. It names the signal runtime-ready-replicas, it reads readyReplicas "
+    "in P6, in the stable window, and in the cleanup, and it lists both counts among "
+    "its measurements. Those uses name no criterion, and the adjudication cites none of "
+    "them. It cites tools/reliability_analysis/core.py, where a signal of a Deployment "
+    "count has no value in a reading in which the count is zero, and it states that "
+    "nothing connects that to E02A-AC2. everyCount asks whether a reading reports each of "
     "the eight Deployment counts of both tiers. This record does not state which of "
     "these is the criterion."
 )
@@ -1344,8 +1350,13 @@ def _holds_both_counts(row: Mapping[str, Any]) -> bool:
 
 
 def _hold_criterion(baseline: Mapping[str, Any]) -> None:
-    (part,) = _dig(baseline, "fields", "acceptanceCriteria")
-    rows = [row for row in _dig(part, "value") if row.get("id") == AC2_ID]
+    parts = _dig(baseline, "fields", "acceptanceCriteria")
+    rows = [
+        row
+        for part in (parts if isinstance(parts, list) else [])
+        for row in _dig(part, "value")
+        if isinstance(row, Mapping) and row.get("id") == AC2_ID
+    ]
     if [row.get("statement") for row in rows] != [AC2_STATEMENT]:
         raise EligibilityRefused(
             "eligibility-criterion", "the record does not state the criterion"
@@ -1525,7 +1536,7 @@ def usable_baseline(consumer: str, root: Path = REPO_ROOT) -> dict[str, Any]:
 
 def stale_statements(text: str) -> list[str]:
     """Each sentence of ``text`` that a current page no longer states."""
-    joined = " ".join(text.split())
+    joined = " ".join(text.split()).replace(_PINNED_ITEM, "")
     return [hit.group(0) for rule in _STALE_STATEMENTS for hit in rule.finditer(joined)]
 
 

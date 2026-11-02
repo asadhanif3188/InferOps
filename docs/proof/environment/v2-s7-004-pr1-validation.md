@@ -44,6 +44,8 @@ settles the meaning of `E02A-AC2`. The validity of the three runs is not establi
 | [The G1 observation](v2-s7-001-pr2-g1-observation/observation.md) | A dated note on the authorization. No ledger cites this page, so no digest of a ledger moves |
 | [The validation of the runs](v2-s7-001-pr2-validation.md) | A dated note at the top. No ledger cites this page |
 | [The validation of the G3 switch](v2-s7-003-pr2-validation.md) | A dated note at the top. No ledger cites this page |
+| [The changelog](../../../CHANGELOG.md), [the testing index](../../testing/README.md), and [the test inventory](../../testing/test-inventory.md) | One entry, one row, and the statement of the suite. The test inventory holds a second file, its JSON form |
+| [The evidence index](../v1-evidence-index.md), and its JSON form | The digests of each cited file that moved, and of the current pack |
 
 ## The decisions of this change
 

@@ -1198,7 +1198,7 @@ def test_the_record_states_both_readings_of_the_raw_streams(
     readings = adjudicated["readingsOfTheCriterion"]
     assert readings["runsHoldingTheReadingScope"] == 3
     assert readings["runsHoldingBothRuntimeCounts"] == 0
-    assert "No source selects those two counts for E02A-AC2" in readings["statement"]
+    assert "no source selects them for E02A-AC2" in readings["statement"]
     assert readings["limitMs"] == AC2_LIMIT_MS
     rows = {row["runId"]: row for row in readings["runs"]}
     expected = {
@@ -1267,7 +1267,8 @@ def test_the_record_names_where_revision_4_reads_the_two_counts(
         "runtime-ready-replicas",
         "in P6, in the stable window, and in the cleanup",
         "among its measurements",
-        "Nothing connects those uses to this criterion",
+        "Those uses name no criterion, and the adjudication cites none of them",
+        "The review chose those two after the evidence was read",
     ):
         assert phrase in statement
 
@@ -1435,6 +1436,23 @@ def test_a_freeze_record_that_states_another_criterion_is_refused() -> None:
         module._hold_criterion(record)
 
 
+@pytest.mark.parametrize(
+    "acceptance",
+    [
+        [],
+        [{"value": []}, {"value": ["text"]}],
+        {"value": []},
+    ],
+    ids=["no-part", "a-row-that-is-text", "not-a-list"],
+)
+def test_a_freeze_record_with_no_usable_criterion_is_refused(
+    acceptance: object,
+) -> None:
+    record = {"fields": {"acceptanceCriteria": acceptance}}
+    with pytest.raises(EligibilityRefused, match="eligibility-criterion"):
+        module._hold_criterion(record)
+
+
 def test_a_stream_with_no_reading_is_refused(tmp_path: Path) -> None:
     root = adjudicated_tree(tmp_path)
     path = root / module.RUNS_DIRECTORY / "e02a-2" / "argo.jsonl"
@@ -1584,6 +1602,8 @@ def test_a_stream_that_is_absent_is_refused(tmp_path: Path) -> None:
         "It says that the baseline is eligible.",
         "That the baseline is eligible is what the record states.",
         "We hold That the baseline is eligible.",
+        "- That the baseline is eligible and every run is valid today.",
+        "It is a fact - That the baseline is eligible.",
         "The baseline was **eligible**.",
         "It says that a run is valid.",
         "It states that the run is valid.",
@@ -1608,7 +1628,7 @@ def test_a_summary_that_states_the_withdrawn_verdict_is_found(sentence: str) -> 
         "The current eligibility verdict is `not-decided`.",
         "The classification record states the verdict `eligible`, and that is not the current verdict.",
         "No input can make a set eligible.",
-        "- That the baseline is eligible for an experiment.",
+        "- That the baseline is eligible for an experiment. The result is a statement.",
     ],
 )
 def test_a_page_may_state_the_current_verdict(sentence: str) -> None:
