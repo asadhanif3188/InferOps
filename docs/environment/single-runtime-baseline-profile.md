@@ -1,5 +1,7 @@
 # The single-runtime baseline profile
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: **the profile exists as a generated release, an install description, and
 a comparison record, and a check holds the three. This is evidence at C0. No
 Application reads the profile, and no run installed the baseline release. The

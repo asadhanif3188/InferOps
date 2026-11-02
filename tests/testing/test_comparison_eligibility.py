@@ -1602,6 +1602,8 @@ def test_a_stream_that_is_absent_is_refused(tmp_path: Path) -> None:
         "It says that the baseline is eligible.",
         "That the baseline is eligible is what the record states.",
         "We hold That the baseline is eligible.",
+        "No source selects them.",
+        "No source selects those two counts.",
         "- That the baseline is eligible and every run is valid today.",
         "It is a fact - That the baseline is eligible.",
         "The baseline was **eligible**.",
@@ -1628,6 +1630,8 @@ def test_a_summary_that_states_the_withdrawn_verdict_is_found(sentence: str) -> 
         "The current eligibility verdict is `not-decided`.",
         "The classification record states the verdict `eligible`, and that is not the current verdict.",
         "No input can make a set eligible.",
+        "No source selects them for E02A-AC2.",
+        "No source selects them for `E02A-AC2`.",
         "- That the baseline is eligible for an experiment. The result is a statement.",
     ],
 )
@@ -1648,6 +1652,33 @@ def test_the_check_reads_each_page_that_states_the_verdict() -> None:
     assert "docs/proof/dashboard.md" in SCANNED_PAGES
     assert "docs/testing/claim-evidence-matrix.md" in SCANNED_PAGES
     assert "docs/environment/single-runtime-baseline-profile.md" in SCANNED_PAGES
+
+
+@pytest.mark.parametrize(
+    "page",
+    [
+        "README.md",
+        "docs/environment/argocd-application.md",
+        "docs/environment/capacity-preflight.md",
+        "docs/environment/environment-qualification.md",
+        "docs/environment/git-desired-state.md",
+        "docs/environment/model-cache-storage.md",
+        "docs/environment/runtime-model-cache-observation.md",
+        "docs/environment/single-runtime-baseline-profile.md",
+        "docs/proof/README.md",
+        "docs/proof/experiments/README.md",
+        "docs/testing/README.md",
+        "docs/testing/comparison-eligibility.md",
+        "docs/testing/experiment-e02a-control.md",
+    ],
+)
+def test_a_current_page_that_mentions_a_switch_names_each_merge_and_the_deviation(
+    page: str,
+) -> None:
+    """The owner's limit: a statement about a switch names its merge and its deviation."""
+    text = (REPO_ROOT / page).read_text(encoding="utf-8")
+    for name in ("ff45093", "a3ed812", "v2-s7-004-pr1-switch-deviations.md"):
+        assert name in text, name
 
 
 def test_a_current_page_that_cannot_be_read_is_a_finding(tmp_path: Path) -> None:

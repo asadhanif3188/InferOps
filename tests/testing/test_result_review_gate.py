@@ -1223,6 +1223,9 @@ def test_the_register_no_longer_states_that_each_criterion_holds() -> None:
     assert "two requests failed" in claim["statement"]
     assert "validity of the three runs is not established" in claim["statement"]
     assert "not-decided" in claim["statement"]
+    assert "an adjudication that the repository owner accepted" in claim["statement"]
+    assert "no source selects them for E02A-AC2" in claim["limitation"]
+    assert "no record establishes that a review of this wording" in claim["limitation"]
     for text in (claim["statement"], claim["limitation"]):
         assert stale_statements(text) == []
     for record in claim["evidenceRecords"]:
@@ -1233,6 +1236,10 @@ def test_the_register_no_longer_states_that_each_criterion_holds() -> None:
         assert set(outcomes.values()) == {"met"} and len(outcomes) == 6
         assert record["evidenceLevel"] == "C2"
         assert "validity of the run is not established" in record["summary"]
+        assert (
+            "That the run is valid, or that it is not valid."
+            in (record["doesNotEstablish"])
+        )
         assert stale_statements(record["summary"]) == []
         assert stale_statements(" ".join(record["limitations"])) == []
         assert ADJUDICATED_PATH in record["evidenceRefs"]

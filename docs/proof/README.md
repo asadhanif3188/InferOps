@@ -1,5 +1,7 @@
 # Evidence records
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: entry point established, and the index now covers a full Sprint 3 closure
 executed on the `docker-desktop` reference provider. The records here are the only
 thing in this repository that may be cited as evidence for a public claim.

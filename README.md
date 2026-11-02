@@ -375,8 +375,8 @@ with validity criteria alone, and that state is not a reliability pass: two requ
 in each run. No run of the other four exists. Since `V2-S7-002-PR1`
 [the set is classified](docs/proof/experiments/v2-e02a/baseline-report.md). Since
 `V2-S7-004-PR1` [the current eligibility verdict is `not-decided`](docs/proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json):
-no source that predates the first fault settles the meaning of `E02A-AC2`, so the validity
-of the three runs is not established. Their figures stay as measured figures of what
+an adjudication that the repository owner accepted ruled that no source that predates the first
+fault settles the meaning of `E02A-AC2`, so the validity of the three runs is not established. Their figures stay as measured figures of what
 executed, at C2. That verdict states no comparison and no percentage, no before and after
 statement is permitted without a valid baseline, and it does not authorize a run of
 V2-E02B. The register holds one claim of the runs, certified at `C2`, which states what

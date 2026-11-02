@@ -60,14 +60,14 @@ settles the meaning of `E02A-AC2`. The validity of the three runs is not establi
 ## The register change
 
 [The twelfth ledger](../testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json), the eighth after
-the release, makes 16 changes to one claim, its three records, and one surface reason.
+the release, makes 19 changes to one claim, its three records, and one surface reason.
 
 | Change | Effect |
 |---|---|
 | The statement | The sentences of validity and eligibility are withdrawn, and what executed and each measured figure stay word for word |
 | The limitation | Two clauses that gave the old verdict are replaced, and a dated correction is appended |
 | What the claim does not establish | It now names the validity of any run, and which reading is right |
-| Each of the three records | The summary, two limitations, six more cited files, and `E02A-AC2` from `met` to `not-evaluated`, a value that the schema has. The six other outcomes stay |
+| Each of the three records | The summary, three limitations, what the record does not establish, six more cited files, and `E02A-AC2` from `met` to `not-evaluated`, a value that the schema has. The six other outcomes stay |
 | The reason of the evidence index | It names twelve ledgers |
 
 The ledger adds no claim and no record, and it moves no status and no level. The claim stays
@@ -104,9 +104,12 @@ and each finding, and one record of each run holds them.
 | 2, the code and the tests | No critical finding | Uncaught exceptions on malformed input, a gap logic that assumed the order of time, a reuse guard that did not cover the bound record, and five surviving mutants |
 | 3, the confirmation | Not fit to register | "No source selects those two counts" was false as worded: revision 4 predates the first fault and reads them. The earlier fix had written that sentence |
 | 4, a narrow re-check | Fit to register | Low findings, and no leakage |
+| 5, the ledger, after it was written | Not fit to push | Each ledger change replayed to the register, and no history moved. The limitation repeated the sentence of round 3, the deviation page had narrowed a rule of the owner, and the severities of the review page did not add up |
 
-Each reviewer is an automated session of the same assistant. No review read the commit that closes
-the low findings of round 4, or the ledger.
+Each reviewer is an automated session of the same assistant. Rounds 1 to 4 came before the ledger.
+Round 5 read the ledger after it was written, and its findings changed the ledger, so no record
+establishes that a review of the wording of the ledger preceded the register change. The review
+records state rounds 1 to 4. No review read the commit that closes round 5.
 
 ## What this does not establish
 

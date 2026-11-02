@@ -54,7 +54,7 @@
     "timeSource": "The reports of the reviewers. No repository file proves these times.",
     "reviewer": {
       "kind": "automated",
-      "description": "Four automated reviewing sessions, each given a written brief. Two read the first commit: one the statements against the raw files, and one the code and the tests. A third read the second commit, and a fourth read the third commit. None took part in the runs, the adjudication, or the correction.",
+      "description": "Four automated reviewing sessions before the ledger, each given a written brief. Two read the first commit: one the statements against the raw files, and one the code and the tests. A third read the second commit, and a fourth read the third commit. None took part in the runs, the adjudication, or the correction. The times and the findings of this record are those of these four rounds. A fifth session read the ledger after it was written, and the validation record states what it found.",
       "independenceLimits": [
         "Each reviewer is a separate session of the same automated assistant that drove the runs, wrote the correction, and wrote this record. None is another tool, another model, or a person.",
         "The session that wrote the correction wrote each brief and started each reviewing session. The maintainer asked for a second review of the change.",
@@ -79,7 +79,7 @@
       "the default lane"
     ],
     "registerAtReviewedRevision": {
-      "statement": "The reviewed revisions hold the claim of these runs as the eleventh ledger left it. The reviewers read that claim and reported what a ledger must change. No reviewer read the ledger that this record serves."
+      "statement": "The reviewed revisions hold the claim of these runs as the eleventh ledger left it. The reviewers read that claim and reported what a ledger must change. No reviewer of these four rounds read the ledger that this record serves."
     }
   },
   "conclusions": {
@@ -101,116 +101,130 @@
     },
     "registerStatementCorrectness": {
       "verdict": "not-reviewed",
-      "statement": "No reviewer read the register statements that the ledger writes."
+      "statement": "No reviewer of these four rounds read the register statements that the ledger writes."
     },
     "rerunJustified": false
   },
   "findings": [
     {
       "id": "F1",
-      "severity": "high",
+      "severity": "round 1, high",
       "summary": "The proof index still said that each run is valid. The check of the pages did not read that page.",
       "disposition": "corrected",
       "where": "the proof index, and the list of current pages"
     },
     {
       "id": "F2",
-      "severity": "high",
+      "severity": "round 1, high",
       "summary": "Current pages presupposed an authorization of G1, or said that a change merges only with an authorization, and the deviation page said that no page does.",
       "disposition": "corrected",
       "where": "the experiments page, the desired-state page, the profile page, the baseline report, the README, and the deviation page"
     },
     {
       "id": "F3",
-      "severity": "high",
+      "severity": "round 1, high",
       "summary": "The adjudication misstated who set it up, what its note said, and what was searched, and it omitted the candidates of its prompt, two commits outside its export, the first draft of the criterion, the strongest source against the ruling, and half of its sources.",
       "disposition": "corrected",
       "where": "the adjudication"
     },
     {
       "id": "F4",
-      "severity": "high",
+      "severity": "round 3, high",
       "summary": "The record said that no source selects the two runtime counts. Revision 4 predates the first fault and reads them, so the sentence was false as worded and leaned towards the stream reading. A confirming review found this in the fix of an earlier finding.",
       "disposition": "corrected",
       "where": "the record, its statement, and each page that repeated the sentence"
     },
     {
       "id": "F5",
-      "severity": "medium",
+      "severity": "round 1, medium",
       "summary": "\"The field scope holds in 0 of 3\" rested on two counts that no source selects for the criterion, and each other count but unavailableReplicas is reported in each reading.",
       "disposition": "corrected",
       "where": "the members of the record, and each page"
     },
     {
       "id": "F6",
-      "severity": "medium",
+      "severity": "rounds 1 and 2, medium",
       "summary": "The reuse guard refused only a caller who passed the adjudicated record. The classification record, which a freeze record binds, gave its figures.",
       "disposition": "corrected",
       "where": "usable_baseline, which reads the adjudicated record itself. A reader that opens the classification record directly still gets eligible, and the tool page says so"
     },
     {
       "id": "F7",
-      "severity": "medium",
+      "severity": "rounds 1 and 2, medium",
       "summary": "The consumers overstated what is enforced, and they gave V2-E02B a population statement.",
       "disposition": "corrected",
       "where": "each consumer states its decision and that no tool enforces it"
     },
     {
       "id": "F8",
-      "severity": "medium",
+      "severity": "round 1, medium",
       "summary": "Statements about the authorization of a switch did not name the merge commit and the deviation.",
       "disposition": "corrected",
-      "where": "each current statement about an authorization. Pages that mention a switch and not an authorization were not swept, and the deviation page states this rule for authorization alone"
+      "where": "each current page that mentions a switch. The fifth review found that this fix had narrowed the rule on the deviation page, and a later commit restored it"
     },
     {
       "id": "F9",
-      "severity": "medium",
+      "severity": "round 1, medium",
       "summary": "A page said without a condition that V2-E02B computes an improvement after its own runs.",
       "disposition": "corrected",
       "where": "the baseline report"
     },
     {
       "id": "F10",
-      "severity": "medium",
+      "severity": "round 1, medium",
       "summary": "The deviation page was stronger than its search, and it did not attribute it.",
       "disposition": "corrected",
       "where": "the deviation page, whose counts and times were then read from the GitHub API"
     },
     {
       "id": "F11",
-      "severity": "medium",
+      "severity": "round 2, high, and round 3, medium",
       "summary": "Malformed stream lines, tiers, windows, instants, and registries raised uncaught exceptions, so a crash looked like a finding of the check.",
       "disposition": "corrected",
       "where": "the tool. Malformed corrections and a registry nested too deeply for tools/experiment_freeze are not corrected"
     },
     {
       "id": "F12",
-      "severity": "medium",
+      "severity": "round 2, high",
       "summary": "judge_reading assumed the order of time. A descending stream gave a negative gap and held.",
       "disposition": "corrected",
       "where": "the tool"
     },
     {
       "id": "F13",
-      "severity": "medium",
+      "severity": "round 2, medium",
       "summary": "Five mutants survived, among them the four variants of the reading scope through reading_of, and the limit plus 1 ms.",
       "disposition": "corrected",
       "where": "the suite. A later review reports each requested mutant killed"
     },
     {
       "id": "F14",
-      "severity": "low",
-      "summary": "Twelve smaller findings: stale wording, labels, a note in the wrong place, a wider exception of the check of the pages, and a record that omitted that the review chose the two counts after the evidence was read.",
+      "severity": "round 2, medium",
+      "summary": "The check of the pages had false positives and cheap bypasses.",
       "disposition": "corrected",
-      "where": "the commits named in this record. The last of them was read by no review"
+      "where": "the patterns, and the tool page states that the check matches sentences"
+    },
+    {
+      "id": "F15",
+      "severity": "round 3, medium",
+      "summary": "The validation record did not list each page that the change corrects.",
+      "disposition": "corrected",
+      "where": "the validation record"
+    },
+    {
+      "id": "F16",
+      "severity": "rounds 1 to 4, low",
+      "summary": "Low findings: eight in round 1, five in round 2, nine in round 3, and six in round 4. They are stale wording, labels, a note in the wrong place, a wider exception of the check of the pages, and a record that omitted that the review chose the two counts after the evidence was read.",
+      "disposition": "corrected, but for two",
+      "where": "the commits named in this record. A malformed correction, and a registry nested too deeply for tools/experiment_freeze, are not corrected"
     }
   ],
   "authorNotes": [
     "After the reviews, the session that wrote this record changed no file of the run directory. The digests under subject.files are those of the first review of this run, and a script compared them with the files when this record was written.",
     "The findings are about the correction, and each applies to the three runs. Each record of the three lists all of them.",
-    "The last commit before this record, 63a953bbc6685150fdf27eedc300c417c5aec3f9, closes low findings of the fourth review. No review read it.",
+    "The commit 63a953bbc6685150fdf27eedc300c417c5aec3f9 closes low findings of the fourth review. These four rounds did not read it.",
     "The commit that the third review read as 6621146 had its message reworded before it was published, so it is named here by its published identifier. Its tree did not change.",
-    "A review that this change adds after the ledger is stated in the validation record, if one ran."
+    "A fifth review read the ledger after it was written, and its findings changed the ledger. The validation record states it, and no record establishes that a review of the wording of the ledger preceded the register change."
   ],
   "notVerified": [
     "The words and the time of the statement of 2026-10-30, and the scope of the search for an authorization. They rest on the report of the repository owner.",
@@ -222,7 +236,7 @@
     "That a reviewer is independent of the assistant that drove the runs. Each is another session of it.",
     "That any run is valid, or that any run is not valid.",
     "Which reading of E02A-AC2 is right.",
-    "That the register statements about this run are correct. No reviewer read them.",
-    "That the commit after the reviewed revision is correct. No review read it."
+    "That the register statements that the ledger writes are correct. No reviewer of these four rounds read them.",
+    "That the commit after the reviewed revision is correct. These four rounds did not read it."
   ]
 }

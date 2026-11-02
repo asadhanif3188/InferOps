@@ -147,8 +147,9 @@ be an advertisement.
 >
 > **Since `V2-S7-004-PR1` a twelfth ledger, the eighth after the release, has narrowed that claim,
 > and it moved no status and no level.** [The E02A claim correction ledger](../proof/testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json)
-> sets `E02A-AC2` to `not-evaluated` in each of the three records, because no source that predates
-> the first fault settles that criterion. [The adjudicated record](../proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json)
+> sets `E02A-AC2` to `not-evaluated` in each of the three records, because an adjudication that
+> the repository owner accepted ruled that no source that predates the first fault settles that
+> criterion. [The adjudicated record](../proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json)
 > states the current verdict, `not-decided`. The same ledger replaces the evidence index's reason
 > here, which named eleven ledgers.
 

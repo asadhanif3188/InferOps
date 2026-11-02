@@ -1,5 +1,7 @@
 # The E02A control and its driver
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 V2-E02A deletes the one runtime pod of the single-runtime baseline release, two API
 replicas and one runtime replica, while the RP-1 runner sends requests. Its
 [freeze record](../proof/experiments/v2-e02a/freeze-r3.v1alpha1.json) states the whole

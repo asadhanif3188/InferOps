@@ -2213,7 +2213,7 @@ revision at that time, read from the registry.
 | V2-E04, revision 3 | Both files | Both files again | The next revision of V2-E04, before its first run |
 | V2-E05, revision 2 | `core.py` of `tools/experiment_preregistration`, and both files | Both files again | The next revision of V2-E05, before its first run |
 | V2-E06, revision 4 | None | Both files | The next revision of V2-E06, which states how its population treats the three runs |
-| Each other record that pins them, among them revision 4 of V2-E02A | Both files | Both files again | No run is planned under them, and each stays as it is |
+| Each other record that pins them, among them revision 4 of V2-E02A and both Sprint 5 integration records | Both files, among others | Both files again | No run is planned under them, and each stays as it is |
 
 **The register holds one claim of these runs.** `V2-S7-002-PR1` adds
 `the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod` through
@@ -2226,7 +2226,8 @@ So each of those records differs from its pin in these two files, whatever its r
 no revision classifies them. A run under one of them refuses until a later revision classifies them.
 Since `V2-S7-003-PR2`, [revision 3 of V2-E02B, revision 5 of V2-E03, and revision 4 of
 V2-E06](#the-g3-switch-and-revision-3-of-v2-e02b) classify them for those three experiments, and their earlier revisions stay as they
-are. The repository owner chose this on 2026-11-01, with that cost stated, and no tool reads that choice.
+are. Since `V2-S7-004-PR1` those three differ from their pins in these two files as well:
+[the inventory](#the-adjudicated-verdict-of-the-v2-e02a-set) states who classifies them. The repository owner chose this on 2026-11-01, with that cost stated, and no tool reads that choice.
 The three runs are not affected: each names its executing commit, and no file of a run changed.
 
 ## The analysis experiment freezes

@@ -56,7 +56,8 @@ with stated limits. The acceptance covers these two merges only.
 
 - A current page does not state or imply that either switch was authorized before its merge. A
   page of a past change keeps its text, and the pages named above carry a dated note.
-- A statement about the authorization of either switch names the merge commit and this page.
+- A statement about either switch names the merge commit and this page. A current page that
+  mentions a switch does that in its text or in a dated line under its title.
 - No second merge is created to imitate a missing authorization.
 - This page does not state that the 2+2 desired state is delivered on a cluster. No record in this
   repository shows that delivery at the G3 merge.

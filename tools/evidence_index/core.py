@@ -105,8 +105,8 @@ what `V2-S7-004-PR1` corrected after an independent adjudication of E02A-AC2: th
 of the three runs of V2-E02A is narrowed to what executed and to the measured figures,
 a dated correction is appended to its limitation, each of its three records is
 corrected, E02A-AC2 becomes not-evaluated in each, and one surface reason is replaced.
-It adds no claim and no record. It is the eighth post-release ledger, and the first to
-set a field of an executed record.
+It adds no claim and no record. It is the eighth post-release ledger, and the first
+post-release ledger to set a field of an executed record.
 
 The twelve ledgers are applied in order, and undone in reverse, so the register's
 history since the migration is the twelve of them together. The first four are the
@@ -1714,7 +1714,7 @@ def build_index(
     ledgers: Sequence[Mapping[str, Any]] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
-    """The evidence index the register and the ten ledgers produce today.
+    """The evidence index the register and the twelve ledgers produce today.
 
     The pack sources are read from the committed files, not from the arguments: the
     pack digest binds what is on disk, which is what a release ships. The released

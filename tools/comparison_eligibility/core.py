@@ -300,6 +300,7 @@ _STALE_STATEMENTS: Final[tuple[re.Pattern[str], ...]] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
         r"\bbaseline (?:is|was) [`*]*eligible\b",
+        r"\bno source selects (?:them|those two counts)\b(?! for `?E02A-AC2)",
         r"\bset (?:(?:is|was) [`*]*eligible|meets)\b",
         r"\bseven (?:validity )?criteria (?:of the record )?(?:hold|held)\b",
         r"\bseven validity criteria, and each held\b",

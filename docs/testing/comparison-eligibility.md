@@ -1,5 +1,7 @@
 # The comparison eligibility of V2-E02A
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 `tools/comparison_eligibility` classifies the runs of V2-E02A and applies the eligibility rule of
 revision 4 of [its freeze record](../proof/experiments/v2-e02a/freeze-r4.v1alpha1.json). It has two
 outputs: [the classification record](../proof/experiments/v2-e02a/classification.v1alpha1.json), which

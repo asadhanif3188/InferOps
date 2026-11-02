@@ -107,8 +107,9 @@ references one review record of each run, by an automated session of the assista
 the runs. It also replaced this page's reason again.
 Then `V2-S7-004-PR1` narrowed that claim through an eighth post-release ledger, the E02A claim
 correction ledger, dated 2026-11-02. It adds no claim and no record, it moves no status and no
-level, and it sets `E02A-AC2` to `not-evaluated` in each of the three records, because no source
-that predates the first fault settles that criterion. It references a later review of each run,
+level, and it sets `E02A-AC2` to `not-evaluated` in each of the three records, because an
+adjudication that the repository owner accepted ruled that no source that predates the first fault
+settles that criterion. It references a later review of each run,
 by automated sessions of the same assistant, and it replaced this page's reason again.
 Each moves the pack
 `main` holds, and it is expected: the released pack is the frozen one, and the index
@@ -173,7 +174,7 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after the eight post-release ledgers, which no release quotes | `fab589d7a2ee319a2745a2e5fe09245d1329deb15ea909b486719c9bb8421dbc` | `065fb568dc2e3332ae40b57a02cd819c44c3e7c4a79fd48a4a2773c87e12ada9` |
+| **Current:** `main` after the eight post-release ledgers, which no release quotes | `6d3d0fc878784df027d684aac5636b414b596e610f6697d6ceb49579424ade33` | `27875e56deaa2c12dd43b9e5e26b0b1730e880f2f97968a095b0982c69315696` |
 
 The released pair is not read from a ledger. The index undoes the eight post-release
 ledgers' changes, last first, renders the register as it was, and takes both digests

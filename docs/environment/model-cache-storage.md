@@ -1,5 +1,7 @@
 # Model cache storage: ownership, revision scoping, integrity, restart, cleanup
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: **both halves have now run inside Kubernetes, on the `docker-desktop`
 provider.** The chart mounts a claim, scopes the mount to a revision, and verifies
 the artifact before the runtime starts; the claim itself is declared by

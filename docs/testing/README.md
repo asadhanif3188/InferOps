@@ -1,5 +1,7 @@
 # Testing and certification
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: entry point established; the strategy is accepted in part — five of the six
 decisions in [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md),
 with the choice of continuous-integration service and capable runner explicitly not
