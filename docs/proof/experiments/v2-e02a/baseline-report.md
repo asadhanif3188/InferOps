@@ -131,10 +131,10 @@ window" and "has at most 10 s between two consecutive readings with a value". Ea
 is computed from the raw streams, over the readings wholly inside the window, from the start of
 one reading to the start of the next. From the finish of one reading to the start of the next, the
 measure of [the result page of each run](runs/e02a-1/result.md), the largest gap is 5,796 ms on the
-reading scope and 22,043 ms to 25,104 ms on the field scope.
+reading scope and 22,043 ms to 25,104 ms on the two runtime counts.
 [The adjudicated record](eligibility-adjudicated.v1alpha1.json) holds each stream and each field.
 
-| Run | Readings of the deployments stream | Reading scope, largest gap of the four streams | Field scope, runtime `readyReplicas` and `availableReplicas`: readings with a value | Field scope, largest gap | Limit |
+| Run | Readings of the deployments stream | Reading scope, largest gap of the four streams | Runtime `readyReplicas` and `availableReplicas`: readings with a value | The two runtime counts, largest gap | Limit |
 |---|---:|---:|---:|---:|---:|
 | `e02a-1` | 166 | 6,001 ms | 160 | 26,304 ms | 10,000 ms |
 | `e02a-2` | 188 | 5,036 ms | 182 | 23,488 ms | 10,000 ms |
@@ -142,8 +142,10 @@ reading scope and 22,043 ms to 25,104 ms on the field scope.
 
 The reading scope holds in 3 of 3 runs, with its three variants together: the read answered,
 with no fault, no null member, and no refused tier. The two runtime counts hold in 0 of 3. No
-source selects those two counts: the review of each run reported on them after the evidence was
-read. A reading omits a count of zero, and it states that count as missing, not as zero. Each
+source selects those two counts for `E02A-AC2`. Revision 4 predates the first fault: it names the
+signal `runtime-ready-replicas`, it reads `readyReplicas` in P6, in the stable window, and in the
+cleanup, and it lists both counts among its measurements. Nothing connects those uses to this
+criterion. A reading omits a count of zero, and it states that count as missing, not as zero. Each
 other count but `unavailableReplicas` is reported in each reading of each window, so a field
 reading of one of those counts would give another outcome. No reading in the three windows reports
 each of the eight Deployment counts of both tiers, because the count `unavailableReplicas` of the

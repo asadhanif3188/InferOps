@@ -266,8 +266,8 @@ DEPLOYMENT_COUNTS: Final = (
     "availableReplicas",
     "unavailableReplicas",
 )
-#: The two counts that the review of each run reported on, after the evidence was
-#: read. No source selects them, and the record says so.
+#: The two counts that the review of each run reported on. Revision 4 reads them
+#: elsewhere, and no source selects them for E02A-AC2. The record says both.
 SELECTED_COUNTS: Final = ("readyReplicas", "availableReplicas")
 #: The two streams whose lines have tiers.
 TIERED_STREAMS: Final = frozenset({"endpoints", "deployments"})
@@ -290,15 +290,15 @@ _ADJUDICATION_MEMBERS: Final = frozenset(
         "test",
     }
 )
-_DATE: Final = re.compile(r"\d{4}-\d{2}-\d{2}")
+_DATE: Final = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
 
 #: A sentence that a current page no longer states. A page of a past change is not
-#: read, and neither is a record of history. A sentence that opens with "That the
-#: baseline" is an item of a list of what a page does not establish.
+#: read, and neither is a record of history. A list item that opens with "That the
+#: baseline" is an item of what a page does not establish.
 _STALE_STATEMENTS: Final[tuple[re.Pattern[str], ...]] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
-        r"(?-i:(?<!That the ))\bbaseline (?:is|was) [`*]*eligible\b",
+        r"(?-i:(?<!- That the ))\bbaseline (?:is|was) [`*]*eligible\b",
         r"\bset (?:(?:is|was) [`*]*eligible|meets)\b",
         r"\bseven (?:validity )?criteria (?:of the record )?(?:hold|held)\b",
         r"\bseven validity criteria, and each held\b",
@@ -310,7 +310,7 @@ _STALE_STATEMENTS: Final[tuple[re.Pattern[str], ...]] = tuple(
     )
 )
 
-_INSTANT: Final = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z")
+_INSTANT: Final = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", re.ASCII)
 _RUN_ID: Final = re.compile(r"e02a-([1-9][0-9]*)")
 _CLOCK_BOUND: Final = re.compile(r"^clock bound: ([0-9]+) ms$", re.MULTILINE)
 
@@ -365,7 +365,7 @@ ADJUDICATED_LIMITATIONS: Final[tuple[str, ...]] = (
     "The medians are measured figures of what executed, at C2. Without a valid baseline, no before and after statement is permitted.",
     "The reading figures are computed from the raw streams, over the readings wholly inside the window of each run. A stream reads at intervals, so a gap is a bound on when a value changed and not the instant of the change.",
     "The figures read the second and the third clause of E02A-AC2. The first clause, that each stream is accepted by its reader, is held by the replay of each run and not here.",
-    "No source selects the two runtime counts of selectedRuntimeCounts. The review of each run reported on them after the evidence was read. Each other count but unavailableReplicas is reported in each reading of each window, so a field reading of one of those counts would give another outcome.",
+    "No source selects the two runtime counts of selectedRuntimeCounts for E02A-AC2. Revision 4 reads them elsewhere, and readingsOfTheCriterion states where. Each other count but unavailableReplicas is reported in each reading of each window, so a field reading of one of those counts would give another outcome.",
     "The adjudicator is one automated session and not a person. Its limits are in the adjudication.",
 )
 
@@ -397,8 +397,12 @@ _SELECTION_STATEMENT: Final = (
     "the read answered, with no fault, no null member, and no refused tier. "
     "selectedRuntimeCounts asks whether a reading reports one runtime count, for the two "
     "counts that the review of each run reported on. No source selects those two "
-    "counts. everyCount asks whether a reading reports each of the eight Deployment "
-    "counts of both tiers. This record does not state which of these is the criterion."
+    "counts for E02A-AC2. Revision 4 predates the first fault. It names the signal "
+    "runtime-ready-replicas, it reads readyReplicas in P6, in the stable window, and in "
+    "the cleanup, and it lists both counts among its measurements. Nothing connects "
+    "those uses to this criterion. everyCount asks whether a reading reports each of "
+    "the eight Deployment counts of both tiers. This record does not state which of "
+    "these is the criterion."
 )
 _REGISTRATION_STATEMENT: Final = (
     "The change that adds this record registers the correction through a twelfth "
@@ -506,7 +510,12 @@ def instant_ms(text: object) -> int:
         raise EligibilityRefused(
             "eligibility-instant", "an instant is not a UTC instant to the millisecond"
         )
-    moment = datetime.strptime(text, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
+    try:
+        moment = datetime.strptime(text, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
+    except ValueError as error:
+        raise EligibilityRefused(
+            "eligibility-instant", "an instant is not a date of the calendar"
+        ) from error
     return round(moment.timestamp() * 1000)
 
 
@@ -709,7 +718,7 @@ def _dig(document: object, *path: str) -> Any:
 def _json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RecursionError) as error:
         raise EligibilityRefused(
             "eligibility-document", f"{path.name} is not readable"
         ) from error
@@ -722,6 +731,8 @@ def _registered(root: Path, ref: str) -> tuple[dict[str, Any], str]:
         raise EligibilityRefused("eligibility-record", f"{ref} is absent")
     digest = lf_digest(path.read_bytes())
     rows = _dig(_json(root / REGISTRY_RECORD), "records")
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        raise EligibilityRefused("eligibility-record", "the registry is not usable")
     pinned = [row.get("contentSha256") for row in rows if row.get("path") == ref]
     if pinned != [digest]:
         raise EligibilityRefused(
@@ -1142,11 +1153,16 @@ def record_text(record: Mapping[str, Any]) -> str:
 
 
 def _has_null(document: object) -> bool:
-    if isinstance(document, Mapping):
-        return any(_has_null(value) for value in document.values())
-    if isinstance(document, list):
-        return any(_has_null(value) for value in document)
-    return document is None
+    pending = [document]
+    while pending:
+        item = pending.pop()
+        if item is None:
+            return True
+        if isinstance(item, Mapping):
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
+    return False
 
 
 def reading_of(document: Mapping[str, Any]) -> Reading:
@@ -1241,7 +1257,7 @@ def _stream(run_dir: Path, name: str) -> list[Reading]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
         documents = [json.loads(line) for line in lines if line.strip()]
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RecursionError) as error:
         raise EligibilityRefused(
             "eligibility-stream", f"{run_dir.name}/{path.name} is not readable"
         ) from error
@@ -1528,6 +1544,14 @@ def check_surfaces(root: Path = REPO_ROOT) -> list[str]:
     return findings
 
 
+def _committed_text(path: Path) -> str | None:
+    """The text of a committed record with LF line ends, or None if it is not text."""
+    try:
+        return path.read_bytes().replace(b"\r\n", b"\n").decode("utf-8")
+    except (OSError, ValueError):
+        return None
+
+
 def check_adjudicated(root: Path = REPO_ROOT) -> list[str]:
     """Build the adjudicated record again, and hold the pages to it.
 
@@ -1541,7 +1565,7 @@ def check_adjudicated(root: Path = REPO_ROOT) -> list[str]:
         built = record_text(build_adjudicated_record(root))
     except EligibilityRefused as refused:
         return [str(refused)]
-    held = path.read_bytes().replace(b"\r\n", b"\n").decode("utf-8")
+    held = _committed_text(path)
     findings = [] if held == built else [f"{ADJUDICATED_PATH} is not what is built"]
     return findings + check_surfaces(root)
 
@@ -1555,7 +1579,7 @@ def check_committed(root: Path = REPO_ROOT) -> list[str]:
         built = record_text(build_record(root))
     except (EligibilityRefused, ReplayRefused) as refused:
         return [str(refused)]
-    held = path.read_bytes().replace(b"\r\n", b"\n").decode("utf-8")
+    held = _committed_text(path)
     return [] if held == built else [f"{RECORD_PATH} is not what the runs give"]
 
 

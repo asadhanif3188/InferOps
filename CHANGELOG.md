@@ -13,11 +13,12 @@ from `1.0.0`.
 - **The current E02A eligibility verdict is `not-decided`, and the G1 and G3 deviations are
   stated.** `V2-S7-004-PR1` corrects what the repository currently says, and so it corrects the
   entries of `V2-S7-001-PR2` and `V2-S7-002-PR1` below, which state a verdict and a validity
-  that are withdrawn. An independent adjudication ruled that no source that predates the first
+  that are withdrawn, and the two entries of the switches below, which state the rule and not
+  what happened at either merge. An independent adjudication ruled that no source that predates the first
   fault settles the meaning of `E02A-AC2`, and the repository owner chose the verdict
   `not-decided` on 2026-11-02. A new record at a new path states it, with what each reading gives
-  on the raw streams: the reading scope holds in 3 of 3 runs, and the two runtime counts that the
-  review reported on hold in 0 of 3, and no source selects those two. The classification record
+  on the raw streams: the reading scope holds in 3 of 3 runs, the two runtime counts that the
+  review reported on hold in 0 of 3, and no source selects those two for `E02A-AC2`. The classification record
   keeps its bytes, because revision 3 of V2-E02B binds them, so that revision still says
   `eligible` until a successor revision. Each manifest keeps `PASSED`, each attempt keeps
   `counted: true`, and neither establishes validity. V2-E03 and V2-E06 consume none of the three

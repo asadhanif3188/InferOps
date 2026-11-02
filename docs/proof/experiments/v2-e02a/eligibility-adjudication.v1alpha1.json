@@ -5,13 +5,13 @@
       "The adjudicator is an automated session and not a person. It may be the same model that wrote these tools, so their wording may seem more familiar to it.",
       "The implementing session set up the adjudication and checked each quote, and it did not rule. The same assistant ran the three runs in earlier sessions.",
       "The input held no Git history, so the reason that revision 1 used these words is not known from the input.",
-      "The context of the session held a one-line note that the three runs passed and that a stream reading of the criterion was later approved by the owner. That note could bias the session towards the approved reading, or, because it says that an owner decided, towards this ruling.",
+      "The context of the session auto-loaded an index of one-line notes. Its entries said at least that the three runs passed and that a stream reading of the criterion was later approved by the owner, and the session may have seen a further entry on the eligibility of the set. That could bias it towards the approved reading, or, because it says that an owner decided, towards this ruling.",
       "The session searched some evidence files of the input and did not read them all.",
       "The prompt named three candidate readings and allowed others: a reading has a value when its read answered; when a named field or signal in it has a value; or when every field that it lists has a value.",
       "Two commits of the run branch predate the first fault and were not in the export: df5304a and 9849d52. Their added text holds neither phrase of the criterion.",
       "The first draft of the criterion, at commit 9a9f064, said \"states a Ready endpoint count of both tiers\" for the endpoints stream. Commit 28351f8 replaced it before any run, and the adjudicator did not see this. It is context and not authority, and it is the one wording in the public history that names a field."
     ],
-    "input": "An export of the last commit of main before the first fault, ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, which holds no run of V2-E02A, and an export of the requirements of that date. It received the criterion, the question, and the test. It did not receive the run results, a list of sources, or a recommendation.",
+    "input": "An export of the last commit of main before the first fault, ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, which holds no run of V2-E02A, and an export of the requirements of that date. It received the criterion, the question, and the test. It was not given the run results, a list of sources, or a recommendation.",
     "kind": "automated"
   },
   "criterion": "E02A-AC2",
@@ -104,7 +104,7 @@
       "The page and the code disagree at the refused-tier boundary, so applying these sources does not give exactly one reading.",
       "A pinned sibling tool uses the same words at signal scope."
     ],
-    "words": "Each tracked value of one reading, or the one state of the whole reading."
+    "words": "Each tracked value of one reading, or the one state of the whole reading. A change from or to not-collected, refused, or absent states that a reading gave no value."
   },
   "test": "A source settles the meaning only if a careful reader, applying that source to E02A-AC2, can reach exactly one reading. A source that is merely consistent with a reading does not settle it. A source that defines the same word for a different purpose settles it only if something connects that definition to this criterion."
 }

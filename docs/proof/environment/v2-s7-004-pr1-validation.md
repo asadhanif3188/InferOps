@@ -28,18 +28,22 @@ settles the meaning of `E02A-AC2`. The validity of the three runs is not establi
 | The three run directories | Unchanged. Each manifest keeps the state `PASSED` |
 | The corrections of each run | Unchanged, and no correction is added: the classification record lists the corrections of each run, so a new one would change what the tool builds |
 | Each existing ledger | Unchanged |
-| The pages of past changes | Unchanged, but for the dated notes below. They state what was true when they were written |
+| The pages of past changes | Unchanged, but for the three pages with a dated note below. [The validation of the classification](v2-s7-002-pr1-validation.md) keeps its bytes as well: it still reports `eligible`, because a ledger cites it, and the adjudicated record and the baseline report state the current verdict |
 
 ## The pages that this change corrects
 
 | Page | Change |
 |---|---|
 | [`README.md`](../../../README.md) | The paragraph of the runs and the sentence of the switches |
-| [The experiments page](../experiments/README.md) | The adjudicated verdict, the moved-pin inventory, and a dated note on each switch |
-| [The baseline report](../experiments/v2-e02a/baseline-report.md) | A dated correction, the two readings, and each statement of validity and eligibility. It also corrects one label: "The desired state on `main` now" had been stale since the G3 merge |
+| [The proof index](../README.md) | The row of the experiments |
+| [The experiments page](../experiments/README.md) | The adjudicated verdict, the moved-pin inventory, a dated note on each switch, and each sentence that said a change merges only with an authorization |
+| [The baseline report](../experiments/v2-e02a/baseline-report.md) | A dated correction, the two readings, and each statement of validity and eligibility. It also corrects one label: "The desired state on `main` now" had been stale since the G3 merge. A ledger cites this page, so its digest moves in the evidence index, and the digest of the released pack does not |
 | [The tool page](../../testing/comparison-eligibility.md) | The adjudicated record, and what is enforced |
+| [The desired-state page](../../environment/git-desired-state.md) | The sentence of the G3 switch, which also said that `main` holds the baseline |
+| [The baseline profile page](../../environment/single-runtime-baseline-profile.md) | Two table cells |
 | [The G1 observation](v2-s7-001-pr2-g1-observation/observation.md) | A dated note on the authorization. No ledger cites this page, so no digest of a ledger moves |
-| [The validation of the runs](v2-s7-001-pr2-validation.md) | A dated note on the prerequisite row. No ledger cites this page either |
+| [The validation of the runs](v2-s7-001-pr2-validation.md) | A dated note at the top. No ledger cites this page |
+| [The validation of the G3 switch](v2-s7-003-pr2-validation.md) | A dated note at the top. No ledger cites this page |
 
 ## The decisions of this change
 

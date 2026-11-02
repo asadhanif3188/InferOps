@@ -5,11 +5,11 @@
 > `not-decided`, in
 > [the adjudicated record](../experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json).
 >
-> The row of the owner authorization in the prerequisites is not a pre-merge authorization, and
-> neither is the sentence on the second merge under what comes next. No authorization of the G1
-> merge, `ff45093`, was found before it merged, in the search that
-> [the deviation page](v2-s7-004-pr1-switch-deviations.md) states. The confirmation that the row
-> states came after the merge of 2026-10-23.
+> The row of the owner authorization in the prerequisites is not a pre-merge authorization. No
+> authorization of the G1 merge, `ff45093`, was found before it merged, in the search that
+> [the deviation page](v2-s7-004-pr1-switch-deviations.md) states, and the confirmation that the
+> row states came after the merge of 2026-10-23. The sentence on the second merge under what is
+> deferred states a plan. No authorization of that merge, `a3ed812`, was found either.
 
 Status: **C2, on one provider.** This change executed the runs of V2-E02A under revision 4 of
 its freeze record. Three runs are counted, and each state is `PASSED`. V2-E02A is a

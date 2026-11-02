@@ -1,6 +1,6 @@
 {
   "adjudication": {
-    "contentSha256": "5236f3da100afa2ba5807e925dca4dbe76fe54208d84ad1ba648587ea66b80b6",
+    "contentSha256": "4b29481ca578ac744931d359eb460d2362df7357504c425aaa2c7cecc3dfc5ee",
     "decidedBy": "The repository owner accepted the ruling on 2026-11-02, with its limits, and chose the verdict not-decided. No tool reads that choice.",
     "path": "docs/proof/experiments/v2-e02a/eligibility-adjudication.v1alpha1.json",
     "ruling": "not-settled"
@@ -133,7 +133,7 @@
     "The medians are measured figures of what executed, at C2. Without a valid baseline, no before and after statement is permitted.",
     "The reading figures are computed from the raw streams, over the readings wholly inside the window of each run. A stream reads at intervals, so a gap is a bound on when a value changed and not the instant of the change.",
     "The figures read the second and the third clause of E02A-AC2. The first clause, that each stream is accepted by its reader, is held by the replay of each run and not here.",
-    "No source selects the two runtime counts of selectedRuntimeCounts. The review of each run reported on them after the evidence was read. Each other count but unavailableReplicas is reported in each reading of each window, so a field reading of one of those counts would give another outcome.",
+    "No source selects the two runtime counts of selectedRuntimeCounts for E02A-AC2. Revision 4 reads them elsewhere, and readingsOfTheCriterion states where. Each other count but unavailableReplicas is reported in each reading of each window, so a field reading of one of those counts would give another outcome.",
     "The adjudicator is one automated session and not a person. Its limits are in the adjudication."
   ],
   "measuredMedians": {
@@ -435,7 +435,7 @@
     ],
     "runsHoldingBothRuntimeCounts": 0,
     "runsHoldingTheReadingScope": 3,
-    "statement": "readingScope asks whether a reading has a value, with all three variants together: the read answered, with no fault, no null member, and no refused tier. selectedRuntimeCounts asks whether a reading reports one runtime count, for the two counts that the review of each run reported on. No source selects those two counts. everyCount asks whether a reading reports each of the eight Deployment counts of both tiers. This record does not state which of these is the criterion."
+    "statement": "readingScope asks whether a reading has a value, with all three variants together: the read answered, with no fault, no null member, and no refused tier. selectedRuntimeCounts asks whether a reading reports one runtime count, for the two counts that the review of each run reported on. No source selects those two counts for E02A-AC2. Revision 4 predates the first fault. It names the signal runtime-ready-replicas, it reads readyReplicas in P6, in the stable window, and in the cleanup, and it lists both counts among its measurements. Nothing connects those uses to this criterion. everyCount asks whether a reading reports each of the eight Deployment counts of both tiers. This record does not state which of these is the criterion."
   },
   "registration": "The change that adds this record registers the correction through a twelfth ledger. So tools/evidence_index/__init__.py and tools/evidence_index/core.py differ from their pins in each latest record of V2-E02A, V2-E02B, V2-E02C, V2-E03, V2-E04, V2-E05, and V2-E06, and in the other records that pin them. No revision classifies them yet, and this record edits no freeze record.",
   "schema": "inferops.io/comparison-eligibility-adjudicated/v1alpha1",

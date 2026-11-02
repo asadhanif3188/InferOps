@@ -2156,18 +2156,20 @@ with its limits, and chose this verdict. No criterion is rewritten.
 **The two readings give two outcomes.** Each figure is computed from the raw streams, over the
 readings wholly inside the window, from the start of one reading to the start of the next. From
 the finish of one reading to the start of the next, as the section above measures, the largest
-gap is 5,796 ms on the reading scope and 22,043 ms to 25,104 ms on the field scope.
+gap is 5,796 ms on the reading scope and 22,043 ms to 25,104 ms on the two runtime counts.
 
-| Run | Reading scope: largest gap of the four streams | Field scope: largest gap of runtime `readyReplicas` and of `availableReplicas` | Limit |
+| Run | Reading scope: largest gap of the four streams | Two runtime counts: largest gap of `readyReplicas` and of `availableReplicas` | Limit |
 |---|---:|---:|---:|
 | `e02a-1` | 6,001 ms | 26,304 ms | 10,000 ms |
 | `e02a-2` | 5,036 ms | 23,488 ms | 10,000 ms |
 | `e02a-3` | 7,057 ms | 23,115 ms | 10,000 ms |
 
 The reading scope holds in 3 of 3 runs. The two runtime counts in the third column hold in
-0 of 3. No source selects those two counts: the review of each run reported on them after the
-evidence was read. A reading omits a count of zero, and it states that count as missing, not as
-zero. Each other count but `unavailableReplicas` is reported in each reading of each window, so a
+0 of 3. No source selects those two counts for `E02A-AC2`. Revision 4 predates the first fault:
+it names the signal `runtime-ready-replicas`, it reads `readyReplicas` in P6, in the stable
+window, and in the cleanup, and it lists both counts among its measurements. Nothing connects
+those uses to this criterion. A reading omits a count of zero, and it states that count as
+missing, not as zero. Each other count but `unavailableReplicas` is reported in each reading of each window, so a
 field reading of one of those counts would give another outcome. No reading in the three windows
 reports each of the eight Deployment counts of both tiers, so a test of every count cannot hold
 in any run. This does not state which reading is right.
@@ -2292,8 +2294,9 @@ was injected, and no cluster was read or changed by this change.
   that commit. P2 still refuses a commit whose files are those of the 2+2 target.
 - **Rule G3 restores the target.** After the last V2-E02A run, one change restores the
   two files to the digests of the topology of V2-E02B, with a revision of the V2-E02B
-  record and a separate authorization of the repository owner. The comparison record
-  does not change then either. `V2-S7-003-PR2` is that change:
+  record. Rule G4 asks for a separate authorization of the repository owner. The comparison
+  record does not change then either. `V2-S7-003-PR2` is that change, merged at `a3ed812`, and
+  [no authorization was found before that merge](../environment/v2-s7-004-pr1-switch-deviations.md):
   [see below](#the-g3-switch-and-revision-3-of-v2-e02b).
 - **The analysis records.** The check holds the latest V2-E03 and V2-E06 records to the
   latest V2-E02A revision, so revision 4 of V2-E03 and revision 3 of V2-E06

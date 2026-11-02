@@ -68,6 +68,7 @@ from tools.comparison_eligibility import (
     usable_baseline,
 )
 from tools.comparison_eligibility import core as module
+from tools.comparison_eligibility.core import instant_ms
 from tools.reliability_analysis import AGGREGATE_METRICS, RunResult
 
 pytestmark = pytest.mark.docs
@@ -1197,7 +1198,7 @@ def test_the_record_states_both_readings_of_the_raw_streams(
     readings = adjudicated["readingsOfTheCriterion"]
     assert readings["runsHoldingTheReadingScope"] == 3
     assert readings["runsHoldingBothRuntimeCounts"] == 0
-    assert "No source selects those two counts" in readings["statement"]
+    assert "No source selects those two counts for E02A-AC2" in readings["statement"]
     assert readings["limitMs"] == AC2_LIMIT_MS
     rows = {row["runId"]: row for row in readings["runs"]}
     expected = {
@@ -1242,6 +1243,33 @@ def test_the_record_states_both_readings_of_the_raw_streams(
         )
         == 7057
     )
+
+
+def test_the_record_names_where_revision_4_reads_the_two_counts(
+    adjudicated: dict[str, Any],
+) -> None:
+    """A source that predates the fault names them, and the statement has to say so."""
+    freeze = json.loads((REPO_ROOT / BASELINE_RECORD).read_text(encoding="utf-8"))
+    definition = freeze["definition"]
+    signals = definition["analysisDeclaration"]["signals"]
+    assert "runtime-ready-replicas" in {signal["id"] for signal in signals}
+    for member in (
+        definition["preparation"],
+        definition["stablePreFaultWindow"],
+        freeze["fields"]["cleanupProcedure"],
+    ):
+        assert "readyReplicas" in json.dumps(member)
+    measurements = json.dumps(definition["measurements"])
+    assert "readyReplicas" in measurements
+    assert "availableReplicas" in measurements
+    statement = adjudicated["readingsOfTheCriterion"]["statement"]
+    for phrase in (
+        "runtime-ready-replicas",
+        "in P6, in the stable window, and in the cleanup",
+        "among its measurements",
+        "Nothing connects those uses to this criterion",
+    ):
+        assert phrase in statement
 
 
 def window_size(stream: dict[str, Any]) -> int:
@@ -1477,6 +1505,68 @@ def test_a_malformed_window_is_refused(tmp_path: Path, window: object) -> None:
         build_adjudicated_record(root)
 
 
+def bad_instant(text: str) -> str:
+    read = {"state": "answered", "startedAt": text, "finishedAt": text}
+    return json.dumps({"record": "reading", **line_of(read=read)})
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "2026-13-31T13:41:01.000Z",
+        "2026-02-30T13:41:01.000Z",
+        "2026-10-31T25:41:01.000Z",
+        "\u0662\u0660\u0662\u0666-10-31T13:41:01.000Z",
+    ],
+    ids=["month-13", "30-february", "hour-25", "arabic-digits"],
+)
+def test_an_instant_that_is_not_a_date_is_refused(tmp_path: Path, text: str) -> None:
+    with pytest.raises(EligibilityRefused, match="eligibility-instant"):
+        instant_ms(text)
+    root = adjudicated_tree(tmp_path)
+    shutil.copyfile(REPO_ROOT / ADJUDICATED_PATH, root / ADJUDICATED_PATH)
+    with run_file(root, "pods.jsonl").open("a", encoding="utf-8") as stream:
+        stream.write(f"{bad_instant(text)}\n")
+    with pytest.raises(EligibilityRefused, match="eligibility-instant"):
+        build_adjudicated_record(root)
+    assert check_adjudicated(root) != []
+
+
+@pytest.mark.parametrize(
+    "records",
+    [5, ["text"], None],
+    ids=["a-number", "a-row-that-is-text", "null"],
+)
+def test_a_registry_that_is_not_usable_is_refused(
+    tmp_path: Path, records: object
+) -> None:
+    root = adjudicated_tree(tmp_path)
+    (root / REGISTRY).write_text(json.dumps({"records": records}), encoding="utf-8")
+    with pytest.raises(EligibilityRefused, match="eligibility-record"):
+        build_adjudicated_record(root)
+
+
+def test_a_committed_record_that_is_not_text_is_a_finding(tmp_path: Path) -> None:
+    root = adjudicated_tree(tmp_path)
+    (root / ADJUDICATED_PATH).write_bytes(b"\xff\xfe not text")
+    assert f"{ADJUDICATED_PATH} is not what is built" in check_adjudicated(root)
+
+
+def test_a_stream_line_nested_too_deeply_is_refused(tmp_path: Path) -> None:
+    root = adjudicated_tree(tmp_path)
+    with run_file(root, "pods.jsonl").open("a", encoding="utf-8") as stream:
+        stream.write("[" * 200_000 + "\n")
+    with pytest.raises(EligibilityRefused, match="not readable"):
+        build_adjudicated_record(root)
+
+
+def test_a_null_member_deep_in_a_line_is_found() -> None:
+    nested: Any = None
+    for _ in range(5_000):
+        nested = [nested]
+    assert not reading_of(line_of(extra=nested)).no_null_member
+
+
 def test_a_stream_that_is_absent_is_refused(tmp_path: Path) -> None:
     root = adjudicated_tree(tmp_path)
     (root / module.RUNS_DIRECTORY / "e02a-3" / "pods.jsonl").unlink()
@@ -1492,6 +1582,8 @@ def test_a_stream_that_is_absent_is_refused(tmp_path: Path) -> None:
         "The set is eligible.",
         "The baseline is `eligible`.",
         "It says that the baseline is eligible.",
+        "That the baseline is eligible is what the record states.",
+        "We hold That the baseline is eligible.",
         "The baseline was **eligible**.",
         "It says that a run is valid.",
         "It states that the run is valid.",
@@ -1516,7 +1608,7 @@ def test_a_summary_that_states_the_withdrawn_verdict_is_found(sentence: str) -> 
         "The current eligibility verdict is `not-decided`.",
         "The classification record states the verdict `eligible`, and that is not the current verdict.",
         "No input can make a set eligible.",
-        "That the baseline is eligible for an experiment.",
+        "- That the baseline is eligible for an experiment.",
     ],
 )
 def test_a_page_may_state_the_current_verdict(sentence: str) -> None:
@@ -1533,6 +1625,7 @@ def test_the_check_reads_each_page_that_states_the_verdict() -> None:
     for page in CURRENT_PAGES:
         assert page in SCANNED_PAGES
     assert "docs/environment/git-desired-state.md" in SCANNED_PAGES
+    assert "docs/environment/single-runtime-baseline-profile.md" in SCANNED_PAGES
 
 
 def test_a_current_page_that_cannot_be_read_is_a_finding(tmp_path: Path) -> None:

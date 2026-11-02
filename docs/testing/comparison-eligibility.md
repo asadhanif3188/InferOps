@@ -87,8 +87,9 @@ record has a schema file: `schema` is a name, and the tool holds each member. Ea
 **The two readings.** `readingScope` asks whether a reading has a value, with three variants
 together: the read answered, with no fault, no null member, and no refused tier.
 `selectedRuntimeCounts` asks whether the reading reports runtime `readyReplicas` or
-`availableReplicas`. No source selects those two counts: the review of each run reported on them
-after the evidence was read. A count that a reading omits is missing, and it is not zero.
+`availableReplicas`. No source selects those two counts for `E02A-AC2`. Revision 4 reads them
+elsewhere, in the places that the record names, and nothing connects those uses to this
+criterion. A count that a reading omits is missing, and it is not zero.
 `everyCount` asks whether it reports each of the eight Deployment counts of both tiers, and each
 run states which counts each reading reports and which no reading reports. Each states the gap
 from one start to the next and from one finish to the next start, and `held` reads the first, the
@@ -157,7 +158,9 @@ for each other reader of the run.
   consume none of the three runs. It is a decision of the repository owner.
 - The check of the pages matches sentences. A page can state the withdrawn verdict in other words
   and pass, and a sentence that states the rule or quotes history can fail. The review of the page
-  is what reads for that, and such a sentence is reworded.
+  is what reads for that, and such a sentence is reworded. One list item of the profile page has
+  to keep its words, because a test of that page holds them, so the check passes an item that
+  opens with "- That the baseline".
 - `check_adjudicated` reads the streams as they are on disk. `--check` first holds them to the
   manifest of each run, by the replay, so run the command and not the function alone.
 - The freeze record of V2-E02B still says `eligible`, and no check can change that. A successor
