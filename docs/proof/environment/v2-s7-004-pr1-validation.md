@@ -116,6 +116,35 @@ record establishes that a review of the wording of the ledger preceded the regis
 review records state rounds 1 to 4. No review read the commit that closes round 6. It changes
 wording, and a script of the author replayed the ledger on it.
 
+## Validation
+
+| Command | Result |
+|---|---|
+| `python -m tools.comparison_eligibility --check` | PASSED: the classification is what the runs give, and the adjudicated record states the current verdict |
+| `python -m tools.experiment_freeze --check` | PASSED: 35 freeze records, every rule held |
+| `python -m tools.experiment_freeze --changes` of each latest record | As [the table above](#the-moved-pins) states |
+| `python -m tools.experiment_preregistration --check` | PASSED: 5 experiment records and 9 superseded revisions |
+| `python -m tools.analysis_preregistration --check` | PASSED: 2 analysis experiments |
+| `python -m tools.evidence_index --check`, `--gate`, and `tools.proof_dashboard --check` | OK. The released pack keeps the digests that the release notes state, and the current pack moves |
+| A replay of each change of the ledger on the register of `a3ed812` | Each value before the change is the value held, and the result is the register of this change |
+| `ruff check .`, `ruff format --check .`, and `python -m mypy` | Passed, 453 source files |
+| `git diff --check a3ed812 HEAD` | No finding |
+
+`uv run --locked pytest` ran on `a6154f9`: 24,051 passed, 39 skipped, and 14 deselected, in 1:41:17, on
+Windows. The commit after it, `be470a1`, changes the ledger, the register, and pages, in their wording,
+and two lists of a test. On that commit `pytest tests/testing tests/domain/test_baseline_profile.py
+tests/architecture/test_decision_authority.py` gave 10,324 passed and 3 skipped. So the default lane
+did not run on the last two commits as a whole. The commit that adds this section edits this page
+and the digests of the evidence index. The hosted lane has not run: it starts when the pull request
+opens.
+
+Helm, Terraform, and the Kubernetes schema gates were not run: this change edits no file that they
+read. Coverage was not measured.
+
+**The check of the reviews.** Round 2 planted 33 mutations and 31 malformed inputs. Round 3 reported
+each mutant that survived round 2 killed, and each planted guard of its own but one, which a test now
+holds. These figures are the reports of the reviewers. The reports are not committed.
+
 ## What this does not establish
 
 - That any run is valid, or that any run is not valid.
