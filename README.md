@@ -192,8 +192,11 @@ Deployment's rolling-update bounds: one pod unavailable and no pod above the rep
 count. From `V2-S7-003-PR1` the committed release was the single-runtime baseline, two
 API replicas and one runtime replica, for the runs of V2-E02A: rule G1 of the V2-E02A
 freeze record switched it. `V2-S7-003-PR2` restores the two runtime replicas by rule G3,
-with the bytes that the target had before the switch. Each switch merges only with the
-explicit authorization of the repository owner. That is configuration. One run on `docker-desktop` on 2026-10-08 applied the
+with the bytes that the target had before the switch. That is configuration. Rule G4 asks
+for the explicit authorization of the repository owner for each switch, and none was found
+before either merge, `ff45093` or `a3ed812`:
+[the two deviations](docs/proof/environment/v2-s7-004-pr1-switch-deviations.md) state each one.
+One run on `docker-desktop` on 2026-10-08 applied the
 two-replica release of chart `0.5.0` once, and two pods of each tier became Ready on one node:
 [the record](docs/proof/environment/v2-s4-002-pr2-validation.md). It establishes
 nothing about what a caller observes when an API pod or a runtime pod is lost.
@@ -366,16 +369,19 @@ not authorize, and revision 3 has no such exclusion: a valid run with no such sp
 too: its discovery is part of the recovery, not a condition of a valid run. An outcome
 reference applies the rule to declared inputs.
 Since `V2-S7-001-PR2` the baseline record has
-[three counted runs](docs/proof/experiments/README.md#the-v2-e02a-runs), each `PASSED`
-on the docker-desktop provider at C2. V2-E02A is a characterization with validity
-criteria alone, so that state says that a run is valid. It is not a reliability pass:
-two requests failed in each run. No run of the other four exists. Since `V2-S7-002-PR1`
-[the set is classified](docs/proof/experiments/v2-e02a/baseline-report.md): the baseline
-is eligible for the comparison with V2-E02B, because a failure episode starts after the
-fault in each of the three runs. That verdict states no comparison and no percentage, and
-it does not authorize a run of V2-E02B. The register holds one claim of the runs, certified
-at `C2`, which states that requests failed. (Until `V2-S7-002-PR1` this paragraph said that
-the set is not yet classified.)
+[three counted runs](docs/proof/experiments/README.md#the-v2-e02a-runs), each with the
+manifest state `PASSED` on the docker-desktop provider at C2. V2-E02A is a characterization
+with validity criteria alone, and that state is not a reliability pass: two requests failed
+in each run. No run of the other four exists. Since `V2-S7-002-PR1`
+[the set is classified](docs/proof/experiments/v2-e02a/baseline-report.md). Since
+`V2-S7-004-PR1` [the current eligibility verdict is `not-decided`](docs/proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json):
+an adjudication that the repository owner accepted ruled that no source that predates the first
+fault settles the meaning of `E02A-AC2`, so the validity of the three runs is not established. Their figures stay as measured figures of what
+executed, at C2. That verdict states no comparison and no percentage, no before and after
+statement is permitted without a valid baseline, and it does not authorize a run of
+V2-E02B. The register holds one claim of the runs, certified at `C2`, which states what
+executed and that requests failed. (Until `V2-S7-004-PR1` this paragraph gave the verdict of
+the classification record, which keeps its bytes.)
 Since `V2-S7-003-PR2` the record of V2-E02B is at
 [revision 3](docs/proof/experiments/README.md#the-g3-switch-and-revision-3-of-v2-e02b),
 registered by the change that restores its target. That revision changes no criterion and
@@ -723,7 +729,7 @@ intention reads as a capability:
 | Deferred security risks | [docs/security/deferred-risks.md](docs/security/deferred-risks.md) | Fourteen risks and eight accepted exceptions; twelve of the fourteen block production use |
 | V1 engineering case study | [docs/case-study/v1-engineering-case-study.md](docs/case-study/v1-engineering-case-study.md) | Published in `V1-S5-013-PR2`, against the frozen evidence pack. It opens with the problems V1 investigated, what was measured, and the limitation beside each, then walks the architecture, the decisions, the experiments, telemetry, cost as a method, the security boundary, what V1 does not prove, and what evidence would justify a second version. It cites only register rows and adds no claim of its own, so the register lists it as a surface that claims nothing; a test holds its citations, its claims appendix, every figure it quotes, and both evidence digests to the register and the evidence index. Whether its prose says what its records say is a reading, checked by review |
 | V1 proof dashboard | [docs/proof/dashboard.md](docs/proof/dashboard.md) | One generated page over the claim and evidence matrix: the certified, planned, deferred, and not-claimed counts, a one-row-per-capability overview, fourteen capability groups that between them show every claim with every evidence record behind it — its level, the environment and provider it ran on, anything it substituted, and its files — and its limitation, and every claim V1 does not certify listed in full. It is produced by `python -m tools.proof_dashboard` and a test regenerates it, so it cannot state a status the register does not. It answers what has been proven; Grafana answers what is happening now |
-| V1 evidence index | [docs/proof/v1-evidence-index.md](docs/proof/v1-evidence-index.md) | The V1 evidence manifest: one entry per evidence record in the claim and evidence register — what executed, what was substituted, the workload source, the environment and provider, every immutable identifier the record pins, the repository revision it names and how the record identifies the code that ran, and every cited file bound to its content by SHA-256 and to its git blob. Generated by `python -m tools.evidence_index` from the register and its ten ledgers, and regenerated by a test, so it cannot state what they do not. It shows that 24 of the 42 records that executed their target behaviour name the revision that ran, and that the release gate is complete: 0 release blockers stand, the 5 that `V1-S5-006-PR2` raised having each been closed. `V1-S5-013-PR2` then froze the evidence pack, and `v1.0.0` quotes its digest. `--gate` prints two pairs of digests from the committed index: the pack `v1.0.0` was cut over, recomputed by undoing the post-release ledgers, and the pack `main` holds after it, which no release quotes |
+| V1 evidence index | [docs/proof/v1-evidence-index.md](docs/proof/v1-evidence-index.md) | The V1 evidence manifest: one entry per evidence record in the claim and evidence register — what executed, what was substituted, the workload source, the environment and provider, every immutable identifier the record pins, the repository revision it names and how the record identifies the code that ran, and every cited file bound to its content by SHA-256 and to its git blob. Generated by `python -m tools.evidence_index` from the register and its twelve ledgers, and regenerated by a test, so it cannot state what they do not. It shows that 24 of the 42 records that executed their target behaviour name the revision that ran, and that the release gate is complete: 0 release blockers stand, the 5 that `V1-S5-006-PR2` raised having each been closed. `V1-S5-013-PR2` then froze the evidence pack, and `v1.0.0` quotes its digest. `--gate` prints two pairs of digests from the committed index: the pack `v1.0.0` was cut over, recomputed by undoing the post-release ledgers, and the pack `main` holds after it, which no release quotes |
 | Evidence records and templates | [docs/proof/README.md](docs/proof/README.md) | Four templates published, two of which have produced records, and no Sprint 3 record declares one; the full record index is in [docs/proof/README.md](docs/proof/README.md) |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented, and `v1.0.0` released on 2026-09-27: [release notes](docs/releases/v1.0.0.md) that lead with what the evidence showed and what it does not establish, and [a checklist](docs/releases/v1.0.0-checklist.md) with the gates passed before merge, the post-merge checks and tag commands, and what was observed after the tag. A test holds the notes' digests, claim and record counts, pinned identifiers, and measured figures to the frozen evidence the release was cut over; their other counts and descriptions are checked by review only |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; GitHub private vulnerability reporting is the private channel, a setting on the hosting service that read disabled when `v1.0.0` was prepared and enabled when it was read after the release. No acknowledgement window, remediation timeline, or backported fix is promised |

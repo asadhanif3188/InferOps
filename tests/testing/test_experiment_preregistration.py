@@ -387,7 +387,8 @@ def test_v2_e02a_alone_has_runs_and_the_one_driver_is_its_own() -> None:
     V2-E02A has a revision 4. Since V2-S7-001-PR2 it has three runs, each under
     that revision, with their corrections, and no other experiment has a run. Since
     V2-S7-002-PR1 it has the classification of those runs, their report, and their
-    reviews. Since V2-S7-003-PR2 V2-E02B has a revision 3, with no driver and no run."""
+    reviews. Since V2-S7-003-PR2 V2-E02B has a revision 3, with no driver and no run.
+    Since V2-S7-004-PR1 V2-E02A has an adjudication and the record that it gives."""
     revisions_of = {"V2-E04": 3, "V2-E02A": 4, "V2-E02B": 3}
     for experiment in EXPERIMENTS:
         directory = REPO_ROOT / experiment.directory
@@ -398,6 +399,8 @@ def test_v2_e02a_alone_has_runs_and_the_one_driver_is_its_own() -> None:
                 "baseline-report.md",
                 "classification.v1alpha1.json",
                 "corrections",
+                "eligibility-adjudicated.v1alpha1.json",
+                "eligibility-adjudication.v1alpha1.json",
                 "procedure",
                 "reviews",
                 "runs",
@@ -1517,7 +1520,9 @@ def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
     lists the two files of the list of ledgers, and revision 4 of V2-E02A lists those
     alone. No revision classifies them. Since V2-S7-003-PR2 the G3 switch restores the
     two desired-state files and the desired-state tool, so a record before it no longer
-    lists them, and revision 4 of V2-E02A does. Revision 3 of V2-E02B lists nothing."""
+    lists them, and revision 4 of V2-E02A does. Since V2-S7-004-PR1 a twelfth ledger
+    moves the two files of the list of ledgers again, so revision 3 of V2-E02B lists
+    those two alone."""
 
     def switched(experiment: str) -> list[str]:
         with_baseline = experiment in ("V2-E02A", "V2-E02B")
@@ -1552,7 +1557,9 @@ def test_the_moved_pins_of_each_record_are_this_check_alone() -> None:
     assert sorted(c.path for c in changed_inputs(load(E02A_R4), REPO_ROOT)) == sorted(
         [*SWITCHED, *LEDGER_LIST]
     )
-    assert changed_inputs(load(E02B_R3), REPO_ROOT) == []
+    assert sorted(c.path for c in changed_inputs(load(E02B_R3), REPO_ROOT)) == sorted(
+        LEDGER_LIST
+    )
 
 
 def test_the_reconciliation_bound_of_e05_is_on_the_host_clock_alone() -> None:

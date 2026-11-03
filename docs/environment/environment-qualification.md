@@ -1,5 +1,7 @@
 # Q1: the environment and identity qualification
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: **the Q1 workflow is frozen, and two qualifications have run (one until
 `V2-S6-004-PR2`; the second, `q1-2`, is below). Since
 `V2-S6-001-PR2`, [qualification `q1-1`](../proof/experiments/v2-q1/runs/q1-1/result.md)

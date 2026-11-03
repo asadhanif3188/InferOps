@@ -144,6 +144,14 @@ be an advertisement.
 > dated 2026-11-01. It references [the independent review of the runs](../proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md).
 > The status is a claim status: the statement says that requests failed. The same ledger
 > replaces the evidence index's reason here, which named ten ledgers.
+>
+> **Since `V2-S7-004-PR1` a twelfth ledger, the eighth after the release, has narrowed that claim,
+> and it moved no status and no level.** [The E02A claim correction ledger](../proof/testing/v2-s7-004-pr1-e02a-claim-correction.v1alpha1.json)
+> sets `E02A-AC2` to `not-evaluated` in each of the three records, because an adjudication that
+> the repository owner accepted ruled that no source that predates the first fault settles that
+> criterion. [The adjudicated record](../proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json)
+> states the current verdict, `not-decided`. The same ledger replaces the evidence index's reason
+> here, which named eleven ledgers.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -699,7 +707,7 @@ compare against and the exclusion list cannot quietly grow.
 | [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) | Interim conduct expectations, with a formal policy deferred. |
 | [LICENSE](../../LICENSE) | The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does. |
 | [docs/proof/dashboard.md](../proof/dashboard.md) | A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them. |
-| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the eleven ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
+| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the twelve ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
 | [docs/case-study/v1-engineering-case-study.md](../case-study/v1-engineering-case-study.md) | The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it. |
 | [docs/testing/evidence-levels.md](evidence-levels.md) | The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it. |
 

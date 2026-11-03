@@ -1,5 +1,7 @@
 # The model cache under two serving runtime replicas: what is observed, and how
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: **one run is recorded. On the `docker-desktop` provider, two runtime pods on one node read one verified artifact from the one claim, and the record of that run has the result `PASSED`. One run on one node does not establish node-loss resilience, and `kind` executed none of it.**
 
 The two-replica target declares two serving runtime replicas. From `V2-S7-003-PR1` until

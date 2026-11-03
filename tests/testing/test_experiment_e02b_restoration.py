@@ -433,9 +433,7 @@ def test_the_three_records_are_registered_by_the_switch_alone() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "record", [E02B_R3, E03_R5, E06_R4, Q1_R2, Q2_R3, Q3_R2], ids=lambda p: p[-24:]
-)
+@pytest.mark.parametrize("record", [Q1_R2, Q2_R3, Q3_R2], ids=lambda p: p[-24:])
 def test_a_record_that_the_switch_restores_or_registers_lists_no_moved_file(
     record: str,
 ) -> None:
@@ -451,8 +449,21 @@ def test_a_record_that_the_switch_restores_or_registers_lists_no_moved_file(
         (E04_R3, LEDGER_LIST),
         (E05_R2, LEDGER_LIST | {PREREGISTRATION_CORE}),
         (S5_R2, LEDGER_LIST | EVIDENCE_TOOL),
+        (E02B_R3, LEDGER_LIST),
+        (E03_R5, LEDGER_LIST),
+        (E06_R4, LEDGER_LIST),
     ],
-    ids=["e02a-r4", "e02b-r2", "e02c-r2", "e04-r3", "e05-r2", "s5-r2"],
+    ids=[
+        "e02a-r4",
+        "e02b-r2",
+        "e02c-r2",
+        "e04-r3",
+        "e05-r2",
+        "s5-r2",
+        "e02b-r3",
+        "e03-r5",
+        "e06-r4",
+    ],
 )
 def test_a_record_that_owes_a_revision_lists_each_moved_file(
     record: str, moved: set[str]
@@ -477,13 +488,24 @@ def pinned_tree(tmp_path: Path) -> Path:
     return tmp_path
 
 
+def beyond_the_ledgers(tree: Path) -> list[Any]:
+    """What moved against revision 3, past the two files that the ledgers move.
+
+    Since V2-S7-004-PR1 those two differ from revision 3, and a test above holds that.
+    """
+    return [
+        change
+        for change in changed_inputs(read(E02B_R3), tree)
+        if change.path not in LEDGER_LIST
+    ]
+
+
 def test_a_hand_edit_of_a_restored_file_is_listed_against_revision_3(
     pinned_tree: Path,
 ) -> None:
     path = pinned_tree / VALUES_FILE
     path.write_bytes(path.read_bytes().replace(b"replicaCount: 2", b"replicaCount: 1"))
-    changes = changed_inputs(read(E02B_R3), pinned_tree)
-    assert [(change.path, change.kind) for change in changes] == [
+    assert [(c.path, c.kind) for c in beyond_the_ledgers(pinned_tree)] == [
         (VALUES_FILE, "changed")
     ]
 
@@ -495,7 +517,7 @@ def test_the_files_of_the_baseline_at_the_path_are_listed_against_revision_3(
     profile = "tests/domain/fixtures/experiment-profiles/single-runtime-baseline"
     for name in target_files():
         shutil.copyfile(pinned_tree / profile / name, pinned_tree / DIRECTORY / name)
-    changes = changed_inputs(read(E02B_R3), pinned_tree)
+    changes = beyond_the_ledgers(pinned_tree)
     assert {change.path for change in changes} == {RELEASE_FILE, VALUES_FILE}
 
 
@@ -510,5 +532,4 @@ def test_a_declaration_left_at_the_baseline_is_listed_against_revision_3(
             b"synchronous-llm-two-replicas.yaml", b"synchronous-llm-local.yaml"
         )
     )
-    changes = changed_inputs(read(E02B_R3), pinned_tree)
-    assert [change.path for change in changes] == [DECLARATION]
+    assert [c.path for c in beyond_the_ledgers(pinned_tree)] == [DECLARATION]

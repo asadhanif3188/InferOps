@@ -8,6 +8,29 @@ from `1.0.0`.
 
 ## [Unreleased]
 
+### Changed
+
+- **The current E02A eligibility verdict is `not-decided`, and the G1 and G3 deviations are
+  stated.** `V2-S7-004-PR1` corrects what the repository currently says, and so it corrects the
+  entries of `V2-S7-001-PR2` and `V2-S7-002-PR1` below, which state a verdict and a validity
+  that are withdrawn, and the two entries of the switches below, which state the rule and not
+  what happened at either merge. An adjudication by a session with no role in any run ruled that no source that predates the first
+  fault settles the meaning of `E02A-AC2`, and the repository owner chose the verdict
+  `not-decided` on 2026-11-02. A new record at a new path states it, with what each reading gives
+  on the raw streams: the reading scope holds in 3 of 3 runs, the two runtime counts that the
+  review reported on hold in 0 of 3, and no source selects those two for `E02A-AC2`. The classification record
+  keeps its bytes, because revision 3 of V2-E02B binds them, so that revision still says
+  `eligible` until a successor revision. Each manifest keeps `PASSED`, each attempt keeps
+  `counted: true`, and neither establishes validity. V2-E03 and V2-E06 consume none of the three
+  runs until the next unused registered revision of each states how its population treats them.
+  A new page states that no pre-merge authorization was found for the merge of either switch,
+  `ff45093` and `a3ed812`. A twelfth ledger narrows the claim, keeps its status, and sets
+  `E02A-AC2` to `not-evaluated` in each of its three records. No run, fault, switch, or cluster
+  operation occurred, and no freeze record, run, correction, or earlier ledger is edited. See
+  [the adjudicated record](docs/proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json),
+  [the deviations](docs/proof/environment/v2-s7-004-pr1-switch-deviations.md), and
+  [the validation record](docs/proof/environment/v2-s7-004-pr1-validation.md).
+
 ### Added
 
 - **The G3 switch of the desired state to the two-replica target, and revision 3 of the

@@ -1,0 +1,449 @@
+{
+  "adjudication": {
+    "contentSha256": "4b29481ca578ac744931d359eb460d2362df7357504c425aaa2c7cecc3dfc5ee",
+    "decidedBy": "The repository owner accepted the ruling on 2026-11-02, with its limits, and chose the verdict not-decided. No tool reads that choice.",
+    "path": "docs/proof/experiments/v2-e02a/eligibility-adjudication.v1alpha1.json",
+    "ruling": "not-settled"
+  },
+  "attempts": [
+    {
+      "counted": true,
+      "directory": "docs/proof/experiments/v2-e02a/runs/e02a-1",
+      "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "manifestSha256": "01b45844c6a7d5d96bfd6c7bfd0fbe98a586202b7e39a3cb53d6d9faf8c9eb1b",
+      "runId": "e02a-1",
+      "state": "PASSED",
+      "validityEstablished": false
+    },
+    {
+      "counted": true,
+      "directory": "docs/proof/experiments/v2-e02a/runs/e02a-2",
+      "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "manifestSha256": "24b9bfdbff27a8fb777d5d40259eef756d8c1c7882eb7c60f0fe2045dccb7534",
+      "runId": "e02a-2",
+      "state": "PASSED",
+      "validityEstablished": false
+    },
+    {
+      "counted": true,
+      "directory": "docs/proof/experiments/v2-e02a/runs/e02a-3",
+      "executingRevision": "ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b",
+      "manifestSha256": "9e1e8f129fc1be8fc3617161ca73b7a3327bc11ff5bb92b596fc760d73b1e0be",
+      "runId": "e02a-3",
+      "state": "PASSED",
+      "validityEstablished": false
+    }
+  ],
+  "attemptsStatement": "Each attempt keeps counted: true in the classification record, and each manifest keeps the state PASSED. This does not establish validity.",
+  "classificationRecord": {
+    "contentSha256": "6268507b790642b34e56a75703b5ee4c2ca6ec330f9cfe6fcd08346cc6042da9",
+    "path": "docs/proof/experiments/v2-e02a/classification.v1alpha1.json",
+    "statement": "The classification record keeps its bytes. It states what the rule gives on the state of each manifest. This record states the current verdict.",
+    "verdict": "eligible"
+  },
+  "comparisonFigures": {
+    "episode": {
+      "basis": "positive",
+      "median": 4065,
+      "metric": "caller-failure-episode-ms",
+      "percentageOverThisBasisPossible": false,
+      "statement": "The set is not decided, so no improvement percentage is stated."
+    },
+    "failures": {
+      "basis": "positive",
+      "median": 2,
+      "metric": "requests-failed-since-fault",
+      "percentageOverThisBasisPossible": false,
+      "statement": "The set is not decided, so no improvement percentage is stated."
+    }
+  },
+  "consumers": [
+    {
+      "consumesRuns": [],
+      "contentSha256": "86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a",
+      "experiment": "V2-E02B",
+      "latestRevision": 3,
+      "path": "docs/proof/experiments/v2-e02b/freeze-r3.v1alpha1.json",
+      "statement": "No run of V2-E02B exists. Revision 3 computes an improvement only when V2-E02A is eligible, and E02B-AC2 is settled in a merged revision before the first run. This is a decision of the repository owner, and no tool enforces it."
+    },
+    {
+      "consumesRuns": [],
+      "contentSha256": "4c25ed12c615224062e7bf9a5821c8180c2725c6903461868925e0934d4d62b8",
+      "experiment": "V2-E03",
+      "latestRevision": 5,
+      "path": "docs/proof/experiments/v2-e03/freeze-r5.v1alpha1.json",
+      "statement": "Revision 5 states a population of valid, counted runs that names V2-E02A. It consumes none of the three runs until the next unused registered revision of the record states how its population treats them. This is a decision of the repository owner, and no tool enforces it."
+    },
+    {
+      "consumesRuns": [],
+      "contentSha256": "5a9267cadf52c0f6f63110bce182382b2d10118f3e8ffab3cbd3758de1627463",
+      "experiment": "V2-E06",
+      "latestRevision": 4,
+      "path": "docs/proof/experiments/v2-e06/freeze-r4.v1alpha1.json",
+      "statement": "Revision 4 names V2-E02A as its baseline source. It consumes none of the three runs until the next unused registered revision of the record states how its population treats them. This is a decision of the repository owner, and no tool enforces it."
+    }
+  ],
+  "decidedOn": "2026-11-02",
+  "doesNotEstablish": [
+    "That any run is valid, or that any run is not valid.",
+    "That the reading scope or the field scope is what E02A-AC2 means.",
+    "That the set fails the eligibility rule. The verdict is not-decided.",
+    "A comparison, an improvement, a reduction, or a percentage.",
+    "An authorization of a run of V2-E02B, of a change of the desired state, or of a later sprint.",
+    "That the desired state is delivered on a cluster.",
+    "The cause of a failure, of a gap, or of a recovery."
+  ],
+  "eligibility": {
+    "conditions": {
+      "countedRuns": 3,
+      "failureEpisode": {
+        "held": true,
+        "runsNotJudged": 0,
+        "runsShowing": 3
+      },
+      "leastRunsShowing": 2,
+      "zeroReadyInterval": {
+        "onTheFirstReading": {
+          "held": true,
+          "runsShowing": 3
+        },
+        "onTheOuterStart": {
+          "held": false,
+          "runsShowing": 0
+        }
+      }
+    },
+    "restsOn": [],
+    "statement": "No source that predates the first fault of V2-E02A, 2026-10-31T13:41:35Z, uniquely specifies what \"states a value\" and \"a reading with a value\" mean for E02A-AC2. The sources lean towards a reading-level test, and they do not settle it. So the validity of the three counted runs is not established, and the verdict does not follow from the rule.",
+    "verdict": "not-decided"
+  },
+  "evidenceLevel": "C2",
+  "experimentId": "V2-E02A",
+  "governingRecord": {
+    "contentSha256": "3630fbf204ecc6b0d37a5a9d0ebf56caa05c0f46bbd77f9f01d8640c181c3b0e",
+    "path": "docs/proof/experiments/v2-e02a/freeze-r4.v1alpha1.json",
+    "revision": 4
+  },
+  "limitations": [
+    "The verdict is not-decided and not not-eligible. This record does not state that any run failed a criterion, and it does not state that the field reading applies. It states that no source that predates the first fault settles the meaning of E02A-AC2.",
+    "Each run manifest keeps the state PASSED, because a correction cannot change the state of a manifest, and each attempt keeps counted: true in the classification record. Neither establishes the validity of a run.",
+    "The repository owner approved the stream reading on 2026-10-31, after the evidence was read. That approval stays a post-result choice. A later approval does not make it preregistered, and no criterion is rewritten.",
+    "Revision 3 of V2-E02B binds the digest and the verdict of the classification record, and it still says eligible until a successor revision. That binding states what the classification record says. It is not the current verdict.",
+    "V2-E03 and V2-E06 consume none of the three runs until the next unused registered revision of each states how its population treats them.",
+    "The medians are measured figures of what executed, at C2. Without a valid baseline, no before and after statement is permitted.",
+    "The reading figures are computed from the raw streams, over the readings wholly inside the window of each run. A stream reads at intervals, so a gap is a bound on when a value changed and not the instant of the change.",
+    "The figures read the second and the third clause of E02A-AC2. The first clause, that each stream is accepted by its reader, is held by the replay of each run and not here.",
+    "No source selects the two runtime counts of selectedRuntimeCounts for E02A-AC2. Revision 4 reads them elsewhere, and readingsOfTheCriterion states where. Each other count but unavailableReplicas is reported in each reading of each window, so a field reading of one of those counts would give another outcome.",
+    "The adjudicator is one automated session and not a person. Its limits are in the adjudication."
+  ],
+  "measuredMedians": {
+    "caller-failure-episode-ms": 4065,
+    "max-success-gap-ms": 29896,
+    "requests-failed-in-window": 2,
+    "requests-failed-since-fault": 2,
+    "stabilized-since-fault-started-ms": 96469
+  },
+  "readingsOfTheCriterion": {
+    "criterion": {
+      "id": "E02A-AC2",
+      "statement": "The endpoints, pods, deployments, and argo streams are each accepted by their reader, each states a value in its first and its last reading inside the window, and each has at most 10 s between two consecutive readings with a value inside the window."
+    },
+    "limitMs": 10000,
+    "runs": [
+      {
+        "countsReportedInEachReading": [
+          "platform-api.availableReplicas",
+          "platform-api.generation",
+          "platform-api.observedGeneration",
+          "platform-api.readyReplicas",
+          "platform-api.replicas",
+          "platform-api.specReplicas",
+          "platform-api.updatedReplicas",
+          "serving-runtime.generation",
+          "serving-runtime.observedGeneration",
+          "serving-runtime.replicas",
+          "serving-runtime.specReplicas",
+          "serving-runtime.updatedReplicas"
+        ],
+        "countsReportedInNoReading": [
+          "platform-api.unavailableReplicas"
+        ],
+        "everyCount": {
+          "firstAndLastHaveAValue": false,
+          "held": false,
+          "largestGapFinishToNextStartMs": null,
+          "largestGapStartToStartMs": null,
+          "readingsInWindow": 166,
+          "readingsWithAValue": 0
+        },
+        "readingScope": {
+          "argo": {
+            "answered": 166,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 4911,
+            "largestGapStartToStartMs": 5789,
+            "noNullMember": 166,
+            "readingsInWindow": 166,
+            "readingsWithAValue": 166
+          },
+          "deployments": {
+            "answered": 166,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 4021,
+            "largestGapStartToStartMs": 6001,
+            "noNullMember": 166,
+            "noRefusedTier": 166,
+            "readingsInWindow": 166,
+            "readingsWithAValue": 166
+          },
+          "endpoints": {
+            "answered": 166,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 4021,
+            "largestGapStartToStartMs": 6001,
+            "noNullMember": 166,
+            "noRefusedTier": 166,
+            "readingsInWindow": 166,
+            "readingsWithAValue": 166
+          },
+          "pods": {
+            "answered": 166,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 4021,
+            "largestGapStartToStartMs": 6001,
+            "noNullMember": 166,
+            "readingsInWindow": 166,
+            "readingsWithAValue": 166
+          }
+        },
+        "runId": "e02a-1",
+        "selectedRuntimeCounts": {
+          "serving-runtime.availableReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 25104,
+            "largestGapStartToStartMs": 26304,
+            "readingsInWindow": 166,
+            "readingsWithAValue": 160
+          },
+          "serving-runtime.readyReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 25104,
+            "largestGapStartToStartMs": 26304,
+            "readingsInWindow": 166,
+            "readingsWithAValue": 160
+          }
+        },
+        "window": {
+          "from": "2026-10-31T13:40:35.149Z",
+          "to": "2026-10-31T13:53:35.914Z"
+        }
+      },
+      {
+        "countsReportedInEachReading": [
+          "platform-api.availableReplicas",
+          "platform-api.generation",
+          "platform-api.observedGeneration",
+          "platform-api.readyReplicas",
+          "platform-api.replicas",
+          "platform-api.specReplicas",
+          "platform-api.updatedReplicas",
+          "serving-runtime.generation",
+          "serving-runtime.observedGeneration",
+          "serving-runtime.replicas",
+          "serving-runtime.specReplicas",
+          "serving-runtime.updatedReplicas"
+        ],
+        "countsReportedInNoReading": [
+          "platform-api.unavailableReplicas"
+        ],
+        "everyCount": {
+          "firstAndLastHaveAValue": false,
+          "held": false,
+          "largestGapFinishToNextStartMs": null,
+          "largestGapStartToStartMs": null,
+          "readingsInWindow": 188,
+          "readingsWithAValue": 0
+        },
+        "readingScope": {
+          "argo": {
+            "answered": 189,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 3969,
+            "largestGapStartToStartMs": 4740,
+            "noNullMember": 189,
+            "readingsInWindow": 189,
+            "readingsWithAValue": 189
+          },
+          "deployments": {
+            "answered": 188,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 3626,
+            "largestGapStartToStartMs": 5036,
+            "noNullMember": 188,
+            "noRefusedTier": 188,
+            "readingsInWindow": 188,
+            "readingsWithAValue": 188
+          },
+          "endpoints": {
+            "answered": 188,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 3626,
+            "largestGapStartToStartMs": 5036,
+            "noNullMember": 188,
+            "noRefusedTier": 188,
+            "readingsInWindow": 188,
+            "readingsWithAValue": 188
+          },
+          "pods": {
+            "answered": 188,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 3626,
+            "largestGapStartToStartMs": 5036,
+            "noNullMember": 188,
+            "readingsInWindow": 188,
+            "readingsWithAValue": 188
+          }
+        },
+        "runId": "e02a-2",
+        "selectedRuntimeCounts": {
+          "serving-runtime.availableReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 22417,
+            "largestGapStartToStartMs": 23488,
+            "readingsInWindow": 188,
+            "readingsWithAValue": 182
+          },
+          "serving-runtime.readyReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 22417,
+            "largestGapStartToStartMs": 23488,
+            "readingsInWindow": 188,
+            "readingsWithAValue": 182
+          }
+        },
+        "window": {
+          "from": "2026-10-31T14:46:01.042Z",
+          "to": "2026-10-31T14:59:01.816Z"
+        }
+      },
+      {
+        "countsReportedInEachReading": [
+          "platform-api.availableReplicas",
+          "platform-api.generation",
+          "platform-api.observedGeneration",
+          "platform-api.readyReplicas",
+          "platform-api.replicas",
+          "platform-api.specReplicas",
+          "platform-api.updatedReplicas",
+          "serving-runtime.generation",
+          "serving-runtime.observedGeneration",
+          "serving-runtime.replicas",
+          "serving-runtime.specReplicas",
+          "serving-runtime.updatedReplicas"
+        ],
+        "countsReportedInNoReading": [
+          "platform-api.unavailableReplicas"
+        ],
+        "everyCount": {
+          "firstAndLastHaveAValue": false,
+          "held": false,
+          "largestGapFinishToNextStartMs": null,
+          "largestGapStartToStartMs": null,
+          "readingsInWindow": 178,
+          "readingsWithAValue": 0
+        },
+        "readingScope": {
+          "argo": {
+            "answered": 178,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 5796,
+            "largestGapStartToStartMs": 7057,
+            "noNullMember": 178,
+            "readingsInWindow": 178,
+            "readingsWithAValue": 178
+          },
+          "deployments": {
+            "answered": 178,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 4198,
+            "largestGapStartToStartMs": 6628,
+            "noNullMember": 178,
+            "noRefusedTier": 178,
+            "readingsInWindow": 178,
+            "readingsWithAValue": 178
+          },
+          "endpoints": {
+            "answered": 178,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 4198,
+            "largestGapStartToStartMs": 6628,
+            "noNullMember": 178,
+            "noRefusedTier": 178,
+            "readingsInWindow": 178,
+            "readingsWithAValue": 178
+          },
+          "pods": {
+            "answered": 178,
+            "firstAndLastHaveAValue": true,
+            "held": true,
+            "largestGapFinishToNextStartMs": 4198,
+            "largestGapStartToStartMs": 6628,
+            "noNullMember": 178,
+            "readingsInWindow": 178,
+            "readingsWithAValue": 178
+          }
+        },
+        "runId": "e02a-3",
+        "selectedRuntimeCounts": {
+          "serving-runtime.availableReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 22043,
+            "largestGapStartToStartMs": 23115,
+            "readingsInWindow": 178,
+            "readingsWithAValue": 172
+          },
+          "serving-runtime.readyReplicas": {
+            "firstAndLastHaveAValue": true,
+            "held": false,
+            "largestGapFinishToNextStartMs": 22043,
+            "largestGapStartToStartMs": 23115,
+            "readingsInWindow": 178,
+            "readingsWithAValue": 172
+          }
+        },
+        "window": {
+          "from": "2026-10-31T15:46:24.552Z",
+          "to": "2026-10-31T15:59:25.285Z"
+        }
+      }
+    ],
+    "runsHoldingBothRuntimeCounts": 0,
+    "runsHoldingTheReadingScope": 3,
+    "statement": "readingScope asks whether a reading has a value, with all three variants together: the read answered, with no fault, no null member, and no refused tier. selectedRuntimeCounts asks whether a reading reports one runtime count, for the two counts that the review of each run reported on. The review chose those two after the evidence was read, and no source selects them for E02A-AC2. Revision 4 predates the first fault. It names the signal runtime-ready-replicas, it reads readyReplicas in P6, in the stable window, and in the cleanup, and it lists both counts among its measurements. Those uses name no criterion, and the adjudication cites none of them. It cites tools/reliability_analysis/core.py, where a signal of a Deployment count has no value in a reading in which the count is zero, and it states that nothing connects that to E02A-AC2. everyCount asks whether a reading reports each of the eight Deployment counts of both tiers. This record does not state which of these is the criterion."
+  },
+  "registration": "The change that adds this record registers the correction through a twelfth ledger. So tools/evidence_index/__init__.py and tools/evidence_index/core.py differ from their pins in each latest record of V2-E02A, V2-E02B, V2-E02C, V2-E03, V2-E04, V2-E05, and V2-E06, and in the other records that pin them. No revision classifies them yet, and this record edits no freeze record.",
+  "schema": "inferops.io/comparison-eligibility-adjudicated/v1alpha1",
+  "targetRecord": {
+    "boundVerdict": "eligible",
+    "contentSha256": "86ec3b10d5b7721c3a4d0adfe04e022454d96c633c04738c684bf357138a0c9a",
+    "path": "docs/proof/experiments/v2-e02b/freeze-r3.v1alpha1.json",
+    "revision": 3,
+    "statement": "Revision 3 of V2-E02B binds the digest and the verdict of the classification record in definition.g3Provenance. It still says eligible until a successor revision, and this record does not edit it."
+  }
+}

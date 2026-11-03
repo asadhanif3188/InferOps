@@ -1,5 +1,7 @@
 # The capacity preflight for the two-replica release
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: **the gate is implemented, and synthetic cases show an acceptance and each kind of refusal at evidence level C0. Three readings of one cluster are committed, each of 2026-10-09 on the `docker-desktop` provider and each with the result `ACCEPTED`. Two are whole collections, and one is a record with part of its collection. None is a qualification of that host. An acceptance compares stated requests and limits with what one node allocates. It does not establish that a pod is scheduled or starts.**
 
 The two-replica target declares two platform API replicas and two serving

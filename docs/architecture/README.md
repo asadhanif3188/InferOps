@@ -1,5 +1,7 @@
 # Architecture and decision records
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: entry point established. Twenty-one records: twelve accepted in part, seven
 accepted, one accepted with a recorded exception, and one accepted and later
 amended. Every one of them names an accountable decision owner, and none is

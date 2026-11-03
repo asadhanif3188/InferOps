@@ -10263,12 +10263,12 @@
     {
       "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
       "area": "reliability",
-      "statement": "In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. The seven validity criteria of the record hold in each run, on the reading of E02A-AC2 that the repository owner approved after the evidence was read, so each is PASSED, which states that the run is valid and not that the service stayed available. The set meets the comparison eligibility rule of the record on its failure episodes.",
+      "statement": "In three runs on 2026-10-31, on the docker-desktop provider, on one cluster with one node, at the commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, under revision 4 of the V2-E02A freeze record, a release with two API replicas and one runtime replica served the real model while the RP-1 caller sent requests through the API Service, and the control deleted the one runtime pod once in each run. In each run two requests failed, in one failure episode of 3,682 ms to 4,276 ms that the analysis starts about 30 s after the fault, and the largest time between two successes is 29,893 ms to 30,427 ms. Each manifest states PASSED, which is not a statement that the service stayed available. The validity of the three runs is not established, because an adjudication that the repository owner accepted ruled that no source that predates the first fault settles the meaning of E02A-AC2, and the current comparison eligibility verdict is not-decided.",
       "status": "certified",
       "notClaimedReason": null,
       "assertsRealBehaviour": true,
-      "limitation": "Runtime, C2, about three runs, e02a-1, e02a-2, and e02a-3, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one release, one model, and one caller workload. The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read: the freeze record does not state that reading, no tool reads the approval, and on the readings of the runtime readyReplicas count no run would be counted and this claim would not stand. The eligibility rests on the failure episodes alone. The zero-Ready condition holds on the first reading that gave zero and not on the outer start, and the record does not state which applies. The start of a failure episode is the completion of its first failed request: the failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time. The failure count is 2 in each run, and the caller profile has 2 workers. The model file of each replacement pod was not compared directly. The host paged, and no record establishes whether that changed a figure. The review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. It read no register statement about these runs, it ran no tool of this repository, and it does not establish that this claim is correct. Registration, 2026-11-01: V2-S7-001-PR2 ran the three runs and registered no claim. V2-S7-002-PR1 classified them and added this claim. No run executed in that change, and no file of a run changed.",
-      "doesNotEstablish": "That the service stayed available; that one runtime replica is or is not acceptable for any service; a comparison with two runtime replicas, an improvement, or a percentage, since no run of V2-E02B exists; an authorization of a run of V2-E02B or of a change of the desired state; node failure, overload, sustained capacity, or production availability; the cause of a failure, of a gap, or of a recovery; a figure of the V1 pod-loss evidence; that the model file of a replacement pod is the file of the record; that paging on the host changed no figure; a service-level objective; behaviour on another provider, Kubernetes version, node count, release, or caller workload; representative evidence, C3, or operational evidence, C4; a cost, a saving, a return on investment, or a business effect; that a person reviewed the result; or production readiness.",
+      "limitation": "Runtime, C2, about three runs, e02a-1, e02a-2, and e02a-3, at one commit, on one provider, docker-desktop, on one cluster with one node on Kubernetes v1.36.1, with one release, one model, and one caller workload. The state of each run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read: the freeze record does not state that reading, no tool reads the approval, and on the readings of the runtime readyReplicas count no run would be counted. The classification record states eligible on the failure episodes alone, and that is not the current verdict. The zero-Ready condition holds on the first reading that gave zero and not on the outer start, and the record does not state which applies. The start of a failure episode is the completion of its first failed request: the failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time. The failure count is 2 in each run, and the caller profile has 2 workers. The model file of each replacement pod was not compared directly. The host paged, and no record establishes whether that changed a figure. The first review of the result is a record of a separate session of the same assistant, and no person and no outside party reviewed the result. It read no register statement about these runs, it ran no tool of this repository, and it does not establish that this claim is correct. Registration, 2026-11-01: V2-S7-001-PR2 ran the three runs and registered no claim. V2-S7-002-PR1 classified them and added this claim. No run executed in that change, and no file of a run changed. Correction, 2026-11-02: until V2-S7-004-PR1 the statement of this claim gave each validity criterion as held and gave the verdict of the classification record as the current verdict. An adjudication by a session with no role in any run ruled that no source that predates the first fault settles the meaning of E02A-AC2, and the repository owner accepted that ruling and chose the verdict not-decided on 2026-11-02. docs/proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json states that verdict and what each reading gives on the raw streams: the reading scope holds in 3 of 3 runs, and the two runtime counts that the review chose after the evidence was read hold in 0 of 3, and no source selects them for E02A-AC2; revision 4 reads them elsewhere, and that record states where. The statement now states what executed and the measured figures, and those do not rest on either reading, so the claim status stays certified. Each manifest keeps PASSED and each attempt keeps counted: true, and neither establishes validity. A later approval does not make a post-result choice preregistered, and no criterion is rewritten. Four later reviews read the correction before this ledger was written. Later reviews read the ledger after it was written, and their findings changed this wording, so no record establishes that a review of this wording preceded the register change. Each is an automated session. No run executed in that change, and no file of a run, no correction, no freeze record, and no earlier ledger changed. The adjudicator is an automated session and not a person, and its limits are in docs/proof/experiments/v2-e02a/eligibility-adjudication.v1alpha1.json.",
+      "doesNotEstablish": "That any run is valid, or that any run is not valid; which reading of E02A-AC2 is right; that the service stayed available; that one runtime replica is or is not acceptable for any service; a comparison with two runtime replicas, an improvement, or a percentage, since no run of V2-E02B exists; an authorization of a run of V2-E02B or of a change of the desired state; node failure, overload, sustained capacity, or production availability; the cause of a failure, of a gap, or of a recovery; a figure of the V1 pod-loss evidence; that the model file of a replacement pod is the file of the record; that paging on the host changed no figure; a service-level objective; behaviour on another provider, Kubernetes version, node count, release, or caller workload; representative evidence, C3, or operational evidence, C4; a cost, a saving, a return on investment, or a business effect; that a person reviewed the result; or production readiness.",
       "claimMaterialComponents": [
         "argo-cd",
         "inferops-llm-chart",
@@ -10285,7 +10285,7 @@
           "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
           "migrationState": "migrated",
           "evidenceLevel": "C2",
-          "summary": "On 2026-10-31 run e02a-1 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 365 requests in the window failed, in one failure episode of 4276 ms, the largest time between two successes is 29896 ms, and the runtime tier has one zero-Ready interval with an inner figure of 17342 ms and an outer figure of 26813 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+          "summary": "On 2026-10-31 run e02a-1 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 365 requests in the window failed, in one failure episode of 4276 ms, the largest time between two successes is 29896 ms, and the runtime tier has one zero-Ready interval with an inner figure of 17342 ms and an outer figure of 26813 ms. The manifest states PASSED, and the validity of the run is not established.",
           "execution": {
             "targetBehaviourExecuted": true,
             "executedComponents": [
@@ -10427,7 +10427,7 @@
               "criterionId": "e02a-ac2",
               "statement": "The endpoints, pods, deployments, and argo streams are each accepted by their reader, each states a value in its first and its last reading inside the window, and each has at most 10 s between two consecutive readings with a value inside the window.",
               "declaredBefore": true,
-              "outcome": "met"
+              "outcome": "not-evaluated"
             },
             {
               "criterionId": "e02a-ac3",
@@ -10519,12 +10519,18 @@
             "docs/proof/experiments/v2-e02a/baseline-report.md",
             "docs/proof/experiments/v2-e02a/reviews/e02a-1-review-1.v1alpha1.json",
             "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
-            "docs/proof/environment/v2-s7-002-pr1-validation.md"
+            "docs/proof/environment/v2-s7-002-pr1-validation.md",
+            "docs/proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/eligibility-adjudication.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-1-review-2.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-correction-review-2.md",
+            "docs/proof/environment/v2-s7-004-pr1-switch-deviations.md",
+            "docs/proof/environment/v2-s7-004-pr1-validation.md"
           ],
           "limitations": [
             "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
-            "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
-            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+            "V2-E02A is a baseline characterization with validity criteria alone. The manifest states PASSED, and the validity of the run is not established. Requests failed in this run.",
+            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted. An adjudication that the repository owner accepted ruled that no source that predates the first fault settles that reading, so the outcome of E02A-AC2 in this record is not-evaluated.",
             "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
             "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
             "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
@@ -10532,7 +10538,7 @@
             "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
             "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
             "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
-            "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+            "The first review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
           ],
           "doesNotEstablish": [
             "That the service stayed available. Requests failed in this run.",
@@ -10544,7 +10550,9 @@
             "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
             "That paging on the host changed no figure.",
             "That a person reviewed the result.",
-            "Anything about another provider, node, release, or caller workload."
+            "Anything about another provider, node, release, or caller workload.",
+            "That the run is valid, or that it is not valid.",
+            "Which reading of E02A-AC2 is right."
           ]
         },
         {
@@ -10552,7 +10560,7 @@
           "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
           "migrationState": "migrated",
           "evidenceLevel": "C2",
-          "summary": "On 2026-10-31 run e02a-2 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 366 requests in the window failed, in one failure episode of 3682 ms, the largest time between two successes is 30427 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14837 ms and an outer figure of 23792 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+          "summary": "On 2026-10-31 run e02a-2 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 366 requests in the window failed, in one failure episode of 3682 ms, the largest time between two successes is 30427 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14837 ms and an outer figure of 23792 ms. The manifest states PASSED, and the validity of the run is not established.",
           "execution": {
             "targetBehaviourExecuted": true,
             "executedComponents": [
@@ -10694,7 +10702,7 @@
               "criterionId": "e02a-ac2",
               "statement": "The endpoints, pods, deployments, and argo streams are each accepted by their reader, each states a value in its first and its last reading inside the window, and each has at most 10 s between two consecutive readings with a value inside the window.",
               "declaredBefore": true,
-              "outcome": "met"
+              "outcome": "not-evaluated"
             },
             {
               "criterionId": "e02a-ac3",
@@ -10786,12 +10794,18 @@
             "docs/proof/experiments/v2-e02a/baseline-report.md",
             "docs/proof/experiments/v2-e02a/reviews/e02a-2-review-1.v1alpha1.json",
             "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
-            "docs/proof/environment/v2-s7-002-pr1-validation.md"
+            "docs/proof/environment/v2-s7-002-pr1-validation.md",
+            "docs/proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/eligibility-adjudication.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-2-review-2.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-correction-review-2.md",
+            "docs/proof/environment/v2-s7-004-pr1-switch-deviations.md",
+            "docs/proof/environment/v2-s7-004-pr1-validation.md"
           ],
           "limitations": [
             "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
-            "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
-            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+            "V2-E02A is a baseline characterization with validity criteria alone. The manifest states PASSED, and the validity of the run is not established. Requests failed in this run.",
+            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted. An adjudication that the repository owner accepted ruled that no source that predates the first fault settles that reading, so the outcome of E02A-AC2 in this record is not-evaluated.",
             "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
             "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
             "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
@@ -10799,7 +10813,7 @@
             "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
             "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
             "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
-            "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+            "The first review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
           ],
           "doesNotEstablish": [
             "That the service stayed available. Requests failed in this run.",
@@ -10811,7 +10825,9 @@
             "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
             "That paging on the host changed no figure.",
             "That a person reviewed the result.",
-            "Anything about another provider, node, release, or caller workload."
+            "Anything about another provider, node, release, or caller workload.",
+            "That the run is valid, or that it is not valid.",
+            "Which reading of E02A-AC2 is right."
           ]
         },
         {
@@ -10819,7 +10835,7 @@
           "claimId": "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod",
           "migrationState": "migrated",
           "evidenceLevel": "C2",
-          "summary": "On 2026-10-31 run e02a-3 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 342 requests in the window failed, in one failure episode of 4065 ms, the largest time between two successes is 29893 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14949 ms and an outer figure of 23448 ms. The seven validity criteria hold on the reading of E02A-AC2 that the repository owner approved, and the state is PASSED.",
+          "summary": "On 2026-10-31 run e02a-3 of V2-E02A ran as revision 4 of its freeze record registers it, at the merged commit ff45093b2a9bf2cdbcde5fee453fbc6b64f2e53b, on the docker-desktop provider, with two API replicas and one runtime replica. The control deleted the one runtime pod once while RP-1 ran. 2 of 342 requests in the window failed, in one failure episode of 4065 ms, the largest time between two successes is 29893 ms, and the runtime tier has one zero-Ready interval with an inner figure of 14949 ms and an outer figure of 23448 ms. The manifest states PASSED, and the validity of the run is not established.",
           "execution": {
             "targetBehaviourExecuted": true,
             "executedComponents": [
@@ -10961,7 +10977,7 @@
               "criterionId": "e02a-ac2",
               "statement": "The endpoints, pods, deployments, and argo streams are each accepted by their reader, each states a value in its first and its last reading inside the window, and each has at most 10 s between two consecutive readings with a value inside the window.",
               "declaredBefore": true,
-              "outcome": "met"
+              "outcome": "not-evaluated"
             },
             {
               "criterionId": "e02a-ac3",
@@ -11053,12 +11069,18 @@
             "docs/proof/experiments/v2-e02a/baseline-report.md",
             "docs/proof/experiments/v2-e02a/reviews/e02a-3-review-1.v1alpha1.json",
             "docs/proof/experiments/v2-e02a/reviews/e02a-runs-review-1.md",
-            "docs/proof/environment/v2-s7-002-pr1-validation.md"
+            "docs/proof/environment/v2-s7-002-pr1-validation.md",
+            "docs/proof/experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/eligibility-adjudication.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-3-review-2.v1alpha1.json",
+            "docs/proof/experiments/v2-e02a/reviews/e02a-correction-review-2.md",
+            "docs/proof/environment/v2-s7-004-pr1-switch-deviations.md",
+            "docs/proof/environment/v2-s7-004-pr1-validation.md"
           ],
           "limitations": [
             "One run, on one provider, on one cluster with one node, with one release, one model, and one caller workload. A result is bounded to that execution.",
-            "V2-E02A is a baseline characterization. Its criteria are validity criteria alone, so PASSED states that the run is valid. Requests failed in this run.",
-            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted.",
+            "V2-E02A is a baseline characterization with validity criteria alone. The manifest states PASSED, and the validity of the run is not established. Requests failed in this run.",
+            "The state of this run rests on a reading of E02A-AC2 that the repository owner approved on 2026-10-31, after the evidence was read. The freeze record does not state that reading, and no tool reads the approval. The correction of the run states it. On the readings of the runtime readyReplicas count, or of the runtime availableReplicas count, this run is INCONCLUSIVE and it is not counted. An adjudication that the repository owner accepted ruled that no source that predates the first fault settles that reading, so the outcome of E02A-AC2 in this record is not-evaluated.",
             "The model file of the replacement pod was not compared directly. The procedure read the model verification log of the first runtime pod alone, and the evidence for the replacement pod is indirect.",
             "The available physical memory of the host was low, and the host paged. The operator read these figures, and no criterion reads them. This record does not establish whether paging changed a figure.",
             "The manifest states two digests of the wrong kind, of the binding and of the contract. The correction of the run states the right values. No check reads either field.",
@@ -11066,7 +11088,7 @@
             "The clock bound applies between its two readings under the offset-stability assumption of the freeze record, and no reading tests that assumption.",
             "The stabilized recovery is a rule of the analysis. It is not a measured recovery of the service.",
             "The start of a failure episode is the completion of its first failed request. The failed requests were in flight for most of the time with no completion, and the caller failure episode does not hold that time.",
-            "The review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
+            "The first review of the result is a record of a separate session of the same automated assistant. It is not a review by a person or by an outside party. It read no register statement about this run, and it ran no tool of this repository."
           ],
           "doesNotEstablish": [
             "That the service stayed available. Requests failed in this run.",
@@ -11078,7 +11100,9 @@
             "That the model file of the replacement pod is the file of the record. The evidence is indirect.",
             "That paging on the host changed no figure.",
             "That a person reviewed the result.",
-            "Anything about another provider, node, release, or caller workload."
+            "Anything about another provider, node, release, or caller workload.",
+            "That the run is valid, or that it is not valid.",
+            "Which reading of E02A-AC2 is right."
           ]
         }
       ],
@@ -11139,7 +11163,7 @@
     },
     {
       "path": "docs/proof/v1-evidence-index.md",
-      "reason": "A generated projection of this register and the eleven ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+      "reason": "A generated projection of this register and the twelve ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the ledgers written after it. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
     },
     {
       "path": "docs/testing/evidence-levels.md",

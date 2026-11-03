@@ -1,5 +1,7 @@
 # The Argo CD Application
 
+> **2026-11-02:** the G1 switch merged at `ff45093` and the G3 switch at `a3ed812`, and [no authorization was found before either merge](../proof/environment/v2-s7-004-pr1-switch-deviations.md).
+
 Status: **implemented, and executed on one provider.**
 [ADR 0019](../architecture/decisions/ADR-0019-argocd-application-and-sync-policy.md)
 decided one Argo CD Application, the project that holds it, and its sync policy.

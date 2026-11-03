@@ -48,11 +48,13 @@ from typing import Any
 import pytest
 import yaml
 
+from tools.comparison_eligibility import ADJUDICATED_PATH, stale_statements
 from tools.evidence_index import (
     E01_CLAIM_CORRECTION_PATH,
     E01_CORRECTED_PROOF_PATH,
     E01_D_REGISTRATION_PATH,
     E01_STATIC_PROOF_PATH,
+    E02A_CORRECTION_PATH,
     E02A_REGISTRATION_PATH,
     LEDGER_PATHS,
     POST_RELEASE_LEDGER_PATHS,
@@ -93,7 +95,11 @@ REGISTRATION_NAME = E01_D_REGISTRATION_PATH.relative_to(REPO_ROOT).as_posix()
 #: The eleventh ledger, which registers the three V2-E02A runs.
 E02A_REGISTRATION = load_ledger(E02A_REGISTRATION_PATH)
 E02A_REGISTRATION_NAME = E02A_REGISTRATION_PATH.relative_to(REPO_ROOT).as_posix()
+#: The twelfth ledger, which corrects the claim of those runs.
+E02A_CORRECTION = load_ledger(E02A_CORRECTION_PATH)
+E02A_CORRECTION_NAME = E02A_CORRECTION_PATH.relative_to(REPO_ROOT).as_posix()
 E02A_DIRECTORY = "docs/proof/experiments/v2-e02a"
+E02A_CLAIM_ID = "the-e02a-baseline-runs-recorded-the-loss-of-the-one-runtime-pod"
 E02A_RUNS = tuple(f"{E02A_DIRECTORY}/runs/e02a-{number}" for number in (1, 2, 3))
 #: The ledgers that reference the review of the second static run, by position.
 SECOND_RUN_REVIEW_LEDGERS = (
@@ -130,6 +136,10 @@ REVIEWED = [
     *(
         {"ledger": E02A_REGISTRATION_NAME, **row}
         for row in E02A_REGISTRATION["resultReviews"]
+    ),
+    *(
+        {"ledger": E02A_CORRECTION_NAME, **row}
+        for row in E02A_CORRECTION["resultReviews"]
     ),
 ]
 REVIEW_REF = (
@@ -316,7 +326,7 @@ def test_nothing_else_of_the_claim_moved_and_no_claim_was_added() -> None:
     assert claim["status"] == "certified"
     assert [record["evidenceLevel"] for record in claim["evidenceRecords"]] == ["C0"]
     after_this_ledger = restore_migrated_register(
-        REGISTER, [REGISTRATION, E02A_REGISTRATION]
+        REGISTER, [REGISTRATION, E02A_REGISTRATION, E02A_CORRECTION]
     )
     held = _claim(after_this_ledger)
     assert [key for key in held if held[key] != ADDED["claim"][key]] == [
@@ -433,6 +443,7 @@ def test_only_the_e01_ledgers_bear_on_a_run() -> None:
         E01_CLAIM_CORRECTION_PATH,
         E01_D_REGISTRATION_PATH,
         E02A_REGISTRATION_PATH,
+        E02A_CORRECTION_PATH,
     ]
 
 
@@ -447,6 +458,7 @@ def _tree(tmp_path: Path, *, with_e02a: bool = False) -> Path:
     if with_e02a:
         files.append(f"{E02A_DIRECTORY}/freeze-r4.v1alpha1.json")
         files.extend(row["reviewRef"] for row in E02A_REGISTRATION["resultReviews"])
+        files.extend(row["reviewRef"] for row in E02A_CORRECTION["resultReviews"])
         runs.extend(E02A_RUNS)
     for relative in files:
         copied = tmp_path / relative
@@ -899,8 +911,10 @@ def test_the_registration_ledger_is_the_sixth_after_the_release() -> None:
     assert LEDGER_PATHS.index(E01_D_REGISTRATION_PATH) == 9
     assert POST_RELEASE_LEDGER_PATHS[6] == E02A_REGISTRATION_PATH
     assert LEDGER_PATHS.index(E02A_REGISTRATION_PATH) == 10
-    assert len(POST_RELEASE_LEDGER_PATHS) == 7
-    assert len(LEDGER_PATHS) == 11
+    assert POST_RELEASE_LEDGER_PATHS[7] == E02A_CORRECTION_PATH
+    assert LEDGER_PATHS.index(E02A_CORRECTION_PATH) == 11
+    assert len(POST_RELEASE_LEDGER_PATHS) == 8
+    assert len(LEDGER_PATHS) == 12
     assert REGISTRATION["contractVersion"] == "inferops.io/v1alpha1"
     assert REGISTRATION["priorLedgerRef"] == LEDGER_NAME
     for key in ("registerRef", "priorLedgerRef", "reportRef", "indexRef"):
@@ -1158,6 +1172,97 @@ def test_the_baseline_ledger_is_refused_without_its_reviews(
     mutate(ledgers[LEDGER_PATHS.index(E02A_REGISTRATION_PATH)])
     with pytest.raises(ValueError, match=message):
         review_gate(REGISTER, ledgers, _tree(tmp_path, with_e02a=True))
+
+
+def _correction_after(field: str, record_id: str) -> Any:
+    (change,) = [
+        change
+        for change in E02A_CORRECTION["registerChanges"]
+        if change.get("recordId") == record_id and change["field"] == field
+    ]
+    return change["after"]
+
+
+def test_the_correction_bears_on_the_three_runs_and_names_each_later_review() -> None:
+    assert result_runs(REGISTER, E02A_CORRECTION) == list(E02A_RUNS)
+    rows = E02A_CORRECTION["resultReviews"]
+    assert [row["runPath"] for row in rows] == list(E02A_RUNS)
+    for row in rows:
+        assert row["reviewRef"].endswith("-review-2.v1alpha1.json")
+        assert row["reviewSha256"] == content_sha256(REPO_ROOT / row["reviewRef"])
+
+
+def test_the_correction_is_refused_without_a_review_of_each_run(tmp_path: Path) -> None:
+    ledgers = copy.deepcopy(LEDGERS)
+    ledgers[LEDGER_PATHS.index(E02A_CORRECTION_PATH)]["resultReviews"].pop()
+    with pytest.raises(ValueError, match="references no independent"):
+        review_gate(REGISTER, ledgers, _tree(tmp_path, with_e02a=True))
+
+
+def test_the_correction_moves_no_status_no_level_and_adds_no_record() -> None:
+    operations = {change["operation"] for change in E02A_CORRECTION["registerChanges"]}
+    assert operations == {"set-claim-field", "set-record-field", "set-register-field"}
+    fields = {change["field"] for change in E02A_CORRECTION["registerChanges"]}
+    assert fields == {
+        "statement",
+        "limitation",
+        "doesNotEstablish",
+        "summary",
+        "limitations",
+        "acceptanceCriteria",
+        "evidenceRefs",
+        "nonClaimSurfaces",
+    }
+    assert E02A_CORRECTION["codeRevisions"] == []
+    assert E02A_CORRECTION["codeIdentity"] == []
+
+
+def test_the_register_no_longer_states_that_each_criterion_holds() -> None:
+    claim = _claim(REGISTER, E02A_CLAIM_ID)
+    assert claim["status"] == "certified"
+    assert "two requests failed" in claim["statement"]
+    assert "validity of the three runs is not established" in claim["statement"]
+    assert "not-decided" in claim["statement"]
+    assert "an adjudication that the repository owner accepted" in claim["statement"]
+    assert "no source selects them for E02A-AC2" in claim["limitation"]
+    assert "no record establishes that a review of this wording" in claim["limitation"]
+    for text in (claim["statement"], claim["limitation"]):
+        assert stale_statements(text) == []
+    for record in claim["evidenceRecords"]:
+        outcomes = {
+            row["criterionId"]: row["outcome"] for row in record["acceptanceCriteria"]
+        }
+        assert outcomes.pop("e02a-ac2") == "not-evaluated"
+        assert set(outcomes.values()) == {"met"} and len(outcomes) == 6
+        assert record["evidenceLevel"] == "C2"
+        assert "validity of the run is not established" in record["summary"]
+        assert (
+            "That the run is valid, or that it is not valid."
+            in (record["doesNotEstablish"])
+        )
+        assert stale_statements(record["summary"]) == []
+        assert stale_statements(" ".join(record["limitations"])) == []
+        assert ADJUDICATED_PATH in record["evidenceRefs"]
+
+
+def test_the_correction_keeps_each_statement_of_a_criterion_and_each_measured_figure() -> (
+    None
+):
+    (added,) = [
+        change
+        for change in E02A_REGISTRATION["registerChanges"]
+        if change["operation"] == "add-claim"
+    ]
+    before = {r["recordId"]: r for r in added["claim"]["evidenceRecords"]}
+    for record_id, record in before.items():
+        criteria = _correction_after("acceptanceCriteria", record_id)
+        assert [r["statement"] for r in criteria] == [
+            r["statement"] for r in record["acceptanceCriteria"]
+        ]
+        kept = record["summary"].split(" The seven validity criteria hold")[0]
+        assert _correction_after("summary", record_id).startswith(kept)
+    statement = added["claim"]["statement"].split(" The seven validity criteria")[0]
+    assert _claim(REGISTER, E02A_CLAIM_ID)["statement"].startswith(statement)
 
 
 def test_the_baseline_claim_says_that_requests_failed_and_cites_each_run() -> None:

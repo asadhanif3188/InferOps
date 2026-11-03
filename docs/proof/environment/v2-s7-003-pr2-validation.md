@@ -1,5 +1,11 @@
 # Validation: the G3 switch and revision 3 of the V2-E02B record (V2-S7-003-PR2)
 
+> **Correction, 2026-11-02.** This page is a record of its date. No authorization of the G1
+> merge, `ff45093`, or of the G3 merge, `a3ed812`, was found before it merged, in the search that
+> [the deviation page](v2-s7-004-pr1-switch-deviations.md) states. The verdict `eligible` that
+> this page reports is not the current verdict, which is `not-decided`, in
+> [the adjudicated record](../experiments/v2-e02a/eligibility-adjudicated.v1alpha1.json).
+
 Status: **C0.** This change executes rule G3 of the V2-E02A freeze record in the tree: the two
 desired-state files and the declaration that the repository checks derive them from return to
 the bytes that they had before the G1 switch. It registers revision 3 of the V2-E02B record in

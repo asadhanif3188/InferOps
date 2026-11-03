@@ -1,5 +1,11 @@
 # Validation: the G1 switch and revision 4 of the V2-E02A record (V2-S7-003-PR1)
 
+> **Correction, 2026-11-02.** This page is a record of its date. Where it says that the review of
+> the change and the record of the merge state the authorization of the repository owner, no
+> authorization of the G1 merge, `ff45093`, was found before it merged, in the search that
+> [the deviation page](v2-s7-004-pr1-switch-deviations.md) states. That pull request has no comment
+> and no review.
+
 Status: **C0.** This change executes rule G1 of the V2-E02A freeze record in the tree: the
 two desired-state files become the files of the single-runtime baseline profile, and the
 declaration that the repository checks derive them from names the baseline's contract. It

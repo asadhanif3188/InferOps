@@ -4,6 +4,9 @@ The package reads the three run directories of V2-E02A, holds each to a replay o
 its run analysis, and applies the eligibility rule of revision 4 of the record. It
 states each run, the permitted medians, the verdict, and the handoff of rule G3.
 
+That record keeps its bytes. A second record, built from an adjudication of E02A-AC2
+and the raw streams, states the current verdict.
+
 It registers no claim and no freeze record, and it computes no percentage. No freeze
 record pins it, and no tool that a run executes imports it.
 
